@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import PropTypes from "prop-types"
 import Link from "next/link"
 
-export default function MenuMobile() {
+export default function MenuMobile({ navigationList }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const trigger = useRef(null)
@@ -70,24 +70,19 @@ export default function MenuMobile() {
         }
       >
         <ul className="bg-gray-800 px-4 py-2">
-          <li>
-            <Link
-              href="/signin"
-              className="flex font-medium w-full text-yellow-600 hover:text-gray-200 py-2 justify-center"
-              onClick={() => setMobileNavOpen(false)}
-            >
-              Sign in
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/signup"
-              className="font-medium w-full inline-flex items-center justify-center border border-transparent px-4 py-2 my-2 rounded-sm text-white bg-yellow-600 hover:bg-yellow-700 transition duration-150 ease-in-out"
-              onClick={() => setMobileNavOpen(false)}
-            >
-              Sign up
-            </Link>
-          </li>
+          {navigationList.map((nav, index) => {
+            return (
+              <li key={index}>
+                <Link
+                  href={nav.href}
+                  className="flex font-medium w-full text-yellow-600 hover:text-gray-200 py-2 justify-center"
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  {nav.title}
+                </Link>
+              </li>
+            )
+          })}
         </ul>
       </nav>
     </div>
