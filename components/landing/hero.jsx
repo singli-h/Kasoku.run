@@ -21,7 +21,7 @@ export default function Hero() {
         <div className="max-w-3xl mx-auto text-center pb-12 md:pb-16">
           <h1 className="h1 mb-4" data-aos="fade-up">
             {sectionMessage.title}
-            <span className="text-purple-600">
+            <span className="text-yellow-600">
               {sectionMessage.titleHightlight}
             </span>
           </h1>

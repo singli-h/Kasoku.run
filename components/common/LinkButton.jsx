@@ -6,7 +6,7 @@ const LinkButton = ({ href, children, secondary }) => (
     className={`btn text-white w-full sm:w-auto sm:ml-4 ${
       secondary
         ? "bg-gray-700 hover:bg-gray-800"
-        : "bg-purple-600 hover:bg-purple-700"
+        : "bg-yellow-600 hover:bg-yellow-700"
     }`}
     href={href}
   >

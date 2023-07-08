@@ -15,7 +15,7 @@ export default function MenuDesktop({ navigationList }) {
               <li key={index}>
                 <Link
                   href={nav.href}
-                  className="font-medium text-purple-600 hover:text-gray-200 px-4 py-3 flex items-center transition duration-150 ease-in-out"
+                  className="font-medium text-yellow-600 hover:text-gray-200 px-4 py-3 flex items-center transition duration-150 ease-in-out"
                 >
                   {nav.title}
                 </Link>
