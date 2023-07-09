@@ -1,11 +1,12 @@
-import LinkButton from "@/components/common/LinkButton"
+"use client"
+
+import Button from "@/components/common/Button"
 
 export default function Hero() {
   const sectionMessage = {
     title: "Welcome to your ",
     titleHightlight: "Runner Tracker",
-    paragraph:
-      "Description",
+    paragraph: "Description",
   }
 
   const navigationList = [
@@ -36,9 +37,12 @@ export default function Hero() {
             {navigationList.map((nav, index) => {
               return (
                 <div data-aos="fade-up" data-aos-delay="400" key={index}>
-                  <LinkButton secondary={nav.secondary} href={nav.href}>
+                  <Button
+                    secondary={nav.secondary}
+                    onClick={() => (window.location.href = nav.href)}
+                  >
                     {nav.title}
-                  </LinkButton>
+                  </Button>
                 </div>
               )
             })}

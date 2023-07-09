@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import PropTypes from "prop-types"
-import Link from "next/link"
+import LinkButton from "../common/LinkButton"
 
 export default function MenuMobile({ navigationList }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -73,13 +73,12 @@ export default function MenuMobile({ navigationList }) {
           {navigationList.map((nav, index) => {
             return (
               <li key={index}>
-                <Link
+                <LinkButton
                   href={nav.href}
-                  className="flex font-medium w-full text-yellow-600 hover:text-gray-200 py-2 justify-center"
                   onClick={() => setMobileNavOpen(false)}
                 >
                   {nav.title}
-                </Link>
+                </LinkButton>
               </li>
             )
           })}

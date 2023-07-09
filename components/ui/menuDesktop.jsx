@@ -1,7 +1,7 @@
 "use client"
 
 import PropTypes from "prop-types"
-import Link from "next/link"
+import LinkButton from "../common/LinkButton"
 
 export default function MenuDesktop({ navigationList }) {
   return (
@@ -13,12 +13,7 @@ export default function MenuDesktop({ navigationList }) {
           {navigationList.map((nav, index) => {
             return (
               <li key={index}>
-                <Link
-                  href={nav.href}
-                  className="font-medium text-yellow-600 hover:text-gray-200 px-4 py-3 flex items-center transition duration-150 ease-in-out"
-                >
-                  {nav.title}
-                </Link>
+                <LinkButton href={nav.href}>{nav.title}</LinkButton>
               </li>
             )
           })}
