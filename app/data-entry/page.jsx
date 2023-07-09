@@ -6,6 +6,7 @@ export const metadata = {
 
 import React from "react"
 import Header from "@/components/common/Header"
+import FormComponent from "@/components/form/FormComponent"
 
 const Page = () => {
   const sectionMessage = {
@@ -14,12 +15,15 @@ const Page = () => {
   }
 
   return (
-    <div>
-      <Header
-        title={sectionMessage.title}
-        description={sectionMessage.paragraph}
-      />
-    </div>
+    <>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 relative">
+        <Header
+          title={sectionMessage.title}
+          description={sectionMessage.paragraph}
+        />
+        <FormComponent />
+      </div>
+    </>
   )
 }
 
