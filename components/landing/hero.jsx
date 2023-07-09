@@ -36,7 +36,12 @@ export default function Hero() {
           <div className="max-w-xs mx-auto sm:max-w-none sm:flex sm:justify-center mb-12">
             {navigationList.map((nav, index) => {
               return (
-                <div data-aos="fade-up" data-aos-delay="400" key={index}>
+                <div
+                  className="ml-4"
+                  data-aos="fade-up"
+                  data-aos-delay="400"
+                  key={index}
+                >
                   <Button
                     secondary={nav.secondary}
                     onClick={() => (window.location.href = nav.href)}
