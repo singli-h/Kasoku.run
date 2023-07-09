@@ -4,21 +4,29 @@ export const metadata = {
   title: "Login",
 }
 
-import React, { useState } from "react"
+import React, { useState, useContext } from "react"
+import { useRouter } from "next/navigation"
+import { AuthContext } from "@/context/authContext"
 import Button from "@/components/common/Button"
 
 const Page = () => {
+  const router = useRouter()
+  const { login } = useContext(AuthContext)
+
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    // implement login service
+
+    login(username)
+
+    router.push("/dashboard")
   }
 
   return (
-    <div>
-      <div className="max-w-lg mx-auto justify-center">
+    <div className="justify-center">
+      <div className="max-w-lg mx-auto">
         <form onSubmit={handleSubmit} className="m-5">
           <div className="flex flex-col mb-6">
             <label

@@ -1,26 +1,39 @@
+"use client"
+
+import React, { useContext } from "react"
 import Link from "next/link"
+import { AuthContext } from "@/context/authContext"
 import MenuMobile from "@/components/ui/menuMobile"
 import MenuDestop from "@/components/ui/menuDesktop"
 
 export default function Header() {
-  const navigationList = [
-    {
-      title: "Landing",
-      href: "/",
-    },
-    {
-      title: "Login",
-      href: "/login",
-    },
-    {
-      title: "Data Entry",
-      href: "/entry",
-    },
-    {
-      title: "Dashboard",
-      href: "/dashboard",
-    },
-  ]
+  const { isLogin } = useContext(AuthContext)
+
+  const navigationList = isLogin
+    ? [
+        {
+          title: "Landing",
+          href: "/",
+        },
+        {
+          title: "Dashboard",
+          href: "/dashboard",
+        },
+        {
+          title: "Data Entry",
+          href: "/data-entry",
+        },
+      ]
+    : [
+        {
+          title: "Landing",
+          href: "/",
+        },
+        {
+          title: "Login",
+          href: "/login",
+        },
+      ]
 
   return (
     <header className="absolute w-full z-30">
@@ -39,9 +52,7 @@ export default function Header() {
               </svg>
             </Link>
           </div>
-
           <MenuDestop navigationList={navigationList} />
-
           <MenuMobile navigationList={navigationList} />
         </div>
       </div>

@@ -2,6 +2,7 @@ import "./css/style.css"
 
 import { Inter } from "next/font/google"
 
+import { AuthProvider } from "@/context/authContext"
 import Header from "@/components/ui/header"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -17,10 +18,12 @@ export default function RootLayout({ children }) {
       <body
         className={`${inter.variable} font-inter antialiased bg-gray-900 text-gray-200 tracking-tight`}
       >
-        <div className="flex flex-col min-h-screen overflow-hidden">
-          <Header />
-          {children}
-        </div>
+        <AuthProvider>
+          <div className="flex flex-col min-h-screen overflow-hidden">
+            <Header />
+            {children}
+          </div>
+        </AuthProvider>
       </body>
     </html>
   )
