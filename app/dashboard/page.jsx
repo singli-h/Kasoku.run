@@ -6,6 +6,7 @@ export const metadata = {
 
 import React from "react"
 import Header from "@/components/common/Header"
+import DashboardComponenet from "@/components/dashboard/DashboardComponent"
 
 const Page = () => {
   const sectionMessage = {
@@ -14,11 +15,12 @@ const Page = () => {
   }
 
   return (
-    <div>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 relative">
       <Header
         title={sectionMessage.title}
         description={sectionMessage.paragraph}
       />
+      <DashboardComponenet />
     </div>
   )
 }
