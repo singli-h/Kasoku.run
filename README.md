@@ -12,6 +12,6 @@ v0.0.2
 v0.0.1
 1. Allow user to modify the workout and save in database
 2. Allow user to view the exercises progression and volume with chart.js/D3.js
-O 3. Display a workout preset with correct UI
-O 4. Able to swicth between Day1/2/3
- 5. Select week to view past workout
+3.O Display a workout preset with correct UI
+4.O Able to swicth between Day1/2/3
+5. Select week to view past workout
