@@ -15,3 +15,10 @@ v0.0.1
 3.O Display a workout preset with correct UI
 4.O Able to swicth between Day1/2/3
 5. Select week to view past workout
+
+    <PackageReference Include="Microsoft.AspNet.Cors" Version="5.3.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">
+    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.6" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+
