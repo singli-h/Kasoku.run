@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import GymSection from './GymSection';
 import ExerciseSection from './ExerciseSection';
-import ErrorAndLoadingOverlay from '../common/ErrorAndLoadingOverlay'; 
+import ErrorAndLoadingOverlay from '../common/ErrorAndLoadingOverlay';
+import Button from '../common/Button';  
 const MAX_RETRIES = 3; // Adjust as needed
-const RETRY_DELAY = 1000; // 1 second delay between retries
+const RETRY_DELAY = 100; // 1 second delay between retries
 
 export default function Component() {
   const [exercises, setExercises] = useState([]);
@@ -161,6 +162,45 @@ export default function Component() {
     setSelectedGroup(group || null);
   };
 
+  const saveTrainingExercise = async () => {
+    try {
+      const allExercises = [
+        ...gymExercises.map(ex => ({ ...ex, type: 'gym' })),
+        ...warmupExercises.map(ex => ({ ...ex, type: 'warmup' })),
+        ...circuitExercises.map(ex => ({ ...ex, type: 'circuit' }))
+      ];
+      console.log(allExercises);
+
+      const exercisesToSave = allExercises.map(exercise => ({
+        trainingSessionId: 2,
+        exerciseId: exercise.id,
+        sets: exercise.sets.map(set => ({
+          reps: set.reps,
+          weight: set.weight,
+          restTime: set.rest
+        }))
+      }));
+      console.log(exercisesToSave);
+
+      /*const response = await fetch('https://localhost:7014/api/TrainingExercises', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(exercisesToSave),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save exercises');
+      }*/
+
+      alert('Exercises saved successfully!');
+    } catch (error) {
+      console.error('Error saving exercises:', error);
+      alert('Failed to save exercises. Please try again.');
+    }
+  };
+
   if (error) {
     return <div>Error: {error.message}</div>;
   }
@@ -170,7 +210,7 @@ export default function Component() {
       <ErrorAndLoadingOverlay isLoading={isLoading} error={error} />
       <div className="container mx-auto p-4 space-y-4">
         <h1 className="text-2xl font-bold mb-6">Exercise Input Page</h1>
-        
+        <Button onClick={saveTrainingExercise}>Save</Button>
         <div className="mb-6 grid grid-cols-3 gap-4">
           <div>
             <h2 className="text-xl font-semibold mb-2">Program</h2>
@@ -229,9 +269,19 @@ export default function Component() {
             {openSections[section] && (
               <div className="bg-white p-4">
                 {section === 'Gym' ? (
-                  <GymSection exercises={gymExercises} exercisePresets={exercisePresets} />
+                  <GymSection 
+                    exercises={gymExercises} 
+                    exercisePresets={exercisePresets}
+                    onExerciseChange={(updatedExercises) => setGymExercises(updatedExercises)}
+                  />
                 ) : (
-                  <ExerciseSection exercises={section === 'Warm Up' ? warmupExercises : circuitExercises} exercisePresets={exercisePresets} />
+                  <ExerciseSection 
+                    exercises={section === 'Warm Up' ? warmupExercises : circuitExercises} 
+                    exercisePresets={exercisePresets}
+                    onExerciseChange={(updatedExercises) => 
+                      section === 'Warm Up' ? setWarmupExercises(updatedExercises) : setCircuitExercises(updatedExercises)
+                    }
+                  />
                 )}
               </div>
             )}
