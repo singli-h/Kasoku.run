@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import Button from "../common/Button"
+import Button from "../../components/common/Button"
 
 const initialExerciseState = {
   name: "",

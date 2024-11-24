@@ -1,12 +1,8 @@
 "use client"
 
-export const metadata = {
-  title: "Data Entry",
-}
-
 import React from "react"
-import Header from "@/components/common/Header"
-import FormComponent from "@/components/form/FormComponent"
+import Header from "@/src/components/common/Header"
+import FormComponent from "@/src/pages/form/FormComponent"
 
 const Page = () => {
   const sectionMessage = {

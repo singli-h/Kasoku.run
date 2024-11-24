@@ -2,11 +2,21 @@
 
 import { useState } from 'react';
 
-export default function ExerciseSection({ exercises,exercisePresets }) {
+export default function ExerciseSection({ exercises, onExerciseChange }) {
   const [completedExercises, setCompletedExercises] = useState({});
 
   const toggleExerciseComplete = (exerciseId) => {
-    setCompletedExercises(prev => ({ ...prev, [exerciseId]: !prev[exerciseId] }));
+    const newCompletedExercises = { ...completedExercises, [exerciseId]: !completedExercises[exerciseId] };
+    setCompletedExercises(newCompletedExercises);
+    onExerciseChange(exercises.map(exercise => 
+      exercise.id === exerciseId ? { ...exercise, completed: newCompletedExercises[exerciseId] } : exercise
+    ));
+  };
+
+  const handleInputChange = (exerciseId, field, value) => {
+    onExerciseChange(exercises.map(exercise => 
+      exercise.id === exerciseId ? { ...exercise, [field]: value } : exercise
+    ));
   };
 
   return (
@@ -14,11 +24,11 @@ export default function ExerciseSection({ exercises,exercisePresets }) {
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-muted">
-            <th className="p-2 text-left w-1/3">Exercise</th>
-            <th className="p-2 text-left w-1/6">Sets</th>
-            <th className="p-2 text-left w-1/6">Reps</th>
-            <th className="p-2 text-left w-1/6">Video</th>
-            <th className="p-2 text-left w-1/6">Done</th>
+            <th className="p-2 text-left">Exercise</th>
+            <th className="p-2 text-left">Sets</th>
+            <th className="p-2 text-left">Reps</th>
+            <th className="p-2 text-left">Video</th>
+            <th className="p-2 text-left">Done</th>
           </tr>
         </thead>
         <tbody>
@@ -28,15 +38,17 @@ export default function ExerciseSection({ exercises,exercisePresets }) {
               <td className="p-2">
                 <input
                   type="number"
-                  value={exercisePresets.filter(ex=>ex.Exercised == exercise.id)[0]}
-                  className="w-16"
+                  value={exercise.sets}
+                  onChange={(e) => handleInputChange(exercise.id, 'sets', e.target.value)}
+                  className="w-16 p-1 border rounded"
                 />
               </td>
               <td className="p-2">
                 <input
                   type="number"
-                  value={exercise.defualtReps}
-                  className="w-16"
+                  value={exercise.reps}
+                  onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
+                  className="w-16 p-1 border rounded"
                 />
               </td>
               <td className="p-2">
@@ -61,3 +73,4 @@ export default function ExerciseSection({ exercises,exercisePresets }) {
     </div>
   );
 }
+

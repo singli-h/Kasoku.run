@@ -2,9 +2,9 @@
 
 import React, { useContext } from "react"
 import Link from "next/link"
-import { AuthContext } from "@/context/authContext"
-import MenuMobile from "@/components/ui/menuMobile"
-import MenuDestop from "@/components/ui/menuDesktop"
+import { AuthContext } from "../../context/authContext"
+import MenuMobile from "./menuMobile"
+import MenuDestop from "./menuDesktop"
 
 export default function Header() {
   const { isLogin } = useContext(AuthContext)

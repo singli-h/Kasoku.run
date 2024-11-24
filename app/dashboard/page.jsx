@@ -1,12 +1,8 @@
 "use client"
 
-export const metadata = {
-  title: "Dashboard",
-}
-
 import React from "react"
-import Header from "@/components/common/Header"
-import DashboardComponenet from "@/components/dashboard/DashboardComponent"
+import Header from "@/src/components/common/Header"
+import DashboardComponenet from "@/src/pages/dashboard/DashboardComponenet"
 
 const Page = () => {
   const sectionMessage = {

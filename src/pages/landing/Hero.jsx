@@ -1,6 +1,6 @@
 "use client"
 
-import Button from "@/components/common/Button"
+import Button from "@/src/components/common/Button"
 
 export default function Hero() {
   const sectionMessage = {

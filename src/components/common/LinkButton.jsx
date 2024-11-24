@@ -22,10 +22,4 @@ LinkButton.propTypes = {
   secondary: PropTypes.bool,
 }
 
-LinkButton.defaultProps = {
-  href: "#0",
-  children: "Link Button Text",
-  secondary: false,
-}
-
 export default LinkButton
