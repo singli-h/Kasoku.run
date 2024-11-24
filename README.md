@@ -1,4 +1,8 @@
 # Runner Tracker
+v0.0.4
+1. UI for planning Periodization
+2. OpenAI for reviewing and suggestion
+
 v0.0.3
 1. Import exsisting exercise and sprint program
 2. Create Sprint page for displaying sprint session and allow record running times
@@ -8,6 +12,7 @@ v0.0.2
 1. Create login feature, differ feature for coach and athlete
 2. Allow coach to create new workout preset for future weeks
 3. Auto Gym progression generation with formula
+4. Import Exercise and Sprint data
 
 v0.0.1
 1. Allow user to modify the workout and save in database
