@@ -6,9 +6,6 @@ import ExerciseSection from "./ExerciseSection"
 import ErrorAndLoadingOverlay from "../../components/common/ErrorAndLoadingOverlay"
 import Button from "../../components/common/Button"
 
-const MAX_RETRIES = 3
-const RETRY_DELAY = 100
-
 export default function DashboardComponent() {
   const [useTrainingExercises, setUseTrainingExercises] = useState(false)
   const [exercises, setExercises] = useState([])
@@ -265,13 +262,17 @@ name: exercise.name,
     <div className="container mx-auto p-4 space-y-4 relative">
       <ErrorAndLoadingOverlay isLoading={isLoading} error={error} />
       <div className="container mx-auto p-4 space-y-4">
-        <h1 className="text-2xl font-bold mb-6">Exercise Input Page</h1>
-        <Button onClick={saveTrainingExercise}>Save</Button>
+        <div className="flex items-center justify-between"> {/* Add justify-between */}
+          <h1 className="text-2xl font-bold mb-6">
+            {useTrainingExercises ? "Workout Completed" : "Workout Todo"}
+          </h1>
+          <Button onClick={saveTrainingExercise}>Save</Button>
+        </div>
         <div className="mb-6 grid grid-cols-3 gap-4">
           <div>
             <h2 className="text-xl font-semibold mb-2">Program</h2>
             <div className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-zinc-900">
-              {selectedGroup ? selectedGroup.name : "No group selected"}
+              {selectedGroup ? presetGroupDate + " " + selectedGroup.name : "No group selected"}
             </div>
           </div>
           <div>
