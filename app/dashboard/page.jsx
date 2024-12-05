@@ -14,7 +14,7 @@ const Page = () => {
   }
 
   return (
-    <div>
+    <div className="max-w-8xl mx-auto px-4 sm:px-6 relative">
       <Header
         title={sectionMessage.title}
         description={sectionMessage.paragraph}
