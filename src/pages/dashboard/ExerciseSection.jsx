@@ -14,9 +14,12 @@ export default function ExerciseSection({ exercises, onExerciseChange }) {
   };
 
   const handleInputChange = (exerciseId, field, value) => {
-    onExerciseChange(exercises.map(exercise => 
-      exercise.id === exerciseId ? { ...exercise, [field]: value } : exercise
-    ));
+    const numericValue = parseFloat(value);
+    if (!isNaN(numericValue) && numericValue > 0) { 
+      onExerciseChange(exercises.map(exercise => 
+        exercise.id === exerciseId ? { ...exercise, [field]: numericValue } : exercise
+      ));
+    }
   };
 
   return (

@@ -1,60 +1,74 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function GymSection({ exercises, onExerciseChange }) {
   const [completedExercises, setCompletedExercises] = useState({});
 
   const toggleExerciseComplete = (exerciseId) => {
-    setCompletedExercises(prevCompletedExercises => {
-      const exercise = exercises.find(e => e.id === exerciseId);
-      const newCompleted = !exercise.completed; // Determine the new "completed" state
-
-      // Create an updated completedExercises object
-      const newCompletedExercises = { ...prevCompletedExercises };
-      exercise.sets.forEach(set => {
-        newCompletedExercises[`${exerciseId}-${set.id}`] = newCompleted;
+    onExerciseChange(prevExercises => {
+      return prevExercises.map(exercise => {
+        if (exercise.id === exerciseId) {
+          const newCompleted = !exercise.completed;
+          return {
+            ...exercise,
+            completed: newCompleted,
+            // Correctly update sets with new objects
+            sets: exercise.sets.map(set => ({ ...set, completed: newCompleted })) 
+          };
+        }
+        return exercise;
       });
-
-      // Update the exercises with the new completed state
-      onExerciseChange(exercises.map(e => 
-        e.id === exerciseId ? { ...e, completed: newCompleted } : e
-      ));
-
-      return newCompletedExercises;
     });
   };
 
   const toggleSetComplete = (exerciseId, setId) => {
-    setCompletedExercises(prevCompletedExercises => {
-      const newCompletedExercises = { 
-        ...prevCompletedExercises, 
-        [`${exerciseId}-${setId}`]: !prevCompletedExercises[`${exerciseId}-${setId}`] 
-      };
-
-      // Check if all sets are completed for this exercise
-      const exercise = exercises.find(e => e.id === exerciseId);
-      const allSetsCompleted = exercise.sets.every(set => newCompletedExercises[`${exerciseId}-${set.id}`]);
-
-      onExerciseChange(exercises.map(e => 
-        e.id === exerciseId ? { ...e, completed: allSetsCompleted } : e
-      ));
-
-      return newCompletedExercises;
+    onExerciseChange(prevExercises => {
+      return prevExercises.map(exercise => {
+        if (exercise.id === exerciseId) {
+          const newSets = exercise.sets.map(set => 
+            set.id === setId ? { ...set, completed: !set.completed } : set
+          );
+          const allSetsCompleted = newSets.every(set => set.completed);
+          return { ...exercise, completed: allSetsCompleted, sets: newSets };
+        }
+        return exercise;
+      });
     });
   };
 
-
   const handleInputChange = (exerciseId, setId, field, value) => {
-    onExerciseChange(exercises.map(exercise => 
-      exercise.id === exerciseId ? {
-        ...exercise,
-        sets: exercise.sets.map(set => 
-          set.id === setId ? { ...set, [field]: value } : set
-        )
-      } : exercise
-    ));
+    const numericValue = parseFloat(value); // Parse the input value as a number
+
+    // Check if the value is a number and greater than 0
+    if (!isNaN(numericValue) && numericValue > 0) { 
+      onExerciseChange(exercises.map(exercise => 
+        exercise.id === exerciseId ? {
+          ...exercise,
+          sets: exercise.sets.map(set => 
+            set.id === setId ? { ...set, [field]: numericValue } : set // Update with the numeric value
+          )
+        } : exercise
+      ));
+    } 
+    // Optionally, you can handle invalid input here (e.g., show an error message)
   };
+
+  // useEffect to update completedExercises when exercises change
+  useEffect(() => {
+    const newCompletedExercises = {};
+    exercises.forEach(exercise => {
+      const allSetsCompleted = exercise.sets.every(set => set.completed); // Check if all sets are completed
+      exercise.sets.forEach(set => {
+        newCompletedExercises[`${exercise.id}-${set.id}`] = set.completed;
+      });
+      // Update the exercise's completed status
+      onExerciseChange(prevExercises => prevExercises.map(e => 
+        e.id === exercise.id ? { ...e, completed: allSetsCompleted } : e
+      )); 
+    });
+    setCompletedExercises(newCompletedExercises);
+  }, [exercises]); 
 
   return (
     <div className="w-full space-y-4">
@@ -75,7 +89,7 @@ export default function GymSection({ exercises, onExerciseChange }) {
                 <tr className="bg-muted">
                   <th className="p-2 text-left">Set</th>
                   <th className="p-2 text-left">Reps</th>
-                  <th className="p-2 text-left">Weight (lbs)</th>
+                  <th className="p-2 text-left">Weight (kg)</th>
                   <th className="p-2 text-left">Rest (s)</th>
                   <th className="p-2 text-left">Done</th>
                 </tr>
@@ -95,8 +109,8 @@ export default function GymSection({ exercises, onExerciseChange }) {
                     <td className="p-2">
                       <input
                         type="number"
-                        value={set.weight}
-                        onChange={(e) => handleInputChange(exercise.id, set.id, 'weight', e.target.value)}
+                        value={set.output}
+                        onChange={(e) => handleInputChange(exercise.id, set.id, 'output', e.target.value)}
                         className="w-16 p-1 border rounded"
                       />
                     </td>

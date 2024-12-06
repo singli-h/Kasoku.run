@@ -62,7 +62,7 @@ export default function DashboardComponent() {
               date: new Date(),
             };
           }
-  
+          
           setTrainingExercises(initialSessionExercises);
           setSelectedGroup(initialSelectedGroup);
         }
@@ -132,15 +132,15 @@ export default function DashboardComponent() {
       )
       .map((exercise) => ({
         id: exercise.id,
-name: exercise.name,
+        name: exercise.name,
         sets: sessionExercises
           .filter((sessionExercise) => sessionExercise.exercise_id === exercise.id)
           .map((sessionExercise) => ({
             id: sessionExercise.id,
             reps: sessionExercise.reps,
             rest: sessionExercise.set_rest_time,
-            weight: sessionExercise.weight || 0,
             output: sessionExercise.output,
+            completed: sessionExercise.completed || false
           })),
         videoUrl: exercise.videoUrl,
       }));
@@ -153,6 +153,7 @@ name: exercise.name,
         sets: 1,
         reps: exercise.defaultReps,
         videoUrl: exercise.videoUrl,
+        completed: exercise.completed || false
       }));
 
     const circuit = exercises
@@ -163,6 +164,7 @@ name: exercise.name,
         sets: 1,
         reps: exercise.defaultReps,
         videoUrl: exercise.videoUrl,
+        completed: exercise.completed || false
       }));
 
     setGymExercises(gym);
@@ -223,18 +225,21 @@ name: exercise.name,
 
       const exercisesToSave = allExercises.flatMap((exercise) => 
         exercise.sets.map((set) => ({
-          trainingSessionId: selectedGroup.id,
-          exerciseId: exercise.id,
+          id: set.id,
+          training_session_id: selectedGroup.id,
+          exercise_id: exercise.id,
           reps: set.reps,
-          weight: set.weight,
-          restTime: set.rest,
-          completed: set.completed || false,
+          output: set.output,
+          set_rest_time: set.rest,
+          completed: set.completed,
         }))
       );
 
       const method = useTrainingExercises ? 'PUT' : 'POST';
       const url = `${API_BASE_URL}/api/training_exercises${useTrainingExercises ? `/${selectedGroup.id}` : ''}`;
 
+      console.log(url);
+      console.log(exercisesToSave);
       const response = await fetch(url, {
         method: method,
         headers: {
@@ -264,7 +269,7 @@ name: exercise.name,
       <div className="container mx-auto p-4 space-y-4">
         <div className="flex items-center justify-between"> {/* Add justify-between */}
           <h1 className="text-2xl font-bold mb-6">
-            {useTrainingExercises ? "Workout Completed" : "Workout Todo"}
+            {(selectedGroup ? selectedGroup.date + " " + (useTrainingExercises ? "Completed" : "Todo") : "") }
           </h1>
           <Button onClick={saveTrainingExercise}>Save</Button>
         </div>
@@ -272,7 +277,7 @@ name: exercise.name,
           <div>
             <h2 className="text-xl font-semibold mb-2">Program</h2>
             <div className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-zinc-900">
-              {selectedGroup ? presetGroupDate + " " + selectedGroup.name : "No group selected"}
+              {selectedGroup ? selectedGroup.name : "No group selected"}
             </div>
           </div>
           <div>
@@ -308,7 +313,7 @@ name: exercise.name,
           </div>
         </div>
 
-        {selectedGroup && (
+        {false && selectedGroup && (
           <p className="mt-2">
             Selected: {selectedGroup.id} - {selectedGroup.name} - Week{" "}
             {selectedWeek}, Day {selectedDay} - SessionID {selectedGroup.id}
