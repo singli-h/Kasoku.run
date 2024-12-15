@@ -2,7 +2,7 @@
 
 import React from "react"
 import Header from "@/src/components/common/Header"
-import DashboardComponenet from "@/src/pages/dashboard/DashboardComponenet"
+import DashboardComponent from "@/src/pages/dashboard/DashboardComponent"
 
 const Page = () => {
   const sectionMessage = {
@@ -16,7 +16,7 @@ const Page = () => {
         title={sectionMessage.title}
         description={sectionMessage.paragraph}
       />
-      <DashboardComponenet />
+      <DashboardComponent />
     </div>
   )
 }

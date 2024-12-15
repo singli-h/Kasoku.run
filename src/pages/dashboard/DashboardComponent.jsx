@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect } from "react"
-import GymSection from "./GymSection"
-import ExerciseSection from "./ExerciseSection"
+import ExerciseTable from "./ExerciseTable"
 import ErrorAndLoadingOverlay from "../../components/common/ErrorAndLoadingOverlay"
 import Button from "../../components/common/Button"
 
@@ -24,6 +23,7 @@ export default function DashboardComponent() {
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:54321/functions/v1"
 
+  //Initialize the dashboard data and get all the data needed first
   useEffect(() => {
     const fetchInitialData = async () => {
       setIsLoading(true);
@@ -55,9 +55,9 @@ export default function DashboardComponent() {
           } else if (data.todaysSessionOrPreset.type === 'preset') {
             initialSessionExercises = data.todaysSessionOrPreset.data;
             initialSelectedGroup = {
-              id: data.todaysSessionOrPreset.data[0].presetGroupId,
+              id: data.todaysSessionOrPreset.data.id,
               name: data.exercisePresetGroups.find(
-                (group) => group.id === data.todaysSessionOrPreset.data[0].presetGroupId
+                (group) => group.id === data.todaysSessionOrPreset.data.id
               )?.name,
               date: new Date(),
             };
@@ -77,6 +77,7 @@ export default function DashboardComponent() {
     fetchInitialData();
   }, []);
 
+  //Update the session exercise whenever user changed selection
   useEffect(() => {
     const fetchSessionOrPresetExercises = async () => {
       if (!selectedGroup || !selectedWeek || !selectedDay) return;
@@ -121,15 +122,14 @@ export default function DashboardComponent() {
     fetchSessionOrPresetExercises();
   }, [selectedGroup, selectedWeek, selectedDay]);
 
+  //Prepare the gym/warm up/circuit exercise for the ExerciseTable
   useEffect(() => {
     const sessionExercises = useTrainingExercises ? trainingExercises : exercisePresets;
 
     if (exercises.length === 0 || sessionExercises.length === 0) return; 
 
     const gym = exercises
-      .filter((exercise) =>
-        sessionExercises.some((sessionExercise) => sessionExercise.exercise_id === exercise.id)
-      )
+    .filter((exercise) => exercise.exercise_type_id === 2)
       .map((exercise) => ({
         id: exercise.id,
         name: exercise.name,
@@ -146,7 +146,7 @@ export default function DashboardComponent() {
       }));
 
     const warmup = exercises
-      .filter((exercise) => exercise.exerciseTypeId === 4)
+      .filter((exercise) => exercise.exercise_type_id === 1)
       .map((exercise) => ({
         id: exercise.id,
         name: exercise.name,
@@ -157,7 +157,7 @@ export default function DashboardComponent() {
       }));
 
     const circuit = exercises
-      .filter((exercise) => exercise.exerciseTypeId === 5)
+      .filter((exercise) => exercise.exercise_type_id === 3)
       .map((exercise) => ({
         id: exercise.id,
         name: exercise.name,
@@ -166,7 +166,6 @@ export default function DashboardComponent() {
         videoUrl: exercise.videoUrl,
         completed: exercise.completed || false
       }));
-
     setGymExercises(gym);
     setWarmupExercises(warmup);
     setCircuitExercises(circuit);
@@ -221,25 +220,41 @@ export default function DashboardComponent() {
         ...gymExercises,
         ...warmupExercises,
         ...circuitExercises,
-      ]
-
-      const exercisesToSave = allExercises.flatMap((exercise) => 
-        exercise.sets.map((set) => ({
-          id: set.id,
-          training_session_id: selectedGroup.id,
-          exercise_id: exercise.id,
-          reps: set.reps,
-          output: set.output,
-          set_rest_time: set.rest,
-          completed: set.completed,
-        }))
-      );
-
+      ];
+  
+      // Ensure that exercises without sets as arrays are handled correctly
+      const exercisesToSave = allExercises.flatMap((exercise) => {
+        if (Array.isArray(exercise.sets)) {
+          // Handle gym exercises where sets is an array
+          return exercise.sets.map((set) => ({
+            id: set.id,
+            training_session_id: selectedGroup.id,
+            exercise_id: exercise.id,
+            reps: set.reps,
+            output: set.output,
+            set_rest_time: set.rest,
+            completed: set.completed,
+          }));
+        } else {
+          // Handle non-gym exercises where sets is a single number or not an array
+          return {
+            id: exercise.id,
+            training_session_id: selectedGroup.id,
+            exercise_id: exercise.id,
+            reps: exercise.reps,
+            output: null, // No output for non-gym exercises
+            set_rest_time: exercise.rest,
+            completed: exercise.completed,
+          };
+        }
+      });
+  
       const method = useTrainingExercises ? 'PUT' : 'POST';
       const url = `${API_BASE_URL}/api/training_exercises${useTrainingExercises ? `/${selectedGroup.id}` : ''}`;
-
+  
       console.log(url);
       console.log(exercisesToSave);
+  
       const response = await fetch(url, {
         method: method,
         headers: {
@@ -247,17 +262,18 @@ export default function DashboardComponent() {
         },
         body: JSON.stringify(exercisesToSave),
       });
-
+  
       if (!response.ok) {
         throw new Error('Failed to save exercises');
       }
-
-      alert("Exercises saved successfully!")
+  
+      alert("Exercises saved successfully!");
     } catch (error) {
-      console.error("Error saving exercises:", error)
-      alert("Failed to save exercises. Please try again.")
+      console.error("Error saving exercises:", error);
+      alert("Failed to save exercises. Please try again.");
     }
-  }
+  };
+  
 
   if (error) {
     return <div>Error: {error.message}</div>
@@ -320,43 +336,47 @@ export default function DashboardComponent() {
           </p>
         )}
 
-        {["Warm Up", "Gym", "Circuit"].map((section) => (
-          <div
-            key={section}
-            className="border text-gray-700 border-gray-200 rounded-lg overflow-hidden"
+      {["Warm Up", "Gym", "Circuit"].map((section) => (
+        <div
+          key={section}
+          className="border text-gray-700 border-gray-200 rounded-lg overflow-hidden"
+        >
+          <button
+            className="flex items-center justify-between w-full p-4 bg-gray-100 text-left"
+            onClick={() => toggleSection(section)}
           >
-            <button
-              className="flex items-center justify-between w-full p-4 bg-gray-100 text-left"
-              onClick={() => toggleSection(section)}
-            >
-              <h2 className="text-xl font-semibold">{section}</h2>
-              <span className="text-2xl">
-                {openSections[section] ? "▲" : "▼"}
-              </span>
-            </button>
-            {openSections[section] && (
-              <div className="bg-white p-4">
-                {section === "Gym" ? (
-                  <GymSection
-                    exercises={gymExercises}
-                    onExerciseChange={setGymExercises}
-                  />
-                ) : (
-                  <ExerciseSection
-                    exercises={
-                      section === "Warm Up" ? warmupExercises : circuitExercises
-                    }
-                    onExerciseChange={
-                      section === "Warm Up"
-                        ? setWarmupExercises
-                        : setCircuitExercises
-                    }
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+            <h2 className="text-xl font-semibold">{section}</h2>
+            <span className="text-2xl">
+              {openSections[section] ? "▲" : "▼"}
+            </span>
+          </button>
+          {openSections[section] && (
+            <div className="bg-white p-4">
+              <ExerciseTable
+                sectionTitle={section}
+                exercises={
+                  section === "Warm Up"
+                    ? warmupExercises
+                    : section === "Gym"
+                    ? gymExercises
+                    : circuitExercises
+                }
+                onExerciseChange={
+                  section === "Warm Up"
+                    ? setWarmupExercises
+                    : section === "Gym"
+                    ? setGymExercises
+                    : setCircuitExercises
+                }
+                exerciseType={
+                  section === "Warm Up" || section === "Circuit" ? "circuit" : "gym"
+                }
+              />
+            </div>
+          )}
+        </div>
+      ))}
+
       </div>
     </div>
   )

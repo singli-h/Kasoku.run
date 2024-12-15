@@ -2,7 +2,7 @@
 
 import React from "react"
 import Header from "@/src/components/common/Header"
-import FormComponent from "@/src/pages/form/FormComponent"
+import EntryComponent from "@/src/pages/form/EntryComponent"
 
 const Page = () => {
   const sectionMessage = {
@@ -17,7 +17,7 @@ const Page = () => {
           title={sectionMessage.title}
           description={sectionMessage.paragraph}
         />
-        <FormComponent />
+        <EntryComponent />
       </div>
     </>
   )
