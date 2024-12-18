@@ -15,7 +15,7 @@ v0.2
 4. Import Exercise and Sprint data
 
 v0.1
-1. Allow user to modify the workout and save in database
+1. Allow user to modify the workout and save in database ✅
 2. Allow user to view the exercises progression and volume with chart.js/D3.js
 3. Display a workout preset with correct UI ✅
 4. Able to swicth between Day1/2/3 ✅
