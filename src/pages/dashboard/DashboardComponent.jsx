@@ -159,7 +159,7 @@ export default function DashboardComponent() {
             rest: sessionExercise.set_rest_time,
             power: sessionExercise.power,
             velocity: sessionExercise.velocity,
-            output: sessionExercise.output,
+            weight: sessionExercise.weight,
             completed: sessionExercise.completed || false
           })),
         videoUrl: exercise.videoUrl,
@@ -272,7 +272,7 @@ export default function DashboardComponent() {
             training_session_id: selectedGroup.id,
             exercise_id: exercise.id,
             reps: set.reps,
-            output: set.output,
+            weight: set.weight,
             power: set.power,
             velocity: set.velocity,
             set_rest_time: set.rest,
@@ -285,7 +285,7 @@ export default function DashboardComponent() {
             training_session_id: selectedGroup.id,
             exercise_id: exercise.id,
             reps: exercise.reps,
-            output: null, // No output for non-gym exercises
+            weight: exercise.weight,
             set_rest_time: exercise.rest,
             completed: exercise.completed,
           };

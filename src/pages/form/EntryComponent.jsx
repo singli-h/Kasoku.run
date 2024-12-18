@@ -120,51 +120,88 @@ export default function PresetManagementPage() {
     setSections((prev) => ({ ...prev, [section]: updatedSection }));
   };
 
-  const handleSave = async () => {
+  const handleSaveOrCreate = async (cloneCurrent = false) => {
     try {
+      const isClone = cloneCurrent && selectedGroup;
+  
+      // Define API endpoint and method for group
+      let endpoint = `${API_BASE_URL}/api/exercise_preset_groups`;
+      let method = 'POST'; // Default: create new group
+  
+      // If updating an existing group
+      if (selectedGroup && !isClone) {
+        endpoint = `${API_BASE_URL}/api/exercise_preset_groups/${selectedGroup.id}`;
+        method = 'PUT';
+      }
+  
+      // Prepare group payload
       const groupPayload = {
         ...newGroupDetails,
-        week: parseInt(newGroupDetails.week),
-        day: parseInt(newGroupDetails.day),
+        week: parseInt(newGroupDetails.week, 10),
+        day: parseInt(newGroupDetails.day, 10),
+        ...(selectedGroup && !isClone ? { id: selectedGroup.id } : {}) // Add 'id' only for update
       };
-
-      const groupResponse = selectedGroup
-        ? await fetch(`${API_BASE_URL}/api/exercise_preset_groups/${selectedGroup.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(groupPayload),
-          })
-        : await fetch(`${API_BASE_URL}/api/exercise_preset_groups`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(groupPayload),
-          });
-
-      if (!groupResponse.ok) {
-        throw new Error('Failed to save preset group');
-      }
-
-      const groupData = await groupResponse.json();
-
-      const exercisePayload = ['warmup', 'gym', 'circuit'].flatMap((section) =>
-        sections[section].map((exercise, index) => ({
-          ...exercise,
-          order: index,
-          exercise_preset_group_id: groupData.id,
-        }))
-      );
-
-      const exerciseResponse = await fetch(`${API_BASE_URL}/api/exercise_presets`, {
-        method: 'POST',
+  
+      // Save or create group
+      const groupResponse = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(exercisePayload),
+        body: JSON.stringify(groupPayload),
       });
-
-      if (!exerciseResponse.ok) {
-        throw new Error('Failed to save exercises');
+  
+      if (!groupResponse.ok) {
+        throw new Error(isClone ? 'Failed to clone preset group' : 'Failed to save preset group');
       }
-
-      alert('Preset saved successfully!');
+  
+      const groupData = await groupResponse.json();
+      const newExercise_preset_group = groupData.exercise_preset_group[0];
+      console.log({groupData:groupData});
+      // Prepare exercise payload
+      const exercisePayload = ['warmup', 'gym', 'circuit'].flatMap((section) =>
+        sections[section].map((exercise, index) => {
+          const { exercise_type_id, id, ...rest } = exercise; // Exclude `exercise_type_id` and conditionally `id`
+          return {
+            ...rest,
+            order: index,
+            exercise_preset_group_id: newExercise_preset_group.id,
+            ...(isClone ? {} : { id }), // Include `id` only if not cloning
+          };
+        })
+      );
+  
+      console.log({ exercisePayload });
+  
+      // Separate the payload
+      const recordsToUpdate = exercisePayload.filter((record) => record.id);
+      const recordsToInsert = exercisePayload.filter((record) => !record.id);
+  
+      // Handle updates
+      if (!isClone && recordsToUpdate.length > 0) {
+        const updateResponse = await fetch(`${API_BASE_URL}/api/exercise_presets`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(recordsToUpdate),
+        });
+  
+        if (!updateResponse.ok) {
+          throw new Error('Failed to update exercises');
+        }
+      }
+  
+      // Handle inserts
+      if (recordsToInsert.length > 0) {
+        const insertResponse = await fetch(`${API_BASE_URL}/api/exercise_presets`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(recordsToInsert),
+        });
+  
+        if (!insertResponse.ok) {
+          throw new Error('Failed to insert exercises');
+        }
+      }
+  
+      alert(isClone ? 'Preset cloned and saved successfully!' : 'Preset saved successfully!');
     } catch (err) {
       console.error(err);
       alert(`Error: ${err.message}`);
@@ -296,8 +333,16 @@ export default function PresetManagementPage() {
                                 </select>
                               </div>
                               {/* Grid for editable fields, excluding 'sets' for gym exercises */}
+                              {/* Grid for editable fields */}
                               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 items-center">
-                                {['reps', 'output', 'set_rest_time', 'rep_rest_time', 'power', 'velocity', ...(section !== 'gym' ? ['sets'] : [])].map((field) => (
+                                {[
+                                  ...(section !== 'gym' ? ['sets'] : []), // Include Power and Velocity only for gym
+                                  'reps',
+                                  'weight',
+                                  'set_rest_time',
+                                  ...(section === 'gym' ? ['power', 'velocity'] : []), // Include Power and Velocity only for gym
+                                  
+                                ].map((field) => (
                                   <div key={field} className="col-span-1">
                                     <label className="block text-xs text-gray-600 capitalize">
                                       {field.replace(/_/g, ' ')}
@@ -316,6 +361,7 @@ export default function PresetManagementPage() {
                                   </div>
                                 ))}
                               </div>
+
                               {/* Delete button for removing an exercise */}
                               <button
                                 onClick={() =>
@@ -338,29 +384,36 @@ export default function PresetManagementPage() {
                 </Droppable>
               </DragDropContext>
               {/* Add Exercise Button */}
-              <button
+              <Button
                 onClick={() =>
                   setSections((prev) => ({
                     ...prev,
                     [section]: [
                       ...prev[section],
-                      { id: Date.now(), exercise_id: '', reps: '', output: '', set_rest_time: '', rep_rest_time: '', power: '', velocity: '', order: prev[section].length },
+                      { exercise_id: null, reps: null, weight: null, set_rest_time: null, power: null, velocity: null, order: prev[section].length },
                     ],
                   }))
                 }
                 className="text-blue-500 mt-2"
               >
                 Add Exercise
-              </button>
+              </Button>
             </div>
           )}
         </div>
       ))}
-
-
-      <Button onClick={handleSave} className="bg-blue-500 text-white p-2 rounded">
+      
+      <div className='flex grid-col-2 item-center justify-between'>
+      <Button onClick={() => handleSaveOrCreate(true)}>
+        Create New
+      </Button>
+      {/* Only able to use save when preset selected */}
+      {selectedGroup ? (
+      <Button onClick={() => handleSaveOrCreate()}>
         Save Preset
       </Button>
+      ) : ""}
+      </div>
     </div>
   );
 }

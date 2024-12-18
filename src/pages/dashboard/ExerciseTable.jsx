@@ -98,7 +98,7 @@ export default function ExerciseTable({
                   <th className="p-2 text-left">Exercise</th>
                   <th className="p-2 text-left">Set</th>
                   <th className="p-2 text-left">Reps</th>
-                  {exerciseType === 'gym' && <th className="p-2 text-left">Weight</th>}
+                  <th className="p-2 text-left">Weight</th>
                   {exerciseType === 'gym' && <th className="p-2 text-left">Power</th>}
                   {exerciseType === 'gym' && <th className="p-2 text-left">Velocity</th>}
                   <th className="p-2 text-left">Rest (s)</th>
@@ -132,9 +132,9 @@ export default function ExerciseTable({
                         <td className="p-2">
                           <input
                             type="number"
-                            value={set.output}
+                            value={set.weight}
                             onChange={(e) =>
-                              handleInputChange(exercise.id, set.id, 'output', e.target.value)
+                              handleInputChange(exercise.id, set.id, 'weight', e.target.value)
                             }
                             className="w-16 p-1 border rounded"
                           />
