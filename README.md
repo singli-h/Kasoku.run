@@ -14,12 +14,18 @@ v0.2
 3. Provide Auto Gym progression generation with formula
 4. Import Exercise and Sprint data
 
+v0.15
+1. Allow user to modify the Sprint and save in database 
+2. Allow coach to create new Sprint preset for future weeks 
+3. Display a Sprint preset with correct UI 
+6. All data validation before submitting to database
+
 v0.1
-1. Allow user to modify the workout and save in database ✅
-2. Allow coach to create new workout preset for future weeks ✅
-3. Display a workout preset with correct UI ✅
+1. Allow user to modify the Exercises and save in database ✅
+2. Allow coach to create new Exercises preset for future weeks ✅
+3. Display a Exercises preset with correct UI ✅
 4. Able to swicth between Day1/2/3 ✅
-5. Select week to view past workout ✅
+5. Select week to view past Exercises ✅
 6. All data validation before submitting to database
 
     <PackageReference Include="Microsoft.AspNet.Cors" Version="5.3.0" />
