@@ -80,7 +80,10 @@ export default function DashboardComponent() {
   //Update the session exercise whenever user changed selection
   useEffect(() => {
     const fetchSessionOrPresetExercises = async () => {
-      if (!selectedGroup || !selectedWeek || !selectedDay) return;
+      if (!selectedGroup || !selectedWeek || !selectedDay) {
+        closeAllToggles();
+        return;
+      }
 
       setIsLoading(true);
       setError(null);
@@ -111,6 +114,7 @@ export default function DashboardComponent() {
           setExercisePresets(presetsData.exercise_presets);
           setUseTrainingExercises(false);
         }
+        openAllToggles();
       } catch (err) {
         console.error('Error fetching session or preset exercises:', err);
         setError(err);
@@ -125,8 +129,22 @@ export default function DashboardComponent() {
   //Prepare the gym/warm up/circuit exercise for the ExerciseTable
   useEffect(() => {
     const sessionExercises = useTrainingExercises ? trainingExercises : exercisePresets;
+    console.log(sessionExercises);
 
-    if (exercises.length === 0 || sessionExercises.length === 0) return; 
+    const mergedSessionExercises = sessionExercises.map((sessionExercise) => {
+      // Find the matching exercise
+      const matchingExercise = exercises.find(
+        (exercise) => exercise.id === sessionExercise.exercise_id
+      );
+    
+      // Return a merged object
+      return {
+        ...sessionExercise,
+        ...matchingExercise, // Include exercise data
+      };
+    });
+
+    if (exercises.length === 0 || mergedSessionExercises.length === 0) return; 
 
     const gym = exercises
     .filter((exercise) => exercise.exercise_type_id === 2)
@@ -139,30 +157,34 @@ export default function DashboardComponent() {
             id: sessionExercise.id,
             reps: sessionExercise.reps,
             rest: sessionExercise.set_rest_time,
+            power: sessionExercise.power,
+            velocity: sessionExercise.velocity,
             output: sessionExercise.output,
             completed: sessionExercise.completed || false
           })),
         videoUrl: exercise.videoUrl,
       }));
 
-    const warmup = exercises
+    const warmup = mergedSessionExercises
       .filter((exercise) => exercise.exercise_type_id === 1)
       .map((exercise) => ({
         id: exercise.id,
         name: exercise.name,
-        sets: 1,
-        reps: exercise.defaultReps,
+        sets: exercise.sets,
+        reps: exercise.reps,
+        rest: exercise.set_rest_time,
         videoUrl: exercise.videoUrl,
         completed: exercise.completed || false
       }));
 
-    const circuit = exercises
+    const circuit = mergedSessionExercises
       .filter((exercise) => exercise.exercise_type_id === 3)
       .map((exercise) => ({
         id: exercise.id,
         name: exercise.name,
-        sets: 1,
-        reps: exercise.defaultReps,
+        sets: exercise.sets,
+        reps: exercise.reps,
+        rest: exercise.set_rest_time,
         videoUrl: exercise.videoUrl,
         completed: exercise.completed || false
       }));
@@ -180,6 +202,25 @@ export default function DashboardComponent() {
   const toggleSection = (title) => {
     setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }))
   }
+
+  const closeAllToggles = () => {
+    setOpenSections((prev) =>
+      Object.keys(prev).reduce((acc, key) => {
+        acc[key] = false; // Set all toggles to false
+        return acc;
+      }, {})
+    );
+  };
+
+  const openAllToggles = () => {
+    setOpenSections((prev) =>
+      Object.keys(prev).reduce((acc, key) => {
+        acc[key] = true; // Set all toggles to false
+        return acc;
+      }, {})
+    );
+  };
+  
 
   const getUniqueWeeks = () => {
     return [...new Set(exercisePresetGroups.map((group) => group.week))].sort(
@@ -232,6 +273,8 @@ export default function DashboardComponent() {
             exercise_id: exercise.id,
             reps: set.reps,
             output: set.output,
+            power: set.power,
+            velocity: set.velocity,
             set_rest_time: set.rest,
             completed: set.completed,
           }));
