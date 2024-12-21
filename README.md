@@ -2,6 +2,7 @@
 v0.4
 1. UI for planning Periodization
 2. OpenAI for reviewing and suggestion
+3. Enforce JWT Verification for edge function
 
 v0.3
 1. Import exsisting exercise and sprint program
