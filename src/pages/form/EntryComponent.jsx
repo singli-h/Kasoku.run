@@ -30,7 +30,7 @@ export default function PresetManagementPage() {
   })
 
   const API_BASE_URL =
-    process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:54321/functions/v1"
+    process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:54321/functions/v1/api"
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -38,7 +38,7 @@ export default function PresetManagementPage() {
       setError(null)
       try {
         const response = await fetch(
-          `${API_BASE_URL}/api/dashboard/exercisesInit`
+          `${API_BASE_URL}/dashboard/exercisesInit`
         )
         if (!response.ok) {
           throw new Error("Network response was not ok")
@@ -64,7 +64,7 @@ export default function PresetManagementPage() {
     if (group) {
       try {
         const response = await fetch(
-          `${API_BASE_URL}/api/exercise_presets?exercise_preset_group_id=${group.id}`
+          `${API_BASE_URL}/exercise_presets?exercise_preset_group_id=${group.id}`
         )
         if (!response.ok) {
           throw new Error("Failed to fetch exercises for the group")
@@ -136,12 +136,12 @@ export default function PresetManagementPage() {
       const isClone = cloneCurrent && selectedGroup
 
       // Define API endpoint and method for group
-      let endpoint = `${API_BASE_URL}/api/exercise_preset_groups`
+      let endpoint = `${API_BASE_URL}/exercise_preset_groups`
       let method = "POST" // Default: create new group
 
       // If updating an existing group
       if (selectedGroup && !isClone) {
-        endpoint = `${API_BASE_URL}/api/exercise_preset_groups/${selectedGroup.id}`
+        endpoint = `${API_BASE_URL}/exercise_preset_groups/${selectedGroup.id}`
         method = "PUT"
       }
 
@@ -193,7 +193,7 @@ export default function PresetManagementPage() {
       // Handle updates
       if (!isClone && recordsToUpdate.length > 0) {
         const updateResponse = await fetch(
-          `${API_BASE_URL}/api/exercise_presets`,
+          `${API_BASE_URL}/exercise_presets`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -209,7 +209,7 @@ export default function PresetManagementPage() {
       // Handle inserts
       if (recordsToInsert.length > 0) {
         const insertResponse = await fetch(
-          `${API_BASE_URL}/api/exercise_presets`,
+          `${API_BASE_URL}/exercise_presets`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

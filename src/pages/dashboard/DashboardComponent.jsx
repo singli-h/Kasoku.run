@@ -21,7 +21,7 @@ export default function DashboardComponent() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:54321/functions/v1"
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:54321/functions/v1/api"
 
   //Initialize the dashboard data and get all the data needed first
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function DashboardComponent() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/dashboard/exercisesInit`);
+        const response = await fetch(`${API_BASE_URL}/dashboard/exercisesInit`);
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
@@ -97,7 +97,7 @@ export default function DashboardComponent() {
 
         if (selectedSession) {
           const exerciseRes = await fetch(
-            `${API_BASE_URL}/api/training_exercises?training_session_id=${selectedSession.id}`);
+            `${API_BASE_URL}/training_exercises?training_session_id=${selectedSession.id}`);
           if (!exerciseRes.ok) {
             throw new Error('Network response was not ok');
           }
@@ -106,7 +106,7 @@ export default function DashboardComponent() {
           setUseTrainingExercises(true);
         } else {
           const presetsRes = await fetch(
-            `${API_BASE_URL}/api/exercise_presets?exercise_preset_group_id=${selectedGroup.id}`);
+            `${API_BASE_URL}/exercise_presets?exercise_preset_group_id=${selectedGroup.id}`);
           if (!presetsRes.ok) {
             throw new Error('Network response was not ok');
           }
@@ -293,7 +293,7 @@ export default function DashboardComponent() {
       });
   
       const method = useTrainingExercises ? 'PUT' : 'POST';
-      const url = `${API_BASE_URL}/api/training_exercises${useTrainingExercises ? `/${selectedGroup.id}` : ''}`;
+      const url = `${API_BASE_URL}/training_exercises${useTrainingExercises ? `/${selectedGroup.id}` : ''}`;
   
       console.log(url);
       console.log(exercisesToSave);
