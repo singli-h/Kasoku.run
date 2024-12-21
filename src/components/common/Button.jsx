@@ -19,9 +19,4 @@ Button.propTypes = {
   secondary: PropTypes.bool,
 }
 
-Button.defaultProps = {
-  children: "Link Button Text",
-  secondary: false,
-}
-
 export default Button

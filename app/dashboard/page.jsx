@@ -1,11 +1,8 @@
 "use client"
 
-export const metadata = {
-  title: "Dashboard",
-}
-
 import React from "react"
-import Header from "@/components/common/Header"
+import Header from "@/src/components/common/Header"
+import DashboardComponent from "@/src/pages/dashboard/DashboardComponent"
 
 const Page = () => {
   const sectionMessage = {
@@ -14,11 +11,12 @@ const Page = () => {
   }
 
   return (
-    <div className="max-w-8xl mx-auto px-4 sm:px-6 relative">
+    <div>
       <Header
         title={sectionMessage.title}
         description={sectionMessage.paragraph}
       />
+      <DashboardComponent />
     </div>
   )
 }

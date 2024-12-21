@@ -1,13 +1,9 @@
 "use client"
 
-export const metadata = {
-  title: "Login",
-}
-
 import React, { useState, useContext } from "react"
 import { useRouter } from "next/navigation"
-import { AuthContext } from "@/context/authContext"
-import Button from "@/components/common/Button"
+import { AuthContext } from "@/src/context/authContext"
+import Button from "@/src/components/common/Button"
 
 const Page = () => {
   const router = useRouter()
