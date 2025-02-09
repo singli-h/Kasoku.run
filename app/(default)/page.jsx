@@ -3,7 +3,7 @@ export const metadata = {
   description: "Welcome to my Homepage!",
 }
 
-import Hero from "@/src/pages/landing/Hero"
+import Hero from "../../src/pages/landing/Hero"
 
 export default function Home() {
   return (

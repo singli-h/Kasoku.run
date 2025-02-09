@@ -1,8 +1,8 @@
 "use client"
 
 import React from "react"
-import Header from "@/src/components/common/Header"
-import EntryComponent from "@/src/pages/form/EntryComponent"
+import Header from "../../src/components/common/Header"
+import EntryComponent from "../../src/pages/form/EntryComponent"
 
 const Page = () => {
   const sectionMessage = {

@@ -2,8 +2,8 @@ import "./css/style.css"
 
 import { Inter } from "next/font/google"
 
-import { AuthProvider } from "@/src/context/authContext"
-import Header from "@/src/components/ui/header"
+import { AuthProvider } from "../src/context/authContext"
+import Header from "../src/components/ui/header"
 
 const inter = Inter({ subsets: ["latin"] })
 

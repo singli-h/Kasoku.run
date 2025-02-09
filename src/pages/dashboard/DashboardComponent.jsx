@@ -4,20 +4,30 @@ import { useState, useEffect } from "react"
 import ExerciseTable from "./ExerciseTable"
 import ErrorAndLoadingOverlay from "../../components/common/ErrorAndLoadingOverlay"
 import Button from "../../components/common/Button"
+import { Exercise, ExercisePresetGroup, GymExercise, WarmupCircuitExercise } from '../../types/exercise'
+import ReactPlayer from 'react-player'
+import { useInView } from 'react-intersection-observer'
+
+/**
+ * @typedef {import('../../types/exercise').ExerciseBase} ExerciseBase
+ * @typedef {import('../../types/exercise').ExercisePresetGroup} ExercisePresetGroup
+ * @typedef {import('../../types/exercise').GymExercise} GymExercise
+ * @typedef {import('../../types/exercise').WarmupCircuitExercise} WarmupCircuitExercise
+ */
 
 export default function DashboardComponent() {
   const [useTrainingExercises, setUseTrainingExercises] = useState(false)
-  const [exercises, setExercises] = useState([])
+  const [exercises, setExercises] = useState(/** @type {Exercise[]} */([]))
   const [exercisePresets, setExercisePresets] = useState([])
-  const [exercisePresetGroups, setExercisePresetGroups] = useState([])
+  const [exercisePresetGroups, setExercisePresetGroups] = useState(/** @type {ExercisePresetGroup[]} */([]))
   const [trainingSessions, setTrainingSessions] = useState([])
   const [trainingExercises, setTrainingExercises] = useState([])
   const [selectedGroup, setSelectedGroup] = useState(null)
   const [selectedWeek, setSelectedWeek] = useState(null)
   const [selectedDay, setSelectedDay] = useState(null)
-  const [gymExercises, setGymExercises] = useState([])
-  const [warmupExercises, setWarmupExercises] = useState([])
-  const [circuitExercises, setCircuitExercises] = useState([])
+  const [gymExercises, setGymExercises] = useState(/** @type {GymExercise[]} */([]))
+  const [warmupExercises, setWarmupExercises] = useState(/** @type {WarmupCircuitExercise[]} */([]))
+  const [circuitExercises, setCircuitExercises] = useState(/** @type {WarmupCircuitExercise[]} */([]))
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -66,6 +76,8 @@ export default function DashboardComponent() {
           setTrainingExercises(initialSessionExercises);
           setSelectedGroup(initialSelectedGroup);
         }
+
+        console.log('Fetched exercises:', data.exercises.map(ex => ({ id: ex.id, video_url: ex.video_url })));
       } catch (err) {
         console.error('Error fetching initial data:', err);
         setError(err);
@@ -129,68 +141,96 @@ export default function DashboardComponent() {
   //Prepare the gym/warm up/circuit exercise for the ExerciseTable
   useEffect(() => {
     const sessionExercises = useTrainingExercises ? trainingExercises : exercisePresets;
-    console.log(sessionExercises);
-
+    console.log('Session exercises:', sessionExercises);
     const mergedSessionExercises = sessionExercises.map((sessionExercise) => {
-      // Find the matching exercise
+      /** @type {Exercise | null} */
       const matchingExercise = exercises.find(
         (exercise) => exercise.id === sessionExercise.exercise_id
       );
     
-      // Return a merged object
+      const { id, ...matchingExerciseWithoutId } = matchingExercise || {};
+    
       return {
+        id: sessionExercise.id,
+        exercise_id: sessionExercise.exercise_id,
         ...sessionExercise,
-        ...matchingExercise, // Include exercise data
+        ...matchingExerciseWithoutId,
+        video_url: matchingExercise?.video_url || sessionExercise.video_url
       };
     });
 
+    console.log('Merged Session Exercises:', mergedSessionExercises);
+
     if (exercises.length === 0 || mergedSessionExercises.length === 0) return; 
 
-    const gym = exercises
-    .filter((exercise) => exercise.exercise_type_id === 2)
-      .map((exercise) => ({
-        id: exercise.id,
-        name: exercise.name,
-        sets: sessionExercises
-          .filter((sessionExercise) => sessionExercise.exercise_id === exercise.id)
-          .map((sessionExercise) => ({
-            id: sessionExercise.id,
-            reps: sessionExercise.reps,
-            rest: sessionExercise.set_rest_time,
-            power: sessionExercise.power,
-            velocity: sessionExercise.velocity,
-            weight: sessionExercise.weight,
-            completed: sessionExercise.completed || false
-          })),
-        videoUrl: exercise.videoUrl,
-      }));
+    console.log('Mapped exercises:', mergedSessionExercises);
 
-    const warmup = mergedSessionExercises
+    const sortedExercises = mergedSessionExercises.sort((a, b) => a.id - b.id);
+
+    const gym = sortedExercises
+      .filter((exercise) => exercise.exercise_type_id === 2)
+      .reduce((acc, exercise) => {
+        const existingExercise = acc.find(e => e.exercise_id === exercise.exercise_id);
+        const sets = Array.isArray(exercise.sets) 
+          ? exercise.sets 
+          : Array.from({ length: exercise.sets || 1 }, (_, index) => ({
+              id: exercise.id,
+              set_order: index + 1,
+              reps: exercise.reps || 0,
+              weight: exercise.weight || 0,
+              rest: exercise.set_rest_time || 0,
+              power: exercise.power || 0,
+              velocity: exercise.velocity || 0,
+              completed: exercise.completed || false
+            }));
+
+        const isCompleted = sets.every(set => set.completed);
+
+        if (existingExercise) {
+          existingExercise.sets.push(...sets);
+          existingExercise.completed = existingExercise.completed && isCompleted;
+        } else {
+          acc.push({
+            exercise_id: exercise.exercise_id,
+            name: exercise.name,
+            sets: sets,
+            video_url: exercise.video_url,
+            completed: isCompleted,
+          });
+        }
+        return acc;
+      }, []);
+
+    const warmup = sortedExercises
       .filter((exercise) => exercise.exercise_type_id === 1)
       .map((exercise) => ({
         id: exercise.id,
+        exercise_id: exercise.exercise_id,
         name: exercise.name,
         sets: exercise.sets,
         reps: exercise.reps,
         rest: exercise.set_rest_time,
-        videoUrl: exercise.videoUrl,
+        video_url: exercise.video_url,
         completed: exercise.completed || false
       }));
 
-    const circuit = mergedSessionExercises
+    const circuit = sortedExercises
       .filter((exercise) => exercise.exercise_type_id === 3)
       .map((exercise) => ({
         id: exercise.id,
+        exercise_id: exercise.exercise_id,
         name: exercise.name,
         sets: exercise.sets,
         reps: exercise.reps,
         rest: exercise.set_rest_time,
-        videoUrl: exercise.videoUrl,
+        video_url: exercise.video_url,
         completed: exercise.completed || false
       }));
     setGymExercises(gym);
     setWarmupExercises(warmup);
     setCircuitExercises(circuit);
+
+    console.log('gymExercises to render:', gym);
   }, [exercises, exercisePresets, trainingExercises, useTrainingExercises]);
 
   const [openSections, setOpenSections] = useState({
@@ -240,20 +280,20 @@ export default function DashboardComponent() {
   }
 
   const handleWeekChange = (e) => {
-    setSelectedWeek(e.target.value)
-    setSelectedDay(null)
-    setSelectedGroup(null)
-  }
+    setSelectedWeek(e.target.value);
+    setSelectedDay(null);
+    setSelectedGroup(null);
+  };
 
   const handleDayChange = (e) => {
-    setSelectedDay(e.target.value)
+    setSelectedDay(e.target.value);
     const group = exercisePresetGroups.find(
       (group) =>
         group.week === parseInt(selectedWeek) &&
         group.day === parseInt(e.target.value)
-    )
-    setSelectedGroup(group || null)
-  }
+    );
+    setSelectedGroup(group || null);
+  };
 
   const saveTrainingExercise = async () => {
     try {
@@ -262,15 +302,15 @@ export default function DashboardComponent() {
         ...warmupExercises,
         ...circuitExercises,
       ];
-  
-      // Ensure that exercises without sets as arrays are handled correctly
+
       const exercisesToSave = allExercises.flatMap((exercise) => {
-        if (Array.isArray(exercise.sets)) {
-          // Handle gym exercises where sets is an array
+        const isGymExercise = 'sets' in exercise && Array.isArray(exercise.sets);
+
+        if (isGymExercise) {
           return exercise.sets.map((set) => ({
             id: set.id,
             training_session_id: selectedGroup.id,
-            exercise_id: exercise.id,
+            exercise_id: exercise.exercise_id, // Ensure this is correct
             reps: set.reps,
             weight: set.weight,
             power: set.power,
@@ -278,26 +318,26 @@ export default function DashboardComponent() {
             set_rest_time: set.rest,
             completed: set.completed,
           }));
-        } else {
-          // Handle non-gym exercises where sets is a single number or not an array
-          return {
-            id: exercise.id,
-            training_session_id: selectedGroup.id,
-            exercise_id: exercise.id,
-            reps: exercise.reps,
-            weight: exercise.weight,
-            set_rest_time: exercise.rest,
-            completed: exercise.completed,
-          };
         }
+
+        // For non-gym exercises
+        console.log('Saving non-gym exercise:', exercise); // Debug log
+        return {
+          id: exercise.id,
+          training_session_id: selectedGroup.id,
+          exercise_id: exercise.exercise_id, // Ensure this is correct
+          reps: exercise.reps,
+          weight: exercise.weight,
+          set_rest_time: exercise.rest,
+          completed: exercise.completed,
+        };
       });
-  
+
+      console.log('Exercises to save:', exercisesToSave); // Debug log
+
       const method = useTrainingExercises ? 'PUT' : 'POST';
       const url = `${API_BASE_URL}/training_exercises${useTrainingExercises ? `/${selectedGroup.id}` : ''}`;
-  
-      console.log(url);
-      console.log(exercisesToSave);
-  
+
       const response = await fetch(url, {
         method: method,
         headers: {
@@ -305,11 +345,11 @@ export default function DashboardComponent() {
         },
         body: JSON.stringify(exercisesToSave),
       });
-  
+
       if (!response.ok) {
         throw new Error('Failed to save exercises');
       }
-  
+
       alert("Exercises saved successfully!");
     } catch (error) {
       console.error("Error saving exercises:", error);

@@ -1,204 +1,85 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import ExerciseCard from '../../components/exercise/ExerciseCard';
 
+/**
+ * @typedef {import('../../types/exercise').GymExercise | import('../../types/exercise').WarmupCircuitExercise} Exercise
+ */
+
+/**
+ * @param {{
+ *   sectionTitle: string
+ *   exercises: Exercise[]
+ *   onExerciseChange: (exercises: Exercise[]) => void
+ *   exerciseType: 'gym' | 'warmup' | 'circuit'
+ * }} props
+ */
 export default function ExerciseTable({
   sectionTitle,
   exercises,
   onExerciseChange,
   exerciseType, // 'gym', 'warmup', 'circuit'
 }) {
-  const [completedExercises, setCompletedExercises] = useState({});
-
-  useEffect(() => {
-    const newCompletedExercises = {};
-    exercises.forEach((exercise) => {
-      if (exerciseType === 'gym' && exercise.sets) {
-        exercise.sets.forEach((set) => {
-          newCompletedExercises[`${exercise.id}-${set.id}`] = set.completed;
-        });
-      } else {
-        newCompletedExercises[exercise.id] = exercise.completed;
+  const handleToggleComplete = (exerciseId) => {
+    
+    onExerciseChange(prev => prev.map(ex => {
+      if (ex.exercise_id === exerciseId) {
+        const newCompletedStatus = !ex.completed;
+        return {
+          ...ex,
+          completed: newCompletedStatus,
+          sets: ex.sets.map(set => ({ ...set, completed: newCompletedStatus }))
+        };
       }
-    });
-    setCompletedExercises(newCompletedExercises);
-  }, [exercises, exerciseType]);
-
-  const toggleTableComplete = () => {
-    const allCompleted = exercises.every((exercise) => exercise.completed);
-    onExerciseChange((prevExercises) =>
-      prevExercises.map((exercise) => {
-        if (exerciseType === 'gym' && exercise.sets) {
-          return {
-            ...exercise,
-            completed: !allCompleted,
-            sets: exercise.sets.map((set) => ({
-              ...set,
-              completed: !allCompleted,
-            })),
-          };
-        }
-        return { ...exercise, completed: !allCompleted };
-      })
-    );
+      return ex;
+    }));
   };
 
-  const toggleSetComplete = (exerciseId, setId) => {
-    onExerciseChange((prevExercises) =>
-      prevExercises.map((exercise) => {
-        if (exercise.id === exerciseId) {
-          const newSets = exercise.sets.map((set) =>
-            set.id === setId ? { ...set, completed: !set.completed } : set
-          );
-          const allSetsCompleted = newSets.every((set) => set.completed);
-          return { ...exercise, completed: allSetsCompleted, sets: newSets };
-        }
-        return exercise;
-      })
-    );
-  };
-
-  const handleInputChange = (exerciseId, setId, field, value) => {
-    const numericValue = parseFloat(value);
-    if (!isNaN(numericValue) && numericValue > 0) {
-      onExerciseChange((prevExercises) =>
-        prevExercises.map((exercise) =>
-          exercise.id === exerciseId
-            ? {
-                ...exercise,
-                sets: exercise.sets.map((set) =>
-                  set.id === setId ? { ...set, [field]: numericValue } : set
-                ),
-              }
-            : exercise
-        )
-      );
-    }
+  const handleInputChange = (exerciseId, field, value) => {
+    onExerciseChange(prev => prev.map(ex => 
+      ex.id === exerciseId ? { ...ex, [field]: Number(value) } : ex
+    ));
   };
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full space-y-6">
+      <div className="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
+        <h2 className="text-xl font-semibold text-gray-800">{sectionTitle}</h2>
+        <button
+          onClick={() => {
+            const allCompleted = exercises.every(ex => ex.completed);
+            onExerciseChange(prev => prev.map(ex => ({
+              ...ex,
+              completed: !allCompleted,
+              sets: ex.sets.map(set => ({ ...set, completed: !allCompleted }))
+            })));
+          }}
+          className="px-4 py-2 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors"
+        >
+          {exercises.every(ex => ex.completed) ? 'Unmark All' : 'Mark All'}
+        </button>
+      </div>
+
       {exercises.length === 0 ? (
-        <div className="text-center text-gray-500">No exercises available</div>
+        <div className="text-center text-gray-500 p-8">
+          No exercises available for this section
+        </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <div className="bg-gray-100 p-4 flex justify-between items-center">
-            <h3 className="text-lg font-semibold">{sectionTitle}</h3>
-            <input
-              type="checkbox"
-              onChange={toggleTableComplete}
-              className="w-5 h-5"
-              checked={exercises.every((exercise) => exercise.completed)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {exercises.map((exercise) => (
+            <ExerciseCard
+              key={exercise.exercise_id}
+              exercise={exercise}
+              exerciseType={exerciseType}
+              onInputChange={(field, value) => 
+                handleInputChange(exercise.exercise_id, field, value)
+              }
+              onToggleComplete={() => 
+                handleToggleComplete(exercise.exercise_id)
+              }
             />
-          </div>
-          <div className="p-4">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-muted">
-                  <th className="p-2 text-left">Exercise</th>
-                  <th className="p-2 text-left">Set</th>
-                  <th className="p-2 text-left">Reps</th>
-                  <th className="p-2 text-left">Weight</th>
-                  {exerciseType === 'gym' && <th className="p-2 text-left">Power</th>}
-                  {exerciseType === 'gym' && <th className="p-2 text-left">Velocity</th>}
-                  <th className="p-2 text-left">Rest (s)</th>
-                  <th className="p-2 text-left">Done</th>
-                </tr>
-              </thead>
-              <tbody>
-                {exercises.map((exercise) =>
-                  exerciseType === 'gym' && exercise.sets ? (
-                    exercise.sets.map((set, index) => (
-                      <tr key={`${exercise.id}-${set.id}`} className="border-b border-muted">
-                        {index === 0 && (
-                          <td
-                            className="p-2 font-semibold"
-                            rowSpan={exercise.sets.length}
-                          >
-                            {exercise.name}
-                          </td>
-                        )}
-                        <td className="p-2">{index + 1}</td>
-                        <td className="p-2">
-                          <input
-                            type="number"
-                            value={set.reps}
-                            onChange={(e) =>
-                              handleInputChange(exercise.id, set.id, 'reps', e.target.value)
-                            }
-                            className="w-16 p-1 border rounded"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <input
-                            type="number"
-                            value={set.weight}
-                            onChange={(e) =>
-                              handleInputChange(exercise.id, set.id, 'weight', e.target.value)
-                            }
-                            className="w-16 p-1 border rounded"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <input
-                            type="number"
-                            value={set.power}
-                            onChange={(e) =>
-                              handleInputChange(exercise.id, set.id, 'power', e.target.value)
-                            }
-                            className="w-16 p-1 border rounded"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <input
-                            type="number"
-                            value={set.velocity}
-                            onChange={(e) =>
-                              handleInputChange(exercise.id, set.id, 'velocity', e.target.value)
-                            }
-                            className="w-16 p-1 border rounded"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <input
-                            type="number"
-                            value={set.rest}
-                            onChange={(e) =>
-                              handleInputChange(exercise.id, set.id, 'rest', e.target.value)
-                            }
-                            className="w-16 p-1 border rounded"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <input
-                            type="checkbox"
-                            checked={set.completed || false}
-                            onChange={() => toggleSetComplete(exercise.id, set.id)}
-                            className="w-4 h-4"
-                          />
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr key={exercise.id} className="border-b border-muted">
-                      <td className="p-2 font-semibold">{exercise.name}</td>
-                      <td className="p-2">{exercise.sets}</td>
-                      <td className="p-2">{exercise.reps}</td>
-                      <td className="p-2">{exercise.rest || '-'}</td>
-                      <td className="p-2">
-                        <input
-                          type="checkbox"
-                          checked={exercise.completed || false}
-                          onChange={() => toggleSetComplete(exercise.id, exercise.id)}
-                          className="w-4 h-4"
-                        />
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
+          ))}
         </div>
       )}
     </div>
