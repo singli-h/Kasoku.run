@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import ExerciseTable from "./ExerciseTable"
-import ErrorAndLoadingOverlay from "../../components/common/ErrorAndLoadingOverlay"
-import Button from "../../components/common/Button"
+import ErrorAndLoadingOverlay from "../../components/ui/errorAndLoadingOverlay"
+import Button from "../../components/ui/button"
 import { Exercise, ExercisePresetGroup, GymExercise, WarmupCircuitExercise } from '../../types/exercise'
 import ReactPlayer from 'react-player'
 import { useInView } from 'react-intersection-observer'
