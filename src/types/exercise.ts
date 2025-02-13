@@ -1,41 +1,38 @@
-export type ExerciseBase = {
+export interface ExerciseBase {
   id: number;
   name: string;
-  exercise_type_id: number;
   video_url?: string;
-  description?: string;
-  completed?: boolean;
-};
-
-export type GymExercise = ExerciseBase & {
-  sets: ExerciseSet[];
-};
-
-export type CircuitExercise = ExerciseBase & {
-  sets: number;
-  reps: number;
-  weight: number;
-  rest: number;
-};
-
-export type ExerciseSet = {
-  id: number;
-  exercise_id: number;
-  reps: number;
-  weight: number;
-  rest: number;
-  power?: number;
-  velocity?: number;
   completed: boolean;
-  set_order: number;
-};
+  // ... other common fields
+}
 
-export type WarmupCircuitExercise = ExerciseBase & {
-  sets: number;
+export interface ExerciseSet {
+  id: number;
   reps: number;
-  rest: number;
   weight: number;
-};
+  rest: number;
+  completed: boolean;
+  // Add other set-related fields as needed
+}
+
+export interface GymExercise extends ExerciseBase {
+  id: number;
+  sets: ExerciseSet[];
+  exercise_type: 'GYM';
+  // Gym-specific fields
+}
+
+export interface WarmupCircuitExercise extends ExerciseBase {
+  id: number;
+  sets?: never;
+  exercise_type: 'WARMUP' | 'CIRCUIT';
+  reps: number;
+  weight: number;
+  rest: number;
+  // Warmup/Circuit specific fields
+}
+
+export type Exercise = GymExercise | WarmupCircuitExercise;
 
 export type ExercisePresetGroup = {
   id: number;
@@ -44,3 +41,16 @@ export type ExercisePresetGroup = {
   day: number;
   date: Date;
 };
+
+// Type guard functions
+export function isGymExercise(exercise: Exercise): exercise is GymExercise {
+  return exercise.exercise_type === 'GYM';
+}
+
+export function isWarmupExercise(exercise: Exercise): exercise is WarmupCircuitExercise {
+  return exercise.exercise_type === 'WARMUP';
+}
+
+export function isCircuitExercise(exercise: Exercise): exercise is WarmupCircuitExercise {
+  return exercise.exercise_type === 'CIRCUIT';
+}

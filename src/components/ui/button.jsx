@@ -1,22 +1,24 @@
-import React from "react"
-import PropTypes from "prop-types"
+const Button = ({ children, variant = "default", size = "default", className = "", ...props }) => {
+  const baseStyles = "font-medium rounded focus:outline-none focus:ring-2 focus:ring-offset-2"
+  const variantStyles = {
+    default: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
+    outline: "border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-blue-500",
+    ghost: "text-gray-700 hover:bg-gray-100 focus:ring-gray-500",
+  }
+  const sizeStyles = {
+    default: "px-4 py-2",
+    sm: "px-3 py-1 text-sm",
+    lg: "px-6 py-3 text-lg",
+  }
 
-const Button = ({ secondary, children, ...props }) => (
-  <button
-    className={`btn text-gray-200 w-full sm:w-auto ${
-      secondary
-        ? "bg-gray-700 hover:bg-gray-800"
-        : "bg-yellow-600 hover:bg-yellow-700"
-    }`}
-    {...props}
-  >
-    {children}
-  </button>
-)
+  const combinedClassName = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`
 
-Button.propTypes = {
-  children: PropTypes.node,
-  secondary: PropTypes.bool,
+  return (
+    <button className={combinedClassName} {...props}>
+      {children}
+    </button>
+  )
 }
 
 export default Button
+
