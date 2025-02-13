@@ -22,14 +22,13 @@ export default function ExerciseTable({
   exerciseType, // 'gym', 'warmup', 'circuit'
 }) {
   const handleToggleComplete = (exerciseId) => {
-    
     onExerciseChange(prev => prev.map(ex => {
       if (ex.exercise_id === exerciseId) {
         const newCompletedStatus = !ex.completed;
         return {
           ...ex,
           completed: newCompletedStatus,
-          sets: ex.sets.map(set => ({ ...set, completed: newCompletedStatus }))
+          sets: Array.isArray(ex.sets) ? ex.sets.map(set => ({ ...set, completed: newCompletedStatus })) : ex.sets
         };
       }
       return ex;
@@ -37,9 +36,21 @@ export default function ExerciseTable({
   };
 
   const handleInputChange = (exerciseId, field, value) => {
-    onExerciseChange(prev => prev.map(ex => 
-      ex.id === exerciseId ? { ...ex, [field]: Number(value) } : ex
-    ));
+    onExerciseChange(prev => prev.map(ex => {
+      if (ex.exercise_id === exerciseId) {
+        // Handle nested fields for gym exercises
+        if (field.startsWith('sets.')) {
+          const [_, index, key] = field.split('.');
+          const updatedSets = ex.sets.map((set, i) => 
+            i === parseInt(index) ? { ...set, [key]: Number(value) } : set
+          );
+          return { ...ex, sets: updatedSets };
+        }
+        // Handle top-level fields for non-gym exercises
+        return { ...ex, [field]: Number(value) };
+      }
+      return ex;
+    }));
   };
 
   return (
@@ -52,7 +63,7 @@ export default function ExerciseTable({
             onExerciseChange(prev => prev.map(ex => ({
               ...ex,
               completed: !allCompleted,
-              sets: ex.sets.map(set => ({ ...set, completed: !allCompleted }))
+              sets: Array.isArray(ex.sets) ? ex.sets.map(set => ({ ...set, completed: !allCompleted })) : ex.sets
             })));
           }}
           className="px-4 py-2 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors"

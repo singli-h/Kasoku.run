@@ -41,6 +41,10 @@ export default function ExerciseCard({
     }
   }, [inView, videoLoaded]);
 
+  const handleInputChange = (field, value) => {
+    onInputChange(field, value);
+  };
+
   return (
     <div ref={ref} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
       {/* Video Section */}
@@ -102,7 +106,7 @@ export default function ExerciseCard({
                     <input
                       type="number"
                       value={set.reps || 0}
-                      onChange={(e) => onInputChange(`sets.${index}.reps`, e.target.value)}
+                      onChange={(e) => handleInputChange(`sets.${index}.reps`, e.target.value)}
                       className="w-full p-2 border rounded-md"
                       min="1"
                     />
@@ -112,10 +116,10 @@ export default function ExerciseCard({
                     <input
                       type="number"
                       value={set.weight || 0}
-                      onChange={(e) => onInputChange(`sets.${index}.weight`, e.target.value)}
+                      onChange={(e) => handleInputChange(`sets.${index}.weight`, e.target.value)}
                       className="w-full p-2 border rounded-md"
                       min="0"
-                      step="0.5"
+                      step="1"
                     />
                   </div>
                   <div className="space-y-1">
@@ -123,8 +127,10 @@ export default function ExerciseCard({
                     <input
                       type="number"
                       value={set.power || 0}
-                      onChange={(e) => onInputChange(`sets.${index}.power`, e.target.value)}
+                      onChange={(e) => handleInputChange(`sets.${index}.power`, e.target.value)}
                       className="w-full p-2 border rounded-md"
+                      min="0"
+                      step="10"
                     />
                   </div>
                   <div className="space-y-1">
@@ -132,8 +138,10 @@ export default function ExerciseCard({
                     <input
                       type="number"
                       value={set.velocity || 0}
-                      onChange={(e) => onInputChange(`sets.${index}.velocity`, e.target.value)}
+                      onChange={(e) => handleInputChange(`sets.${index}.velocity`, e.target.value)}
                       className="w-full p-2 border rounded-md"
+                      min="0"
+                      step="0.1"
                     />
                   </div>
                 </div>
@@ -146,7 +154,7 @@ export default function ExerciseCard({
                 <input
                   type="number"
                   value={typeof exercise.sets === 'number' ? exercise.sets : 0}
-                  onChange={(e) => onInputChange('sets', e.target.value)}
+                  onChange={(e) => handleInputChange('sets', e.target.value)}
                   className="w-full p-2 border rounded-md"
                   min="1"
                 />
@@ -156,7 +164,7 @@ export default function ExerciseCard({
                 <input
                   type="number"
                   value={exercise.reps || 0}
-                  onChange={(e) => onInputChange('reps', e.target.value)}
+                  onChange={(e) => handleInputChange('reps', e.target.value)}
                   className="w-full p-2 border rounded-md"
                   min="1"
                 />
@@ -166,10 +174,10 @@ export default function ExerciseCard({
                 <input
                   type="number"
                   value={exercise.weight || 0}
-                  onChange={(e) => onInputChange('weight', e.target.value)}
+                  onChange={(e) => handleInputChange('weight', e.target.value)}
                   className="w-full p-2 border rounded-md"
                   min="0"
-                  step="0.5"
+                  step="1"
                 />
               </div>
               <div className="space-y-1">
@@ -177,7 +185,7 @@ export default function ExerciseCard({
                 <input
                   type="number"
                   value={exercise.rest || 0}
-                  onChange={(e) => onInputChange('rest', e.target.value)}
+                  onChange={(e) => handleInputChange('rest', e.target.value)}
                   className="w-full p-2 border rounded-md"
                   min="0"
                 />
