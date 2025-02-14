@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { Button } from "../ui/button"
+import Button from "../ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
 import { addDays, format, startOfWeek, isSameDay } from "date-fns"
+import { mockMesocycle } from "../data/mockData"
 
 // Component for each day on the calendar.
 const CalendarDay = ({ day, sessions }) => {
@@ -48,7 +49,7 @@ const CalendarDay = ({ day, sessions }) => {
   )
 }
 
-const CalendarView = ({ mesocycle, onUpdate }) => {
+export default function CalendarView({ mesocycle, onUpdate }) {
   // Constant to control how many days are shown.
   // Change to 4 if you want a partial week view.
   const daysToDisplay = 7
@@ -67,6 +68,12 @@ const CalendarView = ({ mesocycle, onUpdate }) => {
       setSessions(mesocycle.sessions)
     }
   }, [mesocycle.sessions])
+
+  useEffect(() => {
+    if (mockMesocycle?.sessions) {
+      setSessions(mockMesocycle.sessions)
+    }
+  }, [])
 
   const handleDragEnd = useCallback(
     (result) => {
@@ -141,6 +148,4 @@ const CalendarView = ({ mesocycle, onUpdate }) => {
     </div>
   )
 }
-
-export default CalendarView
 

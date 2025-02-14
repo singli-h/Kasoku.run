@@ -1,5 +1,13 @@
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-gray-900;
+  }
+}
 
 /* Additional styles */
 @import 'additional-styles/utility-patterns.css';
@@ -7,16 +15,14 @@
 @import 'additional-styles/toggle-switch.css';
 @import 'additional-styles/theme.css';
 
-@import 'tailwindcss/utilities';
-
-/* Additional Tailwind directives: https://tailwindcss.com/docs/functions-and-directives/#responsive */
+/* Utilities */
 @layer utilities {
-    .rtl {
-        direction: rtl;
-    }
+  .rtl {
+    direction: rtl;
+  }
 }
 
-/* See Alpine.js: https://github.com/alpinejs/alpine#x-cloak */
+/* Alpine.js cloak */
 [x-cloak=""] {
-    display: none;
-}
+  display: none;
+} 

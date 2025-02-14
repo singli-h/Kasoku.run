@@ -1,4 +1,6 @@
-const Card = ({ children, className = "", ...props }) => {
+import { cn } from "../../lib/utils"
+
+export const Card = ({ children, className = "", ...props }) => {
   return (
     <div className={`bg-white shadow rounded-lg ${className}`} {...props}>
       {children}
@@ -6,7 +8,7 @@ const Card = ({ children, className = "", ...props }) => {
   )
 }
 
-const CardHeader = ({ children, className = "", ...props }) => {
+export const CardHeader = ({ children, className = "", ...props }) => {
   return (
     <div className={`px-4 py-5 border-b border-gray-200 sm:px-6 ${className}`} {...props}>
       {children}
@@ -14,7 +16,7 @@ const CardHeader = ({ children, className = "", ...props }) => {
   )
 }
 
-const CardContent = ({ children, className = "", ...props }) => {
+export const CardContent = ({ children, className = "", ...props }) => {
   return (
     <div className={`px-4 py-5 sm:p-6 ${className}`} {...props}>
       {children}
@@ -22,7 +24,7 @@ const CardContent = ({ children, className = "", ...props }) => {
   )
 }
 
-const CardTitle = ({ children, className = "", ...props }) => {
+export const CardTitle = ({ children, className = "", ...props }) => {
   return (
     <h3 className={`text-lg leading-6 font-medium text-gray-900 ${className}`} {...props}>
       {children}
@@ -33,6 +35,4 @@ const CardTitle = ({ children, className = "", ...props }) => {
 Card.Header = CardHeader
 Card.Content = CardContent
 Card.Title = CardTitle
-
-export { Card, CardHeader, CardContent, CardTitle }
 

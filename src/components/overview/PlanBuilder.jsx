@@ -2,13 +2,30 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight } from "lucide-react"
-import { exerciseLibrary } from "../../data/mockData"
+import { exerciseLibrary } from "../data/mockData"
+import { PlusCircle, Save } from "lucide-react"
 
-const PlanBuilder = ({ mesocycle, onUpdate }) => {
+const PlanButton = ({ children, isActive, className = "", ...props }) => {
+  return (
+    <button
+      className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2
+        ${
+          isActive
+            ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
+            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+        }
+        ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
+
+export default function PlanBuilder({ mesocycle, onUpdate }) {
   // Combined state: history array and current index
   const [historyState, setHistoryState] = useState({ history: [mesocycle], index: 0 })
   const [expandedSessions, setExpandedSessions] = useState([])
@@ -193,13 +210,32 @@ const PlanBuilder = ({ mesocycle, onUpdate }) => {
 
   return (
     <div className="space-y-4">
+      <div className="flex gap-4 mb-6">
+        <PlanButton isActive={true}>
+          <PlusCircle className="w-5 h-5" />
+          Add Exercise
+        </PlanButton>
+        
+        <PlanButton>
+          <Save className="w-5 h-5" />
+          Save Plan
+        </PlanButton>
+      </div>
       <div className="flex justify-between items-center">
-        <Button onClick={handleUndo} disabled={historyState.index === 0}>
+        <PlanButton 
+          onClick={handleUndo} 
+          disabled={historyState.index === 0}
+          className={historyState.index === 0 ? "opacity-50 cursor-not-allowed" : ""}
+        >
           <ChevronLeft className="h-4 w-4 mr-2" /> Undo
-        </Button>
-        <Button onClick={handleRedo} disabled={historyState.index === historyState.history.length - 1}>
+        </PlanButton>
+        <PlanButton
+          onClick={handleRedo}
+          disabled={historyState.index === historyState.history.length - 1}
+          className={historyState.index === historyState.history.length - 1 ? "opacity-50 cursor-not-allowed" : ""}
+        >
           Redo <ChevronRight className="h-4 w-4 ml-2" />
-        </Button>
+        </PlanButton>
       </div>
       <div className="space-y-4">
         {currentMesocycle.sessions.map((session) => (
@@ -208,13 +244,16 @@ const PlanBuilder = ({ mesocycle, onUpdate }) => {
               <CardTitle className="text-sm font-medium">
                 {session.name} - {session.date}
               </CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => toggleSession(session.id)}>
+              <PlanButton 
+                onClick={() => toggleSession(session.id)}
+                className="hover:bg-gray-100"
+              >
                 {expandedSessions.includes(session.id) ? (
                   <ChevronUp className="h-4 w-4" />
                 ) : (
                   <ChevronDown className="h-4 w-4" />
                 )}
-              </Button>
+              </PlanButton>
             </CardHeader>
             {expandedSessions.includes(session.id) && (
               <CardContent>
@@ -231,23 +270,23 @@ const PlanBuilder = ({ mesocycle, onUpdate }) => {
                           className="w-24"
                           placeholder="Duration"
                         />
-                        <Button
+                        <PlanButton
                           variant="ghost"
                           size="sm"
                           onClick={() => handleRemoveExercise(session.id, exercise.id, "warmup")}
                         >
                           <Minus className="h-4 w-4" />
-                        </Button>
+                        </PlanButton>
                       </div>
                     ))}
-                    <Button
+                    <PlanButton
                       variant="outline"
                       size="sm"
                       onClick={() => handleAddExercise(session.id, "warmup")}
                       className="mt-2"
                     >
                       <Plus className="h-4 w-4 mr-2" /> Add Warm-up Exercise
-                    </Button>
+                    </PlanButton>
                   </div>
 
                   {/* Gym Exercises */}
@@ -263,13 +302,13 @@ const PlanBuilder = ({ mesocycle, onUpdate }) => {
                             className="w-24"
                             placeholder="1RM %"
                           />
-                          <Button
+                          <PlanButton
                             variant="ghost"
                             size="sm"
                             onClick={() => handleRemoveExercise(session.id, exercise.id, "gym")}
                           >
                             <Minus className="h-4 w-4" />
-                          </Button>
+                          </PlanButton>
                         </div>
                         <table className="w-full">
                           <thead>
@@ -355,36 +394,36 @@ const PlanBuilder = ({ mesocycle, onUpdate }) => {
                                   />
                                 </td>
                                 <td className="px-2 py-1">
-                                  <Button
+                                  <PlanButton
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleRemoveSet(session.id, exercise.id, setIndex)}
                                   >
                                     <Minus className="h-4 w-4" />
-                                  </Button>
+                                  </PlanButton>
                                 </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
-                        <Button
+                        <PlanButton
                           variant="outline"
                           size="sm"
                           onClick={() => handleAddSet(session.id, exercise.id)}
                           className="mt-2"
                         >
                           <Plus className="h-4 w-4 mr-2" /> Add Set
-                        </Button>
+                        </PlanButton>
                       </div>
                     ))}
-                    <Button
+                    <PlanButton
                       variant="outline"
                       size="sm"
                       onClick={() => handleAddExercise(session.id, "gym")}
                       className="mt-2"
                     >
                       <Plus className="h-4 w-4 mr-2" /> Add Gym Exercise
-                    </Button>
+                    </PlanButton>
                   </div>
 
                   {/* Circuit Exercises */}
@@ -409,23 +448,23 @@ const PlanBuilder = ({ mesocycle, onUpdate }) => {
                           className="w-24"
                           placeholder="Duration"
                         />
-                        <Button
+                        <PlanButton
                           variant="ghost"
                           size="sm"
                           onClick={() => handleRemoveExercise(session.id, exercise.id, "circuit")}
                         >
                           <Minus className="h-4 w-4" />
-                        </Button>
+                        </PlanButton>
                       </div>
                     ))}
-                    <Button
+                    <PlanButton
                       variant="outline"
                       size="sm"
                       onClick={() => handleAddExercise(session.id, "circuit")}
                       className="mt-2"
                     >
                       <Plus className="h-4 w-4 mr-2" /> Add Circuit Exercise
-                    </Button>
+                    </PlanButton>
                   </div>
 
                   <div className="mt-4">
@@ -441,6 +480,4 @@ const PlanBuilder = ({ mesocycle, onUpdate }) => {
     </div>
   )
 }
-
-export default PlanBuilder
 

@@ -6,6 +6,7 @@ import ErrorAndLoadingOverlay from "../../components/ui/errorAndLoadingOverlay"
 import Button from "../../components/ui/button"
 import { getUniqueWeeks, getAvailableDays } from "../../components/dashboard/utils"
 import { useExerciseData } from "../../components/dashboard/hooks/useExerciseData"
+import { exerciseLibrary } from "../../components/data/mockData"
 
 export default function DashboardPage() {
   const {
@@ -67,6 +68,8 @@ export default function DashboardPage() {
     )
     setSelectedGroup(group || null)
   }
+
+  const [exercises, setExercises] = useState(exerciseLibrary)
 
   return (
     <div className="container mx-auto p-4 space-y-4 relative">

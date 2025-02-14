@@ -15,13 +15,13 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${inter.variable} font-inter antialiased bg-gray-900 text-gray-200 tracking-tight`}
-      >
+      <body className={`${inter.variable} font-inter antialiased bg-gray-50 text-gray-900 tracking-tight`}>
         <AuthProvider>
           <div className="flex flex-col min-h-screen overflow-hidden">
             <Header />
-            {children}
+            <main className="grow pt-20">
+              {children}
+            </main>
           </div>
         </AuthProvider>
       </body>

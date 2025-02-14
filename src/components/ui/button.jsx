@@ -1,24 +1,32 @@
-const Button = ({ children, variant = "default", size = "default", className = "", ...props }) => {
-  const baseStyles = "font-medium rounded focus:outline-none focus:ring-2 focus:ring-offset-2"
-  const variantStyles = {
-    default: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
-    outline: "border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-blue-500",
-    ghost: "text-gray-700 hover:bg-gray-100 focus:ring-gray-500",
-  }
-  const sizeStyles = {
-    default: "px-4 py-2",
-    sm: "px-3 py-1 text-sm",
-    lg: "px-6 py-3 text-lg",
-  }
+import React from "react"
+import PropTypes from "prop-types"
 
-  const combinedClassName = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`
+const button = ({ 
+  className,
+  variant = "default",
+  children,
+  ...props 
+}) => {
+  const base = "px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2"
+  const variants = {
+    default: "bg-blue-600 text-white hover:bg-blue-700",
+    outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50",
+  }
 
   return (
-    <button className={combinedClassName} {...props}>
+    <button
+      className={`${base} ${variants[variant]} ${className}`}
+      {...props}
+    >
       {children}
     </button>
   )
 }
 
-export default Button
+button.propTypes = {
+  children: PropTypes.node,
+  variant: PropTypes.string,
+  className: PropTypes.string,
+}
 
+export default button
