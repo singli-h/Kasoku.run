@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from "react";
 import DashboardControls from "../../components/dashboard/DashboardControls"
 import ExerciseSection from "../../components/dashboard/ExerciseSection"
 import ErrorAndLoadingOverlay from "../../components/ui/errorAndLoadingOverlay"
@@ -12,7 +13,6 @@ export default function DashboardPage() {
   const {
     // State values
     useTrainingExercises,
-    exercises,
     exercisePresets,
     exercisePresetGroups,
     trainingSessions,
@@ -36,6 +36,9 @@ export default function DashboardPage() {
     toggleSection,
     saveTrainingExercise
   } = useExerciseData()
+
+  // Temp state for exercises for dev
+  const [exercises, setExercises] = useState(exerciseLibrary);
 
   console.log('Dashboard state:', {
     useTrainingExercises,
@@ -68,8 +71,6 @@ export default function DashboardPage() {
     )
     setSelectedGroup(group || null)
   }
-
-  const [exercises, setExercises] = useState(exerciseLibrary)
 
   return (
     <div className="container mx-auto p-4 space-y-4 relative">

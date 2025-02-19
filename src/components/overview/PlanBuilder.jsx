@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { Input } from "../ui/input"
-import { Label } from "../ui/label"
+import  Input  from "../ui/input"
+import  Label  from "../ui/label"
 import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight } from "lucide-react"
 import { exerciseLibrary } from "../data/mockData"
 import { PlusCircle, Save } from "lucide-react"

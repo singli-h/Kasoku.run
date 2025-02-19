@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { cn } from '../../lib/utils'
-import { Button } from '../ui/button'
+import  Button  from '../ui/button'
 import { ArrowRight, Sparkles } from 'lucide-react'
 
 export default function Hero() {
