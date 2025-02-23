@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:54321/functions/v1/api"
-
+//const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+const API_BASE_URL =  "http://localhost:54321/functions/v1/api"
 export const useExerciseData = () => {
   const [state, setState] = useState({
     useTrainingExercises: false,
