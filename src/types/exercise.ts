@@ -1,56 +1,117 @@
-export interface ExerciseBase {
+// Base interfaces for API responses
+export interface ApiResponse<T> {
+  status: string;
+  data: T;
+  metadata: {
+    timestamp: string;
+    timezone: string;
+  };
+}
+
+export interface Exercise {
   id: number;
   name: string;
-  video_url?: string;
-  completed: boolean;
-  // ... other common fields
+  unit_id: number;
+  video_url: string;
+  description: string;
+  exercise_type_id: number;
 }
 
-export interface ExerciseSet {
+export interface ExerciseTrainingDetail {
   id: number;
   reps: number;
-  weight: number;
-  rest: number;
+  power: number | null;
+  effort: number | null;
+  weight: number | null;
+  distance: number | null;
+  metadata: object | null;
+  velocity: number | null;
   completed: boolean;
-  // Add other set-related fields as needed
+  rest_time: number | null;
+  set_index: number;
+  performing_time: number | null;
+  resistance_value: number | null;
+  exercise_preset_id: number;
+  resistance_unit_id: number | null;
+  exercise_training_session_id: number;
 }
 
-export interface GymExercise extends ExerciseBase {
+export interface ExercisePreset {
   id: number;
-  sets: ExerciseSet[];
-  exercise_type: 'GYM';
-  // Gym-specific fields
+  notes: string | null;
+  exercises: Exercise;
+  exercise_id: number;
+  superset_id: number | null;
+  preset_order: number;
+  exercise_preset_group_id: number;
+  exercise_training_details: ExerciseTrainingDetail[];
+  completed: boolean;
 }
 
-export interface WarmupCircuitExercise extends ExerciseBase {
+export interface ExercisePresetGroup {
   id: number;
-  sets?: never;
-  exercise_type: 'WARMUP' | 'CIRCUIT';
-  reps: number;
-  weight: number;
-  rest: number;
-  // Warmup/Circuit specific fields
-}
-
-export type Exercise = GymExercise | WarmupCircuitExercise;
-
-export type ExercisePresetGroup = {
-  id: number;
+  day: number;
+  date: string;
   name: string;
   week: number;
-  day: number;
-  date: Date;
-};
+  coach_id: number;
+  created_at: string;
+  updated_at: string;
+  athlete_group_id: number;
+  exercise_presets: ExercisePreset[];
+}
+
+export interface TrainingSession {
+  id: number;
+  athlete_id: number;
+  date_time: string;
+  exercise_preset_group_id: number;
+  updated_at: string;
+  notes: string | null;
+  created_at: string;
+  status: 'ongoing' | 'assigned' | 'completed';
+  athlete_group_id: number;
+  exercise_preset_groups: ExercisePresetGroup;
+}
+
+export interface DashboardSessionResponse {
+  session: {
+    type: string;
+    details: TrainingSession;
+  };
+}
+
+// Request interfaces for POST/PUT endpoints
+export interface ExerciseDetailBase {
+  id: number;
+  reps: number;
+  // Add additional fields as needed
+}
+
+export interface PostExerciseDetailRequest {
+  exercise_training_session_id: number;
+  exercisesDetail: ExerciseDetailBase[];
+}
+
+export interface PutExerciseDetail extends ExerciseDetailBase {
+  id: number;
+  set_index: number;
+}
+
+export interface PutExerciseDetailRequest {
+  exercise_training_session_id: number;
+  exercisesDetail: PutExerciseDetail[];
+}
 
 // Type guard functions
-export function isGymExercise(exercise: Exercise): exercise is GymExercise {
-  return exercise.exercise_type === 'GYM';
+export function isOngoingSession(session: TrainingSession): boolean {
+  return session.status === 'ongoing';
 }
 
-export function isWarmupExercise(exercise: Exercise): exercise is WarmupCircuitExercise {
-  return exercise.exercise_type === 'WARMUP';
+export function isAssignedSession(session: TrainingSession): boolean {
+  return session.status === 'assigned';
 }
 
-export function isCircuitExercise(exercise: Exercise): exercise is WarmupCircuitExercise {
-  return exercise.exercise_type === 'CIRCUIT';
+export function isCompletedSession(session: TrainingSession): boolean {
+  return session.status === 'completed';
 }

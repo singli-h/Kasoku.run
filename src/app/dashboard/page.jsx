@@ -1,114 +1,111 @@
 'use client'
 
-import { useState } from "react";
 import DashboardControls from "../../components/dashboard/DashboardControls"
 import ExerciseSection from "../../components/dashboard/ExerciseSection"
 import ErrorAndLoadingOverlay from "../../components/ui/errorAndLoadingOverlay"
-import Button from "../../components/ui/button"
-import { getUniqueWeeks, getAvailableDays } from "../../components/dashboard/utils"
 import { useExerciseData } from "../../components/dashboard/hooks/useExerciseData"
-import { exerciseLibrary } from "../../components/data/mockData"
 
 export default function DashboardPage() {
   const {
-    // State values
-    useTrainingExercises,
-    exercisePresets,
-    exercisePresetGroups,
-    trainingSessions,
-    trainingExercises,
-    selectedGroup,
-    selectedWeek,
-    selectedDay,
-    gymExercises,
-    warmupExercises,
-    circuitExercises,
+    session,
     isLoading,
     error,
     openSections,
-    // Methods
-    setSelectedGroup,
-    setSelectedWeek,
-    setSelectedDay,
-    setGymExercises,
-    setWarmupExercises,
-    setCircuitExercises,
     toggleSection,
-    saveTrainingExercise
-  } = useExerciseData()
+    startSession,
+    saveSession,
+    completeSession,
+    updateExerciseDetails,
+    isOngoing,
+    isAssigned,
+    isCompleted,
+    version
+  } = useExerciseData();
 
-  // Temp state for exercises for dev
-  const [exercises, setExercises] = useState(exerciseLibrary);
-
-  console.log('Dashboard state:', {
-    useTrainingExercises,
-    exerciseCount: exercises.length,
-    presetCount: exercisePresets.length,
-    groupCount: exercisePresetGroups.length,
-    sessionCount: trainingSessions.length,
-    trainingExerciseCount: trainingExercises.length,
-    selectedGroup,
-    selectedWeek,
-    selectedDay,
-    gymCount: gymExercises.length,
-    warmupCount: warmupExercises.length,
-    circuitCount: circuitExercises.length,
-    openSections
-  });
-
-  const handleWeekChange = (e) => {
-    setSelectedWeek(e.target.value)
-    setSelectedDay(null)
-    setSelectedGroup(null)
-  }
-
-  const handleDayChange = (e) => {
-    setSelectedDay(e.target.value)
-    const group = exercisePresetGroups.find(
-      (group) =>
-        group.week === parseInt(selectedWeek) &&
-        group.day === parseInt(e.target.value)
-    )
-    setSelectedGroup(group || null)
-  }
+  // Group exercises by type
+  const exercisesByType = session?.details?.exercise_preset_groups?.exercise_presets.reduce(
+    (acc, preset) => {
+      const exerciseType = preset.exercises.exercise_type_id;
+      // 4: Warm Up, 3: Gym, 5: Circuit
+      switch (exerciseType) {
+        case 4:
+          acc.warmup.push(preset);
+          break;
+        case 3:
+          acc.gym.push(preset);
+          break;
+        case 5:
+          acc.circuit.push(preset);
+          break;
+        default:
+          console.warn(`Unknown exercise type: ${exerciseType}`);
+      }
+      return acc;
+    },
+    { warmup: [], gym: [], circuit: [] }
+  ) || { warmup: [], gym: [], circuit: [] };
 
   return (
     <div className="container mx-auto p-4 space-y-4 relative">
       <ErrorAndLoadingOverlay isLoading={isLoading} error={error} />
-      <div className="container mx-auto p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold mb-6">
-            {selectedGroup ? `${selectedGroup.date} ${useTrainingExercises ? "Completed" : "Todo"}` : ""}
-          </h1>
-          <Button onClick={saveTrainingExercise}>Save</Button>
-        </div>
-        
+      
+      <div className="container mx-auto p-4 space-y-6">
+        {/* Session Controls */}
         <DashboardControls
-          selectedWeek={selectedWeek}
-          selectedDay={selectedDay}
-          selectedGroup={selectedGroup}
-          exercisePresetGroups={exercisePresetGroups}
-          handleWeekChange={handleWeekChange}
-          handleDayChange={handleDayChange}
-          getUniqueWeeks={() => getUniqueWeeks(exercisePresetGroups)}
-          getAvailableDays={() => getAvailableDays(exercisePresetGroups, selectedWeek)}
+          session={session}
+          onStartSession={startSession}
+          onSaveSession={saveSession}
+          onCompleteSession={completeSession}
+          isLoading={isLoading}
         />
 
-        {["Warm Up", "Gym", "Circuit"].map((section) => (
-          <ExerciseSection
-            key={section}
-            section={section}
-            openSections={openSections}
-            toggleSection={toggleSection}
-            warmupExercises={warmupExercises}
-            gymExercises={gymExercises}
-            circuitExercises={circuitExercises}
-            setWarmupExercises={setWarmupExercises}
-            setGymExercises={setGymExercises}
-            setCircuitExercises={setCircuitExercises}
-          />
-        ))}
+        {/* Exercise Sections */}
+        {(isOngoing || isCompleted) && (
+          <>
+            {/* Warm Up Section */}
+            <ExerciseSection
+              key={`warmup-${version}`}
+              section="Warm Up"
+              openSections={openSections}
+              toggleSection={toggleSection}
+              exercisePresets={exercisesByType.warmup}
+              onExerciseChange={(updatedPresets) => updateExerciseDetails('warmup', updatedPresets)}
+              isReadOnly={isCompleted}
+            />
+
+            {/* Gym Section */}
+            <ExerciseSection
+              key={`gym-${version}`}
+              section="Gym"
+              openSections={openSections}
+              toggleSection={toggleSection}
+              exercisePresets={exercisesByType.gym}
+              onExerciseChange={(updatedPresets) => updateExerciseDetails('gym', updatedPresets)}
+              isReadOnly={isCompleted}
+            />
+
+            {/* Circuit Section */}
+            <ExerciseSection
+              key={`circuit-${version}`}
+              section="Circuit"
+              openSections={openSections}
+              toggleSection={toggleSection}
+              exercisePresets={exercisesByType.circuit}
+              onExerciseChange={(updatedPresets) => updateExerciseDetails('circuit', updatedPresets)}
+              isReadOnly={isCompleted}
+            />
+          </>
+        )}
+
+        {/* Show message for assigned sessions */}
+        {isAssigned && (
+          <div className="text-center py-8">
+            <p className="text-lg text-gray-600">
+              Click &quot;Start Session&quot; to begin your workout
+            </p>
+          </div>
+        )}
       </div>
     </div>
-  )
+  );
 } 

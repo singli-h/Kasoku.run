@@ -1,16 +1,15 @@
 /**
  * DashboardControls Component
  * 
- * A control panel component for the dashboard that allows users to select
- * their training program, week, and day. Provides a responsive grid layout
- * with dropdown selectors and program display.
+ * A control panel component for the dashboard that displays session information
+ * and provides controls based on the session status.
  * 
  * Features:
- * - Program name display
- * - Week selection dropdown
- * - Day selection dropdown (disabled until week is selected)
- * - Responsive 3-column grid layout
- * - Consistent styling with the dashboard theme
+ * - Session status display
+ * - Start session button for assigned sessions
+ * - Save progress button for ongoing sessions
+ * - Complete session button for ongoing sessions
+ * - View completed session details
  * 
  * @component
  */
@@ -19,86 +18,103 @@
 
 import PropTypes from 'prop-types';
 
-/**
- * @typedef {Object} DashboardControlsProps
- * @property {number|null} selectedWeek - Currently selected week number
- * @property {number|null} selectedDay - Currently selected day number
- * @property {Object|null} selectedGroup - Selected program group object
- * @property {Function} handleWeekChange - Handler for week selection changes
- * @property {Function} handleDayChange - Handler for day selection changes
- * @property {Function} getUniqueWeeks - Function to get available weeks
- * @property {Function} getAvailableDays - Function to get available days for selected week
- */
-
 export default function DashboardControls({
-  selectedWeek,
-  selectedDay,
-  selectedGroup,
-  handleWeekChange,
-  handleDayChange,
-  getUniqueWeeks,
-  getAvailableDays
+  session,
+  onStartSession,
+  onSaveSession,
+  onCompleteSession,
+  isLoading
 }) {
+  if (!session) {
+    return (
+      <div className="mb-6 p-4 bg-gray-100 rounded-lg">
+        <p className="text-gray-600">No session available</p>
+      </div>
+    );
+  }
+
+  const { details } = session;
+  const { exercise_preset_groups: group } = details;
+
   return (
-    <div className="mb-6 grid grid-cols-3 gap-4">
-      {/* Program Display Section */}
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Program</h2>
-        <div className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-zinc-900">
-          {selectedGroup ? selectedGroup.name : "No group selected"}
+    <div className="mb-6 space-y-4">
+      {/* Session Information */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded-lg shadow">
+        <div>
+          <h2 className="text-xl font-semibold mb-2">Program</h2>
+          <div className="p-3 bg-gray-50 rounded-md">
+            <p className="font-medium">{group.name}</p>
+            <p className="text-sm text-gray-600">
+              Week {group.week}, Day {group.day}
+            </p>
+          </div>
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold mb-2">Status</h2>
+          <div className="p-3 bg-gray-50 rounded-md">
+            <div className={`
+              inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium
+              ${details.status === 'ongoing' ? 'bg-blue-100 text-blue-800' : 
+                details.status === 'assigned' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-green-100 text-green-800'}
+            `}>
+              {details.status.charAt(0).toUpperCase() + details.status.slice(1)}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Week Selection Section */}
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Week</h2>
-        <select
-          className="w-full p-2 border border-gray-300 rounded-md text-zinc-900"
-          value={selectedWeek || ""}
-          onChange={handleWeekChange}
-          aria-label="Select training week"
-        >
-          <option value="">Select a week</option>
-          {getUniqueWeeks().map((week) => (
-            <option key={week} value={week}>
-              Week {week}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Day Selection Section */}
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Day</h2>
-        <select
-          className="w-full p-2 border border-gray-300 rounded-md text-zinc-900"
-          value={selectedDay || ""}
-          onChange={handleDayChange}
-          disabled={!selectedWeek}
-          aria-label="Select training day"
-          aria-disabled={!selectedWeek}
-        >
-          <option value="">Select a day</option>
-          {getAvailableDays().map((day) => (
-            <option key={day} value={day}>
-              Day {day}
-            </option>
-          ))}
-        </select>
+      {/* Action Buttons */}
+      <div className="flex justify-end space-x-4">
+        {details.status === 'assigned' && (
+          <button
+            onClick={onStartSession}
+            disabled={isLoading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 
+                     disabled:bg-blue-300 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Starting...' : 'Start Session'}
+          </button>
+        )}
+        {details.status === 'ongoing' && (
+          <>
+            <button
+              onClick={onSaveSession}
+              disabled={isLoading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700
+                       disabled:bg-blue-300 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Saving...' : 'Save Progress'}
+            </button>
+            <button
+              onClick={onCompleteSession}
+              disabled={isLoading}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700
+                       disabled:bg-green-300 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Completing...' : 'Complete Session'}
+            </button>
+          </>
+        )}
       </div>
     </div>
-  )
+  );
 }
 
-// PropTypes validation
 DashboardControls.propTypes = {
-  selectedWeek: PropTypes.number,
-  selectedDay: PropTypes.number,
-  selectedGroup: PropTypes.shape({
-    name: PropTypes.string.isRequired,
+  session: PropTypes.shape({
+    type: PropTypes.string.isRequired,
+    details: PropTypes.shape({
+      status: PropTypes.oneOf(['ongoing', 'assigned', 'completed']).isRequired,
+      exercise_preset_groups: PropTypes.shape({
+        name: PropTypes.string.isRequired,
+        week: PropTypes.number.isRequired,
+        day: PropTypes.number.isRequired,
+      }).isRequired,
+    }).isRequired,
   }),
-  handleWeekChange: PropTypes.func.isRequired,
-  handleDayChange: PropTypes.func.isRequired,
-  getUniqueWeeks: PropTypes.func.isRequired,
-  getAvailableDays: PropTypes.func.isRequired,
+  onStartSession: PropTypes.func.isRequired,
+  onSaveSession: PropTypes.func.isRequired,
+  onCompleteSession: PropTypes.func.isRequired,
+  isLoading: PropTypes.bool.isRequired,
 }; 

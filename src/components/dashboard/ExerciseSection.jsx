@@ -1,9 +1,9 @@
 /**
  * ExerciseSection Component
  * 
- * A collapsible section component that displays different types of exercises
- * (Warm Up, Gym, or Circuit) in a table format. Manages the expansion/collapse
- * state and renders the appropriate exercise data based on the section type.
+ * A collapsible section component that displays exercises of a specific type
+ * (Warm Up, Gym, or Circuit). Manages the expansion/collapse state and renders
+ * the appropriate exercise data.
  * 
  * @component
  */
@@ -18,26 +18,16 @@ import ExerciseTable from "./ExerciseTable"
  * @property {string} section - The title of the section ("Warm Up", "Gym", or "Circuit")
  * @property {Object} openSections - Object tracking which sections are expanded
  * @property {Function} toggleSection - Function to toggle section expansion
- * @property {Array} warmupExercises - List of warm-up exercises
- * @property {Array} gymExercises - List of gym exercises
- * @property {Array} circuitExercises - List of circuit exercises
- * @property {Function} setWarmupExercises - State setter for warm-up exercises
- * @property {Function} setGymExercises - State setter for gym exercises
- * @property {Function} setCircuitExercises - State setter for circuit exercises
- * @property {number} version - Version number for key prop (forces re-render when changed)
+ * @property {Array} exercisePresets - List of exercise presets
+ * @property {boolean} isReadOnly - Indicates if the section is read-only
  */
 
 export default function ExerciseSection({
   section,
   openSections,
   toggleSection,
-  warmupExercises,
-  gymExercises,
-  circuitExercises,
-  setWarmupExercises,
-  setGymExercises,
-  setCircuitExercises,
-  version
+  exercisePresets,
+  isReadOnly
 }) {
   return (
     <div className="border text-gray-700 border-gray-200 rounded-lg overflow-hidden">
@@ -63,27 +53,12 @@ export default function ExerciseSection({
         >
           <ExerciseTable
             sectionTitle={section}
-            exercises={
-              // Select appropriate exercise list based on section type
-              section === "Warm Up"
-                ? warmupExercises
-                : section === "Gym"
-                ? gymExercises
-                : circuitExercises
-            }
-            onExerciseChange={
-              // Select appropriate state setter based on section type
-              section === "Warm Up"
-                ? setWarmupExercises
-                : section === "Gym"
-                ? setGymExercises
-                : setCircuitExercises
-            }
-            exerciseType={
-              // Determine exercise type for the table
-              section === "Warm Up" || section === "Circuit" ? "circuit" : "gym"
-            }
-            key={`${section}-${version}`} // Force re-render when version changes
+            exercisePresets={exercisePresets}
+            onExerciseChange={(updatedPresets) => {
+              // Handle exercise changes if needed
+              console.log('Exercise changes:', updatedPresets);
+            }}
+            isReadOnly={isReadOnly}
           />
         </div>
       )}
@@ -96,11 +71,18 @@ ExerciseSection.propTypes = {
   section: PropTypes.oneOf(['Warm Up', 'Gym', 'Circuit']).isRequired,
   openSections: PropTypes.object.isRequired,
   toggleSection: PropTypes.func.isRequired,
-  warmupExercises: PropTypes.array.isRequired,
-  gymExercises: PropTypes.array.isRequired,
-  circuitExercises: PropTypes.array.isRequired,
-  setWarmupExercises: PropTypes.func.isRequired,
-  setGymExercises: PropTypes.func.isRequired,
-  setCircuitExercises: PropTypes.func.isRequired,
-  version: PropTypes.number.isRequired,
-} 
+  exercisePresets: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    exercises: PropTypes.shape({
+      id: PropTypes.number.isRequired,
+      name: PropTypes.string.isRequired,
+      video_url: PropTypes.string.isRequired,
+    }).isRequired,
+    exercise_training_details: PropTypes.arrayOf(PropTypes.shape({
+      id: PropTypes.number.isRequired,
+      reps: PropTypes.number.isRequired,
+      completed: PropTypes.bool.isRequired,
+    })).isRequired
+  })).isRequired,
+  isReadOnly: PropTypes.bool
+}; 
