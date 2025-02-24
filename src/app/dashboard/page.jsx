@@ -1,7 +1,6 @@
 'use client'
 
-import DashboardControls from "../../components/dashboard/DashboardControls"
-import ExerciseSection from "../../components/dashboard/ExerciseSection"
+import ExerciseDashboard from "../../components/dashboard/New_DashboardMain"
 import ErrorAndLoadingOverlay from "../../components/ui/errorAndLoadingOverlay"
 import { useExerciseData } from "../../components/dashboard/hooks/useExerciseData"
 
@@ -10,102 +9,49 @@ export default function DashboardPage() {
     session,
     isLoading,
     error,
-    openSections,
-    toggleSection,
     startSession,
     saveSession,
     completeSession,
-    updateExerciseDetails,
     isOngoing,
     isAssigned,
-    isCompleted,
-    version
+    isCompleted
   } = useExerciseData();
 
-  // Group exercises by type
-  const exercisesByType = session?.details?.exercise_preset_groups?.exercise_presets.reduce(
-    (acc, preset) => {
-      const exerciseType = preset.exercises.exercise_type_id;
-      // 4: Warm Up, 3: Gym, 5: Circuit
-      switch (exerciseType) {
-        case 4:
-          acc.warmup.push(preset);
-          break;
-        case 3:
-          acc.gym.push(preset);
-          break;
-        case 5:
-          acc.circuit.push(preset);
-          break;
-        default:
-          console.warn(`Unknown exercise type: ${exerciseType}`);
-      }
-      return acc;
-    },
-    { warmup: [], gym: [], circuit: [] }
-  ) || { warmup: [], gym: [], circuit: [] };
-
   return (
-    <div className="container mx-auto p-4 space-y-4 relative">
+    <div className="relative">
       <ErrorAndLoadingOverlay isLoading={isLoading} error={error} />
       
-      <div className="container mx-auto p-4 space-y-6">
-        {/* Session Controls */}
-        <DashboardControls
-          session={session}
-          onStartSession={startSession}
-          onSaveSession={saveSession}
-          onCompleteSession={completeSession}
-          isLoading={isLoading}
-        />
-
-        {/* Exercise Sections */}
-        {(isOngoing || isCompleted) && (
-          <>
-            {/* Warm Up Section */}
-            <ExerciseSection
-              key={`warmup-${version}`}
-              section="Warm Up"
-              openSections={openSections}
-              toggleSection={toggleSection}
-              exercisePresets={exercisesByType.warmup}
-              onExerciseChange={(updatedPresets) => updateExerciseDetails('warmup', updatedPresets)}
-              isReadOnly={isCompleted}
-            />
-
-            {/* Gym Section */}
-            <ExerciseSection
-              key={`gym-${version}`}
-              section="Gym"
-              openSections={openSections}
-              toggleSection={toggleSection}
-              exercisePresets={exercisesByType.gym}
-              onExerciseChange={(updatedPresets) => updateExerciseDetails('gym', updatedPresets)}
-              isReadOnly={isCompleted}
-            />
-
-            {/* Circuit Section */}
-            <ExerciseSection
-              key={`circuit-${version}`}
-              section="Circuit"
-              openSections={openSections}
-              toggleSection={toggleSection}
-              exercisePresets={exercisesByType.circuit}
-              onExerciseChange={(updatedPresets) => updateExerciseDetails('circuit', updatedPresets)}
-              isReadOnly={isCompleted}
-            />
-          </>
-        )}
-
-        {/* Show message for assigned sessions */}
-        {isAssigned && (
-          <div className="text-center py-8">
-            <p className="text-lg text-gray-600">
-              Click &quot;Start Session&quot; to begin your workout
+      {isAssigned && (
+        <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+            <h1 className="text-4xl font-bold mb-4 text-gray-800">
+              {session?.details?.exercise_preset_groups?.name}
+            </h1>
+            <p className="text-xl text-gray-600 mb-8">
+              Week {session?.details?.exercise_preset_groups?.week}, 
+              Day {session?.details?.exercise_preset_groups?.day}
             </p>
+            <button
+              onClick={startSession}
+              disabled={isLoading}
+              className="px-8 py-4 bg-blue-600 text-white text-xl font-semibold rounded-xl
+                       hover:bg-blue-700 transition-colors duration-300 shadow-lg
+                       disabled:bg-blue-300 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Starting...' : 'Start Session'}
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {(isOngoing || isCompleted) && (
+        <ExerciseDashboard
+          session={session}
+          onSave={saveSession}
+          onComplete={completeSession}
+          isReadOnly={isCompleted}
+        />
+      )}
     </div>
   );
 } 
