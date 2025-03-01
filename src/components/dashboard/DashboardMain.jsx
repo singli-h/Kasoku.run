@@ -1,14 +1,33 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronDown, ChevronUp, Play, CheckCircle, Circle } from "lucide-react"
+import { ChevronDown, ChevronUp, Play, CheckCircle, Circle, Video, VideoOff } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ExerciseProvider, useExerciseContext } from "./New_ExerciseContext"
+import { ExerciseProvider, useExerciseContext } from "./ExerciseContext"
+import { ExerciseType } from "../../types/exercise"
+
+// Video Player Component
+const VideoPlayer = ({ url }) => {
+  return (
+    <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-4">
+      <video
+        className="w-full h-full"
+        controls
+        preload="none"
+        poster="/video-placeholder.jpg"
+      >
+        <source src={url} type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+    </div>
+  )
+}
 
 // Exercise Card Component
 const ExerciseCard = ({ exercise, onComplete }) => {
   const { updateExercise } = useExerciseContext()
   const [completed, setCompleted] = useState(exercise.exercise_training_details.every((detail) => detail.completed))
+  const { showVideo } = useExerciseContext()
 
   useEffect(() => {
     setCompleted(exercise.exercise_training_details.every((detail) => detail.completed))
@@ -51,15 +70,19 @@ const ExerciseCard = ({ exercise, onComplete }) => {
           )}
         </button>
       </div>
-      <a
-        href={exercise.exercises.video_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-300 mb-4"
-      >
-        <Play className="w-4 h-4 mr-2" />
-        Watch Demo
-      </a>
+      {showVideo ? (
+        <VideoPlayer url={exercise.exercises.video_url} />
+      ) : (
+        <a
+          href={exercise.exercises.video_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-300 mb-4"
+        >
+          <Play className="w-4 h-4 mr-2" />
+          Watch Demo
+        </a>
+      )}
       <div className="space-y-4">
         {exercise.exercise_training_details.map((detail, index) => (
           <div key={detail.id} className="border-t pt-4 first:border-t-0 first:pt-0">
@@ -251,7 +274,7 @@ const ExerciseTypeSection = ({ type, exercises, supersets, onToggleAll }) => {
           >
             {allCompleted ? "Unmark All" : "Mark All"}
           </button>
-          {isOpen ? <ChevronUp className="w-6 h-6 text-gray-600" /> : <ChevronDown className="w-6 h-6 text-gray-600" />}
+          {isOpen ? <ChevronUp className="w-8 h-8 text-gray-600" /> : <ChevronDown className="w-8 h-8 text-gray-600" />}
         </div>
       </div>
       <AnimatePresence>
@@ -288,7 +311,7 @@ const ExerciseTypeSection = ({ type, exercises, supersets, onToggleAll }) => {
 
 // Main Dashboard Component
 const ExerciseDashboard = ({ session, onSave, onComplete, isReadOnly }) => {
-  const { exercises, updateExercise } = useExerciseContext()
+  const { exercises, updateExercise, showVideo, toggleVideo } = useExerciseContext()
 
   // 1. Sort exercises by order
   const sortedExercises = [...exercises].sort((a, b) => a.preset_order - b.preset_order)
@@ -301,8 +324,26 @@ const ExerciseDashboard = ({ session, onSave, onComplete, isReadOnly }) => {
 
     sortedExercises.forEach((exercise) => {
       const exerciseType = exercise.exercises.exercise_type_id
-      // 4: Warm Up, 3: Gym, 5: Circuit
-      const type = exerciseType === 4 ? "warm up" : exerciseType === 3 ? "gym" : exerciseType === 5 ? "circuit" : "other"
+      const type = (() => {
+        switch (exerciseType) {
+          case ExerciseType.WarmUp:
+            return "warm up"
+          case ExerciseType.Gym:
+            return "gym"
+          case ExerciseType.Circuit:
+            return "circuit"
+          case ExerciseType.Isometric:
+            return "isometric"
+          case ExerciseType.Plyometric:
+            return "plyometric"
+          case ExerciseType.Sprint:
+            return "sprint"
+          case ExerciseType.Drill:
+            return "drill"
+          default:
+            return "other"
+        }
+      })()
 
       if (exercise.superset_id) {
         if (currentSuperset && currentSuperset.id === exercise.superset_id) {
@@ -408,10 +449,31 @@ const ExerciseDashboard = ({ session, onSave, onComplete, isReadOnly }) => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
-      <h1 className="text-4xl font-bold mb-2 text-gray-800">{session.details.exercise_preset_groups.name}</h1>
-      <p className="text-xl text-gray-600 mb-8">
-        Week {session.details.exercise_preset_groups.week}, Day {session.details.exercise_preset_groups.day}
-      </p>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-4xl font-bold mb-2 text-gray-800">{session.details.exercise_preset_groups.name}</h1>
+          <p className="text-xl text-gray-600">
+            Week {session.details.exercise_preset_groups.week}, Day {session.details.exercise_preset_groups.day}
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-600 mr-2">Show Videos</span>
+          <button
+            onClick={toggleVideo}
+            className={`p-2 rounded-lg transition-colors duration-300 ${
+              showVideo
+                ? "bg-blue-500 text-white hover:bg-blue-600"
+                : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+            }`}
+          >
+            {showVideo ? (
+              <Video className="w-8 h-8" />
+            ) : (
+              <VideoOff className="w-8 h-8" />
+            )}
+          </button>
+        </div>
+      </div>
 
       {finalGroups.map((group, index) => {
         if (group.type === "gymMerged") {

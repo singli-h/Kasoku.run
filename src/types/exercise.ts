@@ -8,13 +8,23 @@ export interface ApiResponse<T> {
   };
 }
 
+export enum ExerciseType {
+  Isometric = 1,
+  Plyometric = 2,
+  Gym = 3,
+  WarmUp = 4,
+  Circuit = 5,
+  Sprint = 6,
+  Drill = 7
+}
+
 export interface Exercise {
   id: number;
   name: string;
   unit_id: number;
   video_url: string;
   description: string;
-  exercise_type_id: number;
+  exercise_type_id: ExerciseType;
 }
 
 export interface ExerciseTrainingDetail {

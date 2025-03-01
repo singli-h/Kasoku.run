@@ -1,6 +1,6 @@
 'use client'
 
-import ExerciseDashboard from "../../components/dashboard/New_DashboardMain"
+import ExerciseDashboard from "../../components/dashboard/DashboardMain"
 import ErrorAndLoadingOverlay from "../../components/ui/errorAndLoadingOverlay"
 import { useExerciseData } from "../../components/dashboard/hooks/useExerciseData"
 
@@ -23,7 +23,7 @@ export default function DashboardPage() {
       
       {isAssigned && (
         <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
-          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+          <div className="bg-white rounded-xl shadow-lg p-4 text-center">
             <h1 className="text-4xl font-bold mb-4 text-gray-800">
               {session?.details?.exercise_preset_groups?.name}
             </h1>

@@ -14,6 +14,7 @@ export const useExerciseContext = () => {
 
 export const ExerciseProvider = ({ children, initialData = [] }) => {
   const [exercises, setExercises] = useState(initialData)
+  const [showVideo, setShowVideo] = useState(false)
 
   const updateExercise = (id, updates) => {
     setExercises((prevExercises) =>
@@ -21,6 +22,21 @@ export const ExerciseProvider = ({ children, initialData = [] }) => {
     )
   }
 
-  return <ExerciseContext.Provider value={{ exercises, updateExercise }}>{children}</ExerciseContext.Provider>
+  const toggleVideo = () => {
+    setShowVideo(prev => !prev)
+  }
+
+  return (
+    <ExerciseContext.Provider 
+      value={{ 
+        exercises, 
+        updateExercise, 
+        showVideo, 
+        toggleVideo 
+      }}
+    >
+      {children}
+    </ExerciseContext.Provider>
+  )
 }
 
