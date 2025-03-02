@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, createContext, useContext } from "react"
+import { useState, createContext, useContext } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { CheckCircle, XCircle, X, Info } from "lucide-react"
 
@@ -18,36 +18,14 @@ export const useNotification = () => {
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([])
   
-  useEffect(() => {
-    // Function to handle scroll events 
-    const handleScroll = () => {
-      // Force a re-render when scrolling to keep notifications in view
-      if (notifications.length > 0) {
-        setNotifications(prev => [...prev]);
-      }
-    };
-    
-    // Add scroll event listener
-    window.addEventListener('scroll', handleScroll);
-    
-    // Clean up
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [notifications.length]);
-
+  // Simple function to add a notification
   const showNotification = (message, type = "success", duration = 5000) => {
-    const id = Date.now()
+    const id = Date.now() + Math.random().toString(36).substring(2, 9)
     
-    // Log to ensure the function is called
-    console.error("Showing notification:", message, type);
+    // Add new notification
+    setNotifications(prev => [...prev, { id, message, type }])
     
-    setNotifications(prev => [
-      ...prev,
-      { id, message, type, duration }
-    ])
-    
-    // Auto dismiss
+    // Set up auto-dismiss
     if (duration) {
       setTimeout(() => {
         dismissNotification(id)
@@ -57,82 +35,65 @@ export const NotificationProvider = ({ children }) => {
     return id
   }
   
+  // Simple function to remove a notification
   const dismissNotification = (id) => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id))
+    setNotifications(prev => prev.filter(n => n.id !== id))
   }
   
-  // Dismiss all notifications
-  const dismissAllNotifications = () => {
-    setNotifications([])
-  }
-  
-  // Helper functions for common notifications
-  const success = (message, duration) => showNotification(message, "success", duration)
-  const error = (message, duration) => showNotification(message, "error", duration)
-  const info = (message, duration) => showNotification(message, "info", duration)
+  // Helper functions for common notification types
+  const success = (message, duration = 5000) => showNotification(message, "success", duration)
+  const error = (message, duration = 5000) => showNotification(message, "error", duration)
+  const info = (message, duration = 5000) => showNotification(message, "info", duration)
 
   return (
     <NotificationContext.Provider value={{ showNotification, dismissNotification, success, error, info }}>
       {children}
-      <NotificationContainer 
-        notifications={notifications} 
-        onDismiss={dismissNotification} 
-        onDismissAll={dismissAllNotifications} 
-      />
-    </NotificationContext.Provider>
-  )
-}
-
-const NotificationContainer = ({ notifications, onDismiss, onDismissAll }) => {
-  // Return early if no notifications
-  if (notifications.length === 0) return null;
-  
-  // Handle click outside the notification
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onDismissAll();
-    }
-  };
-  
-  // Get scroll position for fixed notifications that follow scroll
-  const scrollY = typeof window !== 'undefined' ? window.scrollY : 0;
-  
-  return (
-    <div 
-      className="fixed inset-0 z-[9999]"
-      style={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        right: 0, 
-        bottom: 0,
-        pointerEvents: 'auto' 
-      }}
-      onClick={handleBackdropClick}
-    >
-      <div className="bg-black bg-opacity-30 absolute inset-0" />
       
-      {/* Position in the viewport center, adjusting for scroll */}
-      <div 
-        className="absolute max-w-md"
-        style={{ 
-          top: '50%', 
-          left: '50%', 
-          transform: 'translate(-50%, -50%)',
-          zIndex: 10,
-        }}
-      >
-        <AnimatePresence>
-          {notifications.map(notification => (
-            <NotificationItem 
-              key={notification.id} 
-              notification={notification} 
-              onDismiss={() => onDismiss(notification.id)} 
-            />
-          ))}
-        </AnimatePresence>
+      {/* Portal - Always rendered but visible only when notifications exist */}
+      <div className="notification-container" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 20000 }}>
+        <div 
+          className="notification-overlay"
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: notifications.length ? 'rgba(0,0,0,0.3)' : 'transparent',
+            pointerEvents: notifications.length ? 'auto' : 'none',
+            zIndex: 20001,
+            transition: 'background-color 0.2s'
+          }}
+          onClick={() => setNotifications([])}
+        />
+        
+        <div 
+          className="notification-content" 
+          style={{ 
+            position: 'fixed', 
+            top: '50%', 
+            left: '50%', 
+            transform: 'translate(-50%, -50%)',
+            width: '100%',
+            maxWidth: '450px', 
+            padding: '0 16px',
+            pointerEvents: 'none',
+            zIndex: 20002
+          }}
+        >
+          <AnimatePresence>
+            {notifications.map(notification => (
+              <div key={notification.id} style={{ pointerEvents: 'auto', marginBottom: '8px' }}>
+                <NotificationItem 
+                  notification={notification} 
+                  onDismiss={() => dismissNotification(notification.id)} 
+                />
+              </div>
+            ))}
+          </AnimatePresence>
+        </div>
       </div>
-    </div>
+    </NotificationContext.Provider>
   )
 }
 
@@ -140,54 +101,56 @@ const NotificationItem = ({ notification, onDismiss }) => {
   // Define styles based on notification type
   const styles = {
     success: {
-      bg: "bg-green-100 border-green-500",
-      icon: <CheckCircle className="w-8 h-8 text-green-500" />,
+      bg: "bg-green-100",
+      border: "border-green-500",
+      icon: <CheckCircle className="w-7 h-7 text-green-600" />,
       text: "text-green-800"
     },
     error: {
-      bg: "bg-red-100 border-red-500",
-      icon: <XCircle className="w-8 h-8 text-red-500" />,
+      bg: "bg-red-100",
+      border: "border-red-500",
+      icon: <XCircle className="w-7 h-7 text-red-600" />,
       text: "text-red-800"
     },
     info: {
-      bg: "bg-blue-100 border-blue-500",
-      icon: <Info className="w-8 h-8 text-blue-500" />,
+      bg: "bg-blue-100",
+      border: "border-blue-500",
+      icon: <Info className="w-7 h-7 text-blue-600" />,
       text: "text-blue-800"
     }
   }
   
-  const { bg, icon, text } = styles[notification.type] || styles.info
-
-  // Using useEffect for component mount tracking
-  useEffect(() => {
-    console.error("Notification rendered:", notification.message);
-  }, [notification.message]);
+  const { bg, border, icon, text } = styles[notification.type] || styles.info
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9, y: -20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: 20 }}
-      transition={{ duration: 0.3 }}
-      className={`rounded-xl shadow-2xl border-l-4 ${bg} py-6 px-8 flex items-center w-full sm:w-96 backdrop-blur-sm mb-4 relative mx-4 sm:mx-0`}
-      style={{ boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}
-      onClick={(e) => e.stopPropagation()} // Prevent clicks from bubbling to backdrop
+      initial={{ opacity: 0, y: -20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 20, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+      className={`${bg} ${border} border-2 rounded-lg shadow-lg overflow-hidden`}
+      onClick={(e) => e.stopPropagation()}
+      style={{ boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)' }}
     >
-      <div className="flex-shrink-0 mr-5">
-        {icon}
+      <div className="relative p-4 flex items-center">
+        <div className="flex-shrink-0 mr-3">
+          {icon}
+        </div>
+        
+        <div className={`flex-1 ${text} font-semibold`}>
+          <p className="text-lg">
+            {notification.message}
+          </p>
+        </div>
+        
+        <button
+          onClick={onDismiss}
+          className="ml-3 flex-shrink-0 rounded-full p-1 bg-white shadow hover:bg-gray-100"
+          aria-label="Close notification"
+        >
+          <X className="h-5 w-5 text-gray-600" />
+        </button>
       </div>
-      <div className={`flex-1 ${text} pr-6`}>
-        <p className="text-lg font-medium">{notification.message}</p>
-      </div>
-      
-      {/* More prominent close button */}
-      <button 
-        onClick={onDismiss}
-        className="absolute top-2 right-2 p-2 rounded-full bg-gray-300 hover:bg-gray-400 text-gray-800 hover:text-black focus:outline-none transition-all duration-200 transform hover:scale-110"
-        aria-label="Close notification"
-      >
-        <X className="w-4 h-4" />
-      </button>
     </motion.div>
   )
 } 

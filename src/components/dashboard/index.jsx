@@ -1,8 +1,7 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { ExerciseProvider } from "./ExerciseContext"
-import { NotificationProvider } from "../ui/Notification"
 import ExerciseDashboard from "./components/ExerciseDashboard"
 import { useExerciseData } from "./hooks/useExerciseData"
 
@@ -11,6 +10,9 @@ import { useExerciseData } from "./hooks/useExerciseData"
  * Integrates the ExerciseProvider, NotificationProvider, and ExerciseDashboard
  */
 const Dashboard = ({ session: initialSession, isReadOnly = false }) => {
+  // Add local state to track session status updates
+  const [sessionStatus, setSessionStatus] = useState(initialSession?.details?.status || 'unknown');
+  
   // Centralize all useExerciseData logic in the parent component
   const { 
     session, 
@@ -24,16 +26,22 @@ const Dashboard = ({ session: initialSession, isReadOnly = false }) => {
 
   // Use the session from the hook if available, otherwise use initialSession
   const currentSession = session || initialSession;
+  
+  // Update the current session with local state if needed
+  if (currentSession && currentSession.details) {
+    currentSession.details.status = sessionStatus;
+  }
 
   const handleSave = async () => {
     try {
-      // Use a small timeout to ensure all state updates have been processed
-      return new Promise((resolve) => {
-        setTimeout(async () => {
-          const result = await saveSession();
-          resolve(result);
-        }, 50); // Small delay to ensure state updates are processed
-      });
+      const result = await saveSession();
+      if (result && result.success) {
+        // Update session status from API result if available
+        if (result.status) {
+          setSessionStatus(result.status);
+        }
+      }
+      return result;
     } catch (error) {
       console.error('Failed to save session:', error);
       return { success: false, error };
@@ -42,22 +50,14 @@ const Dashboard = ({ session: initialSession, isReadOnly = false }) => {
 
   const handleComplete = async () => {
     try {
-      // Use a small timeout to ensure all state updates have been processed
-      return new Promise((resolve) => {
-        setTimeout(async () => {
-          const result = await completeSession();
-          
-          // Add a brief delay to ensure the state is updated before resolving
-          if (result.success) {
-            // Instead of immediately resolving, wait a moment to ensure UI updates
-            setTimeout(() => {
-              resolve(result);
-            }, 100);
-          } else {
-            resolve(result);
-          }
-        }, 50); // Small delay to ensure state updates are processed
-      });
+      const result = await completeSession();
+      
+      if (result && result.success) {
+        // Set the session status to completed immediately in UI
+        setSessionStatus('completed');
+      }
+      
+      return result;
     } catch (error) {
       console.error('Failed to complete session:', error);
       return { success: false, error };
@@ -70,20 +70,18 @@ const Dashboard = ({ session: initialSession, isReadOnly = false }) => {
   }
 
   return (
-    <NotificationProvider>
-      <ExerciseProvider initialData={currentSession?.details?.exercise_preset_groups?.exercise_presets}>
-        <ExerciseDashboard 
-          session={currentSession}
-          onSave={handleSave}
-          onComplete={handleComplete}
-          isReadOnly={isReadOnly}
-          // Pass down the exercise data functions
-          updateExerciseDetails={updateExerciseDetails}
-          updateTrainingDetail={updateTrainingDetail}
-          updateExerciseTrainingDetails={updateExerciseTrainingDetails}
-        />
-      </ExerciseProvider>
-    </NotificationProvider>
+    <ExerciseProvider initialData={currentSession?.details?.exercise_preset_groups?.exercise_presets}>
+      <ExerciseDashboard 
+        session={currentSession}
+        onSave={handleSave}
+        onComplete={handleComplete}
+        isReadOnly={isReadOnly || sessionStatus === 'completed'}
+        // Pass down the exercise data functions
+        updateExerciseDetails={updateExerciseDetails}
+        updateTrainingDetail={updateTrainingDetail}
+        updateExerciseTrainingDetails={updateExerciseTrainingDetails}
+      />
+    </ExerciseProvider>
   )
 }
 

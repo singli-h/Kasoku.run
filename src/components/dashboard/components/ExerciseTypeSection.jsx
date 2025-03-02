@@ -67,14 +67,17 @@ const ExerciseTypeSection = ({ type, exercises, supersets, onToggleAll, onExerci
       >
         <h2 className="text-2xl font-bold capitalize text-gray-800">{type}</h2>
         <div className="flex items-center">
-          <button
-            onClick={handleToggleAll}
-            className={`mr-4 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300 ${
-              allCompleted ? "bg-green-500 text-white" : "bg-blue-500 text-white"
-            }`}
-          >
-            {allCompleted ? "Unmark All" : "Mark All"}
-          </button>
+          {/* Only show the Mark All button if not hidden by parent */}
+          {!isSessionCompleted && (
+            <button
+              onClick={handleToggleAll}
+              className={`mr-4 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300 ${
+                allCompleted ? "bg-green-500 text-white" : "bg-blue-500 text-white"
+              }`}
+            >
+              {allCompleted ? "Unmark All" : "Mark All"}
+            </button>
+          )}
           {isOpen ? <ChevronUp className="w-8 h-8 text-gray-600" /> : <ChevronDown className="w-8 h-8 text-gray-600" />}
         </div>
       </div>
@@ -95,7 +98,7 @@ const ExerciseTypeSection = ({ type, exercises, supersets, onToggleAll, onExerci
                     exercise={item} 
                     onComplete={handleExerciseComplete} 
                     onExerciseUpdate={onExerciseUpdate} 
-                    isSessionCompleted={isSessionCompleted}
+                    isSessionCompleted={false} // Always pass false to remove disabled feature
                   />
                 )
               } else if (item.itemType === "superset") {

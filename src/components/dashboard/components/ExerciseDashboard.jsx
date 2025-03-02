@@ -3,7 +3,6 @@
 import React, { useCallback } from "react"
 import { Video, VideoOff, AlertCircle, Clock, CheckCircle } from "lucide-react"
 import { useExerciseContext } from "../ExerciseContext"
-import { useNotification } from "../../ui/Notification"
 import ExerciseTypeSection from "./ExerciseTypeSection"
 import SupersetContainer from "./SupersetContainer"
 import { ExerciseType } from "../../../types/exercise"
@@ -16,12 +15,10 @@ const ExerciseDashboard = ({
   session, 
   onSave, 
   onComplete, 
-  isReadOnly,
   updateExerciseDetails,
   updateExerciseTrainingDetails
 }) => {
   const { exercises, updateExercise, showVideo, toggleVideo } = useExerciseContext()
-  const { success, error, info } = useNotification()
 
   // Get session status
   const sessionStatus = session?.details?.status || 'unknown';
@@ -208,20 +205,10 @@ const ExerciseDashboard = ({
 
   const handleSave = async () => {
     try {
-      // Show loading notification
-      info("Saving session...");
-      
+      // Save the session without notifications
       const result = await onSave();
-      
-      if (result.success) {
-        // Show success notification with longer duration
-        success("Session progress saved successfully!", 6000);
-      } else {
-        error("Failed to save session. Please try again.");
-      }
       return result;
     } catch (err) {
-      error("An error occurred while saving the session. Please try again.");
       console.error(err);
       return { success: false, error: err };
     }
@@ -229,24 +216,10 @@ const ExerciseDashboard = ({
   
   const handleComplete = async () => {
     try {
-      // Show loading notification
-      info("Completing session...");
-      
+      // Complete or amend the session without notifications
       const result = await onComplete();
-      
-      if (result.success) {
-        // Show success notification with longer duration
-        success("Session completed successfully!", 6000);
-        // Force reload to ensure all UI elements reflect completed state
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      } else {
-        error("Failed to complete session. Please try again.");
-      }
       return result;
     } catch (err) {
-      error("An error occurred while completing the session. Please try again.");
       console.error(err);
       return { success: false, error: err };
     }
@@ -254,18 +227,6 @@ const ExerciseDashboard = ({
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen relative">
-      {/* Session Completion Overlay - shows when session is completed */}
-      {sessionStatus === 'completed' && (
-        <div className="absolute inset-0 bg-green-50 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-10 rounded-xl">
-          <div className="bg-white p-6 rounded-xl shadow-lg text-center max-w-md">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-green-700 mb-2">Session Completed!</h2>
-            <p className="text-gray-600 mb-4">
-              This training session has been completed and the data has been saved.
-            </p>
-          </div>
-        </div>
-      )}
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
@@ -323,7 +284,7 @@ const ExerciseDashboard = ({
               supersets={supersets}
               onToggleAll={handleSectionToggle}
               onExerciseUpdate={handleExerciseUpdate}
-              isSessionCompleted={sessionStatus === 'completed'}
+              isSessionCompleted={false} // Always set to false to remove disabled feature
             />
           )
         } else if (group.type === "superset") {
@@ -333,7 +294,7 @@ const ExerciseDashboard = ({
               exercises={group.exercises}
               onToggleAll={handleSectionToggle}
               onExerciseUpdate={handleExerciseUpdate}
-              isSessionCompleted={sessionStatus === 'completed'}
+              isSessionCompleted={false} // Always set to false to remove disabled feature
             />
           )
         } else {
@@ -345,30 +306,31 @@ const ExerciseDashboard = ({
               supersets={[]}
               onToggleAll={handleSectionToggle}
               onExerciseUpdate={handleExerciseUpdate}
-              isSessionCompleted={sessionStatus === 'completed'}
+              isSessionCompleted={false} // Always set to false to remove disabled feature
             />
           )
         }
       })}
 
-      {!isReadOnly && session.details.status === 'ongoing' && (
+
         <div className="mt-12 flex justify-end space-x-4">
-          <button 
-            onClick={handleSave}
-            className="bg-blue-500 text-white px-8 py-3 rounded-xl text-lg font-semibold hover:bg-blue-600 transition-colors duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-          >
-            Save Progress
-          </button>
+          {sessionStatus !== 'completed' && (
+            <button 
+              onClick={handleSave}
+              className="bg-blue-500 text-white px-8 py-3 rounded-xl text-lg font-semibold hover:bg-blue-600 transition-colors duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            >
+              Save Progress
+            </button>
+          )}
           <button 
             onClick={handleComplete}
             className="bg-green-500 text-white px-8 py-3 rounded-xl text-lg font-semibold hover:bg-green-600 transition-colors duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >
-            Complete Session
+            {sessionStatus === 'completed' ? 'Amend Session' : 'Complete Session'}
           </button>
         </div>
-      )}
     </div>
   )
 }
 
-export default ExerciseDashboard 
+export default ExerciseDashboard

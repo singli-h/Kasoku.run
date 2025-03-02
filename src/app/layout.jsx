@@ -9,7 +9,7 @@
  * - Font configuration (Inter from Google Fonts)
  * - Authentication context provider
  * - Responsive layout structure
- * - Common header component
+ * - Conditional rendering of header or sidebar based on route
  */
 
 import "./css/style.css"
@@ -17,7 +17,12 @@ import "./css/style.css"
 import { Inter } from "next/font/google"
 
 import { AuthProvider } from "../context/authContext"
-import Header from "../components/ui/header"
+import dynamic from "next/dynamic"
+
+// Dynamically import the NavigationWrapper component to avoid SSR issues
+const NavigationWrapper = dynamic(() => import("../components/ui/navigationWrapper"), {
+  ssr: false
+})
 
 // Configure the Inter font with Latin character subset
 const inter = Inter({ subsets: ["latin"] })
@@ -46,12 +51,8 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           {/* Main layout structure with flex column and minimum height */}
           <div className="flex flex-col min-h-screen overflow-hidden">
-            {/* Global header component */}
-            <Header />
-            {/* Main content area with top padding for header */}
-            <main className="grow pt-20">
-              {children}
-            </main>
+            {/* Client-side navigation component to conditionally render header or sidebar */}
+            <NavigationWrapper>{children}</NavigationWrapper>
           </div>
         </AuthProvider>
       </body>
