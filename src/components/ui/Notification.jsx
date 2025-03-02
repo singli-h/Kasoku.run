@@ -116,7 +116,7 @@ const NotificationContainer = ({ notifications, onDismiss, onDismissAll }) => {
       <div 
         className="absolute max-w-md"
         style={{ 
-          top: `calc(50% + ${scrollY}px)`, 
+          top: '50%', 
           left: '50%', 
           transform: 'translate(-50%, -50%)',
           zIndex: 10,
