@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Dumbbell, Zap, Wind, Clock, ArrowRight } from "lucide-react"
+import { Dumbbell, Zap, Wind, Clock, FoldVertical } from "lucide-react"
 
 /**
  * SetRow Component
@@ -49,7 +49,7 @@ const SetRow = ({ detail, index, onInputChange }) => {
       {detail.resistance_value !== null && (
         <td className="px-2 py-2 w-20">
           <div className="flex items-center">
-            <ArrowRight size={16} className="text-gray-400 mr-1" />
+            <FoldVertical size={16} className="text-gray-400 mr-1" />
             <input
               type="number"
               value={detail.resistance_value ?? ""}
