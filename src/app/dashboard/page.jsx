@@ -1,6 +1,6 @@
 'use client'
 
-import ExerciseDashboard from "../../components/dashboard/DashboardMain"
+import ExerciseDashboard from "../../components/dashboard/index"
 import ErrorAndLoadingOverlay from "../../components/ui/errorAndLoadingOverlay"
 import { useExerciseData } from "../../components/dashboard/hooks/useExerciseData"
 
