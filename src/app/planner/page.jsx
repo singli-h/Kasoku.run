@@ -1,4 +1,4 @@
-import MesoWizard from "../../components/mesoWizard/MesocycleWizard"
+import MesoWizard from "../../components/mesoWizard/mesoWizard"
 
 export default function PlannerPage() {
   return (

@@ -1,0 +1,171 @@
+"use client"
+
+import { useState } from "react"
+import { ChevronLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import AIRecommendations from "../components/AIRecommendations"
+
+/**
+ * Step Three: Confirmation & AI Review
+ * 
+ * This step shows a summary of the created mesocycle and provides
+ * AI-generated recommendations for optimization.
+ * 
+ * @param {Object} props - Component props
+ * @param {Object} props.formData - Form data
+ * @param {Object} props.aiSuggestions - AI suggestions data
+ * @param {Function} props.handleAcceptSuggestion - Function to handle accepting a suggestion
+ * @param {boolean} props.isLoading - Whether suggestions are loading
+ * @param {Function} props.handleBack - Function to go to the previous step
+ * @param {Function} props.handleSubmit - Function to submit the form
+ * @param {Object} props.errors - Validation errors
+ */
+const StepThreeConfirmation = ({
+  formData,
+  aiSuggestions,
+  handleAcceptSuggestion,
+  isLoading,
+  handleBack,
+  handleSubmit,
+  errors,
+}) => {
+  // Group exercises by session
+  const exercisesBySession = formData.sessions.map((session) => {
+    const sessionExercises = formData.exercises.filter((ex) => ex.session === session.id)
+    return {
+      ...session,
+      exercises: sessionExercises,
+    }
+  })
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold">Confirmation & AI Review</h2>
+      <p className="text-gray-600">
+        Review your mesocycle plan and consider AI-generated recommendations for optimization.
+      </p>
+
+      {/* AI Recommendations */}
+      <AIRecommendations
+        aiSuggestions={aiSuggestions}
+        handleAcceptSuggestion={handleAcceptSuggestion}
+        isLoading={isLoading}
+      />
+
+      {/* Mesocycle Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Mesocycle Summary</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h3 className="font-medium mb-2">Goals</h3>
+              <p className="text-sm">{formData.goals}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h3 className="font-medium mb-2">Start Date</h3>
+                <p className="text-sm">{new Date(formData.startDate).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <h3 className="font-medium mb-2">Duration</h3>
+                <p className="text-sm">{formData.duration} weeks</p>
+              </div>
+              <div>
+                <h3 className="font-medium mb-2">Sessions Per Week</h3>
+                <p className="text-sm">{formData.sessionsPerWeek}</p>
+              </div>
+              <div>
+                <h3 className="font-medium mb-2">Total Sessions</h3>
+                <p className="text-sm">{formData.sessions.length}</p>
+              </div>
+            </div>
+          </div>
+
+          {formData.specialConstraints && (
+            <div>
+              <h3 className="font-medium mb-2">Special Constraints</h3>
+              <p className="text-sm">{formData.specialConstraints}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Session Details */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Session Details</h3>
+        {exercisesBySession.map((session) => (
+          <Card key={session.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{session.name}</CardTitle>
+              {session.progressionModel && (
+                <Badge variant="outline" className="mt-1">
+                  {session.progressionModel} Progression
+                </Badge>
+              )}
+            </CardHeader>
+            <CardContent>
+              {session.progressionValue && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-1">Progression Details</h4>
+                  <p className="text-sm text-gray-600">{session.progressionValue}</p>
+                </div>
+              )}
+
+              <h4 className="text-sm font-medium mb-2">Exercises</h4>
+              {session.exercises.length === 0 ? (
+                <p className="text-sm text-gray-500">No exercises added to this session.</p>
+              ) : (
+                <div className="space-y-2">
+                  {/* Group exercises by part/section */}
+                  {Array.from(new Set(session.exercises.map((ex) => ex.part))).map((part) => {
+                    const partExercises = session.exercises.filter((ex) => ex.part === part)
+                    return (
+                      <div key={part} className="border rounded-md p-3">
+                        <h5 className="text-sm font-medium mb-2 capitalize">{part}</h5>
+                        <div className="space-y-2">
+                          {partExercises.map((exercise) => (
+                            <div key={exercise.id} className="flex items-center justify-between text-sm">
+                              <span>{exercise.name}</span>
+                              <span>
+                                {exercise.sets} × {exercise.reps}
+                                {exercise.oneRepMax && ` @ ${exercise.oneRepMax}%`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Error message */}
+      {errors.submit && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {errors.submit}
+        </div>
+      )}
+
+      {/* Navigation Buttons */}
+      <div className="flex justify-between">
+        <Button onClick={handleBack} variant="outline" className="px-6">
+          <ChevronLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <Button onClick={handleSubmit} className="px-6">
+          Create Mesocycle
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export default StepThreeConfirmation 

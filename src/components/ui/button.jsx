@@ -62,4 +62,5 @@ Button.defaultProps = {
   className: '',
 }
 
+export { Button }
 export default Button
