@@ -25,13 +25,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
  * @param {Function} props.handleNext - Function to go to the next step
  */
 const StepOneOverview = ({ formData, handleInputChange, errors, handleNext }) => {
-  const [showAIRecommendations, setShowAIRecommendations] = useState(false)
+  const [openTooltip, setOpenTooltip] = useState(null);
   
-  // Mock AI recommendations
-  const aiRecommendations = {
-    duration: "4-6 weeks is optimal for a strength-focused mesocycle",
-    sessionsPerWeek: "3-4 sessions per week allows for adequate recovery",
-  }
+  const handleTooltipClick = (tooltipId) => {
+    setOpenTooltip(openTooltip === tooltipId ? null : tooltipId);
+  };
   
   return (
     <div className="space-y-6">
@@ -50,11 +48,14 @@ const StepOneOverview = ({ formData, handleInputChange, errors, handleNext }) =>
                   Goals
                 </Label>
                 <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-gray-400" />
+                  <Tooltip open={openTooltip === "goals"}>
+                    <TooltipTrigger asChild onClick={() => handleTooltipClick("goals")}>
+                      <Info className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-500" />
                     </TooltipTrigger>
-                    <TooltipContent>
+                    <TooltipContent 
+                      className="bg-white border border-gray-200 shadow-md z-50" 
+                      sideOffset={5}
+                    >
                       <p className="w-80">
                         Define what you want to achieve with this mesocycle. Be specific about strength, hypertrophy, 
                         power, or other goals.
@@ -69,57 +70,70 @@ const StepOneOverview = ({ formData, handleInputChange, errors, handleNext }) =>
                 value={formData.goals}
                 onChange={handleInputChange}
                 placeholder="e.g., Increase squat 1RM by 10kg, improve upper body hypertrophy"
-                className={`mt-1 ${errors.goals ? "border-red-500" : ""}`}
+                className={`mt-1 min-h-[100px] ${errors.goals ? "border-red-500" : ""}`}
               />
               {errors.goals && <p className="mt-1 text-sm text-red-500">{errors.goals}</p>}
             </div>
             
-            {/* Start Date */}
-            <div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="startDate" className="text-base font-medium">
-                  Start Date
-                </Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-gray-400" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>When will you start this mesocycle?</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+            {/* Start Date, Duration, Sessions Per Week in one row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Start Date */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="startDate" className="text-base font-medium">
+                    Start Date
+                  </Label>
+                  <TooltipProvider>
+                    <Tooltip open={openTooltip === "startDate"}>
+                      <TooltipTrigger asChild onClick={() => handleTooltipClick("startDate")}>
+                        <Info className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-500" />
+                      </TooltipTrigger>
+                      <TooltipContent 
+                        className="bg-white border border-gray-200 shadow-md z-50" 
+                        sideOffset={5}
+                      >
+                        <p>When will you start this mesocycle?</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="startDate"
+                    name="startDate"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={handleInputChange}
+                    className={`mt-1 h-12 ${errors.startDate ? "border-red-500" : ""} cursor-pointer`}
+                    onClick={(e) => {
+                      // Focus and open the date picker when clicking anywhere in the input
+                      e.target.showPicker();
+                    }}
+                  />
+                  {errors.startDate && <p className="mt-1 text-sm text-red-500">{errors.startDate}</p>}
+                </div>
               </div>
-              <Input
-                id="startDate"
-                name="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={handleInputChange}
-                className={`mt-1 ${errors.startDate ? "border-red-500" : ""}`}
-              />
-              {errors.startDate && <p className="mt-1 text-sm text-red-500">{errors.startDate}</p>}
-            </div>
-            
-            {/* Duration */}
-            <div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="duration" className="text-base font-medium">
-                  Duration (weeks)
-                </Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-gray-400" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>How many weeks will this mesocycle last? Typically 4-8 weeks.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <div className="flex items-center gap-2">
+              
+              {/* Duration */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="duration" className="text-base font-medium">
+                    Duration (weeks)
+                  </Label>
+                  <TooltipProvider>
+                    <Tooltip open={openTooltip === "duration"}>
+                      <TooltipTrigger asChild onClick={() => handleTooltipClick("duration")}>
+                        <Info className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-500" />
+                      </TooltipTrigger>
+                      <TooltipContent 
+                        className="bg-white border border-gray-200 shadow-md z-50" 
+                        sideOffset={5}
+                      >
+                        <p>How many weeks will this mesocycle last? Typically 4-8 weeks.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <Input
                   id="duration"
                   name="duration"
@@ -129,41 +143,31 @@ const StepOneOverview = ({ formData, handleInputChange, errors, handleNext }) =>
                   value={formData.duration}
                   onChange={handleInputChange}
                   placeholder="e.g., 6"
-                  className={`mt-1 ${errors.duration ? "border-red-500" : ""}`}
+                  className={`mt-1 h-12 ${errors.duration ? "border-red-500" : ""}`}
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-1"
-                  onClick={() => setShowAIRecommendations(!showAIRecommendations)}
-                >
-                  AI Suggest
-                </Button>
+                {errors.duration && <p className="mt-1 text-sm text-red-500">{errors.duration}</p>}
               </div>
-              {errors.duration && <p className="mt-1 text-sm text-red-500">{errors.duration}</p>}
-              {showAIRecommendations && (
-                <p className="mt-2 text-sm text-blue-600">{aiRecommendations.duration}</p>
-              )}
-            </div>
-            
-            {/* Sessions Per Week */}
-            <div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="sessionsPerWeek" className="text-base font-medium">
-                  Sessions Per Week
-                </Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-gray-400" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>How many training sessions will you have each week?</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <div className="flex items-center gap-2">
+              
+              {/* Sessions Per Week */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="sessionsPerWeek" className="text-base font-medium">
+                    Sessions Per Week
+                  </Label>
+                  <TooltipProvider>
+                    <Tooltip open={openTooltip === "sessionsPerWeek"}>
+                      <TooltipTrigger asChild onClick={() => handleTooltipClick("sessionsPerWeek")}>
+                        <Info className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-500" />
+                      </TooltipTrigger>
+                      <TooltipContent 
+                        className="bg-white border border-gray-200 shadow-md z-50" 
+                        sideOffset={5}
+                      >
+                        <p>How many training sessions will you have each week?</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <Input
                   id="sessionsPerWeek"
                   name="sessionsPerWeek"
@@ -173,23 +177,12 @@ const StepOneOverview = ({ formData, handleInputChange, errors, handleNext }) =>
                   value={formData.sessionsPerWeek}
                   onChange={handleInputChange}
                   placeholder="e.g., 4"
-                  className={`mt-1 ${errors.sessionsPerWeek ? "border-red-500" : ""}`}
+                  className={`mt-1 h-12 ${errors.sessionsPerWeek ? "border-red-500" : ""}`}
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-1"
-                  onClick={() => setShowAIRecommendations(!showAIRecommendations)}
-                >
-                  AI Suggest
-                </Button>
+                {errors.sessionsPerWeek && (
+                  <p className="mt-1 text-sm text-red-500">{errors.sessionsPerWeek}</p>
+                )}
               </div>
-              {errors.sessionsPerWeek && (
-                <p className="mt-1 text-sm text-red-500">{errors.sessionsPerWeek}</p>
-              )}
-              {showAIRecommendations && (
-                <p className="mt-2 text-sm text-blue-600">{aiRecommendations.sessionsPerWeek}</p>
-              )}
             </div>
           </div>
         </CardContent>

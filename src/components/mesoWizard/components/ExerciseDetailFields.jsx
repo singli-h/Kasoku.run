@@ -1,216 +1,185 @@
 "use client"
 
-import { memo } from "react"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 /**
  * Exercise Detail Fields Component
  * 
- * Displays and manages exercise-specific detail fields based on exercise type.
- * Fields include 1RM%, power, velocity, distance, height, effort, etc.
+ * Allows users to edit exercise details such as sets, reps, weight, etc.
  * 
  * @param {Object} props - Component props
- * @param {Object} props.exercise - Exercise data
+ * @param {Object} props.exercise - Exercise to edit
  * @param {Function} props.handleExerciseDetailChange - Function to handle detail changes
- * @param {Object} props.errors - Validation errors
  */
-const ExerciseDetailFields = memo(({ exercise, handleExerciseDetailChange, errors = {} }) => {
-  // Determine which fields to show based on exercise type
-  const showOneRepMax = exercise.part === "gym"
-  const showPlyometricFields = exercise.part === "plyometric"
-  const showSprintFields = exercise.part === "sprint"
-  const showIsometricFields = exercise.part === "isometric"
-
+const ExerciseDetailFields = ({ exercise, handleExerciseDetailChange }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  
+  // Handle input change
+  const handleInputChange = (field, value) => {
+    handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, field, value)
+  }
+  
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="text-xs sm:text-sm h-8 px-2 sm:px-3">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-8 px-3 text-xs sm:text-sm"
+        >
           Edit Details
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56 p-2">
-        <div className="space-y-2 p-2">
-          {/* 1RM% Field - For gym exercises */}
-          {showOneRepMax && (
-            <div>
-              <Label htmlFor={`${exercise.id}-1rm`} className="text-xs">
-                1RM (%)
-              </Label>
-              <Input
-                id={`${exercise.id}-1rm`}
-                type="text"
-                value={exercise.oneRepMax || ""}
-                onChange={(e) => {
-                  const value = e.target.value
-                  // Only allow numeric input
-                  if (value === "" || /^\d+$/.test(value)) {
-                    handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, "oneRepMax", value)
-                  }
-                }}
-                className={`mt-1 ${
-                  errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-oneRepMax`] ? "border-red-500" : ""
-                }`}
-              />
-              {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-oneRepMax`] && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-oneRepMax`]}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Power & Velocity Fields - For gym and powerlifting exercises */}
-          {(showOneRepMax || exercise.type === "powerlifting") && (
-            <>
-              <div>
-                <Label htmlFor={`${exercise.id}-power`} className="text-xs">
-                  Power (W)
-                </Label>
-                <Input
-                  id={`${exercise.id}-power`}
-                  type="text"
-                  value={exercise.power || ""}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    // Only allow numeric input
-                    if (value === "" || /^\d+$/.test(value)) {
-                      handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, "power", value)
-                    }
-                  }}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor={`${exercise.id}-velocity`} className="text-xs">
-                  Velocity (m/s)
-                </Label>
-                <Input
-                  id={`${exercise.id}-velocity`}
-                  type="text"
-                  value={exercise.velocity || ""}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    // Only allow numeric input with decimal point
-                    if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                      handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, "velocity", value)
-                    }
-                  }}
-                  className="mt-1"
-                />
-              </div>
-            </>
-          )}
-
-          {/* Distance & Height Fields - For plyometric and sprint exercises */}
-          {(showPlyometricFields || showSprintFields) && (
-            <>
-              <div>
-                <Label htmlFor={`${exercise.id}-distance`} className="text-xs">
-                  Distance (m)
-                </Label>
-                <Input
-                  id={`${exercise.id}-distance`}
-                  type="text"
-                  value={exercise.distance || ""}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    // Only allow numeric input with decimal point
-                    if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                      handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, "distance", value)
-                    }
-                  }}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor={`${exercise.id}-height`} className="text-xs">
-                  Height (cm)
-                </Label>
-                <Input
-                  id={`${exercise.id}-height`}
-                  type="text"
-                  value={exercise.height || ""}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    // Only allow numeric input with decimal point
-                    if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                      handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, "height", value)
-                    }
-                  }}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor={`${exercise.id}-performing-time`} className="text-xs">
-                  Performing Time (sec)
-                </Label>
-                <Input
-                  id={`${exercise.id}-performing-time`}
-                  type="text"
-                  value={exercise.performing_time || ""}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    // Only allow numeric input with decimal point
-                    if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                      handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, "performing_time", value)
-                    }
-                  }}
-                  className="mt-1"
-                />
-              </div>
-            </>
-          )}
-
-          {/* Hold Time Field - For isometric exercises */}
-          {showIsometricFields && (
-            <div>
-              <Label htmlFor={`${exercise.id}-hold-time`} className="text-xs">
-                Hold Time (sec)
-              </Label>
-              <Input
-                id={`${exercise.id}-hold-time`}
-                type="text"
-                value={exercise.performing_time || ""}
-                onChange={(e) => {
-                  const value = e.target.value
-                  // Only allow numeric input with decimal point
-                  if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                    handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, "performing_time", value)
-                  }
-                }}
-                className="mt-1"
-              />
-            </div>
-          )}
-
-          {/* Effort Field - For all exercises */}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-lg">
+        <DialogHeader className="bg-white">
+          <DialogTitle>Edit Exercise Details</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-2 bg-white max-h-[400px] overflow-y-auto pr-2">
+          {/* Effort */}
           <div>
-            <Label htmlFor={`${exercise.id}-effort`} className="text-xs">
+            <Label htmlFor="effort" className="text-base font-medium">
               Effort (%)
             </Label>
             <Input
-              id={`${exercise.id}-effort`}
-              type="text"
+              id="effort"
+              type="number"
+              min="0"
+              max="100"
+              step="5"
               value={exercise.effort || ""}
-              onChange={(e) => {
-                const value = e.target.value
-                // Only allow numeric input with decimal point
-                if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                  handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, "effort", value)
-                }
-              }}
-              className="mt-1"
+              onChange={(e) => handleInputChange("effort", parseFloat(e.target.value) || "")}
+              className="mt-1 h-12 text-base"
+            />
+          </div>
+          
+          {/* Velocity */}
+          <div>
+            <Label htmlFor="velocity" className="text-base font-medium">
+              Velocity (m/s)
+            </Label>
+            <Input
+              id="velocity"
+              type="number"
+              min="0"
+              step="0.1"
+              value={exercise.velocity || ""}
+              onChange={(e) => handleInputChange("velocity", parseFloat(e.target.value) || "")}
+              className="mt-1 h-12 text-base"
+            />
+          </div>
+          
+          {/* Power */}
+          <div>
+            <Label htmlFor="power" className="text-base font-medium">
+              Power (W)
+            </Label>
+            <Input
+              id="power"
+              type="number"
+              min="0"
+              step="1"
+              value={exercise.power || ""}
+              onChange={(e) => handleInputChange("power", parseFloat(e.target.value) || "")}
+              className="mt-1 h-12 text-base"
+            />
+          </div>
+          
+          {/* Distance */}
+          <div>
+            <Label htmlFor="distance" className="text-base font-medium">
+              Distance (m)
+            </Label>
+            <Input
+              id="distance"
+              type="number"
+              min="0"
+              step="0.1"
+              value={exercise.distance || ""}
+              onChange={(e) => handleInputChange("distance", parseFloat(e.target.value) || "")}
+              className="mt-1 h-12 text-base"
+            />
+          </div>
+          
+          {/* Height */}
+          <div>
+            <Label htmlFor="height" className="text-base font-medium">
+              Height (cm)
+            </Label>
+            <Input
+              id="height"
+              type="number"
+              min="0"
+              step="0.1"
+              value={exercise.height || ""}
+              onChange={(e) => handleInputChange("height", parseFloat(e.target.value) || "")}
+              className="mt-1 h-12 text-base"
+            />
+          </div>
+          
+          {/* Performing Time */}
+          <div>
+            <Label htmlFor="performing_time" className="text-base font-medium">
+              Performing Time (sec)
+            </Label>
+            <Input
+              id="performing_time"
+              type="number"
+              min="0"
+              step="0.1"
+              value={exercise.performing_time || ""}
+              onChange={(e) => handleInputChange("performing_time", parseFloat(e.target.value) || "")}
+              className="mt-1 h-12 text-base"
+            />
+          </div>
+          
+          {/* Resistance Value */}
+          <div>
+            <Label htmlFor="resistance_value" className="text-base font-medium">
+              Resistance Value
+            </Label>
+            <Input
+              id="resistance_value"
+              type="number"
+              min="0"
+              step="0.1"
+              value={exercise.resistance_value || ""}
+              onChange={(e) => handleInputChange("resistance_value", parseFloat(e.target.value) || "")}
+              className="mt-1 h-12 text-base"
+            />
+          </div>
+          
+          {/* Resistance Unit */}
+          <div>
+            <Label htmlFor="resistance_unit_id" className="text-base font-medium">
+              Resistance Unit
+            </Label>
+            <Input
+              id="resistance_unit_id"
+              type="number"
+              min="1"
+              value={exercise.resistance_unit_id || ""}
+              onChange={(e) => handleInputChange("resistance_unit_id", parseInt(e.target.value) || "")}
+              className="mt-1 h-12 text-base"
             />
           </div>
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        
+        <div className="flex justify-end mt-4">
+          <Button 
+            onClick={() => setIsOpen(false)}
+            className="px-6 py-2 text-base"
+          >
+            Done
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
-})
-
-ExerciseDetailFields.displayName = "ExerciseDetailFields"
+}
 
 export default ExerciseDetailFields 

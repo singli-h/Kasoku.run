@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, memo } from "react"
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
 import {
-  X,
   Flame,
   Dumbbell,
   RotateCcw,
@@ -13,15 +12,17 @@ import {
   Target,
   PlusCircle,
   GripVertical,
+  Trash2,
+  Search,
+  Plus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu"
-import ExerciseSelector from "./ExerciseSelector"
-import ExerciseDetailFields from "./ExerciseDetailFields"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { ExerciseType } from "@/types/exercise"
 
 /**
  * Exercise Section Manager Component
@@ -38,10 +39,8 @@ import ExerciseDetailFields from "./ExerciseDetailFields"
  * @param {Array} props.filteredExercises - Filtered exercises
  * @param {Function} props.handleAddExercise - Function to add an exercise
  * @param {Function} props.handleRemoveExercise - Function to remove an exercise
- * @param {Function} props.handleExerciseDetailChange - Function to handle exercise detail changes
  * @param {Function} props.handleExerciseReorder - Function to handle exercise reordering
  * @param {Function} props.getOrderedExercises - Function to get ordered exercises for a section
- * @param {Object} props.errors - Validation errors
  * @param {Array} props.activeSections - Active sections for this session
  * @param {Function} props.setActiveSections - Function to set active sections
  */
@@ -51,10 +50,8 @@ const ExerciseSectionManager = memo(({
   filteredExercises,
   handleAddExercise,
   handleRemoveExercise,
-  handleExerciseDetailChange,
   handleExerciseReorder,
   getOrderedExercises,
-  errors = {},
   activeSections = [],
   setActiveSections,
 }) => {
@@ -64,16 +61,22 @@ const ExerciseSectionManager = memo(({
   // State for drag operation
   const [isDragging, setIsDragging] = useState(false)
   const [longPressTimer, setLongPressTimer] = useState(null)
+
+  // State for section search terms
+  const [sectionSearchTerms, setSectionSearchTerms] = useState({})
   
-  // Available section types
+  // Loading state (simulated for this example)
+  const [isLoading, setIsLoading] = useState(false)
+  
+  // Available section types based on ExerciseType enum
   const sectionTypes = [
-    { id: "warmup", name: "Warm-up", icon: <Flame className="h-4 w-4" /> },
-    { id: "gym", name: "Gym Exercises", icon: <Dumbbell className="h-4 w-4" /> },
-    { id: "circuit", name: "Circuits", icon: <RotateCcw className="h-4 w-4" /> },
-    { id: "plyometric", name: "Plyometrics", icon: <ArrowUpCircle className="h-4 w-4" /> },
-    { id: "isometric", name: "Isometrics", icon: <Pause className="h-4 w-4" /> },
-    { id: "sprint", name: "Sprints", icon: <Timer className="h-4 w-4" /> },
-    { id: "drill", name: "Drills", icon: <Target className="h-4 w-4" /> },
+    { id: "warmup", name: "Warm-up", icon: <Flame className="h-4 w-4" />, typeId: ExerciseType.WarmUp },
+    { id: "gym", name: "Gym Exercises", icon: <Dumbbell className="h-4 w-4" />, typeId: ExerciseType.Gym },
+    { id: "circuit", name: "Circuits", icon: <RotateCcw className="h-4 w-4" />, typeId: ExerciseType.Circuit },
+    { id: "plyometric", name: "Plyometrics", icon: <ArrowUpCircle className="h-4 w-4" />, typeId: ExerciseType.Plyometric },
+    { id: "isometric", name: "Isometrics", icon: <Pause className="h-4 w-4" />, typeId: ExerciseType.Isometric },
+    { id: "sprint", name: "Sprints", icon: <Timer className="h-4 w-4" />, typeId: ExerciseType.Sprint },
+    { id: "drill", name: "Drills", icon: <Target className="h-4 w-4" />, typeId: ExerciseType.Drill },
   ]
   
   // Initialize expanded sections
@@ -166,7 +169,7 @@ const ExerciseSectionManager = memo(({
   }, [activeSections])
   
   // Handle mouse/touch down on section header for drag initiation
-  const handleSectionMouseDown = useCallback((sectionId) => {
+  const handleSectionMouseDown = useCallback(() => {
     // Start a timer for long press
     const timer = setTimeout(() => {
       setIsDragging(true)
@@ -200,6 +203,42 @@ const ExerciseSectionManager = memo(({
   const getSectionExercises = useCallback((sectionId) => {
     return getOrderedExercises(sessionId, sectionId)
   }, [getOrderedExercises, sessionId])
+
+  // Handle search change for a specific section
+  const handleSearchChange = useCallback((sectionId, e) => {
+    setSectionSearchTerms(prev => ({
+      ...prev,
+      [sectionId]: e.target.value
+    }));
+    
+    // Simulate loading state briefly when searching
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 300);
+  }, []);
+
+  // Get filtered exercises for a specific section
+  const getFilteredExercisesForSection = useCallback((sectionId) => {
+    // Filter exercises by section type
+    const sectionExercises = filteredExercises.filter(ex => ex.type === sectionId);
+    const searchTerm = sectionSearchTerms[sectionId] || '';
+    
+    if (!searchTerm.trim()) {
+      return sectionExercises;
+    }
+    
+    // Filter by search term
+    return sectionExercises.filter(ex => 
+      ex.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ex.category && ex.category.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [filteredExercises, sectionSearchTerms]);
+
+  // Check if exercise is already added
+  const isExerciseAdded = useCallback((exerciseId) => {
+    return exercises.some(ex => ex.id === exerciseId);
+  }, [exercises]);
   
   return (
     <Card>
@@ -217,24 +256,39 @@ const ExerciseSectionManager = memo(({
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="flex items-center gap-1 bg-white">
                   <PlusCircle className="h-4 w-4" />
                   <span>Add Section</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent 
+                align="end" 
+                className="bg-white border-2 border-blue-500 shadow-lg z-[9999] p-3 rounded-md min-w-[200px]"
+              >
+                {/* Debug: Shows the number of items */}
+                <div className="text-sm font-medium mb-2 text-gray-700 border-b pb-1">
+                  Available sections: {sectionTypes.filter((type) => !activeSections.includes(type.id)).length}
+                </div>
+                
                 {sectionTypes
                   .filter((type) => !activeSections.includes(type.id))
                   .map((type) => (
                     <DropdownMenuItem
                       key={type.id}
                       onClick={() => handleAddSection(type.id)}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 cursor-pointer hover:bg-blue-50 rounded-md p-2 my-1"
                     >
-                      {type.icon}
-                      <span>{type.name}</span>
+                      <div className="text-blue-500">
+                        {type.icon}
+                      </div>
+                      <span className="text-gray-800 font-medium">{type.name}</span>
                     </DropdownMenuItem>
                   ))}
+                {sectionTypes.filter((type) => !activeSections.includes(type.id)).length === 0 && (
+                  <DropdownMenuItem disabled className="p-2">
+                    <span className="text-gray-400">All section types added</span>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -258,111 +312,156 @@ const ExerciseSectionManager = memo(({
                       >
                         {/* Section Header - Clickable for toggle, draggable with long press */}
                         <div 
-                          className={`relative bg-gray-50 p-3 flex items-center justify-between cursor-pointer ${isDragging ? 'cursor-grabbing' : ''}`}
+                          className={`relative bg-gray-50 p-3 flex items-center justify-between cursor-pointer ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                           onClick={() => toggleSection(sectionId)}
-                          onMouseDown={() => handleSectionMouseDown(sectionId)}
+                          onMouseDown={() => handleSectionMouseDown()}
                           onMouseUp={handleSectionMouseUp}
-                          onTouchStart={() => handleSectionMouseDown(sectionId)}
+                          onTouchStart={() => handleSectionMouseDown()}
                           onTouchEnd={handleSectionMouseUp}
                           {...provided.dragHandleProps}
                         >
                           <div className="flex items-center gap-2">
-                            <div className="cursor-grab">
-                              <GripVertical className="h-4 w-4 text-gray-400" />
-                            </div>
+                            <GripVertical className="h-4 w-4 text-gray-400" />
                             {getSectionIcon(sectionId)}
                             <span className="font-medium">{getSectionName(sectionId)}</span>
                             <Badge variant="outline" className="ml-2">
                               {getSectionExercises(sectionId).length} exercises
                             </Badge>
                           </div>
-                          {/* Delete button positioned absolutely at the right */}
+                          {/* Delete button with improved visibility - using Trash2 icon */}
                           <Button
-                            variant="ghost"
+                            variant="destructive"
                             size="sm"
-                            className="h-8 w-8 p-0 text-red-500 absolute right-2 top-1/2 transform -translate-y-1/2"
+                            className="h-8 w-8 p-0 absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full flex items-center justify-center z-10"
                             onClick={(e) => {
                               e.stopPropagation(); // Prevent toggle
                               handleRemoveSection(sectionId);
                             }}
                           >
-                            <X className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                         
                         {expandedSections.includes(sectionId) && (
                           <div className="p-3">
-                            <div className="flex justify-end mb-3">
-                              <ExerciseSelector
-                                sectionId={sectionId}
-                                sessionId={sessionId}
-                                exercises={exercises}
-                                allExercises={filteredExercises}
-                                handleAddExercise={handleAddExercise}
-                              />
-                            </div>
-                            
-                            <DragDropContext onDragEnd={onExerciseDragEnd}>
-                              <Droppable droppableId={String(sectionId)}>
-                                {(provided) => (
-                                  <div
-                                    {...provided.droppableProps}
-                                    ref={provided.innerRef}
-                                    className="space-y-2"
-                                  >
-                                    {getSectionExercises(sectionId).length === 0 ? (
-                                      <p className="text-sm text-gray-500 text-center py-4">
-                                        No exercises added to this section yet.
-                                      </p>
-                                    ) : (
-                                      getSectionExercises(sectionId).map((exercise, index) => (
-                                        <Draggable
-                                          key={String(exercise.id)}
-                                          draggableId={String(exercise.id)}
-                                          index={index}
-                                        >
-                                          {(provided) => (
-                                            <div
-                                              ref={provided.innerRef}
-                                              {...provided.draggableProps}
-                                              className="border rounded-md p-3 bg-white relative"
-                                            >
-                                              <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                  <div {...provided.dragHandleProps} className="cursor-grab">
-                                                    <GripVertical className="h-4 w-4 text-gray-400" />
-                                                  </div>
-                                                  <div>
-                                                    <p className="font-medium">{exercise.name}</p>
-                                                    <Badge variant="outline" className="mt-1">
-                                                      {exercise.category}
-                                                    </Badge>
-                                                  </div>
-                                                </div>
-                                                {/* Delete button positioned absolutely at the right */}
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  className="h-8 w-8 p-0 text-red-500 absolute right-2 top-1/2 transform -translate-y-1/2"
-                                                  onClick={() => 
-                                                    handleRemoveExercise(exercise.id, exercise.session, exercise.part)
-                                                  }
-                                                >
-                                                  <X className="h-4 w-4" />
-                                                </Button>
-                                              </div>
-                                              
-                                              {/* Exercise details will be moved to the Timeline view */}
-                                            </div>
-                                          )}
-                                        </Draggable>
-                                      ))
-                                    )}
-                                    {provided.placeholder}
+                            {/* New inline exercise search and grid */}
+                            <div className="space-y-3">
+                              <div className="flex items-center space-x-2">
+                                <Search className="w-5 h-5 text-gray-400" />
+                                <Input
+                                  type="text"
+                                  placeholder={`Search ${getSectionName(sectionId).toLowerCase()} exercises...`}
+                                  onChange={(e) => handleSearchChange(sectionId, e)}
+                                  value={sectionSearchTerms[sectionId] || ''}
+                                  className="flex-grow"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[200px] overflow-y-auto p-2 bg-gray-50 rounded-md">
+                                {isLoading ? (
+                                  // Show skeletons while loading
+                                  Array(6)
+                                    .fill(0)
+                                    .map((_, i) => (
+                                      <div key={i} className="flex items-center space-x-2 p-2 border rounded-md bg-white">
+                                        <div className="flex-1">
+                                          <Skeleton className="h-4 w-3/4 mb-2" />
+                                          <Skeleton className="h-3 w-1/2" />
+                                        </div>
+                                        <Skeleton className="h-6 w-6 rounded-full" />
+                                      </div>
+                                    ))
+                                ) : getFilteredExercisesForSection(sectionId).length === 0 ? (
+                                  <div className="col-span-full text-center py-4 text-gray-500">
+                                    No exercises found. Try a different search term.
                                   </div>
+                                ) : (
+                                  getFilteredExercisesForSection(sectionId).map((exercise) => (
+                                    <Button
+                                      key={exercise.id}
+                                      type="button"
+                                      variant="outline"
+                                      className="justify-between text-left h-auto py-2 bg-white hover:bg-gray-50"
+                                      onClick={() => handleAddExercise({ ...exercise, part: sectionId })}
+                                      disabled={isExerciseAdded(exercise.id)}
+                                    >
+                                      <div>
+                                        <div className="font-medium text-sm">{exercise.name}</div>
+                                        <div className="text-xs text-gray-500">{exercise.category}</div>
+                                      </div>
+                                      <Plus className="w-4 h-4 flex-shrink-0 ml-2" />
+                                    </Button>
+                                  ))
                                 )}
-                              </Droppable>
-                            </DragDropContext>
+                              </div>
+                            </div>
+
+                            {/* Existing exercises list */}
+                            <div className="mt-4">
+                              <h4 className="text-sm font-medium text-gray-700 mb-2">Added Exercises</h4>
+                              <DragDropContext onDragEnd={onExerciseDragEnd}>
+                                <Droppable droppableId={String(sectionId)}>
+                                  {(provided) => (
+                                    <div
+                                      {...provided.droppableProps}
+                                      ref={provided.innerRef}
+                                      className="space-y-2"
+                                    >
+                                      {getSectionExercises(sectionId).length === 0 ? (
+                                        <p className="text-sm text-gray-500 text-center py-4">
+                                          No exercises added to this section yet.
+                                        </p>
+                                      ) : (
+                                        getSectionExercises(sectionId).map((exercise, index) => (
+                                          <Draggable
+                                            key={String(exercise.id)}
+                                            draggableId={String(exercise.id)}
+                                            index={index}
+                                          >
+                                            {(provided) => (
+                                              <div
+                                                ref={provided.innerRef}
+                                                {...provided.draggableProps}
+                                                className="border rounded-md p-3 bg-white relative"
+                                              >
+                                                <div {...provided.dragHandleProps} className="flex items-center justify-between cursor-grab">
+                                                  <div className="flex items-center gap-2">
+                                                    <div className="cursor-grab">
+                                                      <GripVertical className="h-4 w-4 text-gray-400" />
+                                                    </div>
+                                                    <div>
+                                                      <p className="font-medium">{exercise.name}</p>
+                                                      <Badge variant="outline" className="mt-1">
+                                                        {exercise.category}
+                                                      </Badge>
+                                                    </div>
+                                                  </div>
+                                                  {/* Delete button with improved visibility - using Trash2 icon */}
+                                                  <Button
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full flex items-center justify-center z-10"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleRemoveExercise(exercise.id, exercise.session, exercise.part);
+                                                    }}
+                                                  >
+                                                    <Trash2 className="h-4 w-4" />
+                                                  </Button>
+                                                </div>
+                                                
+                                                {/* Exercise details will be moved to the Timeline view */}
+                                              </div>
+                                            )}
+                                          </Draggable>
+                                        ))
+                                      )}
+                                      {provided.placeholder}
+                                    </div>
+                                  )}
+                                </Droppable>
+                              </DragDropContext>
+                            </div>
                           </div>
                         )}
                       </div>

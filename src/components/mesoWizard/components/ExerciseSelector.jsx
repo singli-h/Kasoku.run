@@ -63,18 +63,23 @@ const ExerciseSelector = memo(({
         <Button 
           variant="outline" 
           size="sm" 
-          className="flex items-center gap-1 text-xs sm:text-sm h-8"
+          className="flex items-center gap-1 text-xs sm:text-sm h-8 bg-white"
         >
           <Plus className="h-3.5 w-3.5" />
           <span>Add Exercise</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md bg-white border-2 border-gray-300 shadow-lg z-[9999]">
+        <DialogHeader className="bg-white">
           <DialogTitle>Add Exercise to {sectionId.charAt(0).toUpperCase() + sectionId.slice(1)}</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 bg-white">
+          {/* Debug info */}
+          <div className="text-xs text-blue-600 mb-2">
+            Total available exercises: {filteredExercises.length} | Already added: {addedExerciseIds.length}
+          </div>
+          
           {/* Search input */}
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -88,7 +93,7 @@ const ExerciseSelector = memo(({
           </div>
           
           {/* Exercise list */}
-          <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
+          <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 bg-white">
             {filteredExercises.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-4">
                 No exercises found. Try a different search term.
@@ -100,7 +105,7 @@ const ExerciseSelector = memo(({
                 return (
                   <div
                     key={exercise.id}
-                    className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50"
+                    className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 bg-white border border-gray-100"
                   >
                     <div>
                       <p className="font-medium text-sm">{exercise.name}</p>
