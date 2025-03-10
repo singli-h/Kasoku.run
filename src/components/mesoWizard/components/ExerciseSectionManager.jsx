@@ -19,10 +19,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ExerciseType } from "@/types/exercise"
+import SupersetContainer from "./SupersetContainer"
+import ExerciseContextMenu from "./ExerciseContextMenu"
+import { TestDropdown } from "./TestDropdown"
+import React, { Fragment } from 'react'
+import { Menu, Transition } from '@headlessui/react'
 
 /**
  * Exercise Section Manager Component
@@ -40,6 +44,7 @@ import { ExerciseType } from "@/types/exercise"
  * @param {Function} props.handleAddExercise - Function to add an exercise
  * @param {Function} props.handleRemoveExercise - Function to remove an exercise
  * @param {Function} props.handleExerciseReorder - Function to handle exercise reordering
+ * @param {Function} props.handleExerciseDetailChange - Function to handle exercise detail changes
  * @param {Function} props.getOrderedExercises - Function to get ordered exercises for a section
  * @param {Array} props.activeSections - Active sections for this session
  * @param {Function} props.setActiveSections - Function to set active sections
@@ -51,6 +56,7 @@ const ExerciseSectionManager = memo(({
   handleAddExercise,
   handleRemoveExercise,
   handleExerciseReorder,
+  handleExerciseDetailChange,
   getOrderedExercises,
   activeSections = [],
   setActiveSections,
@@ -61,8 +67,8 @@ const ExerciseSectionManager = memo(({
   // State for drag operation
   const [isDragging, setIsDragging] = useState(false)
   const [longPressTimer, setLongPressTimer] = useState(null)
-
-  // State for section search terms
+  
+  // Add state for section search terms
   const [sectionSearchTerms, setSectionSearchTerms] = useState({})
   
   // Loading state (simulated for this example)
@@ -240,8 +246,218 @@ const ExerciseSectionManager = memo(({
     return exercises.some(ex => ex.id === exerciseId);
   }, [exercises]);
   
+  // Add state for managing supersets
+  const [supersets, setSupersets] = useState([])
+  // Counter for generating unique superset IDs
+  const [supersetCounter, setSupersetCounter] = useState(1)
+
+  // Function to create a new superset
+  const handleCreateSuperset = useCallback((exerciseId, sessionId, sectionId) => {
+    // Find the exercise
+    const exercise = exercises.find(ex => 
+      ex.id === exerciseId && ex.session === sessionId && ex.part === sectionId
+    );
+    
+    if (!exercise) return;
+    
+    // Create a new superset ID
+    const newSupersetId = `superset-${supersetCounter}`;
+    
+    // Create the superset
+    const newSuperset = {
+      id: newSupersetId,
+      label: `${supersetCounter}`,
+      exercises: [{ ...exercise, supersetId: newSupersetId }]
+    };
+    
+    // Add the superset to state
+    setSupersets(prev => [...prev, newSuperset]);
+    
+    // Update the exercise with superset ID in the parent component's state
+    handleExerciseDetailChange(exerciseId, sessionId, sectionId, 'supersetId', newSupersetId);
+    
+    // Increment the counter for the next superset
+    setSupersetCounter(prev => prev + 1);
+  }, [exercises, supersetCounter, handleExerciseDetailChange]);
+
+  // Function to add an exercise to an existing superset
+  const handleAddToSuperset = useCallback((exerciseId, supersetId, sessionId, sectionId) => {
+    // Find the exercise
+    const exercise = exercises.find(ex => 
+      ex.id === exerciseId && ex.session === sessionId && ex.part === sectionId
+    );
+    
+    if (!exercise) return;
+    
+    // Update the superset
+    setSupersets(prev => 
+      prev.map(superset => 
+        superset.id === supersetId
+          ? { ...superset, exercises: [...superset.exercises, { ...exercise, supersetId }] }
+          : superset
+      )
+    );
+    
+    // Update the exercise with superset ID in the parent component's state
+    handleExerciseDetailChange(exerciseId, sessionId, sectionId, 'supersetId', supersetId);
+  }, [exercises, handleExerciseDetailChange]);
+
+  // Function to add a new exercise directly to a superset
+  const handleAddExerciseToSuperset = useCallback((exercise, supersetId) => {
+    // Create a new exercise with the superset ID
+    const newExercise = {
+      ...exercise,
+      id: Date.now(), // Generate a unique ID
+      session: sessionId,
+      part: exercise.type,
+      sets: "",
+      reps: "",
+      rest: "",
+      supersetId: supersetId
+    };
+    
+    // Add the exercise to the parent component's state
+    handleAddExercise(newExercise);
+    
+    // Update the superset
+    setSupersets(prev => 
+      prev.map(superset => 
+        superset.id === supersetId
+          ? { ...superset, exercises: [...superset.exercises, newExercise] }
+          : superset
+      )
+    );
+  }, [sessionId, handleAddExercise]);
+
+  // Function to reorder exercises within a superset
+  const handleReorderSuperset = useCallback((supersetId, sourceIndex, destIndex) => {
+    setSupersets(prev => 
+      prev.map(superset => {
+        if (superset.id === supersetId) {
+          const newExercises = Array.from(superset.exercises);
+          const [removed] = newExercises.splice(sourceIndex, 1);
+          newExercises.splice(destIndex, 0, removed);
+          return { ...superset, exercises: newExercises };
+        }
+        return superset;
+      })
+    );
+  }, []);
+
+  // Function to remove an exercise from a superset
+  const handleRemoveFromSuperset = useCallback((supersetId, exerciseId) => {
+    // Find the exercise in the superset
+    const superset = supersets.find(s => s.id === supersetId);
+    if (!superset) return;
+    
+    const exercise = superset.exercises.find(ex => ex.id === exerciseId);
+    if (!exercise) return;
+    
+    // Update the superset
+    let updatedSupersets = supersets.map(superset => {
+      if (superset.id === supersetId) {
+        const newExercises = superset.exercises.filter(ex => ex.id !== exerciseId);
+        return { ...superset, exercises: newExercises };
+      }
+      return superset;
+    });
+    
+    // Remove the superset if it has no exercises left
+    updatedSupersets = updatedSupersets.filter(superset => superset.exercises.length > 0);
+    
+    setSupersets(updatedSupersets);
+    
+    // Update the exercise to remove superset ID
+    handleExerciseDetailChange(exerciseId, exercise.session, exercise.part, 'supersetId', null);
+  }, [supersets, handleExerciseDetailChange]);
+
+  // Function to completely dissolve a superset
+  const handleExitSuperset = useCallback((supersetId) => {
+    // Get the exercises from the superset
+    const supersetExercises = supersets.find(s => s.id === supersetId)?.exercises || [];
+    
+    // Remove the superset
+    setSupersets(prev => prev.filter(s => s.id !== supersetId));
+    
+    // Update all exercises to remove superset ID
+    supersetExercises.forEach(exercise => {
+      handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, 'supersetId', null);
+    });
+  }, [supersets, handleExerciseDetailChange]);
+
+  // Function to move an exercise up or down
+  const handleMoveExercise = useCallback((exerciseId, direction, sessionId, sectionId) => {
+    const sectionExercises = getOrderedExercises(sessionId, sectionId);
+    const exerciseIndex = sectionExercises.findIndex(ex => ex.id === exerciseId);
+    
+    if (exerciseIndex === -1) return;
+    
+    const newIndex = direction === 'up' 
+      ? Math.max(0, exerciseIndex - 1)
+      : Math.min(sectionExercises.length - 1, exerciseIndex + 1);
+      
+    if (newIndex === exerciseIndex) return;
+    
+    const newOrder = [...sectionExercises];
+    const [removed] = newOrder.splice(exerciseIndex, 1);
+    newOrder.splice(newIndex, 0, removed);
+    
+    handleExerciseReorder(sessionId, sectionId, newOrder);
+  }, [getOrderedExercises, handleExerciseReorder]);
+
+  // Function to duplicate an exercise
+  const handleDuplicateExercise = useCallback((exerciseId, sessionId, sectionId) => {
+    const exercise = exercises.find(ex => 
+      ex.id === exerciseId && ex.session === sessionId && ex.part === sectionId
+    );
+    
+    if (!exercise) return;
+    
+    // TODO: In a real implementation, update the parent component's state
+    // Create a duplicate with a new ID
+    // const duplicate = {
+    //   ...exercise,
+    //   id: Date.now(), // Use timestamp as a simple unique ID
+    //   name: `${exercise.name} (Copy)`
+    // };
+    
+    // Add it to the exercises
+    // handleAddExercise({ ...duplicate, part: sectionId });
+  }, [exercises]);
+
+  // Render supersets for a section
+  const renderSupersets = useCallback((sectionId, supersetMap) => {
+    return Array.from(supersetMap.entries()).map(([supersetId, exercises]) => (
+      <SupersetContainer
+        key={supersetId}
+        supersetId={supersetId}
+        exercises={exercises}
+        onReorderSuperset={handleReorderSuperset}
+        onRemoveFromSuperset={handleRemoveFromSuperset}
+        onExitSuperset={handleExitSuperset}
+        handleRemoveExercise={handleRemoveExercise}
+        sessionId={sessionId}
+        sectionId={sectionId}
+        onAddExerciseToSuperset={handleAddExerciseToSuperset}
+        availableExercises={getFilteredExercisesForSection(sectionId)}
+      />
+    ));
+  }, [
+    handleReorderSuperset, 
+    handleRemoveFromSuperset, 
+    handleExitSuperset, 
+    handleRemoveExercise,
+    handleAddExerciseToSuperset,
+    getFilteredExercisesForSection
+  ]);
+
   return (
     <Card>
+      {/* Test dropdown for debugging - positioned at top right corner */}
+      <div className="absolute top-2 right-2 z-[3000]">
+        <TestDropdown />
+      </div>
+      
       <CardContent className="pt-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-medium">Exercise Sections</h3>
@@ -254,43 +470,70 @@ const ExerciseSectionManager = memo(({
             >
               {expandedSections.length === activeSections.length ? "Collapse All" : "Expand All"}
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-1 bg-white">
-                  <PlusCircle className="h-4 w-4" />
-                  <span>Add Section</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent 
-                align="end" 
-                className="bg-white border-2 border-blue-500 shadow-lg z-[9999] p-3 rounded-md min-w-[200px]"
+            
+            {/* Add Section dropdown using HeadlessUI */}
+            <Menu as="div" className="relative inline-block text-left">
+              <div>
+                <Menu.Button as={Fragment}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    <span>Add Section</span>
+                  </Button>
+                </Menu.Button>
+              </div>
+              
+              <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
               >
-                {/* Debug: Shows the number of items */}
-                <div className="text-sm font-medium mb-2 text-gray-700 border-b pb-1">
-                  Available sections: {sectionTypes.filter((type) => !activeSections.includes(type.id)).length}
-                </div>
-                
-                {sectionTypes
-                  .filter((type) => !activeSections.includes(type.id))
-                  .map((type) => (
-                    <DropdownMenuItem
-                      key={type.id}
-                      onClick={() => handleAddSection(type.id)}
-                      className="flex items-center gap-2 cursor-pointer hover:bg-blue-50 rounded-md p-2 my-1"
-                    >
-                      <div className="text-blue-500">
-                        {type.icon}
+                <Menu.Items className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[3000]">
+                  {/* Header showing available sections */}
+                  <div className="px-4 py-2 text-sm font-semibold border-b">
+                    Available sections: {sectionTypes.filter((type) => !activeSections.includes(type.id)).length}
+                  </div>
+                  
+                  {/* Section options */}
+                  <div className="px-1 py-1">
+                    {sectionTypes
+                      .filter((type) => !activeSections.includes(type.id))
+                      .map((type) => (
+                        <Menu.Item key={type.id}>
+                          {({ active }) => (
+                            <button
+                              className={`${
+                                active ? 'bg-blue-50 text-blue-700' : 'text-gray-900'
+                              } group flex w-full items-center rounded-md px-2 py-2 text-sm`}
+                              onClick={() => handleAddSection(type.id)}
+                            >
+                              <div className="text-blue-500 mr-2">
+                                {type.icon}
+                              </div>
+                              <span className="font-medium">{type.name}</span>
+                            </button>
+                          )}
+                        </Menu.Item>
+                      ))}
+                    
+                    {/* Show message when all sections are added */}
+                    {sectionTypes.filter((type) => !activeSections.includes(type.id)).length === 0 && (
+                      <div className="px-2 py-2 text-sm text-gray-400">
+                        All section types added
                       </div>
-                      <span className="text-gray-800 font-medium">{type.name}</span>
-                    </DropdownMenuItem>
-                  ))}
-                {sectionTypes.filter((type) => !activeSections.includes(type.id)).length === 0 && (
-                  <DropdownMenuItem disabled className="p-2">
-                    <span className="text-gray-400">All section types added</span>
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    )}
+                  </div>
+                </Menu.Items>
+              </Transition>
+            </Menu>
           </div>
         </div>
         
@@ -321,7 +564,7 @@ const ExerciseSectionManager = memo(({
                           {...provided.dragHandleProps}
                         >
                           <div className="flex items-center gap-2">
-                            <GripVertical className="h-4 w-4 text-gray-400" />
+                              <GripVertical className="h-4 w-4 text-gray-400" />
                             {getSectionIcon(sectionId)}
                             <span className="font-medium">{getSectionName(sectionId)}</span>
                             <Badge variant="outline" className="ml-2">
@@ -332,13 +575,13 @@ const ExerciseSectionManager = memo(({
                           <Button
                             variant="destructive"
                             size="sm"
-                            className="h-8 w-8 p-0 absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full flex items-center justify-center z-10"
+                            className="h-8 w-8 p-0 rounded-full flex items-center justify-center"
                             onClick={(e) => {
                               e.stopPropagation(); // Prevent toggle
                               handleRemoveSection(sectionId);
                             }}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4 text-white" />
                           </Button>
                         </div>
                         
@@ -395,72 +638,118 @@ const ExerciseSectionManager = memo(({
                                 )}
                               </div>
                             </div>
-
+                            
                             {/* Existing exercises list */}
                             <div className="mt-4">
                               <h4 className="text-sm font-medium text-gray-700 mb-2">Added Exercises</h4>
-                              <DragDropContext onDragEnd={onExerciseDragEnd}>
-                                <Droppable droppableId={String(sectionId)}>
-                                  {(provided) => (
-                                    <div
-                                      {...provided.droppableProps}
-                                      ref={provided.innerRef}
-                                      className="space-y-2"
-                                    >
-                                      {getSectionExercises(sectionId).length === 0 ? (
-                                        <p className="text-sm text-gray-500 text-center py-4">
-                                          No exercises added to this section yet.
-                                        </p>
-                                      ) : (
-                                        getSectionExercises(sectionId).map((exercise, index) => (
-                                          <Draggable
-                                            key={String(exercise.id)}
-                                            draggableId={String(exercise.id)}
-                                            index={index}
-                                          >
-                                            {(provided) => (
-                                              <div
-                                                ref={provided.innerRef}
-                                                {...provided.draggableProps}
-                                                className="border rounded-md p-3 bg-white relative"
-                                              >
-                                                <div {...provided.dragHandleProps} className="flex items-center justify-between cursor-grab">
-                                                  <div className="flex items-center gap-2">
-                                                    <div className="cursor-grab">
-                                                      <GripVertical className="h-4 w-4 text-gray-400" />
-                                                    </div>
-                                                    <div>
-                                                      <p className="font-medium">{exercise.name}</p>
-                                                      <Badge variant="outline" className="mt-1">
-                                                        {exercise.category}
-                                                      </Badge>
-                                                    </div>
+                            <DragDropContext onDragEnd={onExerciseDragEnd}>
+                              <Droppable droppableId={String(sectionId)}>
+                                {(provided) => (
+                                  <div
+                                    {...provided.droppableProps}
+                                    ref={provided.innerRef}
+                                    className="space-y-2"
+                                  >
+                                    {getSectionExercises(sectionId).length === 0 ? (
+                                      <p className="text-sm text-gray-500 text-center py-4">
+                                        No exercises added to this section yet.
+                                      </p>
+                                    ) : (
+                                        // Group exercises by superset
+                                        (() => {
+                                          // Get exercises for this section
+                                          const sectionExercises = getSectionExercises(sectionId);
+                                          
+                                          // Create a map of superset IDs to exercises
+                                          const supersetMap = new Map();
+                                          const normalExercises = [];
+                                          
+                                          // Sort exercises into supersets or normal exercises
+                                          sectionExercises.forEach(exercise => {
+                                            if (exercise.supersetId) {
+                                              if (!supersetMap.has(exercise.supersetId)) {
+                                                supersetMap.set(exercise.supersetId, []);
+                                              }
+                                              supersetMap.get(exercise.supersetId).push(exercise);
+                                            } else {
+                                              normalExercises.push(exercise);
+                                            }
+                                          });
+                                          
+                                          // Render exercises - first normal ones, then supersets
+                                          return (
+                                            <>
+                                              {normalExercises.map((exercise, index) => (
+                                        <Draggable
+                                          key={String(exercise.id)}
+                                          draggableId={String(exercise.id)}
+                                          index={index}
+                                        >
+                                          {(provided) => (
+                                            <div
+                                              ref={provided.innerRef}
+                                              {...provided.draggableProps}
+                                              className="border rounded-md p-3 bg-white relative"
+                                            >
+                                                      <div {...provided.dragHandleProps} className="flex items-center justify-between cursor-grab">
+                                                <div className="flex items-center gap-2">
+                                                          <div className="cursor-grab">
+                                                    <GripVertical className="h-4 w-4 text-gray-400" />
                                                   </div>
-                                                  {/* Delete button with improved visibility - using Trash2 icon */}
-                                                  <Button
-                                                    variant="destructive"
-                                                    size="sm"
-                                                    className="h-8 w-8 p-0 absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full flex items-center justify-center z-10"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      handleRemoveExercise(exercise.id, exercise.session, exercise.part);
-                                                    }}
-                                                  >
-                                                    <Trash2 className="h-4 w-4" />
-                                                  </Button>
+                                                  <div>
+                                                    <p className="font-medium">{exercise.name}</p>
+                                                    <Badge variant="outline" className="mt-1">
+                                                      {exercise.category}
+                                                    </Badge>
+                                                  </div>
                                                 </div>
-                                                
-                                                {/* Exercise details will be moved to the Timeline view */}
+                                                        
+                                                        {/* Context menu */}
+                                                        <div className="flex items-center gap-2">
+                                                          <ExerciseContextMenu
+                                                            exercise={exercise}
+                                                            supersets={supersets}
+                                                            onCreateSuperset={handleCreateSuperset}
+                                                            onAddToSuperset={handleAddToSuperset}
+                                                            onRemoveExercise={handleRemoveExercise}
+                                                            onDuplicateExercise={handleDuplicateExercise}
+                                                            onMoveExercise={handleMoveExercise}
+                                                            sessionId={sessionId}
+                                                            sectionId={sectionId}
+                                                            disableMoveUp={index === 0}
+                                                            disableMoveDown={index === normalExercises.length - 1}
+                                                          />
+                                                          
+                                                          {/* Delete button */}
+                                                <Button
+                                                            variant="destructive"
+                                                  size="sm"
+                                                            className="h-8 w-8 p-0 rounded-full flex items-center justify-center"
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              handleRemoveExercise(exercise.id, exercise.session, exercise.part);
+                                                            }}
+                                                          >
+                                                            <Trash2 className="h-4 w-4 text-white" />
+                                                </Button>
                                               </div>
-                                            )}
-                                          </Draggable>
-                                        ))
-                                      )}
-                                      {provided.placeholder}
-                                    </div>
-                                  )}
-                                </Droppable>
-                              </DragDropContext>
+                                                      </div>
+                                            </div>
+                                          )}
+                                        </Draggable>
+                                              ))}
+                                              
+                                              {/* Render supersets */}
+                                              {renderSupersets(sectionId, supersetMap)}
+                                            </>
+                                          );
+                                        })()
+                                    )}
+                                    {provided.placeholder}
+                                  </div>
+                                )}
+                              </Droppable>
+                            </DragDropContext>
                             </div>
                           </div>
                         )}
