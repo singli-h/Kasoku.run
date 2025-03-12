@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { ChevronRight, ChevronLeft, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -119,7 +118,7 @@ const StepTwoPlanner = ({
                             <Info className="h-4 w-4 text-gray-400" />
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Give this session a descriptive name (e.g., "Upper Body Strength")</p>
+                            <p>Give this session a descriptive name (e.g., &quot;Upper Body Strength&quot;)</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>

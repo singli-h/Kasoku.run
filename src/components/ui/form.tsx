@@ -1,7 +1,7 @@
 /**
  * Form Component Library
  * 
- * A comprehensive form component system built on top of react-hook-form and Radix UI.
+ * A comprehensive form component system built on top of react-hook-form.
  * Provides accessible, type-safe form controls with built-in validation and error handling.
  * 
  * Features:
@@ -18,8 +18,6 @@
 "use client"
 
 import * as React from "react"
-import * as LabelPrimitive from "@radix-ui/react-label"
-import { Slot } from "@radix-ui/react-slot"
 import {
   Controller,
   ControllerProps,
@@ -31,6 +29,44 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
+
+// Custom Slot component to replace Radix UI's Slot
+const Slot = React.forwardRef<
+  React.ElementRef<any>,
+  React.ComponentPropsWithoutRef<any>
+>(({ children, ...props }, ref) => {
+  if (!children) {
+    return null
+  }
+
+  if (typeof children === "function") {
+    return children({ ...props, ref })
+  }
+
+  const child = React.Children.only(children) as React.ReactElement
+  return React.cloneElement(child, {
+    ...props,
+    ...child.props,
+    ref: ref
+      ? (node: unknown) => {
+          if (typeof ref === "function") {
+            ref(node)
+          } else if (ref) {
+            (ref as React.MutableRefObject<unknown>).current = node
+          }
+          const childRef = (child as any).ref
+          if (childRef) {
+            if (typeof childRef === "function") {
+              childRef(node)
+            } else {
+              (childRef as React.MutableRefObject<unknown>).current = node
+            }
+          }
+        }
+      : (child as any).ref,
+  })
+})
+Slot.displayName = "Slot"
 
 // Re-export FormProvider as Form for better semantic meaning
 const Form = FormProvider
@@ -134,18 +170,20 @@ FormItem.displayName = "FormItem"
  * Accessible label component with error state styling
  */
 const FormLabel = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => {
+  HTMLLabelElement,
+  React.LabelHTMLAttributes<HTMLLabelElement> & { className?: string }
+>(({ className, children, ...props }, ref) => {
   const { error, formItemId } = useFormField()
 
   return (
     <Label
-      ref={ref}
+      ref={ref as any}
       className={cn(error && "text-destructive", className)}
       htmlFor={formItemId}
       {...props}
-    />
+    >
+      {children}
+    </Label>
   )
 })
 FormLabel.displayName = "FormLabel"

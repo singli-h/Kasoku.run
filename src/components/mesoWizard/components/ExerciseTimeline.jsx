@@ -80,7 +80,7 @@ const ExerciseTimeline = memo(({
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-50">
-                <th className="px-4 py-2 text-left font-medium text-gray-600 border-b">Order</th>
+                <th className="px-4 py-2 text-left font-medium text-gray-600 border-b">#</th>
                 <th className="px-4 py-2 text-left font-medium text-gray-600 border-b">Section</th>
                 <th className="px-4 py-2 text-left font-medium text-gray-600 border-b">Exercise</th>
                 <th className="px-4 py-2 text-left font-medium text-gray-600 border-b">Sets</th>

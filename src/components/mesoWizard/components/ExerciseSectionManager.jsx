@@ -12,7 +12,7 @@ import {
   Target,
   PlusCircle,
   GripVertical,
-  Trash2,
+  Minus,
   Search,
   Plus,
 } from "lucide-react"
@@ -24,9 +24,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ExerciseType } from "@/types/exercise"
 import SupersetContainer from "./SupersetContainer"
 import ExerciseContextMenu from "./ExerciseContextMenu"
-import { TestDropdown } from "./TestDropdown"
-import React, { Fragment } from 'react'
-import { Menu, Transition } from '@headlessui/react'
 
 /**
  * Exercise Section Manager Component
@@ -329,21 +326,6 @@ const ExerciseSectionManager = memo(({
     );
   }, [sessionId, handleAddExercise]);
 
-  // Function to reorder exercises within a superset
-  const handleReorderSuperset = useCallback((supersetId, sourceIndex, destIndex) => {
-    setSupersets(prev => 
-      prev.map(superset => {
-        if (superset.id === supersetId) {
-          const newExercises = Array.from(superset.exercises);
-          const [removed] = newExercises.splice(sourceIndex, 1);
-          newExercises.splice(destIndex, 0, removed);
-          return { ...superset, exercises: newExercises };
-        }
-        return superset;
-      })
-    );
-  }, []);
-
   // Function to remove an exercise from a superset
   const handleRemoveFromSuperset = useCallback((supersetId, exerciseId) => {
     // Find the exercise in the superset
@@ -432,7 +414,6 @@ const ExerciseSectionManager = memo(({
         key={supersetId}
         supersetId={supersetId}
         exercises={exercises}
-        onReorderSuperset={handleReorderSuperset}
         onRemoveFromSuperset={handleRemoveFromSuperset}
         onExitSuperset={handleExitSuperset}
         handleRemoveExercise={handleRemoveExercise}
@@ -443,21 +424,20 @@ const ExerciseSectionManager = memo(({
       />
     ));
   }, [
-    handleReorderSuperset, 
     handleRemoveFromSuperset, 
     handleExitSuperset, 
     handleRemoveExercise,
     handleAddExerciseToSuperset,
-    getFilteredExercisesForSection
+    getFilteredExercisesForSection,
+    sessionId
   ]);
+
+  // Replace the Menu component with custom dropdown
+  const [addSectionMenuOpen, setAddSectionMenuOpen] = useState(false)
 
   return (
     <Card>
       {/* Test dropdown for debugging - positioned at top right corner */}
-      <div className="absolute top-2 right-2 z-[3000]">
-        <TestDropdown />
-      </div>
-      
       <CardContent className="pt-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-medium">Exercise Sections</h3>
@@ -471,32 +451,25 @@ const ExerciseSectionManager = memo(({
               {expandedSections.length === activeSections.length ? "Collapse All" : "Expand All"}
             </Button>
             
-            {/* Add Section dropdown using HeadlessUI */}
-            <Menu as="div" className="relative inline-block text-left">
-              <div>
-                <Menu.Button as={Fragment}>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex items-center gap-1"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <PlusCircle className="h-4 w-4" />
-                    <span>Add Section</span>
-                  </Button>
-                </Menu.Button>
-              </div>
-              
-              <Transition
-                as={Fragment}
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
+            {/* Add Section dropdown using custom implementation */}
+            <div className="relative inline-block text-left">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAddSectionMenuOpen(!addSectionMenuOpen);
+                }}
               >
-                <Menu.Items className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[3000]">
+                <PlusCircle className="h-4 w-4" />
+                <span>Add Section</span>
+              </Button>
+              
+              {addSectionMenuOpen && (
+                <div 
+                  className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[3000] animate-in fade-in-50 zoom-in-95 duration-100"
+                >
                   {/* Header showing available sections */}
                   <div className="px-4 py-2 text-sm font-semibold border-b">
                     Available sections: {sectionTypes.filter((type) => !activeSections.includes(type.id)).length}
@@ -507,21 +480,19 @@ const ExerciseSectionManager = memo(({
                     {sectionTypes
                       .filter((type) => !activeSections.includes(type.id))
                       .map((type) => (
-                        <Menu.Item key={type.id}>
-                          {({ active }) => (
-                            <button
-                              className={`${
-                                active ? 'bg-blue-50 text-blue-700' : 'text-gray-900'
-                              } group flex w-full items-center rounded-md px-2 py-2 text-sm`}
-                              onClick={() => handleAddSection(type.id)}
-                            >
-                              <div className="text-blue-500 mr-2">
-                                {type.icon}
-                              </div>
-                              <span className="font-medium">{type.name}</span>
-                            </button>
-                          )}
-                        </Menu.Item>
+                        <button
+                          key={type.id}
+                          className="group flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 hover:bg-blue-50 hover:text-blue-700"
+                          onClick={() => {
+                            handleAddSection(type.id);
+                            setAddSectionMenuOpen(false);
+                          }}
+                        >
+                          <div className="text-blue-500 mr-2">
+                            {type.icon}
+                          </div>
+                          <span className="font-medium">{type.name}</span>
+                        </button>
                       ))}
                     
                     {/* Show message when all sections are added */}
@@ -531,9 +502,9 @@ const ExerciseSectionManager = memo(({
                       </div>
                     )}
                   </div>
-                </Menu.Items>
-              </Transition>
-            </Menu>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
@@ -571,18 +542,14 @@ const ExerciseSectionManager = memo(({
                               {getSectionExercises(sectionId).length} exercises
                             </Badge>
                           </div>
-                          {/* Delete button with improved visibility - using Trash2 icon */}
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="h-8 w-8 p-0 rounded-full flex items-center justify-center"
+                          {/* Delete button - simplified to just a minus icon */}
+                          <Minus 
+                            className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer" 
                             onClick={(e) => {
                               e.stopPropagation(); // Prevent toggle
                               handleRemoveSection(sectionId);
                             }}
-                          >
-                            <Trash2 className="h-4 w-4 text-white" />
-                          </Button>
+                          />
                         </div>
                         
                         {expandedSections.includes(sectionId) && (
@@ -720,19 +687,15 @@ const ExerciseSectionManager = memo(({
                                                             disableMoveDown={index === normalExercises.length - 1}
                                                           />
                                                           
-                                                          {/* Delete button */}
-                                                <Button
-                                                            variant="destructive"
-                                                  size="sm"
-                                                            className="h-8 w-8 p-0 rounded-full flex items-center justify-center"
+                                                          {/* Delete button - simplified to just a minus icon */}
+                                                          <Minus 
+                                                            className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
                                                             onClick={(e) => {
                                                               e.stopPropagation();
                                                               handleRemoveExercise(exercise.id, exercise.session, exercise.part);
                                                             }}
-                                                          >
-                                                            <Trash2 className="h-4 w-4 text-white" />
-                                                </Button>
-                                              </div>
+                                                          />
+                                                        </div>
                                                       </div>
                                             </div>
                                           )}

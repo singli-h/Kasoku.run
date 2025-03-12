@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Trash2, Dumbbell, X, Plus, Search } from "lucide-react"
+import { Minus, Dumbbell, X, Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input"
  * @param {Object} props - Component props
  * @param {string} props.supersetId - Unique identifier for this superset
  * @param {Array} props.exercises - Array of exercises in this superset
- * @param {Function} props.onReorderSuperset - Function to handle reordering within the superset
  * @param {Function} props.onRemoveFromSuperset - Function to remove an exercise from the superset
  * @param {Function} props.onExitSuperset - Function to break up the superset
  * @param {Function} props.handleRemoveExercise - Function to completely remove an exercise
@@ -25,7 +24,6 @@ import { Input } from "@/components/ui/input"
 const SupersetContainer = ({
   supersetId,
   exercises,
-  onReorderSuperset,
   onRemoveFromSuperset,
   onExitSuperset,
   handleRemoveExercise,
@@ -37,6 +35,20 @@ const SupersetContainer = ({
   const [isHovered, setIsHovered] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Handle remove exercise safely
+  const handleRemove = (exerciseId, sessionId, sectionId) => {
+    if (handleRemoveExercise && typeof handleRemoveExercise === 'function') {
+      handleRemoveExercise(exerciseId, sessionId, sectionId);
+    }
+  };
+
+  // Handle remove from superset safely
+  const handleRemoveFromSuperset = (supersetId, exerciseId) => {
+    if (onRemoveFromSuperset && typeof onRemoveFromSuperset === 'function') {
+      onRemoveFromSuperset(supersetId, exerciseId);
+    }
+  };
 
   // Filter available exercises based on search term
   const filteredAvailableExercises = availableExercises.filter(
@@ -146,51 +158,25 @@ const SupersetContainer = ({
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between mb-2">
                 <p className="font-medium truncate">{exercise.name}</p>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="h-6 w-6 p-0 rounded-full flex items-center justify-center"
-                  onClick={() => handleRemoveExercise(exercise.id, sessionId, sectionId)}
-                >
-                  <Trash2 className="h-3 w-3 text-white" />
-                </Button>
+                <Minus
+                  className="h-4 w-4 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                  onClick={() => handleRemove(exercise.id, sessionId, sectionId)}
+                />
               </div>
               
               <Badge variant="outline" className="self-start mb-2">
                 {exercise.category}
               </Badge>
               
-              <div className="mt-auto flex justify-between items-center">
+              <div className="mt-auto flex justify-end items-center">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-xs bg-white hover:bg-gray-50 border-gray-200"
-                  onClick={() => onRemoveFromSuperset(supersetId, exercise.id)}
+                  className="h-7 px-2 text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+                  onClick={() => handleRemoveFromSuperset(supersetId, exercise.id)}
                 >
-                  Remove
+                  Remove from superset
                 </Button>
-                
-                {index > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 rounded-full"
-                    onClick={() => onReorderSuperset(supersetId, index, index - 1)}
-                  >
-                    <span className="text-xs">←</span>
-                  </Button>
-                )}
-                
-                {index < exercises.length - 1 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 rounded-full"
-                    onClick={() => onReorderSuperset(supersetId, index, index + 1)}
-                  >
-                    <span className="text-xs">→</span>
-                  </Button>
-                )}
               </div>
             </div>
           </div>
