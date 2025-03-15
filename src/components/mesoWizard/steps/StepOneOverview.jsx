@@ -104,7 +104,7 @@ const StepOneOverview = ({ formData, handleInputChange, errors, handleNext }) =>
                     type="date"
                     value={formData.startDate}
                     onChange={handleInputChange}
-                    className={`mt-1 h-12 ${errors.startDate ? "border-red-500" : ""} cursor-pointer`}
+                    className={`mt-1 h-12 text-center ${errors.startDate ? "border-red-500" : ""} cursor-pointer`}
                     onClick={(e) => {
                       // Focus and open the date picker when clicking anywhere in the input
                       e.target.showPicker();
@@ -143,7 +143,7 @@ const StepOneOverview = ({ formData, handleInputChange, errors, handleNext }) =>
                   value={formData.duration}
                   onChange={handleInputChange}
                   placeholder="e.g., 6"
-                  className={`mt-1 h-12 ${errors.duration ? "border-red-500" : ""}`}
+                  className={`mt-1 h-12 text-center ${errors.duration ? "border-red-500" : ""}`}
                 />
                 {errors.duration && <p className="mt-1 text-sm text-red-500">{errors.duration}</p>}
               </div>
@@ -177,7 +177,7 @@ const StepOneOverview = ({ formData, handleInputChange, errors, handleNext }) =>
                   value={formData.sessionsPerWeek}
                   onChange={handleInputChange}
                   placeholder="e.g., 4"
-                  className={`mt-1 h-12 ${errors.sessionsPerWeek ? "border-red-500" : ""}`}
+                  className={`mt-1 h-12 text-center ${errors.sessionsPerWeek ? "border-red-500" : ""}`}
                 />
                 {errors.sessionsPerWeek && (
                   <p className="mt-1 text-sm text-red-500">{errors.sessionsPerWeek}</p>

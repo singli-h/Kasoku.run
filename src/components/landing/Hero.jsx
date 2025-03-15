@@ -68,8 +68,8 @@ export default function Hero() {
             <div className="relative h-full flex items-center justify-center">
               <div className="w-64 h-64 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mix-blend-multiply opacity-20 blur-3xl" />
               <img 
-                src="/hero-illustration.png" 
-                alt="Fitness Analytics" 
+                src="/logo.svg" 
+                alt="RunningApp Logo" 
                 className="absolute w-full h-full object-contain"
               />
             </div>

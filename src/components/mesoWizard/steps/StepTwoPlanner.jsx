@@ -68,7 +68,7 @@ const StepTwoPlanner = ({
   const getSectionName = (sectionId) => {
     const sectionTypes = [
       { id: "warmup", name: "Warm-up" },
-      { id: "gym", name: "Gym Exercises" },
+      { id: "gym", name: "Gym" },
       { id: "circuit", name: "Circuits" },
       { id: "plyometric", name: "Plyometrics" },
       { id: "isometric", name: "Isometrics" },
@@ -170,17 +170,18 @@ const StepTwoPlanner = ({
               handleExerciseDetailChange={handleExerciseDetailChange}
               errors={errors}
               getSectionName={getSectionName}
+              getOrderedExercises={getOrderedExercises}
             />
           </TabsContent>
         ))}
       </Tabs>
 
       {/* Special Constraints */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center gap-2">
+      <Card className="overflow-visible">
+        <CardContent className="pt-6 overflow-visible">
+          <div className="space-y-4 overflow-visible">
+            <div className="overflow-visible">
+              <div className="flex items-center gap-2 overflow-visible">
                 <Label htmlFor="specialConstraints" className="text-base font-medium">
                   Special Constraints
                 </Label>
@@ -189,8 +190,8 @@ const StepTwoPlanner = ({
                     <TooltipTrigger asChild>
                       <Info className="h-4 w-4 text-gray-400" />
                     </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="w-80">
+                    <TooltipContent className="w-80 max-w-lg">
+                      <p>
                         Add any special constraints or considerations for this mesocycle (e.g., injuries,
                         equipment limitations, scheduling constraints).
                       </p>

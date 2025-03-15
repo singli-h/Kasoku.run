@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 
 // Create context for tooltip
@@ -12,8 +11,13 @@ const TooltipContext = React.createContext({
 })
 
 const TooltipProvider = ({ children, delayDuration = 700 }) => {
-  return React.Children.map(children, child => 
-    React.cloneElement(child, { delayDuration })
+  // Wrap children in a relative positioned div to serve as positioning context
+  return (
+    <div className="relative inline-flex overflow-visible" style={{ zIndex: 50 }}>
+      {React.Children.map(children, child => 
+        React.cloneElement(child, { delayDuration })
+      )}
+    </div>
   )
 }
 
@@ -116,45 +120,32 @@ const TooltipTrigger = React.forwardRef(({ children, asChild, ...props }, forwar
 })
 TooltipTrigger.displayName = "TooltipTrigger"
 
-const TooltipContent = React.forwardRef(({ className, sideOffset = 4, ...props }, ref) => {
+const TooltipContent = React.forwardRef(({ className, ...props }, ref) => {
   const { open, triggerRef } = React.useContext(TooltipContext)
-  const [position, setPosition] = React.useState({ top: 0, left: 0 })
-  const [mounted, setMounted] = React.useState(false)
   
-  React.useEffect(() => {
-    setMounted(true)
-    return () => setMounted(false)
-  }, [])
+  if (!open) return null
   
-  React.useEffect(() => {
-    if (open && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect()
-      setPosition({
-        top: rect.bottom + window.scrollY + sideOffset,
-        left: rect.left + window.scrollX + rect.width / 2
-      })
-    }
-  }, [open, sideOffset, triggerRef])
-  
-  if (!mounted || !open) return null
-  
-  return createPortal(
+  return (
     <div
       ref={ref}
       role="tooltip"
-      style={{ 
+      style={{
         position: 'absolute',
-        top: `${position.top}px`,
-        left: `${position.left}px`,
-        transform: 'translateX(-50%)'
+        top: '100%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        marginTop: '5px',
+        zIndex: 9999,
+        width: 'auto',
+        minWidth: '300px',
+        maxWidth: '750px'
       }}
       className={cn(
-        "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "overflow-visible rounded-md border bg-white px-3 py-1.5 text-sm shadow-md animate-in fade-in-0 zoom-in-95 whitespace-normal break-words",
         className
       )}
       {...props}
-    />,
-    document.body
+    />
   )
 })
 TooltipContent.displayName = "TooltipContent"

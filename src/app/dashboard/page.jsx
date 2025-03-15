@@ -1,7 +1,7 @@
 'use client'
 
 import ExerciseDashboard from "../../components/dashboard/index"
-import ErrorAndLoadingOverlay from "../../components/ui/errorAndLoadingOverlay"
+import { ErrorAndLoadingOverlay } from "../../components/ui/loading"
 import { useExerciseData } from "../../components/dashboard/hooks/useExerciseData"
 
 export default function DashboardPage() {
@@ -19,7 +19,13 @@ export default function DashboardPage() {
 
   return (
     <div className="relative">
-      <ErrorAndLoadingOverlay isLoading={isLoading} error={error} />
+      <ErrorAndLoadingOverlay 
+        isLoading={isLoading} 
+        error={error} 
+        blocking={false} 
+        position="top-right"
+        loadingMessage="Loading dashboard data..."
+      />
       
       {isAssigned && (
         <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">

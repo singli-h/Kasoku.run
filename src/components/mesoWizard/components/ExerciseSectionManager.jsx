@@ -85,9 +85,105 @@ const ExerciseSectionManager = memo(({
   // Initialize expanded sections
   useEffect(() => {
     if (activeSections.length > 0 && expandedSections.length === 0) {
-      setExpandedSections([activeSections[0]])
+      // Only initialize on first load, don't reset after user collapses all
+      const alreadyInitialized = sessionStorage.getItem('expandedSectionsInitialized');
+      if (!alreadyInitialized) {
+        setExpandedSections([activeSections[0]]);
+        sessionStorage.setItem('expandedSectionsInitialized', 'true');
+      }
     }
-  }, [activeSections, expandedSections])
+  }, [activeSections, expandedSections]);
+  
+  // Get section icon
+  const getSectionIcon = useCallback((sectionId) => {
+    const section = sectionTypes.find((s) => s.id === sectionId)
+    return section ? section.icon : <Dumbbell className="h-4 w-4" />
+  }, [sectionTypes])
+  
+  // Get section name
+  const getSectionName = useCallback((sectionId) => {
+    const section = sectionTypes.find((s) => s.id === sectionId)
+    return section ? section.name : sectionId
+  }, [sectionTypes])
+  
+  // Get exercises for a section
+  const getSectionExercises = useCallback((sectionId) => {
+    return getOrderedExercises(sessionId, sectionId)
+  }, [getOrderedExercises, sessionId])
+  
+  // Helper function to get exercises sorted by superset and position
+  const getOrderedExercisesAndSupersets = useCallback((sectionId) => {
+    // Get exercises for this section
+    const sectionExercises = getSectionExercises(sectionId);
+    
+    // Step 1: Identify all supersets and their positions
+    const supersetPositions = new Map();
+    sectionExercises.forEach((exercise, index) => {
+      if (exercise.supersetId && !supersetPositions.has(exercise.supersetId)) {
+        supersetPositions.set(exercise.supersetId, index);
+      }
+    });
+    
+    // Step 2: Group exercises by superset while preserving order
+    const supersetMap = new Map();
+    const orderedSupersetExercises = new Map();
+    const normalExercises = [];
+    
+    sectionExercises.forEach(exercise => {
+      if (exercise.supersetId) {
+        if (!supersetMap.has(exercise.supersetId)) {
+          supersetMap.set(exercise.supersetId, []);
+          orderedSupersetExercises.set(exercise.supersetId, []);
+        }
+        supersetMap.get(exercise.supersetId).push(exercise);
+        
+        // Track the original order of exercises within the superset
+        if (!orderedSupersetExercises.get(exercise.supersetId).some(ex => ex.id === exercise.id)) {
+          orderedSupersetExercises.get(exercise.supersetId).push(exercise);
+        }
+      } else {
+        normalExercises.push(exercise);
+      }
+    });
+    
+    // Step 3: Create a unified list of exercises and supersets
+    const unifiedItems = [];
+    
+    // Map of already added superset IDs
+    const addedSupersets = new Set();
+    
+    // Add items in proper order
+    sectionExercises.forEach((exercise, index) => {
+      if (exercise.supersetId) {
+        // If this is the first occurrence of this superset and we haven't added it yet
+        if (supersetPositions.get(exercise.supersetId) === index && 
+            !addedSupersets.has(exercise.supersetId)) {
+          // Add the superset as a group
+          unifiedItems.push({
+            type: 'superset',
+            id: exercise.supersetId,
+            exercises: orderedSupersetExercises.get(exercise.supersetId),
+            position: index
+          });
+          addedSupersets.add(exercise.supersetId);
+        }
+      } else {
+        // It's a normal exercise
+        unifiedItems.push({
+          type: 'exercise',
+          exercise,
+          position: index
+        });
+      }
+    });
+    
+    return {
+      unifiedItems,
+      supersetMap,
+      orderedSupersetExercises,
+      supersetPositions
+    };
+  }, [getSectionExercises, sessionId]);
   
   // Handle section drag end
   const onSectionDragEnd = useCallback((result) => {
@@ -114,20 +210,32 @@ const ExerciseSectionManager = memo(({
     if (source.droppableId === destination.droppableId) {
       const sectionId = source.droppableId
       
-      // Get exercises for this section and session
-      const sectionExercises = getOrderedExercises(sessionId, sectionId)
+      // Use our helper to get the unified list
+      const { unifiedItems } = getOrderedExercisesAndSupersets(sectionId);
       
-      // Reorder exercises
-      const reorderedExercises = Array.from(sectionExercises)
-      const [removed] = reorderedExercises.splice(source.index, 1)
-      reorderedExercises.splice(destination.index, 0, removed)
+      // Perform the reordering on the unified list
+      const [removed] = unifiedItems.splice(source.index, 1)
+      unifiedItems.splice(destination.index, 0, removed)
+      
+      // Convert back to a flat list of exercises in the new order
+      const reorderedExercises = []
+      unifiedItems.forEach(item => {
+        if (item.type === 'exercise') {
+          reorderedExercises.push(item.exercise)
+        } else if (item.type === 'superset') {
+          // Add all exercises from the superset in their original order
+          item.exercises.forEach(exercise => {
+            reorderedExercises.push(exercise)
+          })
+        }
+      })
       
       // Update exercise order
       handleExerciseReorder(sessionId, sectionId, reorderedExercises)
     }
     
     setIsDragging(false)
-  }, [sessionId, getOrderedExercises, handleExerciseReorder])
+  }, [sessionId, getOrderedExercisesAndSupersets, handleExerciseReorder])
   
   // Handle adding a section
   const handleAddSection = useCallback((sectionType) => {
@@ -154,6 +262,7 @@ const ExerciseSectionManager = memo(({
     
     setExpandedSections((prev) => {
       if (prev.includes(sectionId)) {
+        // Allow all sections to be collapsed, even if this is the last one
         return prev.filter((id) => id !== sectionId)
       } else {
         return [...prev, sectionId]
@@ -163,6 +272,7 @@ const ExerciseSectionManager = memo(({
   
   // Collapse all sections
   const collapseAllSections = useCallback(() => {
+    // Fully collapse all sections with no restrictions
     setExpandedSections([])
   }, [])
   
@@ -190,23 +300,6 @@ const ExerciseSectionManager = memo(({
     }
   }, [longPressTimer])
   
-  // Get section icon
-  const getSectionIcon = useCallback((sectionId) => {
-    const section = sectionTypes.find((s) => s.id === sectionId)
-    return section ? section.icon : <Dumbbell className="h-4 w-4" />
-  }, [sectionTypes])
-  
-  // Get section name
-  const getSectionName = useCallback((sectionId) => {
-    const section = sectionTypes.find((s) => s.id === sectionId)
-    return section ? section.name : sectionId
-  }, [sectionTypes])
-  
-  // Get exercises for a section
-  const getSectionExercises = useCallback((sectionId) => {
-    return getOrderedExercises(sessionId, sectionId)
-  }, [getOrderedExercises, sessionId])
-
   // Handle search change for a specific section
   const handleSearchChange = useCallback((sectionId, e) => {
     setSectionSearchTerms(prev => ({
@@ -238,6 +331,22 @@ const ExerciseSectionManager = memo(({
     );
   }, [filteredExercises, sectionSearchTerms]);
 
+  // Get filtered exercises for a superset, searching across all exercise types
+  const getFilteredExercisesForSuperset = useCallback((sectionId) => {
+    const searchTerm = sectionSearchTerms[sectionId] || '';
+    
+    if (!searchTerm.trim()) {
+      // When no search term, return only exercises of this section type
+      return filteredExercises.filter(ex => ex.type === sectionId);
+    }
+    
+    // When searching, include ALL exercise types
+    return filteredExercises.filter(ex => 
+      ex.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ex.category && ex.category.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [filteredExercises, sectionSearchTerms]);
+
   // Check if exercise is already added
   const isExerciseAdded = useCallback((exerciseId) => {
     return exercises.some(ex => ex.id === exerciseId);
@@ -257,6 +366,10 @@ const ExerciseSectionManager = memo(({
     
     if (!exercise) return;
     
+    // Get all section exercises and find index of the exercise to be converted
+    const sectionExercises = getSectionExercises(sectionId);
+    const exerciseIndex = sectionExercises.findIndex(ex => ex.id === exerciseId);
+    
     // Create a new superset ID
     const newSupersetId = `superset-${supersetCounter}`;
     
@@ -264,18 +377,34 @@ const ExerciseSectionManager = memo(({
     const newSuperset = {
       id: newSupersetId,
       label: `${supersetCounter}`,
-      exercises: [{ ...exercise, supersetId: newSupersetId }]
+      exercises: [{ ...exercise, supersetId: newSupersetId }],
+      // Store the original exercise's position to maintain order
+      originalPosition: exerciseIndex
     };
     
-    // Add the superset to state
-    setSupersets(prev => [...prev, newSuperset]);
+    // Add the superset to state, maintaining the order
+    setSupersets(prev => {
+      const newSupersets = [...prev, newSuperset];
+      // Sort supersets by their original position within the section
+      return newSupersets.sort((a, b) => {
+        // If both have originalPosition, sort by that
+        if (a.originalPosition !== undefined && b.originalPosition !== undefined) {
+          return a.originalPosition - b.originalPosition;
+        }
+        // If only one has originalPosition, put it first
+        if (a.originalPosition !== undefined) return -1;
+        if (b.originalPosition !== undefined) return 1;
+        // Otherwise keep existing order
+        return 0;
+      });
+    });
     
     // Update the exercise with superset ID in the parent component's state
     handleExerciseDetailChange(exerciseId, sessionId, sectionId, 'supersetId', newSupersetId);
     
     // Increment the counter for the next superset
     setSupersetCounter(prev => prev + 1);
-  }, [exercises, supersetCounter, handleExerciseDetailChange]);
+  }, [exercises, supersetCounter, handleExerciseDetailChange, getSectionExercises]);
 
   // Function to add an exercise to an existing superset
   const handleAddToSuperset = useCallback((exerciseId, supersetId, sessionId, sectionId) => {
@@ -369,23 +498,60 @@ const ExerciseSectionManager = memo(({
 
   // Function to move an exercise up or down
   const handleMoveExercise = useCallback((exerciseId, direction, sessionId, sectionId) => {
-    const sectionExercises = getOrderedExercises(sessionId, sectionId);
+    const sectionExercises = getSectionExercises(sectionId);
     const exerciseIndex = sectionExercises.findIndex(ex => ex.id === exerciseId);
     
     if (exerciseIndex === -1) return;
     
-    const newIndex = direction === 'up' 
-      ? Math.max(0, exerciseIndex - 1)
-      : Math.min(sectionExercises.length - 1, exerciseIndex + 1);
+    // Get the exercise
+    const exercise = sectionExercises[exerciseIndex];
+    
+    // Get ordered items
+    const { unifiedItems } = getOrderedExercisesAndSupersets(sectionId);
+    
+    // Find the index of the item to move in the unified list
+    let itemIndex = -1;
+    if (exercise.supersetId) {
+      // If it's a superset exercise, find the superset
+      itemIndex = unifiedItems.findIndex(item => 
+        item.type === 'superset' && item.id === exercise.supersetId
+      );
+    } else {
+      // If it's a normal exercise, find it
+      itemIndex = unifiedItems.findIndex(item => 
+        item.type === 'exercise' && item.exercise.id === exerciseId
+      );
+    }
+    
+    if (itemIndex === -1) return;
+    
+    // Calculate new index
+    const newItemIndex = direction === 'up' 
+      ? Math.max(0, itemIndex - 1)
+      : Math.min(unifiedItems.length - 1, itemIndex + 1);
       
-    if (newIndex === exerciseIndex) return;
+    if (newItemIndex === itemIndex) return;
     
-    const newOrder = [...sectionExercises];
-    const [removed] = newOrder.splice(exerciseIndex, 1);
-    newOrder.splice(newIndex, 0, removed);
+    // Perform the move on the unified list
+    const [removed] = unifiedItems.splice(itemIndex, 1);
+    unifiedItems.splice(newItemIndex, 0, removed);
     
-    handleExerciseReorder(sessionId, sectionId, newOrder);
-  }, [getOrderedExercises, handleExerciseReorder]);
+    // Convert back to a flat list of exercises
+    const reorderedExercises = [];
+    unifiedItems.forEach(item => {
+      if (item.type === 'exercise') {
+        reorderedExercises.push(item.exercise);
+      } else if (item.type === 'superset') {
+        // Add all exercises from the superset in their original order
+        item.exercises.forEach(ex => {
+          reorderedExercises.push(ex);
+        });
+      }
+    });
+    
+    // Update exercise order
+    handleExerciseReorder(sessionId, sectionId, reorderedExercises);
+  }, [getSectionExercises, getOrderedExercisesAndSupersets, handleExerciseReorder]);
 
   // Function to duplicate an exercise
   const handleDuplicateExercise = useCallback((exerciseId, sessionId, sectionId) => {
@@ -406,31 +572,6 @@ const ExerciseSectionManager = memo(({
     // Add it to the exercises
     // handleAddExercise({ ...duplicate, part: sectionId });
   }, [exercises]);
-
-  // Render supersets for a section
-  const renderSupersets = useCallback((sectionId, supersetMap) => {
-    return Array.from(supersetMap.entries()).map(([supersetId, exercises]) => (
-      <SupersetContainer
-        key={supersetId}
-        supersetId={supersetId}
-        exercises={exercises}
-        onRemoveFromSuperset={handleRemoveFromSuperset}
-        onExitSuperset={handleExitSuperset}
-        handleRemoveExercise={handleRemoveExercise}
-        sessionId={sessionId}
-        sectionId={sectionId}
-        onAddExerciseToSuperset={handleAddExerciseToSuperset}
-        availableExercises={getFilteredExercisesForSection(sectionId)}
-      />
-    ));
-  }, [
-    handleRemoveFromSuperset, 
-    handleExitSuperset, 
-    handleRemoveExercise,
-    handleAddExerciseToSuperset,
-    getFilteredExercisesForSection,
-    sessionId
-  ]);
 
   // Replace the Menu component with custom dropdown
   const [addSectionMenuOpen, setAddSectionMenuOpen] = useState(false)
@@ -522,7 +663,7 @@ const ExerciseSectionManager = memo(({
                       <div
                         ref={provided.innerRef}
                         {...provided.draggableProps}
-                        className="border rounded-md overflow-hidden"
+                        className="border rounded-md overflow-visible relative"
                       >
                         {/* Section Header - Clickable for toggle, draggable with long press */}
                         <div 
@@ -609,72 +750,57 @@ const ExerciseSectionManager = memo(({
                             {/* Existing exercises list */}
                             <div className="mt-4">
                               <h4 className="text-sm font-medium text-gray-700 mb-2">Added Exercises</h4>
-                            <DragDropContext onDragEnd={onExerciseDragEnd}>
-                              <Droppable droppableId={String(sectionId)}>
-                                {(provided) => (
-                                  <div
-                                    {...provided.droppableProps}
-                                    ref={provided.innerRef}
-                                    className="space-y-2"
-                                  >
-                                    {getSectionExercises(sectionId).length === 0 ? (
-                                      <p className="text-sm text-gray-500 text-center py-4">
-                                        No exercises added to this section yet.
-                                      </p>
-                                    ) : (
-                                        // Group exercises by superset
+                              <DragDropContext onDragEnd={onExerciseDragEnd}>
+                                <Droppable droppableId={String(sectionId)}>
+                                  {(provided) => (
+                                    <div
+                                      {...provided.droppableProps}
+                                      ref={provided.innerRef}
+                                      className="space-y-2"
+                                    >
+                                      {getSectionExercises(sectionId).length === 0 ? (
+                                        <p className="text-sm text-gray-500 text-center py-4">
+                                          No exercises added to this section yet.
+                                        </p>
+                                      ) : (
+                                        // Use our helper function to create the ordered list
                                         (() => {
-                                          // Get exercises for this section
-                                          const sectionExercises = getSectionExercises(sectionId);
+                                          // Get exercises and supersets in the correct order
+                                          const { unifiedItems } = getOrderedExercisesAndSupersets(sectionId);
                                           
-                                          // Create a map of superset IDs to exercises
-                                          const supersetMap = new Map();
-                                          const normalExercises = [];
-                                          
-                                          // Sort exercises into supersets or normal exercises
-                                          sectionExercises.forEach(exercise => {
-                                            if (exercise.supersetId) {
-                                              if (!supersetMap.has(exercise.supersetId)) {
-                                                supersetMap.set(exercise.supersetId, []);
-                                              }
-                                              supersetMap.get(exercise.supersetId).push(exercise);
-                                            } else {
-                                              normalExercises.push(exercise);
-                                            }
-                                          });
-                                          
-                                          // Render exercises - first normal ones, then supersets
-                                          return (
-                                            <>
-                                              {normalExercises.map((exercise, index) => (
-                                        <Draggable
-                                          key={String(exercise.id)}
-                                          draggableId={String(exercise.id)}
-                                          index={index}
-                                        >
-                                          {(provided) => (
-                                            <div
-                                              ref={provided.innerRef}
-                                              {...provided.draggableProps}
-                                              className="border rounded-md p-3 bg-white relative"
-                                            >
+                                          // Render the unified list
+                                          return unifiedItems.map((item, idx) => {
+                                            if (item.type === 'exercise') {
+                                              // Render normal exercise
+                                              return (
+                                                <Draggable
+                                                  key={String(item.exercise.id)}
+                                                  draggableId={String(item.exercise.id)}
+                                                  index={idx}
+                                                >
+                                                  {(provided) => (
+                                                    <div
+                                                      ref={provided.innerRef}
+                                                      {...provided.draggableProps}
+                                                      className="border rounded-md p-3 bg-white relative overflow-visible"
+                                                    >
                                                       <div {...provided.dragHandleProps} className="flex items-center justify-between cursor-grab">
-                                                <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2">
                                                           <div className="cursor-grab">
-                                                    <GripVertical className="h-4 w-4 text-gray-400" />
-                                                  </div>
-                                                  <div>
-                                                    <p className="font-medium">{exercise.name}</p>
-                                                    <Badge variant="outline" className="mt-1">
-                                                      {exercise.category}
-                                                    </Badge>
-                                                  </div>
-                                                </div>
+                                                            <GripVertical className="h-4 w-4 text-gray-400" />
+                                                          </div>
+                                                          <div>
+                                                            <p className="font-medium">{item.exercise.name}</p>
+                                                            <Badge variant="outline" className="mt-1">
+                                                              {item.exercise.category}
+                                                            </Badge>
+                                                          </div>
+                                                        </div>
                                                         
                                                         {/* Context menu */}
                                                         <div className="flex items-center gap-2">
                                                           <ExerciseContextMenu
-                                                            exercise={exercise}
+                                                            exercise={item.exercise}
                                                             supersets={supersets}
                                                             onCreateSuperset={handleCreateSuperset}
                                                             onAddToSuperset={handleAddToSuperset}
@@ -683,8 +809,8 @@ const ExerciseSectionManager = memo(({
                                                             onMoveExercise={handleMoveExercise}
                                                             sessionId={sessionId}
                                                             sectionId={sectionId}
-                                                            disableMoveUp={index === 0}
-                                                            disableMoveDown={index === normalExercises.length - 1}
+                                                            disableMoveUp={idx === 0}
+                                                            disableMoveDown={idx === unifiedItems.length - 1}
                                                           />
                                                           
                                                           {/* Delete button - simplified to just a minus icon */}
@@ -692,27 +818,55 @@ const ExerciseSectionManager = memo(({
                                                             className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
                                                             onClick={(e) => {
                                                               e.stopPropagation();
-                                                              handleRemoveExercise(exercise.id, exercise.session, exercise.part);
+                                                              handleRemoveExercise(item.exercise.id, item.exercise.session, item.exercise.part);
                                                             }}
                                                           />
                                                         </div>
                                                       </div>
-                                            </div>
-                                          )}
-                                        </Draggable>
-                                              ))}
-                                              
-                                              {/* Render supersets */}
-                                              {renderSupersets(sectionId, supersetMap)}
-                                            </>
-                                          );
+                                                    </div>
+                                                  )}
+                                                </Draggable>
+                                              );
+                                            } else {
+                                              // Render superset as a draggable item
+                                              return (
+                                                <Draggable
+                                                  key={`superset-${item.id}`}
+                                                  draggableId={`superset-${item.id}`}
+                                                  index={idx}
+                                                >
+                                                  {(provided) => (
+                                                    <div
+                                                      ref={provided.innerRef}
+                                                      {...provided.draggableProps}
+                                                      {...provided.dragHandleProps}
+                                                    >
+                                                      <SupersetContainer
+                                                        key={item.id}
+                                                        supersetId={item.id}
+                                                        exercises={item.exercises}
+                                                        onRemoveFromSuperset={handleRemoveFromSuperset}
+                                                        onExitSuperset={handleExitSuperset}
+                                                        handleRemoveExercise={handleRemoveExercise}
+                                                        sessionId={sessionId}
+                                                        sectionId={sectionId}
+                                                        onAddExerciseToSuperset={handleAddExerciseToSuperset}
+                                                        availableExercises={getFilteredExercisesForSuperset(sectionId)}
+                                                        isDraggable={true}
+                                                      />
+                                                    </div>
+                                                  )}
+                                                </Draggable>
+                                              );
+                                            }
+                                          });
                                         })()
-                                    )}
-                                    {provided.placeholder}
-                                  </div>
-                                )}
-                              </Droppable>
-                            </DragDropContext>
+                                      )}
+                                      {provided.placeholder}
+                                    </div>
+                                  )}
+                                </Droppable>
+                              </DragDropContext>
                             </div>
                           </div>
                         )}

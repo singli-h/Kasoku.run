@@ -30,20 +30,19 @@ const ProgressionModelSelector = memo(({
   errors = {}
 }) => {
   return (
-    <Card className="mt-4">
-      <CardContent className="pt-6">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
+    <Card className="mt-4 overflow-visible">
+      <CardContent className="pt-6 overflow-visible">
+        <div className="space-y-4 overflow-visible">
+          <div className="flex items-center gap-2 overflow-visible">
             <h3 className="text-base font-medium">Progression Model</h3>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-gray-400 cursor-pointer" />
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p className="w-80">
-                    Select a progression model to determine how your training will advance over the mesocycle.
-                    Different models are suited for different goals.
+                <TooltipContent className="w-80 max-w-sm">
+                  <p>
+                    Select a progression model to determine how your training will advance over the mesocycle. Different models are suited for different goals.
                   </p>
                 </TooltipContent>
               </Tooltip>

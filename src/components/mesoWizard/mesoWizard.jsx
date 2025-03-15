@@ -105,9 +105,35 @@ const MesoWizard = ({ onComplete }) => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto relative">
+      {/* Extended gradient that connects with page gradient */}
+      <div
+        className="absolute -z-10 pointer-events-none"
+        style={{
+          top: '-100px',
+          left: '-100px',
+          right: '-100px',
+          bottom: '-100px',
+          background: `
+            radial-gradient(
+              circle at 30% 30%, 
+              rgba(147, 51, 234, 0.06), 
+              rgba(147, 51, 234, 0.02) 40%, 
+              transparent 70%
+            ),
+            radial-gradient(
+              circle at 70% 70%, 
+              rgba(37, 99, 235, 0.06), 
+              rgba(37, 99, 235, 0.02) 40%, 
+              transparent 70%
+            )
+          `,
+          filter: 'blur(50px)',
+        }}
+      ></div>
+      
       {/* Progress bar */}
-      <div className="mb-8">
+      <div className="mb-8 relative">
         <div className="flex justify-between mb-2">
           <span className="text-sm font-medium">
             Step {step} of 3: {step === 1 ? "Overview" : step === 2 ? "Planning" : "Confirmation"}
@@ -117,8 +143,10 @@ const MesoWizard = ({ onComplete }) => {
         <Progress value={progressPercentage} className="h-2" />
       </div>
 
-      {/* Step content */}
-      {renderStep()}
+      {/* Step content with slightly improved contrast */}
+      <div className="relative z-10 bg-white/80 backdrop-blur-sm p-6 rounded-lg shadow-md">
+        {renderStep()}
+      </div>
     </div>
   )
 }

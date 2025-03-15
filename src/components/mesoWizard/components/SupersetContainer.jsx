@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Minus, Dumbbell, X, Plus, Search } from "lucide-react"
+import { Minus, Dumbbell, X, Plus, Search, GripVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input"
  * @param {Function} props.handleRemoveExercise - Function to completely remove an exercise
  * @param {Function} props.onAddExerciseToSuperset - Function to add a new exercise to the superset
  * @param {Array} props.availableExercises - Array of exercises that can be added to the superset
+ * @param {boolean} props.isDraggable - Whether the superset is draggable
  */
 const SupersetContainer = ({
   supersetId,
@@ -30,7 +31,8 @@ const SupersetContainer = ({
   sessionId,
   sectionId,
   onAddExerciseToSuperset,
-  availableExercises = []
+  availableExercises = [],
+  isDraggable = false
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
@@ -52,14 +54,18 @@ const SupersetContainer = ({
 
   // Filter available exercises based on search term
   const filteredAvailableExercises = availableExercises.filter(
-    exercise => exercise.name.toLowerCase().includes(searchTerm.toLowerCase())
+    exercise => 
+      exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (exercise.category && exercise.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (exercise.type && exercise.type.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
     <div 
       className={cn(
         "border-2 border-blue-400 rounded-lg p-3 mt-2 mb-4 relative bg-gradient-to-r from-blue-50/40 to-indigo-50/40 transition-all duration-200",
-        isHovered && "border-blue-500 bg-gradient-to-r from-blue-50/60 to-indigo-50/60 shadow-md"
+        isHovered && "border-blue-500 bg-gradient-to-r from-blue-50/60 to-indigo-50/60 shadow-md",
+        isDraggable && "cursor-grab active:cursor-grabbing"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -67,6 +73,9 @@ const SupersetContainer = ({
       {/* Superset Header with Badge */}
       <div className="flex items-center justify-between mb-3 pb-2 border-b border-blue-200">
         <div className="flex items-center gap-2">
+          {isDraggable && (
+            <GripVertical className="h-5 w-5 text-blue-400" />
+          )}
           <Dumbbell className="h-5 w-5 text-blue-500" />
           <span className="font-medium text-blue-700">Superset</span>
           <Badge className="bg-blue-100 text-blue-700 border-blue-300 font-semibold">
@@ -74,7 +83,7 @@ const SupersetContainer = ({
           </Badge>
         </div>
         <div className="flex items-center gap-2">
-          {exercises.length < 4 && (
+          {exercises.length < 6 && (
             <Button
               variant="outline"
               size="sm"
@@ -112,7 +121,7 @@ const SupersetContainer = ({
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[150px] overflow-y-auto">
-            {filteredAvailableExercises.slice(0, 9).map(exercise => (
+            {filteredAvailableExercises.slice(0, 12).map(exercise => (
               <div 
                 key={exercise.id}
                 className="flex items-center justify-between p-2 bg-white rounded border border-gray-200 hover:border-blue-300 cursor-pointer"
@@ -121,13 +130,20 @@ const SupersetContainer = ({
                   setShowAddExercise(false);
                 }}
               >
-                <div className="flex items-center">
-                  <Plus className="h-3 w-3 text-blue-500 mr-1" />
-                  <span className="text-xs font-medium truncate">{exercise.name}</span>
+                <div className="flex-1">
+                  <div className="font-medium text-xs truncate">{exercise.name}</div>
+                  <div className="flex items-center mt-1 gap-1">
+                    {exercise.type !== sectionId && (
+                      <Badge variant="secondary" className="text-xs px-1 py-0 h-4 bg-blue-100 text-blue-700">
+                        {exercise.type}
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="text-xs px-1 py-0 h-4">
+                      {exercise.category}
+                    </Badge>
+                  </div>
                 </div>
-                <Badge variant="outline" className="text-xs px-1 py-0 h-4">
-                  {exercise.category}
-                </Badge>
+                <Plus className="h-3 w-3 text-blue-500 ml-1 flex-shrink-0" />
               </div>
             ))}
             
@@ -167,26 +183,15 @@ const SupersetContainer = ({
               <Badge variant="outline" className="self-start mb-2">
                 {exercise.category}
               </Badge>
-              
-              <div className="mt-auto flex justify-end items-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50"
-                  onClick={() => handleRemoveFromSuperset(supersetId, exercise.id)}
-                >
-                  Remove from superset
-                </Button>
-              </div>
             </div>
           </div>
         ))}
       </div>
       
       {/* Hints for the user */}
-      {isHovered && exercises.length < 4 && !showAddExercise && (
+      {isHovered && exercises.length < 6 && !showAddExercise && (
         <div className="mt-2 text-xs text-blue-600 italic text-center">
-          You can add up to {4 - exercises.length} more exercise{exercises.length < 3 ? 's' : ''} to this superset
+          You can add up to {6 - exercises.length} more exercise{exercises.length < 5 ? 's' : ''} to this superset
         </div>
       )}
     </div>

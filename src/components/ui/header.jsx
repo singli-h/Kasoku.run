@@ -29,7 +29,7 @@ const Header = () => {
             <img 
               className="h-8 w-auto" 
               src="/logo.svg" 
-              alt="Your Company"
+              alt="RunningApp"
             />
           </div>
 
@@ -68,12 +68,9 @@ const Header = () => {
 
 /**
  * PropTypes for the Header component
- * Note: Currently defined but not used in the component
- * TODO: Either implement these props or remove if not needed
  */
 Header.propTypes = {
-  title: PropTypes.string.isRequired,
-  description: PropTypes.string.isRequired,
+  // Currently no props are required
 }
 
 export default Header

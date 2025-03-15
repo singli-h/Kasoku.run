@@ -4,7 +4,9 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 const Progress = React.forwardRef(({ className, value, max = 100, ...props }, ref) => {
-  const percentage = value != null ? Math.min(Math.max(0, value), max) : 0
+  // Ensure value is a number and has a default of 0
+  const numericValue = value != null ? Number(value) : 0
+  const percentage = Math.min(Math.max(0, numericValue), max)
   const calculatedValue = (percentage / max) * 100
   
   return (
@@ -22,7 +24,10 @@ const Progress = React.forwardRef(({ className, value, max = 100, ...props }, re
     >
       <div
         className="h-full w-full flex-1 bg-primary transition-all"
-        style={{ transform: `translateX(-${100 - calculatedValue}%)` }}
+        style={{ 
+          transform: `translateX(-${100 - calculatedValue}%)`,
+          width: '100%'
+        }}
       />
     </div>
   )

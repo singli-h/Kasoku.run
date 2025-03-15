@@ -31,7 +31,7 @@ const ExerciseDetailFields = ({ exercise, handleExerciseDetailChange }) => {
           size="sm" 
           className="h-8 px-3 text-xs sm:text-sm"
         >
-          Edit Details
+          Edit
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-lg">
@@ -40,22 +40,6 @@ const ExerciseDetailFields = ({ exercise, handleExerciseDetailChange }) => {
         </DialogHeader>
         
         <div className="space-y-4 py-2 bg-white max-h-[400px] overflow-y-auto pr-2">
-          {/* Effort */}
-          <div>
-            <Label htmlFor="effort" className="text-base font-medium">
-              Effort (%)
-            </Label>
-            <Input
-              id="effort"
-              type="number"
-              min="0"
-              max="100"
-              step="5"
-              value={exercise.effort || ""}
-              onChange={(e) => handleInputChange("effort", parseFloat(e.target.value) || "")}
-              className="mt-1 h-12 text-base"
-            />
-          </div>
           
           {/* Velocity */}
           <div>
