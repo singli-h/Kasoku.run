@@ -55,20 +55,24 @@ const ProgressionModelSelector = memo(({
             className="space-y-3"
           >
             {progressionModels.map((model) => (
-              <div key={model.id} className="flex items-start space-x-2">
-                <RadioGroupItem value={model.id} id={`model-${model.id}-${session.id}`} className="mt-1" />
+              <label
+                key={model.id}
+                htmlFor={`model-${model.id}-${session.id}`}
+                className="flex items-start space-x-2 cursor-pointer"
+              >
+                <RadioGroupItem
+                  id={`model-${model.id}-${session.id}`}
+                  value={model.id}
+                  className="mt-1"
+                />
                 <div className="grid gap-1.5">
-                  <Label
-                    htmlFor={`model-${model.id}-${session.id}`}
-                    className="font-medium cursor-pointer"
-                  >
-                    {model.name}
-                  </Label>
+                  <span className="font-medium">{model.name}</span>
                   <p className="text-sm text-gray-500">{model.description}</p>
                 </div>
-              </div>
+              </label>
             ))}
           </RadioGroup>
+
           
           {session.progressionModel && (
             <div className="mt-4">

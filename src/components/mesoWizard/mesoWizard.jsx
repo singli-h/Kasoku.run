@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
 import { Progress } from "@/components/ui/progress"
 import StepOneOverview from "./steps/StepOneOverview"
 import StepTwoPlanner from "./steps/StepTwoPlanner"
 import StepThreeConfirmation from "./steps/StepThreeConfirmation"
 import { useMesoWizardState } from "./hooks/useMesoWizardState"
 import { progressionModels } from "./sampledata"
+import { Loader2 } from "lucide-react"
 
 /**
  * MesoWizard Component
@@ -24,16 +24,15 @@ const MesoWizard = ({ onComplete }) => {
   const {
     step,
     formData,
-    searchTerm,
     filteredExercises,
     activeSession,
     isLoading,
+    loadingExercises,
     aiSuggestions,
     errors,
     sessionSections,
     progressPercentage,
     
-    setSearchTerm,
     setActiveSession,
     handleInputChange,
     handleSessionInputChange,
@@ -53,6 +52,15 @@ const MesoWizard = ({ onComplete }) => {
 
   // Render the appropriate step
   const renderStep = () => {
+    if (loadingExercises && step === 2) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-lg text-gray-600">Loading exercise library...</p>
+        </div>
+      )
+    }
+    
     switch (step) {
       case 1:
         return (

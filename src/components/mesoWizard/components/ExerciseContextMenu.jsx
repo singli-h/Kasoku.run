@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Layers, Plus, MoveDown, MoveUp, Minus } from "lucide-react"
+import { MoreHorizontal, Layers, Plus, MoveDown, MoveUp, Minus, X } from "lucide-react"
 
 /**
  * Custom Exercise Context Menu without headlessui
@@ -22,6 +22,7 @@ const ExerciseContextMenu = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showSupersetSubmenu, setShowSupersetSubmenu] = useState(false);
+  const [showCreateSupersetFeedback, setShowCreateSupersetFeedback] = useState(false);
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
   
@@ -92,6 +93,62 @@ const ExerciseContextMenu = ({
     }
   };
 
+  // Function to handle the create superset click with better feedback
+  const handleCreateSupersetClick = (e) => {
+    e.stopPropagation();
+    
+    // Call the create superset function with a single exercise ID
+    onCreateSuperset([exercise.id], sectionId);
+    
+    // Show creation feedback dialog, which explains what to do next
+    setShowCreateSupersetFeedback(true);
+    
+    // Hide the feedback after 3 seconds
+    setTimeout(() => {
+      setShowCreateSupersetFeedback(false);
+    }, 5000);
+    
+    // Close the menu
+    setIsOpen(false);
+    setShowSupersetSubmenu(false);
+  };
+
+  // Update the JSX for the Create Superset button including feedback
+  const createSupersetButton = (
+    <div className="relative">
+      <button
+        className="group flex w-full items-center rounded-md px-2 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+        onClick={handleCreateSupersetClick}
+      >
+        <Layers className="mr-2 h-4 w-4" />
+        Create Superset
+      </button>
+      
+      {showCreateSupersetFeedback && (
+        <div 
+          className="fixed top-1/4 inset-x-0 mx-auto p-4 bg-blue-100 text-blue-800 max-w-md rounded-lg shadow-lg z-[5000] border border-blue-300 animate-in fade-in-50 zoom-in-95 duration-100"
+          style={{ maxWidth: "350px" }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Layers className="h-5 w-5 mr-2 text-blue-600" />
+              <span className="font-medium">Superset Created!</span>
+            </div>
+            <button 
+              onClick={() => setShowCreateSupersetFeedback(false)}
+              className="text-blue-600 hover:text-blue-800"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="mt-2 text-sm">
+            A superset has been started with &ldquo;{exercise.name}&rdquo;. To complete the superset, add another exercise using the &ldquo;Add&rdquo; button in the superset container.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="relative inline-block text-left">
       <Button 
@@ -124,13 +181,7 @@ const ExerciseContextMenu = ({
               </div>
             ) : (
               <>
-                <button
-                  className="group flex w-full items-center rounded-md px-2 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                  onClick={handleMenuItemClick(() => onCreateSuperset(exercise.id, sessionId, sectionId))}
-                >
-                  <Layers className="mr-2 h-4 w-4" />
-                  Create Superset
-                </button>
+                {createSupersetButton}
 
                 {availableSupersets.length > 0 && (
                   <div className="relative" onMouseEnter={handleSupersetHover} onMouseLeave={() => setShowSupersetSubmenu(false)}>

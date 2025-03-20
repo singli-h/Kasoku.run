@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { exerciseLibrary } from "../sampledata"
+import { fetchExercises } from "../sampledata"
 
 /**
  * Custom hook for managing MesoWizard state
@@ -24,7 +24,9 @@ export const useMesoWizardState = (onComplete) => {
   
   // UI states
   const [searchTerm, setSearchTerm] = useState("")
-  const [filteredExercises, setFilteredExercises] = useState(exerciseLibrary)
+  const [filteredExercises, setFilteredExercises] = useState([])
+  const [loadingExercises, setLoadingExercises] = useState(true)
+  const [allExercises, setAllExercises] = useState([])
   const [activeSession, setActiveSession] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [aiSuggestions, setAiSuggestions] = useState(null)
@@ -35,14 +37,35 @@ export const useMesoWizardState = (onComplete) => {
   // Calculate progress percentage
   const progressPercentage = ((step - 1) / 3) * 100
 
+  // Fetch exercises from API on component mount
+  useEffect(() => {
+    const getExercises = async () => {
+      setLoadingExercises(true)
+      try {
+        const exercises = await fetchExercises()
+        setAllExercises(exercises)
+        setFilteredExercises(exercises)
+      } catch (error) {
+        console.error("Error fetching exercises:", error)
+      } finally {
+        setLoadingExercises(false)
+      }
+    }
+    
+    getExercises()
+  }, [])
+
   // Filter exercises based on search term
   useEffect(() => {
+    if (!allExercises.length) return
+    
     setFilteredExercises(
-      exerciseLibrary.filter((exercise) => 
-        exercise.name.toLowerCase().includes(searchTerm.toLowerCase())
+      allExercises.filter((exercise) => 
+        exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        exercise.category.toLowerCase().includes(searchTerm.toLowerCase())
       )
     )
-  }, [searchTerm])
+  }, [searchTerm, allExercises])
 
   // Handle basic input changes
   const handleInputChange = useCallback((e) => {
@@ -93,6 +116,7 @@ export const useMesoWizardState = (onComplete) => {
       id: Date.now(), // Generate a unique ID
       session: activeSession,
       part: exercise.type,
+      section: exercise.section || null, // Preserve section for superset exercises
       sets: "",
       reps: "",
       rest: "",
@@ -105,7 +129,7 @@ export const useMesoWizardState = (onComplete) => {
     
     // Update exercise order
     setExerciseOrder((prev) => {
-      const sectionKey = `${activeSession}-${exercise.type}`
+      const sectionKey = `${activeSession}-${exercise.section || exercise.type}`
       const currentOrder = prev[sectionKey] || []
       return {
         ...prev,
@@ -137,36 +161,52 @@ export const useMesoWizardState = (onComplete) => {
     setFormData((prev) => {
       const updatedExercises = prev.exercises.map((ex) => {
         if (ex.id === id) {
-          return { ...ex, [field]: value }
+          const updatedEx = { ...ex, [field]: value };
+          
+          // If we're setting a supersetId, ensure we preserve the section property
+          // This ensures the exercise stays in its designated section
+          if (field === 'supersetId' && value && !updatedEx.section) {
+            // If adding to a superset, make sure section is set
+            // Use the current section if available, otherwise use the part
+            updatedEx.section = ex.section || part;
+          } else if (field === 'supersetId' && !value) {
+            // If removing from a superset, clear the section property
+            // This allows the exercise to return to its natural section
+            updatedEx.section = null;
+          }
+          
+          return updatedEx;
         }
-        return ex
-      })
+        return ex;
+      });
       
-      return { ...prev, exercises: updatedExercises }
-    })
+      return { ...prev, exercises: updatedExercises };
+    });
     
     // Clear errors for this field if any
-    const errorKey = `exercise-${id}-${session}-${part}-${field}`
+    const errorKey = `exercise-${id}-${session}-${part}-${field}`;
     if (errors[errorKey]) {
       setErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[errorKey]
-        return newErrors
-      })
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        return newErrors;
+      });
     }
-  }, [errors])
+  }, [errors]);
 
   // Handle exercise reordering
   const handleExerciseReorder = useCallback((sessionId, sectionId, reorderedExercises) => {
     // Update the exercise order
-    const exerciseIds = reorderedExercises.map(ex => ex.id)
-    const sectionKey = `${sessionId}-${sectionId}`
+    const exerciseIds = reorderedExercises.map(ex => ex.id);
+    const sectionKey = `${sessionId}-${sectionId}`;
+    
+    console.log(`Reordering exercises for section ${sectionId}:`, exerciseIds);
     
     setExerciseOrder(prev => ({
       ...prev,
       [sectionKey]: exerciseIds
-    }))
-  }, [])
+    }));
+  }, []);
 
   // Handle progression model changes
   const handleProgressionModelChange = useCallback((sessionId, model) => {
@@ -271,6 +311,10 @@ export const useMesoWizardState = (onComplete) => {
           newErrors[`session-${session.id}-name`] = "Session name is required"
         }
         
+        if (!session.weekday) {
+          newErrors[`session-${session.id}-weekday`] = "Please select a weekday for this session"
+        }
+        
         if (session.progressionModel && !session.progressionValue) {
           newErrors[`session-${session.id}-progressionValue`] = "Progression value is required"
         }
@@ -279,20 +323,18 @@ export const useMesoWizardState = (onComplete) => {
       // Validate exercises
       formData.exercises.forEach((exercise) => {
         if (!exercise.sets) {
-          newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`] = "Sets are required"
+          newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`] = "Sets required"
         } else if (isNaN(exercise.sets) || parseInt(exercise.sets) <= 0) {
           newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`] = "Sets must be a positive number"
         }
         
         if (!exercise.reps) {
-          newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`] = "Reps are required"
+          newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`] = "Reps required"
         } else if (isNaN(exercise.reps) || parseInt(exercise.reps) <= 0) {
           newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`] = "Reps must be a positive number"
         }
         
-        if (!exercise.rest) {
-          newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-rest`] = "Rest time is required"
-        } else if (isNaN(exercise.rest) || parseInt(exercise.rest) <= 0) {
+        if (isNaN(exercise.rest) || parseInt(exercise.rest) <= 0) {
           newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-rest`] = "Rest time must be a positive number"
         }
       })
@@ -355,6 +397,7 @@ export const useMesoWizardState = (onComplete) => {
           name: `Session ${i + 1}`,
           progressionModel: "",
           progressionValue: "",
+          weekday: "",
         }))
         
         setFormData((prev) => ({ ...prev, sessions: newSessions }))
@@ -408,23 +451,33 @@ export const useMesoWizardState = (onComplete) => {
 
   // Get ordered exercises for a section
   const getOrderedExercises = useCallback((sessionId, sectionId) => {
-    const sectionKey = `${sessionId}-${sectionId}`
+    // Get exercises that either:
+    // 1. Belong to this section directly (part === sectionId) AND are not in a superset, or
+    // 2. Are part of a superset that belongs to this section (section === sectionId)
+    // This ensures each exercise only appears in its designated section
+    
     const sectionExercises = formData.exercises.filter(
-      ex => ex.session === sessionId && ex.part === sectionId
-    )
+      ex => (ex.session === sessionId) && (
+        // Regular exercises that belong to this section (by type) and aren't in a superset
+        (ex.part === sectionId && !ex.supersetId) || 
+        // Exercises that are part of a superset that's assigned to this section
+        (ex.supersetId && ex.section === sectionId)
+      )
+    );
     
     // If we have a custom order, use it
+    const sectionKey = `${sessionId}-${sectionId}`;
     if (exerciseOrder[sectionKey] && exerciseOrder[sectionKey].length > 0) {
-      const orderedIds = exerciseOrder[sectionKey]
+      const orderedIds = exerciseOrder[sectionKey];
       return orderedIds
         .map(id => sectionExercises.find(e => e.id === id))
         .filter(Boolean) // Filter out undefined (in case some exercises were removed)
-        .concat(sectionExercises.filter(e => !orderedIds.includes(e.id))) // Append any exercises not in the order
+        .concat(sectionExercises.filter(e => !orderedIds.includes(e.id))); // Append any exercises not in the order
     }
     
     // Otherwise return as-is
-    return sectionExercises
-  }, [formData.exercises, exerciseOrder])
+    return sectionExercises;
+  }, [formData.exercises, exerciseOrder]);
 
   return {
     // State
@@ -434,6 +487,7 @@ export const useMesoWizardState = (onComplete) => {
     filteredExercises,
     activeSession,
     isLoading,
+    loadingExercises,
     aiSuggestions,
     errors,
     sessionSections,

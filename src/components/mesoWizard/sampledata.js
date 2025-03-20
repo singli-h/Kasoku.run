@@ -1,76 +1,3 @@
-
-export const exerciseLibrary = [
-  // Warm-up exercises
-  { id: 1, name: "Dynamic Stretching", category: "Mobility", type: "warmup" },
-  { id: 2, name: "Foam Rolling", category: "Recovery", type: "warmup" },
-  { id: 3, name: "Activation Drills", category: "Mobility", type: "warmup" },
-  { id: 4, name: "Light Jogging", category: "Cardio", type: "warmup" },
-  { id: 5, name: "Bodyweight Squats", category: "Lower Body", type: "warmup" },
-  { id: 6, name: "Arm Circles", category: "Upper Body", type: "warmup" },
-
-  // Gym exercises
-  { id: 7, name: "Barbell Squat", category: "Lower Body", type: "gym" },
-  { id: 8, name: "Deadlift", category: "Compound", type: "gym" },
-  { id: 9, name: "Bench Press", category: "Upper Body", type: "gym" },
-  { id: 10, name: "Overhead Press", category: "Upper Body", type: "gym" },
-  { id: 11, name: "Pull-up", category: "Upper Body", type: "gym" },
-  { id: 12, name: "Barbell Row", category: "Upper Body", type: "gym" },
-  { id: 13, name: "Leg Press", category: "Lower Body", type: "gym" },
-  { id: 14, name: "Romanian Deadlift", category: "Lower Body", type: "gym" },
-  { id: 15, name: "Dumbbell Lunges", category: "Lower Body", type: "gym" },
-  { id: 16, name: "Lat Pulldown", category: "Upper Body", type: "gym" },
-  { id: 17, name: "Tricep Extension", category: "Upper Body", type: "gym" },
-  { id: 18, name: "Bicep Curl", category: "Upper Body", type: "gym" },
-
-  // Circuit exercises
-  { id: 19, name: "Kettlebell Swings", category: "Full Body", type: "circuit" },
-  { id: 20, name: "Battle Ropes", category: "Conditioning", type: "circuit" },
-  { id: 21, name: "Box Jumps", category: "Plyometric", type: "circuit" },
-  { id: 22, name: "Burpees", category: "Full Body", type: "circuit" },
-  { id: 23, name: "Mountain Climbers", category: "Core", type: "circuit" },
-  { id: 24, name: "Medicine Ball Slams", category: "Full Body", type: "circuit" },
-
-  // Plyometric exercises
-  { id: 25, name: "Depth Jumps", category: "Lower Body", type: "plyometric" },
-  { id: 26, name: "Broad Jumps", category: "Lower Body", type: "plyometric" },
-  { id: 27, name: "Hurdle Jumps", category: "Lower Body", type: "plyometric" },
-  { id: 28, name: "Bounding", category: "Lower Body", type: "plyometric" },
-  { id: 29, name: "Plyo Push-ups", category: "Upper Body", type: "plyometric" },
-  { id: 30, name: "Lateral Jumps", category: "Agility", type: "plyometric" },
-
-  // Powerlifting exercises
-  { id: 31, name: "Sumo Deadlift", category: "Powerlifting", type: "gym" },
-  { id: 32, name: "Front Squat", category: "Powerlifting", type: "gym" },
-  { id: 33, name: "Incline Bench Press", category: "Powerlifting", type: "gym" },
-  { id: 34, name: "Power Clean", category: "Olympic", type: "gym" },
-  { id: 35, name: "Clean and Jerk", category: "Olympic", type: "gym" },
-  { id: 36, name: "Snatch", category: "Olympic", type: "gym" },
-
-  // Isometric exercises
-  { id: 37, name: "Wall Sit", category: "Lower Body", type: "isometric" },
-  { id: 38, name: "Plank", category: "Core", type: "isometric" },
-  { id: 39, name: "Side Plank", category: "Core", type: "isometric" },
-  { id: 40, name: "Glute Bridge Hold", category: "Lower Body", type: "isometric" },
-  { id: 41, name: "L-Sit", category: "Core", type: "isometric" },
-  { id: 42, name: "Handstand Hold", category: "Upper Body", type: "isometric" },
-
-  // Sprint exercises
-  { id: 43, name: "100m Sprint", category: "Speed", type: "sprint" },
-  { id: 44, name: "Hill Sprints", category: "Power", type: "sprint" },
-  { id: 45, name: "Shuttle Runs", category: "Agility", type: "sprint" },
-  { id: 46, name: "Interval Sprints", category: "Conditioning", type: "sprint" },
-  { id: 47, name: "Resisted Sprints", category: "Power", type: "sprint" },
-  { id: 48, name: "Flying Sprints", category: "Speed", type: "sprint" },
-
-  // Drill exercises
-  { id: 49, name: "Ladder Drills", category: "Footwork", type: "drill" },
-  { id: 50, name: "Cone Drills", category: "Agility", type: "drill" },
-  { id: 51, name: "Technique Drills", category: "Skill", type: "drill" },
-  { id: 52, name: "Balance Drills", category: "Stability", type: "drill" },
-  { id: 53, name: "Coordination Drills", category: "Motor Control", type: "drill" },
-  { id: 54, name: "Sport-Specific Drills", category: "Skill", type: "drill" },
-]
-
 // Available exercise section types
 export const exerciseSectionTypes = [
   { id: "warmup", name: "Warm-up", icon: "Flame" },
@@ -81,6 +8,77 @@ export const exerciseSectionTypes = [
   { id: "sprint", name: "Sprints", icon: "Timer" },
   { id: "drill", name: "Drills", icon: "Target" },
 ]
+
+// API base URL
+export const API_BASE_URL = "http://localhost:54321/functions/v1/api"
+
+// Function to fetch exercises from API
+export const fetchExercises = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/planner/exercises`);
+    const { data } = await response.json();
+    
+    // Transform API response to match the expected format
+    return data.exercises.map(exercise => ({
+      id: exercise.id,
+      name: exercise.name,
+      category: exercise.exercise_types?.type || "Unknown",
+      type: mapExerciseTypeToSection(exercise.exercise_types?.type, exercise.exercise_type_id),
+      description: exercise.description,
+      video_url: exercise.video_url,
+      unit: exercise.units?.name || "kg",
+      type_id: exercise.exercise_type_id
+    }));
+  } catch (error) {
+    console.error("Error fetching exercises:", error);
+    return [];
+  }
+}
+
+// Helper function to map API exercise types to section IDs
+function mapExerciseTypeToSection(type, typeId) {
+  // If we have a type_id of 4, it's a warm-up exercise
+  if (typeId === 4) {
+    return "warmup";
+  }
+  
+  if (!type) return "gym";
+  
+  // Handle exact matching by type name
+  const typeMap = {
+    "Gym": "gym",
+    "Warm Up": "warmup",
+    "Circuit": "circuit",
+    "Plyometric": "plyometric",
+    "Isometric": "isometric",
+    "Sprint": "sprint",
+    "Drill": "drill"
+  };
+  
+  // First try exact match
+  if (typeMap[type.trim()]) {
+    return typeMap[type.trim()];
+  }
+  
+  // Use case-insensitive partial matching for other types
+  const lowerType = type.toLowerCase().trim();
+  if (lowerType.includes("gym")) {
+    return "gym";
+  } else if (lowerType.includes("circuit")) {
+    return "circuit";
+  } else if (lowerType.includes("plyo")) {
+    return "plyometric";
+  } else if (lowerType.includes("iso")) {
+    return "isometric";
+  } else if (lowerType.includes("sprint")) {
+    return "sprint";
+  } else if (lowerType.includes("drill")) {
+    return "drill";
+  }
+  
+  // Default to gym if no match
+  return "gym";
+}
 
 // Sample data for progression models
 export const progressionModels = [

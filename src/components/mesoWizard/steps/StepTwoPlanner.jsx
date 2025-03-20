@@ -80,6 +80,24 @@ const StepTwoPlanner = ({
     return section ? section.name : sectionId
   }
   
+  // Weekday options
+  const weekdays = [
+    { value: "monday", label: "Monday" },
+    { value: "tuesday", label: "Tuesday" },
+    { value: "wednesday", label: "Wednesday" },
+    { value: "thursday", label: "Thursday" },
+    { value: "friday", label: "Friday" },
+    { value: "saturday", label: "Saturday" },
+    { value: "sunday", label: "Sunday" },
+  ]
+  
+  // Get a list of already selected weekdays (excluding the current session)
+  const getSelectedWeekdays = (currentSessionId) => {
+    return formData.sessions
+      .filter(s => s.id !== currentSessionId && s.weekday)
+      .map(s => s.weekday)
+  }
+  
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Session & Exercise Planning</h2>
@@ -93,13 +111,29 @@ const StepTwoPlanner = ({
         onValueChange={(value) => setActiveSession(parseInt(value))}
         className="w-full"
       >
-        <TabsList className="mb-4 flex flex-wrap">
-          {formData.sessions.map((session) => (
-            <TabsTrigger key={session.id} value={session.id.toString()} className="flex-grow">
-              {session.name || `Session ${session.id}`}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="mb-4 overflow-x-auto overscroll-x-contain">
+          <TabsList className="flex w-max space-x-2 p-1 pb-8 pt-8">
+            {formData.sessions.map((session) => (
+              <TabsTrigger
+                key={session.id}
+                value={session.id.toString()}
+                className="
+                  whitespace-nowrap
+                  px-4 py-2
+                  border border-gray-300
+                  rounded-md
+                  bg-white
+                  hover:bg-gray-50
+                  transition-colors
+                "
+              >
+                {(session.name || `Session ${session.id}`).length > 30
+                  ? (session.name || `Session ${session.id}`).slice(0, 30) + "..."
+                  : (session.name || `Session ${session.id}`)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {formData.sessions.map((session) => (
           <TabsContent key={session.id} value={session.id.toString()} className="space-y-6">
@@ -132,6 +166,46 @@ const StepTwoPlanner = ({
                     />
                     {errors[`session-${session.id}-name`] && (
                       <p className="mt-1 text-sm text-red-500">{errors[`session-${session.id}-name`]}</p>
+                    )}
+                  </div>
+
+                  {/* Weekday Selector */}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`session-weekday-${session.id}`} className="text-base font-medium">
+                        Weekday
+                      </Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-gray-400" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Select the weekday for this session. Each weekday can only be used once.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <select
+                      id={`session-weekday-${session.id}`}
+                      value={session.weekday}
+                      onChange={(e) => handleSessionInputChange(session.id, "weekday", e.target.value)}
+                      className={`w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors[`session-${session.id}-weekday`] ? "border-red-500" : ""}`}
+                    >
+                      <option value="">Select a weekday</option>
+                      {weekdays.map((day) => {
+                        const selectedWeekdays = getSelectedWeekdays(session.id);
+                        const isDisabled = selectedWeekdays.includes(day.value);
+                        
+                        return (
+                          <option key={day.value} value={day.value} disabled={isDisabled}>
+                            {day.label}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {errors[`session-${session.id}-weekday`] && (
+                      <p className="mt-1 text-sm text-red-500">{errors[`session-${session.id}-weekday`]}</p>
                     )}
                   </div>
                 </div>

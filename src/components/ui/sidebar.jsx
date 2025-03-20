@@ -209,7 +209,7 @@ const Sidebar = ({ onCollapse }) => {
                 animate={isCollapsed ? "hide" : "show"}
                 className="font-bold text-xl whitespace-nowrap"
               >
-                RunningApp
+                TrainFast
               </motion.span>
             </Link>
             <div className="flex items-center">

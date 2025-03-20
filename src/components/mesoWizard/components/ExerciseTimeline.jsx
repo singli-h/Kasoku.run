@@ -32,14 +32,22 @@ const ExerciseTimeline = memo(({
   // Get ordered exercises and supersets for each section
   const getOrderedExercisesAndSupersets = useMemo(() => {
     return (sectionId) => {
-      // Get exercises for this section
+      // Get exercises for this section, including those that are part of supersets
+      // but only if the superset belongs to this section
       const sectionExercises = getOrderedExercises(sessionId, sectionId);
       
       // Step 1: Identify all supersets and their positions
       const supersetPositions = new Map();
+      const supersetIds = new Set();
+      
+      // First pass - collect all superset IDs and find the first occurrence
       sectionExercises.forEach((exercise, index) => {
-        if (exercise.supersetId && !supersetPositions.has(exercise.supersetId)) {
-          supersetPositions.set(exercise.supersetId, index);
+        if (exercise.supersetId && exercise.section === sectionId) {
+          // Only add supersets that belong to this section
+          supersetIds.add(exercise.supersetId);
+          if (!supersetPositions.has(exercise.supersetId)) {
+            supersetPositions.set(exercise.supersetId, index);
+          }
         }
       });
       
@@ -48,19 +56,22 @@ const ExerciseTimeline = memo(({
       const orderedSupersetExercises = new Map();
       const normalExercises = [];
       
+      // Initialize maps for each superset
+      supersetIds.forEach(id => {
+        supersetMap.set(id, []);
+        orderedSupersetExercises.set(id, []);
+      });
+      
+      // Collect exercises for each superset
       sectionExercises.forEach(exercise => {
-        if (exercise.supersetId) {
-          if (!supersetMap.has(exercise.supersetId)) {
-            supersetMap.set(exercise.supersetId, []);
-            orderedSupersetExercises.set(exercise.supersetId, []);
-          }
+        if (exercise.supersetId && supersetIds.has(exercise.supersetId)) {
           supersetMap.get(exercise.supersetId).push(exercise);
           
           // Track the original order of exercises within the superset
           if (!orderedSupersetExercises.get(exercise.supersetId).some(ex => ex.id === exercise.id)) {
             orderedSupersetExercises.get(exercise.supersetId).push(exercise);
           }
-        } else {
+        } else if (!exercise.supersetId) {
           normalExercises.push(exercise);
         }
       });
@@ -73,20 +84,23 @@ const ExerciseTimeline = memo(({
       
       // Add items in proper order
       sectionExercises.forEach((exercise, index) => {
-        if (exercise.supersetId) {
+        if (exercise.supersetId && supersetIds.has(exercise.supersetId)) {
           // If this is the first occurrence of this superset and we haven't added it yet
           if (supersetPositions.get(exercise.supersetId) === index && 
-              !addedSupersets.has(exercise.supersetId)) {
+              !addedSupersets.has(exercise.supersetId) &&
+              exercise.section === sectionId) { // Only add if it belongs to this section
+            
             // Add the superset as a group
             unifiedItems.push({
               type: 'superset',
               id: exercise.supersetId,
+              displayNumber: Array.from(supersetIds).indexOf(exercise.supersetId) + 1,
               exercises: orderedSupersetExercises.get(exercise.supersetId),
               position: index
             });
             addedSupersets.add(exercise.supersetId);
           }
-        } else {
+        } else if (!exercise.supersetId) {
           // It's a normal exercise
           unifiedItems.push({
             type: 'exercise',
@@ -158,7 +172,7 @@ const ExerciseTimeline = memo(({
                 // Use an IIFE to maintain a global exercise counter
                 let globalExerciseCount = 1;
                 
-                return orderedItems.map((item, itemIndex) => {
+                return orderedItems.map((item) => {
                   if (item.type === 'exercise') {
                     // Single exercise item
                     const exercise = item.exercise;
@@ -302,13 +316,22 @@ const ExerciseTimeline = memo(({
                     // Superset containing multiple exercises
                     const rows = [];
                     
+                    // Get the display number for the superset
+                    // Extract the number from the id or use a fallback
+                    const displayNumber = item.displayNumber || 
+                                         parseInt(item.id.split('-')[1], 10) || 
+                                         1;
+                    
                     // Add superset header row
                     rows.push(
                       <tr key={`superset-header-${item.id}`} className="bg-blue-50">
                         <td className="px-4 py-2 text-blue-700 font-medium" colSpan={8}>
                           <div className="flex items-center gap-2">
                             <Layers className="h-4 w-4 text-blue-500" />
-                            <span>Superset {item.id.split('-')[1]}</span>
+                            <span className="inline-flex items-center justify-center rounded-full bg-blue-200 w-5 h-5 text-xs text-blue-800 mr-1">
+                              {displayNumber}
+                            </span>
+                            <span>Superset</span>
                             <Badge variant="outline" className="ml-1 bg-blue-100 text-blue-700 border-blue-300">
                               {item.exercises.length} exercises
                             </Badge>
