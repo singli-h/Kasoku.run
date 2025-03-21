@@ -86,24 +86,23 @@ const ExerciseSelector = ({
         const viewportHeight = window.innerHeight;
         const viewportWidth = window.innerWidth;
         
-        // Calculate position relative to the button, not the cursor
-        // This provides more stable positioning
+        // Calculate position relative to the button
         let positionX, positionY;
         
         // Position tooltip to the right of the button by default,
         // or to the left if there's not enough space on the right
         if (buttonRect.right + 300 < viewportWidth) {
-          positionX = buttonRect.right + 10; // Right of button
+          positionX = buttonRect.right + 5; // Right of button with smaller offset
         } else {
-          positionX = buttonRect.left - 290; // Left of button
+          positionX = buttonRect.left - 285; // Left of button with smaller offset
         }
         
-        // Position tooltip below the button by default,
-        // or above if there's not enough space below
-        if (buttonRect.top + 150 < viewportHeight) {
-          positionY = buttonRect.top; // Below button
-        } else {
-          positionY = buttonRect.bottom - 150; // Above button
+        // Position tooltip aligned with the button's top
+        positionY = buttonRect.top;
+        
+        // If tooltip would go off-screen at the bottom, position it higher
+        if (buttonRect.top + 150 > viewportHeight) {
+          positionY = viewportHeight - 160; 
         }
         
         // Make sure the tooltip is always within viewport bounds

@@ -111,6 +111,21 @@ export const useMesoWizardState = (onComplete) => {
 
   // Handle adding an exercise
   const handleAddExercise = useCallback((exercise) => {
+    // Determine the appropriate section to add the exercise to
+    const targetSection = exercise.section || exercise.type;
+    
+    // Get the current exercises in the target section to determine the next position
+    const sectionExercises = formData.exercises.filter(ex => 
+      ex.session === activeSession && 
+      (ex.section === targetSection || (ex.section === null && ex.part === targetSection))
+    );
+    
+    // Find the maximum position value in the section, defaulting to -1 if no exercises exist
+    const maxPosition = sectionExercises.length > 0
+      ? Math.max(...sectionExercises.map(ex => ex.position || 0))
+      : -1;
+    
+    // Create the new exercise with a position value one higher than the current maximum
     const newExercise = {
       ...exercise,
       id: Date.now(), // Generate a unique ID
@@ -120,6 +135,7 @@ export const useMesoWizardState = (onComplete) => {
       sets: "",
       reps: "",
       rest: "",
+      position: maxPosition + 1, // Set position to be after all existing exercises
     }
     
     setFormData((prev) => ({
@@ -136,7 +152,7 @@ export const useMesoWizardState = (onComplete) => {
         [sectionKey]: [...currentOrder, newExercise.id]
       }
     })
-  }, [activeSession])
+  }, [activeSession, formData.exercises])
 
   // Handle removing an exercise
   const handleRemoveExercise = useCallback((id, session, part) => {
@@ -202,10 +218,25 @@ export const useMesoWizardState = (onComplete) => {
     
     console.log(`Reordering exercises for section ${sectionId}:`, exerciseIds);
     
+    // Update the exercise order mapping
     setExerciseOrder(prev => ({
       ...prev,
       [sectionKey]: exerciseIds
     }));
+
+    // Update exercise positions in the form data
+    setFormData(prev => {
+      const updatedExercises = prev.exercises.map(ex => {
+        // Only update exercises that are part of this reordering
+        const reorderedEx = reorderedExercises.find(re => re.id === ex.id);
+        if (reorderedEx) {
+          return { ...ex, position: reorderedEx.position };
+        }
+        return ex;
+      });
+      
+      return { ...prev, exercises: updatedExercises };
+    });
   }, []);
 
   // Handle progression model changes

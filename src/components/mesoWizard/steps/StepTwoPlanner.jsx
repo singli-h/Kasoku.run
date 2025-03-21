@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import ExerciseSectionManager from "../components/ExerciseSectionManager"
 import ExerciseTimeline from "../components/ExerciseTimeline"
 import ProgressionModelSelector from "../components/ProgressionModelSelector"
+import { useState, useCallback } from "react"
 
 /**
  * Step Two: Session & Exercise Planning
@@ -64,6 +65,25 @@ const StepTwoPlanner = ({
   handleNext,
   handleBack,
 }) => {
+  // State to track supersets for each session
+  const [sessionSupersets, setSessionSupersets] = useState({});
+
+  // Handle superset changes for a specific session
+  const handleSupersetChange = useCallback((sessionId, supersets) => {
+    console.log(`StepTwoPlanner: Updating supersets for session ${sessionId}:`, 
+      supersets.map(s => ({ 
+        id: s.id, 
+        displayNumber: s.displayNumber, 
+        exerciseCount: s.exercises?.length || 0 
+      }))
+    );
+    
+    setSessionSupersets(prev => ({
+      ...prev,
+      [sessionId]: supersets
+    }));
+  }, []);
+
   // Get section name from ID
   const getSectionName = (sectionId) => {
     const sectionTypes = [
@@ -234,6 +254,7 @@ const StepTwoPlanner = ({
               errors={errors}
               activeSections={sessionSections[session.id] || []}
               setActiveSections={(sections) => handleSetActiveSections(session.id, sections)}
+              onSupersetChange={(supersets) => handleSupersetChange(session.id, supersets)}
             />
             
             {/* Exercise Timeline */}
@@ -245,6 +266,7 @@ const StepTwoPlanner = ({
               errors={errors}
               getSectionName={getSectionName}
               getOrderedExercises={getOrderedExercises}
+              supersets={sessionSupersets[session.id] || []}
             />
           </TabsContent>
         ))}

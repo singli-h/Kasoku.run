@@ -33,3 +33,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.cursor/rules/new-request.mdc
+.cursor/rules/nextjs-rules.mdc
+.cursor/rules/persistent-issue.mdc

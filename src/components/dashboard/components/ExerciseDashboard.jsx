@@ -264,24 +264,28 @@ const ExerciseDashboard = ({
       {finalGroups.map((group, index) => {
         if (group.type === "gymMerged") {
           const gymExercises = group.exercises.filter((e) => !e.superset_id)
-          const supersets = group.exercises
-            .filter((e) => e.superset_id)
-            .reduce((acc, exercise) => {
-              const existingSuperset = acc.find((s) => s.id === exercise.superset_id)
-              if (existingSuperset) {
-                existingSuperset.exercises.push(exercise)
-              } else {
-                acc.push({ id: exercise.superset_id, exercises: [exercise] })
-              }
-              return acc
-            }, [])
+          // const supersets = group.exercises
+          //   .filter(ex => ex.supersetId)
+          //   .reduce((acc, ex) => {
+          //     // Add to existing superset or create new one
+          //     const existingSuperset = acc.find(s => s.id === ex.supersetId)
+          //     if (existingSuperset) {
+          //       existingSuperset.exercises.push(ex)
+          //     } else {
+          //       acc.push({
+          //         id: ex.supersetId,
+          //         exercises: [ex],
+          //         type: "superset"
+          //       })
+          //     }
+          //     return acc
+          //   }, [])
 
           return (
             <ExerciseTypeSection
               key={`gym-merged-${index}`}
               type="Gym"
               exercises={gymExercises}
-              supersets={supersets}
               onToggleAll={handleSectionToggle}
               onExerciseUpdate={handleExerciseUpdate}
               isSessionCompleted={false} // Always set to false to remove disabled feature
@@ -298,17 +302,30 @@ const ExerciseDashboard = ({
             />
           )
         } else {
-          return (
-            <ExerciseTypeSection
-              key={`${group.type}-${index}`}
-              type={group.type}
-              exercises={group.exercises}
-              supersets={[]}
-              onToggleAll={handleSectionToggle}
-              onExerciseUpdate={handleExerciseUpdate}
-              isSessionCompleted={false} // Always set to false to remove disabled feature
-            />
-          )
+          // Render the leftover sections that weren't merged
+          if (group.type === "warmup") {
+            return (
+              <ExerciseTypeSection
+                key={`warmup-${index}`}
+                type="Warmup"
+                exercises={group.exercises}
+                onToggleAll={handleSectionToggle}
+                onExerciseUpdate={handleExerciseUpdate}
+                isSessionCompleted={false} // Always set to false to remove disabled feature
+              />
+            )
+          } else {
+            return (
+              <ExerciseTypeSection
+                key={`${group.type}-${index}`}
+                type={group.type}
+                exercises={group.exercises}
+                onToggleAll={handleSectionToggle}
+                onExerciseUpdate={handleExerciseUpdate}
+                isSessionCompleted={false} // Always set to false to remove disabled feature
+              />
+            )
+          }
         }
       })}
 

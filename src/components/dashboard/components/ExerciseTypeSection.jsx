@@ -10,7 +10,7 @@ import SupersetContainer from "./SupersetContainer"
  * ExerciseTypeSection Component
  * Groups exercises by their type (warmup, gym, etc.)
  */
-const ExerciseTypeSection = ({ type, exercises, supersets, onToggleAll, onExerciseUpdate, isSessionCompleted = false }) => {
+const ExerciseTypeSection = ({ type, exercises, supersets = [], onToggleAll, onExerciseUpdate, isSessionCompleted = false }) => {
   const [isOpen, setIsOpen] = useState(true)
   const [allCompleted, setAllCompleted] = useState(false)
 

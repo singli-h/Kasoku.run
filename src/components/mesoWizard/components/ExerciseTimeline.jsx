@@ -20,6 +20,7 @@ import ExerciseDetailFields from "./ExerciseDetailFields"
  * @param {Object} props.errors - Validation errors
  * @param {Function} props.getSectionName - Function to get section name from ID
  * @param {Function} props.getOrderedExercises - Function to get ordered exercises for a section
+ * @param {Array} props.supersets - Array of supersets for this session
  */
 const ExerciseTimeline = memo(({
   sessionId,
@@ -28,6 +29,7 @@ const ExerciseTimeline = memo(({
   errors = {},
   getSectionName,
   getOrderedExercises,
+  supersets = [],
 }) => {
   // Get ordered exercises and supersets for each section
   const getOrderedExercisesAndSupersets = useMemo(() => {
@@ -36,17 +38,20 @@ const ExerciseTimeline = memo(({
       // but only if the superset belongs to this section
       const sectionExercises = getOrderedExercises(sessionId, sectionId);
       
-      // Step 1: Identify all supersets and their positions
+      // Step 1: Identify all supersets and find the position of the first exercise in each
       const supersetPositions = new Map();
       const supersetIds = new Set();
       
-      // First pass - collect all superset IDs and find the first occurrence
-      sectionExercises.forEach((exercise, index) => {
+      // First pass - collect all superset IDs and find the first occurrence position
+      sectionExercises.forEach((exercise) => {
         if (exercise.supersetId && exercise.section === sectionId) {
           // Only add supersets that belong to this section
           supersetIds.add(exercise.supersetId);
-          if (!supersetPositions.has(exercise.supersetId)) {
-            supersetPositions.set(exercise.supersetId, index);
+          // Use the minimum position value for each superset
+          const currentPosition = exercise.position || 0;
+          if (!supersetPositions.has(exercise.supersetId) || 
+              currentPosition < (supersetPositions.get(exercise.supersetId) || Infinity)) {
+            supersetPositions.set(exercise.supersetId, currentPosition);
           }
         }
       });
@@ -76,39 +81,59 @@ const ExerciseTimeline = memo(({
         }
       });
       
+      // Sort exercises within each superset strictly by their position
+      orderedSupersetExercises.forEach((exercises) => {
+        exercises.sort((a, b) => {
+          // First sort by position
+          const positionDiff = (a.position || 0) - (b.position || 0);
+          if (positionDiff !== 0) return positionDiff;
+          
+          // If positions are identical, sort by ID (assuming newer items have higher IDs)
+          return a.id - b.id;
+        });
+      });
+      
       // Step 3: Create a unified list of exercises and supersets
       const unifiedItems = [];
+      const addedExerciseIds = new Set(); // Track added exercise IDs to avoid duplicates
       
-      // Map of already added superset IDs
-      const addedSupersets = new Set();
-      
-      // Add items in proper order
-      sectionExercises.forEach((exercise, index) => {
-        if (exercise.supersetId && supersetIds.has(exercise.supersetId)) {
-          // If this is the first occurrence of this superset and we haven't added it yet
-          if (supersetPositions.get(exercise.supersetId) === index && 
-              !addedSupersets.has(exercise.supersetId) &&
-              exercise.section === sectionId) { // Only add if it belongs to this section
-            
-            // Add the superset as a group
-            unifiedItems.push({
-              type: 'superset',
-              id: exercise.supersetId,
-              displayNumber: Array.from(supersetIds).indexOf(exercise.supersetId) + 1,
-              exercises: orderedSupersetExercises.get(exercise.supersetId),
-              position: index
-            });
-            addedSupersets.add(exercise.supersetId);
-          }
-        } else if (!exercise.supersetId) {
-          // It's a normal exercise
+      // Add normal exercises
+      normalExercises.forEach(exercise => {
+        if (!addedExerciseIds.has(exercise.id)) {
           unifiedItems.push({
             type: 'exercise',
             exercise,
-            position: index
+            position: exercise.position || 0
           });
+          addedExerciseIds.add(exercise.id);
         }
       });
+      
+      // Add supersets with their exercises
+      supersetIds.forEach(supersetId => {
+        const supersetExercises = orderedSupersetExercises.get(supersetId) || [];
+        
+        // Skip empty supersets
+        if (supersetExercises.length === 0) return;
+        
+        // Get the superset position from the map
+        const position = supersetPositions.get(supersetId) || 0;
+        
+        // Add the superset as a group
+        unifiedItems.push({
+          type: 'superset',
+          id: supersetId,
+          displayNumber: Array.from(supersetIds).indexOf(supersetId) + 1,
+          exercises: supersetExercises,
+          position: position
+        });
+        
+        // Mark all exercises in this superset as added
+        supersetExercises.forEach(ex => addedExerciseIds.add(ex.id));
+      });
+      
+      // Sort the unified items by position
+      unifiedItems.sort((a, b) => (a.position || 0) - (b.position || 0));
       
       return unifiedItems;
     };
@@ -119,13 +144,33 @@ const ExerciseTimeline = memo(({
     // Create a flat array of ordered items
     const result = [];
     
-    // Process each section in order
-    activeSections.forEach(sectionId => {
+    // Process each section in their defined order 
+    // The section order in activeSections determines the priority
+    activeSections.forEach((sectionId, sectionIndex) => {
       // Get the ordered exercises and supersets for this section
       const sectionItems = getOrderedExercisesAndSupersets(sectionId);
       
-      // Add them to the result in their correct order
-      result.push(...sectionItems);
+      // Add them to the result, adding section metadata to maintain hierarchy
+      sectionItems.forEach(item => {
+        result.push({
+          ...item,
+          sectionId,
+          sectionIndex  // Store the section index to maintain section order
+        });
+      });
+    });
+    
+    // Sort the combined results respecting the hierarchical order:
+    // 1. First by section index (to maintain the active sections order)
+    // 2. Then by position within each section (for ordering items in each section)
+    result.sort((a, b) => {
+      // First compare by section index
+      if (a.sectionIndex !== b.sectionIndex) {
+        return a.sectionIndex - b.sectionIndex;
+      }
+      
+      // If in the same section, compare by position
+      return (a.position || 0) - (b.position || 0);
     });
     
     return result;
@@ -316,11 +361,34 @@ const ExerciseTimeline = memo(({
                     // Superset containing multiple exercises
                     const rows = [];
                     
-                    // Get the display number for the superset
-                    // Extract the number from the id or use a fallback
-                    const displayNumber = item.displayNumber || 
-                                         parseInt(item.id.split('-')[1], 10) || 
-                                         1;
+                    // Extract the display number using multiple sources
+                    // 1. First try to find the superset in the supersets array (most accurate)
+                    const supersetInfo = supersets.find(s => s.id === item.id);
+                    let displayNumber = supersetInfo?.displayNumber;
+                    
+                    // 2. If not found in supersets array, try to extract from ID
+                    let extractedFromId = null;
+                    if (!displayNumber && item.id) {
+                      const idParts = item.id.split('-');
+                      if (idParts.length >= 3) {
+                        extractedFromId = parseInt(idParts[idParts.length - 1], 10);
+                        if (!isNaN(extractedFromId)) {
+                          displayNumber = extractedFromId;
+                        }
+                      }
+                    }
+                    
+                    // 3. Fall back to item's own displayNumber or default to 1
+                    if (!displayNumber) {
+                      displayNumber = item.displayNumber || 1;
+                    }
+                    
+                    // Debug log to trace the display number resolution
+                    console.log(`Superset ${item.id}: Found in supersets: ${!!supersetInfo}, ` + 
+                                `Superset displayNumber: ${supersetInfo?.displayNumber}, ` +
+                                `Extracted from ID: ${extractedFromId}, ` +
+                                `Item's displayNumber: ${item.displayNumber}, ` +
+                                `Final displayNumber: ${displayNumber}`);
                     
                     // Add superset header row
                     rows.push(
@@ -328,10 +396,7 @@ const ExerciseTimeline = memo(({
                         <td className="px-4 py-2 text-blue-700 font-medium" colSpan={8}>
                           <div className="flex items-center gap-2">
                             <Layers className="h-4 w-4 text-blue-500" />
-                            <span className="inline-flex items-center justify-center rounded-full bg-blue-200 w-5 h-5 text-xs text-blue-800 mr-1">
-                              {displayNumber}
-                            </span>
-                            <span>Superset</span>
+                            <span>Superset {displayNumber}</span>
                             <Badge variant="outline" className="ml-1 bg-blue-100 text-blue-700 border-blue-300">
                               {item.exercises.length} exercises
                             </Badge>

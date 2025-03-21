@@ -1,18 +1,16 @@
 "use client"
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, memo } from 'react'
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Layers, Plus, MoveDown, MoveUp, Minus, X } from "lucide-react"
+import { MoreHorizontal, Layers, MoveDown, MoveUp, Minus, X } from "lucide-react"
 
 /**
  * Custom Exercise Context Menu without headlessui
  * Uses absolute positioning like the Add Section dropdown
  */
-const ExerciseContextMenu = ({
+const ExerciseContextMenu = memo(({
   exercise,
-  supersets = [],
   onCreateSuperset,
-  onAddToSuperset,
   onRemoveExercise,
   onMoveExercise,
   sessionId,
@@ -21,15 +19,17 @@ const ExerciseContextMenu = ({
   disableMoveDown = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [showSupersetSubmenu, setShowSupersetSubmenu] = useState(false);
   const [showCreateSupersetFeedback, setShowCreateSupersetFeedback] = useState(false);
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
   
   // Filter out supersets that already contain this exercise
-  const availableSupersets = supersets.filter(
-    superset => !superset.exercises.some(ex => ex.id === exercise.id)
-  );
+  // Also filter to only show supersets in the same section
+  // const availableSupersets = supersets.filter(
+  //   superset => 
+  //     !superset.exercises.some(ex => ex.id === exercise.id) && 
+  //     superset.section === sectionId // Only show supersets in the same section
+  // );
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -39,7 +39,6 @@ const ExerciseContextMenu = ({
       if (!menuRef.current?.contains(event.target) && 
           !buttonRef.current?.contains(event.target)) {
         setIsOpen(false);
-        setShowSupersetSubmenu(false);
       }
     };
 
@@ -62,7 +61,6 @@ const ExerciseContextMenu = ({
     const handleCloseAllMenus = (event) => {
       if (event.detail.currentMenuId !== exercise.id) {
         setIsOpen(false);
-        setShowSupersetSubmenu(false);
       }
     };
     
@@ -72,6 +70,36 @@ const ExerciseContextMenu = ({
       document.removeEventListener('closeAllMenus', handleCloseAllMenus);
     };
   }, [isOpen, exercise.id]);
+
+  // Close menu when drag starts
+  useEffect(() => {
+    const handleDragStart = () => {
+      setIsOpen(false);
+      setShowCreateSupersetFeedback(false);
+    };
+    
+    // Listen for drag start on body
+    document.body.addEventListener('dragstart', handleDragStart);
+    
+    // Also listen for our custom class added on drag
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          if (document.body.classList.contains('dragging')) {
+            setIsOpen(false);
+            setShowCreateSupersetFeedback(false);
+          }
+        }
+      });
+    });
+    
+    observer.observe(document.body, { attributes: true });
+    
+    return () => {
+      document.body.removeEventListener('dragstart', handleDragStart);
+      observer.disconnect();
+    };
+  }, []);
 
   const toggleMenu = (e) => {
     e.stopPropagation();
@@ -83,14 +111,7 @@ const ExerciseContextMenu = ({
       e.stopPropagation();
       callback();
       setIsOpen(false);
-      setShowSupersetSubmenu(false);
     };
-  };
-
-  const handleSupersetHover = () => {
-    if (availableSupersets.length > 0) {
-      setShowSupersetSubmenu(true);
-    }
   };
 
   // Function to handle the create superset click with better feedback
@@ -110,7 +131,6 @@ const ExerciseContextMenu = ({
     
     // Close the menu
     setIsOpen(false);
-    setShowSupersetSubmenu(false);
   };
 
   // Update the JSX for the Create Superset button including feedback
@@ -182,35 +202,6 @@ const ExerciseContextMenu = ({
             ) : (
               <>
                 {createSupersetButton}
-
-                {availableSupersets.length > 0 && (
-                  <div className="relative" onMouseEnter={handleSupersetHover} onMouseLeave={() => setShowSupersetSubmenu(false)}>
-                    <button
-                      className="group flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 hover:bg-blue-50 hover:text-blue-700"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add to Existing Superset
-                    </button>
-                    
-                    {/* Submenu for supersets */}
-                    {showSupersetSubmenu && (
-                      <div className="absolute left-full top-0 w-56 -ml-1 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[3001] animate-in fade-in-50 zoom-in-95 duration-100">
-                        {availableSupersets.map(superset => (
-                          <button
-                            key={superset.id}
-                            className="flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-blue-50"
-                            onClick={handleMenuItemClick(() => onAddToSuperset(exercise.id, superset.id, sessionId, sectionId))}
-                          >
-                            <span>Superset {superset.label || superset.id}</span>
-                            <span className="ml-auto text-xs text-gray-500">
-                              {superset.exercises.length} exercises
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -256,6 +247,8 @@ const ExerciseContextMenu = ({
       )}
     </div>
   );
-};
+});
+
+ExerciseContextMenu.displayName = "ExerciseContextMenu";
 
 export default ExerciseContextMenu; 
