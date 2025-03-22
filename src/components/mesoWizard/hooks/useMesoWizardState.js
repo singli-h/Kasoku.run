@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { fetchExercises } from "../sampledata"
+import { useSaveMesocycle } from "./useSaveMesocycle"
 
 /**
  * Custom hook for managing MesoWizard state
@@ -33,6 +34,9 @@ export const useMesoWizardState = (onComplete) => {
   const [errors, setErrors] = useState({})
   const [sessionSections, setSessionSections] = useState({})
   const [exerciseOrder, setExerciseOrder] = useState({}) // Track exercise order by section
+
+  // Use the save mesocycle hook
+  const { saveMesocycle, isSubmitting, error: saveError } = useSaveMesocycle()
 
   // Calculate progress percentage
   const progressPercentage = ((step - 1) / 3) * 100
@@ -389,33 +393,44 @@ export const useMesoWizardState = (onComplete) => {
 
   // Handle form submission
   const handleSubmit = useCallback(async (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     
     if (validateStep(step)) {
       setIsLoading(true)
       
       try {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1500))
-        
         // Process AI suggestions if needed
         const processedData = {
           ...formData,
+          id: Date.now().toString(), // Generate unique mesocycle ID
           aiSuggestions: aiSuggestions?.suggestions
             .filter((s) => s.accepted)
             .map((s) => s.text),
         }
         
-        // Call the onComplete callback with the processed data
-        onComplete(processedData)
+        // Get coach ID from user session or context (placeholder for now)
+        const coachId = localStorage.getItem('coachId') || '1' // Fallback to '1' if not found
+        
+        // Save mesocycle data to Supabase
+        const result = await saveMesocycle(processedData, coachId)
+        
+        console.log('Mesocycle saved successfully:', result)
+        
+        // Call the onComplete callback with the processed data and API response
+        onComplete({
+          formData: processedData, 
+          apiResponse: result
+        })
       } catch (error) {
         console.error("Error submitting mesocycle:", error)
-        setErrors({ submit: "Failed to submit mesocycle. Please try again." })
+        setErrors({ 
+          submit: saveError || "Failed to submit mesocycle. Please try again." 
+        })
       } finally {
         setIsLoading(false)
       }
     }
-  }, [step, formData, aiSuggestions, validateStep, onComplete])
+  }, [step, formData, aiSuggestions, validateStep, onComplete, saveMesocycle, saveError])
 
   // Initialize sessions based on sessionsPerWeek
   useEffect(() => {
@@ -517,7 +532,7 @@ export const useMesoWizardState = (onComplete) => {
     searchTerm,
     filteredExercises,
     activeSession,
-    isLoading,
+    isLoading: isLoading || isSubmitting,
     loadingExercises,
     aiSuggestions,
     errors,

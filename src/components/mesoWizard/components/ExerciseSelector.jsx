@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react"
+import { createPortal } from "react-dom"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -28,9 +29,8 @@ const ExerciseSelector = ({
   const [searchTerm, setSearchTerm] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [hoveredExercise, setHoveredExercise] = useState(null)
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
+  const [tooltipData, setTooltipData] = useState(null)
   const hoverTimerRef = useRef(null)
-  const tooltipRef = useRef(null)
   
   // Filter exercises based on section type and search term
   const filteredExercises = useMemo(() => {
@@ -63,68 +63,37 @@ const ExerciseSelector = ({
   const handleMouseEnter = useCallback((exercise, e) => {
     clearTimeout(hoverTimerRef.current);
     
+    // Store the target button for position calculation
+    const button = e?.currentTarget;
+    if (!button) return;
+    
     hoverTimerRef.current = setTimeout(() => {
       setHoveredExercise(exercise);
       
-      try {
-        // Get the button that triggered the tooltip for better positioning
-        const button = e?.currentTarget;
-        
-        // Safety check - if button is null or doesn't have getBoundingClientRect, use fallback
-        if (!button || typeof button.getBoundingClientRect !== 'function') {
-          // Fallback to a default position
-          setTooltipPosition({ 
-            x: Math.max(10, e?.clientX || window.innerWidth / 2), 
-            y: Math.max(10, e?.clientY || window.innerHeight / 2) 
-          });
-          return;
-        }
-        
-        const buttonRect = button.getBoundingClientRect();
-        
-        // Get the viewport dimensions
-        const viewportHeight = window.innerHeight;
-        const viewportWidth = window.innerWidth;
-        
-        // Calculate position relative to the button
-        let positionX, positionY;
-        
-        // Position tooltip to the right of the button by default,
-        // or to the left if there's not enough space on the right
-        if (buttonRect.right + 300 < viewportWidth) {
-          positionX = buttonRect.right + 5; // Right of button with smaller offset
-        } else {
-          positionX = buttonRect.left - 285; // Left of button with smaller offset
-        }
-        
-        // Position tooltip aligned with the button's top
-        positionY = buttonRect.top;
-        
-        // If tooltip would go off-screen at the bottom, position it higher
-        if (buttonRect.top + 150 > viewportHeight) {
-          positionY = viewportHeight - 160; 
-        }
-        
-        // Make sure the tooltip is always within viewport bounds
-        positionX = Math.max(10, Math.min(positionX, viewportWidth - 290));
-        positionY = Math.max(10, Math.min(positionY, viewportHeight - 150));
-        
-        setTooltipPosition({ x: positionX, y: positionY });
-      } catch (error) {
-        console.error("Error positioning tooltip:", error);
-        // Fallback positioning in case of any error
-        setTooltipPosition({ 
-          x: Math.max(10, window.innerWidth / 4), 
-          y: Math.max(10, window.innerHeight / 4) 
+      // Calculate button position
+      if (button && typeof button.getBoundingClientRect === 'function') {
+        const rect = button.getBoundingClientRect();
+        // Store all needed data
+        setTooltipData({
+          buttonRect: {
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height
+          },
+          exercise
         });
       }
-    }, 300); // Reduced delay for better responsiveness
+    }, 300);
   }, []);
   
   // Handle mouse leave for tooltip
   const handleMouseLeave = useCallback(() => {
     clearTimeout(hoverTimerRef.current);
     setHoveredExercise(null);
+    setTooltipData(null);
   }, []);
   
   // Check if an exercise is already added to avoid duplicates
@@ -132,29 +101,63 @@ const ExerciseSelector = ({
     return exercises.some(ex => ex.id === exerciseId);
   }, [exercises]);
 
-  // Tooltip for exercise description
-  const renderTooltip = () => {
-    if (!hoveredExercise) return null;
+  // Tooltip component using portal
+  const Tooltip = useCallback(() => {
+    if (!tooltipData || !hoveredExercise) return null;
     
-    return (
-      <div 
-        ref={tooltipRef}
+    // Function to calculate tooltip position
+    const calculatePosition = () => {
+      const { buttonRect } = tooltipData;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Position directly below the button
+      let left = 0;
+      let top = buttonRect.bottom + 5; // 5px gap
+      
+      // Center horizontally relative to the button
+      const estimatedWidth = 280; // Estimate tooltip width
+      left = buttonRect.left + (buttonRect.width / 2) - (estimatedWidth / 2);
+      
+      // Make sure it doesn't go off left or right edge
+      if (left + estimatedWidth > viewportWidth - 10) {
+        left = viewportWidth - estimatedWidth - 10;
+      }
+      if (left < 10) {
+        left = 10;
+      }
+      
+      // Check if it would go off the bottom
+      const estimatedHeight = 80; // Estimate tooltip height
+      if (top + estimatedHeight > viewportHeight - 10) {
+        // If not enough space below, position above the button
+        top = buttonRect.top - estimatedHeight - 5;
+      }
+      
+      
+      return { left, top };
+    };
+    
+    const position = calculatePosition();
+    
+    return createPortal(
+      <div
         className="fixed bg-black text-white p-3 rounded-md text-xs"
         style={{
-          left: tooltipPosition.x,
-          top: tooltipPosition.y,
+          left: `${position.left}px`,
+          top: `${position.top}px`,
           maxWidth: '280px',
           pointerEvents: 'none',
           boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
-          zIndex: 99999, // Extremely high z-index to ensure visibility
+          zIndex: 99999,
           border: '1px solid rgba(255, 255, 255, 0.1)'
         }}
       >
-        <p className="font-medium mb-1">{hoveredExercise.name}</p>
         <p>{hoveredExercise.description || "No description available"}</p>
-      </div>
+      </div>,
+      document.body
     );
-  };
+  }, [tooltipData, hoveredExercise]);
 
   return (
     <div className={cn(
@@ -229,8 +232,8 @@ const ExerciseSelector = ({
         </div>
       )}
       
-      {/* Render tooltip */}
-      {hoveredExercise && renderTooltip()}
+      {/* Render tooltip via portal */}
+      <Tooltip />
     </div>
   )
 }

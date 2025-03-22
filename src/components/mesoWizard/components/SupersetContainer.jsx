@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, memo } from "react"
+import { createPortal } from "react-dom"
 import { ChevronRight, ChevronDown, X, Plus, GripVertical, Minus, MoreHorizontal, MoveDown, MoveUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -27,6 +28,7 @@ import ExerciseSelector from "./ExerciseSelector"
  * @param {Function} props.onMoveSuperset - Function to move the superset up or down
  * @param {boolean} props.disableMoveUp - Whether the move up option should be disabled
  * @param {boolean} props.disableMoveDown - Whether the move down option should be disabled
+ * @param {string} props.menuDirection - The direction in which the menu should open
  */
 const SupersetContainer = memo(({
   supersetId,
@@ -44,12 +46,14 @@ const SupersetContainer = memo(({
   onMoveSuperset,
   disableMoveUp = false,
   disableMoveDown = false,
+  menuDirection = "bottom",
 }) => {
   const [isExpanded, setIsExpanded] = useState(true)
   const [showExerciseSelector, setShowExerciseSelector] = useState(needsMoreExercises) // Auto-open selector if needs more exercises
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [menuStyles, setMenuStyles] = useState({})
   const menuRef = useRef(null)
-  const buttonRef = useRef(null)
+  const containerRef = useRef(null)
   
   // Show the exercise selector if the needsMoreExercises prop changes
   useEffect(() => {
@@ -58,13 +62,38 @@ const SupersetContainer = memo(({
     }
   }, [needsMoreExercises]);
   
+  // Calculate menu position relative to the container
+  useEffect(() => {
+    if (isMenuOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      let top, left;
+      if (menuDirection === "top") {
+        // Position above the button
+        top = rect.top - 10;
+      } else {
+        // Default: position below the button
+        top = rect.bottom + 10;
+      }
+      // Align horizontally with the button
+      left = rect.left;
+      setMenuStyles({
+        position: "fixed",
+        top: `${top}px`,
+        left: `${left}px`,
+        zIndex: 9999,
+        width: "224px", // 56px * 4
+      });
+      console.log("SupersetContainer menu position calculated:", { top, left, rect });
+    }
+  }, [isMenuOpen, menuDirection]);
+  
   // Close menu when clicking outside
   useEffect(() => {
     if (!isMenuOpen) return;
     
     const handleClickOutside = (event) => {
-      if (!menuRef.current?.contains(event.target) && 
-          !buttonRef.current?.contains(event.target)) {
+      if (menuRef.current && !menuRef.current.contains(event.target) && 
+          containerRef.current && !containerRef.current.contains(event.target)) {
         setIsMenuOpen(false);
       }
     };
@@ -78,6 +107,7 @@ const SupersetContainer = memo(({
   
   const toggleMenu = (e) => {
     e.stopPropagation();
+    console.log("Toggling superset menu. isMenuOpen before:", isMenuOpen);
     setIsMenuOpen(!isMenuOpen);
   };
   
@@ -88,6 +118,72 @@ const SupersetContainer = memo(({
       setIsMenuOpen(false);
     };
   };
+
+  // Render the menu content with portal
+  const menuContent = isMenuOpen && (
+    <div 
+      ref={menuRef}
+      className="w-56 divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[3000] animate-in fade-in-50 zoom-in-95 duration-100"
+      style={menuStyles}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Superset Options Header */}
+      <div className="px-4 py-2 text-sm font-semibold">
+        Superset Options
+      </div>
+      
+      {/* Main Actions */}
+      <div className="px-1 py-1">
+        <button
+          className="group flex w-full items-center rounded-md px-2 py-2 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+          onClick={handleMenuItemClick(() => setShowExerciseSelector(true))}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Add Exercise
+        </button>
+      </div>
+      
+      {/* Move Options */}
+      {onMoveSuperset && (
+        <div className="px-1 py-1">
+          <button
+            className={`group flex w-full items-center rounded-md px-2 py-2 text-sm ${
+              disableMoveUp 
+                ? 'text-gray-400 cursor-not-allowed' 
+                : 'text-gray-900 hover:bg-blue-50 hover:text-blue-700'
+            }`}
+            onClick={disableMoveUp ? undefined : handleMenuItemClick(() => onMoveSuperset(supersetId, 'up'))}
+          >
+            <MoveUp className="mr-2 h-4 w-4" />
+            Move Up
+          </button>
+          
+          <button
+            className={`group flex w-full items-center rounded-md px-2 py-2 text-sm ${
+              disableMoveDown 
+                ? 'text-gray-400 cursor-not-allowed' 
+                : 'text-gray-900 hover:bg-blue-50 hover:text-blue-700'
+            }`}
+            onClick={disableMoveDown ? undefined : handleMenuItemClick(() => onMoveSuperset(supersetId, 'down'))}
+          >
+            <MoveDown className="mr-2 h-4 w-4" />
+            Move Down
+          </button>
+        </div>
+      )}
+      
+      {/* Remove Action */}
+      <div className="px-1 py-1">
+        <button
+          className="group flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 hover:bg-red-50 hover:text-red-700"
+          onClick={handleMenuItemClick(() => onExitSuperset(supersetId))}
+        >
+          <X className="mr-2 h-4 w-4" />
+          Remove Superset
+        </button>
+      </div>
+    </div>
+  );
 
   // Optimize by not applying unnecessary styles during drag
   const containerClassName = cn(
@@ -148,80 +244,20 @@ const SupersetContainer = memo(({
         </div>
         
         {/* Options Menu */}
-        <div className="relative">
-          <Button 
-            ref={buttonRef}
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-blue-600 hover:bg-blue-100"
-            onClick={toggleMenu}
-          >
-            <MoreHorizontal className="h-4 w-4 mr-1" />
-            <span className="text-xs">Options</span>
-          </Button>
-          
-          {isMenuOpen && (
-            <div 
-              ref={menuRef}
-              className="absolute right-0 mt-1 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[3000] animate-in fade-in-50 zoom-in-95 duration-100"
+        <div className="relative" ref={containerRef}>
+          <div>
+            <Button 
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-blue-600 hover:bg-blue-100"
+              onClick={toggleMenu}
             >
-              {/* Superset Options Header */}
-              <div className="px-4 py-2 text-sm font-semibold">
-                Superset Options
-              </div>
-              
-              {/* Main Actions */}
-              <div className="px-1 py-1">
-                <button
-                  className="group flex w-full items-center rounded-md px-2 py-2 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                  onClick={handleMenuItemClick(() => setShowExerciseSelector(true))}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Exercise
-                </button>
-              </div>
-              
-              {/* Move Options */}
-              {onMoveSuperset && (
-                <div className="px-1 py-1">
-                  <button
-                    className={`group flex w-full items-center rounded-md px-2 py-2 text-sm ${
-                      disableMoveUp 
-                        ? 'text-gray-400 cursor-not-allowed' 
-                        : 'text-gray-900 hover:bg-blue-50 hover:text-blue-700'
-                    }`}
-                    onClick={disableMoveUp ? undefined : handleMenuItemClick(() => onMoveSuperset(supersetId, 'up'))}
-                  >
-                    <MoveUp className="mr-2 h-4 w-4" />
-                    Move Up
-                  </button>
-                  
-                  <button
-                    className={`group flex w-full items-center rounded-md px-2 py-2 text-sm ${
-                      disableMoveDown 
-                        ? 'text-gray-400 cursor-not-allowed' 
-                        : 'text-gray-900 hover:bg-blue-50 hover:text-blue-700'
-                    }`}
-                    onClick={disableMoveDown ? undefined : handleMenuItemClick(() => onMoveSuperset(supersetId, 'down'))}
-                  >
-                    <MoveDown className="mr-2 h-4 w-4" />
-                    Move Down
-                  </button>
-                </div>
-              )}
-              
-              {/* Remove Action */}
-              <div className="px-1 py-1">
-                <button
-                  className="group flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 hover:bg-red-50 hover:text-red-700"
-                  onClick={handleMenuItemClick(() => onExitSuperset(supersetId))}
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Remove Superset
-                </button>
-              </div>
-            </div>
-          )}
+              <MoreHorizontal className="h-4 w-4 mr-1" />
+              <span className="text-xs">Options</span>
+            </Button>
+          </div>
+          
+          {isMenuOpen && typeof document !== 'undefined' && createPortal(menuContent, document.body)}
         </div>
       </div>
       
@@ -269,20 +305,22 @@ const SupersetContainer = memo(({
               {exercises.map((exercise) => (
                 <div 
                   key={exercise.id}
-                  className="border rounded-md p-2 bg-white flex items-center justify-between"
+                  className="p-3 border rounded-md bg-white relative"
                 >
-                  <div>
-                    <p className="font-medium text-sm">{exercise.name}</p>
-                    <span className="text-xs text-gray-500">{exercise.category}</span>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{exercise.name}</p>
+                      {exercise.category && (
+                        <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-800 rounded-full mt-1 inline-block">
+                          {exercise.category}
+                        </span>
+                      )}
+                    </div>
+                    <Minus 
+                      className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer" 
+                      onClick={() => onRemoveFromSuperset(supersetId, exercise.id)}
+                    />
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-500"
-                    onClick={() => onRemoveFromSuperset(supersetId, exercise.id)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
                 </div>
               ))}
             </div>

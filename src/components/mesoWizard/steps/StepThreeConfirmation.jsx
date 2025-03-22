@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import AIRecommendations from "../components/AIRecommendations"
+import { useErrorToast } from "../hooks/useErrorToast"
 
 /**
  * Step Three: Confirmation & AI Review
@@ -40,12 +41,33 @@ const StepThreeConfirmation = ({
     }
   })
 
+  // Use error toast hook for notifications
+  const { Toast, showError, showSuccess } = useErrorToast()
+  const [isSubmitted, setIsSubmitted] = useState(false)
+
+  // Handle submit with error notification
+  const handleFormSubmit = async (e) => {
+    e.preventDefault()
+    
+    try {
+      setIsSubmitted(true)
+      await handleSubmit(e)
+      showSuccess("Mesocycle plan saved successfully! You can now view it in your dashboard.")
+    } catch (error) {
+      showError(error.message || "Failed to save mesocycle plan. Please try again.")
+      setIsSubmitted(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Confirmation & AI Review</h2>
       <p className="text-gray-600">
         Review your mesocycle plan and consider AI-generated recommendations for optimization.
       </p>
+
+      {/* Toast for success/error notifications */}
+      <Toast />
 
       {/* AI Recommendations */}
       <AIRecommendations
@@ -160,8 +182,24 @@ const StepThreeConfirmation = ({
           <ChevronLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
-        <Button onClick={handleSubmit} className="px-6">
-          Create Mesocycle
+        <Button 
+          onClick={handleFormSubmit} 
+          className="px-6"
+          disabled={isLoading || isSubmitted}
+        >
+          {isLoading ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Saving...
+            </>
+          ) : isSubmitted ? (
+            "Mesocycle Created"
+          ) : (
+            "Create Mesocycle"
+          )}
         </Button>
       </div>
     </div>
