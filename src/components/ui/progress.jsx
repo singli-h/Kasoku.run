@@ -17,13 +17,13 @@ const Progress = React.forwardRef(({ className, value, max = 100, ...props }, re
       aria-valuemax={max}
       aria-valuenow={percentage}
       className={cn(
-        "relative h-4 w-full overflow-hidden rounded-full bg-secondary",
+        "relative h-4 w-full overflow-hidden rounded-full bg-gray-100",
         className
       )}
       {...props}
     >
       <div
-        className="h-full w-full flex-1 bg-primary transition-all"
+        className="h-full w-full flex-1 bg-blue-600 transition-all duration-300"
         style={{ 
           transform: `translateX(-${100 - calculatedValue}%)`,
           width: '100%'

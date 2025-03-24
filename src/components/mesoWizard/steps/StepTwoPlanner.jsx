@@ -14,7 +14,7 @@ import ProgressionModelSelector from "../components/ProgressionModelSelector"
 import { useState, useCallback } from "react"
 
 /**
- * Step Two: Session & Exercise Planning
+ * Step Three: Session & Exercise Planning
  * 
  * This step allows users to:
  * - Configure session details

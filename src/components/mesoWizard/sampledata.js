@@ -85,33 +85,33 @@ export const progressionModels = [
   {
     id: "linear",
     name: "Linear Progression",
-    description: "Gradually increase weight or reps each session",
-    placeholder: "e.g., Add 2.5kg each week",
+    description: "Gradual increase in both intensity and volume throughout the cycle",
+    placeholder: "Linear progression with consistent increases each week",
   },
   {
     id: "undulating",
-    name: "Undulating Periodization",
-    description: "Vary intensity and volume within the week",
-    placeholder: "e.g., Heavy/Medium/Light rotation",
+    name: "Undulating Progression",
+    description: "Wave-like pattern with oscillations around an upward trend",
+    placeholder: "Combines linear increase with wave-like variations",
   },
   {
-    id: "block",
-    name: "Block Periodization",
-    description: "Focus on specific adaptations in blocks",
-    placeholder: "e.g., Hypertrophy block followed by strength",
+    id: "accumulation",
+    name: "Accumulation Phase",
+    description: "Focus on volume increase with moderate intensity gains",
+    placeholder: "Primarily increases training volume while keeping intensity manageable",
   },
   {
-    id: "wave",
-    name: "Wave Loading",
-    description: "Increase and decrease load in a wave pattern",
-    placeholder: "e.g., 3 weeks up, 1 week deload",
+    id: "transmutation",
+    name: "Transmutation Phase",
+    description: "Focus on intensity increase with moderate volume gains",
+    placeholder: "Prioritizes intensity progression with minimal volume increases",
   },
   {
-    id: "rpe",
-    name: "RPE-Based",
-    description: "Progress based on Rate of Perceived Exertion",
-    placeholder: "e.g., Maintain RPE 7-8 and increase weight when RPE drops",
-  },
+    id: "realization",
+    name: "Realization/Peaking",
+    description: "Maximizes intensity while tapering volume for performance",
+    placeholder: "Optimal for peaking: increases intensity while reducing volume",
+  }
 ]
 
 // Sample data for exercise preset details

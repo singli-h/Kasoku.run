@@ -9,10 +9,12 @@ import AIRecommendations from "../components/AIRecommendations"
 import { useErrorToast } from "../hooks/useErrorToast"
 
 /**
- * Step Three: Confirmation & AI Review
+ * Step Four: Confirmation & AI Review
  * 
- * This step shows a summary of the created mesocycle and provides
- * AI-generated recommendations for optimization.
+ * This step shows the complete mesocycle details and provides:
+ * - AI suggestions and feedback on the plan
+ * - Option to apply AI suggestions
+ * - Final submission button
  * 
  * @param {Object} props - Component props
  * @param {Object} props.formData - Form data

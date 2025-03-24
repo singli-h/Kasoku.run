@@ -14,10 +14,13 @@ export const useMesoWizardState = (onComplete) => {
   
   // Form data state
   const [formData, setFormData] = useState({
+    planType: "mesocycle", // Default to mesocycle
     goals: "",
     startDate: "",
     duration: "",
     sessionsPerWeek: "",
+    intensity: "",  // Added for intensity picker
+    volume: "",     // Added for volume picker
     exercises: [],
     sessions: [],
     specialConstraints: "",
@@ -39,7 +42,7 @@ export const useMesoWizardState = (onComplete) => {
   const { saveMesocycle, isSubmitting, error: saveError } = useSaveMesocycle()
 
   // Calculate progress percentage
-  const progressPercentage = ((step - 1) / 3) * 100
+  const progressPercentage = ((step - 1) / 4) * 100
 
   // Fetch exercises from API on component mount
   useEffect(() => {
@@ -319,7 +322,12 @@ export const useMesoWizardState = (onComplete) => {
     const newErrors = {}
     
     if (currentStep === 1) {
-      // Validate Step 1: Mesocycle Overview
+      // Step 1 only requires planType selection
+      if (!formData.planType) {
+        newErrors.planType = "Please select a plan type"
+      }
+    } else if (currentStep === 2) {
+      // Validate Step 2: Mesocycle Overview
       if (!formData.goals.trim()) {
         newErrors.goals = "Goals are required"
       }
@@ -339,8 +347,17 @@ export const useMesoWizardState = (onComplete) => {
       } else if (isNaN(formData.sessionsPerWeek) || parseInt(formData.sessionsPerWeek) <= 0) {
         newErrors.sessionsPerWeek = "Sessions per week must be a positive number"
       }
-    } else if (currentStep === 2) {
-      // Validate Step 2: Session & Exercise Planning
+
+      // Validate intensity and volume
+      if (!formData.intensity) {
+        newErrors.intensity = "Please select an intensity level"
+      }
+      
+      if (!formData.volume) {
+        newErrors.volume = "Please select a volume level"
+      }
+    } else if (currentStep === 3) {
+      // Validate Step 3: Session & Exercise Planning
       formData.sessions.forEach((session) => {
         if (!session.name || !session.name.trim()) {
           newErrors[`session-${session.id}-name`] = "Session name is required"
@@ -382,7 +399,7 @@ export const useMesoWizardState = (onComplete) => {
   // Handle next step
   const handleNext = useCallback(() => {
     if (validateStep(step)) {
-      setStep((prev) => Math.min(prev + 1, 3))
+      setStep((prev) => Math.min(prev + 1, 4))
     }
   }, [step, validateStep])
 
