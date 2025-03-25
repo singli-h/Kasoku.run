@@ -14,11 +14,32 @@
 @import 'additional-styles/range-slider.css';
 @import 'additional-styles/toggle-switch.css';
 @import 'additional-styles/theme.css';
+@import 'additional-styles/mobile-optimizations.css';
 
-/* Utilities */
+/* Mobile-friendly utilities */
 @layer utilities {
   .rtl {
     direction: rtl;
+  }
+  
+  /* Hide scrollbar but keep functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  /* Improved touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Responsive text sizing */
+  .text-responsive {
+    @apply text-sm sm:text-base;
   }
 }
 

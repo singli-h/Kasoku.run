@@ -143,7 +143,7 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
 
       {/* Basic Parameters Card */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 px-3 sm:px-6">
           <div className="grid gap-6">
             {/* Goals */}
             <div>
@@ -185,7 +185,7 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
                         <Info className="inline-block w-4 h-4 ml-2 text-gray-400" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>When you'll begin this training cycle</p>
+                        <p>When you&apos;ll begin this training cycle</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -271,14 +271,29 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
 
       {/* Intensity & Volume Card */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 px-3 sm:px-6">
           <div className="space-y-6">
-            <h3 className="text-lg font-semibold">Training Intensity & Volume</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="text-lg font-semibold">Training Intensity & Volume</h3>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1 cursor-help w-fit">
+                      <Info className="h-3.5 w-3.5" />
+                      <span>What these mean</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Intensity refers to how heavy/challenging each set is. Volume is the total workload (sets × reps × weight).</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <p className="text-sm text-gray-600">
               Set your baseline training levels to establish starting points for progression
             </p>
             
-            <div className="space-y-6">
+            <div className="space-y-6 md:space-y-8">
               <IntensityVolumePicker
                 label="Intensity"
                 value={parseInt(defaultFormData.intensity) || 5}
@@ -299,14 +314,14 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
 
       {/* Progression Card */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 px-3 sm:px-6">
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h3 className="text-lg font-semibold">Progression Planning</h3>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1 cursor-help">
+                    <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1 cursor-help w-fit">
                       <Info className="h-3.5 w-3.5" />
                       <span>Why progression matters</span>
                     </div>
@@ -339,11 +354,11 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
         </CardContent>
       </Card>
       
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={handleBack} className="px-6">
+      <div className="flex flex-col sm:flex-row justify-between gap-3">
+        <Button variant="outline" onClick={handleBack} className="px-6 order-2 sm:order-1">
           Back
         </Button>
-        <Button onClick={handleNext} className="px-6">
+        <Button onClick={handleNext} className="px-6 order-1 sm:order-2">
           Next: Plan Workouts
         </Button>
       </div>

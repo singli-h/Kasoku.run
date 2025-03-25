@@ -12,7 +12,7 @@ const Slider = React.forwardRef(({ className, ...props }, ref) => {
   // Get gradient style for track based on variant
   const getGradientStyle = (variant, customStyle) => {
     // If a custom style is provided, use that instead
-    if (customStyle) {
+    if (customStyle && customStyle.background) {
       return customStyle;
     }
 
@@ -30,7 +30,7 @@ const Slider = React.forwardRef(({ className, ...props }, ref) => {
       default:
         // For default case, use the black gradient that matches the baseline sliders
         return {
-          background: 'linear-gradient(to right, hsla(0, 0%, 40%, 0.7), hsla(0, 0%, 10%, 0.9))'
+          background: 'hsla(0, 0%, 10%, 0.9)'
         };
     }
   };
@@ -60,7 +60,7 @@ const Slider = React.forwardRef(({ className, ...props }, ref) => {
     
     // For default variant, use gray/black to match baseline training sliders
     return {
-      borderColor: 'hsla(0, 0%, 40%, 0.9)',
+      borderColor: 'hsla(0, 0.00%, 0%, 0.90)',
       boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.2)'
     };
   };
@@ -83,7 +83,7 @@ const Slider = React.forwardRef(({ className, ...props }, ref) => {
       {sliderValue.map((value, i) => (
         <SliderPrimitive.Thumb
           key={i}
-          className="block h-5 w-5 rounded-full border-2 bg-white shadow-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:border-opacity-80"
+          className="block h-6 w-6 sm:h-5 sm:w-5 rounded-full border-2 bg-white shadow-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:border-opacity-80 touch-manipulation"
           style={getThumbStyle(value, 0, max, variant)}
         />
       ))}

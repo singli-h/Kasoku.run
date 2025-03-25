@@ -69,13 +69,16 @@ function undulatingProgression(baseIntensity, baseVolume, week, macrocycleLength
 /* 
   3. Accumulation Phase
   Focuses on high volume with only a modest increase in intensity.
-  Here intensity might only rise a small amount (for example, by 2 points maximum), while volume increases from its base up to 10.
+  - Intensity increases slowly using a square-root progression (i.e. √progressFraction) to limit early gains.
+  - Volume ramps linearly to the upper bound (10 on the scale).
 */
 function accumulationPhase(baseIntensity, baseVolume, week, macrocycleLength, intensityDelta = 2, deloadFrequency, deloadFactor = 0.8) {
   const { effectiveWeek, maxEffectiveWeeks } = getEffectiveWeek(week, macrocycleLength, deloadFrequency);
   const progressFraction = (maxEffectiveWeeks > 1) ? (effectiveWeek - 1) / (maxEffectiveWeeks - 1) : 0;
   
-  let intensity = baseIntensity + intensityDelta * progressFraction;
+  // Use a square-root curve for intensity progression for a more gradual early increase.
+  let intensity = baseIntensity + intensityDelta * Math.sqrt(progressFraction);
+  // Volume increases linearly toward the maximum (10) on this scale.
   let volume = baseVolume + (10 - baseVolume) * progressFraction;
   
   if (deloadFrequency && week % deloadFrequency === 0) {
@@ -91,17 +94,18 @@ function accumulationPhase(baseIntensity, baseVolume, week, macrocycleLength, in
 
 /* 
   4. Transmutation Phase
-  Emphasizes high intensity while keeping volume increases moderate.
-  Intensity moves from the base value to 10 over the macrocycle,
-  while volume increases only slightly (e.g., by a maximum of 2 points).
+  Emphasizes high intensity while limiting changes in volume.
+  - Intensity increases sharply toward 10 using a power progression (progressFraction^1.5).
+  - Volume changes only slightly (by volumeDelta, which can be positive or negative) using the same progression.
 */
 function transmutationPhase(baseIntensity, baseVolume, week, macrocycleLength, volumeDelta = 2, deloadFrequency, deloadFactor = 0.8) {
   const { effectiveWeek, maxEffectiveWeeks } = getEffectiveWeek(week, macrocycleLength, deloadFrequency);
   const progressFraction = (maxEffectiveWeeks > 1) ? (effectiveWeek - 1) / (maxEffectiveWeeks - 1) : 0;
   
-  let intensity = baseIntensity + (10 - baseIntensity) * progressFraction;
-  // Ensure volumeDelta does not push volume above 10.
-  let volume = baseVolume + Math.min(volumeDelta, 10 - baseVolume) * progressFraction;
+  // Use a 1.5 exponent to drive intensity up more steeply toward 10 in the later weeks.
+  let intensity = baseIntensity + (10 - baseIntensity) * Math.pow(progressFraction, 1.5);
+  // Volume shifts only slightly. If volumeDelta is positive, volume increases modestly; if negative, volume decreases.
+  let volume = baseVolume + volumeDelta * Math.pow(progressFraction, 1.5);
   
   if (deloadFrequency && week % deloadFrequency === 0) {
     intensity *= deloadFactor;

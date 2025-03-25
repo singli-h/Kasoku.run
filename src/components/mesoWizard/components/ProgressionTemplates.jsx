@@ -19,11 +19,11 @@ const sliderStyles = {
     background: "linear-gradient(to right, hsla(210, 65%, 65%, 0.7), hsla(270, 85%, 40%, 0.9))"
   },
   default: {
-    background: "linear-gradient(to right, hsla(0, 0%, 40%, 0.7), hsla(0, 0%, 10%, 0.9))"
-  },
-  // Use split style for indicators to show it affects both intensity and volume
-  diagonal: {
-    background: "linear-gradient(to bottom, hsla(15, 80%, 50%, 1) 49%, hsla(240, 75%, 50%, 1) 51%)"
+    background: `
+    linear-gradient(to right, hsl(0, 8%, 100%, 0.4), hsla(0, 90%, 90%, 0)),
+    linear-gradient(to bottom, hsla(13, 80%, 50%, 0.8) 49%, hsla(240, 75%, 55%, 0.8) 51%)
+  `,
+  backgroundBlendMode: 'lighten'
   }
 };
 
@@ -213,9 +213,9 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h3 className="text-lg font-semibold">Progression Templates</h3>
-        <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+        <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full w-fit">
           Scientific Formula-Based
         </span>
       </div>
@@ -224,32 +224,35 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
       </p>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-5 mb-4">
-          <TabsTrigger value="linear" className="flex items-center gap-1">
-            <TrendingUp className="h-4 w-4" />
-            <span className="hidden sm:inline">Linear</span>
-          </TabsTrigger>
-          <TabsTrigger value="undulating" className="flex items-center gap-1">
-            <Waves className="h-4 w-4" />
-            <span className="hidden sm:inline">Undulating</span>
-          </TabsTrigger>
-          <TabsTrigger value="accumulation" className="flex items-center gap-1">
-            <AreaChart className="h-4 w-4" />
-            <span className="hidden sm:inline">Accumulation</span>
-          </TabsTrigger>
-          <TabsTrigger value="transmutation" className="flex items-center gap-1">
-            <Flame className="h-4 w-4" />
-            <span className="hidden sm:inline">Transmutation</span>
-          </TabsTrigger>
-          <TabsTrigger value="realization" className="flex items-center gap-1">
-            <Target className="h-4 w-4" />
-            <span className="hidden sm:inline">Realization</span>
-          </TabsTrigger>
-        </TabsList>
+        {/* Mobile-friendly tabs design with scrollable content */}
+        <div className="mb-4 overflow-auto pb-1 no-scrollbar">
+          <TabsList className="flex w-max space-x-1 p-1 sm:w-full sm:grid sm:grid-cols-5">
+            <TabsTrigger value="linear" className="flex items-center gap-1 whitespace-nowrap px-3 py-1.5">
+              <TrendingUp className="h-4 w-4" />
+              <span>Linear</span>
+            </TabsTrigger>
+            <TabsTrigger value="undulating" className="flex items-center gap-1 whitespace-nowrap px-3 py-1.5">
+              <Waves className="h-4 w-4" />
+              <span>Undulating</span>
+            </TabsTrigger>
+            <TabsTrigger value="accumulation" className="flex items-center gap-1 whitespace-nowrap px-3 py-1.5">
+              <AreaChart className="h-4 w-4" />
+              <span>Accumulation</span>
+            </TabsTrigger>
+            <TabsTrigger value="transmutation" className="flex items-center gap-1 whitespace-nowrap px-3 py-1.5">
+              <Flame className="h-4 w-4" />
+              <span>Transmutation</span>
+            </TabsTrigger>
+            <TabsTrigger value="realization" className="flex items-center gap-1 whitespace-nowrap px-3 py-1.5">
+              <Target className="h-4 w-4" />
+              <span>Realization</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Model-Specific Options */}
         <Card className="mb-4">
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 px-3 sm:px-6">
             <div className="space-y-4">
               <h4 className="font-medium">{
                 activeTab === "linear" ? "Linear Progression Options" :
@@ -261,70 +264,75 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
 
               {activeTab === "linear" && (
                 <div>
-                  <Label htmlFor="progressionRate" className="text-sm">
+                  <Label htmlFor="progressionRate" className="text-sm mb-2 block">
                     Weekly Progression Rate ({Math.round(progressionRate * 100)}%)
                   </Label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="w-4 h-4 rounded-sm" style={{
-                      background: "linear-gradient(to bottom, hsla(15, 80%, 50%, 1) 49%, hsla(240, 75%, 50%, 1) 51%)"
-                    }}></div>
-                    <Slider
-                      id="progressionRate"
-                      key="progression-rate-slider"
-                      value={[progressionRate * 100]}
-                      min={1}
-                      max={20}
-                      step={1}
-                      className="flex-1"
-                      onValueChange={(value) => setProgressionRate(value[0] / 100)}
-                      variant="default"
-                    />
+                  <div className="flex items-center gap-2 mt-2 px-1">
+                    <div className="min-w-4 h-4 rounded-sm" style={sliderStyles.default}></div>
+                    <div className="flex-1">
+                      <Slider
+                        id="progressionRate"
+                        key="progression-rate-slider"
+                        value={[progressionRate * 100]}
+                        min={1}
+                        max={20}
+                        step={1}
+                        className="flex-1"
+                        onValueChange={(value) => setProgressionRate(value[0] / 100)}
+                        variant="default"
+                        style={sliderStyles.default}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
 
               {activeTab === "undulating" && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="amplitude" className="text-sm">
+                    <Label htmlFor="amplitude" className="text-sm mb-2 block">
                       Wave Amplitude ({amplitude.toFixed(1)})
                     </Label>
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="w-4 h-4 rounded-sm" style={{
-                        background: "linear-gradient(to bottom, hsla(15, 80%, 50%, 1) 49%, hsla(240, 75%, 50%, 1) 51%)"
-                      }}></div>
-                      <Slider
-                        id="amplitude"
-                        key="amplitude-slider"
-                        value={[amplitude * 10]}
-                        min={5}
-                        max={20}
-                        step={1}
-                        className="flex-1"
-                        onValueChange={(value) => setAmplitude(value[0] / 10)}
-                        variant="default"
-                      />
+                    <div className="flex items-center gap-2 mt-2 px-1">
+                      <div className="min-w-4 h-4 rounded-sm" style={sliderStyles.default}></div>
+                      <div className="flex-1">
+                        <Slider
+                          id="amplitude"
+                          key="amplitude-slider"
+                          value={[amplitude * 10]}
+                          min={5}
+                          max={20}
+                          step={1}
+                          className="flex-1"
+                          onValueChange={(value) => setAmplitude(value[0] / 10)}
+                          variant="default"
+                          style={sliderStyles.default}
+                        />
+                      </div>
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="period" className="text-sm">
+                    <Label htmlFor="period" className="text-sm mb-2 block">
                       Wave Period (every {period} weeks)
                     </Label>
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="w-4 h-4 rounded-sm" style={{
-                        background: "linear-gradient(to bottom, hsla(15, 80%, 50%, 1) 49%, hsla(240, 75%, 50%, 1) 51%)"
+                    <div className="flex items-center gap-2 mt-2 px-1">
+                      <div className="min-w-4 h-4 rounded-sm" style={{
+                        background: sliderStyles.default
                       }}></div>
-                      <Slider
-                        id="period"
-                        key="period-slider"
-                        value={[period]}
-                        min={2}
-                        max={6}
-                        step={1}
-                        className="flex-1"
-                        onValueChange={(value) => setPeriod(value[0])}
-                        variant="default"
-                      />
+                      <div className="flex-1">
+                        <Slider
+                          id="period"
+                          key="period-slider"
+                          value={[period]}
+                          min={2}
+                          max={6}
+                          step={1}
+                          className="flex-1"
+                          onValueChange={(value) => setPeriod(value[0])}
+                          variant="default"
+                          style={sliderStyles.default}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -332,91 +340,104 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
 
               {activeTab === "accumulation" && (
                 <div>
-                  <Label htmlFor="intensityDelta" className="text-sm">
-                    Intensity Delta (maximum +{intensityDelta} points)
+                  <Label htmlFor="intensityDelta" className="text-sm mb-2 block">
+                    Intensity Delta (+{intensityDelta} points)
                   </Label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="w-4 h-4 rounded-sm" style={sliderStyles.intensity}></div>
-                    <Slider
-                      id="intensityDelta"
-                      value={[intensityDelta]}
-                      min={1}
-                      max={5}
-                      step={1}
-                      className="flex-1"
-                      onValueChange={(value) => setIntensityDelta(value[0])}
-                      variant="intensity"
-                    />
+                  <div className="flex items-center gap-2 mt-2 px-1">
+                    <div className="min-w-4 h-4 rounded-sm" style={sliderStyles.intensity}></div>
+                    <div className="flex-1">
+                      <Slider
+                        id="intensityDelta"
+                        value={[intensityDelta]}
+                        min={1}
+                        max={5}
+                        step={1}
+                        className="flex-1"
+                        onValueChange={(value) => setIntensityDelta(value[0])}
+                        variant="intensity"
+                      />
+                    </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Intensity increases gradually while volume maximizes
+                    Intensity increases gradually while volume increases significantly
                   </p>
                 </div>
               )}
 
               {activeTab === "transmutation" && (
                 <div>
-                  <Label htmlFor="volumeDelta" className="text-sm">
-                    Volume Delta (maximum +{volumeDelta} points)
+                  <Label htmlFor="volumeDelta" className="text-sm mb-2 block">
+                    Volume Change ({volumeDelta > 0 ? `+${volumeDelta}` : volumeDelta} points)
                   </Label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="w-4 h-4 rounded-sm" style={sliderStyles.volume}></div>
-                    <Slider
-                      id="volumeDelta"
-                      value={[volumeDelta]}
-                      min={1}
-                      max={5}
-                      step={1}
-                      className="flex-1"
-                      onValueChange={(value) => setVolumeDelta(value[0])}
-                      variant="volume"
-                    />
+                  <div className="flex items-center gap-2 mt-2 px-1">
+                    <div className="min-w-4 h-4 rounded-sm" style={sliderStyles.volume}></div>
+                    <div className="flex-1">
+                      <Slider
+                        id="volumeDelta"
+                        value={[volumeDelta]}
+                        min={-5}
+                        max={5}
+                        step={1}
+                        className="flex-1"
+                        onValueChange={(value) => setVolumeDelta(value[0])}
+                        variant="volume"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-between mt-2">
+                    <span className="text-xs text-gray-500">Volume Decreases</span>
+                    <span className="text-xs text-gray-500">Volume Increases</span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Volume increases moderately while intensity maximizes
+                    Intensity increases significantly while volume {volumeDelta < 0 ? "decreases" : "increases slightly"}
                   </p>
                 </div>
               )}
 
               {activeTab === "realization" && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="targetVolume" className="text-sm">
+                    <Label htmlFor="targetVolume" className="text-sm mb-2 block">
                       Target Taper Volume ({targetVolume})
                     </Label>
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="w-4 h-4 rounded-sm" style={sliderStyles.volume}></div>
-                      <Slider
-                        id="targetVolume"
-                        value={[targetVolume]}
-                        min={1}
-                        max={7}
-                        step={1}
-                        className="flex-1"
-                        onValueChange={(value) => setTargetVolume(value[0])}
-                        variant="volume"
-                      />
+                    <div className="flex items-center gap-2 mt-2 px-1">
+                      <div className="min-w-4 h-4 rounded-sm" style={sliderStyles.volume}></div>
+                      <div className="flex-1">
+                        <Slider
+                          id="targetVolume"
+                          value={[targetVolume]}
+                          min={1}
+                          max={7}
+                          step={1}
+                          className="flex-1"
+                          onValueChange={(value) => setTargetVolume(value[0])}
+                          variant="volume"
+                        />
+                      </div>
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="taperStart" className="text-sm">
+                    <Label htmlFor="taperStart" className="text-sm mb-2 block">
                       Taper Start (week {taperStart})
                     </Label>
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="w-4 h-4 rounded-sm" style={{
-                        background: "linear-gradient(to bottom, hsla(15, 80%, 50%, 1) 49%, hsla(240, 75%, 50%, 1) 51%)"
+                    <div className="flex items-center gap-2 mt-2 px-1">
+                      <div className="min-w-4 h-4 rounded-sm" style={{
+                        background: sliderStyles.default
                       }}></div>
-                      <Slider
-                        id="taperStart"
-                        key="taper-start-slider"
-                        value={[taperStart]}
-                        min={Math.ceil(duration / 3)}
-                        max={Math.max(duration - 1, Math.ceil(duration / 3) + 1)}
-                        step={1}
-                        className="flex-1"
-                        onValueChange={(value) => setTaperStart(value[0])}
-                        variant="default"
-                      />
+                      <div className="flex-1">
+                        <Slider
+                          id="taperStart"
+                          key="taper-start-slider"
+                          value={[taperStart]}
+                          min={Math.ceil(duration / 3)}
+                          max={Math.max(duration - 1, Math.ceil(duration / 3) + 1)}
+                          step={1}
+                          className="flex-1"
+                          onValueChange={(value) => setTaperStart(value[0])}
+                          variant="default"
+                          style={sliderStyles.default}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -427,37 +448,37 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
 
         {/* Deload Options */}
         <Card className="mb-4">
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 px-3 sm:px-6">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-            <input 
-              type="checkbox" 
-              id="includeDeload" 
-              checked={includeDeload}
-              onChange={(e) => setIncludeDeload(e.target.checked)}
+                  <input 
+                    type="checkbox" 
+                    id="includeDeload" 
+                    checked={includeDeload}
+                    onChange={(e) => setIncludeDeload(e.target.checked)}
                     className="rounded text-primary h-4 w-4" 
-            />
+                  />
                   <Label htmlFor="includeDeload" className="cursor-pointer">
                     Include Deload Weeks
                   </Label>
-          </div>
-          {includeDeload && (
-                  <span className="text-xs text-gray-500">
+                </div>
+                {includeDeload && (
+                  <span className="text-xs text-gray-500 mt-1 sm:mt-0">
                     {getDeloadPercentage()} reduction
                   </span>
                 )}
               </div>
 
               {includeDeload && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="deloadFrequency" className="text-sm">
+                    <Label htmlFor="deloadFrequency" className="text-sm mb-2 block">
                       Frequency (every X weeks)
                     </Label>
                     <select
                       id="deloadFrequency"
-              value={deloadFrequency} 
+                      value={deloadFrequency} 
                       onChange={(e) => setDeloadFrequency(e.target.value)}
                       className="w-full p-2 mt-1 border rounded-md"
                     >
@@ -468,36 +489,39 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
                     </select>
                   </div>
                   <div>
-                    <Label htmlFor="deloadFactor" className="text-sm">
+                    <Label htmlFor="deloadFactor" className="text-sm mb-2 block">
                       Deload to {Math.round(deloadFactor * 100)}%
                     </Label>
-                    <div className="flex items-center gap-2 mt-3">
-                      <div className="w-4 h-4 rounded-sm" style={{
-                        background: "linear-gradient(to bottom, hsla(15, 80%, 50%, 1) 49%, hsla(240, 75%, 50%, 1) 51%)"
+                    <div className="flex items-center gap-2 mt-2 px-1">
+                      <div className="min-w-4 h-4 rounded-sm" style={{
+                        background: sliderStyles.default
                       }}></div>
-                      <Slider 
-                        id="deloadFactor"
-                        key="deload-factor-slider"
-                        value={[deloadFactor * 100]} 
-                        min={40}
-                        max={70}
-                        step={5}
-                        className="flex-1"
-                        onValueChange={(value) => setDeloadFactor(value[0] / 100)}
-                        variant="default"
-                      />
+                      <div className="flex-1">
+                        <Slider 
+                          id="deloadFactor"
+                          key="deload-factor-slider"
+                          value={[deloadFactor * 100]} 
+                          min={40}
+                          max={70}
+                          step={5}
+                          className="flex-1"
+                          onValueChange={(value) => setDeloadFactor(value[0] / 100)}
+                          variant="default"
+                          style={sliderStyles.default}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-          )}
-        </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         <div className="flex justify-end">
           <Button 
             onClick={() => handleApplyTemplate(activeTab)}
-            className="bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800"
+            className="bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 w-full sm:w-auto"
           >
             Apply {
               activeTab === "linear" ? "Linear" :
@@ -506,8 +530,8 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
               activeTab === "transmutation" ? "Transmutation" :
               "Realization"
             } Model
-                </Button>
-              </div>
+          </Button>
+        </div>
       </Tabs>
     </div>
   );

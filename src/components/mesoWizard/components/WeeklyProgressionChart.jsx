@@ -108,7 +108,7 @@ const WeeklyProgressionChart = ({ data = [], onChange = () => {}, modelType = nu
             </div>
           )}
         </div>
-        <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1">
+        <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1 w-fit">
           <Info className="h-3.5 w-3.5" />
           <span>Click on any cell to set the level</span>
         </div>
@@ -132,90 +132,93 @@ const WeeklyProgressionChart = ({ data = [], onChange = () => {}, modelType = nu
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[600px] border-collapse">
-          {/* Header row with level numbers */}
-          <thead>
-            <tr className="border-b">
-              <th className="w-20 p-2 font-medium text-center">Week</th>
-              {Array.from({ length: 10 }, (_, i) => (
-                <th key={i} className="p-2 text-center font-medium w-[calc(100%/10)]">
-                  {i + 1}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {/* Grid rows for each week */}
-            {localData.map((weekData) => (
-              <tr key={weekData.week} className="border-b last:border-b-0 border-2 border-gray-200">
-                {/* Week cell */}
-                <td className="w-20 border-r border-gray-200 py-6 text-center font-medium">
-                  {weekData.week}
-                </td>
-                
-                {/* Intensity row embedded in a cell that spans all columns */}
-                <td colSpan={10} className="p-0">
-                  <div className="grid grid-cols-10 h-10">
-                    {Array.from({ length: 10 }, (_, i) => (
-                      <TooltipProvider key={i}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div
-                              className={`w-full h-full cursor-pointer transition-colors border-r last:border-r-0 ${
-                                i + 1 <= weekData.intensity ? "text-gray-700" : "text-gray-400"
-                              }`}
-                              style={{
-                                backgroundColor: i + 1 <= weekData.intensity ? getIntensityColor(i + 1) : "transparent",
-                                transition: "background-color 0.3s ease-in-out"
-                              }}
-                              onClick={() => handleCellClick(weekData.week, "intensity", i + 1)}
-                            >
-                              &nbsp;
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="text-xs">
-                            Week {weekData.week} Intensity: {Math.min(i + 1, weekData.intensity)}/10
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ))}
-                  </div>
-                  
-                  {/* Volume row */}
-                  <div className="grid grid-cols-10 h-10 border-t border-gray-200">
-                    {Array.from({ length: 10 }, (_, i) => (
-                      <TooltipProvider key={i}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div
-                              className={`w-full h-full cursor-pointer transition-colors border-r last:border-r-0 ${
-                                i + 1 <= weekData.volume ? "text-gray-700" : "text-gray-400"
-                              }`}
-                              style={{
-                                backgroundColor: i + 1 <= weekData.volume ? getVolumeColor(i + 1) : "transparent",
-                                transition: "background-color 0.3s ease-in-out"
-                              }}
-                              onClick={() => handleCellClick(weekData.week, "volume", i + 1)}
-                            >
-                              &nbsp;
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="text-xs">
-                            Week {weekData.week} Volume: {Math.min(i + 1, weekData.volume)}/10
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ))}
-                  </div>
-                </td>
+      {/* Use scaling approach with proper percentages instead of fixed width */}
+      <div className="w-full">
+        <div className="w-full">
+          <table className="w-full border-collapse table-fixed">
+            {/* Header row with level numbers */}
+            <thead>
+              <tr className="border-b">
+                <th className="w-[12%] p-2 font-medium text-center text-sm">Week</th>
+                {Array.from({ length: 10 }, (_, i) => (
+                  <th key={i} className="p-1 sm:p-2 text-center font-medium w-[8.8%] text-xs sm:text-sm">
+                    {i + 1}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {/* Grid rows for each week */}
+              {localData.map((weekData) => (
+                <tr key={weekData.week} className="border-b last:border-b-2 border-gray-200">
+                  {/* Week cell */}
+                  <td className="w-[12%] border-r border-gray-200 py-4 sm:py-6 text-center font-medium text-sm">
+                    {weekData.week}
+                  </td>
+                  
+                  {/* Intensity row embedded in a cell that spans all columns */}
+                  <td colSpan={10} className="p-0">
+                    <div className="grid grid-cols-10 h-8 sm:h-10">
+                      {Array.from({ length: 10 }, (_, i) => (
+                        <TooltipProvider key={i}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={`w-full h-full cursor-pointer transition-colors border-r last:border-r-0 ${
+                                  i + 1 <= weekData.intensity ? "text-gray-700" : "text-gray-400"
+                                }`}
+                                style={{
+                                  backgroundColor: i + 1 <= weekData.intensity ? getIntensityColor(i + 1) : "transparent",
+                                  transition: "background-color 0.3s ease-in-out"
+                                }}
+                                onClick={() => handleCellClick(weekData.week, "intensity", i + 1)}
+                              >
+                                &nbsp;
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              Week {weekData.week} Intensity: {Math.min(i + 1, weekData.intensity)}/10
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ))}
+                    </div>
+                    
+                    {/* Volume row */}
+                    <div className="grid grid-cols-10 h-8 sm:h-10 border-t border-gray-200">
+                      {Array.from({ length: 10 }, (_, i) => (
+                        <TooltipProvider key={i}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={`w-full h-full cursor-pointer transition-colors border-r last:border-r-0 ${
+                                  i + 1 <= weekData.volume ? "text-gray-700" : "text-gray-400"
+                                }`}
+                                style={{
+                                  backgroundColor: i + 1 <= weekData.volume ? getVolumeColor(i + 1) : "transparent",
+                                  transition: "background-color 0.3s ease-in-out"
+                                }}
+                                onClick={() => handleCellClick(weekData.week, "volume", i + 1)}
+                              >
+                                &nbsp;
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-xs">
+                              Week {weekData.week} Volume: {Math.min(i + 1, weekData.volume)}/10
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="flex justify-between text-sm text-gray-500 px-4">
+      <div className="flex justify-between text-xs sm:text-sm text-gray-500 mt-1">
         <span>Lower Intensity/Volume</span>
         <span>Higher Intensity/Volume</span>
       </div>
