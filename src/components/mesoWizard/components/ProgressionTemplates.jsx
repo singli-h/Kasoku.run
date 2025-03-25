@@ -503,7 +503,7 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-4">
                   <div>
                     <Label htmlFor="targetVolume" className="text-sm mb-1 block">
-                      Target Taper Volume
+                      Final Week Volume Level
                     </Label>
                     <div className="flex items-center gap-2 mt-3 touch-action-manipulation">
                       <div className="min-w-5 h-5 rounded-sm" style={sliderStyles.volume}></div>
@@ -512,7 +512,7 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
                           id="targetVolume"
                           value={[targetVolume]}
                           min={1}
-                          max={7}
+                          max={5}
                           step={1}
                           className="flex-1"
                           onValueChange={(value) => setTargetVolume(value[0])}
@@ -521,6 +521,9 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
                       </div>
                       <span className="text-xs font-medium w-8 text-right">{targetVolume}</span>
                     </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Sets the exact volume level for the final week (lower values = more aggressive taper)
+                    </p>
                   </div>
                   <div>
                     <Label htmlFor="taperStart" className="text-sm mb-1 block">
@@ -535,7 +538,7 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
                           id="taperStart"
                           key="taper-start-slider"
                           value={[taperStart]}
-                          min={Math.ceil(duration / 3)}
+                          min={1}
                           max={Math.max(duration - 1, Math.ceil(duration / 3) + 1)}
                           step={1}
                           className="flex-1"
@@ -608,8 +611,8 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
                           id="deloadFactor"
                           key="deload-factor-slider"
                           value={[deloadFactor * 100]} 
-                          min={40}
-                          max={70}
+                          min={30}
+                          max={80}
                           step={5}
                           className="flex-1"
                           onValueChange={(value) => setDeloadFactor(value[0] / 100)}

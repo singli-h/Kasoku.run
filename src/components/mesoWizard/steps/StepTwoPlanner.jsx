@@ -6,11 +6,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import ExerciseSectionManager from "../components/ExerciseSectionManager"
 import ExerciseTimeline from "../components/ExerciseTimeline"
-import ProgressionModelSelector from "../components/ProgressionModelSelector"
 import { useState, useCallback } from "react"
 
 /**
@@ -21,47 +19,38 @@ import { useState, useCallback } from "react"
  * - Select progression models
  * - Manage exercise sections
  * - Add and configure exercises
- * - Set special constraints
  * 
  * @param {Object} props - Component props
  * @param {Object} props.formData - Form data
- * @param {Function} props.handleInputChange - Function to handle input changes
  * @param {Function} props.handleSessionInputChange - Function to handle session input changes
  * @param {Function} props.handleAddExercise - Function to add an exercise
  * @param {Function} props.handleRemoveExercise - Function to remove an exercise
  * @param {Function} props.handleExerciseDetailChange - Function to handle exercise detail changes
  * @param {Function} props.handleExerciseReorder - Function to handle exercise reordering
  * @param {Function} props.getOrderedExercises - Function to get ordered exercises for a section
- * @param {Function} props.handleProgressionModelChange - Function to handle progression model changes
- * @param {Function} props.handleProgressionValueChange - Function to handle progression value changes
  * @param {Object} props.sessionSections - Session sections data
  * @param {Function} props.handleSetActiveSections - Function to set active sections
  * @param {Array} props.filteredExercises - Filtered exercises
  * @param {number} props.activeSession - Active session ID
  * @param {Function} props.setActiveSession - Function to set active session
  * @param {Object} props.errors - Validation errors
- * @param {Array} props.progressionModels - Available progression models
  * @param {Function} props.handleNext - Function to go to the next step
  * @param {Function} props.handleBack - Function to go to the previous step
  */
 const StepTwoPlanner = ({
   formData,
-  handleInputChange,
   handleSessionInputChange,
   handleAddExercise,
   handleRemoveExercise,
   handleExerciseDetailChange,
   handleExerciseReorder,
   getOrderedExercises,
-  handleProgressionModelChange,
-  handleProgressionValueChange,
   sessionSections,
   handleSetActiveSections,
   filteredExercises,
   activeSession,
   setActiveSession,
   errors,
-  progressionModels,
   handleNext,
   handleBack,
 }) => {
@@ -182,7 +171,7 @@ const StepTwoPlanner = ({
                       value={session.name}
                       onChange={(e) => handleSessionInputChange(session.id, "name", e.target.value)}
                       placeholder="e.g., Lower Body Power"
-                      className={`mt-1 ${errors[`session-${session.id}-name`] ? "border-red-500" : ""}`}
+                      className={`mt-1 p-3 ${errors[`session-${session.id}-name`] ? "border-red-500" : ""}`}
                     />
                     {errors[`session-${session.id}-name`] && (
                       <p className="mt-1 text-sm text-red-500">{errors[`session-${session.id}-name`]}</p>
@@ -232,15 +221,6 @@ const StepTwoPlanner = ({
               </CardContent>
             </Card>
 
-            {/* Progression Model Selector */}
-            <ProgressionModelSelector
-              session={session}
-              progressionModels={progressionModels}
-              handleProgressionModelChange={handleProgressionModelChange}
-              handleProgressionValueChange={handleProgressionValueChange}
-              errors={errors}
-            />
-
             {/* Exercise Section Manager */}
             <ExerciseSectionManager
               sessionId={session.id}
@@ -271,42 +251,6 @@ const StepTwoPlanner = ({
           </TabsContent>
         ))}
       </Tabs>
-
-      {/* Special Constraints */}
-      <Card className="overflow-visible">
-        <CardContent className="pt-6 overflow-visible">
-          <div className="space-y-4 overflow-visible">
-            <div className="overflow-visible">
-              <div className="flex items-center gap-2 overflow-visible">
-                <Label htmlFor="specialConstraints" className="text-base font-medium">
-                  Special Constraints
-                </Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-gray-400" />
-                    </TooltipTrigger>
-                    <TooltipContent className="w-80 max-w-lg">
-                      <p>
-                        Add any special constraints or considerations for this mesocycle (e.g., injuries,
-                        equipment limitations, scheduling constraints).
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <Textarea
-                id="specialConstraints"
-                name="specialConstraints"
-                value={formData.specialConstraints}
-                onChange={handleInputChange}
-                placeholder="e.g., Limited equipment at home, recovering from shoulder injury"
-                className="mt-1"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Navigation Buttons */}
       <div className="flex justify-between">

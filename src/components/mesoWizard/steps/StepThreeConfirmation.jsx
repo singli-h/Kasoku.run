@@ -4,7 +4,6 @@ import { useState } from "react"
 import { ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import AIRecommendations from "../components/AIRecommendations"
 import { useErrorToast } from "../hooks/useErrorToast"
 
@@ -108,13 +107,6 @@ const StepThreeConfirmation = ({
               </div>
             </div>
           </div>
-
-          {formData.specialConstraints && (
-            <div>
-              <h3 className="font-medium mb-2">Special Constraints</h3>
-              <p className="text-sm">{formData.specialConstraints}</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -125,20 +117,8 @@ const StepThreeConfirmation = ({
           <Card key={session.id}>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{session.name}</CardTitle>
-              {session.progressionModel && (
-                <Badge variant="outline" className="mt-1">
-                  {session.progressionModel} Progression
-                </Badge>
-              )}
             </CardHeader>
             <CardContent>
-              {session.progressionValue && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium mb-1">Progression Details</h4>
-                  <p className="text-sm text-gray-600">{session.progressionValue}</p>
-                </div>
-              )}
-
               <h4 className="text-sm font-medium mb-2">Exercises</h4>
               {session.exercises.length === 0 ? (
                 <p className="text-sm text-gray-500">No exercises added to this session.</p>

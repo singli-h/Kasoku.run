@@ -34,6 +34,9 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata = {
   title: "RunningApp - Track Your Progress",
   description: "Track your running performance, set goals, and crush your personal bests with our comprehensive running tracker.",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || 'https://runningapp.com' || 'http://localhost:3000'
+  ),
   icons: {
     icon: "/logo.svg",
   },

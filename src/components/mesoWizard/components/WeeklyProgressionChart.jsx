@@ -132,15 +132,15 @@ const WeeklyProgressionChart = ({ data = [], onChange = () => {}, modelType = nu
       </div>
 
       {/* Make table container horizontally scrollable on mobile with full width */}
-      <div className="w-full overflow-x-auto overflow-y-hidden pb-1 touch-pan-x scrollbar-thin">
-        <div className="min-w-[600px] w-full">
+      <div className="w-full overflow-x-auto overflow-y-hidden pb-1 touch-pan-x scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="min-w-[480px] w-full">
           <table className="w-full border-collapse table-fixed">
             {/* Header row with level numbers */}
             <thead>
               <tr className="border-b">
                 <th className="w-[12%] py-2 px-1 font-medium text-center text-sm">Week</th>
                 {Array.from({ length: 10 }, (_, i) => (
-                  <th key={i} className="p-1 sm:p-2 text-center font-medium w-[8.8%] text-xs sm:text-sm">
+                  <th key={i} className="p-1 text-center font-medium w-[8.8%] text-xs">
                     {i + 1}
                   </th>
                 ))}
@@ -151,13 +151,13 @@ const WeeklyProgressionChart = ({ data = [], onChange = () => {}, modelType = nu
               {localData.map((weekData) => (
                 <tr key={weekData.week} className="border-b last:border-b-2 border-gray-200">
                   {/* Week cell */}
-                  <td className="w-[12%] border-r border-gray-200 py-3 sm:py-5 text-center font-medium text-sm">
+                  <td className="w-[12%] border-r border-gray-200 py-3 text-center font-medium text-sm">
                     {weekData.week}
                   </td>
                   
                   {/* Intensity row embedded in a cell that spans all columns */}
                   <td colSpan={10} className="p-0">
-                    <div className="grid grid-cols-10 h-10 sm:h-11">
+                    <div className="grid grid-cols-10 h-11">
                       {Array.from({ length: 10 }, (_, i) => (
                         <div
                           key={i}
@@ -176,7 +176,7 @@ const WeeklyProgressionChart = ({ data = [], onChange = () => {}, modelType = nu
                     </div>
                     
                     {/* Volume row */}
-                    <div className="grid grid-cols-10 h-10 sm:h-11 border-t border-gray-200">
+                    <div className="grid grid-cols-10 h-11 border-t border-gray-200">
                       {Array.from({ length: 10 }, (_, i) => (
                         <div
                           key={i}

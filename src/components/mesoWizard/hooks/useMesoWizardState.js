@@ -23,7 +23,6 @@ export const useMesoWizardState = (onComplete) => {
     volume: "",     // Added for volume picker
     exercises: [],
     sessions: [],
-    specialConstraints: "",
   })
   
   // UI states
@@ -319,6 +318,7 @@ export const useMesoWizardState = (onComplete) => {
 
   // Validate the current step
   const validateStep = useCallback((currentStep) => {
+    console.log("Validating step:", currentStep);
     const newErrors = {}
     
     if (currentStep === 1) {
@@ -328,6 +328,8 @@ export const useMesoWizardState = (onComplete) => {
       }
     } else if (currentStep === 2) {
       // Validate Step 2: Mesocycle Overview
+      console.log("Validating mesocycle overview with data:", formData);
+      
       if (!formData.goals.trim()) {
         newErrors.goals = "Goals are required"
       }
@@ -348,12 +350,12 @@ export const useMesoWizardState = (onComplete) => {
         newErrors.sessionsPerWeek = "Sessions per week must be a positive number"
       }
 
-      // Validate intensity and volume
-      if (!formData.intensity) {
+      // Validate intensity and volume, but consider them valid if weeklyProgression has values set
+      if (!formData.intensity && !(formData.weeklyProgression && formData.weeklyProgression.length > 0)) {
         newErrors.intensity = "Please select an intensity level"
       }
       
-      if (!formData.volume) {
+      if (!formData.volume && !(formData.weeklyProgression && formData.weeklyProgression.length > 0)) {
         newErrors.volume = "Please select a volume level"
       }
     } else if (currentStep === 3) {
@@ -398,10 +400,14 @@ export const useMesoWizardState = (onComplete) => {
 
   // Handle next step
   const handleNext = useCallback(() => {
+    console.log("handleNext called - current step:", step);
     if (validateStep(step)) {
-      setStep((prev) => Math.min(prev + 1, 4))
+      console.log("Validation passed, advancing to next step");
+      setStep((prev) => Math.min(prev + 1, 4));
+    } else {
+      console.log("Validation failed, errors:", errors);
     }
-  }, [step, validateStep])
+  }, [step, validateStep, errors]);
 
   // Handle previous step
   const handleBack = useCallback(() => {

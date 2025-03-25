@@ -139,7 +139,7 @@ function realizationPhase(baseIntensity, baseVolume, week, macrocycleLength, tar
   if (week < taperWeek) {
     // Pre-taper phase: moderate increase in both intensity and volume
     // Calculate progression as fraction of pre-taper period
-    const preTaperFraction = (week - 1) / (taperWeek - 1);
+    const preTaperFraction = (week - 1) / Math.max(1, taperWeek - 1);
     
     // Intensity increases linearly to about 70-80% of max during pre-taper
     intensity = baseIntensity + (baseIntensity * 0.7) * preTaperFraction;
@@ -150,21 +150,39 @@ function realizationPhase(baseIntensity, baseVolume, week, macrocycleLength, tar
     // Realization/taper phase: sharp intensity increase, exponential volume decrease
     // How far are we into the taper period (0 to 1)
     const taperPeriod = macrocycleLength - taperWeek;
-    const taperFraction = taperPeriod > 0 ? (week - taperWeek) / taperPeriod : 1;
     
-    // Calculate pre-taper intensity level to start from
-    const preTaperIntensity = baseIntensity + (baseIntensity * 0.7);
-    const intensityRange = 10 - preTaperIntensity;
-    
-    // Exponential intensity increase (power > 1 makes curve steeper at end)
-    intensity = preTaperIntensity + intensityRange * Math.pow(taperFraction, 0.7);
-    
-    // Calculate pre-taper volume level
-    const preTaperVolume = baseVolume + (baseVolume * 0.5);
-    
-    // Exponential volume decrease (using negative exponential curve)
-    // More aggressive drop early in taper with stabilization toward target
-    volume = targetVolume + (preTaperVolume - targetVolume) * Math.exp(-2.5 * taperFraction);
+    // Handle the case when week is the last week
+    if (week === macrocycleLength) {
+      // For the last week, ensure intensity is maximized
+      intensity = 10; // Maximum intensity
+      
+      // For the last week, ensure volume exactly matches target
+      volume = targetVolume;
+    } else {
+      const taperFraction = taperPeriod > 0 ? (week - taperWeek) / taperPeriod : 1;
+      
+      // Calculate pre-taper intensity level to start from
+      const preTaperIntensity = baseIntensity + (baseIntensity * 0.7);
+      const intensityRange = 10 - preTaperIntensity;
+      
+      // Exponential intensity increase (power > 1 makes curve steeper at end)
+      intensity = preTaperIntensity + intensityRange * Math.pow(taperFraction, 0.7);
+      
+      // Calculate pre-taper volume level
+      const preTaperVolume = baseVolume + (baseVolume * 0.5);
+      
+      // Calculate a curve that will reach exactly targetVolume on the last week
+      // Use a smoother curve that starts faster and ends with the exact target
+      if (taperPeriod > 1) {
+        // Determine how far along the taper we are (0 at taper start, 1 at the end)
+        const normalizedPosition = (week - taperWeek) / (macrocycleLength - taperWeek);
+        // Use cubic function for smoother tapering
+        volume = preTaperVolume - (preTaperVolume - targetVolume) * (3 * Math.pow(normalizedPosition, 2) - 2 * Math.pow(normalizedPosition, 3));
+      } else {
+        // For very short taper periods, use linear tapering
+        volume = preTaperVolume - (preTaperVolume - targetVolume) * taperFraction;
+      }
+    }
   }
   
   if (deloadFrequency && week % deloadFrequency === 0) {

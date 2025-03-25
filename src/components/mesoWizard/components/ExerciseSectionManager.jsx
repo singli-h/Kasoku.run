@@ -1270,7 +1270,6 @@ const ExerciseSectionManager = memo(({
               variant="outline" 
               size="sm" 
               onClick={expandedSections.length === activeSections.length ? collapseAllSections : expandAllSections}
-              className="text-xs"
             >
               {expandedSections.length === activeSections.length ? "Collapse All" : "Expand All"}
             </Button>
