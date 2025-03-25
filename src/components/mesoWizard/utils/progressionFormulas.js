@@ -123,13 +123,49 @@ function transmutationPhase(baseIntensity, baseVolume, week, macrocycleLength, v
   The goal is to peak for competition by having maximum intensity (reaching 10) 
   while significantly reducing volume (tapering toward a target value).
   The targetVolume parameter (default 3) sets the desired volume level at peak.
-*/
-function realizationPhase(baseIntensity, baseVolume, week, macrocycleLength, targetVolume = 3, deloadFrequency, deloadFactor = 0.8) {
-  const { effectiveWeek, maxEffectiveWeeks } = getEffectiveWeek(week, macrocycleLength, deloadFrequency);
-  const progressFraction = (maxEffectiveWeeks > 1) ? (effectiveWeek - 1) / (maxEffectiveWeeks - 1) : 0;
+  The taperStart parameter defines the week when tapering begins.
   
-  let intensity = baseIntensity + (10 - baseIntensity) * progressFraction; // Progress to maximum intensity.
-  let volume = baseVolume + (targetVolume - baseVolume) * progressFraction;  // Taper volume toward targetVolume.
+  In block periodization theory, the realization (peaking) phase:
+  - Gradually builds intensity and volume before the taper start
+  - After taper start, intensity increases sharply while volume decreases exponentially
+  - This creates the "supercompensation" effect for optimal performance
+*/
+function realizationPhase(baseIntensity, baseVolume, week, macrocycleLength, targetVolume = 3, deloadFrequency, deloadFactor = 0.8, taperStart = null) {
+  // If taperStart is not explicitly set, default to 2/3 of the duration
+  const taperWeek = taperStart || Math.round(macrocycleLength * 2/3);
+  
+  let intensity, volume;
+  
+  if (week < taperWeek) {
+    // Pre-taper phase: moderate increase in both intensity and volume
+    // Calculate progression as fraction of pre-taper period
+    const preTaperFraction = (week - 1) / (taperWeek - 1);
+    
+    // Intensity increases linearly to about 70-80% of max during pre-taper
+    intensity = baseIntensity + (baseIntensity * 0.7) * preTaperFraction;
+    
+    // Volume increases slightly more aggressively during pre-taper
+    volume = baseVolume + (baseVolume * 0.5) * preTaperFraction;
+  } else {
+    // Realization/taper phase: sharp intensity increase, exponential volume decrease
+    // How far are we into the taper period (0 to 1)
+    const taperPeriod = macrocycleLength - taperWeek;
+    const taperFraction = taperPeriod > 0 ? (week - taperWeek) / taperPeriod : 1;
+    
+    // Calculate pre-taper intensity level to start from
+    const preTaperIntensity = baseIntensity + (baseIntensity * 0.7);
+    const intensityRange = 10 - preTaperIntensity;
+    
+    // Exponential intensity increase (power > 1 makes curve steeper at end)
+    intensity = preTaperIntensity + intensityRange * Math.pow(taperFraction, 0.7);
+    
+    // Calculate pre-taper volume level
+    const preTaperVolume = baseVolume + (baseVolume * 0.5);
+    
+    // Exponential volume decrease (using negative exponential curve)
+    // More aggressive drop early in taper with stabilization toward target
+    volume = targetVolume + (preTaperVolume - targetVolume) * Math.exp(-2.5 * taperFraction);
+  }
   
   if (deloadFrequency && week % deloadFrequency === 0) {
     intensity *= deloadFactor;
@@ -152,7 +188,8 @@ function generateProgressionTemplate(modelType, duration, baseIntensity, baseVol
     intensityDelta = 2,
     volumeDelta = 2,
     targetVolume = 3,
-    progressionRate = 0.05
+    progressionRate = 0.05,
+    taperStart = null
   } = options;
   
   const template = [];
@@ -173,7 +210,7 @@ function generateProgressionTemplate(modelType, duration, baseIntensity, baseVol
         values = transmutationPhase(baseIntensity, baseVolume, week, duration, volumeDelta, deloadFrequency, deloadFactor);
         break;
       case 'realization':
-        values = realizationPhase(baseIntensity, baseVolume, week, duration, targetVolume, deloadFrequency, deloadFactor);
+        values = realizationPhase(baseIntensity, baseVolume, week, duration, targetVolume, deloadFrequency, deloadFactor, taperStart);
         break;
       default:
         values = linearProgression(baseIntensity, baseVolume, week, duration, deloadFrequency, deloadFactor, progressionRate);

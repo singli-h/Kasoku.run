@@ -60,9 +60,6 @@ const IntensityVolumePicker = ({ label, value, onChange, description }) => {
         <div className="flex items-center gap-1 mt-1 sm:mt-0">
           <span className={`font-semibold text-lg ${getColorClass()}`}>{value}</span>
           <span className="text-lg text-gray-500">/10</span>
-          <span className={`ml-2 text-xs px-2 py-1 rounded-full ${getBadgeStyle()}`}>
-            {getLabel()}
-          </span>
         </div>
       </div>
 

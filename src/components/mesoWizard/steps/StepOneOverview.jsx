@@ -133,33 +133,33 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="text-center">
-        <h2 className="text-3xl font-bold mb-3">Training Cycle Setup</h2>
+        <h2 className="text-3xl font-bold mb-3">Mesoycle Setup</h2>
         <p className="text-gray-600 max-w-xl mx-auto">
           Configure your training parameters and progression pattern
         </p>
       </div>
 
       {/* Basic Parameters Card */}
-      <Card>
-        <CardContent className="pt-6 px-3 sm:px-6">
+      <Card className="border border-gray-200">
+        <CardContent className="pt-6 px-4 sm:px-6">
           <div className="grid gap-6">
             {/* Goals */}
             <div>
-              <Label htmlFor="goals" className="text-base">
-                Training Goals
+              <div className="flex items-center gap-2">
+                <Label htmlFor="goals" className="text-base">Training Goals</Label>
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="inline-block w-4 h-4 ml-2 text-gray-400" />
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-gray-400" />
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
+                    <TooltipContent>
                       <p>Specific objectives you want to achieve (strength, hypertrophy, endurance, etc.)</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              </Label>
+              </div>
               <Textarea
                 id="goals"
                 name="goals"
@@ -174,22 +174,22 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
             </div>
 
             {/* Timeline and Frequency */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
               {/* Start Date */}
               <div>
-                <Label htmlFor="startDate" className="text-base">
-                  Start Date
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="startDate" className="text-base">Start Date</Label>
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="inline-block w-4 h-4 ml-2 text-gray-400" />
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-gray-400" />
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>When you&apos;ll begin this training cycle</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                </Label>
+                </div>
                 <Input
                   id="startDate"
                   name="startDate"
@@ -205,19 +205,19 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
 
               {/* Duration */}
               <div>
-                <Label htmlFor="duration" className="text-base">
-                  Duration
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="duration" className="text-base">Duration</Label>
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="inline-block w-4 h-4 ml-2 text-gray-400" />
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-gray-400" />
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
+                      <TooltipContent>
                         <p>Length of your training cycle (4-8 weeks optimal for most goals)</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                </Label>
+                </div>
                 <Input
                   id="duration"
                   name="duration"
@@ -236,19 +236,19 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
 
               {/* Sessions per Week */}
               <div>
-                <Label htmlFor="sessionsPerWeek" className="text-base">
-                  Weekly Frequency
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="sessionsPerWeek" className="text-base">Weekly Frequency</Label>
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="inline-block w-4 h-4 ml-2 text-gray-400" />
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-gray-400" />
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
+                      <TooltipContent>
                         <p>Number of training sessions per week (consider your recovery capacity)</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                </Label>
+                </div>
                 <Input
                   id="sessionsPerWeek"
                   name="sessionsPerWeek"
@@ -270,11 +270,23 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
       </Card>
 
       {/* Intensity & Volume Card */}
-      <Card>
-        <CardContent className="pt-6 px-3 sm:px-6">
+      <Card className="border border-gray-200">
+        <CardContent className="pt-6 px-4 sm:px-6">
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h3 className="text-lg font-semibold">Training Intensity & Volume</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold">Training Intensity & Volume</h3>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-gray-400" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>Intensity refers to how heavy/challenging each set is. Volume is the total workload (sets × reps × weight).</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -313,11 +325,23 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
       </Card>
 
       {/* Progression Card */}
-      <Card>
-        <CardContent className="pt-6 px-3 sm:px-6">
+      <Card className="border border-gray-200">
+        <CardContent className="pt-6 px-4 sm:px-6">
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h3 className="text-lg font-semibold">Progression Planning</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold">Progression Planning</h3>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-gray-400" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>Strategic progression of intensity and volume keeps your body adapting throughout the training cycle.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -333,8 +357,8 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
               </TooltipProvider>
             </div>
             
-            <div className="grid gap-6">
-              <div>
+            <div className="grid gap-8">
+              <div className="max-w-full overflow-x-hidden">
                 <ProgressionTemplates
                   duration={parseInt(defaultFormData.duration) || 4}
                   baseIntensity={parseInt(defaultFormData.intensity) || 5}
@@ -342,14 +366,20 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
                   onApplyTemplate={handleApplyTemplate}
                 />
               </div>
-              <div>
-                <WeeklyProgressionChart 
-                  data={weeklyProgression} 
-                  onChange={handleProgressionChange} 
-                  modelType={selectedModel}
-                />
-              </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Weekly Progression Chart Card - Separated for better mobile layout */}
+      <Card className="border border-gray-200">
+        <CardContent className="pt-6 px-0 sm:px-6">
+          <div className="px-4 sm:px-0">
+            <WeeklyProgressionChart 
+              data={weeklyProgression} 
+              onChange={handleProgressionChange} 
+              modelType={selectedModel}
+            />
           </div>
         </CardContent>
       </Card>
