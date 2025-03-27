@@ -56,7 +56,7 @@ const StepPlanSelection = ({ formData, handleInputChange, handleNext }) => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-8">
         {/* Mesocycle Card */}
         <div>
           <Card 
@@ -100,6 +100,54 @@ const StepPlanSelection = ({ formData, handleInputChange, handleNext }) => {
                 <div className="flex items-start">
                   <div className="flex-shrink-0 h-5 w-5 text-blue-500 mr-2">✓</div>
                   <p>Ideal for strength, hypertrophy or conditioning focus</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Microcycle Card */}
+        <div>
+          <Card 
+            onClick={() => handleSelectionChange("microcycle")}
+            className={`h-full cursor-pointer ${
+              selection === "microcycle" ? "border-2 border-blue-500" : "border border-gray-200"
+            }`}
+          >
+            <div className="p-6">
+              <div className="text-center mb-4">
+                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-green-100 flex items-center justify-center">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    className="w-8 h-8 text-green-500"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <line x1="3" y1="15" x2="21" y2="15"></line>
+                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold mb-2 text-green-700">Microcycle Plan</h3>
+                <p className="text-gray-600">
+                  Simple one-week training plan for quick implementation.
+                </p>
+              </div>
+              
+              <div className="space-y-2 text-sm text-gray-600">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 h-5 w-5 text-green-500 mr-2">✓</div>
+                  <p>One-week plan with daily workout structure</p>
+                </div>
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 h-5 w-5 text-green-500 mr-2">✓</div>
+                  <p>Quick setup without complex progression patterns</p>
+                </div>
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 h-5 w-5 text-green-500 mr-2">✓</div>
+                  <p>Perfect for busy schedules or specific short-term goals</p>
                 </div>
               </div>
             </div>

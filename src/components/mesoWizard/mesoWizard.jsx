@@ -5,6 +5,7 @@ import StepOneOverview from "./steps/StepOneOverview"
 import StepTwoPlanner from "./steps/StepTwoPlanner"
 import StepThreeConfirmation from "./steps/StepThreeConfirmation"
 import StepPlanSelection from "./steps/StepPlanSelection"
+import StepMicroPlanSelection from "./steps/StepMicroPlanSelection"
 import { useMesoWizardState } from "./hooks/useMesoWizardState"
 import { progressionModels } from "./sampledata"
 import { Loader2 } from "lucide-react"
@@ -12,9 +13,9 @@ import { Loader2 } from "lucide-react"
 /**
  * MesoWizard Component
  * 
- * A 4-step wizard for creating mesocycles:
- * 1. Plan Selection - Choose between Mesocycle and Macrocycle
- * 2. Mesocycle Overview - Basic parameters
+ * A multi-step wizard for creating training plans:
+ * 1. Plan Selection - Choose between Mesocycle, Microcycle, or Macrocycle
+ * 2. Plan Overview - Basic parameters (varies by plan type)
  * 3. Session & Exercise Planning - Configure sessions and exercises
  * 4. Confirmation & AI Review - Review and finalize
  * 
@@ -74,6 +75,19 @@ const MesoWizard = ({ onComplete }) => {
           />
         )
       case 2:
+        // For microcycle, show the microcycle setup page instead of the standard overview
+        if (formData.planType === "microcycle") {
+          return (
+            <StepMicroPlanSelection
+              formData={formData}
+              handleInputChange={handleInputChange}
+              errors={errors}
+              handleNext={handleNext}
+              handleBack={handleBack}
+            />
+          )
+        }
+        // For mesocycle, show the standard overview
         return (
           <StepOneOverview
             formData={formData}
@@ -124,6 +138,20 @@ const MesoWizard = ({ onComplete }) => {
     }
   }
 
+  // Get step name based on current step and plan type
+  const getStepName = () => {
+    if (step === 1) return "Plan Selection";
+    
+    if (step === 2) {
+      return formData.planType === "microcycle" ? "Microcycle Setup" : "Overview";
+    }
+    
+    if (step === 3) return "Planning";
+    if (step === 4) return "Confirmation";
+    
+    return "";
+  }
+
   return (
     <div className="max-w-4xl mx-auto relative">
       {/* Extended gradient that connects with page gradient */}
@@ -156,12 +184,7 @@ const MesoWizard = ({ onComplete }) => {
       <div className="mb-8 relative">
         <div className="flex justify-between mb-2">
           <span className="text-sm font-medium">
-            Step {step} of 4: {
-              step === 1 ? "Plan Selection" :
-              step === 2 ? "Overview" :
-              step === 3 ? "Planning" :
-              "Confirmation"
-            }
+            Step {step} of 4: {getStepName()}
           </span>
           <span className="text-sm text-gray-500">{Math.round(progressPercentage)}% Complete</span>
         </div>

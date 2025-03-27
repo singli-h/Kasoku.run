@@ -383,7 +383,6 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
                         style={sliderStyles.default}
                       />
                     </div>
-                    <span className="text-xs font-medium w-10 text-right">{(progressionRate * 100).toFixed(0)}%</span>
                   </div>
                 </div>
               )}
@@ -403,7 +402,7 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
                           value={[amplitude * 10]}
                           min={5}
                           max={20}
-                          step={1}
+                          step={5}
                           className="flex-1"
                           onValueChange={(value) => setAmplitude(value[0] / 10)}
                           variant="default"
@@ -444,7 +443,7 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
               {activeTab === "accumulation" && (
                 <div>
                   <Label htmlFor="intensityDelta" className="text-sm mb-1 block">
-                    Intensity Delta
+                    Intensity Change
                   </Label>
                   <div className="flex items-center gap-2 mt-3 touch-action-manipulation">
                     <div className="min-w-5 h-5 rounded-sm" style={sliderStyles.intensity}></div>

@@ -248,7 +248,7 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
                     id="duration"
                     name="duration"
                     type="number"
-                    min="1"
+                    min="2"
                     max="12"
                     value={defaultFormData.duration}
                     onChange={handleInputChange}

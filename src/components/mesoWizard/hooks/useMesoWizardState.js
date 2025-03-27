@@ -327,8 +327,8 @@ export const useMesoWizardState = (onComplete) => {
         newErrors.planType = "Please select a plan type"
       }
     } else if (currentStep === 2) {
-      // Validate Step 2: Mesocycle Overview
-      console.log("Validating mesocycle overview with data:", formData);
+      // Validate Step 2: Plan Overview (Mesocycle or Microcycle)
+      console.log(`Validating ${formData.planType} overview with data:`, formData);
       
       if (!formData.goals.trim()) {
         newErrors.goals = "Goals are required"
@@ -338,10 +338,13 @@ export const useMesoWizardState = (onComplete) => {
         newErrors.startDate = "Start date is required"
       }
       
-      if (!formData.duration) {
-        newErrors.duration = "Duration is required"
-      } else if (isNaN(formData.duration) || parseInt(formData.duration) <= 0) {
-        newErrors.duration = "Duration must be a positive number"
+      // For microcycle, duration is fixed at 1 week and doesn't need validation
+      if (formData.planType !== "microcycle") {
+        if (!formData.duration) {
+          newErrors.duration = "Duration is required"
+        } else if (isNaN(formData.duration) || parseInt(formData.duration) <= 0) {
+          newErrors.duration = "Duration must be a positive number"
+        }
       }
       
       if (!formData.sessionsPerWeek) {
@@ -350,13 +353,15 @@ export const useMesoWizardState = (onComplete) => {
         newErrors.sessionsPerWeek = "Sessions per week must be a positive number"
       }
 
-      // Validate intensity and volume, but consider them valid if weeklyProgression has values set
-      if (!formData.intensity && !(formData.weeklyProgression && formData.weeklyProgression.length > 0)) {
-        newErrors.intensity = "Please select an intensity level"
-      }
-      
-      if (!formData.volume && !(formData.weeklyProgression && formData.weeklyProgression.length > 0)) {
-        newErrors.volume = "Please select a volume level"
+      // Validate intensity and volume only for mesocycle plans
+      if (formData.planType !== "microcycle") {
+        if (!formData.intensity && !(formData.weeklyProgression && formData.weeklyProgression.length > 0)) {
+          newErrors.intensity = "Please select an intensity level"
+        }
+        
+        if (!formData.volume && !(formData.weeklyProgression && formData.weeklyProgression.length > 0)) {
+          newErrors.volume = "Please select a volume level"
+        }
       }
     } else if (currentStep === 3) {
       // Validate Step 3: Session & Exercise Planning
@@ -422,10 +427,15 @@ export const useMesoWizardState = (onComplete) => {
       setIsLoading(true)
       
       try {
+        // Determine plan type label for logging
+        const planTypeLabel = formData.planType || "mesocycle";
+        
         // Process AI suggestions if needed
         const processedData = {
           ...formData,
-          id: Date.now().toString(), // Generate unique mesocycle ID
+          id: Date.now().toString(), // Generate unique plan ID
+          isMicrocycle: formData.planType === "microcycle", // Flag for identifying microcycle plans
+          microCycleDuration: formData.planType === "microcycle" ? 1 : null, // Set duration for microcycle
           aiSuggestions: aiSuggestions?.suggestions
             .filter((s) => s.accepted)
             .map((s) => s.text),
@@ -434,10 +444,10 @@ export const useMesoWizardState = (onComplete) => {
         // Get coach ID from user session or context (placeholder for now)
         const coachId = localStorage.getItem('coachId') || '1' // Fallback to '1' if not found
         
-        // Save mesocycle data to Supabase
+        // Save plan data to Supabase
         const result = await saveMesocycle(processedData, coachId)
         
-        console.log('Mesocycle saved successfully:', result)
+        console.log(`${planTypeLabel} saved successfully:`, result)
         
         // Call the onComplete callback with the processed data and API response
         onComplete({
@@ -445,9 +455,9 @@ export const useMesoWizardState = (onComplete) => {
           apiResponse: result
         })
       } catch (error) {
-        console.error("Error submitting mesocycle:", error)
+        console.error(`Error submitting ${formData.planType || "mesocycle"}:`, error)
         setErrors({ 
-          submit: saveError || "Failed to submit mesocycle. Please try again." 
+          submit: saveError || `Failed to submit ${formData.planType || "mesocycle"}. Please try again.` 
         })
       } finally {
         setIsLoading(false)
@@ -492,31 +502,56 @@ export const useMesoWizardState = (onComplete) => {
       
       // Simulate API call to get AI suggestions
       setTimeout(() => {
-        setAiSuggestions({
-          overall: "Your mesocycle looks well-structured. Here are some suggestions to optimize it further:",
-          suggestions: [
-            {
-              id: 1,
-              text: "Add more compound movements to maximize strength gains",
-              accepted: false,
-            },
-            {
-              id: 2,
-              text: "Consider adding a deload week at the end of the mesocycle",
-              accepted: false,
-            },
-            {
-              id: 3,
-              text: "Increase rest periods for heavy compound lifts to 3-5 minutes",
-              accepted: false,
-            },
-          ],
-        })
+        if (formData.planType === "microcycle") {
+          // Microcycle-specific suggestions
+          setAiSuggestions({
+            overall: "Your microcycle plan looks good. Here are some suggestions to optimize your one-week training:",
+            suggestions: [
+              {
+                id: 1,
+                text: "Balance your training intensity throughout the week to avoid fatigue",
+                accepted: false,
+              },
+              {
+                id: 2,
+                text: "Add variety to your exercise selection to keep workouts engaging",
+                accepted: false,
+              },
+              {
+                id: 3,
+                text: "Ensure at least one full rest day in your weekly schedule",
+                accepted: false,
+              },
+            ],
+          });
+        } else {
+          // Mesocycle suggestions
+          setAiSuggestions({
+            overall: "Your mesocycle looks well-structured. Here are some suggestions to optimize it further:",
+            suggestions: [
+              {
+                id: 1,
+                text: "Add more compound movements to maximize strength gains",
+                accepted: false,
+              },
+              {
+                id: 2,
+                text: "Consider adding a deload week at the end of the mesocycle",
+                accepted: false,
+              },
+              {
+                id: 3,
+                text: "Increase rest periods for heavy compound lifts to 3-5 minutes",
+                accepted: false,
+              },
+            ],
+          });
+        }
         
         setIsLoading(false)
       }, 2000)
     }
-  }, [step, aiSuggestions])
+  }, [step, aiSuggestions, formData.planType])
 
   // Get ordered exercises for a section
   const getOrderedExercises = useCallback((sessionId, sectionId) => {
