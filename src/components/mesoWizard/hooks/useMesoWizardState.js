@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { fetchExercises } from "../sampledata"
-import { useSaveMesocycle } from "./useSaveMesocycle"
+import { useSaveTrainingPlan } from "./useSaveCycle"
 
 /**
  * Custom hook for managing MesoWizard state
@@ -15,6 +15,7 @@ export const useMesoWizardState = (onComplete) => {
   // Form data state
   const [formData, setFormData] = useState({
     planType: "mesocycle", // Default to mesocycle
+    name: "",
     goals: "",
     startDate: "",
     duration: "",
@@ -38,7 +39,7 @@ export const useMesoWizardState = (onComplete) => {
   const [exerciseOrder, setExerciseOrder] = useState({}) // Track exercise order by section
 
   // Use the save mesocycle hook
-  const { saveMesocycle, isSubmitting, error: saveError } = useSaveMesocycle()
+  const { saveMesocycle, isSubmitting, error: saveError } = useSaveTrainingPlan()
 
   // Calculate progress percentage
   const progressPercentage = ((step - 1) / 4) * 100
@@ -134,7 +135,8 @@ export const useMesoWizardState = (onComplete) => {
     // Create the new exercise with a position value one higher than the current maximum
     const newExercise = {
       ...exercise,
-      id: Date.now(), // Generate a unique ID
+      originalId: exercise.id, // Store the original BE exercise ID
+      id: Date.now(), // Generate a unique ID for frontend use only
       session: activeSession,
       part: exercise.type,
       section: exercise.section || null, // Preserve section for superset exercises
@@ -330,6 +332,10 @@ export const useMesoWizardState = (onComplete) => {
       // Validate Step 2: Plan Overview (Mesocycle or Microcycle)
       console.log(`Validating ${formData.planType} overview with data:`, formData);
       
+      if (!formData.name || !formData.name.trim()) {
+        newErrors.name = "Plan name is required"
+      }
+      
       if (!formData.goals.trim()) {
         newErrors.goals = "Goals are required"
       }
@@ -441,11 +447,8 @@ export const useMesoWizardState = (onComplete) => {
             .map((s) => s.text),
         }
         
-        // Get coach ID from user session or context (placeholder for now)
-        const coachId = localStorage.getItem('coachId') || '1' // Fallback to '1' if not found
-        
         // Save plan data to Supabase
-        const result = await saveMesocycle(processedData, coachId)
+        const result = await saveMesocycle(processedData)
         
         console.log(`${planTypeLabel} saved successfully:`, result)
         

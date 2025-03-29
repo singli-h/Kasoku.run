@@ -61,6 +61,34 @@ const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, e
         <Card className="border border-gray-200">
           <CardContent className="pt-6 px-4 sm:px-6">
             <div className="grid gap-6">
+              {/* Plan Name */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="name" className="text-base">Plan Name</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-gray-400" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>A short, descriptive name for your one-week plan</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Input
+                  id="name"
+                  name="name"
+                  value={defaultFormData.name || ""}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Recovery Week, High Intensity Block..."
+                  className={`mt-1 h-12 pl-3 ${errors.name ? "border-red-500" : ""}`}
+                />
+                {errors.name && (
+                  <p className="mt-1 text-sm text-red-500">{errors.name}</p>
+                )}
+              </div>
+
               {/* Goals */}
               <div>
                 <div className="flex items-center gap-2">

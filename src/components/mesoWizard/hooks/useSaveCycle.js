@@ -7,7 +7,7 @@ const API_BASE_URL = "http://localhost:54321/functions/v1/api"
  * 
  * @returns {Object} - Functions and state for saving mesocycle and microcycle plans
  */
-export const useSaveMesocycle = () => {
+export const useSaveTrainingPlan = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
@@ -17,10 +17,9 @@ export const useSaveMesocycle = () => {
    * Formats microcycle data into the structure expected by the microcycle API
    * 
    * @param {Object} formData - The form data from the wizard
-   * @param {string|number} coachId - The ID of the coach
    * @returns {Object} - Formatted data for the microcycle API
    */
-  const formatMicrocycleData = (formData, coachId) => {
+  const formatMicrocycleData = (formData) => {
     // Calculate end date (1 week after start date)
     const startDate = new Date(formData.startDate);
     const endDate = new Date(startDate);
@@ -57,29 +56,80 @@ export const useSaveMesocycle = () => {
       
       // Create group object
       const group = {
-        athlete_group_id: parseInt(coachId) || 1, // Using coachId as athlete_group_id
         week: 1,
         day: weekdayToNumber[session.weekday?.toLowerCase()] || null,
         date: formatDate(sessionDate),
         name: session.name || `Session ${session.id}`,
-        description: session.description || `${session.name || `Session ${session.id}`} from microcycle "${formData.goals}"`,
-        metadata: {
-          part_of_microcycle: formData.id || Date.now().toString(),
-          weekday: session.weekday?.toLowerCase() || null,
-          ai_suggestions: formData.aiSuggestions || null,
-          progression_model: session.progressionModel || null,
-          progression_value: session.progressionValue || null
-        }
+        description: session.description || `${session.name || `Session ${session.id}`} from microcycle "${formData.name || formData.goals}"`
       };
       
       // Create presets for each exercise
       const presets = sessionExercises.map((exercise, index) => {
+        // Get the proper exercise ID from the backend
+        // Log the exercise to debug the ID issue
+        console.log(`Exercise data for ${exercise.name}:`, {
+          originalId: exercise.originalId,
+          id: exercise.id,
+          type: typeof exercise.originalId,
+          supersetId: exercise.supersetId,
+          supersetIdType: typeof exercise.supersetId
+        });
+        
+        // Enhanced logic to ensure we get a valid exercise ID (1-48 range)
+        let exerciseId;
+        if (exercise.originalId && !isNaN(parseInt(exercise.originalId))) {
+          exerciseId = parseInt(exercise.originalId);
+          
+          // Validate that it's a reasonable ID (1-48 range)
+          if (exerciseId > 1000000) {
+            console.warn(`Unusually large exercise ID detected (${exerciseId}), this is likely a frontend-generated ID. Using fallback ID.`);
+            // If ID is very large (timestamp-based), it's likely a frontend ID, so use a fallback
+            exerciseId = index + 1; // Fallback to a reasonable range
+          }
+        } else {
+          // Fallback to a reasonable value if missing or invalid originalId
+          exerciseId = index + 1;
+          console.warn(`Missing or invalid originalId for exercise ${exercise.name}, using index-based fallback ID: ${exerciseId}`);
+        }
+        
+        // Parse superset ID if present
+        let supersetId = null;
+        if (exercise.supersetId) {
+          try {
+            // Check if it's in the format "ss-timestamp-displayNumber"
+            if (typeof exercise.supersetId === 'string' && exercise.supersetId.startsWith('ss-')) {
+              // Extract the display number from the end of the string
+              const parts = exercise.supersetId.split('-');
+              if (parts.length >= 3) {
+                supersetId = parseInt(parts[parts.length - 1]);
+                console.log(`Extracted superset display number ${supersetId} from ID ${exercise.supersetId}`);
+              } else {
+                supersetId = 1; // Default to 1 if pattern doesn't match but has 'ss-' prefix
+              }
+            } else {
+              // Try to parse it as a regular number
+              supersetId = parseInt(exercise.supersetId);
+            }
+            
+            // Validate that it's a reasonable superset ID
+            if (isNaN(supersetId) || supersetId < 1) {
+              console.warn(`Invalid superset ID: ${supersetId}, using null instead`);
+              supersetId = null;
+            } else {
+              console.log(`Using superset ID: ${supersetId} for exercise ${exercise.name}`);
+            }
+          } catch (err) {
+            console.warn(`Error parsing superset ID: ${exercise.supersetId}`, err);
+            supersetId = null;
+          }
+        }
+        
         return {
           preset: {
-            exercise_id: parseInt(exercise.originalId) || parseInt(exercise.id) || index + 100, // Ensure it's a number
-            superset_id: exercise.supersetId ? parseInt(exercise.supersetId) : null,
+            exercise_id: exerciseId, // Use the properly parsed ID
+            superset_id: supersetId, // Use the properly parsed superset ID
             preset_order: exercise.position || index + 1,
-            notes: exercise.notes || `${exercise.part} exercise`
+            notes: exercise.notes
           },
           details: Array.from({ length: parseInt(exercise.sets) || 1 }, (_, i) => ({
             set_index: i + 1,
@@ -96,10 +146,7 @@ export const useSaveMesocycle = () => {
             resistance_unit_id: exercise.resistance_unit_id ? parseInt(exercise.resistance_unit_id) : null,
             metadata: {
               rpe: exercise.rpe ? parseFloat(exercise.rpe) : null,
-              tempo: exercise.tempo || null,
-              notes: exercise.setNotes || null,
-              exercise_name: exercise.name,
-              exercise_part: exercise.part
+              exercise_name: exercise.name
             }
           }))
         };
@@ -116,11 +163,10 @@ export const useSaveMesocycle = () => {
       microcycle: {
         start_date: formatDate(startDate),
         end_date: formatDate(endDate),
-        coach_id: parseInt(coachId) || 1,
-        name: formData.goals?.substring(0, 50) || "One-Week Training Plan",
+        name: formData.name || (formData.goals?.substring(0, 50) || "One-Week Training Plan"),
         description: formData.goals || "Microcycle training plan",
         intensity: null,
-        volume: null,
+        volume: null
       },
       sessions
     };
@@ -130,23 +176,52 @@ export const useSaveMesocycle = () => {
    * Saves a microcycle plan using the new API structure
    * 
    * @param {Object} formData - The form data from the wizard
-   * @param {string|number} coachId - The ID of the coach
    * @returns {Promise<Object>} - The response from the API
    */
-  const saveMicrocycle = async (formData, coachId) => {
+  const saveMicrocycle = async (formData) => {
     setIsSubmitting(true)
     setError(null)
     setSuccess(false)
     
     try {
       // Format the data according to the microcycle API structure
-      const formattedData = formatMicrocycleData(formData, coachId);
+      const formattedData = formatMicrocycleData(formData);
       
       // Log the data being sent for debugging
       console.log('Sending microcycle data:', JSON.stringify(formattedData, null, 2));
+      
+      // Additional debug logging to verify exercise IDs specifically
+      formattedData.sessions.forEach((session, i) => {
+        console.log(`Session ${i+1} exercise IDs:`, 
+          session.presets.map(preset => ({
+            exercise_name: preset.preset.metadata?.name || 'Unknown',
+            exercise_id: preset.preset.exercise_id,
+            superset_id: preset.preset.superset_id
+          }))
+        );
+        
+        // Group exercises by superset ID to check if supersets are properly formed
+        const supersetGroups = {};
+        session.presets.forEach(preset => {
+          const supersetId = preset.preset.superset_id;
+          if (supersetId) {
+            if (!supersetGroups[supersetId]) {
+              supersetGroups[supersetId] = [];
+            }
+            supersetGroups[supersetId].push(preset.preset.metadata?.name || 'Unknown exercise');
+          }
+        });
+        
+        // Log superset groups
+        if (Object.keys(supersetGroups).length > 0) {
+          console.log(`Session ${i+1} superset groups:`, supersetGroups);
+        } else {
+          console.log(`Session ${i+1} has no supersets.`);
+        }
+      });
 
       // Make the API request
-      const response = await fetch(`${API_BASE_URL}/planner/microcycle/POST`, {
+      const response = await fetch(`${API_BASE_URL}/planner/microcycle`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,10 +250,9 @@ export const useSaveMesocycle = () => {
    * Transforms the mesocycle data into the format expected by the API
    * 
    * @param {Object} formData - The form data from the mesocycle wizard
-   * @param {string|number} coachId - The ID of the coach
    * @returns {Object} - Formatted data for the API
    */
-  const transformFormData = (formData, coachId) => {
+  const transformFormData = (formData) => {
     // Clear any previous state
     setError(null)
     setSuccess(false)
@@ -192,14 +266,14 @@ export const useSaveMesocycle = () => {
         
         // Create the group object for microcycle
         const group = {
-          coach_id: coachId,
           name: session.name,
-          description: `${session.name} from microcycle "${formData.goals}"`,
+          description: `${session.name} from microcycle "${formData.name || formData.goals}"`,
           day: session.weekday ? session.weekday.toLowerCase() : null,
           // Store additional information in metadata
           metadata: {
             plan_type: "microcycle",
             microcycle_id: formData.id || Date.now().toString(),
+            microcycle_name: formData.name || "One-Week Training Plan",
             microcycle_goals: formData.goals,
             microcycle_duration: 1,
             microcycle_start_date: formData.startDate,
@@ -210,10 +284,69 @@ export const useSaveMesocycle = () => {
 
         // Create presets for exercises - simplified for microcycle
         const presets = sessionExercises.map((exercise, index) => {
+          // Get the proper exercise ID from the backend
+          // Log the exercise to debug the ID issue
+          console.log(`Exercise data in transformFormData for ${exercise.name}:`, {
+            originalId: exercise.originalId,
+            id: exercise.id,
+            type: typeof exercise.originalId,
+            supersetId: exercise.supersetId,
+            supersetIdType: typeof exercise.supersetId
+          });
+          
+          // Enhanced logic to ensure we get a valid exercise ID (1-48 range)
+          let exerciseId;
+          if (exercise.originalId && !isNaN(parseInt(exercise.originalId))) {
+            exerciseId = parseInt(exercise.originalId);
+            
+            // Validate that it's a reasonable ID (1-48 range)
+            if (exerciseId > 1000000) {
+              console.warn(`Unusually large exercise ID detected (${exerciseId}), this is likely a frontend-generated ID. Using fallback ID.`);
+              // If ID is very large (timestamp-based), it's likely a frontend ID, so use a fallback
+              exerciseId = index + 1; // Fallback to a reasonable range
+            }
+          } else {
+            // Fallback to a reasonable value if missing or invalid originalId
+            exerciseId = index + 1;
+            console.warn(`Missing or invalid originalId for exercise ${exercise.name}, using index-based fallback ID: ${exerciseId}`);
+          }
+          
+          // Parse superset ID if present
+          let supersetId = null;
+          if (exercise.supersetId) {
+            try {
+              // Check if it's in the format "ss-timestamp-displayNumber"
+              if (typeof exercise.supersetId === 'string' && exercise.supersetId.startsWith('ss-')) {
+                // Extract the display number from the end of the string
+                const parts = exercise.supersetId.split('-');
+                if (parts.length >= 3) {
+                  supersetId = parseInt(parts[parts.length - 1]);
+                  console.log(`Extracted superset display number ${supersetId} from ID ${exercise.supersetId}`);
+                } else {
+                  supersetId = 1; // Default to 1 if pattern doesn't match but has 'ss-' prefix
+                }
+              } else {
+                // Try to parse it as a regular number
+                supersetId = parseInt(exercise.supersetId);
+              }
+              
+              // Validate that it's a reasonable superset ID
+              if (isNaN(supersetId) || supersetId < 1) {
+                console.warn(`Invalid superset ID: ${supersetId}, using null instead`);
+                supersetId = null;
+              } else {
+                console.log(`Using superset ID: ${supersetId} for exercise ${exercise.name}`);
+              }
+            } catch (err) {
+              console.warn(`Error parsing superset ID: ${exercise.supersetId}`, err);
+              supersetId = null;
+            }
+          }
+          
           // Create preset object according to schema
           const preset = {
-            exercise_id: exercise.originalId || exercise.id,
-            superset_id: exercise.supersetId || null,
+            exercise_id: exerciseId, // Use the properly parsed ID
+            superset_id: supersetId, // Use the properly parsed superset ID
             preset_order: exercise.position || index,
             notes: exercise.notes || null,
             metadata: {
@@ -271,9 +404,8 @@ export const useSaveMesocycle = () => {
       
       // 1. Create the group object as required by API
       const group = {
-        coach_id: coachId,
         name: session.name,
-        description: `${session.name} from mesocycle "${formData.goals}"`,
+        description: `${session.name} from mesocycle "${formData.name || formData.goals}"`,
         day: session.weekday ? session.weekday.toLowerCase() : null,
         // Store additional information in metadata
         metadata: {
@@ -281,6 +413,7 @@ export const useSaveMesocycle = () => {
           progression_model: session.progressionModel || 'standard',
           progression_value: session.progressionValue || null,
           mesocycle_id: formData.id || Date.now().toString(),
+          mesocycle_name: formData.name || "Training Plan",
           mesocycle_goals: formData.goals,
           mesocycle_duration: formData.duration,
           mesocycle_start_date: formData.startDate,
@@ -291,11 +424,70 @@ export const useSaveMesocycle = () => {
 
       // 2. Create presets for each exercise
       const presets = sessionExercises.map((exercise, index) => {
+        // Get the proper exercise ID from the backend
+        // Log the exercise to debug the ID issue
+        console.log(`Exercise data in mesocycle for ${exercise.name}:`, {
+          originalId: exercise.originalId,
+          id: exercise.id,
+          type: typeof exercise.originalId,
+          supersetId: exercise.supersetId,
+          supersetIdType: typeof exercise.supersetId
+        });
+        
+        // Enhanced logic to ensure we get a valid exercise ID (1-48 range)
+        let exerciseId;
+        if (exercise.originalId && !isNaN(parseInt(exercise.originalId))) {
+          exerciseId = parseInt(exercise.originalId);
+          
+          // Validate that it's a reasonable ID (1-48 range)
+          if (exerciseId > 1000000) {
+            console.warn(`Unusually large exercise ID detected (${exerciseId}), this is likely a frontend-generated ID. Using fallback ID.`);
+            // If ID is very large (timestamp-based), it's likely a frontend ID, so use a fallback
+            exerciseId = index + 1; // Fallback to a reasonable range
+          }
+        } else {
+          // Fallback to a reasonable value if missing or invalid originalId
+          exerciseId = index + 1;
+          console.warn(`Missing or invalid originalId for exercise ${exercise.name}, using index-based fallback ID: ${exerciseId}`);
+        }
+        
+        // Parse superset ID if present
+        let supersetId = null;
+        if (exercise.supersetId) {
+          try {
+            // Check if it's in the format "ss-timestamp-displayNumber"
+            if (typeof exercise.supersetId === 'string' && exercise.supersetId.startsWith('ss-')) {
+              // Extract the display number from the end of the string
+              const parts = exercise.supersetId.split('-');
+              if (parts.length >= 3) {
+                supersetId = parseInt(parts[parts.length - 1]);
+                console.log(`Extracted superset display number ${supersetId} from ID ${exercise.supersetId}`);
+              } else {
+                supersetId = 1; // Default to 1 if pattern doesn't match but has 'ss-' prefix
+              }
+            } else {
+              // Try to parse it as a regular number
+              supersetId = parseInt(exercise.supersetId);
+            }
+            
+            // Validate that it's a reasonable superset ID
+            if (isNaN(supersetId) || supersetId < 1) {
+              console.warn(`Invalid superset ID: ${supersetId}, using null instead`);
+              supersetId = null;
+            } else {
+              console.log(`Using superset ID: ${supersetId} for exercise ${exercise.name}`);
+            }
+          } catch (err) {
+            console.warn(`Error parsing superset ID: ${exercise.supersetId}`, err);
+            supersetId = null;
+          }
+        }
+        
         // Create preset object according to schema
         const preset = {
-          exercise_id: exercise.originalId || exercise.id,
-          superset_id: exercise.supersetId || null,
-          preset_order: exercise.position || index, // Use position or fallback to index
+          exercise_id: exerciseId, // Use the properly parsed ID
+          superset_id: supersetId, // Use the properly parsed superset ID
+          preset_order: exercise.position || index,
           notes: exercise.notes || null,
           metadata: {
             name: exercise.name,
@@ -362,11 +554,10 @@ export const useSaveMesocycle = () => {
    * Saves a training plan to Supabase
    * 
    * @param {Object} formData - The form data from the wizard
-   * @param {string|number} coachId - The ID of the coach
    * @param {string} timezone - The timezone of the user
    * @returns {Promise<Object>} - The response from the API
    */
-  const saveMesocycle = async (formData, coachId, timezone = Intl.DateTimeFormat().resolvedOptions().timeZone) => {
+  const saveMesocycle = async (formData, timezone = Intl.DateTimeFormat().resolvedOptions().timeZone) => {
     setIsSubmitting(true)
     setError(null)
     setSuccess(false)
@@ -374,16 +565,15 @@ export const useSaveMesocycle = () => {
     try {
       // For microcycle plans, use the dedicated API format
       if (formData.planType === "microcycle") {
-        return await saveMicrocycle(formData, coachId);
+        return await saveMicrocycle(formData);
       }
       
       // For mesocycle plans, use the original format
-      const sessions = transformFormData(formData, coachId)
+      const sessions = transformFormData(formData)
       
       // Log the data being sent for debugging
       console.log('Sending training plan data:', JSON.stringify({
         sessions,
-        coachId,
         timezone,
         planType: formData.planType || 'mesocycle'
       }, null, 2));
@@ -396,7 +586,6 @@ export const useSaveMesocycle = () => {
         },
         body: JSON.stringify({ 
           sessions,
-          coachId,
           timezone,
           planType: formData.planType || 'mesocycle'
         }),
@@ -428,3 +617,6 @@ export const useSaveMesocycle = () => {
     transformFormData
   }
 } 
+
+// For backwards compatibility - use the new name in new code
+export const useSaveMesocycle = useSaveTrainingPlan; 

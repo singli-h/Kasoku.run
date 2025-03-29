@@ -3,149 +3,298 @@
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import Button from "../ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
-import { addDays, format, startOfWeek, isSameDay } from "date-fns"
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
+import { 
+  addDays, 
+  format, 
+  startOfWeek, 
+  isSameDay, 
+  getWeek, 
+  isToday, 
+  addWeeks, 
+  subWeeks,
+  parseISO
+} from "date-fns"
 import { mockMesocycle } from "../data/mockData"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from "@dnd-kit/core"
+import {
+  sortableKeyboardCoordinates,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { restrictToWindowEdges } from "@dnd-kit/modifiers"
+import { useMediaQuery } from "../../hooks/useMediaQuery"
 
-// Component for each day on the calendar.
-const CalendarDay = ({ day, sessions }) => {
-  return (
-    <Droppable droppableId={format(day, "yyyy-MM-dd")}>
-      {(provided, snapshot) => (
-        <Card
-          ref={provided.innerRef}
-          {...provided.droppableProps}
-          className={`min-h-[250px] ${snapshot.isDraggingOver ? "bg-gray-100" : ""}`}
-        >
-          <CardHeader className="p-2">
-            <CardTitle className="text-sm font-medium">{format(day, "EEE")}</CardTitle>
-            <div className="text-xs text-gray-500">{format(day, "MMM d")}</div>
-          </CardHeader>
-          <CardContent className="p-2 overflow-y-auto max-h-[200px]">
-            {sessions.map((session, index) => (
-              <Draggable key={session.id.toString()} draggableId={session.id.toString()} index={index}>
-                {(provided, snapshot) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    className={`bg-white p-2 mb-2 rounded shadow ${snapshot.isDragging ? "shadow-lg" : ""} min-h-[40px]`}
-                    style={{
-                      ...provided.draggableProps.style,
-                      transition: snapshot.isDragging ? "none" : "transform 0.2s ease-out",
-                    }}
-                  >
-                    <div className="truncate text-sm">{session.name}</div>
-                  </div>
-                )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
-          </CardContent>
-        </Card>
-      )}
-    </Droppable>
+const CalendarView = ({ mesocycle = mockMesocycle }) => {
+  const [viewDate, setViewDate] = useState(new Date())
+  const [sessions, setSessions] = useState([])
+  const [activeItem, setActiveItem] = useState(null)
+  const [days, setDays] = useState([])
+  const [numDisplayDays] = useState(14) // Always show 14 days
+  
+  // Media queries for responsive design
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
+  const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)')
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  
+  // Setup DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   )
-}
-
-export default function CalendarView({ mesocycle, onUpdate }) {
-  // Constant to control how many days are shown.
-  // Change to 4 if you want a partial week view.
-  const daysToDisplay = 7
-
-  // Initialize viewStartDate from mesocycle sessions.
-  const [viewStartDate, setViewStartDate] = useState(
-    mesocycle?.sessions?.length ? startOfWeek(new Date(mesocycle.sessions[0].date)) : new Date(),
-  )
-
-  // Use local state for sessions to ensure immediate UI updates.
-  const [sessions, setSessions] = useState(mesocycle.sessions || [])
-
-  // Keep local sessions in sync if mesocycle prop changes.
+  
+  // Side effects - update sessions when mesocycle changes
   useEffect(() => {
-    if (mesocycle?.sessions) {
+    if (mesocycle?.sessions?.length) {
       setSessions(mesocycle.sessions)
     }
-  }, [mesocycle.sessions])
-
+  }, [mesocycle?.sessions])
+  
+  // Calculate days to display
   useEffect(() => {
-    if (mockMesocycle?.sessions) {
-      setSessions(mockMesocycle.sessions)
-    }
+    const startDay = startOfWeek(viewDate, { weekStartsOn: 1 }) // Week starts on Monday
+    
+    const daysArray = Array.from({ length: numDisplayDays }, (_, i) => {
+      const day = addDays(startDay, i)
+      return {
+        date: day,
+        weekNum: getWeek(day),
+        sessions: sessions.filter(session => {
+          const sessionDate = parseISO(session.date)
+          return isSameDay(sessionDate, day)
+        })
+      }
+    })
+    
+    setDays(daysArray)
+  }, [viewDate, sessions, numDisplayDays])
+  
+  // Handle navigation
+  const goToNextWeek = useCallback(() => {
+    setViewDate(prevDate => addWeeks(prevDate, 1))
   }, [])
-
-  const handleDragEnd = useCallback(
-    (result) => {
-      if (!result.destination) return
-
-      // Create a copy of the sessions array.
-      const newSessions = Array.from(sessions)
-      const sourceIndex = newSessions.findIndex((session) => session.id.toString() === result.draggableId)
-      const [movedSession] = newSessions.splice(sourceIndex, 1)
-
-      // Update the session's date using the droppableId.
-      const newDate = result.destination.droppableId
-      movedSession.date = newDate
-
-      // Reinsert the session.
-      newSessions.push(movedSession)
-      // Optional: sort sessions if needed (e.g., by date).
-      newSessions.sort((a, b) => new Date(a.date) - new Date(b.date))
-
-      // Update local state and notify parent.
-      setSessions(newSessions)
-      onUpdate({ ...mesocycle, sessions: newSessions })
-    },
-    [sessions, mesocycle, onUpdate],
-  )
-
-  if (!viewStartDate) {
-    return <div>Loading mesocycle data...</div>
-  }
-
-  // Generate the days to display based on viewStartDate and daysToDisplay.
-  const weekDays = Array.from({ length: daysToDisplay }, (_, i) => addDays(viewStartDate, i))
-
-  return (
-    <div className="space-y-4 relative">
-      {/* Top Navigation Buttons (week-level navigation) */}
-      <div className="flex justify-between items-center">
-        <Button variant="outline" size="sm" onClick={() => setViewStartDate(addDays(viewStartDate, -7))}>
-          <ChevronLeft className="h-4 w-4 mr-2" /> Previous Week
-        </Button>
-        {/* Week header based on the start of the week */}
-        <h3 className="text-lg font-semibold">Week {format(startOfWeek(viewStartDate), "w")}</h3>
-        <Button variant="outline" size="sm" onClick={() => setViewStartDate(addDays(viewStartDate, 7))}>
-          Next Week <ChevronRight className="h-4 w-4 ml-2" />
-        </Button>
+  
+  const goToPrevWeek = useCallback(() => {
+    setViewDate(prevDate => subWeeks(prevDate, 1))
+  }, [])
+  
+  const goToToday = useCallback(() => {
+    setViewDate(new Date())
+  }, [])
+  
+  // Handle drag operations
+  const handleDragStart = useCallback((event) => {
+    const { active } = event
+    const draggedSession = sessions.find(session => session.id === active.id)
+    setActiveItem(draggedSession)
+  }, [sessions])
+  
+  const handleDragEnd = useCallback((event) => {
+    const { active, over } = event
+    
+    if (over && active.id !== over.id) {
+      const updatedSessions = sessions.map(session => {
+        if (session.id === active.id) {
+          // Parse the day from the over.id (format: day-YYYY-MM-DD)
+          const dateString = over.id.split("day-")[1]
+          return {
+            ...session,
+            date: dateString
+          }
+        }
+        return session
+      })
+      
+      setSessions(updatedSessions)
+    }
+    
+    setActiveItem(null)
+  }, [sessions])
+  
+  // Session Item Component
+  const SessionItem = ({ session }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: session.id,
+      data: { session }
+    })
+    
+    const style = {
+      transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      zIndex: isDragging ? 999 : 1,
+    }
+    
+    return (
+      <div
+        ref={setNodeRef}
+        {...attributes}
+        {...listeners}
+        className="bg-white border border-gray-200 p-3 mb-2 rounded-md cursor-move shadow-sm hover:shadow-md transition-all"
+        style={style}
+      >
+        <h4 className="font-medium text-sm mb-1 text-gray-800">{
+          session.exercises.length > 0 
+            ? `${session.exercises[0].name} + ${session.exercises.length - 1} more`
+            : "Untitled Session"
+        }</h4>
+        <div className="flex justify-between text-xs text-gray-500">
+          <span>{session.exercises.length} exercises</span>
+          <span>{format(parseISO(session.date), "h:mm a")}</span>
+        </div>
       </div>
-
-      <DragDropContext onDragEnd={handleDragEnd}>
-        {/* Relative container to position overlay arrows */}
-        <div className="relative">
-          {/* Left overlay arrow: moves view one day backward */}
-          <div className="absolute top-1/2 left-0 transform -translate-y-1/2 z-10">
-            <Button variant="ghost" size="icon" onClick={() => setViewStartDate(addDays(viewStartDate, -1))}>
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-          </div>
-          {/* Right overlay arrow: moves view one day forward */}
-          <div className="absolute top-1/2 right-0 transform -translate-y-1/2 z-10">
-            <Button variant="ghost" size="icon" onClick={() => setViewStartDate(addDays(viewStartDate, 1))}>
-              <ChevronRight className="h-6 w-6" />
-            </Button>
-          </div>
-          {/* Grid container for the days */}
-          <div className={`grid ${daysToDisplay === 4 ? "grid-cols-4" : "grid-cols-7"} gap-4`}>
-            {weekDays.map((day) => {
-              const sessionsForDay = sessions.filter((session) => isSameDay(new Date(session.date), day))
-              return <CalendarDay key={format(day, "yyyy-MM-dd")} day={day} sessions={sessionsForDay} />
-            })}
+    )
+  }
+  
+  // Day Component
+  const DayComponent = ({ day }) => {
+    const isCurrentDay = isToday(day.date)
+    
+    return (
+      <div 
+        id={`day-${format(day.date, "yyyy-MM-dd")}`}
+        className={`min-w-[150px] border ${isCurrentDay ? 'border-blue-400 bg-blue-50' : 'border-gray-200'} rounded-lg overflow-hidden min-h-[260px] h-full`}
+      >
+        <div className={`px-3 py-2 ${isCurrentDay ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-700'} border-b`}>
+          <div className="text-center">
+            <div className="text-xs text-gray-500">W{day.weekNum}</div>
+            <div className="font-bold">{format(day.date, "EEE")}</div>
+            <div className="text-sm">{format(day.date, "MMM d")}</div>
           </div>
         </div>
-      </DragDropContext>
-    </div>
+        
+        <SortableContext 
+          items={day.sessions.map(s => s.id)} 
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="px-2 py-3 h-full">
+            {day.sessions.length > 0 ? (
+              day.sessions.map(session => (
+                <SessionItem key={session.id} session={session} />
+              ))
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <p className="text-gray-400 text-sm">No sessions</p>
+              </div>
+            )}
+          </div>
+        </SortableContext>
+      </div>
+    )
+  }
+  
+  // DragOverlay component for improved UX
+  const DraggedSessionOverlay = ({ session }) => {
+    if (!session) return null
+    
+    return (
+      <div className="bg-white border-2 border-blue-400 p-3 rounded-md shadow-lg w-[200px]">
+        <h4 className="font-medium text-sm mb-1 text-gray-800">{
+          session.exercises.length > 0 
+            ? `${session.exercises[0].name} + ${session.exercises.length - 1} more`
+            : "Untitled Session"
+        }</h4>
+        <div className="flex justify-between text-xs text-gray-500">
+          <span>{session.exercises.length} exercises</span>
+          <span>{format(parseISO(session.date), "h:mm a")}</span>
+        </div>
+      </div>
+    )
+  }
+  
+  // Determine days per row based on screen size
+  const getGridLayout = () => {
+    if (isDesktop) return "grid-cols-7"
+    if (isTablet) return "grid-cols-4"
+    if (isMobile) return "grid-cols-2"
+    return "grid-cols-7"
+  }
+  
+  // Calculate current week information
+  const firstWeekNum = getWeek(days[0]?.date || viewDate)
+  const secondWeekNum = getWeek(days[7]?.date || addDays(viewDate, 7))
+  const weekStart = format(startOfWeek(viewDate, { weekStartsOn: 1 }), "MMM d")
+  const weekEnd = format(addDays(startOfWeek(viewDate, { weekStartsOn: 1 }), numDisplayDays - 1), "MMM d")
+  
+  return (
+    <Card className="h-full">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 border-b gap-3">
+        <CardTitle>Training Calendar</CardTitle>
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={goToToday}
+            className="gap-1 w-full sm:w-auto"
+          >
+            <CalendarDays size={16} />
+            Today
+          </Button>
+          <div className="flex w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={goToPrevWeek}
+              className="rounded-r-none"
+            >
+              <ChevronLeft size={16} />
+            </Button>
+            <span className="flex items-center justify-center px-4 border-t border-b border-gray-300 bg-white text-sm font-medium text-gray-700 whitespace-nowrap">
+              Weeks {firstWeekNum}-{secondWeekNum}: {weekStart} - {weekEnd}
+            </span>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={goToNextWeek}
+              className="rounded-l-none"
+            >
+              <ChevronRight size={16} />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToWindowEdges]}
+        >
+          <div className={`grid ${getGridLayout()} gap-4`}>
+            {days.map((day) => (
+              <DayComponent key={format(day.date, "yyyy-MM-dd")} day={day} />
+            ))}
+          </div>
+          <DragOverlay>
+            {activeItem ? <DraggedSessionOverlay session={activeItem} /> : null}
+          </DragOverlay>
+        </DndContext>
+      </CardContent>
+    </Card>
   )
 }
 
+export default CalendarView

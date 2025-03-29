@@ -1,6 +1,19 @@
+"use client"
+import { useRouter } from 'next/navigation'
 import MesoWizard from "../../components/mesoWizard/mesoWizard"
 
 export default function PlannerPage() {
+  const router = useRouter();
+
+  // Handle completion of the wizard
+  const handleComplete = (data) => {
+    console.log('Mesocycle/Microcycle created successfully:', data);
+    
+    // Navigate to the dashboard or appropriate page after completion
+    // You can customize this based on your app's navigation structure
+    router.push('/dashboard');
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden">
       {/* Full-page background gradient with no gaps */}
@@ -25,7 +38,7 @@ export default function PlannerPage() {
       {/* Content container with padding inside */}
       <div className="max-w-4xl mx-auto relative z-10 pt-8 px-4">
         <h2 className="text-2xl font-bold mb-6">Create New Mesocycle</h2>
-        <MesoWizard />
+        <MesoWizard onComplete={handleComplete} />
       </div>
     </div>
   )
