@@ -63,10 +63,10 @@ export default function About() {
               </span>
             </h2>
             <p className="mt-6 text-xl text-gray-600">
-              We're on a mission to revolutionize athletic training by combining cutting-edge AI technology with proven sports science principles.
+              We&apos;re on a mission to revolutionize athletic training by combining cutting-edge AI technology with proven sports science principles.
             </p>
             <p className="mt-4 text-gray-600">
-              Our platform adapts to your unique needs, providing personalized training plans that evolve as you progress. Whether you're a beginner or a professional athlete, we're here to help you achieve your peak performance.
+              Our platform adapts to your unique needs, providing personalized training plans that evolve as you progress. Whether you&apos;re a beginner or a professional athlete, we&apos;re here to help you achieve your peak performance.
             </p>
             
             <div className="mt-12 grid grid-cols-2 gap-6">
