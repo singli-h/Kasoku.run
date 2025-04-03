@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
+import Image from "next/image"
 import Button from "../../components/ui/button"
 import { Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -67,10 +68,13 @@ const RegisterPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-900">
       <div className="max-w-md w-full space-y-8 p-8 bg-gray-800 rounded-lg shadow-lg">
         <div className="text-center">
-          <img 
+          <Image 
             src="/logo.svg" 
             alt="RunningApp Logo" 
             className="h-16 w-auto mx-auto mb-4"
+            width={64}
+            height={64}
+            priority
           />
           <h2 className="text-3xl font-bold text-white">Create your account</h2>
           <p className="mt-2 text-sm text-gray-400">

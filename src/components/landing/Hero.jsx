@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import Button from '../ui/button'
 import { ArrowRight, Sparkles } from 'lucide-react'
 
@@ -55,10 +56,13 @@ export default function Hero() {
             <div className="absolute inset-0 rounded-3xl border-2 border-white/20" />
             <div className="relative h-full flex items-center justify-center">
               <div className="w-64 h-64 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mix-blend-multiply opacity-20 blur-3xl" />
-              <img 
+              <Image 
                 src="/logo.svg" 
                 alt="RunningApp Logo" 
                 className="absolute w-full h-full object-contain"
+                width={512}
+                height={512}
+                priority
               />
             </div>
           </motion.div>

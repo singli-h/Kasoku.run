@@ -15,6 +15,7 @@ import {
   ChevronRight,
   LogOut
 } from "lucide-react";
+import Image from "next/image";
 
 /**
  * Sidebar Component
@@ -203,7 +204,14 @@ const Sidebar = ({ onCollapse }) => {
           {/* Sidebar header with logo and close button */}
           <div className="flex items-center justify-between p-4 border-b border-gray-700">
             <Link href="/" className="flex items-center space-x-2 overflow-hidden">
-              <img src="/logo.svg" alt="Logo" className="h-8 w-auto flex-shrink-0" />
+              <Image 
+                src="/logo.svg" 
+                alt="Logo" 
+                className="h-8 w-auto flex-shrink-0" 
+                width={32}
+                height={32}
+                priority
+              />
               <motion.span 
                 variants={textVariants}
                 animate={isCollapsed ? "hide" : "show"}

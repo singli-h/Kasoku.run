@@ -15,6 +15,7 @@
  */
 
 import React from "react"
+import Image from "next/image"
 import Button from "../ui/button"
 
 const Header = () => {
@@ -25,10 +26,13 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo section */}
           <div className="flex-shrink-0">
-            <img 
+            <Image 
               className="h-8 w-auto" 
               src="/logo.svg" 
               alt="RunningApp"
+              width={32}
+              height={32}
+              priority
             />
           </div>
 

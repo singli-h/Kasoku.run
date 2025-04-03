@@ -8,11 +8,12 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import EmailProvider from "next-auth/providers/email";
-import { SupabaseAdapter } from "@next-auth/supabase-adapter";
 
 /**
  * Type Declaration for Extended Session
- * Extends the default NextAuth Session type to include additional user properties
+ * This type augmentation is used by NextAuth throughout the application.
+ * The Session interface is used implicitly when accessing session.user.id
+ * @see https://next-auth.js.org/getting-started/typescript#module-augmentation
  */
 declare module "next-auth" {
   interface Session {
@@ -67,11 +68,6 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-
-  adapter: SupabaseAdapter({
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    secret: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-  }),
 
   pages: {
     signIn: "/login",

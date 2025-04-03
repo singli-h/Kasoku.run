@@ -1,4 +1,3 @@
-import { OpenAIStream, StreamingTextResponse } from "ai"
 import { Configuration, OpenAIApi } from "openai-edge"
 
 // Create an OpenAI API client (that's edge friendly!)
@@ -14,14 +13,13 @@ export async function OpenAIRequest(prompt: string, model = "gpt-4", temperature
       messages: [{ role: "user", content: prompt }],
       temperature,
       max_tokens,
-      stream: true,
+      stream: false,
     })
 
-    // Convert the response into a friendly text-stream
-    const stream = OpenAIStream(response)
-
-    // Respond with the stream
-    return new StreamingTextResponse(stream)
+    const data = await response.json()
+    return new Response(JSON.stringify(data), {
+      headers: { 'Content-Type': 'application/json' },
+    })
   } catch (error) {
     console.error("Error in OpenAI request:", error)
     throw new Error("Failed to get response from OpenAI")
