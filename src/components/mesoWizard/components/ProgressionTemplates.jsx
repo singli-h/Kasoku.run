@@ -463,7 +463,7 @@ const ProgressionTemplates = ({ duration = 4, baseIntensity = 5, baseVolume = 5,
                   </div>
                   <div>
                     <Label htmlFor="deloadFactor" className="text-sm mb-1 block">
-                      Deload Intensity
+                      Deload Percentage
                     </Label>
                     <div className="flex items-center gap-2 mt-3 touch-action-manipulation">
                       <div className="min-w-5 h-5 rounded-sm" style={{
