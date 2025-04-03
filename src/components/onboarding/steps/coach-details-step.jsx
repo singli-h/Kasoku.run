@@ -126,7 +126,7 @@ export default function CoachDetailsStep({ userData, updateUserData, onNext, onP
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="coachingPhilosophy" className="text-white">What's your coaching philosophy?</Label>
+          <Label htmlFor="coachingPhilosophy" className="text-white">What&apos;s your coaching philosophy?</Label>
           <Textarea
             id="coachingPhilosophy"
             placeholder="Tell us about your approach to coaching and what makes you unique..."

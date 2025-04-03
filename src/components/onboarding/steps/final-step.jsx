@@ -17,7 +17,7 @@ export default function FinalStep({ userData, onComplete }) {
           <CheckCircle className="w-16 h-16 text-green-500" />
         </div>
         <h2 className="text-3xl font-bold text-white">
-          You're All Set!
+          You&apos;re All Set!
         </h2>
         <p className="text-lg text-white/70">
           Your account has been created successfully
