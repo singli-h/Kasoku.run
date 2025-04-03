@@ -153,17 +153,15 @@ const MesoWizard = ({ onComplete }) => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto relative">
-      {/* Extended gradient that connects with page gradient */}
-      <div
-        className="absolute -z-10 pointer-events-none"
-        style={{
-          top: '-100px',
-          left: '-100px',
-          right: '-100px',
-          bottom: '-100px',
-          background: `
-            radial-gradient(
+    <div className="w-full relative">
+      <style jsx>{`
+        .wizard-container::before {
+          content: '';
+          position: absolute;
+          inset: -100px;
+          pointer-events: none;
+          z-index: -1;
+          background: radial-gradient(
               circle at 30% 30%, 
               rgba(147, 51, 234, 0.06), 
               rgba(147, 51, 234, 0.02) 40%, 
@@ -174,26 +172,23 @@ const MesoWizard = ({ onComplete }) => {
               rgba(37, 99, 235, 0.06), 
               rgba(37, 99, 235, 0.02) 40%, 
               transparent 70%
-            )
-          `,
-          filter: 'blur(50px)',
-        }}
-      ></div>
-      
-      {/* Progress bar */}
-      <div className="mb-8 relative">
-        <div className="flex justify-between mb-2">
-          <span className="text-sm font-medium">
-            Step {step} of 4: {getStepName()}
-          </span>
-          <span className="text-sm text-gray-500">{Math.round(progressPercentage)}% Complete</span>
-        </div>
-        <Progress value={progressPercentage} className="h-2" />
-      </div>
+            );
+          filter: blur(50px);
+        }
+      `}</style>
 
-      {/* Step content with slightly improved contrast */}
-      <div className="relative z-10 bg-white/80 backdrop-blur-sm p-6 rounded-lg shadow-md">
-        {renderStep()}
+      <div className="wizard-container space-y-4 sm:space-y-8">
+        <header className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium">Step {step} of 4: {getStepName()}</span>
+            <span className="text-gray-500">{Math.round(progressPercentage)}%</span>
+          </div>
+          <Progress value={progressPercentage} className="h-1.5 sm:h-2" />
+        </header>
+
+        <main className="relative z-10 bg-white/80 backdrop-blur-sm px-3 py-4 sm:p-6 rounded-lg shadow-sm sm:shadow-md">
+          {renderStep()}
+        </main>
       </div>
     </div>
   )

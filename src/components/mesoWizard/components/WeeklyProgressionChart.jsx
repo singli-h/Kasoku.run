@@ -96,114 +96,99 @@ const WeeklyProgressionChart = ({ data = [], onChange = () => {}, modelType = nu
   }
 
   return (
-    <div className="space-y-4 w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold">Weekly Progression Chart</h3>
+    <div className="w-full -mx-3 sm:mx-0">
+      <header className="px-3 sm:px-0 mb-3">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
+          <h3 className="text-base sm:text-lg font-semibold">Weekly Progression Chart</h3>
           {modelType && (
-            <div className="px-2 py-1 text-xs bg-indigo-100 text-indigo-800 rounded-full flex items-center gap-1">
+            <span className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-800 rounded-full inline-flex items-center gap-1">
               <BarChart3 className="h-3 w-3" />
-              <span>{getModelName()}</span>
-            </div>
+              {getModelName()}
+            </span>
           )}
         </div>
-        <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1 w-fit">
-          <Info className="h-3.5 w-3.5" />
-          <span>Click on any cell to set the level</span>
-        </div>
-      </div>
 
-      {/* Legend moved above the grid */}
-      <div className="flex items-center gap-4 text-sm mb-2">
-        <div className="flex items-center gap-2">
-          <div 
-            className="w-6 h-3 rounded-sm" 
-            style={{ background: getIntensityGradient() }}
-          ></div>
-          <span>Intensity</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5">
+              <div className="w-3 h-1.5 rounded-sm" style={{ background: getIntensityGradient() }}/>
+              Intensity
+            </span>
+            <span className="flex items-center gap-1.5">
+              <div className="w-3 h-1.5 rounded-sm" style={{ background: getVolumeGradient() }}/>
+              Volume
+            </span>
+          </div>
+          <span className="text-gray-500 bg-gray-100/80 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+            <Info className="h-3 w-3" />
+            Tap to set level
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <div 
-            className="w-6 h-3 rounded-sm"
-            style={{ background: getVolumeGradient() }}
-          ></div>
-          <span>Volume</span>
-        </div>
-      </div>
+      </header>
 
-      {/* Make table container horizontally scrollable on mobile with full width */}
-      <div className="w-full overflow-x-auto overflow-y-hidden pb-1 touch-pan-x scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
-        <div className="min-w-[480px] w-full">
-          <table className="w-full border-collapse table-fixed">
-            {/* Header row with level numbers */}
-            <thead>
-              <tr className="border-b">
-                <th className="w-[12%] py-2 px-1 font-medium text-center text-sm">Week</th>
-                {Array.from({ length: 10 }, (_, i) => (
-                  <th key={i} className="p-1 text-center font-medium w-[8.8%] text-xs">
-                    {i + 1}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {/* Grid rows for each week */}
-              {localData.map((weekData) => (
-                <tr key={weekData.week} className="border-b last:border-b-2 border-gray-200">
-                  {/* Week cell */}
-                  <td className="w-[12%] border-r border-gray-200 py-3 text-center font-medium text-sm">
-                    {weekData.week}
-                  </td>
-                  
-                  {/* Intensity row embedded in a cell that spans all columns */}
-                  <td colSpan={10} className="p-0">
-                    <div className="grid grid-cols-10 h-11">
-                      {Array.from({ length: 10 }, (_, i) => (
-                        <div
-                          key={i}
-                          className={`w-full h-full cursor-pointer transition-colors border-r last:border-r-0 ${
-                            i + 1 <= weekData.intensity ? "text-gray-700" : "text-gray-400"
-                          }`}
-                          style={{
-                            backgroundColor: i + 1 <= weekData.intensity ? getIntensityColor(i + 1) : "transparent",
-                            transition: "background-color 0.3s ease-in-out"
-                          }}
-                          onClick={() => handleCellClick(weekData.week, "intensity", i + 1)}
-                        >
-                          &nbsp;
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {/* Volume row */}
-                    <div className="grid grid-cols-10 h-11 border-t border-gray-200">
-                      {Array.from({ length: 10 }, (_, i) => (
-                        <div
-                          key={i}
-                          className={`w-full h-full cursor-pointer transition-colors border-r last:border-r-0 ${
-                            i + 1 <= weekData.volume ? "text-gray-700" : "text-gray-400"
-                          }`}
-                          style={{
-                            backgroundColor: i + 1 <= weekData.volume ? getVolumeColor(i + 1) : "transparent",
-                            transition: "background-color 0.3s ease-in-out"
-                          }}
-                          onClick={() => handleCellClick(weekData.week, "volume", i + 1)}
-                        >
-                          &nbsp;
-                        </div>
-                      ))}
-                    </div>
-                  </td>
+      <div className="relative">
+        <div className="overflow-x-auto pb-2 touch-pan-x scrollbar-thin">
+          <div className="min-w-[400px] w-full px-3 sm:px-0">
+            <table className="w-full border-collapse table-fixed">
+              <thead>
+                <tr className="border-b">
+                  <th className="w-[8%] py-1.5 font-medium text-center text-xs sticky left-0 bg-white/80">Week</th>
+                  {Array.from({ length: 10 }, (_, i) => (
+                    <th key={i} className="w-[9.2%] py-1.5 font-medium text-center text-xs">
+                      {i + 1}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {localData.map((weekData) => (
+                  <tr key={weekData.week} className="border-b last:border-b-2 border-gray-200">
+                    <td className="py-1.5 text-center font-medium text-xs sticky left-0 bg-white/80">
+                      {weekData.week}
+                    </td>
+                    <td colSpan={10} className="p-0">
+                      <div className="grid grid-cols-10 h-8 sm:h-10">
+                        {Array.from({ length: 10 }, (_, i) => (
+                          <div
+                            key={i}
+                            className={`w-full h-full cursor-pointer transition-colors ${
+                              i + 1 <= weekData.intensity ? "text-gray-700" : "text-gray-400"
+                            }`}
+                            style={{
+                              backgroundColor: i + 1 <= weekData.intensity ? getIntensityColor(i + 1) : "transparent",
+                              transition: "background-color 0.2s ease"
+                            }}
+                            onClick={() => handleCellClick(weekData.week, "intensity", i + 1)}
+                          />
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-10 h-8 sm:h-10 border-t border-gray-200">
+                        {Array.from({ length: 10 }, (_, i) => (
+                          <div
+                            key={i}
+                            className={`w-full h-full cursor-pointer transition-colors ${
+                              i + 1 <= weekData.volume ? "text-gray-700" : "text-gray-400"
+                            }`}
+                            style={{
+                              backgroundColor: i + 1 <= weekData.volume ? getVolumeColor(i + 1) : "transparent",
+                              transition: "background-color 0.2s ease"
+                            }}
+                            onClick={() => handleCellClick(weekData.week, "volume", i + 1)}
+                          />
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            
+            <div className="flex justify-between text-xs text-gray-500 px-[8%] pt-1">
+              <span>Low</span>
+              <span>High</span>
+            </div>
+          </div>
         </div>
-      </div>
-      
-      <div className="flex justify-between text-xs text-gray-500 px-[12%] pt-1">
-        <span>Low</span>
-        <span>High</span>
       </div>
     </div>
   )

@@ -13,9 +13,7 @@
  */
 
 import "./css/style.css"
-
 import { Inter } from "next/font/google"
-
 import { AuthProvider } from "../context/authContext"
 import dynamic from "next/dynamic"
 
@@ -71,7 +69,7 @@ export const metadata = {
  */
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className="light">
       <body className={`${inter.variable} font-inter antialiased bg-gray-50 text-gray-900 tracking-tight`}>
         {/* AuthProvider wraps the app to provide authentication context */}
         <AuthProvider>
