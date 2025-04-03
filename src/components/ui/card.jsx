@@ -32,9 +32,27 @@ const CardTitle = ({ children, className = "", ...props }) => {
   )
 }
 
+const CardDescription = ({ children, className = "", ...props }) => {
+  return (
+    <p className={cn("mt-1 text-sm text-gray-500", className)} {...props}>
+      {children}
+    </p>
+  )
+}
+
+const CardFooter = ({ children, className = "", ...props }) => {
+  return (
+    <div className={cn("px-4 py-4 sm:px-6 border-t border-gray-200", className)} {...props}>
+      {children}
+    </div>
+  )
+}
+
 Card.Header = CardHeader
 Card.Content = CardContent
 Card.Title = CardTitle
+Card.Description = CardDescription
+Card.Footer = CardFooter
 
-export { Card, CardHeader, CardContent, CardTitle }
+export { Card, CardHeader, CardContent, CardTitle, CardDescription, CardFooter }
 

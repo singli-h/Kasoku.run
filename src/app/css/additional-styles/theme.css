@@ -22,6 +22,12 @@
   --gradient-accent-start: rgba(99, 102, 241, 0.08);
   --gradient-accent-mid: rgba(99, 102, 241, 0.04);
   --gradient-accent-end: transparent;
+
+  /* Background colors */
+  --page-background: #F9FAFB;  /* gray-50 */
+  --sidebar-gradient-from: #111827;  /* gray-900 */
+  --sidebar-gradient-via: #1F2937;  /* gray-800 */
+  --sidebar-gradient-to: #111827;  /* gray-900 */
 }
 
 /* Dark theme overrides */
@@ -37,6 +43,12 @@
   --gradient-accent-start: rgba(99, 102, 241, 0.1);
   --gradient-accent-mid: rgba(99, 102, 241, 0.05);
   --gradient-accent-end: transparent;
+
+  /* Background colors */
+  --page-background: #1F2937;  /* gray-800 */
+  --sidebar-gradient-from: #0F172A;  /* slate-900 */
+  --sidebar-gradient-via: #1E293B;  /* slate-800 */
+  --sidebar-gradient-to: #0F172A;  /* slate-900 */
 }
 
 /* Alternative themes can be added here */
@@ -48,6 +60,12 @@
   --gradient-secondary-start: rgba(99, 102, 241, 0.15);
   --gradient-secondary-mid: rgba(99, 102, 241, 0.08);
   --gradient-secondary-end: transparent;
+
+  /* Background colors */
+  --page-background: #EFF6FF;  /* blue-50 */
+  --sidebar-gradient-from: #1E40AF;  /* blue-800 */
+  --sidebar-gradient-via: #1D4ED8;  /* blue-700 */
+  --sidebar-gradient-to: #1E40AF;  /* blue-800 */
 }
 
 [data-theme="green"] {
@@ -58,6 +76,12 @@
   --gradient-secondary-start: rgba(59, 130, 246, 0.15);
   --gradient-secondary-mid: rgba(59, 130, 246, 0.08);
   --gradient-secondary-end: transparent;
+
+  /* Background colors */
+  --page-background: #ECFDF5;  /* green-50 */
+  --sidebar-gradient-from: #065F46;  /* green-800 */
+  --sidebar-gradient-via: #047857;  /* green-700 */
+  --sidebar-gradient-to: #065F46;  /* green-800 */
 }
 
 /* Hamburger button */

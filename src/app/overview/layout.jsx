@@ -1,6 +1,6 @@
 export default function OverviewLayout({ children }) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ backgroundColor: 'var(--page-background)' }} className="min-h-screen">
       <main className="container mx-auto px-4 py-8">
         {children}
       </main>

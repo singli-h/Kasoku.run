@@ -70,7 +70,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className="light">
-      <body className={`${inter.variable} font-inter antialiased bg-gray-50 text-gray-900 tracking-tight`}>
+      <body className={`${inter.variable} font-inter antialiased tracking-tight`} style={{ backgroundColor: 'var(--page-background)' }}>
         {/* AuthProvider wraps the app to provide authentication context */}
         <AuthProvider>
           {/* Main layout structure with flex column and minimum height */}

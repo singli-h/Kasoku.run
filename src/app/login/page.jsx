@@ -6,9 +6,37 @@ import Image from "next/image"
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from "next/link"
+import { useEffect } from 'react'
 
 const LoginPage = () => {
   const router = useRouter()
+
+  // Add effect to check auth state
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session)
+      if (event === 'SIGNED_IN' && session) {
+        console.log('User signed in, redirecting to dashboard...')
+        router.push('/dashboard')
+      }
+    })
+
+    // Check if user is already signed in
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        console.log('User already has a session, redirecting to dashboard...')
+        router.push('/dashboard')
+      }
+    }
+    checkUser()
+
+    return () => {
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe()
+      }
+    }
+  }, [router])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900">
@@ -73,7 +101,7 @@ const LoginPage = () => {
           }}
           theme="dark"
           providers={['google']}
-          redirectTo={`${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`}
+          redirectTo={`${window.location.origin}/auth/callback`}
           onlyThirdPartyProviders={false}
           magicLink={true}
           showLinks={true}

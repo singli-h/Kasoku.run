@@ -30,27 +30,41 @@ Object.entries(requiredEnvVars).forEach(([key, value]) => {
  */
 export async function middleware(req: NextRequest) {
   try {
+    // If BYPASS_AUTH is true, skip all auth checks
+    if (process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true') {
+      return NextResponse.next()
+    }
+
     const res = NextResponse.next()
     
     // Create a Supabase client configured to use cookies
     const supabase = createMiddlewareClient({ req, res })
 
     // Refresh session if expired - required for Server Components
-    await supabase.auth.getSession()
+    const { data: { session } } = await supabase.auth.getSession()
 
-    // Optional: Check if user is authenticated for protected routes
-    if (req.nextUrl.pathname.startsWith('/dashboard')) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+    // Get the current path
+    const path = req.nextUrl.pathname
 
-      // If no session, redirect to login
-      if (!session) {
-        const redirectUrl = req.nextUrl.clone()
-        redirectUrl.pathname = '/login'
-        redirectUrl.searchParams.set('redirectedFrom', req.nextUrl.pathname)
-        return NextResponse.redirect(redirectUrl)
-      }
+    // Public routes that don't require authentication
+    const publicRoutes = ['/login', '/register', '/auth/callback', '/']
+    const isPublicRoute = publicRoutes.includes(path)
+
+    // If user is not authenticated and trying to access a protected route
+    if (!session && !isPublicRoute) {
+      // Store the original URL to redirect back after login
+      const redirectUrl = req.nextUrl.clone()
+      redirectUrl.pathname = '/login'
+      redirectUrl.searchParams.set('redirectTo', path)
+      return NextResponse.redirect(redirectUrl)
+    }
+
+    // If user is authenticated and trying to access login/register pages
+    if (session && (path === '/login' || path === '/register')) {
+      // Redirect to dashboard
+      const redirectUrl = req.nextUrl.clone()
+      redirectUrl.pathname = '/dashboard'
+      return NextResponse.redirect(redirectUrl)
     }
 
     return res
@@ -77,7 +91,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - api routes
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public/|api/).*)',
   ],
 }; 

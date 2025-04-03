@@ -20,11 +20,19 @@ const NavigationWrapper = ({ children }) => {
   const pathname = usePathname();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
-  // Define routes that should use the header instead of sidebar
-  const headerRoutes = ['/', '/login', '/register', '/auth'];
+  // Define routes that should use the header
+  const headerRoutes = ['/'];
+  
+  // Define routes that should have no navigation
+  const noNavRoutes = ['/login', '/register', '/auth', '/onboarding'];
   
   // Check if current path should use header
   const shouldUseHeader = headerRoutes.some(route => 
+    pathname === route || pathname.startsWith(`${route}/`)
+  );
+  
+  // Check if current path should have no navigation
+  const shouldHaveNoNav = noNavRoutes.some(route => 
     pathname === route || pathname.startsWith(`${route}/`)
   );
   
@@ -32,6 +40,11 @@ const NavigationWrapper = ({ children }) => {
   const handleSidebarCollapse = (collapsed) => {
     setIsSidebarCollapsed(collapsed);
   };
+  
+  // If route should have no navigation, render only children
+  if (shouldHaveNoNav) {
+    return <main>{children}</main>;
+  }
   
   return (
     <>

@@ -1,11 +1,9 @@
 "use client"
 
-export default function DefaultLayout({ children }) {
+export default function LoginLayout({ children }) {
   return (
-    <>
-      <main>
-        <div className="min-h-screen bg-gray-900">{children}</div>
-      </main>
-    </>
+    <div className="min-h-screen bg-gradient-to-br from-[#0A0F1C] via-[#1A1F2E] to-[#0A0F1C]">
+      {children}
+    </div>
   )
 }

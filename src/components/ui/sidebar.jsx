@@ -195,9 +195,12 @@ const Sidebar = ({ onCollapse }) => {
         initial={false}
         animate={sidebarVisible ? "open" : "closed"}
         variants={sidebarVariants}
-        className={`fixed top-0 left-0 z-50 h-full bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white shadow-xl sm:translate-x-0 transition-all duration-200 ${
+        className={`fixed top-0 left-0 z-50 h-full shadow-xl sm:translate-x-0 transition-all duration-200 ${
           isCollapsed ? "w-20" : "w-64"
         }`}
+        style={{
+          background: `linear-gradient(to bottom, var(--sidebar-gradient-from), var(--sidebar-gradient-via), var(--sidebar-gradient-to))`
+        }}
         aria-label="Main navigation"
       >
         <div className="flex flex-col h-full">
