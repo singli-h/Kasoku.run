@@ -8,6 +8,8 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import EmailProvider from "next-auth/providers/email";
+import { SupabaseAdapter } from "@next-auth/supabase-adapter";
+import { supabase } from "@/lib/supabase";
 
 /**
  * Type Declaration for Extended Session
@@ -22,11 +24,25 @@ declare module "next-auth" {
       email?: string | null;    // Optional email
       name?: string | null;     // Optional name
       image?: string | null;    // Optional profile image
+      role?: string;
     };
+    supabaseAccessToken?: string;
+  }
+
+  interface User {
+    id: string;
+    email?: string | null;
+    name?: string | null;
+    image?: string | null;
+    role?: string;
   }
 }
 
 export const authOptions: NextAuthOptions = {
+  adapter: SupabaseAdapter({
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    secret: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  }),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -54,18 +70,52 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       if (user) {
         token.userId = user.id;
+        token.role = user.role;
       }
+      
+      // If using OAuth, get the access token
       if (account?.access_token) {
         token.accessToken = account.access_token;
+        
+        // Store the token for Supabase usage
+        token.supabaseAccessToken = account.access_token;
       }
+      
       return token;
     },
 
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.userId as string;
+        session.user.role = token.role as string;
+        session.supabaseAccessToken = token.supabaseAccessToken as string;
       }
       return session;
+    },
+
+    async signIn({ user, account }) {
+      if (!user.email) return false;
+
+      if (account?.provider === "google") {
+        try {
+          // Create or update user profile in Supabase
+          const { error } = await supabase.from("profiles").upsert({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            avatar_url: user.image,
+            updated_at: new Date().toISOString(),
+          });
+
+          if (error) throw error;
+          return true;
+        } catch (error) {
+          console.error("Error during sign in:", error);
+          return false;
+        }
+      }
+
+      return true;
     },
   },
 

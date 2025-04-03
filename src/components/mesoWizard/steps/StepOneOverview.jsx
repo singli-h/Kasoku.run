@@ -192,7 +192,7 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
                   value={defaultFormData.name || ""}
                   onChange={handleInputChange}
                   placeholder="e.g., Summer Strength Block, Hypertrophy Phase 1..."
-                  className={`mt-1 ${errors.name ? "border-red-500" : ""}`}
+                  className={`mt-1 pl-3 h-10 ${errors.name ? "border-red-500" : ""}`}
                 />
                 {errors.name && (
                   <p className="mt-1 text-sm text-red-500">{errors.name}</p>
@@ -427,14 +427,12 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
         
         {/* Weekly Progression Chart Card - Separated for better mobile layout */}
         <Card className="border border-gray-200">
-          <CardContent className="pt-6 px-0 sm:px-6">
-            <div className="px-4 sm:px-0">
-              <WeeklyProgressionChart 
-                data={weeklyProgression} 
-                onChange={handleProgressionChange} 
-                modelType={selectedModel}
-              />
-            </div>
+          <CardContent className="pt-6">
+            <WeeklyProgressionChart 
+              data={weeklyProgression} 
+              onChange={handleProgressionChange} 
+              modelType={selectedModel}
+            />
           </CardContent>
         </Card>
         

@@ -20,8 +20,8 @@ export default function PlannerPage() {
       <PageBackground />
       
       {/* Optimized content container */}
-      <div className="max-w-4xl mx-auto pt-4 sm:pt-6 px-2 sm:px-4">
-        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Create New Mesocycle</h2>
+      <div className="w-full max-w-4xl mx-auto pt-4 sm:pt-6 px-0 sm:px-4">
+        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 px-2 sm:px-0">Create New Mesocycle</h2>
         <MesoWizard onComplete={handleComplete} />
       </div>
     </div>

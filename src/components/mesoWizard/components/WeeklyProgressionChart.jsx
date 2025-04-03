@@ -96,8 +96,8 @@ const WeeklyProgressionChart = ({ data = [], onChange = () => {}, modelType = nu
   }
 
   return (
-    <div className="w-full -mx-3 sm:mx-0">
-      <header className="px-3 sm:px-0 mb-3">
+    <div className="w-full">
+      <header className="mb-3">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
           <h3 className="text-base sm:text-lg font-semibold">Weekly Progression Chart</h3>
           {modelType && (
@@ -128,7 +128,7 @@ const WeeklyProgressionChart = ({ data = [], onChange = () => {}, modelType = nu
 
       <div className="relative">
         <div className="overflow-x-auto pb-2 touch-pan-x scrollbar-thin">
-          <div className="min-w-[400px] w-full px-3 sm:px-0">
+          <div className="min-w-[400px] w-full">
             <table className="w-full border-collapse table-fixed">
               <thead>
                 <tr className="border-b">
