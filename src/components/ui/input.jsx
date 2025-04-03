@@ -21,6 +21,15 @@ const Input = React.forwardRef(({ className = "", type, variant = "default", ...
       focus:border-blue-500 
       focus:ring-blue-500/20
     `,
+    onboarding: `
+      bg-white 
+      border-gray-200
+      text-gray-900
+      placeholder:text-gray-500
+      focus:border-blue-600
+      focus:ring-blue-600/20
+      hover:border-gray-300
+    `
   };
 
   return (

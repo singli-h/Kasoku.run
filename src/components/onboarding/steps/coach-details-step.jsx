@@ -4,8 +4,9 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Users, Medal } from "lucide-react"
+import { motion } from "framer-motion"
 
 export default function CoachDetailsStep({ userData, updateUserData, onNext, onPrev }) {
   const [errors, setErrors] = useState({})
@@ -13,11 +14,11 @@ export default function CoachDetailsStep({ userData, updateUserData, onNext, onP
   const validateForm = () => {
     const newErrors = {}
 
-    if (!userData.firstName) newErrors.firstName = "First name is required"
-    if (!userData.lastName) newErrors.lastName = "Last name is required"
-    if (!userData.birthday) newErrors.birthday = "Birthday is required"
-    if (!userData.teamName) newErrors.teamName = "Team name is required"
-    if (!userData.sportFocus) newErrors.sportFocus = "Sport focus is required"
+    if (!userData.firstName?.trim()) newErrors.firstName = "First name is required"
+    if (!userData.lastName?.trim()) newErrors.lastName = "Last name is required"
+    if (!userData.specialization?.trim()) newErrors.specialization = "Specialization is required"
+    if (!userData.experience?.trim()) newErrors.experience = "Experience level is required"
+    if (!userData.coachingPhilosophy?.trim()) newErrors.coachingPhilosophy = "Coaching philosophy is required"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -29,35 +30,37 @@ export default function CoachDetailsStep({ userData, updateUserData, onNext, onP
     }
   }
 
-  const sportOptions = [
-    "Track & Field - Sprints",
-    "Track & Field - Distance",
-    "Football/Soccer",
-    "Basketball",
-    "Swimming",
-    "Triathlon",
-    "CrossFit",
-    "Other",
-  ]
-
   return (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Coach Profile</h2>
-        <p className="text-white/70 mt-2">Tell us about yourself and your team</p>
-      </div>
+    <div className="space-y-8">
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="text-center space-y-3"
+      >
+        <h2 className="text-3xl font-bold text-white">
+          Tell us about your coaching
+        </h2>
+        <p className="text-lg text-white/70">
+          Help us understand your coaching style and expertise
+        </p>
+      </motion.div>
 
-      <div className="space-y-6">
-        {/* Personal Information */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+        className="space-y-6"
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="firstName" className="text-white">First Name</Label>
             <Input
               id="firstName"
-              placeholder="Enter your first name"
               value={userData.firstName}
               onChange={(e) => updateUserData({ firstName: e.target.value })}
-              className={`bg-[#262C3A] border-white/10 text-white placeholder:text-white/40 ${errors.firstName ? "border-red-500" : "focus:border-[#2563EB]"}`}
+              variant="onboarding"
+              className={errors.firstName ? "border-red-500" : ""}
             />
             {errors.firstName && <p className="text-sm text-red-500">{errors.firstName}</p>}
           </div>
@@ -66,95 +69,95 @@ export default function CoachDetailsStep({ userData, updateUserData, onNext, onP
             <Label htmlFor="lastName" className="text-white">Last Name</Label>
             <Input
               id="lastName"
-              placeholder="Enter your last name"
               value={userData.lastName}
               onChange={(e) => updateUserData({ lastName: e.target.value })}
-              className={`bg-[#262C3A] border-white/10 text-white placeholder:text-white/40 ${errors.lastName ? "border-red-500" : "focus:border-[#2563EB]"}`}
+              variant="onboarding"
+              className={errors.lastName ? "border-red-500" : ""}
             />
             {errors.lastName && <p className="text-sm text-red-500">{errors.lastName}</p>}
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="birthday" className="text-white">Birthday</Label>
-          <Input
-            id="birthday"
-            type="date"
-            value={userData.birthday}
-            onChange={(e) => updateUserData({ birthday: e.target.value })}
-            className={`bg-[#262C3A] border-white/10 text-white ${errors.birthday ? "border-red-500" : "focus:border-[#2563EB]"}`}
-          />
-          {errors.birthday && <p className="text-sm text-red-500">{errors.birthday}</p>}
-        </div>
-
-        {/* Team Information */}
-        <div className="pt-4 border-t border-white/10">
-          <h3 className="font-medium text-white mb-4">Team Information</h3>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="teamName" className="flex items-center gap-2 text-white">
-                <Users className="w-4 h-4 text-[#2563EB]" />
-                Team Name
-              </Label>
-              <Input
-                id="teamName"
-                placeholder="Enter your team or group name"
-                value={userData.teamName}
-                onChange={(e) => updateUserData({ teamName: e.target.value })}
-                className={`bg-[#262C3A] border-white/10 text-white placeholder:text-white/40 ${errors.teamName ? "border-red-500" : "focus:border-[#2563EB]"}`}
-              />
-              {errors.teamName && <p className="text-sm text-red-500">{errors.teamName}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sportFocus" className="flex items-center gap-2 text-white">
-                <Medal className="w-4 h-4 text-[#2563EB]" />
-                Sport Focus
-              </Label>
-              <Select 
-                value={userData.sportFocus} 
-                onValueChange={(value) => updateUserData({ sportFocus: value })}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="specialization" className="text-white">Specialization</Label>
+            <Select
+              value={userData.specialization}
+              onValueChange={(value) => updateUserData({ specialization: value })}
+            >
+              <SelectTrigger
+                id="specialization"
+                className={`bg-white border-gray-200 text-gray-900 hover:border-gray-300 ${errors.specialization ? "border-red-500" : ""}`}
               >
-                <SelectTrigger 
-                  id="sportFocus" 
-                  className={`bg-[#262C3A] border-white/10 text-white ${errors.sportFocus ? "border-red-500" : "focus:border-[#2563EB]"}`}
-                >
-                  <SelectValue placeholder="Select your primary sport" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#262C3A] border-white/10">
-                  {sportOptions.map((sport) => (
-                    <SelectItem 
-                      key={sport} 
-                      value={sport}
-                      className="text-white hover:bg-[#2E364A] focus:bg-[#2E364A]"
-                    >
-                      {sport}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.sportFocus && <p className="text-sm text-red-500">{errors.sportFocus}</p>}
-            </div>
+                <SelectValue placeholder="Select your specialization" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-gray-200">
+                <SelectItem value="sprint" className="text-gray-900">Sprint Training</SelectItem>
+                <SelectItem value="strength" className="text-gray-900">Strength & Conditioning</SelectItem>
+                <SelectItem value="technique" className="text-gray-900">Technique Development</SelectItem>
+                <SelectItem value="recovery" className="text-gray-900">Recovery & Rehabilitation</SelectItem>
+                <SelectItem value="performance" className="text-gray-900">Performance Analysis</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.specialization && <p className="text-sm text-red-500">{errors.specialization}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="experience" className="text-white">Experience Level</Label>
+            <Select
+              value={userData.experience}
+              onValueChange={(value) => updateUserData({ experience: value })}
+            >
+              <SelectTrigger
+                id="experience"
+                className={`bg-white border-gray-200 text-gray-900 hover:border-gray-300 ${errors.experience ? "border-red-500" : ""}`}
+              >
+                <SelectValue placeholder="Select your experience level" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-gray-200">
+                <SelectItem value="beginner" className="text-gray-900">1-3 years</SelectItem>
+                <SelectItem value="intermediate" className="text-gray-900">4-7 years</SelectItem>
+                <SelectItem value="advanced" className="text-gray-900">8-12 years</SelectItem>
+                <SelectItem value="expert" className="text-gray-900">12+ years</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.experience && <p className="text-sm text-red-500">{errors.experience}</p>}
           </div>
         </div>
-      </div>
 
-      <div className="flex justify-between pt-6">
-        <Button 
-          variant="outline" 
+        <div className="space-y-2">
+          <Label htmlFor="coachingPhilosophy" className="text-white">What's your coaching philosophy?</Label>
+          <Textarea
+            id="coachingPhilosophy"
+            placeholder="Tell us about your approach to coaching and what makes you unique..."
+            value={userData.coachingPhilosophy}
+            onChange={(e) => updateUserData({ coachingPhilosophy: e.target.value })}
+            className={`bg-white border-gray-200 text-gray-900 placeholder:text-gray-500 min-h-[100px] focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 hover:border-gray-300 ${errors.coachingPhilosophy ? "border-red-500" : ""}`}
+          />
+          {errors.coachingPhilosophy && <p className="text-sm text-red-500">{errors.coachingPhilosophy}</p>}
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.4, duration: 0.5 }}
+        className="flex justify-between pt-4"
+      >
+        <Button
+          variant="outline"
           onClick={onPrev}
-          className="bg-[#262C3A] border-white/10 text-white hover:bg-[#2E364A] hover:border-white/20"
+          className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 px-8"
         >
           Back
         </Button>
-        <Button 
+        <Button
           onClick={handleContinue}
-          className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20 px-8"
         >
           Continue
         </Button>
-      </div>
+      </motion.div>
     </div>
   )
 } 

@@ -81,13 +81,13 @@ export default function RoleSelectionStep({ onNext, onPrevious, updateUserData }
         <Button
           variant="outline"
           onClick={onPrevious}
-          className="bg-[#262C3A] border-white/20 text-white hover:bg-[#2E364A] hover:border-white/30 px-8"
+          className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 px-8"
         >
           Back
         </Button>
         <Button
           onClick={onNext}
-          className="bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] text-white border-0 hover:from-[#4338CA] hover:to-[#6D28D9] shadow-lg shadow-indigo-500/30 px-8"
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20 px-8"
         >
           Continue
         </Button>

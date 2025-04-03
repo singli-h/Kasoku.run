@@ -9,9 +9,44 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
+const plans = [
+  {
+    name: "Basic",
+    price: "Free",
+    features: [
+      "Basic sprint tracking",
+      "Personal dashboard",
+      "Limited workout plans",
+      "Community support",
+    ],
+  },
+  {
+    name: "Pro",
+    price: "$9.99/mo",
+    features: [
+      "Advanced sprint analytics",
+      "Custom workout plans",
+      "Progress tracking",
+      "Priority support",
+      "Video analysis",
+    ],
+  },
+  {
+    name: "Elite",
+    price: "$19.99/mo",
+    features: [
+      "All Pro features",
+      "1-on-1 coaching",
+      "Team management",
+      "Advanced analytics",
+      "Custom reports",
+      "API access",
+    ],
+  },
+]
+
 export default function SubscriptionStep({ userData, updateUserData, onNext, onPrev }) {
-  const [selectedPlan, setSelectedPlan] = useState(userData.subscription || "free")
-  const [showPaymentForm, setShowPaymentForm] = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState(userData.plan || "Basic")
   const [errors, setErrors] = useState({})
   const [paymentData, setPaymentData] = useState({
     cardName: "",
@@ -22,7 +57,7 @@ export default function SubscriptionStep({ userData, updateUserData, onNext, onP
 
   const validatePaymentForm = () => {
     const newErrors = {}
-    if (selectedPlan !== "free") {
+    if (selectedPlan !== "Basic") {
       if (!paymentData.cardName) newErrors.cardName = "Name is required"
       if (!paymentData.cardNumber) newErrors.cardNumber = "Card number is required"
       if (!paymentData.expiry) newErrors.expiry = "Expiry date is required"
@@ -47,15 +82,9 @@ export default function SubscriptionStep({ userData, updateUserData, onNext, onP
     return Object.keys(newErrors).length === 0
   }
 
-  const handlePlanSelect = (plan) => {
-    setSelectedPlan(plan)
-    updateUserData({ subscription: plan })
-    setShowPaymentForm(plan !== "free")
-  }
-
   const handleContinue = () => {
-    if (selectedPlan === "free" || validatePaymentForm()) {
-      updateUserData({ subscription: selectedPlan })
+    if (selectedPlan === "Basic" || validatePaymentForm()) {
+      updateUserData({ plan: selectedPlan })
       onNext()
     }
   }
@@ -103,160 +132,109 @@ export default function SubscriptionStep({ userData, updateUserData, onNext, onP
     }
   }
 
-  const plans = [
-    {
-      id: "free",
-      name: "Free",
-      price: "£0",
-      period: "forever",
-      description: "Basic features for individual athletes",
-      features: [
-        { included: true, text: "Performance tracking" },
-        { included: true, text: "Basic analytics" },
-        { included: true, text: "1 training plan" },
-        { included: false, text: "AI-powered insights" },
-        { included: false, text: "Advanced analytics" },
-        { included: false, text: "Coach collaboration" },
-      ],
-    },
-    {
-      id: "pro",
-      name: "Pro",
-      price: "£9.99",
-      period: "per month",
-      description: "Advanced features for serious athletes",
-      popular: true,
-      features: [
-        { included: true, text: "Everything in Free" },
-        { included: true, text: "Unlimited training plans" },
-        { included: true, text: "Advanced analytics" },
-        { included: true, text: "AI-powered insights" },
-        { included: true, text: "Coach collaboration" },
-        { included: false, text: "Team management" },
-      ],
-    },
-    {
-      id: "elite",
-      name: "Elite",
-      price: "£19.99",
-      period: "per month",
-      description: "Complete solution for coaches and teams",
-      features: [
-        { included: true, text: "Everything in Pro" },
-        { included: true, text: "Team management" },
-        { included: true, text: "Unlimited athletes" },
-        { included: true, text: "Custom branding" },
-        { included: true, text: "Priority support" },
-        { included: true, text: "API access" },
-      ],
-    },
-  ]
-
   return (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">Choose Your Plan</h2>
-        <p className="text-lg text-white/70 mt-2">Select the plan that best fits your needs</p>
-      </div>
+    <div className="space-y-8">
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="text-center space-y-3"
+      >
+        <h2 className="text-3xl font-bold text-white">
+          Choose Your Plan
+        </h2>
+        <p className="text-lg text-white/70">
+          Select the plan that best fits your needs
+        </p>
+      </motion.div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        {plans.map((plan) => (
-          <motion.div key={plan.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Card
-              className={`relative h-full cursor-pointer bg-[#262C3A] hover:bg-[#2E364A] border-2 transition-all duration-300 ${
-                selectedPlan === plan.id
-                  ? "border-[#4F46E5] ring-2 ring-[#4F46E5] ring-opacity-50"
-                  : "border-white/20 hover:border-[#4F46E5]/70"
-              }`}
-              onClick={() => handlePlanSelect(plan.id)}
-            >
-              {plan.popular && (
-                <Badge className="absolute -top-3 right-4 bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] text-white border-0 px-3 py-1 text-sm font-medium shadow-lg shadow-indigo-500/30">
-                  Popular
-                </Badge>
-              )}
-              <CardHeader className="pb-4">
-                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-white to-white/90 bg-clip-text text-transparent">
-                  {plan.name}
-                </CardTitle>
-                <CardDescription className="text-white/80 font-medium">{plan.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-baseline">
-                  <span className="text-4xl font-bold bg-gradient-to-r from-white to-white/90 bg-clip-text text-transparent">{plan.price}</span>
-                  <span className="text-white/80 ml-2">{plan.period}</span>
-                </div>
-                <ul className="space-y-3">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      {feature.included ? (
-                        <Check className="w-5 h-5 text-[#4F46E5] shrink-0 mt-0.5" />
-                      ) : (
-                        <X className="w-5 h-5 text-white/40 shrink-0 mt-0.5" />
-                      )}
-                      <span className={feature.included ? "text-white/90" : "text-white/40"}>{feature.text}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  variant={selectedPlan === plan.id ? "default" : "outline"}
-                  className={`w-full py-6 text-base font-medium ${
-                    selectedPlan === plan.id 
-                      ? "bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] text-white border-0 hover:from-[#4338CA] hover:to-[#6D28D9] shadow-lg shadow-indigo-500/30"
-                      : "bg-[#262C3A] border-white/20 text-white hover:bg-[#2E364A] hover:border-white/30"
-                  }`}
-                >
-                  {selectedPlan === plan.id ? "Selected" : "Select Plan"}
-                </Button>
-              </CardFooter>
-            </Card>
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+      >
+        {plans.map((plan, index) => (
+          <motion.div
+            key={plan.name}
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 + index * 0.1, duration: 0.5 }}
+            className={`relative p-6 rounded-lg border ${
+              selectedPlan === plan.name
+                ? "bg-white/10 border-blue-600"
+                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+            } transition-all duration-200`}
+          >
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white">{plan.name}</h3>
+                <p className="text-2xl font-bold mt-2 text-white">{plan.price}</p>
+              </div>
+
+              <ul className="space-y-3">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-center gap-2 text-white/80">
+                    <Check className="w-5 h-5 text-blue-600" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                variant={selectedPlan === plan.name ? "default" : "outline"}
+                className={
+                  selectedPlan === plan.name
+                    ? "w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20"
+                    : "w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30"
+                }
+                onClick={() => setSelectedPlan(plan.name)}
+              >
+                {selectedPlan === plan.name ? "Selected" : "Select"}
+              </Button>
+            </div>
           </motion.div>
         ))}
-      </div>
+      </motion.div>
 
-      {showPaymentForm && (
+      {selectedPlan !== "Basic" && (
         <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="mt-10 border-2 border-white/20 rounded-xl p-8 bg-[#262C3A]"
+          className="mt-8 border-2 border-white/20 rounded-xl p-8 bg-white"
         >
-          <h3 className="text-xl font-bold mb-6 flex items-center gap-3 bg-gradient-to-r from-white to-white/90 bg-clip-text text-transparent">
-            <CreditCard className="w-6 h-6 text-[#4F46E5]" />
+          <h3 className="text-xl font-bold mb-6 flex items-center gap-3 text-gray-900">
+            <CreditCard className="w-6 h-6 text-blue-600" />
             Payment Details
           </h3>
 
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="cardName" className="text-white/90 font-medium">Name on Card</Label>
+                <Label htmlFor="cardName" className="text-gray-700 font-medium">Name on Card</Label>
                 <Input
                   id="cardName"
                   placeholder="John Smith"
                   value={paymentData.cardName}
                   onChange={(e) => handleInputChange("cardName", e.target.value)}
-                  className={`bg-[#1E1E2E] border-white/20 text-white h-12 ${
-                    errors.cardName ? "border-red-500" : "focus:border-[#4F46E5]"
-                  }`}
+                  variant="onboarding"
+                  className={errors.cardName ? "border-red-500" : ""}
                 />
                 {errors.cardName && (
                   <p className="text-red-500 text-sm">{errors.cardName}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cardNumber" className="text-white/90 font-medium">Card Number</Label>
+                <Label htmlFor="cardNumber" className="text-gray-700 font-medium">Card Number</Label>
                 <Input
                   id="cardNumber"
                   placeholder="1234 5678 9012 3456"
                   value={paymentData.cardNumber}
                   onChange={(e) => handleInputChange("cardNumber", e.target.value)}
                   maxLength={19}
-                  className={`bg-[#1E1E2E] border-white/20 text-white h-12 ${
-                    errors.cardNumber ? "border-red-500" : "focus:border-[#4F46E5]"
-                  }`}
+                  variant="onboarding"
+                  className={errors.cardNumber ? "border-red-500" : ""}
                 />
                 {errors.cardNumber && (
                   <p className="text-red-500 text-sm">{errors.cardNumber}</p>
@@ -266,7 +244,7 @@ export default function SubscriptionStep({ userData, updateUserData, onNext, onP
 
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="expiry" className="text-white/90 font-medium">Expiry Date</Label>
+                <Label htmlFor="expiry" className="text-gray-700 font-medium">Expiry Date</Label>
                 <div className="relative">
                   <Input
                     id="expiry"
@@ -274,18 +252,17 @@ export default function SubscriptionStep({ userData, updateUserData, onNext, onP
                     value={paymentData.expiry}
                     onChange={(e) => handleInputChange("expiry", e.target.value)}
                     maxLength={5}
-                    className={`bg-[#1E1E2E] border-white/20 text-white h-12 ${
-                      errors.expiry ? "border-red-500" : "focus:border-[#4F46E5]"
-                    }`}
+                    variant="onboarding"
+                    className={errors.expiry ? "border-red-500" : ""}
                   />
-                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60" />
+                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 </div>
                 {errors.expiry && (
                   <p className="text-red-500 text-sm">{errors.expiry}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cvc" className="text-white/90 font-medium">CVC</Label>
+                <Label htmlFor="cvc" className="text-gray-700 font-medium">CVC</Label>
                 <div className="relative">
                   <Input
                     id="cvc"
@@ -293,11 +270,10 @@ export default function SubscriptionStep({ userData, updateUserData, onNext, onP
                     value={paymentData.cvc}
                     onChange={(e) => handleInputChange("cvc", e.target.value)}
                     maxLength={4}
-                    className={`bg-[#1E1E2E] border-white/20 text-white h-12 ${
-                      errors.cvc ? "border-red-500" : "focus:border-[#4F46E5]"
-                    }`}
+                    variant="onboarding"
+                    className={errors.cvc ? "border-red-500" : ""}
                   />
-                  <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60" />
+                  <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 </div>
                 {errors.cvc && (
                   <p className="text-red-500 text-sm">{errors.cvc}</p>
@@ -305,29 +281,34 @@ export default function SubscriptionStep({ userData, updateUserData, onNext, onP
               </div>
             </div>
 
-            <div className="pt-2 text-sm text-white/80 flex items-center gap-2 bg-[#4F46E5]/10 p-4 rounded-lg border border-[#4F46E5]/20">
-              <Lock className="w-5 h-5 text-[#4F46E5]" />
+            <div className="pt-2 text-sm text-gray-600 flex items-center gap-2 bg-blue-50 p-4 rounded-lg border border-blue-100">
+              <Lock className="w-5 h-5 text-blue-600" />
               Your payment information is secured with 256-bit encryption
             </div>
           </div>
         </motion.div>
       )}
 
-      <div className="flex justify-between pt-8">
-        <Button 
-          variant="outline" 
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.4, duration: 0.5 }}
+        className="flex justify-between pt-4"
+      >
+        <Button
+          variant="outline"
           onClick={onPrev}
-          className="bg-[#262C3A] border-white/20 text-white hover:bg-[#2E364A] hover:border-white/30 px-8"
+          className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 px-8"
         >
           Back
         </Button>
-        <Button 
+        <Button
           onClick={handleContinue}
-          className="bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] text-white border-0 hover:from-[#4338CA] hover:to-[#6D28D9] shadow-lg shadow-indigo-500/30 px-8"
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20 px-8"
         >
-          {selectedPlan === "free" ? "Continue" : "Subscribe & Continue"}
+          {selectedPlan === "Basic" ? "Continue" : "Subscribe & Continue"}
         </Button>
-      </div>
+      </motion.div>
     </div>
   )
 } 

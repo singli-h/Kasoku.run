@@ -85,12 +85,19 @@ export default function DashboardTourStep({ onNext, onPrev }) {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.5 }}
-        className="flex justify-between pt-6"
+        className="flex justify-between pt-4"
       >
-        <Button variant="outline" onClick={onPrev}>
+        <Button
+          variant="outline"
+          onClick={onPrev}
+          className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 px-8"
+        >
           Back
         </Button>
-        <Button onClick={onNext}>
+        <Button
+          onClick={onNext}
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20 px-8"
+        >
           Continue
         </Button>
       </motion.div>

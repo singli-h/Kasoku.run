@@ -66,7 +66,8 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
               id="firstName"
               value={userData.firstName}
               onChange={(e) => updateUserData({ firstName: e.target.value })}
-              className={`bg-[#1E1E2E] border-white/20 text-white ${errors.firstName ? "border-red-500" : "focus:border-[#4F46E5]"}`}
+              variant="onboarding"
+              className={errors.firstName ? "border-red-500" : ""}
             />
             {errors.firstName && <p className="text-sm text-red-500">{errors.firstName}</p>}
           </div>
@@ -77,7 +78,8 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
               id="lastName"
               value={userData.lastName}
               onChange={(e) => updateUserData({ lastName: e.target.value })}
-              className={`bg-[#1E1E2E] border-white/20 text-white ${errors.lastName ? "border-red-500" : "focus:border-[#4F46E5]"}`}
+              variant="onboarding"
+              className={errors.lastName ? "border-red-500" : ""}
             />
             {errors.lastName && <p className="text-sm text-red-500">{errors.lastName}</p>}
           </div>
@@ -91,7 +93,8 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
               type="date"
               value={userData.birthday}
               onChange={(e) => updateUserData({ birthday: e.target.value })}
-              className={`bg-[#1E1E2E] border-white/20 text-white ${errors.birthday ? "border-red-500" : "focus:border-[#4F46E5]"}`}
+              variant="onboarding"
+              className={errors.birthday ? "border-red-500" : ""}
             />
             {errors.birthday && <p className="text-sm text-red-500">{errors.birthday}</p>}
           </div>
@@ -104,7 +107,8 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
               placeholder="175"
               value={userData.height}
               onChange={(e) => updateUserData({ height: e.target.value })}
-              className={`bg-[#1E1E2E] border-white/20 text-white placeholder:text-white/40 ${errors.height ? "border-red-500" : "focus:border-[#4F46E5]"}`}
+              variant="onboarding"
+              className={errors.height ? "border-red-500" : ""}
             />
             {errors.height && <p className="text-sm text-red-500">{errors.height}</p>}
           </div>
@@ -117,7 +121,8 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
               placeholder="70"
               value={userData.weight}
               onChange={(e) => updateUserData({ weight: e.target.value })}
-              className={`bg-[#1E1E2E] border-white/20 text-white placeholder:text-white/40 ${errors.weight ? "border-red-500" : "focus:border-[#4F46E5]"}`}
+              variant="onboarding"
+              className={errors.weight ? "border-red-500" : ""}
             />
             {errors.weight && <p className="text-sm text-red-500">{errors.weight}</p>}
           </div>
@@ -130,7 +135,7 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
             placeholder="Tell us about your sprint goals and what you want to achieve..."
             value={userData.sprintGoals}
             onChange={(e) => updateUserData({ sprintGoals: e.target.value })}
-            className={`bg-[#1E1E2E] border-white/20 text-white min-h-[100px] placeholder:text-white/40 ${errors.sprintGoals ? "border-red-500" : "focus:border-[#4F46E5]"}`}
+            className={`bg-white border-gray-200 text-gray-900 placeholder:text-gray-500 min-h-[100px] focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 hover:border-gray-300 ${errors.sprintGoals ? "border-red-500" : ""}`}
           />
           {errors.sprintGoals && <p className="text-sm text-red-500">{errors.sprintGoals}</p>}
         </div>
@@ -145,13 +150,13 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
         <Button
           variant="outline"
           onClick={onPrev}
-          className="bg-[#262C3A] border-white/20 text-white hover:bg-[#2E364A] hover:border-white/30 px-8"
+          className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 px-8"
         >
           Back
         </Button>
         <Button
           onClick={handleContinue}
-          className="bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] text-white border-0 hover:from-[#4338CA] hover:to-[#6D28D9] shadow-lg shadow-indigo-500/30 px-8"
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20 px-8"
         >
           Continue
         </Button>

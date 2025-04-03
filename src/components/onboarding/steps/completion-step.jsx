@@ -52,11 +52,11 @@ export default function CompletionStep({ onComplete }) {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.6, duration: 0.5 }}
-        className="pt-4"
+        className="pt-4 flex justify-center"
       >
         <Button
           onClick={onComplete}
-          className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20 px-8 py-3"
         >
           Go to Dashboard
         </Button>
