@@ -26,21 +26,6 @@ const IntensityVolumePicker = ({ label, value, onChange, description }) => {
     }
   }
 
-  const getLabel = () => {
-    if (value <= 3) return "Low"
-    if (value <= 7) return "Moderate" 
-    return "High"
-  }
-
-  // Get gradient style for the badge
-  const getBadgeStyle = () => {
-    if (variant === 'intensity') {
-      return "bg-gradient-to-r from-orange-50 to-red-50 text-red-600";
-    } else {
-      return "bg-gradient-to-r from-blue-50 to-purple-50 text-purple-700";
-    }
-  }
-
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">

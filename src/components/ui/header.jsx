@@ -15,7 +15,6 @@
  */
 
 import React from "react"
-import PropTypes from "prop-types"
 import Button from "../ui/button"
 
 const Header = () => {
@@ -64,13 +63,6 @@ const Header = () => {
       </nav>
     </header>
   )
-}
-
-/**
- * PropTypes for the Header component
- */
-Header.propTypes = {
-  // Currently no props are required
 }
 
 export default Header

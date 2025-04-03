@@ -1,22 +1,10 @@
 "use client"
 
 import { motion } from 'framer-motion'
-import { cn } from '../../lib/utils'
-import  Button  from '../ui/button'
+import Button from '../ui/button'
 import { ArrowRight, Sparkles } from 'lucide-react'
 
 export default function Hero() {
-  const sectionMessage = {
-    title: "Welcome to your ",
-    titleHightlight: "Runner Tracker",
-    paragraph: "Description",
-  }
-
-  const navigationList = [
-    { title: "Primary", href: "#primary", secondary: false },
-    { title: "Secondary", href: "#secondary", secondary: true },
-  ]
-
   return (
     <section className="relative overflow-hidden">
       {/* Animated background elements */}

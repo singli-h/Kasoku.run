@@ -121,7 +121,7 @@ const TooltipTrigger = React.forwardRef(({ children, asChild, ...props }, forwar
 TooltipTrigger.displayName = "TooltipTrigger"
 
 const TooltipContent = React.forwardRef(({ className, ...props }, ref) => {
-  const { open, triggerRef } = React.useContext(TooltipContext)
+  const { open } = React.useContext(TooltipContext)
   
   if (!open) return null
   
