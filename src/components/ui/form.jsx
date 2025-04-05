@@ -2,7 +2,7 @@
  * Form Component Library
  * 
  * A comprehensive form component system built on top of react-hook-form.
- * Provides accessible, type-safe form controls with built-in validation and error handling.
+ * Provides accessible form controls with built-in validation and error handling.
  * 
  * Features:
  * - Form context management
@@ -10,7 +10,6 @@
  * - Accessible form controls
  * - Error message handling
  * - Description support
- * - TypeScript support
  * 
  * @module Form
  */
@@ -20,9 +19,6 @@
 import * as React from "react"
 import {
   Controller,
-  ControllerProps,
-  FieldPath,
-  FieldValues,
   FormProvider,
   useFormContext,
 } from "react-hook-form"
@@ -31,10 +27,7 @@ import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 
 // Custom Slot component to replace Radix UI's Slot
-const Slot = React.forwardRef<
-  React.ElementRef<any>,
-  React.ComponentPropsWithoutRef<any>
->(({ children, ...props }, ref) => {
+const Slot = React.forwardRef(({ children, ...props }, ref) => {
   if (!children) {
     return null
   }
@@ -43,27 +36,27 @@ const Slot = React.forwardRef<
     return children({ ...props, ref })
   }
 
-  const child = React.Children.only(children) as React.ReactElement
+  const child = React.Children.only(children)
   return React.cloneElement(child, {
     ...props,
     ...child.props,
     ref: ref
-      ? (node: unknown) => {
+      ? (node) => {
           if (typeof ref === "function") {
             ref(node)
           } else if (ref) {
-            (ref as React.MutableRefObject<unknown>).current = node
+            ref.current = node
           }
-          const childRef = (child as any).ref
+          const childRef = child.ref
           if (childRef) {
             if (typeof childRef === "function") {
               childRef(node)
             } else {
-              (childRef as React.MutableRefObject<unknown>).current = node
+              childRef.current = node
             }
           }
         }
-      : (child as any).ref,
+      : child.ref,
   })
 })
 Slot.displayName = "Slot"
@@ -71,35 +64,14 @@ Slot.displayName = "Slot"
 // Re-export FormProvider as Form for better semantic meaning
 const Form = FormProvider
 
-/**
- * Type definition for form field context
- * Manages the relationship between form fields and their values
- */
-type FormFieldContextValue<
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
-> = {
-  name: TName
-}
-
 // Create context for form field state
-const FormFieldContext = React.createContext<FormFieldContextValue>(
-  {} as FormFieldContextValue
-)
+const FormFieldContext = React.createContext({})
 
 /**
  * FormField Component
  * Provides context and control for individual form fields
- * 
- * @template TFieldValues - Type of form values
- * @template TName - Type of field name
  */
-const FormField = <
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
->({
-  ...props
-}: ControllerProps<TFieldValues, TName>) => {
+const FormField = (props) => {
   return (
     <FormFieldContext.Provider value={{ name: props.name }}>
       <Controller {...props} />
@@ -110,9 +82,6 @@ const FormField = <
 /**
  * Custom hook for accessing form field context and state
  * Provides field metadata, validation state, and accessibility attributes
- * 
- * @throws {Error} If used outside of FormField context
- * @returns {Object} Field context and state
  */
 const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext)
@@ -137,24 +106,14 @@ const useFormField = () => {
   }
 }
 
-// Type definition for form item context
-type FormItemContextValue = {
-  id: string
-}
-
 // Create context for form item state
-const FormItemContext = React.createContext<FormItemContextValue>(
-  {} as FormItemContextValue
-)
+const FormItemContext = React.createContext({})
 
 /**
  * FormItem Component
  * Container component for form fields with spacing and context
  */
-const FormItem = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
+const FormItem = React.forwardRef(({ className, ...props }, ref) => {
   const id = React.useId()
 
   return (
@@ -169,15 +128,12 @@ FormItem.displayName = "FormItem"
  * FormLabel Component
  * Accessible label component with error state styling
  */
-const FormLabel = React.forwardRef<
-  HTMLLabelElement,
-  React.LabelHTMLAttributes<HTMLLabelElement> & { className?: string }
->(({ className, children, ...props }, ref) => {
+const FormLabel = React.forwardRef(({ className, children, ...props }, ref) => {
   const { error, formItemId } = useFormField()
 
   return (
     <Label
-      ref={ref as any}
+      ref={ref}
       className={cn(error && "text-destructive", className)}
       htmlFor={formItemId}
       {...props}
@@ -192,10 +148,7 @@ FormLabel.displayName = "FormLabel"
  * FormControl Component
  * Wrapper for form inputs with accessibility attributes
  */
-const FormControl = React.forwardRef<
-  React.ElementRef<typeof Slot>,
-  React.ComponentPropsWithoutRef<typeof Slot>
->(({ ...props }, ref) => {
+const FormControl = React.forwardRef(({ ...props }, ref) => {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
 
   return (
@@ -218,10 +171,7 @@ FormControl.displayName = "FormControl"
  * FormDescription Component
  * Helper text component for form fields
  */
-const FormDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => {
+const FormDescription = React.forwardRef(({ className, ...props }, ref) => {
   const { formDescriptionId } = useFormField()
 
   return (
@@ -239,10 +189,7 @@ FormDescription.displayName = "FormDescription"
  * FormMessage Component
  * Error message display for form fields
  */
-const FormMessage = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, children, ...props }, ref) => {
+const FormMessage = React.forwardRef(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField()
   const body = error ? String(error?.message) : children
 
@@ -272,4 +219,4 @@ export {
   FormDescription,
   FormMessage,
   FormField,
-}
+} 
