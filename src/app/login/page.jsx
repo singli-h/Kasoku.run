@@ -13,11 +13,15 @@ const LoginPage = () => {
 
   // Add effect to check auth state
   useEffect(() => {
+    // Get the redirectTo path from URL if present
+    const params = new URLSearchParams(window.location.search);
+    const redirectPath = params.get('redirectTo') || '/dashboard';
+
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event, session)
       if (event === 'SIGNED_IN' && session) {
-        console.log('User signed in, redirecting to dashboard...')
-        router.push('/dashboard')
+        console.log('User signed in, redirecting to:', redirectPath)
+        router.push(redirectPath)
       }
     })
 
@@ -25,8 +29,8 @@ const LoginPage = () => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        console.log('User already has a session, redirecting to dashboard...')
-        router.push('/dashboard')
+        console.log('User already has a session, redirecting to:', redirectPath)
+        router.push(redirectPath)
       }
     }
     checkUser()
