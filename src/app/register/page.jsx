@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { SignUp } from "@clerk/nextjs"
 
 const RegisterPage = () => {
   return (
@@ -25,11 +26,24 @@ const RegisterPage = () => {
           </p>
         </div>
 
-        {/* Clerk authentication UI will be implemented here */}
-        <div className="mt-8 p-4 bg-gray-700 rounded-md text-center">
-          <p className="text-gray-300">
-            Clerk authentication will be implemented here
-          </p>
+        {/* Clerk SignUp component */}
+        <div className="mt-8">
+          <SignUp 
+            appearance={{
+              elements: {
+                formButtonPrimary: 
+                  "bg-blue-600 hover:bg-blue-700 text-white",
+                card: "bg-transparent shadow-none",
+                headerTitle: "hidden",
+                headerSubtitle: "hidden",
+                formFieldLabel: "text-gray-400",
+                formFieldInput: "bg-gray-700 text-white border-gray-600",
+                footerActionLink: "text-blue-500 hover:text-blue-400",
+              }
+            }}
+            redirectUrl="/onboarding"
+            signInUrl="/login"
+          />
         </div>
       </div>
     </div>

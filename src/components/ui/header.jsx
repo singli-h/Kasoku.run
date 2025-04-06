@@ -14,14 +14,18 @@
  * @component
  */
 
+"use client";
+
 import React, { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
 import Button from "../ui/button"
+import { SignInButton, SignUpButton, UserButton, useAuth } from "@clerk/nextjs"
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { isSignedIn } = useAuth()
 
   return (
     <header className="fixed w-full top-0 left-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
@@ -55,21 +59,39 @@ const Header = () => {
 
           {/* Authentication buttons */}
           <div className="hidden md:flex items-center gap-4">
-            <Link href="/login">
-              <Button 
-                variant="outline" 
-                className="px-4 py-2"
-              >
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button 
-                className="px-4 py-2"
-              >
-                Get Started
-              </Button>
-            </Link>
+            {isSignedIn ? (
+              <div className="flex items-center gap-4">
+                <Link href="/dashboard">
+                  <Button className="px-4 py-2">Dashboard</Button>
+                </Link>
+                <UserButton 
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      avatarBox: "h-9 w-9"
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <>
+                <SignInButton mode="modal">
+                  <Button 
+                    variant="outline" 
+                    className="px-4 py-2"
+                  >
+                    Sign In
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button 
+                    className="px-4 py-2"
+                  >
+                    Get Started
+                  </Button>
+                </SignUpButton>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -113,20 +135,38 @@ const Header = () => {
               >
                 About
               </Link>
-              <Link
-                href="/login"
-                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                className="block px-3 py-2 rounded-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Get Started
-              </Link>
+              
+              {isSignedIn ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <div className="px-3 py-2">
+                    <UserButton afterSignOutUrl="/" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="px-3 py-2">
+                    <SignInButton mode="modal">
+                      <button className="w-full text-left block rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
+                        Sign In
+                      </button>
+                    </SignInButton>
+                  </div>
+                  <div className="px-3 py-2">
+                    <SignUpButton mode="modal">
+                      <button className="w-full text-left block rounded-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-2">
+                        Get Started
+                      </button>
+                    </SignUpButton>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
