@@ -21,13 +21,6 @@ const LoginPage = () => {
             height={64}
             priority
           />
-          <h2 className="text-3xl font-bold text-white">Sign in to your account</h2>
-          <p className="mt-2 text-sm text-gray-400">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="font-medium text-blue-500 hover:text-blue-400">
-              Create one
-            </Link>
-          </p>
         </div>
 
         <div className="p-4">
@@ -43,22 +36,30 @@ const LoginPage = () => {
               },
               elements: {
                 formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md',
-                card: 'bg-transparent',
-                headerTitle: 'text-white',
+                card: 'bg-transparent shadow-none',
+                headerTitle: 'text-white text-3xl font-bold',
                 headerSubtitle: 'text-gray-400',
                 formFieldLabel: 'text-gray-300',
                 footerActionText: 'text-gray-400',
                 footerActionLink: 'text-blue-500 hover:text-blue-400',
                 dividerText: 'text-gray-400',
                 dividerLine: 'bg-gray-600',
-                formFieldInput: 'bg-gray-700 border border-gray-600 text-white rounded-md'
+                formFieldInput: 'bg-gray-700 border border-gray-600 text-white rounded-md',
+                alert: 'bg-red-500/10 border border-red-500/20 text-red-500',
+                formFieldError: 'text-red-500 text-sm'
               }
             }}
           />
         </div>
 
         <div className="mt-6">
-          <p className="text-center text-xs text-gray-400">
+          <p className="text-center text-sm text-gray-400">
+            Don&apos;t have an account?{" "}
+            <Link href="/register" className="font-medium text-blue-500 hover:text-blue-400">
+              Create one
+            </Link>
+          </p>
+          <p className="text-center text-xs text-gray-400 mt-4">
             By signing in, you agree to our{" "}
             <Link href="/terms" className="font-medium text-blue-500 hover:text-blue-400">
               Terms of Service

@@ -7,34 +7,32 @@
  * @module middleware
  */
 
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+
+const publicPaths = ['/', '/login', '/register', '/api/webhooks/clerk', '/auth/callback'];
+const isPublic = createRouteMatcher(publicPaths);
 
 /**
  * Route protection configuration using Clerk's middleware
  */
 export default clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
-  const path = req.nextUrl.pathname;
   
-  // Define public routes
-  const isPublicRoute = 
-    path === '/' || 
-    path === '/login' || 
-    path === '/register' || 
-    path === '/auth/callback' || 
-    path.startsWith('/api/webhooks/clerk');
-  
-  // If user is not authenticated and trying to access a protected route
-  if (!userId && !isPublicRoute) {
+  if (!userId && !isPublic(req)) {
     const redirectUrl = new URL('/login', req.url);
-    redirectUrl.searchParams.set('redirectTo', path);
-    return Response.redirect(redirectUrl);
+    redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname);
+    return NextResponse.redirect(redirectUrl);
   }
 
-  // If user is authenticated and trying to access login/register pages
-  if (userId && (path === '/login' || path === '/register')) {
-    return Response.redirect(new URL('/dashboard', req.url));
+  if (userId && (
+    req.nextUrl.pathname === '/login' || 
+    req.nextUrl.pathname === '/register'
+  )) {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
   }
+
+  return NextResponse.next();
 });
 
 /**
@@ -42,14 +40,7 @@ export default clerkMiddleware(async (auth, req) => {
  */
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     * - api/webhooks routes
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public/|api/webhooks/).*)',
+    "/((?!.+\\.[\\w]+$|_next).*)",
+    "/(api|trpc)(.*)"
   ],
 }; 
