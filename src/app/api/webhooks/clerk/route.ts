@@ -6,7 +6,6 @@
  */
 import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
-import { syncUserToProfile } from '@/lib/clerk';
 import { Webhook } from 'svix';
 import { supabaseAdmin } from '@/lib/supabase';
 
@@ -14,6 +13,18 @@ import { supabaseAdmin } from '@/lib/supabase';
  * Webhook secret for verifying Clerk webhook requests
  */
 const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
+
+type UserWebhookData = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email_addresses: Array<{ email_address: string }>;
+  image_url: string;
+  public_metadata: Record<string, unknown>;
+  private_metadata: Record<string, unknown>;
+  unsafe_metadata: Record<string, unknown>;
+  [key: string]: unknown;
+};
 
 /**
  * Log webhook event with structured data
@@ -82,29 +93,37 @@ export async function POST(request: Request) {
       return new Response('Invalid webhook signature', { status: 401 });
     }
 
-    const { id } = evt.data;
     const eventType = evt.type;
+
+    // Only process user events
+    if (!eventType.startsWith('user.')) {
+      console.log('Ignoring non-user event:', eventType);
+      return new Response('Not a user event', { status: 200 });
+    }
+
+    // Type assertion after validating it's a user event
+    const { id, ...attributes } = evt.data as unknown as UserWebhookData;
 
     if (!id) {
       console.error('Missing user ID in webhook data');
       return new Response('Missing user ID', { status: 400 });
     }
 
-    logWebhookEvent(eventType, id, evt.data);
+    console.log(`Processing ${eventType} for user ${id}`);
 
     try {
       switch (eventType) {
         case 'user.created':
         case 'user.updated': {
           const { 
+            email_addresses,
             first_name, 
             last_name, 
-            email_addresses, 
             image_url,
             public_metadata,
             private_metadata,
             unsafe_metadata 
-          } = evt.data;
+          } = attributes;
 
           if (!email_addresses?.length) {
             throw new Error('No email addresses provided');
@@ -130,7 +149,8 @@ export async function POST(request: Request) {
               },
               updated_at: new Date().toISOString(),
             }, {
-              onConflict: 'clerk_id'
+              onConflict: 'clerk_id',
+              ignoreDuplicates: false
             })
             .select()
             .single();
@@ -140,6 +160,7 @@ export async function POST(request: Request) {
             throw userError;
           }
 
+          console.log('Successfully synced user:', id);
           return new Response(JSON.stringify({ success: true, data: userData }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -160,6 +181,7 @@ export async function POST(request: Request) {
             throw error;
           }
 
+          console.log('Successfully marked user as deleted:', id);
           return new Response(JSON.stringify({ success: true }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -167,6 +189,7 @@ export async function POST(request: Request) {
         }
 
         default:
+          console.log('Ignoring event:', eventType);
           return new Response(`Unhandled webhook event: ${eventType}`, { status: 400 });
       }
     } catch (error) {

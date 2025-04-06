@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
+import { auth } from '@clerk/nextjs/server'
+
 // Validate environment variables
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
   throw new Error('Missing environment variable: NEXT_PUBLIC_SUPABASE_URL')
@@ -15,10 +17,21 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// Create a Supabase client for client-side usage
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Create a Supabase client for client-side usage with Clerk session
+export async function createClerkSupabaseClient() {
+  const session = await auth()
+  const supabaseAccessToken = await session?.getToken({ template: 'supabase' })
+  
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${supabaseAccessToken}`
+      }
+    }
+  })
+}
 
-// Create a Supabase admin client for server-side operations
+// Create a Supabase admin client for server-side operations (webhooks, etc)
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
@@ -26,12 +39,13 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   }
 })
 
-// Helper to get user profile
+// Helper to get user profile using Clerk session
 export async function getUserProfile(userId: string) {
+  const supabase = await createClerkSupabaseClient()
   const { data, error } = await supabase
-    .from('users')  // Changed from 'profiles' to 'users' to match our schema
+    .from('users')
     .select('*')
-    .eq('id', userId)
+    .eq('clerk_id', userId)
     .single()
 
   if (error) throw error
