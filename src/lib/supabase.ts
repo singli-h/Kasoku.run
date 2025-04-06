@@ -17,19 +17,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// Create a Supabase client for client-side usage with Clerk session
-export async function createClerkSupabaseClient() {
-  const session = await auth()
-  const supabaseAccessToken = await session?.getToken({ template: 'supabase' })
-  
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: {
-        Authorization: `Bearer ${supabaseAccessToken}`
-      }
-    }
-  })
-}
+// Create a basic Supabase client for client-side usage
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Create a Supabase admin client for server-side operations (webhooks, etc)
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
@@ -50,4 +39,18 @@ export async function getUserProfile(userId: string) {
 
   if (error) throw error
   return data
+}
+
+// Create a Supabase client for client-side usage with Clerk session
+export async function createClerkSupabaseClient() {
+  const session = await auth()
+  const supabaseAccessToken = await session?.getToken({ template: 'supabase' })
+  
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${supabaseAccessToken}`
+      }
+    }
+  })
 } 

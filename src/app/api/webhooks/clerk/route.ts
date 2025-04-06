@@ -7,7 +7,7 @@
 import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { Webhook } from 'svix';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-server';
 
 /**
  * Webhook secret for verifying Clerk webhook requests
