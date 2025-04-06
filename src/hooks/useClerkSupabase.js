@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "@clerk/nextjs";
+import { useSession, useUser } from "@clerk/nextjs";
 import { useMemo } from "react";
 import { createClientSideClerkSupabaseClient } from "@/lib/supabase";
 
@@ -14,6 +14,7 @@ import { createClientSideClerkSupabaseClient } from "@/lib/supabase";
  */
 export default function useClerkSupabase() {
   const { session } = useSession();
+  const { user } = useUser();
   
   // Create a Supabase client with Clerk authentication
   const supabase = useMemo(() => {
@@ -29,5 +30,28 @@ export default function useClerkSupabase() {
     return createClientSideClerkSupabaseClient(getToken);
   }, [session]);
   
-  return supabase;
+  // Helper to get the current user by clerk_id
+  const getCurrentUser = async () => {
+    if (!user?.id) return null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('clerk_id', user.id)
+        .single();
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+      return null;
+    }
+  };
+  
+  return {
+    supabase,
+    getCurrentUser,
+    clerkUserId: user?.id
+  };
 } 

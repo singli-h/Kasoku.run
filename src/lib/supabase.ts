@@ -89,6 +89,62 @@ export function createClientSideClerkSupabaseClient(getToken: () => Promise<stri
   })
 }
 
+/**
+ * Verifies that a user with the given Clerk ID exists in the users table
+ * and creates one if it doesn't exist
+ */
+export async function ensureUserExists(clerkId: string, userData: any) {
+  if (!supabaseAdmin) {
+    console.error('Service role key is not available for admin operations')
+    return null
+  }
+
+  try {
+    // Check if user exists
+    const { data: existingUser, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('clerk_id', clerkId)
+      .single()
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      // PGRST116 is "no rows returned" error, any other error is unexpected
+      console.error('Error checking for existing user:', fetchError)
+      return null
+    }
+
+    if (existingUser) {
+      return existingUser
+    }
+
+    // Create new user if doesn't exist
+    const { data: newUser, error: insertError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        clerk_id: clerkId,
+        email: userData.email,
+        username: userData.username || `user_${clerkId.substring(0, 8)}`,
+        name: userData.name,
+        avatar_url: userData.imageUrl,
+        timezone: userData.timezone || 'UTC',
+        subscription_status: 'free',
+        metadata: userData
+      })
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('Error creating new user:', insertError)
+      return null
+    }
+
+    return newUser
+  } catch (error) {
+    console.error('Error in ensureUserExists:', error)
+    return null
+  }
+}
+
 // Helper to get user profile
 export async function getUserProfile(userId: string) {
   const { data, error } = await supabase
