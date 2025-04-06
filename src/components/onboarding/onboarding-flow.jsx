@@ -10,7 +10,6 @@ import CoachDetailsStep from "./steps/coach-details-step"
 import SubscriptionStep from "./steps/subscription-step"
 import CompletionStep from "./steps/completion-step"
 import DashboardTourStep from "./steps/dashboard-tour-step"
-import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 
 export default function OnboardingFlow() {
@@ -60,43 +59,13 @@ export default function OnboardingFlow() {
 
   const handleComplete = async () => {
     try {
-      // In development mode with BYPASS_AUTH, skip profile update
-      if (process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true') {
-        router.push('/dashboard')
-        return
-      }
-
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No user found')
-
-      // Update profile with onboarding data
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          role: userData.role,
-          birthday: userData.birthday,
-          height: userData.height,
-          weight: userData.weight,
-          training_history: userData.trainingHistory,
-          sprint_goals: userData.sprintGoals,
-          team_name: userData.teamName,
-          sport_focus: userData.sportFocus,
-          subscription_tier: userData.subscription,
-          onboarding_completed: true,
-          updated_at: new Date().toISOString(),
-        })
-
-      if (profileError) throw profileError
-
+      // This will be updated to use Clerk for user data
+      console.log('Onboarding complete, user data:', userData)
+      
       // Redirect to dashboard
       router.push('/dashboard')
     } catch (error) {
-      console.error('Error saving profile:', error)
-      // You might want to show an error message to the user here
+      console.error('Error completing onboarding:', error)
     }
   }
 

@@ -1,27 +1,16 @@
 "use client"
 
-import { createContext, useState } from "react"
+import { createContext } from "react"
 
+// This context will be replaced with Clerk authentication
 export const AuthContext = createContext()
 
+// This provider will be replaced with ClerkProvider
 export function AuthProvider({ children }) {
-  const [username, setUsername] = useState("")
-  const [isLogin, setIsLogin] = useState(false) // initial value
-
-  const login = (username) => {
-    setUsername(username)
-
-    setIsLogin(true)
-  }
-
-  const logout = () => {
-    setUsername(null)
-
-    setIsLogin(false)
-  }
-
+  // Placeholder for Clerk authentication
+  // Will be removed once Clerk is implemented
   return (
-    <AuthContext.Provider value={{ isLogin, username, login, logout }}>
+    <AuthContext.Provider value={{}}>
       {children}
     </AuthContext.Provider>
   )

@@ -7,14 +7,14 @@
  * Features:
  * - Global CSS imports
  * - Font configuration (Inter from Google Fonts)
- * - Authentication context provider
+ * - Authentication context provider (will be replaced with Clerk)
  * - Responsive layout structure
  * - Conditional rendering of header or sidebar based on route
  */
 
 import "./css/style.css"
 import { Inter } from "next/font/google"
-import { AuthProvider } from "../context/authContext"
+import { AuthProvider } from "../context/authContext" // Will be replaced with ClerkProvider
 import dynamic from "next/dynamic"
 
 // Dynamically import the NavigationWrapper component to avoid SSR issues
@@ -71,7 +71,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="light">
       <body className={`${inter.variable} font-inter antialiased tracking-tight`} style={{ backgroundColor: 'var(--page-background)' }}>
-        {/* AuthProvider wraps the app to provide authentication context */}
+        {/* AuthProvider will be replaced with ClerkProvider */}
         <AuthProvider>
           {/* Main layout structure with flex column and minimum height */}
           <div className="flex flex-col min-h-screen overflow-hidden">

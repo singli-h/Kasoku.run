@@ -1,49 +1,11 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
+// This route will be refactored for Clerk authentication
 export async function GET(request: Request) {
+  // Placeholder for Clerk auth callback handling
+  console.log('Auth callback triggered - will be replaced with Clerk implementation')
+  
+  // Default redirect to dashboard
   const requestUrl = new URL(request.url)
-  const code = requestUrl.searchParams.get('code')
-  const redirectTo = requestUrl.searchParams.get('redirectTo') || '/dashboard'
-
-  console.log('Auth callback triggered', { code: !!code, url: request.url })
-
-  // In development with BYPASS_AUTH, redirect to dashboard
-  if (process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true') {
-    return NextResponse.redirect(new URL('/dashboard', requestUrl.origin))
-  }
-
-  if (code) {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    
-    // Exchange the code for a session
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-    
-    if (error) {
-      console.error('Error exchanging code for session:', error)
-      return NextResponse.redirect(new URL('/login?error=AuthError', requestUrl.origin))
-    }
-    
-    console.log('Session established successfully', { user: !!data.user })
-
-    // Check if user has completed onboarding
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('onboarding_completed')
-      .single()
-
-    // If onboarding not completed, redirect to onboarding
-    if (!profile?.onboarding_completed) {
-      return NextResponse.redirect(new URL('/onboarding', requestUrl.origin))
-    }
-  }
-
-  // Honor redirectTo if provided, otherwise go to dashboard
-  const finalRedirectUrl = redirectTo.startsWith('/') 
-    ? new URL(redirectTo, requestUrl.origin)
-    : new URL('/dashboard', requestUrl.origin)
-    
-  return NextResponse.redirect(finalRedirectUrl)
+  return NextResponse.redirect(new URL('/dashboard', requestUrl.origin))
 } 
