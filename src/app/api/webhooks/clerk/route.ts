@@ -26,7 +26,11 @@ function logWebhookEvent(eventType: string, userId: string, data: any, error?: a
     eventType,
     userId,
     data,
-    error,
+    error: error ? {
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    } : undefined,
   }));
 }
 
@@ -37,33 +41,36 @@ function logWebhookEvent(eventType: string, userId: string, data: any, error?: a
  */
 export async function POST(request: Request) {
   try {
-    // Verify webhook signature
+    // Verify environment variables
     if (!webhookSecret) {
-      throw new Error('Missing CLERK_WEBHOOK_SECRET');
+      console.error('Missing CLERK_WEBHOOK_SECRET');
+      return new Response('Configuration error', { status: 500 });
     }
 
-    if (!supabaseAdmin) {
-      throw new Error('Supabase admin client not available');
-    }
-
+    // Get and verify headers
     const headerPayload = headers();
     const svix_id = headerPayload.get('svix-id');
     const svix_timestamp = headerPayload.get('svix-timestamp');
     const svix_signature = headerPayload.get('svix-signature');
 
     if (!svix_id || !svix_timestamp || !svix_signature) {
-      return new Response('Missing svix headers', { status: 400 });
+      console.error('Missing Svix headers:', { svix_id, svix_timestamp, svix_signature });
+      return new Response('Missing webhook headers', { status: 400 });
     }
 
-    // Get the raw body
-    const payload = await request.json();
-    const body = JSON.stringify(payload);
+    // Get and verify body
+    let payload;
+    try {
+      payload = await request.json();
+    } catch (err) {
+      console.error('Error parsing webhook body:', err);
+      return new Response('Invalid webhook body', { status: 400 });
+    }
 
-    // Create a new Svix instance with your webhook secret
+    const body = JSON.stringify(payload);
     const wh = new Webhook(webhookSecret);
 
     let evt: WebhookEvent;
-
     try {
       evt = wh.verify(body, {
         'svix-id': svix_id,
@@ -71,16 +78,15 @@ export async function POST(request: Request) {
         'svix-signature': svix_signature,
       }) as WebhookEvent;
     } catch (err) {
-      logWebhookEvent('verification_failed', 'unknown', payload, err);
-      return new Response('Error verifying webhook', { status: 400 });
+      console.error('Webhook verification failed:', err);
+      return new Response('Invalid webhook signature', { status: 401 });
     }
 
-    // Handle the webhook
     const { id } = evt.data;
     const eventType = evt.type;
 
     if (!id) {
-      logWebhookEvent('missing_user_id', 'unknown', evt.data);
+      console.error('Missing user ID in webhook data');
       return new Response('Missing user ID', { status: 400 });
     }
 
@@ -90,7 +96,6 @@ export async function POST(request: Request) {
       switch (eventType) {
         case 'user.created':
         case 'user.updated': {
-          // Extract user data from the webhook payload
           const { 
             first_name, 
             last_name, 
@@ -101,8 +106,7 @@ export async function POST(request: Request) {
             unsafe_metadata 
           } = evt.data;
 
-          // Validate email
-          if (!email_addresses || email_addresses.length === 0) {
+          if (!email_addresses?.length) {
             throw new Error('No email addresses provided');
           }
 
@@ -111,23 +115,38 @@ export async function POST(request: Request) {
             throw new Error('Invalid primary email');
           }
 
-          // Sync user data to our database
-          await syncUserToProfile(id, {
-            firstName: first_name,
-            lastName: last_name,
-            email: primaryEmail,
-            imageUrl: image_url,
-            metadata: {
-              public: public_metadata,
-              private: private_metadata,
-              unsafe: unsafe_metadata
-            }
+          // Create or update user in Supabase
+          const { data: userData, error: userError } = await supabaseAdmin
+            .from('users')
+            .upsert({
+              clerk_id: id,
+              email: primaryEmail,
+              name: [first_name, last_name].filter(Boolean).join(' '),
+              avatar_url: image_url,
+              metadata: {
+                public: public_metadata,
+                private: private_metadata,
+                unsafe: unsafe_metadata
+              },
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'clerk_id'
+            })
+            .select()
+            .single();
+
+          if (userError) {
+            console.error('Error upserting user:', userError);
+            throw userError;
+          }
+
+          return new Response(JSON.stringify({ success: true, data: userData }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
           });
-          break;
         }
 
         case 'user.deleted': {
-          // For user deletion, we'll soft delete by updating the user
           const { error } = await supabaseAdmin
             .from('users')
             .update({ 
@@ -136,23 +155,33 @@ export async function POST(request: Request) {
             })
             .eq('clerk_id', id);
 
-          if (error) throw error;
-          break;
+          if (error) {
+            console.error('Error soft-deleting user:', error);
+            throw error;
+          }
+
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
         }
 
         default:
-          logWebhookEvent('unhandled_event', id, evt.data);
-          // Don't throw error for unhandled events
-          break;
+          return new Response(`Unhandled webhook event: ${eventType}`, { status: 400 });
       }
-      
-      return new Response('Webhook processed successfully', { status: 200 });
     } catch (error) {
-      logWebhookEvent('processing_error', id, evt.data, error);
-      return new Response('Error processing webhook', { status: 500 });
+      console.error(`Error processing ${eventType}:`, error);
+      return new Response(JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        eventType,
+        userId: id
+      }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   } catch (error) {
-    logWebhookEvent('unexpected_error', 'unknown', null, error);
-    return new Response('Error processing webhook', { status: 500 });
+    console.error('Unexpected webhook error:', error);
+    return new Response('Internal server error', { status: 500 });
   }
 } 
