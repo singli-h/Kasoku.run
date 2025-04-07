@@ -1,3 +1,72 @@
+# Running Website Monorepo
+
+This monorepo contains both the Next.js frontend application and the Supabase Edge Functions for the Running Website project.
+
+## Structure
+
+```
+/
+├── apps/
+│   ├── web/             # Next.js frontend application
+│   │   ├── src/
+│   │   ├── public/
+│   │   ├── package.json
+│   │   └── ...
+│   │
+│   └── edge-functions/  # Supabase Edge Functions
+│       ├── supabase/
+│       │   └── functions/
+│       └── ...
+│
+├── package.json        # Root package.json for managing workspaces
+└── README.md
+```
+
+## Development
+
+### Frontend (Next.js)
+
+```bash
+# Run the development server
+npm run dev:web
+
+# Build for production
+npm run build:web
+
+# Start the production server
+npm run start:web
+
+# Run linting
+npm run lint:web
+```
+
+### Edge Functions (Supabase)
+
+```bash
+# Deploy edge functions
+# First, update the project reference in the root package.json
+npm run deploy:edge
+
+# Or, navigate to the edge-functions directory and deploy directly
+cd apps/edge-functions
+npx supabase functions deploy --project-ref YOUR_PROJECT_REF
+```
+
+## Deployment
+
+### Frontend (Next.js)
+
+The web app is configured to deploy to Vercel. In your Vercel project settings, set the "Root Directory" to `apps/web`.
+
+### Edge Functions (Supabase)
+
+Edge functions are deployed directly to Supabase using the Supabase CLI.
+
+## Environment Variables
+
+- For frontend environment variables, update `.env.local` in the `apps/web` directory
+- For edge functions, configure environment variables in the Supabase dashboard
+
 # Runner Tracker
 v0.4
 1. UI for planning Periodization
