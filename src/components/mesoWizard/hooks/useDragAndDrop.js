@@ -11,7 +11,7 @@ export const useDragAndDrop = (setFormData, setSessionSections) => {
   /**
    * Handle section drag end
    * 
-   * @param {Object} result - Drag result from react-beautiful-dnd
+   * @param {Object} result - Drag result from @dnd-kit
    * @param {number} sessionId - Current session ID
    * @param {Array} activeSections - Current active sections
    */
@@ -35,7 +35,7 @@ export const useDragAndDrop = (setFormData, setSessionSections) => {
   /**
    * Handle exercise drag end
    * 
-   * @param {Object} result - Drag result from react-beautiful-dnd
+   * @param {Object} result - Drag result from @dnd-kit
    * @param {number} sessionId - Current session ID
    */
   const handleExerciseDragEnd = useCallback((result, sessionId) => {
