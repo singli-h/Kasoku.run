@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
-import { usePathname } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import useOnboardingStatus from "@/hooks/useOnboardingStatus";
+import { useAuth } from "@clerk/nextjs";
 
 // Dynamically import components to avoid SSR issues
 const Header = dynamic(() => import("./header"), { ssr: false });
@@ -18,6 +20,8 @@ const Sidebar = dynamic(() => import("./sidebar"), { ssr: false });
  */
 const NavigationWrapper = ({ children }) => {
   const pathname = usePathname();
+  const router = useRouter();
+  const { isSignedIn, isLoaded } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
   // Define routes that should use the header
@@ -35,6 +39,18 @@ const NavigationWrapper = ({ children }) => {
   const shouldHaveNoNav = noNavRoutes.some(route => 
     pathname === route || pathname.startsWith(`${route}/`)
   );
+
+  // Check if onboarding is completed
+  // Only check for routes that need authentication and aren't already part of the onboarding flow
+  const shouldCheckOnboarding = isSignedIn && 
+    !shouldHaveNoNav && 
+    !pathname.startsWith('/onboarding');
+
+  useOnboardingStatus({
+    redirect: shouldCheckOnboarding,
+    redirectTo: '/onboarding',
+    requireOnboarding: shouldCheckOnboarding
+  });
   
   // Handle sidebar collapse state
   const handleSidebarCollapse = (collapsed) => {

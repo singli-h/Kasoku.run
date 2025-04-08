@@ -19,9 +19,11 @@ import Image from "next/image"
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
 import Button from "../ui/button"
+import { useAuth } from "@clerk/nextjs"
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { isSignedIn } = useAuth()
 
   return (
     <header className="fixed w-full top-0 left-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
@@ -55,21 +57,31 @@ const Header = () => {
 
           {/* Authentication buttons */}
           <div className="hidden md:flex items-center gap-4">
-            <Link href="/login">
-              <Button 
-                variant="outline" 
-                className="px-4 py-2"
-              >
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button 
-                className="px-4 py-2"
-              >
-                Get Started
-              </Button>
-            </Link>
+            {isSignedIn ? (
+              <Link href="/planner">
+                <Button className="px-4 py-2">
+                  Go to Planner
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button 
+                    variant="outline" 
+                    className="px-4 py-2"
+                  >
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/register">
+                  <Button 
+                    className="px-4 py-2"
+                  >
+                    Get Started
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -113,20 +125,33 @@ const Header = () => {
               >
                 About
               </Link>
-              <Link
-                href="/login"
-                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                className="block px-3 py-2 rounded-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Get Started
-              </Link>
+              
+              {isSignedIn ? (
+                <Link
+                  href="/planner"
+                  className="block px-3 py-2 rounded-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Go to Planner
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}

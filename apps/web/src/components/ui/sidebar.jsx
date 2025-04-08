@@ -16,6 +16,7 @@ import {
   LogOut
 } from "lucide-react";
 import Image from "next/image";
+import { useClerk, useUser } from "@clerk/nextjs";
 
 /**
  * Sidebar Component
@@ -30,6 +31,8 @@ const Sidebar = ({ onCollapse }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
   const pathname = usePathname();
+  const { signOut } = useClerk();
+  const { user } = useUser();
   
   // Detect if we're on mobile or desktop
   useEffect(() => {
@@ -161,6 +164,11 @@ const Sidebar = ({ onCollapse }) => {
     setIsCollapsed(!isCollapsed);
   };
   
+  // Handle logout
+  const handleLogout = () => {
+    signOut();
+  };
+  
   // Determine if sidebar should be shown
   const sidebarVisible = isOpen || !isMobile;
   
@@ -287,7 +295,7 @@ const Sidebar = ({ onCollapse }) => {
             {!isCollapsed && (
               <div className="mb-4 px-4">
                 <p className="text-sm text-gray-400">Logged in as</p>
-                <p className="font-medium text-white">User Name</p>
+                <p className="font-medium text-white">{user?.fullName || 'User'}</p>
               </div>
             )}
             
@@ -306,9 +314,9 @@ const Sidebar = ({ onCollapse }) => {
               </motion.span>
             </Link>
             
-            <Link
-              href="/login"
-              className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} space-x-3 px-4 py-3 mt-2 rounded-lg transition-all duration-200 text-gray-300 hover:bg-red-600 hover:text-white`}
+            <button
+              onClick={handleLogout}
+              className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} w-full space-x-3 px-4 py-3 mt-2 rounded-lg transition-all duration-200 text-gray-300 hover:bg-red-600 hover:text-white`}
             >
               <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
                 <LogOut className="w-5 h-5" />
@@ -319,7 +327,7 @@ const Sidebar = ({ onCollapse }) => {
               >
                 Logout
               </motion.span>
-            </Link>
+            </button>
           </div>
         </div>
       </motion.aside>

@@ -89,6 +89,7 @@ export default function OnboardingFlow() {
         team_name: userData.teamName,
         sport_focus: userData.sportFocus,
         subscription_status: userData.subscription,
+        onboarding_completed: true,
         metadata: {
           firstName: userData.firstName,
           lastName: userData.lastName,
@@ -110,8 +111,8 @@ export default function OnboardingFlow() {
         throw new Error(errorData.error || 'Failed to complete onboarding')
       }
 
-      // Redirect to dashboard
-      router.push('/dashboard')
+      // Redirect to dashboard after successful onboarding
+      router.push('/planner')
     } catch (error) {
       console.error('Error saving user data:', error)
       // You might want to show an error message to the user here

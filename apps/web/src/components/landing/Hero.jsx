@@ -4,8 +4,12 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Button from '../ui/button'
 import { ArrowRight, Sparkles } from 'lucide-react'
+import { useAuth } from '@clerk/nextjs'
+import Link from 'next/link'
 
 export default function Hero() {
+  const { isSignedIn } = useAuth()
+
   return (
     <section className="relative overflow-hidden">
       {/* Animated background elements */}
@@ -35,10 +39,21 @@ export default function Hero() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button className="gap-2 group">
-                Start Free Trial
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              {isSignedIn ? (
+                <Link href="/planner">
+                  <Button className="gap-2 group">
+                    Go to Planner
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/register">
+                  <Button className="gap-2 group">
+                    Start Free Trial
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
+              )}
               <Button variant="outline" className="gap-2">
                 <Sparkles className="h-4 w-4" />
                 See Features
