@@ -1,0 +1,621 @@
+import { serve } from "https://deno.land/std@0.188.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+};
+
+// Toggle for authentication (default is enabled)
+const AUTH_ENABLED = false;
+
+// Helper function to create Supabase client
+const createSupabaseClient = (req: Request) => {
+  return createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    {
+      global: {
+        headers: { Authorization: req.headers.get("Authorization")! },
+      },
+    },
+  );
+};
+
+// Helper function to handle errors
+const handleError = (error: any) => {
+  console.error(error);
+  return new Response(JSON.stringify({ error: error.message }), {
+    status: 400,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+};
+
+// Helper function to extract table name and parameters from URL
+const extractPathParams = (url: string) => {
+  const taskPattern = new URLPattern({ pathname: "/api/:table/:id?" });
+  const matchingPath = taskPattern.exec(url);
+  const table = matchingPath?.pathname.groups.table;
+  const id = matchingPath?.pathname.groups.id;
+  const queryParams = new URLSearchParams(new URL(url).search);
+  const params = Object.fromEntries(queryParams.entries());
+  return { table, id, params };
+};
+
+// GET /api/:table/:id - Get one item by ID
+const getItem = async (supabase: any, table: string, id: string) => {
+  const { data, error } = await supabase.from(table).select("*").eq("id", id);
+  if (error) {
+    return handleError(error);
+  }
+  return new Response(JSON.stringify({ [table.slice(0, -1)]: data[0] }), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+};
+
+// GET /api/:table - Get all items
+const getAllItems = async (supabase: any, table: string, params: Record<string, string>) => {
+  let query = supabase.from(table).select("*");
+  for (const [key, value] of Object.entries(params)) {
+    query = query.eq(key, value);
+  }
+  const { data, error } = await query;
+  if (error) {
+    return handleError(error);
+  }
+  return new Response(JSON.stringify({ [table]: data }), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+};
+
+// POST /api/:table - Create new item(s)
+const createItem = async (supabase: any, table: string, req: Request) => {
+  try {
+    const newItems = await req.json(); 
+
+    // Handle both single object and array of objects
+    const itemsToInsert = Array.isArray(newItems) ? newItems : [newItems]; 
+
+    const { data, error } = await supabase.from(table).insert(itemsToInsert).select();
+    if (error) {
+      return handleError(error);
+    }
+
+    return new Response(JSON.stringify({ [table.slice(0, -1)]: data }), {
+      status: 201,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    return handleError(error); // Handle potential JSON parsing errors
+  }
+};
+
+// PUT /api/:table - Update existing item(s)
+const updateItem = async (supabase: any, table: string, req: Request) => {
+  try {
+    const updatedItems = await req.json();
+
+    // Handle both single object and array of objects
+    const itemsToUpdate = Array.isArray(updatedItems) ? updatedItems : [updatedItems];
+
+    //Using upsert for efficient batch update/insert
+    //Update records if they have an id matching an existing record.
+    //Insert records if the id is missing or doesn't match any record.
+    const { data, error } = await supabase.from(table).upsert(itemsToUpdate, { onConflict: 'id' }).select();
+
+    if (error) {
+      return handleError(error);
+    }
+
+    return new Response(JSON.stringify({ [table.slice(0, -1)]: data }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+// DELETE /api/:table/:id - Delete an item
+const deleteItem = async (supabase: any, table: string, id: string) => {
+  const { error } = await supabase.from(table).delete().eq("id", id);
+  if (error) {
+    return handleError(error);
+  }
+  return new Response(null, { status: 204, headers: corsHeaders });
+};
+
+/**
+ * POST /api/dashboard/exercisesDetail
+ *
+ * Creates exercise preset details for a given training session group.
+ * 1) Validates the input.
+ * 2) Checks if the session belongs to the given athleteId.
+ * 3) Ensures no existing details for that session (should not happen).
+ * 4) Inserts all new details in a single call (all or nothing).
+ */
+export const postExercisesDetail = async (
+  supabase: any,
+  url: URL,
+  athleteId: number | string
+): Promise<Response> => {
+  try {
+    // 1) Parse and validate request body
+    const body = await parseRequestBody(url);
+    const { exercise_training_session_id, exercisesDetail } = body;
+
+    if (
+      !exercise_training_session_id ||
+      !Array.isArray(exercisesDetail) ||
+      exercisesDetail.length === 0
+    ) {
+      throw new Error("Invalid request data. Please provide a session ID and a non-empty array of exercisesDetail.");
+    }
+
+    // 2) Check if the training session belongs to the athlete
+    const { data: session, error: sessionError } = await supabase
+      .from("exercise_training_session")
+      .select("id, athlete_id")
+      .eq("id", exercise_training_session_id)
+      .single();
+
+    if (sessionError) throw sessionError;
+    if (!session) {
+      throw new Error("Training session not found.");
+    }
+    if (session.athlete_id !== athleteId) {
+      throw new Error("Not authorized to access this training session.");
+    }
+
+    // 3) Check if there are already details for this session
+    const { data: existingDetails, error: existingError } = await supabase
+      .from("exercise_preset_details")
+      .select("id")
+      .eq("exercise_training_session_id", exercise_training_session_id);
+
+    if (existingError) throw existingError;
+    if (existingDetails.length > 0) {
+      throw new Error("Exercise details already exist for this session (unexpected).");
+    }
+
+    // 4) Insert new details (all or nothing)
+    // Make sure each detail references the correct exercise_training_session_id
+    const detailsToInsert = exercisesDetail.map((detail: any) => ({
+      ...detail,
+      exercise_training_session_id,
+    }));
+
+    const { data: insertedData, error: insertError } = await supabase
+      .from("exercise_preset_details")
+      .insert(detailsToInsert);
+
+    if (insertError) throw insertError;
+
+    // Return success
+    return new Response(
+      JSON.stringify({ success: true, data: insertedData }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  } catch (error: any) {
+    return handleError(error);
+  }
+};
+
+/**
+ * PUT /api/dashboard/exercisesDetail
+ *
+ * Updates exercise preset details for a given training session group.
+ * 1) Validates the input.
+ * 2) Checks if the session belongs to the given athleteId.
+ * 3) Ensures each provided detail ID exists and belongs to the session.
+ * 4) Performs an upsert or update in one call (all or nothing).
+ */
+export const putExercisesDetail = async (
+  supabase: any,
+  url: URL,
+  athleteId: number | string
+): Promise<Response> => {
+  try {
+    // 1) Parse and validate request body
+    const body = await parseRequestBody(url);
+    const { exercise_training_session_id, exercisesDetail } = body;
+
+    if (
+      !exercise_training_session_id ||
+      !Array.isArray(exercisesDetail) ||
+      exercisesDetail.length === 0
+    ) {
+      throw new Error("Invalid request data. Please provide a session ID and a non-empty array of exercisesDetail.");
+    }
+
+    // 2) Check if the training session belongs to the athlete
+    const { data: session, error: sessionError } = await supabase
+      .from("exercise_training_session")
+      .select("id, athlete_id")
+      .eq("id", exercise_training_session_id)
+      .single();
+
+    if (sessionError) throw sessionError;
+    if (!session) {
+      throw new Error("Training session not found.");
+    }
+    if (session.athlete_id !== athleteId) {
+      throw new Error("Not authorized to access this training session.");
+    }
+
+    // 3) Verify that each detail ID is valid and belongs to this session
+    const detailIds = exercisesDetail
+      .map((detail: any) => detail.id)
+      .filter((id: any) => !!id);
+
+    if (detailIds.length !== exercisesDetail.length) {
+      throw new Error("One or more exercise details are missing an ID, which should not happen in PUT.");
+    }
+
+    // Check if those detail IDs exist in the DB for this session
+    const { data: existingDetails, error: existingError } = await supabase
+      .from("exercise_preset_details")
+      .select("id")
+      .in("id", detailIds)
+      .eq("exercise_training_session_id", exercise_training_session_id);
+
+    if (existingError) throw existingError;
+    if (existingDetails.length !== detailIds.length) {
+      throw new Error("Some provided exercise details do not exist in this session (unexpected).");
+    }
+
+    // 4) Update details (all or nothing). Using upsert with onConflict on "id" can simplify the operation:
+    const detailsToUpdate = exercisesDetail.map((detail: any) => ({
+      ...detail,
+      exercise_training_session_id,
+    }));
+
+    //Strictly updates exsisted rows:
+    const { data: updatedData, error: updateError } = await supabase
+      .from("exercise_preset_details")
+      .update(detailsToUpdate)
+      .in("id", detailIds);
+      
+    // Alternatively, if you want to create for non existing rows:
+    // .upsert(detailsToUpdate, { onConflict: "id" }); 
+
+    if (updateError) throw updateError;
+
+    // Return success
+    return new Response(
+      JSON.stringify({ success: true, data: updatedData }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  } catch (error: any) {
+    return handleError(error);
+  }
+};
+
+
+/**
+ * GET /api/dashboard/exercisesInit
+ *
+ * This function initializes the dashboard by:
+ * - Checking if the athlete has a training session today.
+ * - Retrieving all exercises, preset groups, and training sessions for the athlete.
+ */
+export const getExercisesInit = async (
+  supabase: any,
+  url: URL,
+  athleteId: number | string,
+  athleteGroupId: number | string,
+  timezone: string
+): Promise<Response> => {
+  // 1) Compute the date range for "the last 7 days"
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0]; // "YYYY-MM-DD"
+
+  // 2) Check for the latest ongoing (unfinished) session
+  // There's some issue including exercise_presets_groups here, so excluded
+  const { data: ongoingSessions, error: ongoingError } = await supabase
+  .from("exercise_training_sessions")
+  .select(`
+    *,
+    exercise_preset_groups (
+      *,
+      exercise_presets (
+        *,
+        exercises (*),
+        exercise_training_details (*)
+      )
+    )
+  `)
+  .eq("athlete_id", athleteId)
+  .eq("status", "ongoing")
+  .order("date_time", { ascending: false })
+  .limit(1);
+
+
+
+  if (ongoingError) {
+    throw new Error(ongoingError.message);
+  }
+  if (ongoingSessions && ongoingSessions.length > 0) {
+    return new Response(
+      JSON.stringify({
+        status: "success",
+        data: {
+          session: {
+            type: "ongoing",
+            details: ongoingSessions[0],
+          },
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          timezone: timezone,
+        },
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // 3) Check for today's assigned session using the provided timezone
+  // The goal here is to provide exercise_preset_details for FE to Post create exercise_preset_details
+  const localNowStr = new Date().toLocaleString("en-US", { timeZone: timezone });
+  const localNow = new Date(localNowStr); // "now" in the user's local time
+  const localYear = localNow.getFullYear();
+  const localMonth = localNow.getMonth(); // 0-based index
+  const localDay = localNow.getDate();
+  const startOfDayLocal = new Date(localYear, localMonth, localDay, 0, 0, 0, 0);
+  const endOfDayLocal = new Date(localYear, localMonth, localDay, 23, 59, 59, 999);
+  const startOfDayISO = startOfDayLocal.toISOString();
+  const endOfDayISO = endOfDayLocal.toISOString();
+
+  const { data: todaysSessions, error: todaysError } = await supabase
+    .from("exercise_training_sessions")
+    .select(`
+      *,
+      exercise_preset_groups (
+        *,
+        exercise_presets (
+          *,
+          exercises (*),
+          exercise_preset_details (*)
+        )
+      )
+    `)
+    .eq("athlete_id", athleteId)
+    .gte("date_time", startOfDayISO)
+    .lte("date_time", endOfDayISO)
+    .limit(1);
+
+  if (todaysError) {
+    throw new Error(todaysError.message);
+  }
+  if (todaysSessions && todaysSessions.length > 0) {
+    return new Response(
+      JSON.stringify({
+        status: "success",
+        data: {
+          session: {
+            type: "assigned",
+            details: todaysSessions[0],
+          },
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          timezone: timezone,
+        },
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // 4) If no ongoing or today's session, get the latest completed session from the last 7 days
+  const { data: completedSessions, error: completedError } = await supabase
+    .from("exercise_training_sessions")
+    .select(`
+      *,
+      exercise_preset_groups (
+        *,
+        exercise_presets (
+          *,
+          exercises (*),
+          exercise_training_details (*)
+        )
+      )
+    `)
+    .eq("athlete_id", athleteId)
+    .eq("status", "completed")
+    .gte("date_time", sevenDaysAgoStr)
+    .order("date_time", { ascending: false })
+    .limit(1);
+
+  if (completedError) {
+    throw new Error(completedError.message);
+  }
+  if (completedSessions && completedSessions.length > 0) {
+    return new Response(
+      JSON.stringify({
+        status: "success",
+        data: {
+          session: {
+            type: "completed",
+            details: completedSessions[0],
+          },
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          timezone: timezone,
+        },
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // 5) If no session is found at all, return a consistent response with null values.
+  return new Response(
+    JSON.stringify({
+      status: "success",
+      data: {
+        session: {
+          type: null,
+          details: null,
+        },
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        timezone: timezone,
+      },
+    }),
+    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+};
+/**
+ * Response Schema
+{
+  "status": "success",
+  "data": {
+    "session": {
+      "type": "ongoing" | "assigned" | "completed" | null,
+      "details": { 
+        exercise_training_sessions(
+          *,
+          exercise_preset_groups (
+            *,
+            exercise_presets (
+              *,
+              exercises (*),
+              exercise_training_details (*)
+            )
+          )
+        )
+      } | null
+    }
+  },
+  "metadata": {
+    "timestamp": "ISO8601 timestamp",
+    "timezone": "provided timezone"
+  }
+} 
+
+*/
+
+
+
+/**
+ * Main request handler
+ *
+ * This function routes the incoming GET request to the corresponding handler
+ * based on the request pathname.
+ */
+Deno.serve(async (req) => {
+  const { url, method } = req;
+  const parsedUrl = new URL(url); // Parse the URL
+  const pathname = parsedUrl.pathname; // Extract the pathname
+   // Handle CORS preflight
+   if (method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+     
+    if(AUTH_ENABLED){
+      // -------------------------
+      // Authentication section
+      // -------------------------
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: "Missing Authorization header" }),
+          { status: 401, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Extract the token
+      const token = authHeader.replace("Bearer ", "");
+      // Use an anon client to verify the token
+      const supabaseAuthClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const { data: authData, error: authError } = await supabaseAuthClient.auth.getUser(token);
+      if (authError || !authData.user) {
+        return new Response(
+          JSON.stringify({ error: "Invalid or expired token" }),
+          { status: 401, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      const userId = authData.user.id;
+    }
+    
+    const userId = 1;
+    const timezone = "Europe/London";
+
+    // Create a Supabase client (service role or secure client) for subsequent queries
+    const supabase = createSupabaseClient(req);
+    // -------------------------
+    // Routing section
+    // -------------------------
+    // Handle custom dashboard endpoints
+    if (pathname.includes("/api/dashboard")) {
+      // Retrieve the athlete record using the authenticated user id.
+      const { data: athleteData, error: athleteError } = await supabase
+        .from("athletes")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (athleteError || !athleteData) {
+        return new Response(
+          JSON.stringify({ error: "Athlete not found" }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      const athleteId = athleteData.id;
+      const athleteGroupId = athleteData.athlete_group_id
+
+      if (pathname === "/api/dashboard/exercisesInit") {
+        if (method !== "GET") {
+          return new Response(`${method} Method not allowed for dashboard`, { status: 405 });
+        }
+        // Pass the parsedUrl and athleteId to the handler
+        return await getExercisesInit(supabase, parsedUrl, athleteId, athleteGroupId, timezone);
+      }
+
+      if (pathname === "/api/dashboard/exercisesDetail") {
+        if(method == "Post"){
+          return await postExercisesDetail(supabase, parsedUrl, athleteId)
+        }
+        if(method == "Put"){
+          return await putExercisesDetail(supabase, parsedUrl, athleteId)
+        }
+        //No other method allowed
+        return new Response(`${method} Method not allowed for dashboard`, { status: 405 });
+      }
+    }
+
+    // Handle generic /api/dashboard/:table endpoints
+    const { table, id, params } = extractPathParams(url);
+    if (!table) {
+      return new Response(`Table Not Found`, { status: 404 });
+    }
+
+    switch (method) {
+      case "GET":
+        return id
+          ? await getItem(supabase, table, id)
+          : await getAllItems(supabase, table, params);
+      case "POST":
+        return await createItem(supabase, table, req);
+      case "PUT":
+        return await updateItem(supabase, table, req);
+      default:
+        return new Response("Method not allowed", { status: 405 });
+    }
+  } catch (error: any) {
+    return handleError(error);
+  }
+});
