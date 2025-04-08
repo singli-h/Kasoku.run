@@ -19,7 +19,6 @@ This monorepo contains both the Next.js frontend application and the Supabase Ed
 │       └── ...
 │
 ├── package.json        # Root package.json for managing workspaces
-├── vercel.json         # Vercel deployment configuration
 └── README.md
 ```
 
@@ -57,22 +56,7 @@ npx supabase functions deploy --project-ref YOUR_PROJECT_REF
 
 ### Frontend (Next.js)
 
-The web app is configured to deploy to Vercel using the monorepo structure. 
-
-#### Vercel Deployment Instructions
-
-1. In your Vercel project settings:
-   - Set the "Root Directory" to `apps/web`
-   - Make sure "Include files outside the Root Directory in the Build Step" is **disabled**
-   - Vercel will use the configuration in `vercel.json` at the root of the repo
-
-2. If you encounter SWC compiler issues, the following dependencies have been added to `apps/web/package.json`:
-   ```
-   "@next/swc-linux-x64-gnu": "13.5.9",
-   "@next/swc-linux-x64-musl": "13.5.9"
-   ```
-
-3. The `.npmrc` file in `apps/web` contains settings to disable workspace detection in the web app directory.
+The web app is configured to deploy to Vercel. In your Vercel project settings, set the "Root Directory" to `apps/web`.
 
 ### Edge Functions (Supabase)
 

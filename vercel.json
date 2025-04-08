@@ -1,6 +1,7 @@
 {
-  "outputDirectory": "apps/web/.next",
-  "buildCommand": "cd apps/web && npm install && npm run build",
-  "installCommand": "echo 'Skipping root install'",
-  "framework": "nextjs"
+  "version": 2,
+  "buildCommand": "npm run vercel-build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": "apps/web/.next"
 } 
