@@ -18,8 +18,27 @@ const isProtectedRoute = createRouteMatcher([
   '/onboarding(.*)'
 ]);
 
+// This array contains public routes and paths that should be accessible without authentication
+const publicRoutes = [
+  '/',
+  '/login(.*)',
+  '/register(.*)',
+  '/auth(.*)',
+  '/api(.*)',
+  '/login/sso-callback(.*)'
+];
+
 // Configure the Clerk middleware
 export default clerkMiddleware(async (auth, req) => {
+  // Allow public routes to bypass authentication
+  const isPublicRoute = publicRoutes.some(pattern => {
+    return new RegExp(`^${pattern.replace(/\*$/, '.*')}$`).test(req.url);
+  });
+
+  if (isPublicRoute) {
+    return;
+  }
+
   // Protect routes that match the isProtectedRoute pattern
   if (isProtectedRoute(req)) {
     await auth.protect();
@@ -31,10 +50,5 @@ export default clerkMiddleware(async (auth, req) => {
  * Specifies which routes should be processed by the middleware
  */
 export const config = {
-  matcher: [
-    // Skip Next.js internals and all static files
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always process API routes
-    '/(api|trpc)(.*)',
-  ],
+  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
 }; 
