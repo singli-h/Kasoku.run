@@ -1,7 +1,6 @@
 {
   "name": "running-website-monorepo",
   "private": true,
-  "packageManager": "npm@10.5.2",
   "workspaces": [
     "apps/*"
   ],
@@ -11,14 +10,13 @@
     "lint": "turbo run lint",
     "dev:web": "turbo run dev --filter=web",
     "build:web": "turbo run build --filter=web",
-    "lint:web": "turbo run lint --filter=web",
-    "deploy:edge": "cd apps/edge-functions && npx supabase functions deploy --project-ref YOUR_PROJECT_REF",
-    "vercel-build": "turbo run build --filter=web"
+    "lint:web": "turbo run lint --filter=web"
   },
   "engines": {
     "node": ">=18.17.0"
   },
   "devDependencies": {
     "turbo": "latest"
-  }
+  },
+  "packageManager": "npm@10.5.2"
 }
