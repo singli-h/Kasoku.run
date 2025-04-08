@@ -10,15 +10,18 @@ import CoachDetailsStep from "./steps/coach-details-step"
 import SubscriptionStep from "./steps/subscription-step"
 import CompletionStep from "./steps/completion-step"
 import DashboardTourStep from "./steps/dashboard-tour-step"
-import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
+import { useAuth, useUser } from "@clerk/nextjs"
 
 export default function OnboardingFlow() {
   const router = useRouter()
+  const { userId } = useAuth()
+  const { user } = useUser()
+  
   const [userData, setUserData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
+    firstName: user?.firstName || "",
+    lastName: user?.lastName || "",
+    email: user?.primaryEmailAddress?.emailAddress || "",
     role: "",
     profilePicture: null,
     birthday: "",
@@ -66,36 +69,51 @@ export default function OnboardingFlow() {
         return
       }
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No user found')
+      // Get current user from Clerk
+      if (!userId) {
+        throw new Error('No user found')
+      }
 
-      // Update profile with onboarding data
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          role: userData.role,
-          birthday: userData.birthday,
-          height: userData.height,
-          weight: userData.weight,
-          training_history: userData.trainingHistory,
-          sprint_goals: userData.sprintGoals,
-          team_name: userData.teamName,
-          sport_focus: userData.sportFocus,
-          subscription_tier: userData.subscription,
-          onboarding_completed: true,
-          updated_at: new Date().toISOString(),
-        })
+      // Prepare user data for the API
+      const userDataForApi = {
+        clerk_id: userId,
+        username: userData.firstName.toLowerCase() + (userData.lastName ? userData.lastName.charAt(0).toLowerCase() : ''),
+        email: userData.email,
+        name: `${userData.firstName} ${userData.lastName}`,
+        role: userData.role,
+        birthday: userData.birthday,
+        height: userData.height,
+        weight: userData.weight,
+        training_history: userData.trainingHistory,
+        sprint_goals: userData.sprintGoals,
+        team_name: userData.teamName,
+        sport_focus: userData.sportFocus,
+        subscription_status: userData.subscription,
+        metadata: {
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          role: userData.role
+        },
+      }
 
-      if (profileError) throw profileError
+      // Send data to the onboarding API endpoint
+      const response = await fetch('/api/onboarding/user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userDataForApi),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to complete onboarding')
+      }
 
       // Redirect to dashboard
       router.push('/dashboard')
     } catch (error) {
-      console.error('Error saving profile:', error)
+      console.error('Error saving user data:', error)
       // You might want to show an error message to the user here
     }
   }

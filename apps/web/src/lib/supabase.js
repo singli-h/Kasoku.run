@@ -1,11 +1,17 @@
 /**
  * Supabase Client with Clerk JWT Integration
  * 
- * This module provides a function to create a Supabase client that uses
- * Clerk's JWT tokens for authentication with Supabase.
+ * This module provides functions to create Supabase clients that can be used
+ * with Clerk's JWT tokens for authentication or anonymously.
  */
 
 import { createClient } from '@supabase/supabase-js';
+
+// Create a default anonymous Supabase client
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 /**
  * Creates a Supabase client with Clerk JWT authentication

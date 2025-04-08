@@ -22,7 +22,7 @@ const isProtectedRoute = createRouteMatcher([
 export default clerkMiddleware(async (auth, req) => {
   // Protect routes that match the isProtectedRoute pattern
   if (isProtectedRoute(req)) {
-    return auth().protect();
+    await auth.protect();
   }
 });
 

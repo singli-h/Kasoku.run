@@ -2,11 +2,12 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@clerk/nextjs'
 import OnboardingFlow from '@/components/onboarding/onboarding-flow'
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const { isLoaded, userId, isSignedIn } = useAuth()
 
   useEffect(() => {
     // Skip auth check if BYPASS_AUTH is true
@@ -14,15 +15,11 @@ export default function OnboardingPage() {
       return
     }
 
-    // Check if user is authenticated
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/login')
-      }
+    // Check if user is authenticated with Clerk
+    if (isLoaded && !isSignedIn) {
+      router.push('/login')
     }
-    checkAuth()
-  }, [router])
+  }, [isLoaded, isSignedIn, router])
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">

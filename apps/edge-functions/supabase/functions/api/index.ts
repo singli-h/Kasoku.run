@@ -507,7 +507,130 @@ export const getExercisesInit = async (
 
 */
 
+/**
+ * POST /api/onboarding/user
+ *
+ * Handles user onboarding by creating or updating a user in the 'users' table with data from Clerk.
+ * 1) Validates the input data
+ * 2) Upserts user data into the users table with the clerk_id
+ * 3) Returns success or error
+ */
+export const postOnboardingUser = async (
+  supabase: any,
+  url: URL,
+  req: Request
+): Promise<Response> => {
+  try {
+    // Parse and validate request body
+    const userData = await req.json();
+    
+    // Extract necessary fields from userData
+    const {
+      clerk_id,
+      username,
+      email,
+      name,
+      role,
+      birthday,
+      height,
+      weight,
+      training_history,
+      sprint_goals,
+      team_name,
+      sport_focus,
+      subscription_status,
+      metadata
+    } = userData;
 
+    // Validate required fields
+    if (!clerk_id || !email) {
+      throw new Error("Missing required fields: clerk_id and email are required");
+    }
+
+    // Insert or update user in users table
+    const { data, error } = await supabase
+      .from('users')
+      .upsert({
+        clerk_id,
+        username,
+        email,
+        name,
+        role,
+        birthday,
+        height,
+        weight,
+        training_history: training_history,
+        sprint_goals,
+        team_name,
+        sport_focus,
+        subscription_status,
+        onboarding_completed: true,
+        updated_at: new Date().toISOString(),
+        metadata
+      })
+      .select();
+
+    if (error) throw error;
+
+    // Create athlete record if role is athlete
+    if (role === 'athlete') {
+      // Get the user ID first from the users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('clerk_id', clerk_id)
+        .single();
+        
+      if (userError) throw userError;
+      
+      // Create athlete record with user ID
+      const { error: athleteError } = await supabase
+        .from('athletes')
+        .upsert({
+          user_id: userData.id,
+          // Add additional athlete-specific fields here if needed
+        });
+        
+      if (athleteError) throw athleteError;
+    }
+
+    // Similar logic for coach role if needed
+    if (role === 'coach') {
+      // Get the user ID first from the users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('clerk_id', clerk_id)
+        .single();
+        
+      if (userError) throw userError;
+      
+      // Create coach record with user ID
+      const { error: coachError } = await supabase
+        .from('coaches')
+        .upsert({
+          user_id: userData.id,
+          // Add additional coach-specific fields here if needed
+        });
+        
+      if (coachError) throw coachError;
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: data || {},
+        message: "User onboarding completed successfully"
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
+    );
+  } catch (error: any) {
+    return handleError(error);
+  }
+};
 
 /**
  * Main request handler
@@ -595,6 +718,14 @@ Deno.serve(async (req) => {
         //No other method allowed
         return new Response(`${method} Method not allowed for dashboard`, { status: 405 });
       }
+    }
+
+    // Handle onboarding endpoints
+    if (pathname === "/api/onboarding/user") {
+      if (method !== "POST") {
+        return new Response(`${method} Method not allowed for onboarding`, { status: 405 });
+      }
+      return await postOnboardingUser(supabase, parsedUrl, req);
     }
 
     // Handle generic /api/dashboard/:table endpoints
