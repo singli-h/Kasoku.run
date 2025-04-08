@@ -16,7 +16,7 @@ const LoginPage = () => {
         />
       </div>
       
-      <SignIn
+      <SignIn 
         appearance={{
           layout: {
             logoPlacement: "none",
