@@ -104,3 +104,24 @@ v0.1
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
 
+## Monorepo with Turborepo
+
+This project is set up as a monorepo using [Turborepo](https://turbo.build/), which provides build optimizations and caching.
+
+### Available Commands
+
+- `npm run dev` - Run development servers for all apps
+- `npm run dev:web` - Run development server for just the web app
+- `npm run build` - Build all apps
+- `npm run build:web` - Build just the web app
+- `npm run lint` - Lint all apps
+
+### Deployment
+
+The web app is configured to deploy to Vercel. The deployment is set up to:
+
+1. Only build the web app (not the entire monorepo)
+2. Take advantage of Turborepo's caching for faster builds
+
+The deployment configuration is in the `vercel.json` file.
+
