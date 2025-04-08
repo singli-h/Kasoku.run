@@ -9,6 +9,7 @@
     "build:web": "cd apps/web && npm run build",
     "start:web": "cd apps/web && npm run start",
     "lint:web": "cd apps/web && npm run lint",
-    "deploy:edge": "cd apps/edge-functions && npx supabase functions deploy --project-ref YOUR_PROJECT_REF"
+    "deploy:edge": "cd apps/edge-functions && npx supabase functions deploy --project-ref YOUR_PROJECT_REF",
+    "vercel-build": "cd apps/web && npm install && npm run build"
   }
 }
