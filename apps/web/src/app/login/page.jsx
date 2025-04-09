@@ -79,7 +79,10 @@ const LoginPage = () => {
             socialButtonsVariant: "iconButton",
           }
         }}
-        redirectUrl="/login"
+        redirectUrl="/auth/session"
+        routing="path"
+        path="/login"
+        signUpUrl="/register"
       />
     </div>
   )

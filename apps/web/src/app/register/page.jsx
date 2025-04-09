@@ -55,7 +55,10 @@ const RegisterPage = () => {
             socialButtonsVariant: "iconButton",
           }
         }}
-        redirectUrl="/onboarding"
+        redirectUrl="/auth/session"
+        routing="path"
+        path="/register"
+        signInUrl="/login"
       />
     </div>
   )

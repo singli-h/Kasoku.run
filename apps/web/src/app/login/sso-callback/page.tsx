@@ -15,10 +15,9 @@ export default function SSOCallback() {
     // Don't do anything until Clerk is loaded
     if (!isLoaded) return;
 
-    // If user is already signed in, redirect them based on onboarding status
+    // If user is already signed in, redirect them to the session handler
     if (isSignedIn) {
-      // Check onboarding status to determine where to redirect
-      checkOnboardingStatus();
+      router.push('/auth/session');
       return;
     }
 
@@ -37,34 +36,11 @@ export default function SSOCallback() {
         // Complete the sign-in process by activating the created session
         await setActive({ session: createdSessionId });
         
-        // Check onboarding status to determine where to redirect
-        checkOnboardingStatus();
+        // Redirect to the session handler to check onboarding status
+        router.push('/auth/session');
       } catch (error) {
         console.error("Error processing SSO callback:", error);
         router.push("/login");
-      }
-    }
-
-    async function checkOnboardingStatus() {
-      try {
-        // Get user's onboarding status
-        const response = await fetch('/api/user-status');
-        if (!response.ok) {
-          throw new Error('Failed to fetch user status');
-        }
-        
-        const data = await response.json();
-        
-        // Redirect based on onboarding status
-        if (data.onboardingCompleted) {
-          router.push('/planner');
-        } else {
-          router.push('/onboarding');
-        }
-      } catch (error) {
-        console.error('Error checking onboarding status:', error);
-        // Default to onboarding on error
-        router.push('/onboarding');
       }
     }
 

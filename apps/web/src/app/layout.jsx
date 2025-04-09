@@ -72,7 +72,13 @@ export default function RootLayout({ children }) {
     <html lang="en" className="light">
       <body className={`${inter.variable} font-inter antialiased tracking-tight`} style={{ backgroundColor: 'var(--page-background)' }}>
         {/* ClerkProvider wraps the app to provide authentication */}
-        <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
+        <ClerkProvider
+          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+          signInUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL}
+          signUpUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL}
+          afterSignInUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL}
+          afterSignUpUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL}
+        >
           {/* Main layout structure with flex column and minimum height */}
           <div className="flex flex-col min-h-screen overflow-hidden">
             {/* Client-side navigation component to conditionally render header or sidebar */}
