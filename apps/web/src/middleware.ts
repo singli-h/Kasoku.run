@@ -62,35 +62,24 @@ export default clerkMiddleware(async (auth, req) => {
     const isProtectedRoute = protectedRoutes.some(route => url.pathname.startsWith(route))
     if (userId && isProtectedRoute) {
       try {
-        // Create Supabase admin client URLs
-        const supabaseAdminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const supabaseAdminKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-        if (!supabaseAdminUrl || !supabaseAdminKey) {
-          console.error('Missing Supabase admin credentials')
-          return NextResponse.next()
-        }
-
-        // Fetch onboarding status
-        const response = await fetch(
-          `${supabaseAdminUrl}/rest/v1/users?clerk_id=eq.${userId}&select=onboarding_completed`,
-          {
-            headers: {
-              'apikey': supabaseAdminKey,
-              'Authorization': `Bearer ${supabaseAdminKey}`
-            }
+        // Use the API endpoint instead of calling Supabase directly
+        const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/user-status`
+        const response = await fetch(apiUrl, {
+          headers: {
+            'Authorization': `Bearer ${req.headers.get('Authorization') || ''}`,
+            'Content-Type': 'application/json'
           }
-        )
+        })
 
         if (!response.ok) {
           console.error('Failed to fetch user status')
           return NextResponse.next()
         }
 
-        const [user] = await response.json()
+        const data = await response.json()
 
         // If onboarding is not completed, redirect to onboarding
-        if (!user?.onboarding_completed) {
+        if (!data.onboardingCompleted) {
           const onboardingUrl = new URL('/onboarding', req.url)
           return NextResponse.redirect(onboardingUrl)
         }
@@ -105,33 +94,24 @@ export default clerkMiddleware(async (auth, req) => {
     const isOnboardingRoute = onboardingRoutes.some(route => url.pathname.startsWith(route))
     if (userId && isOnboardingRoute) {
       try {
-        const supabaseAdminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const supabaseAdminKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-        if (!supabaseAdminUrl || !supabaseAdminKey) {
-          console.error('Missing Supabase admin credentials')
-          return NextResponse.next()
-        }
-
-        const response = await fetch(
-          `${supabaseAdminUrl}/rest/v1/users?clerk_id=eq.${userId}&select=onboarding_completed`,
-          {
-            headers: {
-              'apikey': supabaseAdminKey,
-              'Authorization': `Bearer ${supabaseAdminKey}`
-            }
+        // Use the API endpoint instead of calling Supabase directly
+        const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/user-status`
+        const response = await fetch(apiUrl, {
+          headers: {
+            'Authorization': `Bearer ${req.headers.get('Authorization') || ''}`,
+            'Content-Type': 'application/json'
           }
-        )
+        })
 
         if (!response.ok) {
           console.error('Failed to fetch user status')
           return NextResponse.next()
         }
 
-        const [user] = await response.json()
+        const data = await response.json()
 
         // If onboarding is completed, redirect to planner
-        if (user?.onboarding_completed) {
+        if (data.onboardingCompleted) {
           const plannerUrl = new URL('/planner', req.url)
           return NextResponse.redirect(plannerUrl)
         }
