@@ -3,8 +3,27 @@
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { CheckCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export default function CompletionStep({ onComplete }) {
+  const router = useRouter()
+
+  const handleComplete = async () => {
+    try {
+      // Call the onComplete callback first and wait for it to finish
+      if (onComplete) {
+        await onComplete()
+      }
+      
+      // Force a hard reload to clear any cached states
+      window.location.href = '/planner'
+    } catch (error) {
+      console.error('Error completing onboarding:', error)
+      // Show error to user
+      alert('Error completing onboarding. Please try again.')
+    }
+  }
+
   return (
     <div className="text-center space-y-6">
       <motion.div
@@ -55,7 +74,7 @@ export default function CompletionStep({ onComplete }) {
         className="pt-4 flex justify-center"
       >
         <Button
-          onClick={onComplete}
+          onClick={handleComplete}
           className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20 px-8 py-3"
         >
           Go to Dashboard
