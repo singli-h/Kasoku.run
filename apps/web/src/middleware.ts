@@ -7,8 +7,8 @@
  * @module middleware
  */
 
-import { clerkMiddleware, getAuth } from "@clerk/nextjs/server"
-import { NextResponse, NextRequest } from "next/server"
+import { clerkMiddleware } from "@clerk/nextjs/server"
+import { NextResponse } from "next/server"
 
 // Define protected routes that require authentication
 const protectedRoutes = [
@@ -35,16 +35,16 @@ const publicRoutes = [
   '/api'
 ]
 
-// Use middleware directly instead of clerkMiddleware wrapper
-export default async function middleware(req: NextRequest) {
-  // Get auth information from Clerk
-  const { userId } = getAuth(req)
-  
+// Use clerkMiddleware wrapper
+export default clerkMiddleware(async (auth, req) => {
   try {
     // Handle public routes
     const url = new URL(req.url)
     const isPublicRoute = publicRoutes.some(route => url.pathname.startsWith(route))
     if (isPublicRoute) return NextResponse.next()
+
+    // Check if user is authenticated
+    const { userId } = await auth()
 
     // If user is not signed in and trying to access protected route, redirect to sign in
     if (!userId) {
@@ -149,12 +149,19 @@ export default async function middleware(req: NextRequest) {
     const signInUrl = new URL('/login', req.url)
     return NextResponse.redirect(signInUrl)
   }
-}
+}, {
+  debug: process.env.NODE_ENV === 'development' // Enable debug mode in development
+})
 
 /**
  * Route protection configuration
  * Specifies which routes should be processed by the middleware
  */
 export const config = {
-  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)']
+  matcher: [
+    // Skip Next.js internals and all static files
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)'
+  ]
 } 
