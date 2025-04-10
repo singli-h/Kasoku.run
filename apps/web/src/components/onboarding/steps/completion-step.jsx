@@ -4,12 +4,19 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { CheckCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { Loader2 } from "lucide-react"
 
 export default function CompletionStep({ onComplete }) {
   const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState(null)
 
   const handleComplete = async () => {
     try {
+      setIsSubmitting(true)
+      setError(null)
+      
       // Call the onComplete callback first and wait for it to finish
       if (onComplete) {
         await onComplete()
@@ -19,8 +26,9 @@ export default function CompletionStep({ onComplete }) {
       window.location.href = '/planner'
     } catch (error) {
       console.error('Error completing onboarding:', error)
-      // Show error to user
-      alert('Error completing onboarding. Please try again.')
+      setError('Failed to complete onboarding. Please try again.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -67,6 +75,16 @@ export default function CompletionStep({ onComplete }) {
         </ul>
       </motion.div>
 
+      {error && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-red-500 text-sm"
+        >
+          {error}
+        </motion.div>
+      )}
+
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -75,9 +93,17 @@ export default function CompletionStep({ onComplete }) {
       >
         <Button
           onClick={handleComplete}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20 px-8 py-3"
+          disabled={isSubmitting}
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20 px-8 py-3 relative"
         >
-          Go to Dashboard
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Go to Dashboard'
+          )}
         </Button>
       </motion.div>
     </div>
