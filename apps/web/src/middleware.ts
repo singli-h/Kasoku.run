@@ -7,9 +7,8 @@
  * @module middleware
  */
 
-import { clerkMiddleware } from "@clerk/nextjs/server"
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { clerkMiddleware, getAuth } from "@clerk/nextjs/server"
+import { NextResponse, NextRequest } from "next/server"
 
 // Define protected routes that require authentication
 const protectedRoutes = [
@@ -36,15 +35,19 @@ const publicRoutes = [
   '/api'
 ]
 
-export default clerkMiddleware(async (auth, req) => {
+// Use middleware directly instead of clerkMiddleware wrapper
+export default async function middleware(req: NextRequest) {
+  // Get auth information from Clerk
+  const { userId } = getAuth(req)
+  
   try {
     // Handle public routes
     const url = new URL(req.url)
     const isPublicRoute = publicRoutes.some(route => url.pathname.startsWith(route))
-    if (isPublicRoute) return
+    if (isPublicRoute) return NextResponse.next()
 
     // If user is not signed in and trying to access protected route, redirect to sign in
-    if (!auth.userId) {
+    if (!userId) {
       const isProtectedRoute = protectedRoutes.some(route => url.pathname.startsWith(route))
       const isOnboardingRoute = onboardingRoutes.some(route => url.pathname.startsWith(route))
       
@@ -52,12 +55,12 @@ export default clerkMiddleware(async (auth, req) => {
         const signInUrl = new URL('/login', req.url)
         return NextResponse.redirect(signInUrl)
       }
-      return
+      return NextResponse.next()
     }
 
     // For signed in users, check onboarding status for protected routes
     const isProtectedRoute = protectedRoutes.some(route => url.pathname.startsWith(route))
-    if (auth.userId && isProtectedRoute) {
+    if (userId && isProtectedRoute) {
       try {
         // Create Supabase admin client URLs
         const supabaseAdminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -65,12 +68,12 @@ export default clerkMiddleware(async (auth, req) => {
 
         if (!supabaseAdminUrl || !supabaseAdminKey) {
           console.error('Missing Supabase admin credentials')
-          return
+          return NextResponse.next()
         }
 
         // Fetch onboarding status
         const response = await fetch(
-          `${supabaseAdminUrl}/rest/v1/users?clerk_id=eq.${auth.userId}&select=onboarding_completed`,
+          `${supabaseAdminUrl}/rest/v1/users?clerk_id=eq.${userId}&select=onboarding_completed`,
           {
             headers: {
               'apikey': supabaseAdminKey,
@@ -81,7 +84,7 @@ export default clerkMiddleware(async (auth, req) => {
 
         if (!response.ok) {
           console.error('Failed to fetch user status')
-          return
+          return NextResponse.next()
         }
 
         const [user] = await response.json()
@@ -94,24 +97,24 @@ export default clerkMiddleware(async (auth, req) => {
       } catch (error) {
         console.error('Error checking onboarding status:', error)
         // On error, allow access to continue
-        return
+        return NextResponse.next()
       }
     }
 
     // Handle users trying to access onboarding after completion
     const isOnboardingRoute = onboardingRoutes.some(route => url.pathname.startsWith(route))
-    if (auth.userId && isOnboardingRoute) {
+    if (userId && isOnboardingRoute) {
       try {
         const supabaseAdminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
         const supabaseAdminKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
         if (!supabaseAdminUrl || !supabaseAdminKey) {
           console.error('Missing Supabase admin credentials')
-          return
+          return NextResponse.next()
         }
 
         const response = await fetch(
-          `${supabaseAdminUrl}/rest/v1/users?clerk_id=eq.${auth.userId}&select=onboarding_completed`,
+          `${supabaseAdminUrl}/rest/v1/users?clerk_id=eq.${userId}&select=onboarding_completed`,
           {
             headers: {
               'apikey': supabaseAdminKey,
@@ -122,7 +125,7 @@ export default clerkMiddleware(async (auth, req) => {
 
         if (!response.ok) {
           console.error('Failed to fetch user status')
-          return
+          return NextResponse.next()
         }
 
         const [user] = await response.json()
@@ -135,19 +138,18 @@ export default clerkMiddleware(async (auth, req) => {
       } catch (error) {
         console.error('Error checking onboarding status:', error)
         // On error, allow access to continue
-        return
+        return NextResponse.next()
       }
     }
 
-    // Protect the route
-    await auth.protect()
+    return NextResponse.next()
   } catch (error) {
     console.error('Middleware error:', error)
     // On error, redirect to login
     const signInUrl = new URL('/login', req.url)
     return NextResponse.redirect(signInUrl)
   }
-})
+}
 
 /**
  * Route protection configuration
