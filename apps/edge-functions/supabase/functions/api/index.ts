@@ -637,6 +637,88 @@ export const postOnboardingUser = async (
 };
 
 /**
+ * Creates the events table and seeds it with initial data if it doesn't exist
+ */
+export const createAndSeedEventsTable = async (
+  supabase: any
+): Promise<boolean> => {
+  try {
+    console.log("Checking if events table needs to be created...");
+    
+    // Create events table if it doesn't exist
+    const { error: createError } = await supabase.rpc('create_events_table_if_not_exists');
+    if (createError) {
+      // Table might already exist or we don't have rpc access
+      // Let's try a direct approach to seed the table if it exists
+      console.log("Using direct approach to seed events table...");
+    }
+    
+    // Check if the table is empty
+    const { data: eventCount, error: countError } = await supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true });
+      
+    if (countError) {
+      console.error("Error checking events count:", countError);
+      return false;
+    }
+    
+    // If there are already events, don't seed
+    if (eventCount && eventCount.length > 0) {
+      console.log("Events table already has data");
+      return true;
+    }
+    
+    console.log("Seeding events table with initial data...");
+    
+    // Sample track and field events data
+    const eventsData = [
+      // Track events
+      { name: '100m', category: 'track', description: '100 meters sprint' },
+      { name: '200m', category: 'track', description: '200 meters sprint' },
+      { name: '400m', category: 'track', description: '400 meters sprint' },
+      { name: '800m', category: 'track', description: '800 meters middle distance' },
+      { name: '1500m', category: 'track', description: '1500 meters middle distance' },
+      { name: '5000m', category: 'track', description: '5000 meters long distance' },
+      { name: '10000m', category: 'track', description: '10000 meters long distance' },
+      { name: '110m Hurdles', category: 'track', description: '110 meters hurdles' },
+      { name: '400m Hurdles', category: 'track', description: '400 meters hurdles' },
+      { name: '3000m Steeplechase', category: 'track', description: '3000 meters steeplechase' },
+      
+      // Field events
+      { name: 'High Jump', category: 'field', description: 'High jump field event' },
+      { name: 'Pole Vault', category: 'field', description: 'Pole vault field event' },
+      { name: 'Long Jump', category: 'field', description: 'Long jump field event' },
+      { name: 'Triple Jump', category: 'field', description: 'Triple jump field event' },
+      { name: 'Shot Put', category: 'field', description: 'Shot put throwing event' },
+      { name: 'Discus Throw', category: 'field', description: 'Discus throw field event' },
+      { name: 'Hammer Throw', category: 'field', description: 'Hammer throw field event' },
+      { name: 'Javelin Throw', category: 'field', description: 'Javelin throw field event' },
+      
+      // Combined events
+      { name: 'Decathlon', category: 'combined', description: '10 combined events for men' },
+      { name: 'Heptathlon', category: 'combined', description: '7 combined events for women' }
+    ];
+    
+    // Insert sample data
+    const { error: insertError } = await supabase
+      .from('events')
+      .insert(eventsData);
+      
+    if (insertError) {
+      console.error("Error seeding events table:", insertError);
+      return false;
+    }
+    
+    console.log("Events table seeded successfully");
+    return true;
+  } catch (error) {
+    console.error("Error creating/seeding events table:", error);
+    return false;
+  }
+};
+
+/**
  * GET /api/events
  *
  * Fetches all track and field events from the database
@@ -646,17 +728,41 @@ export const getEvents = async (
   supabase: any
 ): Promise<Response> => {
   try {
+    console.log("Fetching events from database...");
+    
+    // Try to create and seed the events table if needed
+    await createAndSeedEventsTable(supabase);
+    
     // Fetch all events from the events table
     const { data: events, error } = await supabase
       .from("events")
       .select("*")
       .order("name");
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching events:", error);
+      throw error;
+    }
+    
+    console.log(`Found ${events?.length || 0} events`);
+    
+    if (!events || events.length === 0) {
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { track: [], field: [], combined: [] },
+          message: "No events found"
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
+    }
 
     // Group events by category
     const groupedEvents = events.reduce((acc: any, event: any) => {
-      const category = event.category.toLowerCase();
+      const category = event.category?.toLowerCase() || "track";
       if (!acc[category]) {
         acc[category] = [];
       }
@@ -675,6 +781,7 @@ export const getEvents = async (
       }
     );
   } catch (error: any) {
+    console.error("Error in getEvents:", error);
     return handleError(error);
   }
 };
@@ -730,7 +837,26 @@ Deno.serve(async (req) => {
     // -------------------------
     // Routing section
     // -------------------------
-    // Handle custom dashboard endpoints
+    // Handle events endpoint - place this before other routes
+    if (pathname === "/api/events") {
+      if (method !== "GET") {
+        return new Response(`${method} Method not allowed for events endpoint`, { 
+          status: 405,
+          headers: corsHeaders
+        });
+      }
+      return await getEvents(supabase);
+    }
+    
+    // Handle onboarding endpoints
+    if (pathname === "/api/onboarding/user") {
+      if (method !== "POST") {
+        return new Response(`${method} Method not allowed for onboarding`, { status: 405 });
+      }
+      return await postOnboardingUser(supabase, parsedUrl, req);
+    }
+    
+    // Handle dashboard endpoints
     if (pathname.includes("/api/dashboard")) {
       // Retrieve the athlete record using the authenticated user id.
       const { data: athleteData, error: athleteError } = await supabase
@@ -765,22 +891,6 @@ Deno.serve(async (req) => {
         //No other method allowed
         return new Response(`${method} Method not allowed for dashboard`, { status: 405 });
       }
-    }
-
-    // Handle onboarding endpoints
-    if (pathname === "/api/onboarding/user") {
-      if (method !== "POST") {
-        return new Response(`${method} Method not allowed for onboarding`, { status: 405 });
-      }
-      return await postOnboardingUser(supabase, parsedUrl, req);
-    }
-
-    // Handle events endpoint
-    if (pathname === "/api/events") {
-      if (method !== "GET") {
-        return new Response(`${method} Method not allowed for events endpoint`, { status: 405 });
-      }
-      return await getEvents(supabase);
     }
 
     // Handle generic /api/dashboard/:table endpoints

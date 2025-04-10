@@ -21,14 +21,35 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
   useEffect(() => {
     const fetchEvents = async () => {
       try {
+        setLoading(true)
         const response = await fetch("/api/events")
+        
         if (!response.ok) {
-          throw new Error("Failed to fetch events")
+          let errorMessage = "Failed to fetch events"
+          try {
+            const errorData = await response.json()
+            if (errorData.error) {
+              errorMessage = errorData.error
+            }
+          } catch (e) {
+            // JSON parsing failed, use default message
+          }
+          console.error(`Error ${response.status}: ${errorMessage}`)
+          // Continue with empty events rather than showing an error
+          setEvents({ track: [], field: [], combined: [] })
+          return
         }
+        
         const data = await response.json()
-        setEvents(data.data || { track: [], field: [], combined: [] })
+        if (data.data) {
+          setEvents(data.data)
+        } else {
+          console.error("Unexpected response format:", data)
+          setEvents({ track: [], field: [], combined: [] })
+        }
       } catch (error) {
         console.error("Error fetching events:", error)
+        setEvents({ track: [], field: [], combined: [] })
       } finally {
         setLoading(false)
       }
