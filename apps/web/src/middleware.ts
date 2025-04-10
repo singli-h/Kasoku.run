@@ -25,9 +25,9 @@ const publicRoutes = [
   '/register(.*)',
   '/auth/session(.*)',
   '/auth/callback(.*)',
+  '/auth/sso-callback(.*)',
   '/auth(.*)',
   '/api(.*)',
-  '/login/sso-callback(.*)'
 ];
 
 // Configure the Clerk middleware
