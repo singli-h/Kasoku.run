@@ -76,23 +76,41 @@ Deno.serve(async (req) => {
     // Now `evt` contains the verified webhook payload
     const { type, data } = evt
 
+    // Log the webhook event
+    const { error: logError } = await supabase
+      .from('webhook_logs')
+      .insert({
+        event_type: type,
+        payload: evt
+      })
+
+    if (logError) {
+      console.error('Error logging webhook:', logError)
+      // Continue processing even if logging fails
+    }
+
     // Handle different event types
     switch (type) {
       case 'user.created': {
         // Handle user created event
-        const { id, email_addresses, first_name, last_name, created_at } = data
+        const { id, email_addresses, first_name, last_name, username, created_at } = data
         const primaryEmail = email_addresses.find(email => email.id === data.primary_email_address_id)?.email_address
 
-        // Insert user into the Supabase profiles table
+        // Insert user into the Supabase users table
         const { error } = await supabase
-          .from('profiles')
+          .from('users')
           .insert({
-            id: id, // Using Clerk ID as the user ID
-            email: primaryEmail,
-            first_name,
-            last_name,
-            created_at,
             clerk_id: id,
+            email: primaryEmail,
+            name: `${first_name || ''} ${last_name || ''}`.trim(),
+            username: username || (first_name ? first_name.toLowerCase() : ''),
+            timezone: 'UTC', // Default timezone
+            subscription_status: 'free', // Default subscription status
+            avatar_url: data.image_url,
+            metadata: {
+              first_name,
+              last_name
+            }
           })
 
         if (error) {
@@ -110,17 +128,22 @@ Deno.serve(async (req) => {
       }
       case 'user.updated': {
         // Handle user updated event
-        const { id, email_addresses, first_name, last_name } = data
+        const { id, email_addresses, first_name, last_name, username } = data
         const primaryEmail = email_addresses.find(email => email.id === data.primary_email_address_id)?.email_address
 
-        // Update user in the Supabase profiles table
+        // Update user in the Supabase users table
         const { error } = await supabase
-          .from('profiles')
+          .from('users')
           .update({
             email: primaryEmail,
-            first_name,
-            last_name,
+            name: `${first_name || ''} ${last_name || ''}`.trim(),
+            username: username || (first_name ? first_name.toLowerCase() : ''),
+            avatar_url: data.image_url,
             updated_at: new Date().toISOString(),
+            metadata: {
+              first_name,
+              last_name
+            }
           })
           .eq('clerk_id', id)
 
@@ -141,15 +164,9 @@ Deno.serve(async (req) => {
         // Handle user deleted event
         const { id } = data
 
-        // Option 1: Delete the user from the Supabase profiles table
-        // const { error } = await supabase
-        //   .from('profiles')
-        //   .delete()
-        //   .eq('clerk_id', id)
-        
-        // Option 2: Soft delete the user (recommended)
+        // Soft delete the user by setting deleted_at
         const { error } = await supabase
-          .from('profiles')
+          .from('users')
           .update({
             deleted_at: new Date().toISOString(),
           })

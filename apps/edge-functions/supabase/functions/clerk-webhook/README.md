@@ -6,7 +6,7 @@ This Supabase Edge Function provides an endpoint for handling webhooks from Cler
 
 - Securely validates webhook signatures using the Svix library
 - Handles user.created, user.updated, and user.deleted events
-- Syncs data to the profiles table in your Supabase database
+- Syncs data to the users table in your Supabase database
 - Uses soft deletion for user.deleted events
 
 ## Environment Variables
@@ -46,3 +46,18 @@ You can test the webhook by triggering user events in Clerk:
 Your application does not need to directly interact with this webhook handler. It runs automatically in response to Clerk user events.
 
 To query user data from your application, use the `@clerk/nextjs` SDK along with the Supabase client configured with Clerk JWT authentication. 
+
+## Data Synchronization
+
+The webhook handler synchronizes the following data to the users table:
+
+- clerk_id: Clerk's user ID
+- email: User's primary email address
+- name: Combined first and last name
+- username: User's username or lowercase first name
+- timezone: Default 'UTC'
+- subscription_status: Default 'free'
+- avatar_url: User's profile image URL
+- metadata: Additional user data (first_name, last_name)
+- deleted_at: Timestamp for soft deletion
+- updated_at: Last update timestamp 
