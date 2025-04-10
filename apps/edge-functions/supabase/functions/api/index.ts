@@ -529,16 +529,18 @@ export const postOnboardingUser = async (
       clerk_id,
       username,
       email,
-      name,
+      first_name,
+      last_name,
       role,
       birthday,
       height,
       weight,
       training_history,
-      sprint_goals,
+      training_goals,
       team_name,
       sport_focus,
       subscription_status,
+      events,
       metadata
     } = userData;
 
@@ -554,13 +556,14 @@ export const postOnboardingUser = async (
         clerk_id,
         username,
         email,
-        name,
+        first_name,
+        last_name,
         role,
         birthday,
         height,
         weight,
         training_history: training_history,
-        sprint_goals,
+        training_goals,
         team_name,
         sport_focus,
         subscription_status,
@@ -583,11 +586,12 @@ export const postOnboardingUser = async (
         
       if (userError) throw userError;
       
-      // Create athlete record with user ID
+      // Create athlete record with user ID and events
       const { error: athleteError } = await supabase
         .from('athletes')
         .upsert({
           user_id: userData.id,
+          events: events || [], // Store selected events
           // Add additional athlete-specific fields here if needed
         });
         
@@ -621,6 +625,49 @@ export const postOnboardingUser = async (
         success: true,
         data: data || {},
         message: "User onboarding completed successfully"
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
+    );
+  } catch (error: any) {
+    return handleError(error);
+  }
+};
+
+/**
+ * GET /api/events
+ *
+ * Fetches all track and field events from the database
+ * Groups events by their category: track, field, combined
+ */
+export const getEvents = async (
+  supabase: any
+): Promise<Response> => {
+  try {
+    // Fetch all events from the events table
+    const { data: events, error } = await supabase
+      .from("events")
+      .select("*")
+      .order("name");
+
+    if (error) throw error;
+
+    // Group events by category
+    const groupedEvents = events.reduce((acc: any, event: any) => {
+      const category = event.category.toLowerCase();
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(event);
+      return acc;
+    }, { track: [], field: [], combined: [] });
+
+    return new Response(
+      JSON.stringify({
+        status: "success",
+        data: groupedEvents
       }),
       {
         status: 200,
@@ -726,6 +773,14 @@ Deno.serve(async (req) => {
         return new Response(`${method} Method not allowed for onboarding`, { status: 405 });
       }
       return await postOnboardingUser(supabase, parsedUrl, req);
+    }
+
+    // Handle events endpoint
+    if (pathname === "/api/events") {
+      if (method !== "GET") {
+        return new Response(`${method} Method not allowed for events endpoint`, { status: 405 });
+      }
+      return await getEvents(supabase);
     }
 
     // Handle generic /api/dashboard/:table endpoints

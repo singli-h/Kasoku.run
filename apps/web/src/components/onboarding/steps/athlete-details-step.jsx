@@ -1,15 +1,45 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Target } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { X, Target } from "lucide-react"
 import { motion } from "framer-motion"
 
 export default function AthleteDetailsStep({ userData, updateUserData, onNext, onPrev }) {
   const [errors, setErrors] = useState({})
+  const [events, setEvents] = useState({ track: [], field: [], combined: [] })
+  const [loading, setLoading] = useState(true)
+  const [currentSelection, setCurrentSelection] = useState("")
+  const [selectedEvents, setSelectedEvents] = useState(userData.events || [])
+
+  // Fetch events when component mounts
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch("/api/events")
+        if (!response.ok) {
+          throw new Error("Failed to fetch events")
+        }
+        const data = await response.json()
+        setEvents(data.data || { track: [], field: [], combined: [] })
+      } catch (error) {
+        console.error("Error fetching events:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchEvents()
+    // Use existing events from userData if available
+    if (userData.events) {
+      setSelectedEvents(userData.events)
+    }
+  }, [userData.events])
 
   const validateForm = () => {
     const newErrors = {}
@@ -25,10 +55,32 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
     else if (isNaN(userData.weight) || userData.weight < 30 || userData.weight > 200) {
       newErrors.weight = "Weight must be between 30-200 kg"
     }
-    if (!userData.sprintGoals?.trim()) newErrors.sprintGoals = "Sprint goals are required"
+    if (!userData.trainingGoals?.trim()) newErrors.trainingGoals = "Training goals are required"
+    if (selectedEvents.length === 0) newErrors.events = "Please select at least one event"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
+  }
+
+  const handleAddEvent = (eventId) => {
+    if (eventId && !selectedEvents.some(e => e.id === eventId)) {
+      // Find the event object from all categories
+      const allEvents = [...events.track, ...events.field, ...events.combined]
+      const eventObj = allEvents.find(e => e.id === eventId)
+      
+      if (eventObj) {
+        const newSelectedEvents = [...selectedEvents, eventObj]
+        setSelectedEvents(newSelectedEvents)
+        updateUserData({ events: newSelectedEvents })
+      }
+    }
+    setCurrentSelection("")
+  }
+
+  const handleRemoveEvent = (eventId) => {
+    const newSelectedEvents = selectedEvents.filter(event => event.id !== eventId)
+    setSelectedEvents(newSelectedEvents)
+    updateUserData({ events: newSelectedEvents })
   }
 
   const handleContinue = () => {
@@ -128,16 +180,104 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
           </div>
         </div>
 
+        {/* Event Selection */}
+        <div className="space-y-6">
+          <div className="flex flex-col space-y-2">
+            <Label htmlFor="event-select" className="text-white">Select Events</Label>
+            <Select value={currentSelection} onValueChange={handleAddEvent} disabled={loading}>
+              <SelectTrigger id="event-select" className={`bg-white border-gray-200 text-gray-900 hover:border-gray-300 ${errors.events ? "border-red-500" : ""}`}>
+                <SelectValue placeholder="Select an event" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-gray-200">
+                {loading ? (
+                  <div className="py-2 text-center text-gray-500">Loading events...</div>
+                ) : (
+                  <>
+                    {events.track.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-gray-700">Track Events</SelectLabel>
+                        {events.track.map((event) => (
+                          <SelectItem 
+                            key={event.id} 
+                            value={event.id} 
+                            disabled={selectedEvents.some(e => e.id === event.id)}
+                            className="text-gray-900"
+                          >
+                            {event.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                    {events.field.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-gray-700">Field Events</SelectLabel>
+                        {events.field.map((event) => (
+                          <SelectItem 
+                            key={event.id} 
+                            value={event.id} 
+                            disabled={selectedEvents.some(e => e.id === event.id)}
+                            className="text-gray-900"
+                          >
+                            {event.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                    {events.combined.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-gray-700">Combined Events</SelectLabel>
+                        {events.combined.map((event) => (
+                          <SelectItem 
+                            key={event.id} 
+                            value={event.id} 
+                            disabled={selectedEvents.some(e => e.id === event.id)}
+                            className="text-gray-900"
+                          >
+                            {event.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+            {errors.events && <p className="text-sm text-red-500">{errors.events}</p>}
+          </div>
+
+          <div className="min-h-[100px] bg-white/10 border border-white/20 rounded-md p-4">
+            <h2 className="text-sm font-medium text-white mb-2">Selected Events</h2>
+            {selectedEvents.length === 0 ? (
+              <p className="text-sm text-white/50">No events selected</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {selectedEvents.map((event) => (
+                  <Badge key={event.id} variant="secondary" className="flex items-center gap-1 py-1.5 bg-white/20 text-white">
+                    {event.name}
+                    <button
+                      onClick={() => handleRemoveEvent(event.id)}
+                      className="ml-1 rounded-full hover:bg-white/10 p-0.5"
+                      aria-label={`Remove ${event.name}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="space-y-2">
-          <Label htmlFor="sprintGoals" className="text-white">What are your sprint goals?</Label>
+          <Label htmlFor="trainingGoals" className="text-white">What are your training goals?</Label>
           <Textarea
-            id="sprintGoals"
-            placeholder="Tell us about your sprint goals and what you want to achieve..."
-            value={userData.sprintGoals}
-            onChange={(e) => updateUserData({ sprintGoals: e.target.value })}
-            className={`bg-white border-gray-200 text-gray-900 placeholder:text-gray-500 min-h-[100px] focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 hover:border-gray-300 ${errors.sprintGoals ? "border-red-500" : ""}`}
+            id="trainingGoals"
+            placeholder="Tell us about your training goals and what you want to achieve..."
+            value={userData.trainingGoals}
+            onChange={(e) => updateUserData({ trainingGoals: e.target.value })}
+            className={`bg-white border-gray-200 text-gray-900 placeholder:text-gray-500 min-h-[100px] focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 hover:border-gray-300 ${errors.trainingGoals ? "border-red-500" : ""}`}
           />
-          {errors.sprintGoals && <p className="text-sm text-red-500">{errors.sprintGoals}</p>}
+          {errors.trainingGoals && <p className="text-sm text-red-500">{errors.trainingGoals}</p>}
         </div>
       </motion.div>
 

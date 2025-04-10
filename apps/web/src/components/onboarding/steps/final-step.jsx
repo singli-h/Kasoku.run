@@ -44,7 +44,7 @@ export default function FinalStep({ userData, onComplete }) {
             {userData.role === "athlete" && (
               <div>
                 <p className="text-white/70">Goals</p>
-                <p className="text-white font-medium">{userData.sprintGoals}</p>
+                <p className="text-white font-medium">{userData.trainingGoals}</p>
               </div>
             )}
             {userData.role === "coach" && (

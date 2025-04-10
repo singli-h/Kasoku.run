@@ -28,10 +28,11 @@ export default function OnboardingFlow() {
     height: "",
     weight: "",
     trainingHistory: "",
-    sprintGoals: "",
+    trainingGoals: "",
     teamName: "",
     sportFocus: "",
     subscription: "free",
+    events: [],
   })
 
   const [currentStep, setCurrentStep] = useState(0)
@@ -79,20 +80,20 @@ export default function OnboardingFlow() {
         clerk_id: userId,
         username: userData.firstName.toLowerCase() + (userData.lastName ? userData.lastName.charAt(0).toLowerCase() : ''),
         email: userData.email,
-        name: `${userData.firstName} ${userData.lastName}`,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
         role: userData.role,
         birthday: userData.birthday,
         height: userData.height,
         weight: userData.weight,
         training_history: userData.trainingHistory,
-        sprint_goals: userData.sprintGoals,
+        training_goals: userData.trainingGoals,
         team_name: userData.teamName,
         sport_focus: userData.sportFocus,
         subscription_status: userData.subscription,
+        events: userData.events,
         onboarding_completed: true,
         metadata: {
-          firstName: userData.firstName,
-          lastName: userData.lastName,
           role: userData.role
         },
       }
