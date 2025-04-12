@@ -9,10 +9,10 @@ const AUTH_ENABLED = false;
 
 // Helper function to create Supabase client
 const createSupabaseClient = (req: Request) => {
-  // Use service role key instead of anon key to bypass RLS policies
+  // Use anon key to respect RLS policies (requires proper policies to be set up)
   return createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
     {
       global: {
         headers: { Authorization: req.headers.get("Authorization")! },
