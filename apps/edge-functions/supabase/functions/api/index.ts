@@ -1196,7 +1196,8 @@ Deno.serve(async (req) => {
     // Handle athletes endpoints
     if (pathname === "/api/athletes") {
       if (method === "GET") {
-        return await getAthletes(supabase, params);
+        const { params: queryParams } = extractPathParams(url);
+        return await getAthletes(supabase, queryParams);
       }
       if (method === "POST") {
         return await createAthlete(supabase, req);

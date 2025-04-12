@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import CalendarView from "../../components/overview/CalendarView"
 import PlanBuilder from "../../components/overview/PlanBuilder"
 import MesocycleOverview from "../../components/overview/MesocycleOverview"
+import WeeklyOverview from "../../components/overview/WeeklyOverview"
 import { Calendar, ListOrdered, BarChart } from "lucide-react"
 
 const CustomButton = ({ children, isActive, className = "", ...props }) => {
@@ -49,6 +50,13 @@ export default function OverviewPage() {
     <main className="min-h-screen bg-gray-100">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Mesocycle Overview</h1>
+        
+        {/* Weekly Overview Cards */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Weekly Progress</h2>
+          <WeeklyOverview />
+        </div>
+        
         <div className="grid grid-cols-3 gap-4 mb-8">
           <CustomButton
             onClick={() => setActiveView("calendar")}
