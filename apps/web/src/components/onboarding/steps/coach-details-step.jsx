@@ -16,7 +16,7 @@ export default function CoachDetailsStep({ userData, updateUserData, onNext, onP
 
     if (!userData.firstName?.trim()) newErrors.firstName = "First name is required"
     if (!userData.lastName?.trim()) newErrors.lastName = "Last name is required"
-    if (!userData.birthday) newErrors.birthday = "Birthday is required"
+    if (!userData.birthdate) newErrors.birthdate = "Birthdate is required"
     if (!userData.specialization?.trim()) newErrors.specialization = "Specialization is required"
     if (!userData.experience?.trim()) newErrors.experience = "Experience level is required"
     if (!userData.coachingPhilosophy?.trim()) newErrors.coachingPhilosophy = "Coaching philosophy is required"
@@ -81,16 +81,16 @@ export default function CoachDetailsStep({ userData, updateUserData, onNext, onP
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="birthday" className="text-white">Birthday</Label>
+          <Label htmlFor="birthdate" className="text-white">Birthdate</Label>
           <Input
-            id="birthday"
+            id="birthdate"
             type="date"
-            value={userData.birthday}
-            onChange={(e) => updateUserData({ birthday: e.target.value })}
+            value={userData.birthdate}
+            onChange={(e) => updateUserData({ birthdate: e.target.value })}
             variant="onboarding"
-            className={errors.birthday ? "border-red-500" : ""}
+            className={errors.birthdate ? "border-red-500" : ""}
           />
-          {errors.birthday && <p className="text-sm text-red-500">{errors.birthday}</p>}
+          {errors.birthdate && <p className="text-sm text-red-500">{errors.birthdate}</p>}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -70,7 +70,7 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
 
     if (!userData.firstName?.trim()) newErrors.firstName = "First name is required"
     if (!userData.lastName?.trim()) newErrors.lastName = "Last name is required"
-    if (!userData.birthday) newErrors.birthday = "Birthday is required"
+    if (!userData.birthdate) newErrors.birthdate = "Birthdate is required"
     if (!userData.height) newErrors.height = "Height is required"
     else if (isNaN(userData.height) || userData.height < 100 || userData.height > 250) {
       newErrors.height = "Height must be between 100-250 cm"
@@ -163,16 +163,16 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="birthday" className="text-white">Birthday</Label>
+            <Label htmlFor="birthdate" className="text-white">Birthdate</Label>
             <Input
-              id="birthday"
+              id="birthdate"
               type="date"
-              value={userData.birthday}
-              onChange={(e) => updateUserData({ birthday: e.target.value })}
+              value={userData.birthdate}
+              onChange={(e) => updateUserData({ birthdate: e.target.value })}
               variant="onboarding"
-              className={errors.birthday ? "border-red-500" : ""}
+              className={errors.birthdate ? "border-red-500" : ""}
             />
-            {errors.birthday && <p className="text-sm text-red-500">{errors.birthday}</p>}
+            {errors.birthdate && <p className="text-sm text-red-500">{errors.birthdate}</p>}
           </div>
 
           <div className="space-y-2">
