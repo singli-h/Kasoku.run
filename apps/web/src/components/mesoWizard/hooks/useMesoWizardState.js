@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { fetchExercises } from "../sampledata"
+import { edgeFunctions } from '@/lib/edge-functions'
 import { useSaveTrainingPlan } from "./useSaveCycle"
 
 /**
@@ -44,12 +44,14 @@ export const useMesoWizardState = (onComplete) => {
   // Calculate progress percentage
   const progressPercentage = ((step - 1) / 4) * 100
 
-  // Fetch exercises from API on component mount
+  // Fetch exercises from edge function instead of sample data
   useEffect(() => {
     const getExercises = async () => {
       setLoadingExercises(true)
       try {
-        const exercises = await fetchExercises()
+        // Use edge function to fetch exercises
+        const response = await edgeFunctions.dashboard.getExercises();
+        const exercises = response.data || [];
         setAllExercises(exercises)
         setFilteredExercises(exercises)
       } catch (error) {

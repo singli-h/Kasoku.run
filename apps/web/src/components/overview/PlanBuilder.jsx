@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight } from "lucide-react"
-import { exerciseLibrary } from "../data/mockData"
+import { edgeFunctions } from '@/lib/edge-functions'
 import { PlusCircle, Save } from "lucide-react"
 
 const PlanButton = ({ children, isActive, className = "", ...props }) => {
@@ -31,6 +31,9 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
   const [expandedSessions, setExpandedSessions] = useState([])
   const [searchTerms, setSearchTerms] = useState({})
   const [currentMesocycle, setMesocycle] = useState(mesocycle)
+  const [exercises, setExercises] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   // Reset history when a new mesocycle is passed in
   useEffect(() => {
@@ -169,7 +172,7 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
     const searchTerm = searchTerms[searchKey] || ""
     const setSearchTerm = (term) => setSearchTerms((prev) => ({ ...prev, [searchKey]: term }))
 
-    const filteredExercises = exerciseLibrary.filter(
+    const filteredExercises = exercises.filter(
       (exercise) =>
         exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
         (type === "gym" ? exercise.type === "gym" : exercise.type === type),
@@ -207,6 +210,27 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
       </div>
     )
   }
+
+  useEffect(() => {
+    const fetchExercises = async () => {
+      try {
+        setLoading(true)
+        const response = await edgeFunctions.dashboard.getExercises()
+        setExercises(response.data || [])
+      } catch (err) {
+        console.error('Error fetching exercises:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchExercises()
+  }, [])
+
+  if (loading) return <div>Loading...</div>
+  if (error) return <div>Error: {error}</div>
+  if (!exercises.length) return <div>No exercises available</div>
 
   return (
     <div className="space-y-4">

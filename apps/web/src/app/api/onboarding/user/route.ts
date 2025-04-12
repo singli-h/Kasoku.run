@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { edgeFunctions } from '@/lib/edge-functions';
 
 /**
- * Handle POST requests to /api/onboarding/user
- * 
- * This API route proxies the request to the Supabase Edge Function
- * for handling user onboarding.
+ * POST /api/onboarding/user
+ * Handles user onboarding via Supabase Edge Function
  */
 export async function POST(request: Request) {
   try {
@@ -19,10 +18,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get the request body
+    // Get and validate the request body
     const body = await request.json();
     
-    // Make sure clerk_id matches the authenticated user
     if (body.clerk_id !== userId) {
       return NextResponse.json(
         { error: "Unauthorized - User ID mismatch" },
@@ -30,29 +28,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Forward the request to the Supabase Edge Function
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/api/onboarding/user`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    // Get the response from the edge function
-    const data = await response.json();
-
-    // Return the response from the edge function
-    return NextResponse.json(data, { status: response.status });
-  } catch (error: any) {
-    console.error("Error in onboarding API route:", error);
+    console.log('[API] Processing onboarding for user:', userId);
+    const data = await edgeFunctions.users.onboard(body);
+    
+    console.log('[API] Successfully completed onboarding for user:', userId);
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('[API] Error in onboarding:', error);
+    
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
+      { error: error.message || "Failed to complete onboarding" },
+      { status: error.status || 500 }
     );
   }
 } 

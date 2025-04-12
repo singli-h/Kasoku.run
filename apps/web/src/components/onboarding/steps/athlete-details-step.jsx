@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Badge } from "@/components/ui/badge"
 import { X, Target } from "lucide-react"
 import { motion } from "framer-motion"
+import { edgeFunctions } from "@/lib/edge-functions"
 
 export default function AthleteDetailsStep({ userData, updateUserData, onNext, onPrev }) {
   const [errors, setErrors] = useState({})
@@ -22,26 +23,11 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
     const fetchEvents = async () => {
       try {
         setLoading(true)
-        const response = await fetch("/api/events")
         
-        if (!response.ok) {
-          let errorMessage = "Failed to fetch events"
-          try {
-            const errorData = await response.json()
-            if (errorData.error) {
-              errorMessage = errorData.error
-            }
-          } catch (e) {
-            // JSON parsing failed, use default message
-          }
-          console.error(`Error ${response.status}: ${errorMessage}`)
-          // Continue with empty events rather than showing an error
-          setEvents({ track: [], field: [], combined: [] })
-          return
-        }
+        // Use the edge functions utility
+        const data = await edgeFunctions.events.getAll()
         
-        const data = await response.json()
-        if (data.data) {
+        if (data && data.data) {
           setEvents(data.data)
         } else {
           console.error("Unexpected response format:", data)

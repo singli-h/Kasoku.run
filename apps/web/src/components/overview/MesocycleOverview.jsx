@@ -1,16 +1,40 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import  Button  from "../ui/button"
 import { ChevronDown, ChevronUp, Target, Zap, Activity, Dumbbell, TrendingUp } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line } from "recharts"
 import { cn } from "../../lib/utils"
-import { mockMesocycle } from "../data/mockData"
+import { edgeFunctions } from '@/lib/edge-functions'
 
-export default function MesocycleOverview({ mesocycle = mockMesocycle }) {
+export default function MesocycleOverview() {
+  const [mesocycle, setMesocycle] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [expandedWeeks, setExpandedWeeks] = useState([])
   const [hoveredWeek, setHoveredWeek] = useState(null)
+
+  useEffect(() => {
+    const fetchMesocycle = async () => {
+      try {
+        setLoading(true)
+        const response = await edgeFunctions.dashboard.getMesocycle()
+        setMesocycle(response.data)
+      } catch (err) {
+        console.error('Error fetching mesocycle:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchMesocycle()
+  }, [])
+
+  if (loading) return <div>Loading...</div>
+  if (error) return <div>Error: {error}</div>
+  if (!mesocycle) return <div>No mesocycle data available</div>
 
   // Calculate mesocycle totals
   const mesocycleStats = {

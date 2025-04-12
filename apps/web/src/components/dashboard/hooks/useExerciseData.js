@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react"
+import { edgeFunctions } from '@/lib/edge-functions'
 
-//const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
-const API_BASE_URL = "http://localhost:54321/functions/v1/api"
+// Remove hardcoded URL and use edge functions directly
+// const API_BASE_URL = "http://localhost:54321/functions/v1/api"  // Remove this
 
 export const useExerciseData = () => {
   // Add a ref to keep track of the latest state
@@ -39,9 +40,7 @@ export const useExerciseData = () => {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
       try {
-        const response = await fetch(`${API_BASE_URL}/dashboard/exercisesInit`);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
+        const data = await edgeFunctions.dashboard.getExercisesInit();
         
         // Extract all training details into the flat array
         const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets
@@ -85,19 +84,12 @@ export const useExerciseData = () => {
         name: preset.exercises.name,
         sets: preset.exercise_training_details.length,
         reps: preset.exercise_training_details[0]?.reps || 0,
-        // Add other fields as needed
       }));
 
-      const response = await fetch(`${API_BASE_URL}/dashboard/trainingSession`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          exercise_training_session_id: state.session.details.id,
-          exercisesDetail
-        })
+      await edgeFunctions.dashboard.createTrainingSession({
+        exercise_training_session_id: state.session.details.id,
+        exercisesDetail
       });
-
-      if (!response.ok) throw new Error('Failed to start session');
 
       await refreshSessionData();
       return { success: true };
@@ -114,12 +106,10 @@ export const useExerciseData = () => {
 
   const refreshSessionData = async () => {
     try {
-      const refreshResponse = await fetch(`${API_BASE_URL}/dashboard/exercisesInit`);
-      if (!refreshResponse.ok) throw new Error('Failed to refresh session data');
-      const refreshData = await refreshResponse.json();
+      const data = await edgeFunctions.dashboard.getExercisesInit();
 
       // Refresh the flat training details array
-      const allTrainingDetails = refreshData.data.session?.details?.exercise_preset_groups?.exercise_presets
+      const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets
         ?.flatMap(preset => preset.exercise_training_details.map(detail => ({
             ...detail,
             exercise_preset_id: preset.id
@@ -129,7 +119,7 @@ export const useExerciseData = () => {
       
       setState(prev => ({
         ...prev,
-        session: refreshData.data.session,
+        session: data.data.session,
         isLoading: false,
         _version: prev._version + 1
       }));
@@ -163,17 +153,11 @@ export const useExerciseData = () => {
         completed: detail.completed
       }));
       
-      const response = await fetch(`${API_BASE_URL}/dashboard/trainingSession`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          exercise_training_session_id: state.session.details.id,
-          exercisesDetail: exerciseDetails,
-          ...(status ? { status } : {})
-        })
+      await edgeFunctions.dashboard.updateTrainingSession({
+        exercise_training_session_id: state.session.details.id,
+        exercisesDetail: exerciseDetails,
+        ...(status ? { status } : {})
       });
-
-      if (!response.ok) throw new Error('Failed to save session');
 
       await refreshSessionData();
       return { success: true };

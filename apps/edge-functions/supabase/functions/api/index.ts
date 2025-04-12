@@ -1,12 +1,8 @@
 import { serve } from "https://deno.land/std@0.188.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-};
+import { corsHeaders, handleError } from './utils';
+import { getAthletes, createAthlete } from './athletes';
+import { getUserStatus } from './users';
 
 // Toggle for authentication (default is enabled)
 const AUTH_ENABLED = false;
@@ -22,15 +18,6 @@ const createSupabaseClient = (req: Request) => {
       },
     },
   );
-};
-
-// Helper function to handle errors
-const handleError = (error: any) => {
-  console.error(error);
-  return new Response(JSON.stringify({ error: error.message }), {
-    status: 400,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
 };
 
 // Helper function to extract table name and parameters from URL
@@ -891,6 +878,32 @@ Deno.serve(async (req) => {
         //No other method allowed
         return new Response(`${method} Method not allowed for dashboard`, { status: 405 });
       }
+    }
+
+    // Handle athletes endpoints
+    if (pathname === "/api/athletes") {
+      if (method === "GET") {
+        return await getAthletes(supabase, params);
+      }
+      if (method === "POST") {
+        return await createAthlete(supabase, req);
+      }
+      return new Response(`${method} Method not allowed for athletes endpoint`, { 
+        status: 405,
+        headers: corsHeaders
+      });
+    }
+
+    // Handle user status endpoint
+    if (pathname.startsWith("/api/users/") && pathname.endsWith("/status")) {
+      if (method !== "GET") {
+        return new Response(`${method} Method not allowed for user status`, { 
+          status: 405,
+          headers: corsHeaders
+        });
+      }
+      const clerkId = pathname.split("/")[3]; // Extract clerk_id from URL
+      return await getUserStatus(supabase, clerkId);
     }
 
     // Handle generic /api/dashboard/:table endpoints

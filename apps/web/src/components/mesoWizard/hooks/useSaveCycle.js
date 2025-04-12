@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-const API_BASE_URL = "http://localhost:54321/functions/v1/api"
+import { edgeFunctions } from '@/lib/edge-functions'
+
 /**
  * Custom hook for saving training plans to Supabase
  * 
@@ -190,50 +191,11 @@ export const useSaveTrainingPlan = () => {
       // Log the data being sent for debugging
       console.log('Sending microcycle data:', JSON.stringify(formattedData, null, 2));
       
-      // Additional debug logging to verify exercise IDs specifically
-      formattedData.sessions.forEach((session, i) => {
-        console.log(`Session ${i+1} exercise IDs:`, 
-          session.presets.map(preset => ({
-            exercise_name: preset.preset.metadata?.name || 'Unknown',
-            exercise_id: preset.preset.exercise_id,
-            superset_id: preset.preset.superset_id
-          }))
-        );
-        
-        // Group exercises by superset ID to check if supersets are properly formed
-        const supersetGroups = {};
-        session.presets.forEach(preset => {
-          const supersetId = preset.preset.superset_id;
-          if (supersetId) {
-            if (!supersetGroups[supersetId]) {
-              supersetGroups[supersetId] = [];
-            }
-            supersetGroups[supersetId].push(preset.preset.metadata?.name || 'Unknown exercise');
-          }
-        });
-        
-        // Log superset groups
-        if (Object.keys(supersetGroups).length > 0) {
-          console.log(`Session ${i+1} superset groups:`, supersetGroups);
-        } else {
-          console.log(`Session ${i+1} has no supersets.`);
-        }
+      // Use edge functions client instead of direct fetch
+      const data = await edgeFunctions.dashboard.createTrainingSession({
+        type: 'microcycle',
+        ...formattedData
       });
-
-      // Make the API request
-      const response = await fetch(`${API_BASE_URL}/planner/microcycle`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formattedData),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to save microcycle plan');
-      }
       
       setSuccess(true);
       setSavedData(data);
@@ -578,24 +540,13 @@ export const useSaveTrainingPlan = () => {
         planType: formData.planType || 'mesocycle'
       }, null, 2));
 
-      // Make the API request with the exact format expected by the backend
-      const response = await fetch(`${API_BASE_URL}/planner/mesocycle`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          sessions,
-          timezone,
-          planType: formData.planType || 'mesocycle'
-        }),
-      })
-      
-      const data = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(data.message || `Failed to save ${formData.planType || 'mesocycle'}`)
-      }
+      // Use edge functions client instead of direct fetch
+      const data = await edgeFunctions.dashboard.createTrainingSession({
+        type: 'mesocycle',
+        sessions,
+        timezone,
+        planType: formData.planType || 'mesocycle'
+      });
       
       setSuccess(true)
       setSavedData(data)

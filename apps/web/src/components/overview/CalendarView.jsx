@@ -15,7 +15,7 @@ import {
   subWeeks,
   parseISO
 } from "date-fns"
-import { mockMesocycle } from "../data/mockData"
+import { edgeFunctions } from '@/lib/edge-functions'
 import {
   DndContext,
   closestCenter,
@@ -35,7 +35,10 @@ import {
 import { restrictToWindowEdges } from "@dnd-kit/modifiers"
 import { useMediaQuery } from "../../hooks/useMediaQuery"
 
-const CalendarView = ({ mesocycle = mockMesocycle }) => {
+const CalendarView = () => {
+  const [mesocycleData, setMesocycleData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [viewDate, setViewDate] = useState(new Date())
   const [sessions, setSessions] = useState([])
   const [activeItem, setActiveItem] = useState(null)
@@ -67,10 +70,27 @@ const CalendarView = ({ mesocycle = mockMesocycle }) => {
   
   // Side effects - update sessions when mesocycle changes
   useEffect(() => {
-    if (mesocycle?.sessions?.length) {
-      setSessions(mesocycle.sessions)
+    const fetchMesocycleData = async () => {
+      try {
+        setLoading(true)
+        const response = await edgeFunctions.dashboard.getMesocycle()
+        setMesocycleData(response.data)
+      } catch (err) {
+        console.error('Error fetching mesocycle data:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [mesocycle?.sessions])
+
+    fetchMesocycleData()
+  }, [])
+  
+  useEffect(() => {
+    if (mesocycleData?.sessions?.length) {
+      setSessions(mesocycleData.sessions)
+    }
+  }, [mesocycleData?.sessions])
   
   // Calculate days to display
   useEffect(() => {
@@ -237,6 +257,10 @@ const CalendarView = ({ mesocycle = mockMesocycle }) => {
   const secondWeekNum = getWeek(days[7]?.date || addDays(viewDate, 7))
   const weekStart = format(startOfWeek(viewDate, { weekStartsOn: 1 }), "MMM d")
   const weekEnd = format(addDays(startOfWeek(viewDate, { weekStartsOn: 1 }), numDisplayDays - 1), "MMM d")
+  
+  if (loading) return <div>Loading...</div>
+  if (error) return <div>Error: {error}</div>
+  if (!mesocycleData) return <div>No data available</div>
   
   return (
     <Card className="h-full">

@@ -12,6 +12,7 @@ import CompletionStep from "./steps/completion-step"
 import DashboardTourStep from "./steps/dashboard-tour-step"
 import { useRouter } from "next/navigation"
 import { useAuth, useUser } from "@clerk/nextjs"
+import { edgeFunctions } from "@/lib/edge-functions"
 
 export default function OnboardingFlow() {
   const router = useRouter()
@@ -98,19 +99,8 @@ export default function OnboardingFlow() {
         },
       }
 
-      // Send data to the onboarding API endpoint
-      const response = await fetch('/api/onboarding/user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userDataForApi),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to complete onboarding')
-      }
+      // Use edge functions utility to call the API
+      await edgeFunctions.users.onboard(userDataForApi)
 
       // Redirect to dashboard after successful onboarding
       router.push('/planner')

@@ -62,8 +62,10 @@ export default clerkMiddleware(async (auth, req) => {
     const isProtectedRoute = protectedRoutes.some(route => url.pathname.startsWith(route))
     if (userId && isProtectedRoute) {
       try {
-        // Use the API endpoint instead of calling Supabase directly
+        // Use our API endpoint that leverages edge functions
         const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/user-status`
+        console.log(`Checking onboarding status for user ${userId}`)
+        
         const response = await fetch(apiUrl, {
           headers: {
             'Authorization': `Bearer ${req.headers.get('Authorization') || ''}`,
@@ -72,14 +74,17 @@ export default clerkMiddleware(async (auth, req) => {
         })
 
         if (!response.ok) {
-          console.error('Failed to fetch user status')
+          console.error(`Failed to fetch user status: ${response.status}`)
+          // On error, allow access to continue rather than blocking the user
           return NextResponse.next()
         }
 
         const data = await response.json()
+        console.log(`Onboarding status: ${data.onboardingCompleted ? 'completed' : 'not completed'}`)
 
         // If onboarding is not completed, redirect to onboarding
         if (!data.onboardingCompleted) {
+          console.log(`Redirecting to onboarding: User ${userId} has not completed onboarding`)
           const onboardingUrl = new URL('/onboarding', req.url)
           return NextResponse.redirect(onboardingUrl)
         }
@@ -94,8 +99,10 @@ export default clerkMiddleware(async (auth, req) => {
     const isOnboardingRoute = onboardingRoutes.some(route => url.pathname.startsWith(route))
     if (userId && isOnboardingRoute) {
       try {
-        // Use the API endpoint instead of calling Supabase directly
+        // Use our API endpoint that leverages edge functions
         const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/user-status`
+        console.log(`Checking if user ${userId} has already completed onboarding`)
+        
         const response = await fetch(apiUrl, {
           headers: {
             'Authorization': `Bearer ${req.headers.get('Authorization') || ''}`,
@@ -104,14 +111,17 @@ export default clerkMiddleware(async (auth, req) => {
         })
 
         if (!response.ok) {
-          console.error('Failed to fetch user status')
+          console.error(`Failed to fetch user status: ${response.status}`)
+          // On error, allow access to continue
           return NextResponse.next()
         }
 
         const data = await response.json()
+        console.log(`Onboarding status for redirect check: ${data.onboardingCompleted ? 'completed' : 'not completed'}`)
 
         // If onboarding is completed, redirect to planner
         if (data.onboardingCompleted) {
+          console.log(`Redirecting to planner: User ${userId} has already completed onboarding`)
           const plannerUrl = new URL('/planner', req.url)
           return NextResponse.redirect(plannerUrl)
         }

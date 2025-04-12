@@ -1,83 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { edgeFunctions } from '@/lib/edge-functions';
 
 /**
- * Handle GET requests to /api/events
- * 
- * This API route proxies the request to the Supabase Edge Function
- * for fetching track and field events.
+ * GET /api/events
+ * Fetches all events from the Supabase Edge Function
  */
 export async function GET() {
   try {
-    console.log("API route: Fetching events from Supabase edge function");
+    console.log('[API] Fetching events from Edge Function');
+    const data = await edgeFunctions.events.getAll();
     
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    console.log('[API] Successfully fetched events');
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('[API] Error fetching events:', error);
     
-    if (!supabaseUrl) {
-      console.error("NEXT_PUBLIC_SUPABASE_URL is not defined");
-      return NextResponse.json(
-        { error: "Server configuration error" },
-        { status: 500 }
-      );
-    }
-    
-    if (!serviceRoleKey) {
-      console.error("SUPABASE_SERVICE_ROLE_KEY is not defined");
-      return NextResponse.json(
-        { error: "Server configuration error" },
-        { status: 500 }
-      );
-    }
-    
-    // Forward the request to the Supabase Edge Function
-    const response = await fetch(
-      `${supabaseUrl}/functions/v1/api/events`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${serviceRoleKey}`,
-        },
-      }
-    );
-
-    // Log the response status
-    console.log(`Edge function response status: ${response.status}`);
-
-    // Check if the response is successful
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = "Failed to fetch events";
-      
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.error || errorMessage;
-      } catch (e) {
-        // If we can't parse the error as JSON, use the raw text
-        if (errorText) {
-          errorMessage = errorText;
-        }
-      }
-      
-      console.error(`Error from edge function: ${errorMessage}`);
-      
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: response.status }
-      );
-    }
-
-    // Get the response from the edge function
-    const data = await response.json();
-    console.log("Successfully fetched events from edge function");
-
-    // Return the response from the edge function
-    return NextResponse.json(data, { status: response.status });
-  } catch (error: any) {
-    console.error("Error in events API route:", error);
+    // Return appropriate error response
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
+      { error: error.message || 'Failed to fetch events' },
+      { status: error.status || 500 }
     );
   }
 } 
