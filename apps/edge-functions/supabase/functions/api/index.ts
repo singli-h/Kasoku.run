@@ -540,7 +540,7 @@ export const postOnboardingUser = async (
       first_name,
       last_name,
       role, // We'll still use this to determine if we should create a coach record
-      birthday,
+      birthdate,
       athlete_height,
       athlete_weight,
       athlete_training_history,
@@ -575,7 +575,7 @@ export const postOnboardingUser = async (
         email,
         first_name,
         last_name,
-        birthday,
+        birthdate,
         subscription_status,
         onboarding_completed: true, // Explicitly set to true
         updated_at: new Date().toISOString(),

@@ -25,7 +25,7 @@ export default function OnboardingFlow() {
     email: user?.primaryEmailAddress?.emailAddress || "",
     role: "",
     profilePicture: null,
-    birthday: "",
+    birthdate: "",
     
     // Athlete-specific fields
     height: "",
@@ -92,7 +92,7 @@ export default function OnboardingFlow() {
         first_name: userData.firstName,
         last_name: userData.lastName,
         role: userData.role,
-        birthday: userData.birthday,
+        birthdate: userData.birthdate,
         subscription_status: userData.subscription,
         onboarding_completed: true,
         metadata: {
