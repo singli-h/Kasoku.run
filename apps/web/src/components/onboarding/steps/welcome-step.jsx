@@ -24,7 +24,7 @@ export default function WelcomeStep({ onNext }) {
         transition={{ delay: 0.2, duration: 0.5 }}
       >
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-          Welcome to Running Website
+          Welcome to TrainFast
         </h1>
         <p className="mt-3 text-gray-600 dark:text-gray-400">
           Let&apos;s get you set up to start tracking and improving your performance

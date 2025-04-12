@@ -79,6 +79,7 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
     else if (isNaN(userData.weight) || userData.weight < 30 || userData.weight > 200) {
       newErrors.weight = "Weight must be between 30-200 kg"
     }
+    if (!userData.trainingHistory?.trim()) newErrors.trainingHistory = "Training experience is required"
     if (!userData.trainingGoals?.trim()) newErrors.trainingGoals = "Training goals are required"
     if (selectedEvents.length === 0) newErrors.events = "Please select at least one event"
 
@@ -202,6 +203,28 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
             />
             {errors.weight && <p className="text-sm text-red-500">{errors.weight}</p>}
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="trainingHistory" className="text-white">Training Experience (years)</Label>
+          <Select
+            value={userData.trainingHistory}
+            onValueChange={(value) => updateUserData({ trainingHistory: value })}
+          >
+            <SelectTrigger
+              id="trainingHistory"
+              className={`bg-white border-gray-200 text-gray-900 hover:border-gray-300 ${errors.trainingHistory ? "border-red-500" : ""}`}
+            >
+              <SelectValue placeholder="Select your experience level" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border-gray-200">
+              <SelectItem value="beginner" className="text-gray-900">1-3 years</SelectItem>
+              <SelectItem value="intermediate" className="text-gray-900">4-7 years</SelectItem>
+              <SelectItem value="advanced" className="text-gray-900">8-12 years</SelectItem>
+              <SelectItem value="expert" className="text-gray-900">12+ years</SelectItem>
+            </SelectContent>
+          </Select>
+          {errors.trainingHistory && <p className="text-sm text-red-500">{errors.trainingHistory}</p>}
         </div>
 
         {/* Event Selection */}

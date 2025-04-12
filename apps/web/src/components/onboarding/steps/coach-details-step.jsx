@@ -153,11 +153,11 @@ export default function CoachDetailsStep({ userData, updateUserData, onNext, onP
               <SelectValue placeholder="Select your sport focus" />
             </SelectTrigger>
             <SelectContent className="bg-white border-gray-200">
-              <SelectItem value="track" className="text-gray-900">Track</SelectItem>
-              <SelectItem value="field" className="text-gray-900">Field</SelectItem>
-              <SelectItem value="combined" className="text-gray-900">Combined Events</SelectItem>
-              <SelectItem value="cross_country" className="text-gray-900">Cross Country</SelectItem>
-              <SelectItem value="road_running" className="text-gray-900">Road Running</SelectItem>
+              <SelectItem value="track" className="text-gray-900">Track & Field</SelectItem>
+              <SelectItem value="combined" className="text-gray-900">Team Sports</SelectItem>
+              <SelectItem value="cross_country" className="text-gray-900">Power Lifting</SelectItem>
+              <SelectItem value="field" className="text-gray-900">Cross Country</SelectItem>
+              <SelectItem value="road_running" className="text-gray-900">Other</SelectItem>
             </SelectContent>
           </Select>
           {errors.sportFocus && <p className="text-sm text-red-500">{errors.sportFocus}</p>}
