@@ -26,14 +26,22 @@ export default function OnboardingFlow() {
     role: "",
     profilePicture: null,
     birthday: "",
+    
+    // Athlete-specific fields
     height: "",
     weight: "",
     trainingHistory: "",
     trainingGoals: "",
-    teamName: "",
-    sportFocus: "",
-    subscription: "free",
     events: [],
+    
+    // Coach-specific fields
+    specialization: "",
+    experience: "",
+    coachingPhilosophy: "",
+    sportFocus: "",
+    
+    // Common fields
+    subscription: "free",
   })
 
   const [currentStep, setCurrentStep] = useState(0)
@@ -76,7 +84,7 @@ export default function OnboardingFlow() {
         throw new Error('No user found')
       }
 
-      // Prepare user data for the API
+      // Prepare user data for the API with proper field prefixes
       const userDataForApi = {
         clerk_id: userId,
         username: userData.firstName.toLowerCase() + (userData.lastName ? userData.lastName.charAt(0).toLowerCase() : ''),
@@ -85,18 +93,28 @@ export default function OnboardingFlow() {
         last_name: userData.lastName,
         role: userData.role,
         birthday: userData.birthday,
-        height: userData.height,
-        weight: userData.weight,
-        training_history: userData.trainingHistory,
-        training_goals: userData.trainingGoals,
-        team_name: userData.teamName,
-        sport_focus: userData.sportFocus,
         subscription_status: userData.subscription,
-        events: userData.events,
         onboarding_completed: true,
         metadata: {
           role: userData.role,
         },
+      }
+
+      // Add athlete-specific fields
+      if (userData.role === 'athlete') {
+        userDataForApi.athlete_height = userData.height
+        userDataForApi.athlete_weight = userData.weight
+        userDataForApi.athlete_training_history = userData.trainingHistory
+        userDataForApi.athlete_training_goals = userData.trainingGoals
+        userDataForApi.athlete_events = userData.events
+      }
+
+      // Add coach-specific fields
+      if (userData.role === 'coach') {
+        userDataForApi.coach_specialization = userData.specialization
+        userDataForApi.coach_experience = userData.experience
+        userDataForApi.coach_philosophy = userData.coachingPhilosophy
+        userDataForApi.coach_sport_focus = userData.sportFocus
       }
 
       // Use edge functions utility to call the API

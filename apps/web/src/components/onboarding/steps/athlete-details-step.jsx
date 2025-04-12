@@ -25,12 +25,29 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
         setLoading(true)
         
         // Use the edge functions utility
-        const data = await edgeFunctions.events.getAll()
+        const response = await edgeFunctions.events.getAll()
         
-        if (data && data.data) {
-          setEvents(data.data)
+        // Handle different response formats
+        if (response && response.status === "success" && response.data) {
+          // New standardized format
+          setEvents(response.data)
+        } else if (response && response.events) {
+          // Old format - events array directly
+          console.log("Converting old response format to new format")
+          
+          // Group events by type/category if possible
+          const groupedEvents = response.events.reduce((acc, event) => {
+            const category = event.type?.toLowerCase() || "track"
+            if (!acc[category]) {
+              acc[category] = []
+            }
+            acc[category].push(event)
+            return acc
+          }, { track: [], field: [], combined: [] })
+          
+          setEvents(groupedEvents)
         } else {
-          console.error("Unexpected response format:", data)
+          console.error("Unexpected response format:", response)
           setEvents({ track: [], field: [], combined: [] })
         }
       } catch (error) {

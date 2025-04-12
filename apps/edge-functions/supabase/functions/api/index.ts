@@ -51,18 +51,33 @@ const getItem = async (supabase: any, table: string, id: string) => {
 
 // GET /api/:table - Get all items
 const getAllItems = async (supabase: any, table: string, params: Record<string, string>) => {
-  let query = supabase.from(table).select("*");
-  for (const [key, value] of Object.entries(params)) {
-    query = query.eq(key, value);
-  }
-  const { data, error } = await query;
-  if (error) {
+  try {
+    let query = supabase.from(table).select("*");
+    for (const [key, value] of Object.entries(params)) {
+      query = query.eq(key, value);
+    }
+    const { data, error } = await query;
+    
+    if (error) {
+      throw error;
+    }
+    
+    return new Response(
+      JSON.stringify({
+        status: "success",
+        data: { [table]: data },
+        metadata: {
+          timestamp: new Date().toISOString()
+        }
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
+    );
+  } catch (error) {
     return handleError(error);
   }
-  return new Response(JSON.stringify({ [table]: data }), {
-    status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
 };
 
 // POST /api/:table - Create new item(s)
@@ -526,14 +541,15 @@ export const postOnboardingUser = async (
       last_name,
       role, // We'll still use this to determine if we should create a coach record
       birthday,
-      height,
-      weight,
-      training_history,
-      training_goals,
-      team_name,
-      sport_focus,
+      athlete_height,
+      athlete_weight,
+      athlete_training_history,
+      athlete_training_goals,
+      coach_specialization,
+      coach_experience,
+      coach_philosophy,
+      athlete_events,
       subscription_status,
-      events,
       metadata
     } = userData;
 
@@ -548,7 +564,9 @@ export const postOnboardingUser = async (
       role: role // Ensure the role is stored in metadata
     };
 
-    // Insert or update user in users table - exclude role field
+    console.log("Updating user with onboarding_completed: true");
+    
+    // Insert or update user in users table - explicit onboarding_completed: true
     const { data, error } = await supabase
       .from('users')
       .upsert({
@@ -559,13 +577,16 @@ export const postOnboardingUser = async (
         last_name,
         birthday,
         subscription_status,
-        onboarding_completed: true,
+        onboarding_completed: true, // Explicitly set to true
         updated_at: new Date().toISOString(),
         metadata: updatedMetadata
       })
       .select();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error updating user in onboarding:", error);
+      throw error;
+    }
 
     // Get the user ID from the users table
     const { data: userRecord, error: userError } = await supabase
@@ -574,42 +595,68 @@ export const postOnboardingUser = async (
       .eq('clerk_id', clerk_id)
       .single();
       
-    if (userError) throw userError;
+    if (userError) {
+      console.error("Error fetching user ID:", userError);
+      throw userError;
+    }
     
-    // Always update the athlete record with all athlete-specific fields
-    // Since the trigger already creates the base record, we use upsert
-    const { error: athleteError } = await supabase
+    console.log(`Creating/updating athlete record for user ID: ${userRecord.id}`);
+    
+    // Always create/update the athlete record with all athlete-specific fields
+    const { data: athleteData, error: athleteError } = await supabase
       .from('athletes')
       .upsert({
         user_id: userRecord.id,
-        height: height,
-        weight: weight,
-        training_goals: training_goals,
-        experience: training_history,
-        events: events || []
-      });
+        height: athlete_height || 0,
+        weight: athlete_weight || 0,
+        training_goals: athlete_training_goals || '',
+        experience: athlete_training_history || '',
+        events: athlete_events || []
+      })
+      .select();
       
-    if (athleteError) throw athleteError;
+    if (athleteError) {
+      console.error("Error creating/updating athlete record:", athleteError);
+      throw athleteError;
+    }
 
     // Create or update coach record if role is coach
     if (role === 'coach') {
+      console.log(`Creating/updating coach record for user ID: ${userRecord.id}`);
       const { error: coachError } = await supabase
         .from('coaches')
         .upsert({
           user_id: userRecord.id,
-          speciality: team_name, // Using team_name for speciality
-          sport_focus: sport_focus,
-          philosophy: training_goals, // Repurposing training_goals for philosophy
-          experience: training_history
+          speciality: coach_specialization || '', 
+          philosophy: coach_philosophy || '',
+          experience: coach_experience || ''
         });
         
-      if (coachError) throw coachError;
+      if (coachError) {
+        console.error("Error creating/updating coach record:", coachError);
+        throw coachError;
+      }
+    }
+
+    // Double-check that onboarding_completed is set to true
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        onboarding_completed: true
+      })
+      .eq('id', userRecord.id);
+      
+    if (updateError) {
+      console.error("Error updating onboarding completion status:", updateError);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        data: data || {},
+        data: {
+          user: data?.[0] || {},
+          athlete: athleteData?.[0] || {}
+        },
         message: "User onboarding completed successfully"
       }),
       {
@@ -618,91 +665,20 @@ export const postOnboardingUser = async (
       }
     );
   } catch (error: any) {
-    return handleError(error);
+    console.error("Error in postOnboardingUser:", error);
+    return new Response(
+      JSON.stringify({ 
+        status: "error",
+        error: error.message || "An unexpected error occurred during onboarding" 
+      }),
+      {
+        status: error.status || 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 };
 
-/**
- * Creates the events table and seeds it with initial data if it doesn't exist
- */
-export const createAndSeedEventsTable = async (
-  supabase: any
-): Promise<boolean> => {
-  try {
-    console.log("Checking if events table needs to be created...");
-    
-    // Create events table if it doesn't exist
-    const { error: createError } = await supabase.rpc('create_events_table_if_not_exists');
-    if (createError) {
-      // Table might already exist or we don't have rpc access
-      // Let's try a direct approach to seed the table if it exists
-      console.log("Using direct approach to seed events table...");
-    }
-    
-    // Check if the table is empty
-    const { data: eventCount, error: countError } = await supabase
-      .from('events')
-      .select('id', { count: 'exact', head: true });
-      
-    if (countError) {
-      console.error("Error checking events count:", countError);
-      return false;
-    }
-    
-    // If there are already events, don't seed
-    if (eventCount && eventCount.length > 0) {
-      console.log("Events table already has data");
-      return true;
-    }
-    
-    console.log("Seeding events table with initial data...");
-    
-    // Sample track and field events data
-    const eventsData = [
-      // Track events
-      { name: '100m', category: 'track', description: '100 meters sprint' },
-      { name: '200m', category: 'track', description: '200 meters sprint' },
-      { name: '400m', category: 'track', description: '400 meters sprint' },
-      { name: '800m', category: 'track', description: '800 meters middle distance' },
-      { name: '1500m', category: 'track', description: '1500 meters middle distance' },
-      { name: '5000m', category: 'track', description: '5000 meters long distance' },
-      { name: '10000m', category: 'track', description: '10000 meters long distance' },
-      { name: '110m Hurdles', category: 'track', description: '110 meters hurdles' },
-      { name: '400m Hurdles', category: 'track', description: '400 meters hurdles' },
-      { name: '3000m Steeplechase', category: 'track', description: '3000 meters steeplechase' },
-      
-      // Field events
-      { name: 'High Jump', category: 'field', description: 'High jump field event' },
-      { name: 'Pole Vault', category: 'field', description: 'Pole vault field event' },
-      { name: 'Long Jump', category: 'field', description: 'Long jump field event' },
-      { name: 'Triple Jump', category: 'field', description: 'Triple jump field event' },
-      { name: 'Shot Put', category: 'field', description: 'Shot put throwing event' },
-      { name: 'Discus Throw', category: 'field', description: 'Discus throw field event' },
-      { name: 'Hammer Throw', category: 'field', description: 'Hammer throw field event' },
-      { name: 'Javelin Throw', category: 'field', description: 'Javelin throw field event' },
-      
-      // Combined events
-      { name: 'Decathlon', category: 'combined', description: '10 combined events for men' },
-      { name: 'Heptathlon', category: 'combined', description: '7 combined events for women' }
-    ];
-    
-    // Insert sample data
-    const { error: insertError } = await supabase
-      .from('events')
-      .insert(eventsData);
-      
-    if (insertError) {
-      console.error("Error seeding events table:", insertError);
-      return false;
-    }
-    
-    console.log("Events table seeded successfully");
-    return true;
-  } catch (error) {
-    console.error("Error creating/seeding events table:", error);
-    return false;
-  }
-};
 
 /**
  * GET /api/events
@@ -715,9 +691,6 @@ export const getEvents = async (
 ): Promise<Response> => {
   try {
     console.log("Fetching events from database...");
-    
-    // Try to create and seed the events table if needed
-    await createAndSeedEventsTable(supabase);
     
     // Fetch all events from the events table
     const { data: events, error } = await supabase
@@ -1054,7 +1027,17 @@ export const getExercises = async (
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
-    return handleError(error);
+    console.error("Error fetching exercises:", error);
+    return new Response(
+      JSON.stringify({ 
+        status: "error",
+        error: error.message || "An unexpected error occurred" 
+      }),
+      {
+        status: error.status || 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 };
 
@@ -1068,66 +1051,101 @@ Deno.serve(async (req) => {
   const { url, method } = req;
   const parsedUrl = new URL(url); // Parse the URL
   const pathname = parsedUrl.pathname; // Extract the pathname
-   // Handle CORS preflight
-   if (method === "OPTIONS") {
+  
+  // Handle CORS preflight
+  if (method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // Create a Supabase client
+    const supabase = createSupabaseClient(req);
+    
+    let userId = 1; // Default for when auth is disabled
+    const timezone = "Europe/London"; // Default timezone
      
     if(AUTH_ENABLED){
-      // -------------------------
-      // Authentication section
-      // -------------------------
+      // Authentication handling
       const authHeader = req.headers.get("Authorization");
       if (!authHeader) {
         return new Response(
           JSON.stringify({ error: "Missing Authorization header" }),
-          { status: 401, headers: { "Content-Type": "application/json" } }
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       // Extract the token
       const token = authHeader.replace("Bearer ", "");
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+      
       // Use an anon client to verify the token
-      const supabaseAuthClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const supabaseAuthClient = createClient(supabaseUrl, supabaseAnonKey);
       const { data: authData, error: authError } = await supabaseAuthClient.auth.getUser(token);
       if (authError || !authData.user) {
         return new Response(
           JSON.stringify({ error: "Invalid or expired token" }),
-          { status: 401, headers: { "Content-Type": "application/json" } }
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const userId = authData.user.id;
+      userId = authData.user.id;
     }
-    
-    const userId = 1;
-    const timezone = "Europe/London";
 
-    // Create a Supabase client (service role or secure client) for subsequent queries
-    const supabase = createSupabaseClient(req);
+    // For athlete and coach endpoints, fetch the IDs based on user
+    let athleteId = null;
+    if (!AUTH_ENABLED || pathname.includes('/dashboard') || pathname.includes('/athlete')) {
+      // Fetch the athlete ID
+      const { data: athleteData, error: athleteError } = await supabase
+        .from("athletes")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (athleteError) {
+        console.error("Error fetching athlete ID:", athleteError);
+        // Don't throw error - athlete ID might not be needed for all endpoints
+      } else {
+        athleteId = athleteData?.id || null;
+      }
+    }
+
     // -------------------------
     // Routing section
     // -------------------------
-    // Handle events endpoint - place this before other routes
+
+    // Handle user onboarding
+    if (pathname === "/api/onboarding/user") {
+      if (method === "POST") {
+        return await postOnboardingUser(supabase, parsedUrl, req);
+      }
+      return new Response(
+        JSON.stringify({ error: `${method} Method not allowed for onboarding` }),
+        { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Handle events endpoint
     if (pathname === "/api/events") {
       if (method !== "GET") {
-        return new Response(`${method} Method not allowed for events endpoint`, { 
-          status: 405,
-          headers: corsHeaders
-        });
+        return new Response(
+          JSON.stringify({ error: `${method} Method not allowed for events endpoint` }),
+          { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
       return await getEvents(supabase);
     }
-    
-    // Handle onboarding endpoints
-    if (pathname === "/api/onboarding/user") {
-      if (method !== "POST") {
-        return new Response(`${method} Method not allowed for onboarding`, { status: 405 });
+
+    // Handle dashboard exercises endpoint
+    if (pathname === "/api/dashboard/exercises") {
+      if (method !== "GET") {
+        return new Response(
+          JSON.stringify({ error: `${method} Method not allowed for exercises` }),
+          { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-      return await postOnboardingUser(supabase, parsedUrl, req);
+      return await getExercises(supabase, parsedUrl, athleteId || 1);
     }
-    
+
     // Handle dashboard endpoints
     if (pathname.includes("/api/dashboard")) {
       // Retrieve the athlete record using the authenticated user id.
@@ -1142,7 +1160,6 @@ Deno.serve(async (req) => {
           { status: 404, headers: { "Content-Type": "application/json" } }
         );
       }
-      const athleteId = athleteData.id;
       const athleteGroupId = athleteData.athlete_group_id
 
       if (pathname === "/api/dashboard/exercisesInit") {
@@ -1165,13 +1182,6 @@ Deno.serve(async (req) => {
           return new Response(`${method} Method not allowed for mesocycle`, { status: 405 });
         }
         return await getMesocycle(supabase, parsedUrl, athleteId);
-      }
-
-      if (pathname === "/api/dashboard/exercises") {
-        if (method !== "GET") {
-          return new Response(`${method} Method not allowed for exercises`, { status: 405 });
-        }
-        return await getExercises(supabase, parsedUrl, athleteId);
       }
 
       if (pathname === "/api/dashboard/exercisesDetail") {
@@ -1216,7 +1226,10 @@ Deno.serve(async (req) => {
     // Handle generic /api/dashboard/:table endpoints
     const { table, id, params } = extractPathParams(url);
     if (!table) {
-      return new Response(`Table Not Found`, { status: 404 });
+      return new Response(
+        JSON.stringify({ error: "Table Not Found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     switch (method) {
@@ -1229,9 +1242,22 @@ Deno.serve(async (req) => {
       case "PUT":
         return await updateItem(supabase, table, req);
       default:
-        return new Response("Method not allowed", { status: 405 });
+        return new Response(
+          JSON.stringify({ error: "Method not allowed" }),
+          { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
     }
   } catch (error: any) {
-    return handleError(error);
+    console.error("Unexpected error:", error);
+    return new Response(
+      JSON.stringify({ 
+        status: "error",
+        error: error.message || "An unexpected error occurred" 
+      }),
+      {
+        status: error.status || 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });

@@ -1,5 +1,13 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
-import { Webhook } from 'https://esm.sh/svix@1.14.0'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0'
+import { Webhook } from 'https://esm.sh/svix@1.7.0'
+
+// Define CORS headers for all responses
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+};
 
 // Environment variables
 const clerkWebhookSecret = Deno.env.get('CLERK_WEBHOOK_SECRET')
@@ -18,6 +26,11 @@ const supabase = createClient(
 )
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     // Verify this is a POST request
     if (req.method !== 'POST') {
@@ -46,7 +59,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Missing webhook verification information' }),
         {
           status: 400,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -68,7 +81,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Error verifying webhook' }),
         {
           status: 400,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -96,8 +109,10 @@ Deno.serve(async (req) => {
         const { id, email_addresses, first_name, last_name, username, created_at } = data
         const primaryEmail = email_addresses.find(email => email.id === data.primary_email_address_id)?.email_address
 
+        console.log(`Webhook: Creating new user ${id} with email ${primaryEmail}`);
+
         // Insert user into the Supabase users table
-        const { error } = await supabase
+        const { data: userData, error } = await supabase
           .from('users')
           .insert({
             clerk_id: id,
@@ -108,11 +123,13 @@ Deno.serve(async (req) => {
             timezone: 'UTC', // Default timezone
             subscription_status: 'free', // Default subscription status
             avatar_url: data.image_url,
+            onboarding_completed: false, // New users need to complete onboarding
             metadata: {
               first_name,
               last_name
             }
           })
+          .select()
 
         if (error) {
           console.error('Error inserting user into Supabase:', error)
@@ -120,9 +137,41 @@ Deno.serve(async (req) => {
             JSON.stringify({ error: 'Error inserting user' }),
             {
               status: 500,
-              headers: { 'Content-Type': 'application/json' }
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           )
+        }
+        
+        // Check if user was created successfully
+        if (userData && userData.length > 0) {
+          console.log(`Created user with ID: ${userData[0].id}`);
+          
+          // The trigger should create the athlete record automatically
+          // But we'll double-check that the athlete record exists
+          const { data: athleteData, error: athleteError } = await supabase
+            .from('athletes')
+            .select('*')
+            .eq('user_id', userData[0].id);
+            
+          if (athleteError || !athleteData || athleteData.length === 0) {
+            console.log(`Creating default athlete record for user ${userData[0].id}`);
+            
+            // Create a default athlete record if it doesn't exist
+            const { error: createAthleteError } = await supabase
+              .from('athletes')
+              .insert({
+                user_id: userData[0].id,
+                height: 0,
+                weight: 0,
+                training_goals: '',
+                experience: '',
+                events: []
+              });
+              
+            if (createAthleteError) {
+              console.error('Error creating default athlete record:', createAthleteError);
+            }
+          }
         }
         
         break
@@ -155,7 +204,7 @@ Deno.serve(async (req) => {
             JSON.stringify({ error: 'Error updating user' }),
             {
               status: 500,
-              headers: { 'Content-Type': 'application/json' }
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           )
         }
@@ -180,7 +229,7 @@ Deno.serve(async (req) => {
             JSON.stringify({ error: 'Error handling user deletion' }),
             {
               status: 500,
-              headers: { 'Content-Type': 'application/json' }
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           )
         }
@@ -197,7 +246,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ success: true }),
       {
         status: 200,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
     
@@ -207,7 +256,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ error: 'Unexpected error processing webhook' }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
