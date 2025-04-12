@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.188.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
-import { corsHeaders, handleError } from './utils';
-import { getAthletes, createAthlete } from './athletes';
-import { getUserStatus } from './users';
+import { corsHeaders, handleError } from './utils.ts';
+import { getAthletes, createAthlete } from './athletes.ts';
+import { getUserStatus } from './users.ts';
 
 // Toggle for authentication (default is enabled)
 const AUTH_ENABLED = false;

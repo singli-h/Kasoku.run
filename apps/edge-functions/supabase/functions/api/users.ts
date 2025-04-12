@@ -1,4 +1,4 @@
-import { corsHeaders, handleError } from './utils';
+import { corsHeaders, handleError } from './utils.ts';
 
 /**
  * GET /api/users/:clerkId/status
