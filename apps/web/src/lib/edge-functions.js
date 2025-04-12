@@ -191,6 +191,9 @@ export const edgeFunctions = {
       body: data
     }),
     getTrainingSession: (id) => fetchFromEdgeFunction(`/api/dashboard/trainingSession/${id}`),
-    getAllTrainingSessions: () => fetchFromEdgeFunction("/api/dashboard/trainingSession")
+    getAllTrainingSessions: () => fetchFromEdgeFunction("/api/dashboard/trainingSession"),
+    getWeeklyOverview: () => fetchFromEdgeFunction("/api/dashboard/weeklyOverview"),
+    getMesocycle: () => fetchFromEdgeFunction("/api/dashboard/mesocycle"),
+    getExercises: () => fetchFromEdgeFunction("/api/dashboard/exercises")
   }
 }; 

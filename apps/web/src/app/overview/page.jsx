@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import CalendarView from "../../components/overview/CalendarView"
 import PlanBuilder from "../../components/overview/PlanBuilder"
 import MesocycleOverview from "../../components/overview/MesocycleOverview"
-import { mockMesocycle } from "../../components/data/mockData"
 import { Calendar, ListOrdered, BarChart } from "lucide-react"
 
 const CustomButton = ({ children, isActive, className = "", ...props }) => {
@@ -27,10 +26,6 @@ const CustomButton = ({ children, isActive, className = "", ...props }) => {
 export default function OverviewPage() {
   const [mesocycle, setMesocycle] = useState({ weeks: [] })
   const [activeView, setActiveView] = useState("calendar")
-
-  useEffect(() => {
-    setMesocycle(mockMesocycle) // Directly use mock data
-  }, [])
 
   const handleMesocycleUpdate = (updatedMesocycle) => {
     setMesocycle(updatedMesocycle)

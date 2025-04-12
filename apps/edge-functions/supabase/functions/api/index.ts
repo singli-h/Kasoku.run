@@ -20,6 +20,12 @@ const createSupabaseClient = (req: Request) => {
   );
 };
 
+// Helper function to parse request body from a URL
+const parseRequestBody = async (url: URL): Promise<any> => {
+  const body = await (new Request(url)).json();
+  return body;
+};
+
 // Helper function to extract table name and parameters from URL
 const extractPathParams = (url: string) => {
   const taskPattern = new URLPattern({ pathname: "/api/:table/:id?" });
@@ -774,6 +780,292 @@ export const getEvents = async (
 };
 
 /**
+ * GET /api/dashboard/weeklyOverview
+ *
+ * Returns weekly data for the dashboard overview.
+ * For now, this returns mock data, but in the future it should:
+ * - Calculate weekly progress stats from the athlete's training sessions
+ */
+export const getWeeklyOverview = async (
+  supabase: any,
+  url: URL,
+  athleteId: number | string
+): Promise<Response> => {
+  try {
+    // Mock data for the weekly overview
+    const mockWeeklyData = [
+      {
+        title: "Training Volume",
+        stat: "12,500 kg",
+        progress: 75
+      },
+      {
+        title: "Training Sessions",
+        stat: "4/5",
+        progress: 80
+      },
+      {
+        title: "Calories Burned",
+        stat: "3,621",
+        progress: 65
+      },
+      {
+        title: "Completed Exercises",
+        stat: "24/28",
+        progress: 85
+      }
+    ];
+
+    // In a real implementation, we would:
+    // 1. Calculate the start and end dates for the current week
+    // 2. Query the database for training sessions in this date range
+    // 3. Calculate volume, sessions completed, etc.
+    // 4. Format the data for the front-end
+
+    return new Response(
+      JSON.stringify({
+        status: "success",
+        data: mockWeeklyData,
+        metadata: {
+          timestamp: new Date().toISOString()
+        }
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error: any) {
+    return handleError(error);
+  }
+};
+
+/**
+ * GET /api/dashboard/mesocycle
+ *
+ * Returns mesocycle data for the dashboard.
+ * For now, this returns mock data, but in the future it should:
+ * - Fetch actual mesocycle data from the database.
+ */
+export const getMesocycle = async (
+  supabase: any,
+  url: URL,
+  athleteId: number | string
+): Promise<Response> => {
+  try {
+    // Mock mesocycle data
+    const mockMesocycle = {
+      id: "meso123",
+      name: "Summer Strength Cycle",
+      startDate: "2023-07-01",
+      endDate: "2023-08-26",
+      status: "active",
+      weeks: [
+        {
+          name: "Hypertrophy Week 1",
+          totalVolume: 10500,
+          intensity: "65",
+          mainObjectives: "Volume, Muscle Growth",
+          notes: "Focus on time under tension and mind-muscle connection",
+          progression: [
+            { name: "Mon", volume: 2500, intensity: 65 },
+            { name: "Tue", volume: 0, intensity: 0 },
+            { name: "Wed", volume: 3000, intensity: 70 },
+            { name: "Thu", volume: 0, intensity: 0 },
+            { name: "Fri", volume: 2800, intensity: 65 },
+            { name: "Sat", volume: 2200, intensity: 60 },
+            { name: "Sun", volume: 0, intensity: 0 }
+          ]
+        },
+        {
+          name: "Hypertrophy Week 2",
+          totalVolume: 11200,
+          intensity: "70",
+          mainObjectives: "Volume, Progressive Overload",
+          notes: "Increase weight by 5% from last week where possible",
+          progression: [
+            { name: "Mon", volume: 2700, intensity: 70 },
+            { name: "Tue", volume: 0, intensity: 0 },
+            { name: "Wed", volume: 3200, intensity: 75 },
+            { name: "Thu", volume: 0, intensity: 0 },
+            { name: "Fri", volume: 3000, intensity: 70 },
+            { name: "Sat", volume: 2300, intensity: 65 },
+            { name: "Sun", volume: 0, intensity: 0 }
+          ]
+        },
+        {
+          name: "Strength Week 1",
+          totalVolume: 9500,
+          intensity: "80",
+          mainObjectives: "Strength, Power",
+          notes: "Lower volume, increase intensity. Focus on compound movements.",
+          progression: [
+            { name: "Mon", volume: 2200, intensity: 80 },
+            { name: "Tue", volume: 0, intensity: 0 },
+            { name: "Wed", volume: 2800, intensity: 85 },
+            { name: "Thu", volume: 0, intensity: 0 },
+            { name: "Fri", volume: 2500, intensity: 80 },
+            { name: "Sat", volume: 2000, intensity: 75 },
+            { name: "Sun", volume: 0, intensity: 0 }
+          ]
+        },
+        {
+          name: "Strength Week 2",
+          totalVolume: 8800,
+          intensity: "85",
+          mainObjectives: "Strength, Power, Neural Adaptation",
+          notes: "Focus on perfect form and explosive concentric phase",
+          progression: [
+            { name: "Mon", volume: 2000, intensity: 85 },
+            { name: "Tue", volume: 0, intensity: 0 },
+            { name: "Wed", volume: 2600, intensity: 90 },
+            { name: "Thu", volume: 0, intensity: 0 },
+            { name: "Fri", volume: 2300, intensity: 85 },
+            { name: "Sat", volume: 1900, intensity: 80 },
+            { name: "Sun", volume: 0, intensity: 0 }
+          ]
+        }
+      ],
+      sessions: [
+        {
+          id: "sess1",
+          name: "Upper Body Power",
+          date: "2023-07-10T09:00:00Z",
+          exercises: [
+            { id: 1, name: "Bench Press", sets: [{ setNumber: 1, reps: 8, weight: 80, power: 650, velocity: 0.8 }] }
+          ],
+          warmup: [
+            { id: 101, name: "Arm Circles", duration: "2 min" }
+          ],
+          circuits: [
+            { id: 201, name: "Push-ups", reps: 15, duration: "30 sec" }
+          ]
+        },
+        {
+          id: "sess2",
+          name: "Lower Body Strength",
+          date: "2023-07-12T09:00:00Z",
+          exercises: [
+            { id: 2, name: "Squat", sets: [{ setNumber: 1, reps: 5, weight: 100, power: 850, velocity: 0.7 }] }
+          ],
+          warmup: [
+            { id: 102, name: "Leg Swings", duration: "2 min" }
+          ],
+          circuits: [
+            { id: 202, name: "Bodyweight Lunges", reps: 20, duration: "45 sec" }
+          ]
+        }
+      ]
+    };
+
+    return new Response(
+      JSON.stringify({
+        status: "success",
+        data: mockMesocycle,
+        metadata: {
+          timestamp: new Date().toISOString()
+        }
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error: any) {
+    return handleError(error);
+  }
+};
+
+/**
+ * GET /api/dashboard/exercises
+ *
+ * Returns exercise data for the dashboard.
+ * For now, this returns mock data, but in the future it should:
+ * - Fetch actual exercise data from the database.
+ */
+export const getExercises = async (
+  supabase: any,
+  url: URL,
+  athleteId: number | string
+): Promise<Response> => {
+  try {
+    // Mock exercise data
+    const mockExercises = [
+      {
+        id: 1,
+        name: "Bench Press",
+        category: "Chest",
+        type: "gym",
+        description: "Compound chest exercise"
+      },
+      {
+        id: 2,
+        name: "Squat",
+        category: "Legs",
+        type: "gym",
+        description: "Compound leg exercise"
+      },
+      {
+        id: 3,
+        name: "Deadlift",
+        category: "Back",
+        type: "gym",
+        description: "Compound back exercise"
+      },
+      {
+        id: 4,
+        name: "Overhead Press",
+        category: "Shoulders",
+        type: "gym",
+        description: "Compound shoulder exercise"
+      },
+      {
+        id: 5,
+        name: "Pull-up",
+        category: "Back",
+        type: "gym",
+        description: "Compound back exercise"
+      },
+      {
+        id: 6,
+        name: "Arm Circles",
+        category: "Warm-up",
+        type: "warmup",
+        description: "Dynamic warm-up for shoulders"
+      },
+      {
+        id: 7,
+        name: "Leg Swings",
+        category: "Warm-up",
+        type: "warmup",
+        description: "Dynamic warm-up for hips and legs"
+      },
+      {
+        id: 8,
+        name: "Push-ups",
+        category: "Circuit",
+        type: "circuit",
+        description: "Bodyweight chest exercise"
+      },
+      {
+        id: 9,
+        name: "Bodyweight Lunges",
+        category: "Circuit",
+        type: "circuit",
+        description: "Bodyweight leg exercise"
+      }
+    ];
+
+    return new Response(
+      JSON.stringify({
+        status: "success",
+        data: mockExercises,
+        metadata: {
+          timestamp: new Date().toISOString()
+        }
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error: any) {
+    return handleError(error);
+  }
+};
+
+/**
  * Main request handler
  *
  * This function routes the incoming GET request to the corresponding handler
@@ -866,6 +1158,27 @@ Deno.serve(async (req) => {
         }
         // Pass the parsedUrl and athleteId to the handler
         return await getExercisesInit(supabase, parsedUrl, athleteId, athleteGroupId, timezone);
+      }
+
+      if (pathname === "/api/dashboard/weeklyOverview") {
+        if (method !== "GET") {
+          return new Response(`${method} Method not allowed for weekly overview`, { status: 405 });
+        }
+        return await getWeeklyOverview(supabase, parsedUrl, athleteId);
+      }
+
+      if (pathname === "/api/dashboard/mesocycle") {
+        if (method !== "GET") {
+          return new Response(`${method} Method not allowed for mesocycle`, { status: 405 });
+        }
+        return await getMesocycle(supabase, parsedUrl, athleteId);
+      }
+
+      if (pathname === "/api/dashboard/exercises") {
+        if (method !== "GET") {
+          return new Response(`${method} Method not allowed for exercises`, { status: 405 });
+        }
+        return await getExercises(supabase, parsedUrl, athleteId);
       }
 
       if (pathname === "/api/dashboard/exercisesDetail") {
