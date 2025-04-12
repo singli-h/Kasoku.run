@@ -102,11 +102,19 @@ export default function OnboardingFlow() {
 
       // Add athlete-specific fields
       if (userData.role === 'athlete') {
+        // Ensure events are properly serializable by extracting only the needed fields
+        const sanitizedEvents = userData.events.map(event => ({
+          id: event.id,
+          name: event.name,
+          type: event.type,
+          category: event.category
+        }))
+        
         userDataForApi.athlete_height = userData.height
         userDataForApi.athlete_weight = userData.weight
         userDataForApi.athlete_training_history = userData.trainingHistory
         userDataForApi.athlete_training_goals = userData.trainingGoals
-        userDataForApi.athlete_events = userData.events
+        userDataForApi.athlete_events = sanitizedEvents
       }
 
       // Add coach-specific fields

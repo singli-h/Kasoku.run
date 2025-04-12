@@ -66,12 +66,32 @@ export async function fetchFromEdgeFunction(endpoint, options = {}) {
       ...options.headers
     };
     
+    // Properly serialize body to JSON if it's an object
+    let requestBody = undefined;
+    if (options.body) {
+      try {
+        requestBody = typeof options.body === 'string' 
+          ? options.body 
+          : JSON.stringify(options.body);
+      } catch (e) {
+        console.error('Error serializing request body:', e);
+        throw new EdgeFunctionError(
+          `Failed to serialize request body: ${e.message}`,
+          500,
+          null,
+          endpoint
+        );
+      }
+    }
+    
     // Make the request
     const response = await fetch(url, {
       method: options.method || "GET",
       headers,
-      body: options.body ? JSON.stringify(options.body) : undefined,
-      ...options
+      body: requestBody,
+      ...options,
+      // Override options.body as we've already processed it
+      body: requestBody
     });
     
     // Handle non-success responses
