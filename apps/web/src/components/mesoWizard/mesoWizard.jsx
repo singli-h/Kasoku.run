@@ -7,7 +7,6 @@ import StepThreeConfirmation from "./steps/StepThreeConfirmation"
 import StepPlanSelection from "./steps/StepPlanSelection"
 import StepMicroPlanSelection from "./steps/StepMicroPlanSelection"
 import { useMesoWizardState } from "./hooks/useMesoWizardState"
-import { progressionModels } from "./sampledata"
 import { Loader2 } from "lucide-react"
 
 /**
@@ -116,7 +115,6 @@ const MesoWizard = ({ onComplete }) => {
             activeSession={activeSession}
             setActiveSession={setActiveSession}
             errors={errors}
-            progressionModels={progressionModels}
             handleNext={handleNext}
             handleBack={handleBack}
           />
