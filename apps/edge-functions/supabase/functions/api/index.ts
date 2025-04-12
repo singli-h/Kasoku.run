@@ -532,6 +532,9 @@ export const postOnboardingUser = async (
     // Parse and validate request body
     const userData = await req.json();
     
+    // Debug - Log the full input data
+    console.log("Received user data for onboarding:", JSON.stringify(userData, null, 2));
+    
     // Extract necessary fields from userData
     const {
       clerk_id,
@@ -539,7 +542,7 @@ export const postOnboardingUser = async (
       email,
       first_name,
       last_name,
-      role, // We'll still use this to determine if we should create a coach record
+      role,
       birthdate,
       athlete_height,
       athlete_weight,
@@ -552,6 +555,15 @@ export const postOnboardingUser = async (
       subscription_status,
       metadata
     } = userData;
+
+    // Debug - Log extracted fields
+    console.log("Extracted athlete fields:", { 
+      athlete_height, 
+      athlete_weight, 
+      athlete_training_history, 
+      athlete_training_goals,
+      athlete_events: Array.isArray(athlete_events) ? `${athlete_events.length} events` : athlete_events
+    });
 
     // Validate required fields
     if (!clerk_id || !email) {
@@ -588,6 +600,8 @@ export const postOnboardingUser = async (
       throw error;
     }
 
+    console.log("Successfully updated user:", data?.[0]?.id);
+
     // Get the user ID from the users table
     const { data: userRecord, error: userError } = await supabase
       .from('users')
@@ -602,17 +616,22 @@ export const postOnboardingUser = async (
     
     console.log(`Creating/updating athlete record for user ID: ${userRecord.id}`);
     
+    // Debug - Log athlete data being inserted
+    const athleteDataToInsert = {
+      user_id: userRecord.id,
+      height: athlete_height || 0,
+      weight: athlete_weight || 0,
+      training_goals: athlete_training_goals || '',
+      experience: athlete_training_history || '',
+      events: athlete_events || []
+    };
+    
+    console.log("Athlete data being inserted:", JSON.stringify(athleteDataToInsert, null, 2));
+    
     // Always create/update the athlete record with all athlete-specific fields
     const { data: athleteData, error: athleteError } = await supabase
       .from('athletes')
-      .upsert({
-        user_id: userRecord.id,
-        height: athlete_height || 0,
-        weight: athlete_weight || 0,
-        training_goals: athlete_training_goals || '',
-        experience: athlete_training_history || '',
-        events: athlete_events || []
-      })
+      .upsert(athleteDataToInsert)
       .select();
       
     if (athleteError) {
@@ -620,22 +639,31 @@ export const postOnboardingUser = async (
       throw athleteError;
     }
 
+    console.log("Successfully created/updated athlete record:", athleteData?.[0]?.id);
+    
     // Create or update coach record if role is coach
     if (role === 'coach') {
       console.log(`Creating/updating coach record for user ID: ${userRecord.id}`);
-      const { error: coachError } = await supabase
+      const coachDataToInsert = {
+        user_id: userRecord.id,
+        speciality: coach_specialization || '', 
+        philosophy: coach_philosophy || '',
+        experience: coach_experience || ''
+      };
+      
+      console.log("Coach data being inserted:", JSON.stringify(coachDataToInsert, null, 2));
+      
+      const { data: coachData, error: coachError } = await supabase
         .from('coaches')
-        .upsert({
-          user_id: userRecord.id,
-          speciality: coach_specialization || '', 
-          philosophy: coach_philosophy || '',
-          experience: coach_experience || ''
-        });
+        .upsert(coachDataToInsert)
+        .select();
         
       if (coachError) {
         console.error("Error creating/updating coach record:", coachError);
         throw coachError;
       }
+      
+      console.log("Successfully created/updated coach record:", coachData?.[0]?.id);
     }
 
     // Double-check that onboarding_completed is set to true
@@ -650,15 +678,20 @@ export const postOnboardingUser = async (
       console.error("Error updating onboarding completion status:", updateError);
     }
 
+    // Prepare the full response data
+    const responseData = {
+      success: true,
+      data: {
+        user: data?.[0] || {},
+        athlete: athleteData?.[0] || {}
+      },
+      message: "User onboarding completed successfully"
+    };
+    
+    console.log("Onboarding successful, returning response:", JSON.stringify(responseData, null, 2));
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          user: data?.[0] || {},
-          athlete: athleteData?.[0] || {}
-        },
-        message: "User onboarding completed successfully"
-      }),
+      JSON.stringify(responseData),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" }

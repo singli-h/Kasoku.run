@@ -125,13 +125,21 @@ export default function OnboardingFlow() {
         userDataForApi.coach_sport_focus = userData.sportFocus
       }
 
-      // Use edge functions utility to call the API
-      await edgeFunctions.users.onboard(userDataForApi)
+      // Debugging - Log the request data
+      console.log('Sending onboarding data to API:', JSON.stringify(userDataForApi, null, 2))
 
-      // Redirect to dashboard after successful onboarding
-      router.push('/planner')
+      // Use edge functions utility to call the API
+      const response = await edgeFunctions.users.onboard(userDataForApi)
+      
+      // Debugging - Log the API response
+      console.log('API Response:', JSON.stringify(response, null, 2))
+
+      // DEBUGGING - Temporarily disable redirect for investigation
+      console.log('Completed onboarding but redirect disabled for debugging')
+      // router.push('/planner')  // Commented out for debugging
     } catch (error) {
       console.error('Error saving user data:', error)
+      console.log('Actual error object:', error)
       // You might want to show an error message to the user here
     }
   }

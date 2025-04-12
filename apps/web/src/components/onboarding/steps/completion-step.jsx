@@ -11,22 +11,30 @@ export default function CompletionStep({ onComplete }) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
 
   const handleComplete = async () => {
     try {
       setIsSubmitting(true)
       setError(null)
+      setSuccessMessage(null)
+      
+      console.log('Completion step: Starting onboarding completion')
       
       // Call the onComplete callback first and wait for it to finish
       if (onComplete) {
         await onComplete()
       }
       
+      console.log('Completion step: Onboarding data submitted successfully')
+      setSuccessMessage('Onboarding completed successfully. Data has been saved, but redirect is disabled for debugging purposes.')
+      
       // Force a hard reload to clear any cached states
-      window.location.href = '/planner'
+      // Commented out for debugging
+      // window.location.href = '/planner'
     } catch (error) {
       console.error('Error completing onboarding:', error)
-      setError('Failed to complete onboarding. Please try again.')
+      setError('Failed to complete onboarding. Please try again. Error: ' + (error.message || 'Unknown error'))
     } finally {
       setIsSubmitting(false)
     }
@@ -79,9 +87,21 @@ export default function CompletionStep({ onComplete }) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-red-500 text-sm"
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
         >
-          {error}
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+        </motion.div>
+      )}
+
+      {successMessage && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative"
+        >
+          <strong className="font-bold">Success: </strong>
+          <span className="block sm:inline">{successMessage}</span>
         </motion.div>
       )}
 
