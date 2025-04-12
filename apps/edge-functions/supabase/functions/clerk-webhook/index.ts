@@ -102,8 +102,9 @@ Deno.serve(async (req) => {
           .insert({
             clerk_id: id,
             email: primaryEmail,
-            name: `${first_name || ''} ${last_name || ''}`.trim(),
             username: username || (first_name ? first_name.toLowerCase() : ''),
+            first_name: first_name || '',
+            last_name: last_name || '',
             timezone: 'UTC', // Default timezone
             subscription_status: 'free', // Default subscription status
             avatar_url: data.image_url,
@@ -136,7 +137,8 @@ Deno.serve(async (req) => {
           .from('users')
           .update({
             email: primaryEmail,
-            name: `${first_name || ''} ${last_name || ''}`.trim(),
+            first_name: first_name || '',
+            last_name: last_name || '',
             username: username || (first_name ? first_name.toLowerCase() : ''),
             avatar_url: data.image_url,
             updated_at: new Date().toISOString(),

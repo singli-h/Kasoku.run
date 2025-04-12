@@ -95,7 +95,7 @@ export default function OnboardingFlow() {
         events: userData.events,
         onboarding_completed: true,
         metadata: {
-          role: userData.role
+          role: userData.role,
         },
       }
 

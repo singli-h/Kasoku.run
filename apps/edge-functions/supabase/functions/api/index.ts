@@ -524,7 +524,7 @@ export const postOnboardingUser = async (
       email,
       first_name,
       last_name,
-      role,
+      role, // We'll still use this to determine if we should create a coach record
       birthday,
       height,
       weight,
@@ -542,7 +542,13 @@ export const postOnboardingUser = async (
       throw new Error("Missing required fields: clerk_id and email are required");
     }
 
-    // Insert or update user in users table
+    // Store role in metadata but don't use it as a column in users table
+    const updatedMetadata = {
+      ...metadata,
+      role: role // Ensure the role is stored in metadata
+    };
+
+    // Insert or update user in users table - exclude role field
     const { data, error } = await supabase
       .from('users')
       .upsert({
@@ -551,63 +557,50 @@ export const postOnboardingUser = async (
         email,
         first_name,
         last_name,
-        role,
         birthday,
-        height,
-        weight,
-        training_history: training_history,
-        training_goals,
-        team_name,
-        sport_focus,
         subscription_status,
         onboarding_completed: true,
         updated_at: new Date().toISOString(),
-        metadata
+        metadata: updatedMetadata
       })
       .select();
 
     if (error) throw error;
 
-    // Create athlete record if role is athlete
-    if (role === 'athlete') {
-      // Get the user ID first from the users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clerk_id', clerk_id)
-        .single();
-        
-      if (userError) throw userError;
+    // Get the user ID from the users table
+    const { data: userRecord, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerk_id)
+      .single();
       
-      // Create athlete record with user ID and events
-      const { error: athleteError } = await supabase
-        .from('athletes')
-        .upsert({
-          user_id: userData.id,
-          events: events || [], // Store selected events
-          // Add additional athlete-specific fields here if needed
-        });
-        
-      if (athleteError) throw athleteError;
-    }
+    if (userError) throw userError;
+    
+    // Always update the athlete record with all athlete-specific fields
+    // Since the trigger already creates the base record, we use upsert
+    const { error: athleteError } = await supabase
+      .from('athletes')
+      .upsert({
+        user_id: userRecord.id,
+        height: height,
+        weight: weight,
+        training_goals: training_goals,
+        experience: training_history,
+        events: events || []
+      });
+      
+    if (athleteError) throw athleteError;
 
-    // Similar logic for coach role if needed
+    // Create or update coach record if role is coach
     if (role === 'coach') {
-      // Get the user ID first from the users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clerk_id', clerk_id)
-        .single();
-        
-      if (userError) throw userError;
-      
-      // Create coach record with user ID
       const { error: coachError } = await supabase
         .from('coaches')
         .upsert({
-          user_id: userData.id,
-          // Add additional coach-specific fields here if needed
+          user_id: userRecord.id,
+          speciality: team_name, // Using team_name for speciality
+          sport_focus: sport_focus,
+          philosophy: training_goals, // Repurposing training_goals for philosophy
+          experience: training_history
         });
         
       if (coachError) throw coachError;
