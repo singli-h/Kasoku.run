@@ -545,6 +545,7 @@ export const postOnboardingUser = async (
       last_name,
       role,
       birthdate,
+      timezone,
       athlete_height,
       athlete_weight,
       athlete_training_history,
@@ -589,6 +590,7 @@ export const postOnboardingUser = async (
         first_name,
         last_name,
         birthdate,
+        timezone: timezone || "UTC", // Set timezone with UTC as fallback
         subscription_status,
         onboarding_completed: true, // Explicitly set to true
         updated_at: new Date().toISOString(),

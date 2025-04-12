@@ -26,6 +26,7 @@ export default function OnboardingFlow() {
     role: "",
     profilePicture: null,
     birthdate: "",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
     
     // Athlete-specific fields
     height: "",
@@ -93,6 +94,7 @@ export default function OnboardingFlow() {
         last_name: userData.lastName,
         role: userData.role,
         birthdate: userData.birthdate,
+        timezone: userData.timezone,
         subscription_status: userData.subscription,
         onboarding_completed: true,
         metadata: {
