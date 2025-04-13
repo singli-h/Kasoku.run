@@ -59,6 +59,32 @@ export default function CompletionStep({ onComplete }) {
     }
   }
 
+  const handleDebugForceOnboarding = async () => {
+    try {
+      console.log('Debug: Force updating onboarding status')
+      const response = await fetch('/api/debug-onboarding', {
+        method: 'POST',
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      console.log('Debug: Force update result:', result)
+      
+      setSuccessMessage('Onboarding status force-updated. Redirecting to dashboard in 3 seconds...')
+      
+      // Redirect after a delay
+      setTimeout(() => {
+        window.location.href = '/planner'
+      }, 3000)
+    } catch (error) {
+      console.error('Error force-updating onboarding:', error)
+      setError(`Debug error: ${error.message}`)
+    }
+  }
+
   return (
     <div className="text-center space-y-6">
       <motion.div
@@ -128,7 +154,7 @@ export default function CompletionStep({ onComplete }) {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.6, duration: 0.5 }}
-        className="pt-4 flex justify-center"
+        className="pt-4 flex flex-col items-center gap-4"
       >
         <Button
           onClick={handleComplete}
@@ -144,6 +170,18 @@ export default function CompletionStep({ onComplete }) {
             'Go to Dashboard'
           )}
         </Button>
+
+        {/* Debug button - only visible in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <Button
+            onClick={handleDebugForceOnboarding}
+            variant="outline"
+            size="sm"
+            className="mt-4 bg-yellow-500/10 text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/20"
+          >
+            Debug: Force Onboarding Complete
+          </Button>
+        )}
       </motion.div>
     </div>
   )
