@@ -192,7 +192,18 @@ export const edgeFunctions = {
       body: userData
     }),
     getStatus: (clerkId) => fetchFromEdgeFunction(`/api/users/${clerkId}/status`),
-    checkOnboarding: (clerkId) => fetchFromEdgeFunction(`/api/users?select=onboarding_completed&clerk_id=eq.${clerkId}`),
+    checkOnboarding: (clerkId) => {
+      // Extract the base clerk_id without any query parameters
+      const baseClerkId = clerkId.split('?')[0];
+      // Check if there's a query string in the clerkId parameter
+      const hasQueryString = clerkId.includes('?');
+      // Construct the URL with the appropriate separator
+      const url = hasQueryString 
+        ? `/api/users?select=onboarding_completed&clerk_id=eq.${baseClerkId}&${clerkId.split('?')[1]}`
+        : `/api/users?select=onboarding_completed&clerk_id=eq.${clerkId}`;
+      
+      return fetchFromEdgeFunction(url);
+    },
     update: (clerkId, data) => fetchFromEdgeFunction(`/api/users/${clerkId}`, {
       method: "PUT",
       body: data

@@ -62,14 +62,17 @@ export default clerkMiddleware(async (auth, req) => {
     const isProtectedRoute = protectedRoutes.some(route => url.pathname.startsWith(route))
     if (userId && isProtectedRoute) {
       try {
-        // Use our API endpoint that leverages edge functions
-        const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/user-status`
+        // Use our API endpoint that leverages edge functions with cache-busting
+        const timestamp = Date.now();
+        const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/user-status?t=${timestamp}`
         console.log(`Checking onboarding status for user ${userId}`)
         
         const response = await fetch(apiUrl, {
           headers: {
             'Authorization': `Bearer ${req.headers.get('Authorization') || ''}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
           }
         })
 
@@ -99,14 +102,17 @@ export default clerkMiddleware(async (auth, req) => {
     const isOnboardingRoute = onboardingRoutes.some(route => url.pathname.startsWith(route))
     if (userId && isOnboardingRoute) {
       try {
-        // Use our API endpoint that leverages edge functions
-        const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/user-status`
+        // Use our API endpoint that leverages edge functions with cache-busting
+        const timestamp = Date.now();
+        const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/user-status?t=${timestamp}`
         console.log(`Checking if user ${userId} has already completed onboarding`)
         
         const response = await fetch(apiUrl, {
           headers: {
             'Authorization': `Bearer ${req.headers.get('Authorization') || ''}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
           }
         })
 

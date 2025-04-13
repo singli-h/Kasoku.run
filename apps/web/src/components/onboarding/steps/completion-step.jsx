@@ -48,7 +48,9 @@ export default function CompletionStep({ onComplete }) {
       setSuccessMessage('Onboarding completed successfully. Redirecting to your dashboard...')
       
       // Force a hard reload to clear any cached states
-      window.location.href = '/planner'
+      setTimeout(() => {
+        window.location.href = '/planner'
+      }, 1500) // Short delay to show success message
     } catch (error) {
       console.error('Error completing onboarding:', error)
       setError('Failed to complete onboarding. Please try again. Error: ' + (error.message || 'Unknown error'))
