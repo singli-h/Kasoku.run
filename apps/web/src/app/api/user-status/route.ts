@@ -22,24 +22,23 @@ export async function GET() {
     
     // Add cache-busting timestamp to force fresh data
     const timestamp = Date.now();
-    const userData = await edgeFunctions.users.checkOnboarding(`${userId}?timestamp=${timestamp}`);
+    const userData = await edgeFunctions.users.checkOnboarding(`${userId}`);
     
-    // Log the raw response from Supabase
-    console.log('[API] Raw user data from Supabase:', JSON.stringify(userData, null, 2));
+    // Log the raw response for debugging
+    console.log('[API] Raw user data from Edge Function:', JSON.stringify(userData));
     
     // Check if user exists and has completed onboarding
-    const hasUsers = Array.isArray(userData?.users) && userData.users.length > 0;
-    const rawOnboardingValue = hasUsers ? userData.users[0].onboarding_completed : undefined;
-    
-    console.log('[API] Detailed onboarding check:', { 
-      hasUsers, 
-      rawOnboardingValue,
-      valueType: typeof rawOnboardingValue
-    });
-    
-    const onboardingCompleted = hasUsers && userData.users[0].onboarding_completed === true;
+    const onboardingCompleted = userData && 
+                               Array.isArray(userData.users) && 
+                               userData.users.length > 0 && 
+                               userData.users[0].onboarding_completed === true;
 
-    console.log('[API] Successfully fetched onboarding status for user:', userId, 'onboardingCompleted:', onboardingCompleted);
+    console.log('[API] User record found:', userData && Array.isArray(userData.users) && userData.users.length > 0);
+    if (userData && Array.isArray(userData.users) && userData.users.length > 0) {
+      console.log('[API] Database onboarding_completed value:', userData.users[0].onboarding_completed);
+    }
+    
+    console.log('[API] Final computed onboardingCompleted value:', onboardingCompleted);
     
     // Return with cache control headers to prevent caching
     const response = NextResponse.json({ onboardingCompleted }, { status: 200 });

@@ -195,17 +195,27 @@ export const edgeFunctions = {
     checkOnboarding: (clerkId) => {
       // Extract the base clerk_id without any query parameters
       const baseClerkId = clerkId.split('?')[0];
-      // Check if there's a query string in the clerkId parameter
-      const hasQueryString = clerkId.includes('?');
-      // Construct the URL with the appropriate separator
-      const url = hasQueryString 
-        ? `/api/users?select=onboarding_completed&clerk_id=eq.${baseClerkId}&${clerkId.split('?')[1]}`
-        : `/api/users?select=onboarding_completed&clerk_id=eq.${clerkId}`;
+      console.log('[Edge Function Client] Checking onboarding status for clerk_id:', baseClerkId);
       
-      console.log('[Edge Functions] Checking onboarding with URL:', url);
+      // Don't add "eq." prefix - the Edge Function will handle this
+      const url = `/api/users?select=onboarding_completed&clerk_id=${baseClerkId}`;
       
-      // Returns an object like: { users: [{ onboarding_completed: true|false }] }
-      return fetchFromEdgeFunction(url);
+      // Add timestamp for cache busting
+      const timestamp = Date.now();
+      const finalUrl = `${url}&_t=${timestamp}`;
+      
+      console.log('[Edge Function Client] Requesting URL:', finalUrl);
+      
+      return fetchFromEdgeFunction(finalUrl)
+        .then(data => {
+          console.log('[Edge Function Client] Onboarding status response:', JSON.stringify(data));
+          if (data && Array.isArray(data.users) && data.users.length > 0) {
+            console.log('[Edge Function Client] Onboarding completed value:', data.users[0].onboarding_completed);
+          } else {
+            console.log('[Edge Function Client] User not found or data malformed:', data);
+          }
+          return data;
+        });
     },
     update: (clerkId, data) => fetchFromEdgeFunction(`/api/users/${clerkId}`, {
       method: "PUT",

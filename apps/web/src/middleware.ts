@@ -84,7 +84,6 @@ export default clerkMiddleware(async (auth, req) => {
 
         const data = await response.json()
         console.log(`Onboarding status: ${data.onboardingCompleted ? 'completed' : 'not completed'}`)
-        console.log(`[Middleware] Raw onboarding data:`, JSON.stringify(data))
 
         // If onboarding is not completed, redirect to onboarding
         if (!data.onboardingCompleted) {
@@ -125,7 +124,6 @@ export default clerkMiddleware(async (auth, req) => {
 
         const data = await response.json()
         console.log(`Onboarding status for redirect check: ${data.onboardingCompleted ? 'completed' : 'not completed'}`)
-        console.log(`[Middleware Onboarding Check] Raw data:`, JSON.stringify(data))
 
         // If onboarding is completed, redirect to planner
         if (data.onboardingCompleted) {

@@ -131,13 +131,6 @@ export default function OnboardingFlow() {
         },
       }
 
-      // Log the exact data being sent to the API
-      console.log('ONBOARDING DATA BEING SENT:', {
-        clerk_id: userDataForApi.clerk_id,
-        email: userDataForApi.email,
-        onboarding_completed: userDataForApi.onboarding_completed
-      });
-
       // Check if critical fields are present
       if (!userDataForApi.clerk_id || !userDataForApi.email) {
         console.error('Critical data missing:', {
@@ -145,6 +138,9 @@ export default function OnboardingFlow() {
           hasEmail: !!userDataForApi.email
         })
       }
+
+      // Log the onboarding completed value being sent
+      console.log('Setting onboarding_completed to:', userDataForApi.onboarding_completed)
 
       // Add athlete-specific fields
       if (userData.role === 'athlete') {
@@ -179,9 +175,24 @@ export default function OnboardingFlow() {
       
       // Debugging - Log the API response
       console.log('API Response:', JSON.stringify(response, null, 2))
+      
+      // Verify onboarding status after completion
+      console.log('Verifying onboarding status after completion...')
+      try {
+        const statusResponse = await fetch('/api/user-status?t=' + Date.now(), {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate', 
+            'Pragma': 'no-cache'
+          }
+        })
+        const statusData = await statusResponse.json()
+        console.log('Onboarding status check result:', statusData)
+      } catch (verifyError) {
+        console.error('Error verifying onboarding status:', verifyError)
+      }
 
-      // After successful onboarding completion, redirect to planner
-      router.push('/planner')
+      console.log('Onboarding complete, redirecting to dashboard...')
+      // Timeout and redirect happens in completion-step.jsx
     } catch (error) {
       console.error('Error saving user data:', error)
       console.log('Actual error object:', error)
