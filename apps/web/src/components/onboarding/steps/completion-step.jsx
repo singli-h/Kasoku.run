@@ -45,11 +45,10 @@ export default function CompletionStep({ onComplete }) {
       }
       
       console.log('Completion step: Onboarding data submitted successfully')
-      setSuccessMessage('Onboarding completed successfully. Data has been saved, but redirect is disabled for debugging purposes.')
+      setSuccessMessage('Onboarding completed successfully. Redirecting to your dashboard...')
       
       // Force a hard reload to clear any cached states
-      // Commented out for debugging
-      // window.location.href = '/planner'
+      window.location.href = '/planner'
     } catch (error) {
       console.error('Error completing onboarding:', error)
       setError('Failed to complete onboarding. Please try again. Error: ' + (error.message || 'Unknown error'))

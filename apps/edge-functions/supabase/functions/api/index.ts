@@ -551,6 +551,7 @@ export const postOnboardingUser = async (
       athlete_training_history,
       athlete_training_goals,
       coach_specialization,
+      coach_sport_focus,
       coach_experience,
       coach_philosophy,
       athlete_events,
@@ -724,6 +725,7 @@ export const postOnboardingUser = async (
       console.log(`Creating/updating coach record for user ID: ${userId}`);
       const coachDataToInsert = {
         user_id: userId,
+        sport_focus: coach_sport_focus || '', 
         speciality: coach_specialization || '', 
         philosophy: coach_philosophy || '',
         experience: coach_experience || ''

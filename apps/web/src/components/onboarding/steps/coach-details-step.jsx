@@ -107,11 +107,11 @@ export default function CoachDetailsStep({ userData, updateUserData, onNext, onP
                 <SelectValue placeholder="Select your specialization" />
               </SelectTrigger>
               <SelectContent className="bg-white border-gray-200">
-                <SelectItem value="sprint" className="text-gray-900">Sprint Training</SelectItem>
-                <SelectItem value="strength" className="text-gray-900">Strength & Conditioning</SelectItem>
-                <SelectItem value="technique" className="text-gray-900">Technique Development</SelectItem>
-                <SelectItem value="recovery" className="text-gray-900">Recovery & Rehabilitation</SelectItem>
-                <SelectItem value="performance" className="text-gray-900">Performance Analysis</SelectItem>
+                <SelectItem value="Sprint Training" className="text-gray-900">Sprint Training</SelectItem>
+                <SelectItem value="Strength & Conditioning" className="text-gray-900">Strength & Conditioning</SelectItem>
+                <SelectItem value="Technique Development" className="text-gray-900">Technique Development</SelectItem>
+                <SelectItem value="Recovery & Rehabilitation" className="text-gray-900">Recovery & Rehabilitation</SelectItem>
+                <SelectItem value="Performance Analysis" className="text-gray-900">Performance Analysis</SelectItem>
               </SelectContent>
             </Select>
             {errors.specialization && <p className="text-sm text-red-500">{errors.specialization}</p>}
@@ -130,10 +130,10 @@ export default function CoachDetailsStep({ userData, updateUserData, onNext, onP
                 <SelectValue placeholder="Select your experience level" />
               </SelectTrigger>
               <SelectContent className="bg-white border-gray-200">
-                <SelectItem value="beginner" className="text-gray-900">1-3 years</SelectItem>
-                <SelectItem value="intermediate" className="text-gray-900">4-7 years</SelectItem>
-                <SelectItem value="advanced" className="text-gray-900">8-12 years</SelectItem>
-                <SelectItem value="expert" className="text-gray-900">12+ years</SelectItem>
+                <SelectItem value="1-3 years" className="text-gray-900">1-3 years</SelectItem>
+                <SelectItem value="4-7 years" className="text-gray-900">4-7 years</SelectItem>
+                <SelectItem value="8-12 years" className="text-gray-900">8-12 years</SelectItem>
+                <SelectItem value="12+ years" className="text-gray-900">12+ years</SelectItem>
               </SelectContent>
             </Select>
             {errors.experience && <p className="text-sm text-red-500">{errors.experience}</p>}
@@ -153,11 +153,11 @@ export default function CoachDetailsStep({ userData, updateUserData, onNext, onP
               <SelectValue placeholder="Select your sport focus" />
             </SelectTrigger>
             <SelectContent className="bg-white border-gray-200">
-              <SelectItem value="track" className="text-gray-900">Track & Field</SelectItem>
-              <SelectItem value="combined" className="text-gray-900">Team Sports</SelectItem>
-              <SelectItem value="cross_country" className="text-gray-900">Power Lifting</SelectItem>
-              <SelectItem value="field" className="text-gray-900">Cross Country</SelectItem>
-              <SelectItem value="road_running" className="text-gray-900">Other</SelectItem>
+              <SelectItem value="Track & Field" className="text-gray-900">Track & Field</SelectItem>
+              <SelectItem value="Team Sports" className="text-gray-900">Team Sports</SelectItem>
+              <SelectItem value="Power Lifting" className="text-gray-900">Power Lifting</SelectItem>
+              <SelectItem value="Endurance Running" className="text-gray-900">Endurance Running</SelectItem>
+              <SelectItem value="Other" className="text-gray-900">Other</SelectItem>
             </SelectContent>
           </Select>
           {errors.sportFocus && <p className="text-sm text-red-500">{errors.sportFocus}</p>}

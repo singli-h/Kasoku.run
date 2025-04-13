@@ -173,9 +173,8 @@ export default function OnboardingFlow() {
       // Debugging - Log the API response
       console.log('API Response:', JSON.stringify(response, null, 2))
 
-      // DEBUGGING - Temporarily disable redirect for investigation
-      console.log('Completed onboarding but redirect disabled for debugging')
-      // router.push('/planner')  // Commented out for debugging
+      // After successful onboarding completion, redirect to planner
+      router.push('/planner')
     } catch (error) {
       console.error('Error saving user data:', error)
       console.log('Actual error object:', error)
