@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.188.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
 import { corsHeaders, handleError } from './utils.ts';
 import { getAthletes, createAthlete } from './athletes.ts';
-import { getUserStatus } from './users.ts';
+import { getUserStatus, getUserProfile } from './users.ts';
 
 // Toggle for authentication (default is enabled)
 const AUTH_ENABLED = false;
@@ -1334,6 +1334,11 @@ Deno.serve(async (req) => {
       }
       const clerkId = pathname.split("/")[3]; // Extract clerk_id from URL
       return await getUserStatus(supabase, clerkId);
+    }
+
+    // Handle GET /api/users/:clerkId/profile
+    if (method === "GET" && pathname.includes("/users/") && pathname.endsWith("/profile")) {
+      return getUserProfile(supabase, pathname.split("/")[2]);
     }
 
     // Handle generic /api/dashboard/:table endpoints

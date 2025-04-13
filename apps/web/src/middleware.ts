@@ -15,7 +15,8 @@ const protectedRoutes = [
   '/dashboard',
   '/planner',
   '/overview',
-  '/settings'
+  '/settings',
+  '/profile'
 ]
 
 // Define onboarding route

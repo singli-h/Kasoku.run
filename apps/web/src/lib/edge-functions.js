@@ -192,6 +192,17 @@ export const edgeFunctions = {
       body: userData
     }),
     getStatus: (clerkId) => fetchFromEdgeFunction(`/api/users/${clerkId}/status`),
+    getProfile: (clerkId) => {
+      // Extract the base clerk_id without any query parameters
+      const baseClerkId = clerkId.split('?')[0];
+      console.log('[Edge Function Client] Fetching profile for clerk_id:', baseClerkId);
+      
+      // Add timestamp for cache busting
+      const timestamp = Date.now();
+      const url = `/api/users/${baseClerkId}/profile?_t=${timestamp}`;
+      
+      return fetchFromEdgeFunction(url);
+    },
     checkOnboarding: (clerkId) => {
       // Extract the base clerk_id without any query parameters
       const baseClerkId = clerkId.split('?')[0];
