@@ -131,6 +131,13 @@ export default function OnboardingFlow() {
         },
       }
 
+      // Log the exact data being sent to the API
+      console.log('ONBOARDING DATA BEING SENT:', {
+        clerk_id: userDataForApi.clerk_id,
+        email: userDataForApi.email,
+        onboarding_completed: userDataForApi.onboarding_completed
+      });
+
       // Check if critical fields are present
       if (!userDataForApi.clerk_id || !userDataForApi.email) {
         console.error('Critical data missing:', {

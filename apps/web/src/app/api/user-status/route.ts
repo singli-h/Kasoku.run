@@ -24,11 +24,20 @@ export async function GET() {
     const timestamp = Date.now();
     const userData = await edgeFunctions.users.checkOnboarding(`${userId}?timestamp=${timestamp}`);
     
+    // Log the raw response from Supabase
+    console.log('[API] Raw user data from Supabase:', JSON.stringify(userData, null, 2));
+    
     // Check if user exists and has completed onboarding
-    const onboardingCompleted = userData && 
-                               Array.isArray(userData.users) && 
-                               userData.users.length > 0 && 
-                               userData.users[0].onboarding_completed === true;
+    const hasUsers = Array.isArray(userData?.users) && userData.users.length > 0;
+    const rawOnboardingValue = hasUsers ? userData.users[0].onboarding_completed : undefined;
+    
+    console.log('[API] Detailed onboarding check:', { 
+      hasUsers, 
+      rawOnboardingValue,
+      valueType: typeof rawOnboardingValue
+    });
+    
+    const onboardingCompleted = hasUsers && userData.users[0].onboarding_completed === true;
 
     console.log('[API] Successfully fetched onboarding status for user:', userId, 'onboardingCompleted:', onboardingCompleted);
     

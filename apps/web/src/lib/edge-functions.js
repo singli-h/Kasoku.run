@@ -202,6 +202,9 @@ export const edgeFunctions = {
         ? `/api/users?select=onboarding_completed&clerk_id=eq.${baseClerkId}&${clerkId.split('?')[1]}`
         : `/api/users?select=onboarding_completed&clerk_id=eq.${clerkId}`;
       
+      console.log('[Edge Functions] Checking onboarding with URL:', url);
+      
+      // Returns an object like: { users: [{ onboarding_completed: true|false }] }
       return fetchFromEdgeFunction(url);
     },
     update: (clerkId, data) => fetchFromEdgeFunction(`/api/users/${clerkId}`, {
