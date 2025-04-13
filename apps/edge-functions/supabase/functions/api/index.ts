@@ -590,48 +590,113 @@ export const postOnboardingUser = async (
 
     console.log("Updating user with onboarding_completed: true");
     
-    // Insert or update user in users table - explicit onboarding_completed: true
-    const { data, error } = await supabase
-      .from('users')
-      .upsert({
-        clerk_id,
-        username,
-        email,
-        first_name,
-        last_name,
-        birthdate,
-        timezone: timezone || "UTC", // Set timezone with UTC as fallback
-        subscription_status,
-        onboarding_completed: true, // Explicitly set to true
-        updated_at: new Date().toISOString(),
-        metadata: updatedMetadata
-      })
-      .select();
-
-    if (error) {
-      console.error("Error updating user in onboarding:", error);
-      throw error;
-    }
-
-    console.log("Successfully updated user:", data?.[0]?.id);
-
-    // Get the user ID from the users table
-    const { data: userRecord, error: userError } = await supabase
+    // First, check if the user already exists
+    const { data: existingUser, error: findError } = await supabase
       .from('users')
       .select('id')
       .eq('clerk_id', clerk_id)
       .single();
       
-    if (userError) {
-      console.error("Error fetching user ID:", userError);
-      throw userError;
+    if (findError && findError.code !== 'PGRST116') { // PGRST116 is "not found"
+      console.error("Error finding user:", findError);
+      throw findError;
     }
     
-    console.log(`Creating/updating athlete record for user ID: ${userRecord.id}`);
+    let userRecord = null;
+    
+    if (existingUser) {
+      console.log(`User with clerk_id ${clerk_id} found. Updating existing record.`);
+      // User exists, update their record
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          username,
+          first_name,
+          last_name,
+          birthdate,
+          timezone: timezone || "UTC",
+          subscription_status,
+          onboarding_completed: true,
+          updated_at: new Date().toISOString(),
+          metadata: updatedMetadata
+        })
+        .eq('clerk_id', clerk_id)
+        .select();
+        
+      if (error) {
+        console.error("Error updating existing user:", error);
+        throw error;
+      }
+      
+      userRecord = data?.[0];
+    } else {
+      console.log(`User with clerk_id ${clerk_id} not found. This shouldn't happen. Using email as fallback.`);
+      // This shouldn't happen, but as a fallback, we'll try to find by email
+      const { data: userByEmail, error: emailError } = await supabase
+        .from('users')
+        .select('id, clerk_id')
+        .eq('email', email)
+        .single();
+        
+      if (emailError && emailError.code !== 'PGRST116') {
+        console.error("Error finding user by email:", emailError);
+        throw emailError;
+      }
+      
+      if (userByEmail) {
+        console.log(`User with email ${email} found. Updating existing record.`);
+        // User exists by email, update their record and set clerk_id
+        const { data, error } = await supabase
+          .from('users')
+          .update({
+            clerk_id, // Ensure clerk_id is set
+            username,
+            first_name,
+            last_name,
+            birthdate,
+            timezone: timezone || "UTC",
+            subscription_status,
+            onboarding_completed: true,
+            updated_at: new Date().toISOString(),
+            metadata: updatedMetadata
+          })
+          .eq('email', email)
+          .select();
+          
+        if (error) {
+          console.error("Error updating existing user by email:", error);
+          throw error;
+        }
+        
+        userRecord = data?.[0];
+      } else {
+        console.error("No user found with clerk_id or email. This should not happen.");
+        throw new Error("User not found. This should not happen during onboarding.");
+      }
+    }
+
+    // Get the user ID from the users table
+    let userId = userRecord?.id;
+    if (!userId) {
+      const { data: retrievedUser, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('clerk_id', clerk_id)
+        .single();
+        
+      if (userError) {
+        console.error("Error fetching user ID:", userError);
+        throw userError;
+      }
+      
+      userId = (retrievedUser as { id: number }).id;
+    }
+    
+    console.log(`Creating/updating athlete record for user ID: ${userId}`);
     
     // Debug - Log athlete data being inserted
     const athleteDataToInsert = {
-      user_id: userRecord.id,
+      user_id: userId,
       height: athlete_height || 0,
       weight: athlete_weight || 0,
       training_goals: athlete_training_goals || '',
@@ -656,9 +721,9 @@ export const postOnboardingUser = async (
     
     // Create or update coach record if role is coach
     if (role === 'coach') {
-      console.log(`Creating/updating coach record for user ID: ${userRecord.id}`);
+      console.log(`Creating/updating coach record for user ID: ${userId}`);
       const coachDataToInsert = {
-        user_id: userRecord.id,
+        user_id: userId,
         speciality: coach_specialization || '', 
         philosophy: coach_philosophy || '',
         experience: coach_experience || ''
@@ -685,7 +750,7 @@ export const postOnboardingUser = async (
       .update({
         onboarding_completed: true
       })
-      .eq('id', userRecord.id);
+      .eq('id', userId);
       
     if (updateError) {
       console.error("Error updating onboarding completion status:", updateError);
@@ -695,7 +760,7 @@ export const postOnboardingUser = async (
     const responseData = {
       success: true,
       data: {
-        user: data?.[0] || {},
+        user: userRecord || {},
         athlete: athleteData?.[0] || {}
       },
       message: "User onboarding completed successfully"
