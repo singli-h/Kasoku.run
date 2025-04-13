@@ -569,7 +569,17 @@ export const postOnboardingUser = async (
 
     // Validate required fields
     if (!clerk_id || !email) {
-      throw new Error("Missing required fields: clerk_id and email are required");
+      console.error("Missing required fields for onboarding:", {
+        hasClerkId: !!clerk_id,
+        hasEmail: !!email,
+        requestDataSample: JSON.stringify({
+          clerk_id,
+          email,
+          first_name,
+          last_name
+        })
+      });
+      throw new Error(`Missing required fields: clerk_id and email are required. Got clerk_id: ${!!clerk_id}, email: ${!!email}`);
     }
 
     // Store role in metadata but don't use it as a column in users table

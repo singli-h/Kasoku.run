@@ -4,14 +4,32 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { CheckCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Loader2 } from "lucide-react"
+import { useUser, useAuth } from "@clerk/nextjs"
 
 export default function CompletionStep({ onComplete }) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
+  const { user } = useUser()
+  const { userId } = useAuth()
+  
+  // Debug Clerk user data when component mounts
+  useEffect(() => {
+    if (user) {
+      console.log('Clerk user data available in completion step:', {
+        userId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.primaryEmailAddress?.emailAddress,
+        hasEmail: !!user.primaryEmailAddress?.emailAddress
+      })
+    } else {
+      console.error('No Clerk user data available in completion step')
+    }
+  }, [user, userId])
 
   const handleComplete = async () => {
     try {

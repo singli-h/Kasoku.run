@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Progress } from "@/components/ui/progress"
 import WelcomeStep from "./steps/welcome-step"
@@ -17,12 +17,12 @@ import { edgeFunctions } from "@/lib/edge-functions"
 export default function OnboardingFlow() {
   const router = useRouter()
   const { userId } = useAuth()
-  const { user } = useUser()
+  const { user, isLoaded: isUserLoaded } = useUser()
   
   const [userData, setUserData] = useState({
-    firstName: user?.firstName || "",
-    lastName: user?.lastName || "",
-    email: user?.primaryEmailAddress?.emailAddress || "",
+    firstName: "",
+    lastName: "",
+    email: "",
     role: "",
     profilePicture: null,
     birthdate: "",
@@ -44,6 +44,27 @@ export default function OnboardingFlow() {
     // Common fields
     subscription: "free",
   })
+
+  // Update user data when Clerk user is loaded
+  useEffect(() => {
+    if (isUserLoaded && user) {
+      console.log('Clerk user loaded in onboarding flow:', {
+        userId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.primaryEmailAddress?.emailAddress
+      })
+      
+      setUserData(prevData => ({
+        ...prevData,
+        firstName: user.firstName || prevData.firstName,
+        lastName: user.lastName || prevData.lastName,
+        email: user.primaryEmailAddress?.emailAddress || prevData.email
+      }))
+    } else if (isUserLoaded && !user) {
+      console.error('Clerk user loaded but null in onboarding flow')
+    }
+  }, [isUserLoaded, user, userId])
 
   const [currentStep, setCurrentStep] = useState(0)
 
@@ -82,8 +103,16 @@ export default function OnboardingFlow() {
 
       // Get current user from Clerk
       if (!userId) {
+        console.error('No userId found from Clerk useAuth()')
         throw new Error('No user found')
       }
+      
+      console.log('User authentication info:', { 
+        userId, 
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName
+      })
 
       // Prepare user data for the API with proper field prefixes
       const userDataForApi = {
@@ -100,6 +129,14 @@ export default function OnboardingFlow() {
         metadata: {
           role: userData.role,
         },
+      }
+
+      // Check if critical fields are present
+      if (!userDataForApi.clerk_id || !userDataForApi.email) {
+        console.error('Critical data missing:', {
+          hasClerkId: !!userDataForApi.clerk_id,
+          hasEmail: !!userDataForApi.email
+        })
       }
 
       // Add athlete-specific fields
