@@ -197,24 +197,28 @@ export const edgeFunctions = {
       const baseClerkId = clerkId.split('?')[0];
       console.log('[Edge Function Client] Checking onboarding status for clerk_id:', baseClerkId);
       
-      // Don't add "eq." prefix - the Edge Function will handle this
-      const url = `/api/users?select=onboarding_completed&clerk_id=${baseClerkId}`;
+      // Use the proper endpoint, which is /api/users/{clerkId}/status
+      // This matches the Edge Function route that handles the getUserStatus function
+      const url = `/api/users/${baseClerkId}/status`;
       
       // Add timestamp for cache busting
       const timestamp = Date.now();
-      const finalUrl = `${url}&_t=${timestamp}`;
+      const finalUrl = `${url}?_t=${timestamp}`;
       
       console.log('[Edge Function Client] Requesting URL:', finalUrl);
       
       return fetchFromEdgeFunction(finalUrl)
         .then(data => {
           console.log('[Edge Function Client] Onboarding status response:', JSON.stringify(data));
-          if (data && Array.isArray(data.users) && data.users.length > 0) {
-            console.log('[Edge Function Client] Onboarding completed value:', data.users[0].onboarding_completed);
+          if (data && data.status === "success" && data.data) {
+            console.log('[Edge Function Client] Onboarding completed value:', data.data.onboardingCompleted);
+            return { 
+              users: [{ onboarding_completed: data.data.onboardingCompleted }] 
+            };
           } else {
             console.log('[Edge Function Client] User not found or data malformed:', data);
+            return { users: [] };
           }
-          return data;
         });
     },
     update: (clerkId, data) => fetchFromEdgeFunction(`/api/users/${clerkId}`, {

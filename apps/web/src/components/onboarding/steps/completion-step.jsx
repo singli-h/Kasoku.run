@@ -49,7 +49,21 @@ export default function CompletionStep({ onComplete }) {
       
       // Force a hard reload to clear any cached states
       setTimeout(() => {
-        window.location.href = '/planner'
+        // Clear caches before redirecting
+        try {
+          // Clear all localStorage items related to onboarding status
+          localStorage.removeItem('onboardingStatus')
+          
+          // Force a cache invalidation by setting a timestamp cookie
+          document.cookie = `cache_invalidate=${Date.now()};path=/;max-age=60`
+          
+          // For a clean start, navigate directly to dashboard with cache-buster
+          window.location.href = `/planner?_=${Date.now()}`
+        } catch (err) {
+          console.error('Error during cache invalidation:', err)
+          // Fall back to regular navigation if cache invalidation fails
+          window.location.href = '/planner'
+        }
       }, 1500) // Short delay to show success message
     } catch (error) {
       console.error('Error completing onboarding:', error)
