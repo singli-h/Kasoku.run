@@ -62,7 +62,7 @@ export const getUserProfile = async (
   try {
     console.log(`Fetching profile for user: ${clerkId}`);
     
-    // Get the base user record
+    // Get the base user record - using maybeSingle() to handle multiple records case
     const { data: user, error } = await supabase
       .from("users")
       .select(`
@@ -81,12 +81,16 @@ export const getUserProfile = async (
         updated_at
       `)
       .eq("clerk_id", clerkId)
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error(`Error fetching user with clerk_id ${clerkId}:`, error);
+      throw error;
+    }
     
     // If no user was found, return an error
     if (!user) {
+      console.error(`No user found with clerk_id ${clerkId}`);
       return new Response(
         JSON.stringify({
           status: "error",
@@ -110,9 +114,9 @@ export const getUserProfile = async (
         .from('athletes')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
         
-      if (!athleteError) {
+      if (!athleteError && athleteData) {
         roleSpecificData = athleteData;
       }
     } else if (role === 'coach') {
@@ -120,9 +124,9 @@ export const getUserProfile = async (
         .from('coaches')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
         
-      if (!coachError) {
+      if (!coachError && coachData) {
         roleSpecificData = coachData;
       }
     }

@@ -150,15 +150,21 @@ const getCoachIdFromClerkId = async (supabase: any, clerkId: string) => {
   console.log(`[Edge] Looking up coach_id for clerk_id: ${clerkId}`);
   
   try {
-    // First get the user record
+    // First get the user record - using maybeSingle() to handle multiple records case
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("id, metadata")
       .eq("clerk_id", clerkId)
-      .single();
+      .maybeSingle();
     
     if (userError) {
       console.error(`[Edge] Error finding user with clerk_id ${clerkId}:`, userError);
+      throw new Error("User not found");
+    }
+    
+    // If no data returned, throw error
+    if (!userData) {
+      console.error(`[Edge] No user found with clerk_id ${clerkId}`);
       throw new Error("User not found");
     }
     
@@ -169,15 +175,21 @@ const getCoachIdFromClerkId = async (supabase: any, clerkId: string) => {
       throw new Error("Only coaches can create training plans");
     }
     
-    // Get the coach record using user.id
+    // Get the coach record using user.id - using maybeSingle() to handle multiple records
     const { data: coachData, error: coachError } = await supabase
       .from("coaches")
       .select("id")
       .eq("user_id", userData.id)
-      .single();
+      .maybeSingle();
     
-    if (coachError || !coachData) {
+    if (coachError) {
       console.error(`[Edge] Error finding coach record for user_id ${userData.id}:`, coachError);
+      throw new Error("Coach record not found for this user");
+    }
+    
+    // If no coach data, throw error
+    if (!coachData) {
+      console.error(`[Edge] No coach record found for user_id ${userData.id}`);
       throw new Error("Coach record not found for this user");
     }
     

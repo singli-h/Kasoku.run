@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from "@clerk/nextjs/server";
 import { edgeFunctions } from '@/lib/edge-functions';
+import { fetchFromEdgeFunction } from '@/lib/edge-functions';
 
 // Configure this route for dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -63,39 +64,26 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
     const requestData = await request.json();
     console.log(`[DEBUG] Received request data for ${type}:`, JSON.stringify(requestData));
     
-    // Fetch the user profile to check for coach role and get the coach_id
+    // Send the request directly to the edge function with the Clerk ID
+    const formattedData = {
+      ...requestData,
+      clerk_id: userId,
+      userRole: 'coach' // Include this for backward compatibility
+    };
+    
+    // Call the appropriate edge function directly
     try {
-      const profileResponse = await edgeFunctions.users.getProfile(userId);
-      
-      if (!profileResponse?.data?.user?.metadata?.role) {
-        return NextResponse.json({ error: 'User role not found' }, { status: 403 });
-      }
-      
-      // Check if user has coach role in their metadata
-      const userRole = profileResponse.data.user.metadata.role;
-      if (userRole !== 'coach') {
-        return NextResponse.json({ error: 'Only coaches can create training plans' }, { status: 403 });
-      }
-      
-      // Check if there's a coach record linked to this user
-      if (!profileResponse.data.roleSpecificData?.id) {
-        return NextResponse.json({ error: 'Coach record not found for this user' }, { status: 403 });
-      }
-      
-      // Format the data with both coach ID and clerk ID
-      const formattedData = {
-        ...requestData,
-        clerk_id: userId,
-        coach_id: profileResponse.data.roleSpecificData.id,
-        userRole: 'coach' // Include this for backward compatibility
-      };
-      
-      // Call the appropriate edge function
       let result;
       if (type === 'mesocycle') {
-        result = await edgeFunctions.planner.createMesocycle(formattedData);
+        result = await fetchFromEdgeFunction('/api/planner/mesocycle', {
+          method: 'POST',
+          body: formattedData
+        });
       } else if (type === 'microcycle') {
-        result = await edgeFunctions.planner.createMicrocycle(formattedData);
+        result = await fetchFromEdgeFunction('/api/planner/microcycle', {
+          method: 'POST',
+          body: formattedData
+        });
       } else {
         return NextResponse.json(
           { error: `Invalid plan type: ${type}` },
@@ -104,11 +92,20 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
       }
       
       return NextResponse.json(result);
-    } catch (profileError: any) {
-      console.error(`Error fetching user profile: ${profileError.message}`);
+    } catch (edgeFunctionError: any) {
+      console.error(`Error from edge function:`, edgeFunctionError);
+      
+      // Check if it's a coach role issue
+      if (edgeFunctionError.message?.includes('coach')) {
+        return NextResponse.json(
+          { error: edgeFunctionError.message || 'Only coaches can create training plans' },
+          { status: 403 }
+        );
+      }
+      
       return NextResponse.json(
-        { error: 'Failed to verify coach status' },
-        { status: 500 }
+        { error: edgeFunctionError.message || 'Error processing request' },
+        { status: edgeFunctionError.status || 500 }
       );
     }
   } catch (error: any) {
