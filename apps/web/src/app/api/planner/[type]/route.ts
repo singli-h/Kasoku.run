@@ -48,7 +48,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
  * POST handler for /api/planner/[type] routes
  */
 export async function POST(request: NextRequest, { params }: { params: { type: string } }) {
-  // We only need to verify authentication, edge function will handle the rest
+  // We verify authentication with Clerk
   const authResult = await auth();
   
   if (!authResult || !authResult.userId) {
@@ -56,30 +56,59 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
   }
 
   const { type } = params;
+  const userId = authResult.userId;
   
   try {
     // Get the request data
     const requestData = await request.json();
     console.log(`[DEBUG] Received request data for ${type}:`, JSON.stringify(requestData));
     
-    // Include clerk_id as a fallback for edge function
-    // The edge function has been updated to prefer its own auth
-    // but will fallback to clerk_id if needed
-    const formattedData = {
-      ...requestData,
-      clerk_id: authResult.userId // Include as fallback
-    };
-    
-    if (type === 'mesocycle') {
-      const result = await edgeFunctions.planner.createMesocycle(formattedData);
+    // Fetch the user profile to check for coach role and get the coach_id
+    try {
+      const profileResponse = await edgeFunctions.users.getProfile(userId);
+      
+      if (!profileResponse?.data?.user?.metadata?.role) {
+        return NextResponse.json({ error: 'User role not found' }, { status: 403 });
+      }
+      
+      // Check if user has coach role in their metadata
+      const userRole = profileResponse.data.user.metadata.role;
+      if (userRole !== 'coach') {
+        return NextResponse.json({ error: 'Only coaches can create training plans' }, { status: 403 });
+      }
+      
+      // Check if there's a coach record linked to this user
+      if (!profileResponse.data.roleSpecificData?.id) {
+        return NextResponse.json({ error: 'Coach record not found for this user' }, { status: 403 });
+      }
+      
+      // Format the data with both coach ID and clerk ID
+      const formattedData = {
+        ...requestData,
+        clerk_id: userId,
+        coach_id: profileResponse.data.roleSpecificData.id,
+        userRole: 'coach' // Include this for backward compatibility
+      };
+      
+      // Call the appropriate edge function
+      let result;
+      if (type === 'mesocycle') {
+        result = await edgeFunctions.planner.createMesocycle(formattedData);
+      } else if (type === 'microcycle') {
+        result = await edgeFunctions.planner.createMicrocycle(formattedData);
+      } else {
+        return NextResponse.json(
+          { error: `Invalid plan type: ${type}` },
+          { status: 400 }
+        );
+      }
+      
       return NextResponse.json(result);
-    } else if (type === 'microcycle') {
-      const result = await edgeFunctions.planner.createMicrocycle(formattedData);
-      return NextResponse.json(result);
-    } else {
+    } catch (profileError: any) {
+      console.error(`Error fetching user profile: ${profileError.message}`);
       return NextResponse.json(
-        { error: `Invalid plan type: ${type}` },
-        { status: 400 }
+        { error: 'Failed to verify coach status' },
+        { status: 500 }
       );
     }
   } catch (error: any) {

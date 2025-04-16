@@ -277,7 +277,8 @@ export const edgeFunctions = {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(data)
+          body: JSON.stringify(data),
+          credentials: 'include' // Include cookies in the request
         });
         
         if (!response.ok) {
@@ -302,25 +303,49 @@ export const edgeFunctions = {
       console.log('[Edge Function Client] Creating microcycle with data:', data);
       
       // Call our Next.js API endpoint instead of the edge function directly
-      // The Next.js API will add the clerk_id from the auth() function
+      // The Next.js API will handle auth and get the coach_id
       try {
         // Use absolute URL with origin to prevent URL parsing errors
         const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sprint-sage-alpha.vercel.app';
         const url = new URL('/api/planner/microcycle', origin).toString();
         console.log('[Edge Function Client] Using URL:', url);
         
+        // Make sure we include userRole: 'coach' for compatibility
+        const requestData = {
+          ...data,
+          userRole: 'coach' // Add this for backend compatibility
+        };
+        
         const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(data)
+          body: JSON.stringify(requestData),
+          credentials: 'include' // Include cookies in the request
         });
         
         if (!response.ok) {
-          const errorData = await response.json();
+          // Try to parse the error
+          let errorData = null;
+          let errorMessage = `HTTP error ${response.status}`;
+          
+          try {
+            errorData = await response.json();
+            if (errorData.error) {
+              errorMessage = errorData.error;
+            }
+          } catch (e) {
+            // If we can't parse JSON, try to get the text
+            const errorText = await response.text();
+            if (errorText) {
+              errorMessage = errorText;
+            }
+          }
+          
+          console.error('[Edge Function Client] Error response:', errorMessage);
           throw new EdgeFunctionError(
-            errorData.error || `HTTP error ${response.status}`,
+            errorMessage,
             response.status,
             errorData,
             url
