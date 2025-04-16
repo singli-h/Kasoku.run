@@ -6,127 +6,83 @@ import { auth } from "@clerk/nextjs/server";
 export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/planner
- * 
- * Creates a new plan (mesocycle or microcycle) by calling the Supabase Edge Function
+ * GET handler for /api/planner route
+ * Redirects to the appropriate dynamic route
  */
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    // Get current user from Clerk
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized - User not authenticated" }, { status: 401 });
     }
 
-    // Parse the request data
-    const planData = await request.json();
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get('type');
+    const id = searchParams.get('id');
     
-    // Check if user role is included in the plan data
-    if (planData.userRole !== 'coach') {
-      return NextResponse.json({ error: "Only coaches can create training plans" }, { status: 403 });
-    }
-
-    // Determine which endpoint to call based on the plan type
-    const planType = planData.planType?.toLowerCase();
-    if (!planType) {
-      return NextResponse.json({ error: "Plan type is required" }, { status: 400 });
-    }
-
-    let result;
-
-    if (planType === 'mesocycle') {
-      // Call the edge function to create a mesocycle
-      result = await fetchFromEdgeFunction('/api/planner/mesocycle', {
-        method: 'POST',
-        body: {
-          ...planData,
-          coach_id: userId, // Add clerk user ID as coach_id
-          // Ensure we're passing the correctly formatted data
-          sessions: planData.sessions,
-          timezone: planData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
-      });
-    } else if (planType === 'microcycle') {
-      // Call the edge function to create a microcycle
-      result = await fetchFromEdgeFunction('/api/planner/microcycle', {
-        method: 'POST',
-        body: {
-          ...planData,
-          coach_id: userId, // Add clerk user ID as coach_id
-          // Ensure we're passing the microcycle data in the right format
-          microcycle: planData.microcycle,
-          sessions: planData.sessions
-        }
-      });
+    // Create the redirect URL
+    let redirectUrl;
+    
+    if (type === 'exercises') {
+      redirectUrl = '/api/planner/exercises';
+    } else if (type === 'mesocycle' && id) {
+      redirectUrl = `/api/planner/mesocycle?id=${id}`;
+    } else if (type === 'microcycle' && id) {
+      redirectUrl = `/api/planner/microcycle?id=${id}`;
     } else {
-      return NextResponse.json({ error: "Invalid plan type. Must be 'mesocycle' or 'microcycle'" }, { status: 400 });
+      return NextResponse.json({ 
+        error: "Invalid request. Please include type (exercises, mesocycle, microcycle) and id where applicable" 
+      }, { status: 400 });
     }
-
-    // Return the result from the edge function
-    return NextResponse.json(result);
+    
+    // Create a new request to the dynamic route
+    const url = new URL(redirectUrl, request.url);
+    const newRequest = new Request(url, request);
+    
+    // Return a redirect response
+    return NextResponse.redirect(url);
   } catch (error: any) {
-    console.error(`Error creating plan:`, error);
+    console.error(`Error in planner route:`, error);
     return NextResponse.json(
-      { error: error.message || "Failed to create plan" },
+      { error: error.message || "Failed to process request" },
       { status: 500 }
     );
   }
 }
 
 /**
- * GET /api/planner?type=...&id=...
- * 
- * Gets a plan (mesocycle or microcycle) or exercises list by calling the Supabase Edge Function
+ * POST handler for /api/planner route
+ * Forwards requests to the appropriate dynamic route based on data
  */
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    // Get current user from Clerk
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized - User not authenticated" }, { status: 401 });
     }
-
-    // Get the request URL to parse query parameters
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type');
-    const id = searchParams.get('id');
     
-    if (!type) {
-      return NextResponse.json({ 
-        error: "Missing 'type' parameter. Must be 'exercises', 'mesocycle', or 'microcycle'" 
-      }, { status: 400 });
-    }
-
-    let result;
-
-    // Route based on the requested type
-    if (type === 'exercises') {
-      // Get the exercise library
-      result = await fetchFromEdgeFunction('/api/planner/exercises', {
-        method: 'GET'
-      });
-    } else if (type === 'mesocycle' && id) {
-      // Get a specific mesocycle
-      result = await fetchFromEdgeFunction(`/api/planner/mesocycle/${id}`, {
-        method: 'GET'
-      });
-    } else if (type === 'microcycle' && id) {
-      // Get a specific microcycle
-      result = await fetchFromEdgeFunction(`/api/planner/microcycle/${id}`, {
-        method: 'GET'
-      });
+    // Clone the request for reading
+    const requestClone = request.clone();
+    const planData = await requestClone.json();
+    
+    // Determine the plan type from the request data
+    let planType = '';
+    if (planData.planType === 'microcycle' || planData.microcycle) {
+      planType = 'microcycle';
     } else {
-      return NextResponse.json({ 
-        error: "Invalid request. Include 'type' (exercises, mesocycle, microcycle) and 'id' if applicable" 
-      }, { status: 400 });
+      planType = 'mesocycle';
     }
-
-    // Return the result from the edge function
-    return NextResponse.json(result);
+    
+    // Create a new request URL based on the plan type
+    const redirectUrl = `/api/planner/${planType}`;
+    const url = new URL(redirectUrl, request.url);
+    
+    // Redirect to the appropriate dynamic route
+    return NextResponse.redirect(url, 307); // 307 temporary redirect preserves the HTTP method and body
   } catch (error: any) {
-    console.error(`Error fetching data:`, error);
+    console.error(`Error in planner POST route:`, error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch data" },
+      { error: error.message || "Failed to process request" },
       { status: 500 }
     );
   }

@@ -259,32 +259,30 @@ export const edgeFunctions = {
   // Planner APIs
   planner: {
     // Create a mesocycle plan
-    createMesocycle: (data) => fetchFromEdgeFunction("/api/planner", {
+    createMesocycle: (data) => fetchFromEdgeFunction("/api/planner/mesocycle", {
       method: "POST",
       body: {
-        planType: "mesocycle",
         userRole: "coach",
         ...data
       }
     }),
     
     // Create a microcycle plan
-    createMicrocycle: (data) => fetchFromEdgeFunction("/api/planner", {
+    createMicrocycle: (data) => fetchFromEdgeFunction("/api/planner/microcycle", {
       method: "POST",
       body: {
-        planType: "microcycle",
         userRole: "coach",
         ...data
       }
     }),
     
     // Get available exercises for planner
-    getExercises: () => fetchFromEdgeFunction("/api/planner?type=exercises"),
+    getExercises: () => fetchFromEdgeFunction("/api/planner/exercises"),
     
     // Get a specific mesocycle
-    getMesocycle: (id) => fetchFromEdgeFunction(`/api/planner?type=mesocycle&id=${id}`),
+    getMesocycle: (id) => fetchFromEdgeFunction(`/api/planner/mesocycle/${id}`),
     
     // Get a specific microcycle
-    getMicrocycle: (id) => fetchFromEdgeFunction(`/api/planner?type=microcycle&id=${id}`)
+    getMicrocycle: (id) => fetchFromEdgeFunction(`/api/planner/microcycle/${id}`)
   }
 }; 
