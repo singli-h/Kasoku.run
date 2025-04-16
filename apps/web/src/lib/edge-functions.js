@@ -258,31 +258,72 @@ export const edgeFunctions = {
   
   // Planner APIs
   planner: {
-    // Create a mesocycle plan
-    createMesocycle: (data) => fetchFromEdgeFunction("/api/planner/mesocycle", {
-      method: "POST",
-      body: {
-        userRole: "coach",
-        ...data
-      }
-    }),
-    
-    // Create a microcycle plan
-    createMicrocycle: (data) => fetchFromEdgeFunction("/api/planner/microcycle", {
-      method: "POST",
-      body: {
-        userRole: "coach",
-        ...data
-      }
-    }),
-    
-    // Get available exercises for planner
     getExercises: () => fetchFromEdgeFunction("/api/planner/exercises"),
-    
-    // Get a specific mesocycle
-    getMesocycle: (id) => fetchFromEdgeFunction(`/api/planner/mesocycle/${id}`),
-    
-    // Get a specific microcycle
-    getMicrocycle: (id) => fetchFromEdgeFunction(`/api/planner/microcycle/${id}`)
+    getMesocycle: (id) => fetchFromEdgeFunction(`/api/planner/mesocycle?id=${id}`),
+    getMicrocycle: (id) => fetchFromEdgeFunction(`/api/planner/microcycle?id=${id}`),
+    createMesocycle: async (data) => {
+      console.log('[Edge Function Client] Creating mesocycle with data:', data);
+      
+      // Call our Next.js API endpoint instead of the edge function directly
+      // The Next.js API will add the clerk_id from the auth() function
+      try {
+        const response = await fetch('/api/planner/mesocycle', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new EdgeFunctionError(
+            errorData.error || `HTTP error ${response.status}`,
+            response.status,
+            errorData,
+            '/api/planner/mesocycle'
+          );
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('[Edge Function Client] Error creating mesocycle:', error);
+        throw error instanceof EdgeFunctionError 
+          ? error 
+          : new EdgeFunctionError(error.message, 500, null, '/api/planner/mesocycle');
+      }
+    },
+    createMicrocycle: async (data) => {
+      console.log('[Edge Function Client] Creating microcycle with data:', data);
+      
+      // Call our Next.js API endpoint instead of the edge function directly
+      // The Next.js API will add the clerk_id from the auth() function
+      try {
+        const response = await fetch('/api/planner/microcycle', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new EdgeFunctionError(
+            errorData.error || `HTTP error ${response.status}`,
+            response.status,
+            errorData,
+            '/api/planner/microcycle'
+          );
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('[Edge Function Client] Error creating microcycle:', error);
+        throw error instanceof EdgeFunctionError 
+          ? error 
+          : new EdgeFunctionError(error.message, 500, null, '/api/planner/microcycle');
+      }
+    }
   }
 }; 
