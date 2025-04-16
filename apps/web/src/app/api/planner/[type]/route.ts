@@ -75,9 +75,23 @@ export async function POST(
     const { type } = params;
     const planData = await request.json();
     
-    // Check if user role is included in the plan data
-    if (planData.userRole !== 'coach') {
-      return NextResponse.json({ error: "Only coaches can create training plans" }, { status: 403 });
+    // First, check if the user has a coach record in the database
+    // Get the user's profile including role-specific data
+    const userProfile = await fetchFromEdgeFunction(`/api/users/${userId}/profile`);
+    
+    // Check if the user has a coach record
+    if (!userProfile?.data?.role || userProfile.data.role !== 'coach' || !userProfile.data.roleSpecificData) {
+      return NextResponse.json({ 
+        error: "Only coaches can create training plans. This user does not have coach privileges." 
+      }, { status: 403 });
+    }
+    
+    // Get the coach ID from the role-specific data
+    const coachId = userProfile.data.roleSpecificData.id;
+    if (!coachId) {
+      return NextResponse.json({ 
+        error: "Coach record found but missing ID. Please contact support." 
+      }, { status: 500 });
     }
 
     let result;
@@ -88,7 +102,8 @@ export async function POST(
         method: 'POST',
         body: {
           ...planData,
-          coach_id: userId, // Add clerk user ID as coach_id
+          coach_id: coachId, // Use the actual coach ID from the database
+          userRole: 'coach', // Ensure we still send this for backward compatibility
           // Ensure we're passing the correctly formatted data
           sessions: planData.sessions,
           timezone: planData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -100,7 +115,8 @@ export async function POST(
         method: 'POST',
         body: {
           ...planData,
-          coach_id: userId, // Add clerk user ID as coach_id
+          coach_id: coachId, // Use the actual coach ID from the database
+          userRole: 'coach', // Ensure we still send this for backward compatibility
           // Ensure we're passing the microcycle data in the right format
           microcycle: planData.microcycle,
           sessions: planData.sessions
