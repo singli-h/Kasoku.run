@@ -66,6 +66,30 @@ export async function POST(request: NextRequest) {
     
     console.log(`[DEBUG] User authenticated: ${userId}`);
     
+    // Fetch the user's profile to check for coach record
+    const profileUrl = `/api/users/${userId}/profile`;
+    const profileResponse = await fetchFromEdgeFunction(profileUrl);
+    
+    if (!profileResponse || profileResponse.status !== 'success' || !profileResponse.data?.user) {
+      console.error("[DEBUG] User profile not found:", profileResponse);
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 });
+    }
+    
+    // Get role-specific data to check for coach record
+    const { roleSpecificData } = profileResponse.data;
+    
+    // Check if user has a coach record, regardless of their role
+    if (!roleSpecificData || !roleSpecificData.id) {
+      console.error("[DEBUG] No coach record found for user");
+      return NextResponse.json(
+        { error: "You need a coach record to create training plans" },
+        { status: 403 }
+      );
+    }
+    
+    const coachId = roleSpecificData.id;
+    console.log(`[DEBUG] Found coach ID: ${coachId} for user: ${userId}`);
+    
     // Extract the plan data
     const planData = await request.json();
     console.log(`[DEBUG] Plan data type: ${planData.planType || (planData.microcycle ? 'microcycle' : 'mesocycle')}`);
@@ -78,13 +102,14 @@ export async function POST(request: NextRequest) {
       planType = 'mesocycle';
     }
     
-    // Prepare plan data with clerk user ID
+    // Prepare plan data with coach ID
     const preparedPlanData = {
       ...planData,
-      clerk_id: userId, // Pass clerk user ID instead of coach_id
+      clerk_id: userId,
+      coach_id: coachId // Pass actual coach ID from the database
     };
     
-    console.log(`[DEBUG] Calling edge function /api/planner/${planType} with clerk_id: ${userId}`, JSON.stringify(preparedPlanData));
+    console.log(`[DEBUG] Calling edge function /api/planner/${planType} with coach_id: ${coachId}`, JSON.stringify(preparedPlanData));
     
     // Call the edge function directly
     const result = await fetchFromEdgeFunction(`/api/planner/${planType}`, {

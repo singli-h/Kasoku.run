@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from "@clerk/nextjs/server";
-import { edgeFunctions } from '@/lib/edge-functions';
-import { fetchFromEdgeFunction } from '@/lib/edge-functions';
+import { edgeFunctions, fetchFromEdgeFunction } from '@/lib/edge-functions';
 
 // Configure this route for dynamic rendering
 export const dynamic = 'force-dynamic';
+
+/**
+ * Helper function to call an edge function with the coach ID
+ */
+async function callEdgeFunction(functionName: string, request: Request, params: any) {
+  // Clone the request to read its body
+  const clone = request.clone();
+  const body = await clone.json();
+  
+  // Forward the request to the edge function with the additional parameters
+  return fetchFromEdgeFunction(`/api/planner/${functionName}`, {
+    method: 'POST',
+    body: {
+      ...body,
+      ...params
+    }
+  });
+}
 
 /**
  * Route handler for /api/planner/[type] routes
@@ -48,106 +65,74 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
 /**
  * POST handler for /api/planner/[type] routes
  */
-export async function POST(request: NextRequest, { params }: { params: { type: string } }) {
-  // We verify authentication with Clerk
-  const authResult = await auth();
-  
-  if (!authResult || !authResult.userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { type } = params;
-  const userId = authResult.userId;
-  
-  console.log(`[DEBUG] Processing ${type} creation for user: ${userId}`);
-  
+export async function POST(request: Request, { params }: { params: { type: string } }) {
   try {
-    // Get the request data
-    const requestData = await request.json();
-    console.log(`[DEBUG] Received request data for ${type}:`, JSON.stringify(requestData));
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Handle different plan types
+    const type = params.type;
     
-    // Debug step: Fetch the user profile to check role and verify coach record
-    try {
-      console.log(`[DEBUG] Fetching user profile to verify coach status`);
-      const profileUrl = `/api/users/${userId}/profile?_t=${Date.now()}`;
-      const profileResponse = await fetchFromEdgeFunction(profileUrl);
-      
-      console.log(`[DEBUG] User profile response:`, JSON.stringify({
-        role: profileResponse?.data?.user?.metadata?.role,
-        hasCoachData: !!profileResponse?.data?.roleSpecificData,
-        coachId: profileResponse?.data?.roleSpecificData?.id
-      }));
-      
-      if (!profileResponse?.data?.user?.metadata?.role) {
-        console.error(`[DEBUG] No role found in user metadata`);
-      } else if (profileResponse?.data?.user?.metadata?.role !== 'coach') {
-        console.error(`[DEBUG] User role is not coach: ${profileResponse?.data?.user?.metadata?.role}`);
-      }
-      
-      if (!profileResponse?.data?.roleSpecificData) {
-        console.error(`[DEBUG] No roleSpecificData found in profile`);
-      } else if (!profileResponse?.data?.roleSpecificData?.id) {
-        console.error(`[DEBUG] No coach ID found in roleSpecificData`);
-      }
-    } catch (profileError) {
-      console.error(`[DEBUG] Error fetching profile:`, profileError);
+    // Fetch the user's profile to check for coach record
+    const profileUrl = `/api/users/${userId}/profile`;
+    const profileResponse = await fetchFromEdgeFunction(profileUrl);
+    
+    if (!profileResponse || profileResponse.status !== 'success' || !profileResponse.data?.user) {
+      console.error("User profile not found:", profileResponse);
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 });
     }
     
-    // Send the request directly to the edge function with the Clerk ID
-    const formattedData = {
-      ...requestData,
-      clerk_id: userId,
-      userRole: 'coach' // Include this for backward compatibility
-    };
+    // Get user data and role-specific data
+    const { roleSpecificData } = profileResponse.data;
     
-    console.log(`[DEBUG] Sending formatted data to edge function`, JSON.stringify({
-      clerk_id: userId,
-      userRole: formattedData.userRole
-    }));
-    
-    // Call the appropriate edge function directly
-    try {
-      let result;
-      if (type === 'mesocycle') {
-        result = await fetchFromEdgeFunction('/api/planner/mesocycle', {
-          method: 'POST',
-          body: formattedData
-        });
-      } else if (type === 'microcycle') {
-        result = await fetchFromEdgeFunction('/api/planner/microcycle', {
-          method: 'POST',
-          body: formattedData
-        });
-      } else {
-        return NextResponse.json(
-          { error: `Invalid plan type: ${type}` },
-          { status: 400 }
-        );
-      }
-      
-      console.log(`[DEBUG] Edge function response:`, JSON.stringify(result));
-      return NextResponse.json(result);
-    } catch (edgeFunctionError: any) {
-      console.error(`[DEBUG] Error from edge function:`, edgeFunctionError);
-      
-      // Check if it's a coach role issue
-      if (edgeFunctionError.message?.includes('coach')) {
-        return NextResponse.json(
-          { error: edgeFunctionError.message || 'Only coaches can create training plans', details: 'User must have role=coach in metadata and a coach record in the database' },
-          { status: 403 }
-        );
-      }
-      
+    // Only check if the user has a coach record, regardless of their role
+    if (!roleSpecificData || !roleSpecificData.id) {
+      console.error("No coach record found for user");
       return NextResponse.json(
-        { error: edgeFunctionError.message || 'Error processing request' },
+        { error: "You need a coach record to create training plans" },
+        { status: 403 }
+      );
+    }
+    
+    // Use the coach_id from the database
+    const coachId = roleSpecificData.id;
+    
+    console.log(`Creating ${type} for coach ID: ${coachId}`);
+    
+    // Handle the request based on the plan type
+    try {
+      switch (type) {
+        case "mesocycle":
+          const mesocycleResponse = await callEdgeFunction("mesocycle", request, { coach_id: coachId });
+          return NextResponse.json(mesocycleResponse);
+        
+        case "microcycle":
+          const microcycleResponse = await callEdgeFunction("microcycle", request, { coach_id: coachId });
+          return NextResponse.json(microcycleResponse);
+        
+        default:
+          return NextResponse.json(
+            { error: `Invalid request type: ${type}` },
+            { status: 400 }
+          );
+      }
+    } catch (edgeFunctionError: any) {
+      console.error(`Error from edge function for ${type}:`, edgeFunctionError);
+      return NextResponse.json(
+        { 
+          error: edgeFunctionError.message || `Error creating ${type}`,
+          details: edgeFunctionError.data || "Check server logs for details"
+        },
         { status: edgeFunctionError.status || 500 }
       );
     }
   } catch (error: any) {
-    console.error(`[DEBUG] Error in POST /api/planner/${type}:`, error);
+    console.error("Error in planner POST:", error);
     return NextResponse.json(
-      { error: error.message || 'An error occurred' },
-      { status: error.status || 500 }
+      { error: error instanceof Error ? error.message : "An unknown error occurred" },
+      { status: 500 }
     );
   }
-} 
+}

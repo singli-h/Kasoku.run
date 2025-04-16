@@ -145,78 +145,48 @@ const deleteItem = async (supabase: any, table: string, id: string) => {
   return new Response(null, { status: 204, headers: corsHeaders });
 };
 
-// Helper function to get coach ID from clerk ID
-const getCoachIdFromClerkId = async (supabase: any, clerkId: string) => {
-  console.log(`[Edge] Looking up coach_id for clerk_id: ${clerkId}`);
-  
-  try {
-    // First get the user record - using maybeSingle() to handle multiple records case
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("id, metadata")
-      .eq("clerk_id", clerkId)
-      .maybeSingle();
-    
-    if (userError) {
-      console.error(`[Edge] Error finding user with clerk_id ${clerkId}:`, userError);
-      throw new Error(`User not found: ${userError.message}`);
-    }
-    
-    // If no data returned, throw error
-    if (!userData) {
-      console.error(`[Edge] No user found with clerk_id ${clerkId}`);
-      throw new Error(`User not found with clerk_id: ${clerkId}`);
-    }
-
-    console.log(`[Edge] Found user with id ${userData.id} and metadata:`, JSON.stringify(userData.metadata));
-    
-    // Check if user has coach role in metadata
-    const userRole = userData.metadata?.role;
-    if (!userRole) {
-      console.error(`[Edge] User ${clerkId} has no role in metadata`);
-      throw new Error("User has no role set in metadata. Please complete onboarding with coach role.");
-    }
-    
-    if (userRole !== 'coach') {
-      console.log(`[Edge] User ${clerkId} is not a coach. Role in metadata: ${userRole}`);
-      throw new Error(`Only coaches can create training plans. Current role: ${userRole}`);
-    }
-    
-    // Get the coach record using user.id - using maybeSingle() to handle multiple records
-    const { data: coachData, error: coachError } = await supabase
-      .from("coaches")
-      .select("id, user_id")
-      .eq("user_id", userData.id)
-      .maybeSingle();
-    
-    if (coachError) {
-      console.error(`[Edge] Error finding coach record for user_id ${userData.id}:`, coachError);
-      throw new Error(`Coach record lookup failed: ${coachError.message}`);
-    }
-    
-    // If no coach data, throw error
-    if (!coachData) {
-      console.error(`[Edge] No coach record found for user_id ${userData.id}`);
-      
-      // Check if any coach records exist at all (for debugging)
-      const { data: allCoaches, error: allCoachesError } = await supabase
-        .from("coaches")
-        .select("id, user_id")
-        .limit(5);
-        
-      if (!allCoachesError && allCoaches) {
-        console.log(`[Edge] Sample of coach records in database:`, JSON.stringify(allCoaches));
-      }
-      
-      throw new Error("Coach record not found for this user. Please complete coach onboarding.");
-    }
-    
-    console.log(`[Edge] Found coach_id: ${coachData.id} for clerk_id: ${clerkId} (user_id: ${userData.id})`);
-    return coachData.id;
-  } catch (error) {
-    throw error;
+// Get coach ID for a given clerk ID
+export async function getCoachIdFromClerkId(supabase: any, clerkId: string): Promise<string> {
+  if (!clerkId) {
+    throw new Error("Clerk ID is required");
   }
-};
+
+  // Get the user ID for this clerk ID
+  const { data: userData, error: userError } = await supabase
+    .from("users")
+    .select("id")
+    .eq("clerk_id", clerkId)
+    .maybeSingle();
+
+  if (userError) {
+    console.error("[Edge] Error fetching user:", userError);
+    throw new Error("Failed to fetch user information");
+  }
+
+  if (!userData) {
+    throw new Error("User not found");
+  }
+
+  const userId = userData.id;
+
+  // Check if there's a coach record for this user
+  const { data: coachData, error: coachError } = await supabase
+    .from("coaches")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (coachError) {
+    console.error("[Edge] Error fetching coach:", coachError);
+    throw new Error("Failed to fetch coach information");
+  }
+
+  if (!coachData) {
+    throw new Error("Only users with a coach record can create training plans");
+  }
+
+  return coachData.id;
+}
 
 /**
  * POST /api/dashboard/exercisesDetail
@@ -1328,30 +1298,6 @@ Deno.serve(async (req) => {
             }
           }
           
-          // Validate that user has coach role before proceeding
-          // Get the user record to check role
-          const { data: userData, error: userError } = await supabase
-            .from("users")
-            .select("metadata")
-            .eq("id", userId)
-            .single();
-          
-          if (userError || !userData) {
-            return new Response(
-              JSON.stringify({ error: "User not found" }),
-              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-          
-          // Check if user has coach role in metadata
-          const userRole = userData.metadata?.role;
-          if (userRole !== 'coach') {
-            return new Response(
-              JSON.stringify({ error: "Only coaches can create training plans" }),
-              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-          
           // Ensure coachId is not null or undefined before calling the function
           if (!coachId) {
             return new Response(
@@ -1418,30 +1364,6 @@ Deno.serve(async (req) => {
                 { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
               );
             }
-          }
-          
-          // Validate that user has coach role before proceeding
-          // Get the user record to check role
-          const { data: userData, error: userError } = await supabase
-            .from("users")
-            .select("metadata")
-            .eq("id", userId)
-            .single();
-          
-          if (userError || !userData) {
-            return new Response(
-              JSON.stringify({ error: "User not found" }),
-              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-          
-          // Check if user has coach role in metadata
-          const userRole = userData.metadata?.role;
-          if (userRole !== 'coach') {
-            return new Response(
-              JSON.stringify({ error: "Only coaches can create training plans" }),
-              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
           }
           
           // Ensure coachId is not null or undefined before calling the function
