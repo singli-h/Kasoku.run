@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromEdgeFunction } from "@/lib/edge-functions";
 import { auth } from "@clerk/nextjs/server";
-import { dynamic, runtime } from '../route-config';
 
-export { dynamic, runtime };
+// Configure this route for dynamic rendering
+export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/planner

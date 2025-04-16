@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { edgeFunctions } from '@/lib/supabase'
+import { edgeFunctions } from '@/lib/edge-functions'
 
 /**
  * Custom hook for saving training plans to Supabase

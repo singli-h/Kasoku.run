@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { edgeFunctions } from '@/lib/edge-functions';
 
+// Configure this route for dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/onboarding/user
  * Handles user onboarding via Supabase Edge Function

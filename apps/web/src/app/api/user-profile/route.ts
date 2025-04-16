@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { edgeFunctions } from '@/lib/edge-functions';
 import { auth } from "@clerk/nextjs/server";
-import { dynamic, runtime } from '../route-config';
 
-export { dynamic, runtime };
+// Configure this route for dynamic rendering
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/user-profile

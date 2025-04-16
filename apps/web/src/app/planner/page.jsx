@@ -3,9 +3,8 @@ import { useRouter } from 'next/navigation'
 import MesoWizard from "../../components/mesoWizard/mesoWizard"
 import PageBackground from "@/components/ui/PageBackground"
 
-// Configure this page for client-side rendering only
+// Configure this page for dynamic rendering
 export const dynamic = 'force-dynamic';
-export const runtime = 'edge';
 
 export default function PlannerPage() {
   const router = useRouter();
