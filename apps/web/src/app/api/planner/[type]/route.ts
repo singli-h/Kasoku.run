@@ -48,6 +48,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
  * POST handler for /api/planner/[type] routes
  */
 export async function POST(request: NextRequest, { params }: { params: { type: string } }) {
+  // We only need to verify authentication, edge function will handle the rest
   const authResult = await auth();
   
   if (!authResult || !authResult.userId) {
@@ -55,21 +56,19 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
   }
 
   const { type } = params;
-  const userId = authResult.userId;
-
+  
   try {
     // Get the request data
     const requestData = await request.json();
     console.log(`[DEBUG] Received request data for ${type}:`, JSON.stringify(requestData));
     
-    // Simply add the clerk_id to the request data
-    // The edge function will validate role and look up coach_id
+    // Include clerk_id as a fallback for edge function
+    // The edge function has been updated to prefer its own auth
+    // but will fallback to clerk_id if needed
     const formattedData = {
       ...requestData,
-      clerk_id: userId
+      clerk_id: authResult.userId // Include as fallback
     };
-    
-    console.log(`[DEBUG] Sending data to edge function with clerk_id:`, userId);
     
     if (type === 'mesocycle') {
       const result = await edgeFunctions.planner.createMesocycle(formattedData);

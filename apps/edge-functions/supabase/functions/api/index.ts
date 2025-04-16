@@ -1225,7 +1225,7 @@ Deno.serve(async (req) => {
         console.error("Error fetching athlete ID:", athleteError);
         // Don't throw error - athlete ID might not be needed for all endpoints
       } else {
-        athleteId = athleteData?.id || null;
+        athleteId = athleteData?.id;
       }
       
       // Fetch the coach ID
@@ -1239,7 +1239,7 @@ Deno.serve(async (req) => {
         console.error("Error fetching coach ID:", coachError);
         // Don't throw error - coach ID might not be needed for all endpoints
       } else {
-        coachId = coachData?.id || null;
+        coachId = coachData?.id;
       }
     }
 
@@ -1257,44 +1257,75 @@ Deno.serve(async (req) => {
       // POST /api/planner/mesocycle
       if (pathname === "/api/planner/mesocycle" && method === "POST") {
         try {
-          // Clone the request to keep the original for passing to postMesocycle
-          const reqClone = new Request(req.url, {
-            method: req.method,
-            headers: req.headers,
-            body: await req.clone().text()
-          });
+          // Use the already fetched coachId instead of re-fetching it
+          if (!coachId) {
+            // If coach ID wasn't fetched earlier (which shouldn't happen),
+            // check if we have a clerk_id in the request body as a fallback
+            const reqClone = new Request(req.url, {
+              method: req.method,
+              headers: req.headers,
+              body: await req.clone().text()
+            });
+            
+            const reqText = await reqClone.text();
+            let reqBody;
+            try {
+              reqBody = JSON.parse(reqText);
+            } catch (e) {
+              console.error("[Edge] Error parsing request body:", e, "Raw body:", reqText);
+              return new Response(
+                JSON.stringify({ error: "Invalid JSON in request body" }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+            
+            // If we don't have coachId but we have clerk_id, use it to get coach ID
+            if (reqBody?.clerk_id) {
+              try {
+                coachId = await getCoachIdFromClerkId(supabase, reqBody.clerk_id);
+              } catch (error: any) {
+                return new Response(
+                  JSON.stringify({ error: error.message }),
+                  { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                );
+              }
+            } else {
+              // Neither coachId nor clerk_id available
+              return new Response(
+                JSON.stringify({ error: "Coach not found for this user" }),
+                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          }
           
-          // Get the request body from the clone
-          const reqText = await reqClone.text();
-          let reqBody;
-          try {
-            reqBody = JSON.parse(reqText);
-          } catch (e) {
-            console.error("[Edge] Error parsing request body:", e, "Raw body:", reqText);
+          // Validate that user has coach role before proceeding
+          // Get the user record to check role
+          const { data: userData, error: userError } = await supabase
+            .from("users")
+            .select("metadata")
+            .eq("id", userId)
+            .single();
+          
+          if (userError || !userData) {
             return new Response(
-              JSON.stringify({ error: "Invalid JSON in request body" }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              JSON.stringify({ error: "User not found" }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
           
-          const clerk_id = reqBody?.clerk_id;
-          console.log("[Edge] Extracted clerk_id:", clerk_id, "from request body:", JSON.stringify(reqBody));
-          
-          if (!clerk_id) {
-            console.error("[Edge] Missing clerk_id in request. Request body:", JSON.stringify(reqBody));
+          // Check if user has coach role in metadata
+          const userRole = userData.metadata?.role;
+          if (userRole !== 'coach') {
             return new Response(
-              JSON.stringify({ error: "Missing clerk_id in request" }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              JSON.stringify({ error: "Only coaches can create training plans" }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
           
-          // Get coach ID from clerk ID
-          let coachId;
-          try {
-            coachId = await getCoachIdFromClerkId(supabase, clerk_id);
-          } catch (error: any) {
+          // Ensure coachId is not null or undefined before calling the function
+          if (!coachId) {
             return new Response(
-              JSON.stringify({ error: error.message }),
+              JSON.stringify({ error: "Coach ID not found" }),
               { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
@@ -1318,44 +1349,75 @@ Deno.serve(async (req) => {
       // POST /api/planner/microcycle
       if (pathname === "/api/planner/microcycle" && method === "POST") {
         try {
-          // Clone the request to keep the original for passing to postMicrocycle
-          const reqClone = new Request(req.url, {
-            method: req.method,
-            headers: req.headers,
-            body: await req.clone().text()
-          });
+          // Use the already fetched coachId instead of re-fetching it
+          if (!coachId) {
+            // If coach ID wasn't fetched earlier (which shouldn't happen),
+            // check if we have a clerk_id in the request body as a fallback
+            const reqClone = new Request(req.url, {
+              method: req.method,
+              headers: req.headers,
+              body: await req.clone().text()
+            });
+            
+            const reqText = await reqClone.text();
+            let reqBody;
+            try {
+              reqBody = JSON.parse(reqText);
+            } catch (e) {
+              console.error("[Edge] Error parsing request body:", e, "Raw body:", reqText);
+              return new Response(
+                JSON.stringify({ error: "Invalid JSON in request body" }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+            
+            // If we don't have coachId but we have clerk_id, use it to get coach ID
+            if (reqBody?.clerk_id) {
+              try {
+                coachId = await getCoachIdFromClerkId(supabase, reqBody.clerk_id);
+              } catch (error: any) {
+                return new Response(
+                  JSON.stringify({ error: error.message }),
+                  { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                );
+              }
+            } else {
+              // Neither coachId nor clerk_id available
+              return new Response(
+                JSON.stringify({ error: "Coach not found for this user" }),
+                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          }
           
-          // Get the request body from the clone
-          const reqText = await reqClone.text();
-          let reqBody;
-          try {
-            reqBody = JSON.parse(reqText);
-          } catch (e) {
-            console.error("[Edge] Error parsing request body:", e, "Raw body:", reqText);
+          // Validate that user has coach role before proceeding
+          // Get the user record to check role
+          const { data: userData, error: userError } = await supabase
+            .from("users")
+            .select("metadata")
+            .eq("id", userId)
+            .single();
+          
+          if (userError || !userData) {
             return new Response(
-              JSON.stringify({ error: "Invalid JSON in request body" }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              JSON.stringify({ error: "User not found" }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
           
-          const clerk_id = reqBody?.clerk_id;
-          console.log("[Edge] Extracted clerk_id:", clerk_id, "from request body:", JSON.stringify(reqBody));
-          
-          if (!clerk_id) {
-            console.error("[Edge] Missing clerk_id in request. Request body:", JSON.stringify(reqBody));
+          // Check if user has coach role in metadata
+          const userRole = userData.metadata?.role;
+          if (userRole !== 'coach') {
             return new Response(
-              JSON.stringify({ error: "Missing clerk_id in request" }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              JSON.stringify({ error: "Only coaches can create training plans" }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
           
-          // Get coach ID from clerk ID
-          let coachId;
-          try {
-            coachId = await getCoachIdFromClerkId(supabase, clerk_id);
-          } catch (error: any) {
+          // Ensure coachId is not null or undefined before calling the function
+          if (!coachId) {
             return new Response(
-              JSON.stringify({ error: error.message }),
+              JSON.stringify({ error: "Coach ID not found" }),
               { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
