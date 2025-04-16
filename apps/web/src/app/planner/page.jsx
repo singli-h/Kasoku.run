@@ -3,6 +3,10 @@ import { useRouter } from 'next/navigation'
 import MesoWizard from "../../components/mesoWizard/mesoWizard"
 import PageBackground from "@/components/ui/PageBackground"
 
+// Configure this page for client-side rendering only
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
+
 export default function PlannerPage() {
   const router = useRouter();
 
@@ -21,7 +25,7 @@ export default function PlannerPage() {
       
       {/* Optimized content container */}
       <div className="w-full max-w-4xl mx-auto pt-4 sm:pt-6 px-0 sm:px-4">
-        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 px-2 sm:px-0">Create New Mesocycle</h2>
+        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 px-2 sm:px-0">Create New Training Plan</h2>
         <MesoWizard onComplete={handleComplete} />
       </div>
     </div>

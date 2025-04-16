@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromEdgeFunction } from "@/lib/edge-functions";
 import { auth } from "@clerk/nextjs/server";
+import { dynamic, runtime } from '../route-config';
+
+export { dynamic, runtime };
 
 /**
  * POST /api/planner
@@ -33,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     if (planType === 'mesocycle') {
       // Call the edge function to create a mesocycle
-x      result = await fetchFromEdgeFunction('/api/planner/mesocycle', {
+      result = await fetchFromEdgeFunction('/api/planner/mesocycle', {
         method: 'POST',
         body: {
           ...planData,

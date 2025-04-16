@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { edgeFunctions } from '@/lib/edge-functions'
+import { edgeFunctions } from '@/lib/supabase'
 import { useSaveTrainingPlan } from "./useSaveCycle"
 
 /**
