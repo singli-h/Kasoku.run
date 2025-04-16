@@ -254,5 +254,37 @@ export const edgeFunctions = {
     getWeeklyOverview: () => fetchFromEdgeFunction("/api/dashboard/weeklyOverview"),
     getMesocycle: () => fetchFromEdgeFunction("/api/dashboard/mesocycle"),
     getExercises: () => fetchFromEdgeFunction("/api/dashboard/exercises")
+  },
+  
+  // Planner APIs
+  planner: {
+    // Create a mesocycle plan
+    createMesocycle: (data) => fetchFromEdgeFunction("/api/planner", {
+      method: "POST",
+      body: {
+        planType: "mesocycle",
+        userRole: "coach",
+        ...data
+      }
+    }),
+    
+    // Create a microcycle plan
+    createMicrocycle: (data) => fetchFromEdgeFunction("/api/planner", {
+      method: "POST",
+      body: {
+        planType: "microcycle",
+        userRole: "coach",
+        ...data
+      }
+    }),
+    
+    // Get available exercises for planner
+    getExercises: () => fetchFromEdgeFunction("/api/planner?type=exercises"),
+    
+    // Get a specific mesocycle
+    getMesocycle: (id) => fetchFromEdgeFunction(`/api/planner?type=mesocycle&id=${id}`),
+    
+    // Get a specific microcycle
+    getMicrocycle: (id) => fetchFromEdgeFunction(`/api/planner?type=microcycle&id=${id}`)
   }
 }; 

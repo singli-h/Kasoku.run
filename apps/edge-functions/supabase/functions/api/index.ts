@@ -3,6 +3,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
 import { corsHeaders, handleError } from './utils.ts';
 import { getAthletes, createAthlete } from './athletes.ts';
 import { getUserStatus, getUserProfile } from './users.ts';
+import { 
+  postMesocycle, 
+  postMicrocycle, 
+  getExercisesForPlanner, 
+  getMesocycle, 
+  getMicrocycle 
+} from './planner.ts';
 
 // Toggle for authentication (default is enabled)
 const AUTH_ENABLED = false;
@@ -1053,8 +1060,7 @@ export const getMesocycle = async (
  * GET /api/dashboard/exercises
  *
  * Returns exercise data for the dashboard.
- * For now, this returns mock data, but in the future it should:
- * - Fetch actual exercise data from the database.
+ * Fetches actual exercise data from the database.
  */
 export const getExercises = async (
   supabase: any,
@@ -1062,77 +1068,34 @@ export const getExercises = async (
   athleteId: number | string
 ): Promise<Response> => {
   try {
-    // Mock exercise data
-    const mockExercises = [
-      {
-        id: 1,
-        name: "Bench Press",
-        category: "Chest",
-        type: "gym",
-        description: "Compound chest exercise"
-      },
-      {
-        id: 2,
-        name: "Squat",
-        category: "Legs",
-        type: "gym",
-        description: "Compound leg exercise"
-      },
-      {
-        id: 3,
-        name: "Deadlift",
-        category: "Back",
-        type: "gym",
-        description: "Compound back exercise"
-      },
-      {
-        id: 4,
-        name: "Overhead Press",
-        category: "Shoulders",
-        type: "gym",
-        description: "Compound shoulder exercise"
-      },
-      {
-        id: 5,
-        name: "Pull-up",
-        category: "Back",
-        type: "gym",
-        description: "Compound back exercise"
-      },
-      {
-        id: 6,
-        name: "Arm Circles",
-        category: "Warm-up",
-        type: "warmup",
-        description: "Dynamic warm-up for shoulders"
-      },
-      {
-        id: 7,
-        name: "Leg Swings",
-        category: "Warm-up",
-        type: "warmup",
-        description: "Dynamic warm-up for hips and legs"
-      },
-      {
-        id: 8,
-        name: "Push-ups",
-        category: "Circuit",
-        type: "circuit",
-        description: "Bodyweight chest exercise"
-      },
-      {
-        id: 9,
-        name: "Bodyweight Lunges",
-        category: "Circuit",
-        type: "circuit",
-        description: "Bodyweight leg exercise"
-      }
-    ];
+    // Fetch exercises from the database
+    const { data: exercises, error } = await supabase
+      .from("exercises")
+      .select(`
+        id,
+        name,
+        description,
+        exercise_type_id,
+        exercise_types(type)
+      `)
+      .order('name');
+
+    if (error) {
+      throw error;
+    }
+
+    // Map the data to match the expected structure in the frontend
+    const formattedExercises = exercises.map(exercise => ({
+      id: exercise.id,
+      name: exercise.name,
+      description: exercise.description,
+      type: exercise.exercise_types?.type?.toLowerCase() || 'gym' // Convert to lowercase to match frontend expectations
+    }));
 
     return new Response(
       JSON.stringify({
         status: "success",
-        data: mockExercises,
+        data: formattedExercises,
         metadata: {
           timestamp: new Date().toISOString()
         }
@@ -1206,7 +1169,8 @@ Deno.serve(async (req) => {
 
     // For athlete and coach endpoints, fetch the IDs based on user
     let athleteId = null;
-    if (!AUTH_ENABLED || pathname.includes('/dashboard') || pathname.includes('/athlete')) {
+    let coachId = null;
+    if (!AUTH_ENABLED || pathname.includes('/dashboard') || pathname.includes('/athlete') || pathname.includes('/planner')) {
       // Fetch the athlete ID
       const { data: athleteData, error: athleteError } = await supabase
         .from("athletes")
@@ -1220,11 +1184,73 @@ Deno.serve(async (req) => {
       } else {
         athleteId = athleteData?.id || null;
       }
+      
+      // Fetch the coach ID
+      const { data: coachData, error: coachError } = await supabase
+        .from("coaches")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (coachError) {
+        console.error("Error fetching coach ID:", coachError);
+        // Don't throw error - coach ID might not be needed for all endpoints
+      } else {
+        coachId = coachData?.id || null;
+      }
     }
 
     // -------------------------
     // Routing section
     // -------------------------
+
+    // Handle planner endpoints
+    if (pathname.startsWith("/api/planner")) {
+      // GET /api/planner/exercises
+      if (pathname === "/api/planner/exercises" && method === "GET") {
+        return await getExercisesForPlanner(supabase);
+      }
+      
+      // POST /api/planner/mesocycle
+      if (pathname === "/api/planner/mesocycle" && method === "POST") {
+        if (!coachId) {
+          return new Response(
+            JSON.stringify({ error: "Only coaches can create mesocycles" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        return await postMesocycle(supabase, parsedUrl, req, coachId);
+      }
+      
+      // GET /api/planner/mesocycle/:id
+      if (pathname.match(/^\/api\/planner\/mesocycle\/\d+$/) && method === "GET") {
+        const mesocycleId = pathname.split("/").pop();
+        return await getMesocycle(supabase, mesocycleId);
+      }
+      
+      // POST /api/planner/microcycle
+      if (pathname === "/api/planner/microcycle" && method === "POST") {
+        if (!coachId) {
+          return new Response(
+            JSON.stringify({ error: "Only coaches can create microcycles" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        return await postMicrocycle(supabase, parsedUrl, req, coachId);
+      }
+      
+      // GET /api/planner/microcycle/:id
+      if (pathname.match(/^\/api\/planner\/microcycle\/\d+$/) && method === "GET") {
+        const microcycleId = pathname.split("/").pop();
+        return await getMicrocycle(supabase, microcycleId);
+      }
+      
+      // Method not allowed for planner endpoints
+      return new Response(
+        JSON.stringify({ error: `${method} Method not allowed for this planner endpoint` }),
+        { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Handle user onboarding
     if (pathname === "/api/onboarding/user") {

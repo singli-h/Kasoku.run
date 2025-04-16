@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { edgeFunctions } from '@/lib/edge-functions'
+import { edgeFunctions } from '@/lib/supabase'
 
 /**
  * Custom hook for saving training plans to Supabase
@@ -191,16 +191,14 @@ export const useSaveTrainingPlan = () => {
       // Log the data being sent for debugging
       console.log('Sending microcycle data:', JSON.stringify(formattedData, null, 2));
       
-      // Use edge functions client instead of direct fetch
-      const data = await edgeFunctions.dashboard.createTrainingSession({
-        type: 'microcycle',
-        ...formattedData
-      });
+      // Use the planner API function
+      const data = await edgeFunctions.planner.createMicrocycle(formattedData);
       
       setSuccess(true);
       setSavedData(data);
       return data;
     } catch (err) {
+      console.error('Error saving microcycle:', err);
       setError(err.message || 'An unexpected error occurred');
       throw err;
     } finally {
@@ -534,24 +532,22 @@ export const useSaveTrainingPlan = () => {
       const sessions = transformFormData(formData)
       
       // Log the data being sent for debugging
-      console.log('Sending training plan data:', JSON.stringify({
+      console.log('Sending mesocycle plan data:', JSON.stringify({
         sessions,
-        timezone,
-        planType: formData.planType || 'mesocycle'
+        timezone
       }, null, 2));
 
-      // Use edge functions client instead of direct fetch
-      const data = await edgeFunctions.dashboard.createTrainingSession({
-        type: 'mesocycle',
+      // Use the planner API function
+      const data = await edgeFunctions.planner.createMesocycle({
         sessions,
-        timezone,
-        planType: formData.planType || 'mesocycle'
+        timezone
       });
       
       setSuccess(true)
       setSavedData(data)
       return data
     } catch (err) {
+      console.error('Error saving mesocycle:', err);
       setError(err.message || 'An unexpected error occurred')
       throw err
     } finally {

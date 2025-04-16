@@ -64,9 +64,17 @@ const StepThreeConfirmation = ({
     
     try {
       setIsSubmitted(true)
+      
+      // Log the data being submitted
+      console.log(`Submitting ${planTypeText} plan:`, formData);
+      
+      // Submit the form data
       await handleSubmit(e)
+      
+      // Show success message
       showSuccess(`${planTypeText} plan saved successfully! You can now view it in your dashboard.`)
     } catch (error) {
+      console.error('Error submitting plan:', error);
       showError(error.message || `Failed to save ${planTypeText.toLowerCase()} plan. Please try again.`)
       setIsSubmitted(false)
     }
