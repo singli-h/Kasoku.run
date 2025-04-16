@@ -159,41 +159,59 @@ const getCoachIdFromClerkId = async (supabase: any, clerkId: string) => {
     
     if (userError) {
       console.error(`[Edge] Error finding user with clerk_id ${clerkId}:`, userError);
-      throw new Error("User not found");
+      throw new Error(`User not found: ${userError.message}`);
     }
     
     // If no data returned, throw error
     if (!userData) {
       console.error(`[Edge] No user found with clerk_id ${clerkId}`);
-      throw new Error("User not found");
+      throw new Error(`User not found with clerk_id: ${clerkId}`);
     }
+
+    console.log(`[Edge] Found user with id ${userData.id} and metadata:`, JSON.stringify(userData.metadata));
     
     // Check if user has coach role in metadata
     const userRole = userData.metadata?.role;
+    if (!userRole) {
+      console.error(`[Edge] User ${clerkId} has no role in metadata`);
+      throw new Error("User has no role set in metadata. Please complete onboarding with coach role.");
+    }
+    
     if (userRole !== 'coach') {
       console.log(`[Edge] User ${clerkId} is not a coach. Role in metadata: ${userRole}`);
-      throw new Error("Only coaches can create training plans");
+      throw new Error(`Only coaches can create training plans. Current role: ${userRole}`);
     }
     
     // Get the coach record using user.id - using maybeSingle() to handle multiple records
     const { data: coachData, error: coachError } = await supabase
       .from("coaches")
-      .select("id")
+      .select("id, user_id")
       .eq("user_id", userData.id)
       .maybeSingle();
     
     if (coachError) {
       console.error(`[Edge] Error finding coach record for user_id ${userData.id}:`, coachError);
-      throw new Error("Coach record not found for this user");
+      throw new Error(`Coach record lookup failed: ${coachError.message}`);
     }
     
     // If no coach data, throw error
     if (!coachData) {
       console.error(`[Edge] No coach record found for user_id ${userData.id}`);
-      throw new Error("Coach record not found for this user");
+      
+      // Check if any coach records exist at all (for debugging)
+      const { data: allCoaches, error: allCoachesError } = await supabase
+        .from("coaches")
+        .select("id, user_id")
+        .limit(5);
+        
+      if (!allCoachesError && allCoaches) {
+        console.log(`[Edge] Sample of coach records in database:`, JSON.stringify(allCoaches));
+      }
+      
+      throw new Error("Coach record not found for this user. Please complete coach onboarding.");
     }
     
-    console.log(`[Edge] Found coach_id: ${coachData.id} for clerk_id: ${clerkId}`);
+    console.log(`[Edge] Found coach_id: ${coachData.id} for clerk_id: ${clerkId} (user_id: ${userData.id})`);
     return coachData.id;
   } catch (error) {
     throw error;

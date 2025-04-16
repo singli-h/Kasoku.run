@@ -1,47 +1,78 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from "@clerk/nextjs/server";
-import { edgeFunctions } from '@/lib/edge-functions';
+import { fetchFromEdgeFunction } from '@/lib/edge-functions';
 
 // Configure this route for dynamic rendering
 export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/onboarding/user
- * Handles user onboarding via Supabase Edge Function
+ * POST handler for /api/onboarding/user
+ * This endpoint creates or updates a user's profile and creates role-specific records
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    // Get the authenticated user from Clerk
+    // Get the clerk user ID from auth session
     const { userId } = await auth();
     
-    if (!userId) {
+    // Allow unauthenticated requests for testing
+    const isTestingMode = process.env.NODE_ENV === 'development';
+    
+    if (!userId && !isTestingMode) {
       return NextResponse.json(
-        { error: "Unauthorized - User not authenticated" },
+        { error: "Unauthorized" },
         { status: 401 }
       );
     }
-
-    // Get and validate the request body
-    const body = await request.json();
     
-    if (body.clerk_id !== userId) {
+    // Get the request data
+    const userData = await request.json();
+    
+    // Use clerk_id from auth if available, otherwise use the one from the body
+    const clerkId = userId || userData.clerk_id;
+    
+    if (!clerkId) {
       return NextResponse.json(
-        { error: "Unauthorized - User ID mismatch" },
-        { status: 403 }
+        { error: "Missing clerk_id - user must be authenticated or provide clerk_id in request body" },
+        { status: 400 }
       );
     }
-
-    console.log('[API] Processing onboarding for user:', userId);
-    const data = await edgeFunctions.users.onboard(body);
     
-    console.log('[API] Successfully completed onboarding for user:', userId);
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error('[API] Error in onboarding:', error);
+    // Ensure clerk_id is included in the data sent to edge function
+    const enrichedData = {
+      ...userData,
+      clerk_id: clerkId
+    };
+    
+    console.log(`[DEBUG] Sending onboarding data for user ${clerkId}:`, JSON.stringify({
+      role: enrichedData.role,
+      email: enrichedData.email,
+      metadata: enrichedData.metadata
+    }));
+    
+    // Call the edge function
+    try {
+      const response = await fetchFromEdgeFunction('/api/onboarding/user', {
+        method: 'POST',
+        body: enrichedData
+      });
+      
+      console.log(`[DEBUG] Onboarding response:`, JSON.stringify(response));
+      
+      return NextResponse.json(response);
+    } catch (error: any) {
+      console.error(`[DEBUG] Error in onboarding edge function:`, error);
+      
+      return NextResponse.json(
+        { error: error.message || 'Error in onboarding process' },
+        { status: error.status || 500 }
+      );
+    }
+  } catch (error: any) {
+    console.error(`[DEBUG] Unexpected error in onboarding API:`, error);
     
     return NextResponse.json(
-      { error: error.message || "Failed to complete onboarding" },
-      { status: error.status || 500 }
+      { error: error.message || 'An unexpected error occurred' },
+      { status: 500 }
     );
   }
 } 

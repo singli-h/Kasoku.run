@@ -59,10 +59,39 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
   const { type } = params;
   const userId = authResult.userId;
   
+  console.log(`[DEBUG] Processing ${type} creation for user: ${userId}`);
+  
   try {
     // Get the request data
     const requestData = await request.json();
     console.log(`[DEBUG] Received request data for ${type}:`, JSON.stringify(requestData));
+    
+    // Debug step: Fetch the user profile to check role and verify coach record
+    try {
+      console.log(`[DEBUG] Fetching user profile to verify coach status`);
+      const profileUrl = `/api/users/${userId}/profile?_t=${Date.now()}`;
+      const profileResponse = await fetchFromEdgeFunction(profileUrl);
+      
+      console.log(`[DEBUG] User profile response:`, JSON.stringify({
+        role: profileResponse?.data?.user?.metadata?.role,
+        hasCoachData: !!profileResponse?.data?.roleSpecificData,
+        coachId: profileResponse?.data?.roleSpecificData?.id
+      }));
+      
+      if (!profileResponse?.data?.user?.metadata?.role) {
+        console.error(`[DEBUG] No role found in user metadata`);
+      } else if (profileResponse?.data?.user?.metadata?.role !== 'coach') {
+        console.error(`[DEBUG] User role is not coach: ${profileResponse?.data?.user?.metadata?.role}`);
+      }
+      
+      if (!profileResponse?.data?.roleSpecificData) {
+        console.error(`[DEBUG] No roleSpecificData found in profile`);
+      } else if (!profileResponse?.data?.roleSpecificData?.id) {
+        console.error(`[DEBUG] No coach ID found in roleSpecificData`);
+      }
+    } catch (profileError) {
+      console.error(`[DEBUG] Error fetching profile:`, profileError);
+    }
     
     // Send the request directly to the edge function with the Clerk ID
     const formattedData = {
@@ -70,6 +99,11 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
       clerk_id: userId,
       userRole: 'coach' // Include this for backward compatibility
     };
+    
+    console.log(`[DEBUG] Sending formatted data to edge function`, JSON.stringify({
+      clerk_id: userId,
+      userRole: formattedData.userRole
+    }));
     
     // Call the appropriate edge function directly
     try {
@@ -91,14 +125,15 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
         );
       }
       
+      console.log(`[DEBUG] Edge function response:`, JSON.stringify(result));
       return NextResponse.json(result);
     } catch (edgeFunctionError: any) {
-      console.error(`Error from edge function:`, edgeFunctionError);
+      console.error(`[DEBUG] Error from edge function:`, edgeFunctionError);
       
       // Check if it's a coach role issue
       if (edgeFunctionError.message?.includes('coach')) {
         return NextResponse.json(
-          { error: edgeFunctionError.message || 'Only coaches can create training plans' },
+          { error: edgeFunctionError.message || 'Only coaches can create training plans', details: 'User must have role=coach in metadata and a coach record in the database' },
           { status: 403 }
         );
       }
@@ -109,7 +144,7 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
       );
     }
   } catch (error: any) {
-    console.error(`Error in POST /api/planner/${type}:`, error);
+    console.error(`[DEBUG] Error in POST /api/planner/${type}:`, error);
     return NextResponse.json(
       { error: error.message || 'An error occurred' },
       { status: error.status || 500 }

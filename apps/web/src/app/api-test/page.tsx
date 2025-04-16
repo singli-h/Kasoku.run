@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { edgeFunctions } from '@/lib/edge-functions';
+import { useAuth } from '@clerk/nextjs';
 
 interface TestResult {
   name: string;
@@ -12,6 +13,7 @@ export default function ApiTest() {
   const [results, setResults] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<Record<string, any>>({});
+  const { userId } = useAuth();
 
   // Helper function to run a test
   const runTest = async (name: string, testFn: () => Promise<any>) => {
@@ -28,6 +30,34 @@ export default function ApiTest() {
       return false;
     } finally {
       setLoading(prev => ({ ...prev, [name]: false }));
+    }
+  };
+
+  // Get coach role for testing
+  const addCoachRole = async () => {
+    setLoading(prev => ({ ...prev, addCoachRole: true }));
+    setError(prev => ({ ...prev, addCoachRole: null }));
+    
+    try {
+      console.log(`[Test] Adding coach role for user: ${userId}`);
+      const response = await fetch('/api-test/add-coach-role');
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[Test] Error adding coach role:`, errorText);
+        throw new Error(`Failed to add coach role: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log(`[Test] Coach role added:`, data);
+      setResults(prev => ({ ...prev, addCoachRole: data }));
+      return data;
+    } catch (err) {
+      console.error(`[Test] Error in addCoachRole:`, err);
+      setError(prev => ({ ...prev, addCoachRole: err }));
+      throw err;
+    } finally {
+      setLoading(prev => ({ ...prev, addCoachRole: false }));
     }
   };
 
@@ -52,6 +82,110 @@ export default function ApiTest() {
       const response = await fetch('/api/user-status');
       const data = await response.json();
       return data;
+    },
+    
+    getUserProfile: async () => {
+      console.log(`[Test] Fetching user profile for userId: ${userId}`);
+      try {
+        const data = await edgeFunctions.users.getProfile(userId);
+        console.log(`[Test] User profile data:`, data);
+        return data;
+      } catch (err) {
+        console.error(`[Test] Error fetching user profile:`, err);
+        throw err;
+      }
+    },
+    
+    createMicrocycle: async () => {
+      console.log(`[Test] Creating microcycle for userId: ${userId}`);
+      
+      // Sample minimal data for testing
+      const testData = {
+        microcycle: {
+          name: "Test Microcycle",
+          description: "Test description",
+          startDate: new Date().toISOString().split('T')[0], // Today's date
+          endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
+        },
+        sessions: [
+          {
+            group: {
+              week: 1,
+              day: 1,
+              date: new Date().toISOString().split('T')[0],
+              name: "Test Session 1",
+              description: "Test session description"
+            },
+            presets: [
+              {
+                preset: {
+                  exercise_id: 43, // Barbell Back Squat
+                  superset_id: null,
+                  preset_order: 1
+                },
+                details: [
+                  {
+                    set_index: 1,
+                    reps: 5,
+                    weight: 100,
+                    metadata: {
+                      rpe: 7,
+                      exercise_name: "Barbell Back Squat"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      };
+      
+      console.log(`[Test] Microcycle test data:`, JSON.stringify(testData, null, 2));
+      
+      // First, check if the user has coach role and coach ID
+      try {
+        const profileResponse = await edgeFunctions.users.getProfile(userId);
+        console.log(`[Test] User profile data for coach check:`, profileResponse);
+        
+        if (profileResponse?.data?.user?.metadata?.role !== 'coach') {
+          console.error(`[Test] User does not have coach role. Current role:`, profileResponse?.data?.user?.metadata?.role);
+        }
+        
+        if (!profileResponse?.data?.roleSpecificData?.id) {
+          console.error(`[Test] User does not have a coach record:`, profileResponse?.data?.roleSpecificData);
+        }
+      } catch (err) {
+        console.error(`[Test] Error fetching profile for coach check:`, err);
+      }
+      
+      // Now try to create the microcycle
+      try {
+        const result = await fetch('/api/planner/microcycle', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...testData,
+            userRole: 'coach' // Include this explicitly
+          })
+        });
+        
+        const responseText = await result.text();
+        console.log(`[Test] Raw microcycle creation response:`, responseText);
+        
+        try {
+          const data = JSON.parse(responseText);
+          console.log(`[Test] Parsed microcycle creation response:`, data);
+          return data;
+        } catch (err) {
+          console.error(`[Test] Error parsing response:`, err);
+          return { rawResponse: responseText, status: result.status };
+        }
+      } catch (err) {
+        console.error(`[Test] Error creating microcycle:`, err);
+        throw err;
+      }
     }
   };
 
@@ -69,13 +203,21 @@ export default function ApiTest() {
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-6">API Connection Test</h1>
       
-      <div className="space-y-4">
-        <div className="flex space-x-4">
+      <div className="space-y-6">
+        <div className="flex flex-wrap gap-4">
           <button
             onClick={() => runAllTests()}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Run All Tests
+          </button>
+          
+          <button
+            onClick={addCoachRole}
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            disabled={loading.addCoachRole}
+          >
+            {loading.addCoachRole ? 'Adding Coach Role...' : 'Add Coach Role for Testing'}
           </button>
           
           {Object.keys(tests).map(testName => (
@@ -88,6 +230,29 @@ export default function ApiTest() {
             </button>
           ))}
         </div>
+
+        {/* Add Coach Role Results */}
+        {(results.addCoachRole || error.addCoachRole || loading.addCoachRole) && (
+          <div className="border p-4 rounded">
+            <h2 className="text-xl font-semibold mb-2">Add Coach Role</h2>
+            
+            {loading.addCoachRole && (
+              <div className="text-blue-500">Adding coach role...</div>
+            )}
+            
+            {error.addCoachRole && (
+              <div className="text-red-500">
+                Error: {error.addCoachRole.message || JSON.stringify(error.addCoachRole)}
+              </div>
+            )}
+            
+            {results.addCoachRole && (
+              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-60">
+                {JSON.stringify(results.addCoachRole, null, 2)}
+              </pre>
+            )}
+          </div>
+        )}
 
         <div className="space-y-6">
           {Object.keys(tests).map(testName => (
