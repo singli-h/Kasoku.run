@@ -159,13 +159,23 @@ export const useSaveTrainingPlan = () => {
       };
     });
     
-    // Return formatted data structure
+    // Add additional logging for debugging
+    console.log('[formatMicrocycleData] Formatted microcycle data:', {
+      name: formData.name || (formData.goals?.substring(0, 50) || "One-Week Training Plan"),
+      description: formData.goals || "Microcycle training plan",
+      startDate: formatDate(startDate), // Using camelCase for API
+      endDate: formatDate(endDate),     // Using camelCase for API
+      sessions: sessions.length
+    });
+    
+    // Return formatted data structure using camelCase for fields that expect it at the API level
     return {
+      // Maintain camelCase based on what the edge function expects
       microcycle: {
-        start_date: formatDate(startDate),
-        end_date: formatDate(endDate),
         name: formData.name || (formData.goals?.substring(0, 50) || "One-Week Training Plan"),
         description: formData.goals || "Microcycle training plan",
+        startDate: formatDate(startDate),  // camelCase for API consistency
+        endDate: formatDate(endDate),      // camelCase for API consistency
         intensity: null,
         volume: null
       },

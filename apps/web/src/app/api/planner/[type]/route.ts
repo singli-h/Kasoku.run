@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchFromEdgeFunction } from "@/lib/edge-functions";
 import { auth } from "@clerk/nextjs/server";
+import { edgeFunctions } from '@/lib/edge-functions';
 
 // Configure this route for dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -8,52 +8,38 @@ export const dynamic = 'force-dynamic';
 /**
  * Route handler for /api/planner/[type] routes
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { type: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { type: string } }) {
+  const authResult = await auth();
+  
+  if (!authResult || !authResult.userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { type } = params;
+  const searchParams = request.nextUrl.searchParams;
+  const id = searchParams.get('id');
+
   try {
-    // Get current user from Clerk
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized - User not authenticated" }, { status: 401 });
-    }
-
-    const { type } = params;
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    let result;
-
-    // Route based on the requested type
     if (type === 'exercises') {
-      // Get the exercise library
-      result = await fetchFromEdgeFunction('/api/planner/exercises', {
-        method: 'GET'
-      });
+      const exercises = await edgeFunctions.planner.getExercises();
+      return NextResponse.json(exercises);
     } else if (type === 'mesocycle' && id) {
-      // Get a specific mesocycle
-      result = await fetchFromEdgeFunction(`/api/planner/mesocycle/${id}`, {
-        method: 'GET'
-      });
+      const mesocycle = await edgeFunctions.planner.getMesocycle(id);
+      return NextResponse.json(mesocycle);
     } else if (type === 'microcycle' && id) {
-      // Get a specific microcycle
-      result = await fetchFromEdgeFunction(`/api/planner/microcycle/${id}`, {
-        method: 'GET'
-      });
+      const microcycle = await edgeFunctions.planner.getMicrocycle(id);
+      return NextResponse.json(microcycle);
     } else {
-      return NextResponse.json({ 
-        error: "Invalid request. Please include a valid type (exercises, mesocycle, microcycle) and id if applicable" 
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: `Invalid request. Type '${type}' or ID '${id}' is invalid` },
+        { status: 400 }
+      );
     }
-
-    // Return the result from the edge function
-    return NextResponse.json(result);
   } catch (error: any) {
-    console.error(`Error fetching data:`, error);
+    console.error(`Error in GET /api/planner/${type}:`, error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch data" },
-      { status: 500 }
+      { error: error.message || 'An error occurred' },
+      { status: error.status || 500 }
     );
   }
 }
@@ -61,63 +47,165 @@ export async function GET(
 /**
  * POST handler for /api/planner/[type] routes
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { type: string } }
-) {
-  try {
-    // Get current user from Clerk
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized - User not authenticated" }, { status: 401 });
-    }
+export async function POST(request: NextRequest, { params }: { params: { type: string } }) {
+  const authResult = await auth();
+  
+  if (!authResult || !authResult.userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-    console.log(`[DEBUG] POST /api/planner/${params.type} - Processing request for user: ${userId}`);
+  const { type } = params;
+  const userId = authResult.userId;
+
+  try {
+    // Get the request data
+    const requestData = await request.json();
+    console.log(`[DEBUG] Received request data for ${type}:`, JSON.stringify(requestData));
     
-    const { type } = params;
-    const planData = await request.json();
+    // Fetch the user profile to get the user role
+    const userProfileResponse = await fetch(`/api/user-profile`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+      }
+    });
     
-    console.log(`[DEBUG] Plan data received with type: ${type}`);
+    if (!userProfileResponse.ok) {
+      return NextResponse.json(
+        { error: 'Failed to fetch user profile' },
+        { status: userProfileResponse.status }
+      );
+    }
     
-    // Make a new object that explicitly includes clerk_id
-    const preparedPlanData = {
-      ...planData,
-      clerk_id: userId, // Explicitly add clerk_id
-    };
+    const userProfile = await userProfileResponse.json();
     
-    console.log(`[DEBUG] Prepared data:`, JSON.stringify({
-      clerk_id: preparedPlanData.clerk_id,
-      type: type
-    }));
+    // Check if the user has the coach role
+    if (!userProfile.metadata || !userProfile.metadata.roles || !userProfile.metadata.roles.includes('coach')) {
+      return NextResponse.json(
+        { error: 'Only coaches can create plans' },
+        { status: 403 }
+      );
+    }
     
-    // Call the appropriate edge function endpoint
-    let result;
+    // Get coach ID from the coaches table
+    const coachResponse = await fetch(`/api/coaches?clerk_id=${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+      }
+    });
+    
+    if (!coachResponse.ok) {
+      return NextResponse.json(
+        { error: 'Coach not found' },
+        { status: 404 }
+      );
+    }
+    
+    const coaches = await coachResponse.json();
+    
+    if (!coaches.length) {
+      return NextResponse.json(
+        { error: 'Coach record not found' },
+        { status: 404 }
+      );
+    }
+    
+    const coachId = coaches[0].id;
     
     if (type === 'mesocycle') {
-      console.log(`[DEBUG] Calling edge function to create mesocycle with clerk_id: ${userId}`);
-      result = await fetchFromEdgeFunction('/api/planner/mesocycle', {
-        method: 'POST',
-        body: preparedPlanData
-      });
+      // Add coach_id and userRole to the request data
+      const mesocycleData = {
+        ...requestData,
+        coach_id: coachId,
+        userRole: 'coach' // For backward compatibility
+      };
+      
+      const result = await edgeFunctions.planner.createMesocycle(mesocycleData);
+      return NextResponse.json(result);
     } else if (type === 'microcycle') {
-      console.log(`[DEBUG] Calling edge function to create microcycle with clerk_id: ${userId}`);
-      result = await fetchFromEdgeFunction('/api/planner/microcycle', {
-        method: 'POST',
-        body: preparedPlanData
-      });
-    } else {
-      return NextResponse.json({ error: `Invalid plan type: ${type}. Must be 'mesocycle' or 'microcycle'` }, { status: 400 });
-    }
+      // Handle different data formats from clients
+      // The new format sends {microcycle: {...}, sessions: [...]}
+      // The old format might send the data directly
 
-    console.log(`[DEBUG] Edge function response:`, JSON.stringify(result));
-    
-    // Return the result from the edge function
-    return NextResponse.json(result);
+      // Determine which format we're dealing with
+      let microcycleData: any = {};
+      let sessions: any[] = [];
+
+      if (requestData.microcycle) {
+        // New format with nested microcycle object
+        const { microcycle, sessions: reqSessions = [] } = requestData;
+        
+        // Extract data from the microcycle object, preferring camelCase fields
+        microcycleData = {
+          name: microcycle.name,
+          description: microcycle.description,
+          startDate: microcycle.startDate || microcycle.start_date, // Backward compatibility
+          endDate: microcycle.endDate || microcycle.end_date,       // Backward compatibility
+          mesocycleId: microcycle.mesocycleId || microcycle.mesocycle_id, // Backward compatibility
+          volume: microcycle.volume,
+          intensity: microcycle.intensity,
+          athleteGroupId: microcycle.athleteGroupId || microcycle.athlete_group_id, // Backward compatibility
+          coach_id: coachId,
+          userRole: 'coach' // For backward compatibility
+        };
+        
+        // Log warning if snake_case fields are used
+        if (microcycle.start_date || microcycle.end_date || microcycle.mesocycle_id || microcycle.athlete_group_id) {
+          console.warn('[API Warning] snake_case field names are deprecated. Please use camelCase field names.');
+        }
+        
+        sessions = reqSessions;
+      } else {
+        // Old format or direct data structure
+        microcycleData = {
+          name: requestData.name,
+          description: requestData.description,
+          startDate: requestData.startDate || requestData.start_date, // Backward compatibility
+          endDate: requestData.endDate || requestData.end_date,      // Backward compatibility
+          mesocycleId: requestData.mesocycleId || requestData.mesocycle_id, // Backward compatibility
+          volume: requestData.volume,
+          intensity: requestData.intensity,
+          athleteGroupId: requestData.athleteGroupId || requestData.athlete_group_id, // Backward compatibility
+          coach_id: coachId,
+          userRole: 'coach' // For backward compatibility
+        };
+        
+        // Log warning if snake_case fields are used
+        if (requestData.start_date || requestData.end_date || requestData.mesocycle_id || requestData.athlete_group_id) {
+          console.warn('[API Warning] snake_case field names are deprecated. Please use camelCase field names.');
+        }
+        
+        sessions = requestData.sessions || [];
+      }
+      
+      // Validate required fields
+      if (!microcycleData.name || !microcycleData.startDate || !microcycleData.endDate) {
+        return NextResponse.json(
+          { error: 'Missing required fields. Name, start date, and end date are required.' },
+          { status: 400 }
+        );
+      }
+      
+      // Add sessions to the microcycle data
+      const formattedMicrocycleData = {
+        ...microcycleData,
+        sessions
+      };
+      
+      console.log(`[DEBUG] Formatted microcycle data:`, JSON.stringify(formattedMicrocycleData));
+      
+      const result = await edgeFunctions.planner.createMicrocycle(formattedMicrocycleData);
+      return NextResponse.json(result);
+    } else {
+      return NextResponse.json(
+        { error: `Invalid plan type: ${type}` },
+        { status: 400 }
+      );
+    }
   } catch (error: any) {
-    console.error(`[DEBUG] Error creating plan:`, error);
+    console.error(`Error in POST /api/planner/${type}:`, error);
     return NextResponse.json(
-      { error: error.message || "Failed to create plan" },
-      { status: 500 }
+      { error: error.message || 'An error occurred' },
+      { status: error.status || 500 }
     );
   }
 } 
