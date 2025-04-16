@@ -6,6 +6,21 @@ import { edgeFunctions, fetchFromEdgeFunction } from '@/lib/edge-functions';
 export const dynamic = 'force-dynamic';
 
 /**
+ * Helper function to fetch a user's coach ID from their profile
+ */
+async function getCoachIdFromProfile(userId: string): Promise<string | null> {
+  const profileUrl = `/api/users/${userId}/profile`;
+  const profileResponse = await fetchFromEdgeFunction(profileUrl);
+  
+  if (!profileResponse || profileResponse.status !== 'success' || !profileResponse.data?.user) {
+    return null;
+  }
+  
+  const { roleSpecificData } = profileResponse.data;
+  return roleSpecificData?.id || null;
+}
+
+/**
  * Helper function to call an edge function with the coach ID
  */
 async function callEdgeFunction(functionName: string, request: Request, params: any) {
@@ -75,41 +90,43 @@ export async function POST(request: Request, { params }: { params: { type: strin
     // Handle different plan types
     const type = params.type;
     
-    // Fetch the user's profile to check for coach record
-    const profileUrl = `/api/users/${userId}/profile`;
-    const profileResponse = await fetchFromEdgeFunction(profileUrl);
+    // Fetch the user's coach ID
+    const coachId = await getCoachIdFromProfile(userId);
     
-    if (!profileResponse || profileResponse.status !== 'success' || !profileResponse.data?.user) {
-      console.error("User profile not found:", profileResponse);
-      return NextResponse.json({ error: "User profile not found" }, { status: 404 });
-    }
-    
-    // Get user data and role-specific data
-    const { roleSpecificData } = profileResponse.data;
-    
-    // Only check if the user has a coach record, regardless of their role
-    if (!roleSpecificData || !roleSpecificData.id) {
-      console.error("No coach record found for user");
+    if (!coachId) {
       return NextResponse.json(
         { error: "You need a coach record to create training plans" },
         { status: 403 }
       );
     }
     
-    // Use the coach_id from the database
-    const coachId = roleSpecificData.id;
-    
-    console.log(`Creating ${type} for coach ID: ${coachId}`);
-    
-    // Handle the request based on the plan type
+    // Handle request based on plan type
     try {
+      // Clone the request to read its body
+      const clone = request.clone();
+      const planData = await clone.json();
+      
+      // Prepare plan data with user ID and coach ID
+      const preparedPlanData = {
+        ...planData,
+        clerkId: userId,
+        coachId: coachId
+      };
+      
+      // Call the appropriate edge function based on type
       switch (type) {
         case "mesocycle":
-          const mesocycleResponse = await callEdgeFunction("mesocycle", request, { coach_id: coachId });
+          const mesocycleResponse = await fetchFromEdgeFunction("/api/planner/mesocycle", {
+            method: 'POST',
+            body: preparedPlanData
+          });
           return NextResponse.json(mesocycleResponse);
         
         case "microcycle":
-          const microcycleResponse = await callEdgeFunction("microcycle", request, { coach_id: coachId });
+          const microcycleResponse = await fetchFromEdgeFunction("/api/planner/microcycle", {
+            method: 'POST',
+            body: preparedPlanData
+          });
           return NextResponse.json(microcycleResponse);
         
         default:

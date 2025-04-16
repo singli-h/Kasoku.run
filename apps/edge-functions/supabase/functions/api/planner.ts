@@ -1,6 +1,31 @@
 import { corsHeaders, handleError } from './utils.ts';
 
 /**
+ * Helper function to convert camelCase parameters to snake_case for database operations
+ */
+function normalizeParameters(params: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {};
+  
+  // Common parameter mappings
+  if (params.clerkId !== undefined) result.clerk_id = params.clerkId;
+  if (params.coachId !== undefined) result.coach_id = params.coachId;
+  if (params.startDate !== undefined) result.start_date = params.startDate;
+  if (params.endDate !== undefined) result.end_date = params.endDate;
+  if (params.athleteGroupId !== undefined) result.athlete_group_id = params.athleteGroupId;
+  if (params.macrocycleId !== undefined) result.macrocycle_id = params.macrocycleId;
+  if (params.mesocycleId !== undefined) result.mesocycle_id = params.mesocycleId;
+  
+  // Copy remaining parameters as-is
+  for (const key in params) {
+    if (result[key] === undefined && !key.includes('Id') && !key.includes('Date')) {
+      result[key] = params[key];
+    }
+  }
+  
+  return result;
+}
+
+/**
  * POST /api/planner/mesocycle
  *
  * Creates a complete mesocycle with:
@@ -23,15 +48,18 @@ export const postMesocycle = async (
 ): Promise<Response> => {
   try {
     // Parse request body
-    const planData = await req.json();
+    let planData = await req.json();
+    
+    // Normalize parameters to ensure compatibility with both camelCase and snake_case formats
+    planData = normalizeParameters(planData);
     
     // Extract mesocycle details
     const {
       name,
       description,
-      startDate,
-      endDate,
-      athleteGroupId,
+      start_date: startDate,
+      end_date: endDate,
+      athlete_group_id: athleteGroupId,
       weeks = []
     } = planData;
 
@@ -49,7 +77,7 @@ export const postMesocycle = async (
         start_date: startDate,
         end_date: endDate,
         // If macrocycle is provided, link it
-        ...(planData.macrocycleId && { macrocycle_id: planData.macrocycleId })
+        ...(planData.macrocycle_id && { macrocycle_id: planData.macrocycle_id })
       })
       .select()
       .single();
@@ -93,17 +121,19 @@ export const postMesocycle = async (
 
         // 2b. Create exercise presets for this group
         for (const [exerciseIndex, exercise] of exercises.entries()) {
+          // Handle both camelCase and snake_case formats
+          const exerciseId = exercise.exerciseId || exercise.exercise_id;
+          const supersetId = exercise.supersetId || exercise.superset_id;
+          const presetOrder = exercise.presetOrder || exercise.preset_order || exerciseIndex + 1;
+          const setRestTime = exercise.setRestTime || exercise.set_rest_time;
+          const repRestTime = exercise.repRestTime || exercise.rep_rest_time;
+          
           const {
-            exerciseId,
             sets,
             reps,
             weight,
             notes,
-            setRestTime,
-            repRestTime,
-            order,
-            supersetId,
-            presetOrder,
+            order = exerciseIndex + 1,
             presetDetails = []
           } = exercise;
 
@@ -118,7 +148,7 @@ export const postMesocycle = async (
               weight,
               set_rest_time: setRestTime,
               rep_rest_time: repRestTime,
-              order: order || exerciseIndex + 1,
+              order,
               superset_id: supersetId,
               preset_order: presetOrder,
               notes
@@ -131,18 +161,24 @@ export const postMesocycle = async (
 
           // 2c. Create exercise preset details if provided
           if (presetDetails && presetDetails.length > 0) {
-            const detailsToInsert = presetDetails.map(detail => ({
-              exercise_preset_id: preset.id,
-              set_number: detail.setNumber,
-              resistance: detail.resistance,
-              resistance_unit_id: detail.resistanceUnitId,
-              reps: detail.reps,
-              distance: detail.distance,
-              duration: detail.duration,
-              tempo: detail.tempo,
-              height: detail.height,
-              metadata: detail.metadata
-            }));
+            const detailsToInsert = presetDetails.map(detail => {
+              // Handle both camelCase and snake_case
+              const setNumber = detail.setNumber || detail.set_number;
+              const resistanceUnitId = detail.resistanceUnitId || detail.resistance_unit_id;
+
+              return {
+                exercise_preset_id: preset.id,
+                set_number: setNumber,
+                resistance: detail.resistance,
+                resistance_unit_id: resistanceUnitId,
+                reps: detail.reps,
+                distance: detail.distance,
+                duration: detail.duration,
+                tempo: detail.tempo,
+                height: detail.height,
+                metadata: detail.metadata
+              };
+            });
 
             const { data: details, error: detailsError } = await supabase
               .from('exercise_preset_details')
@@ -202,16 +238,35 @@ export const postMicrocycle = async (
 ): Promise<Response> => {
   try {
     // Parse request body
-    const planData = await req.json();
+    let planData = await req.json();
+    
+    // Normalize parameters to ensure compatibility with both camelCase and snake_case formats
+    planData = normalizeParameters(planData);
+    
+    // Support for nested microcycle object
+    if (planData.microcycle) {
+      // Extract fields from the nested microcycle object
+      const {
+        name, description, startDate, endDate, intensity, volume
+      } = planData.microcycle;
+      
+      // Reassign to the main planData object with snake_case keys
+      planData.name = name;
+      planData.description = description;
+      planData.start_date = startDate;
+      planData.end_date = endDate;
+      planData.intensity = intensity;
+      planData.volume = volume;
+    }
     
     // Extract microcycle details
     const {
       name,
       description,
-      startDate,
-      endDate,
-      mesocycleId,
-      athleteGroupId,
+      start_date: startDate,
+      end_date: endDate,
+      mesocycle_id: mesocycleId,
+      athlete_group_id: athleteGroupId,
       sessions = []
     } = planData;
 
