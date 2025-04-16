@@ -82,17 +82,9 @@ export async function POST(request: NextRequest) {
     const preparedPlanData = {
       ...planData,
       clerk_id: userId, // Pass clerk user ID instead of coach_id
-      // Include specific fields for each plan type
-      ...(planType === 'mesocycle' ? {
-        sessions: planData.sessions,
-        timezone: planData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
-      } : {
-        microcycle: planData.microcycle,
-        sessions: planData.sessions
-      })
     };
     
-    console.log(`[DEBUG] Calling edge function /api/planner/${planType} with clerk_id: ${userId}`);
+    console.log(`[DEBUG] Calling edge function /api/planner/${planType} with clerk_id: ${userId}`, JSON.stringify(preparedPlanData));
     
     // Call the edge function directly
     const result = await fetchFromEdgeFunction(`/api/planner/${planType}`, {

@@ -79,11 +79,16 @@ export async function POST(
     
     console.log(`[DEBUG] Plan data received with type: ${type}`);
     
-    // Prepare the request with clerk_id
+    // Make a new object that explicitly includes clerk_id
     const preparedPlanData = {
       ...planData,
-      clerk_id: userId, // Just pass the clerk user ID, edge function will handle the lookup
+      clerk_id: userId, // Explicitly add clerk_id
     };
+    
+    console.log(`[DEBUG] Prepared data:`, JSON.stringify({
+      clerk_id: preparedPlanData.clerk_id,
+      type: type
+    }));
     
     // Call the appropriate edge function endpoint
     let result;

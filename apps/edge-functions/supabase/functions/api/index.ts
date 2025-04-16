@@ -1257,11 +1257,31 @@ Deno.serve(async (req) => {
       // POST /api/planner/mesocycle
       if (pathname === "/api/planner/mesocycle" && method === "POST") {
         try {
-          // Get the request body
-          const reqBody = await req.json();
-          const { clerk_id } = reqBody;
+          // Clone the request to keep the original for passing to postMesocycle
+          const reqClone = new Request(req.url, {
+            method: req.method,
+            headers: req.headers,
+            body: await req.clone().text()
+          });
+          
+          // Get the request body from the clone
+          const reqText = await reqClone.text();
+          let reqBody;
+          try {
+            reqBody = JSON.parse(reqText);
+          } catch (e) {
+            console.error("[Edge] Error parsing request body:", e, "Raw body:", reqText);
+            return new Response(
+              JSON.stringify({ error: "Invalid JSON in request body" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          
+          const clerk_id = reqBody?.clerk_id;
+          console.log("[Edge] Extracted clerk_id:", clerk_id, "from request body:", JSON.stringify(reqBody));
           
           if (!clerk_id) {
+            console.error("[Edge] Missing clerk_id in request. Request body:", JSON.stringify(reqBody));
             return new Response(
               JSON.stringify({ error: "Missing clerk_id in request" }),
               { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -1298,11 +1318,31 @@ Deno.serve(async (req) => {
       // POST /api/planner/microcycle
       if (pathname === "/api/planner/microcycle" && method === "POST") {
         try {
-          // Get the request body
-          const reqBody = await req.json();
-          const { clerk_id } = reqBody;
+          // Clone the request to keep the original for passing to postMicrocycle
+          const reqClone = new Request(req.url, {
+            method: req.method,
+            headers: req.headers,
+            body: await req.clone().text()
+          });
+          
+          // Get the request body from the clone
+          const reqText = await reqClone.text();
+          let reqBody;
+          try {
+            reqBody = JSON.parse(reqText);
+          } catch (e) {
+            console.error("[Edge] Error parsing request body:", e, "Raw body:", reqText);
+            return new Response(
+              JSON.stringify({ error: "Invalid JSON in request body" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          
+          const clerk_id = reqBody?.clerk_id;
+          console.log("[Edge] Extracted clerk_id:", clerk_id, "from request body:", JSON.stringify(reqBody));
           
           if (!clerk_id) {
+            console.error("[Edge] Missing clerk_id in request. Request body:", JSON.stringify(reqBody));
             return new Response(
               JSON.stringify({ error: "Missing clerk_id in request" }),
               { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
