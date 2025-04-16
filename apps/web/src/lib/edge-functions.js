@@ -267,7 +267,12 @@ export const edgeFunctions = {
       // Call our Next.js API endpoint instead of the edge function directly
       // The Next.js API will add the clerk_id from the auth() function
       try {
-        const response = await fetch('/api/planner/mesocycle', {
+        // Use absolute URL with origin to prevent URL parsing errors
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sprint-sage-alpha.vercel.app';
+        const url = new URL('/api/planner/mesocycle', origin).toString();
+        console.log('[Edge Function Client] Using URL:', url);
+        
+        const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -281,7 +286,7 @@ export const edgeFunctions = {
             errorData.error || `HTTP error ${response.status}`,
             response.status,
             errorData,
-            '/api/planner/mesocycle'
+            url
           );
         }
         
@@ -290,7 +295,7 @@ export const edgeFunctions = {
         console.error('[Edge Function Client] Error creating mesocycle:', error);
         throw error instanceof EdgeFunctionError 
           ? error 
-          : new EdgeFunctionError(error.message, 500, null, '/api/planner/mesocycle');
+          : new EdgeFunctionError(error.message, 500, null, url);
       }
     },
     createMicrocycle: async (data) => {
@@ -299,7 +304,12 @@ export const edgeFunctions = {
       // Call our Next.js API endpoint instead of the edge function directly
       // The Next.js API will add the clerk_id from the auth() function
       try {
-        const response = await fetch('/api/planner/microcycle', {
+        // Use absolute URL with origin to prevent URL parsing errors
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sprint-sage-alpha.vercel.app';
+        const url = new URL('/api/planner/microcycle', origin).toString();
+        console.log('[Edge Function Client] Using URL:', url);
+        
+        const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -313,7 +323,7 @@ export const edgeFunctions = {
             errorData.error || `HTTP error ${response.status}`,
             response.status,
             errorData,
-            '/api/planner/microcycle'
+            url
           );
         }
         
@@ -322,7 +332,7 @@ export const edgeFunctions = {
         console.error('[Edge Function Client] Error creating microcycle:', error);
         throw error instanceof EdgeFunctionError 
           ? error 
-          : new EdgeFunctionError(error.message, 500, null, '/api/planner/microcycle');
+          : new EdgeFunctionError(error.message, 500, null, url);
       }
     }
   }
