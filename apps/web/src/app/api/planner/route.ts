@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST handler for /api/planner route
- * Handles plan creation directly to avoid redirect issues
+ * Handles plan creation directly and sends clerk user ID to edge function
  */
 export async function POST(request: NextRequest) {
   try {
@@ -78,66 +78,10 @@ export async function POST(request: NextRequest) {
       planType = 'mesocycle';
     }
     
-    // Get the user's profile to determine coach status
-    console.log(`[DEBUG] Fetching user profile from /api/users/${userId}/profile`);
-    const userProfile = await fetchFromEdgeFunction(`/api/users/${userId}/profile`);
-    
-    console.log(`[DEBUG] User profile response:`, JSON.stringify({
-      role: userProfile?.data?.role,
-      hasRoleSpecificData: !!userProfile?.data?.roleSpecificData,
-      metadata: userProfile?.data?.user?.metadata
-    }));
-    
-    // Check if the user has the coach role in metadata (most reliable source)
-    const userMetadata = userProfile?.data?.user?.metadata || {};
-    const userRole = userMetadata.role || userProfile?.data?.role;
-    
-    console.log(`[DEBUG] User role from metadata: ${userRole}`);
-    
-    if (userRole !== 'coach') {
-      console.log(`[DEBUG] User ${userId} is not a coach. Role: ${userRole}`);
-      return NextResponse.json({ 
-        error: "Only coaches can create training plans. This user does not have coach privileges." 
-      }, { status: 403 });
-    }
-    
-    // Get coach data - try both locations for maximum compatibility
-    let coachData = userProfile?.data?.roleSpecificData;
-    
-    // If no coach data found but user has coach role, we need to query the coaches table directly
-    if (!coachData && userRole === 'coach') {
-      console.log(`[DEBUG] Coach role found but no roleSpecificData. Querying coaches table for user_id: ${userProfile?.data?.user?.id}`);
-      
-      // Make a direct database call to get the coach record
-      try {
-        const coachResponse = await fetchFromEdgeFunction(`/api/coaches?user_id=${userProfile?.data?.user?.id}`);
-        console.log(`[DEBUG] Coach query response:`, JSON.stringify(coachResponse));
-        
-        if (coachResponse?.data?.coaches && coachResponse.data.coaches.length > 0) {
-          coachData = coachResponse.data.coaches[0];
-        }
-      } catch (err) {
-        console.error(`[DEBUG] Error fetching coach data:`, err);
-      }
-    }
-    
-    // Final check for coach record
-    if (!coachData || !coachData.id) {
-      console.log(`[DEBUG] No coach record found for user ${userId} with role ${userRole}`);
-      return NextResponse.json({ 
-        error: "Your account has coach permissions but no coach record exists. Please complete your coach profile." 
-      }, { status: 403 });
-    }
-    
-    // Get the coach ID from the role-specific data
-    const coachId = coachData.id;
-    console.log(`[DEBUG] Coach ID found: ${coachId}`);
-    
-    // Prepare plan data with coach ID
+    // Prepare plan data with clerk user ID
     const preparedPlanData = {
       ...planData,
-      coach_id: coachId,
-      userRole: 'coach', // Include for backwards compatibility
+      clerk_id: userId, // Pass clerk user ID instead of coach_id
       // Include specific fields for each plan type
       ...(planType === 'mesocycle' ? {
         sessions: planData.sessions,
@@ -148,7 +92,7 @@ export async function POST(request: NextRequest) {
       })
     };
     
-    console.log(`[DEBUG] Calling edge function /api/planner/${planType} with coach_id: ${coachId}`);
+    console.log(`[DEBUG] Calling edge function /api/planner/${planType} with clerk_id: ${userId}`);
     
     // Call the edge function directly
     const result = await fetchFromEdgeFunction(`/api/planner/${planType}`, {
@@ -167,4 +111,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

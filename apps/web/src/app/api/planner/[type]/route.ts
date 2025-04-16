@@ -77,97 +77,35 @@ export async function POST(
     const { type } = params;
     const planData = await request.json();
     
-    // First, check if the user has a coach record in the database
-    // Get the user's profile including role-specific data
-    console.log(`[DEBUG] Fetching user profile from /api/users/${userId}/profile`);
-    const userProfile = await fetchFromEdgeFunction(`/api/users/${userId}/profile`);
+    console.log(`[DEBUG] Plan data received with type: ${type}`);
     
-    console.log(`[DEBUG] User profile response:`, JSON.stringify({
-      role: userProfile?.data?.role,
-      hasRoleSpecificData: !!userProfile?.data?.roleSpecificData,
-      metadata: userProfile?.data?.user?.metadata
-    }));
+    // Prepare the request with clerk_id
+    const preparedPlanData = {
+      ...planData,
+      clerk_id: userId, // Just pass the clerk user ID, edge function will handle the lookup
+    };
     
-    // Check if the user has the coach role in metadata (most reliable source)
-    const userMetadata = userProfile?.data?.user?.metadata || {};
-    const userRole = userMetadata.role || userProfile?.data?.role;
-    
-    console.log(`[DEBUG] User role from metadata: ${userRole}`);
-    
-    if (userRole !== 'coach') {
-      console.log(`[DEBUG] User ${userId} is not a coach. Role: ${userRole}`);
-      return NextResponse.json({ 
-        error: "Only coaches can create training plans. This user does not have coach privileges." 
-      }, { status: 403 });
-    }
-    
-    // Get coach data - try both locations for maximum compatibility
-    let coachData = userProfile?.data?.roleSpecificData;
-    
-    // If no coach data found but user has coach role, we need to query the coaches table directly
-    if (!coachData && userRole === 'coach') {
-      console.log(`[DEBUG] Coach role found but no roleSpecificData. Querying coaches table for user_id: ${userProfile?.data?.user?.id}`);
-      
-      // Make a direct database call to get the coach record
-      try {
-        const coachResponse = await fetchFromEdgeFunction(`/api/coaches?user_id=${userProfile?.data?.user?.id}`);
-        console.log(`[DEBUG] Coach query response:`, JSON.stringify(coachResponse));
-        
-        if (coachResponse?.data?.coaches && coachResponse.data.coaches.length > 0) {
-          coachData = coachResponse.data.coaches[0];
-        }
-      } catch (err) {
-        console.error(`[DEBUG] Error fetching coach data:`, err);
-      }
-    }
-    
-    // Final check for coach record
-    if (!coachData || !coachData.id) {
-      console.log(`[DEBUG] No coach record found for user ${userId} with role ${userRole}`);
-      return NextResponse.json({ 
-        error: "Your account has coach permissions but no coach record exists. Please complete your coach profile." 
-      }, { status: 403 });
-    }
-    
-    // Get the coach ID from the role-specific data
-    const coachId = coachData.id;
-    console.log(`[DEBUG] Coach ID found: ${coachId}`);
-
+    // Call the appropriate edge function endpoint
     let result;
-
+    
     if (type === 'mesocycle') {
-      console.log(`[DEBUG] Creating mesocycle with coach_id: ${coachId}`);
-      // Call the edge function to create a mesocycle
+      console.log(`[DEBUG] Calling edge function to create mesocycle with clerk_id: ${userId}`);
       result = await fetchFromEdgeFunction('/api/planner/mesocycle', {
         method: 'POST',
-        body: {
-          ...planData,
-          coach_id: coachId, // Use the actual coach ID from the database
-          userRole: 'coach', // Ensure we still send this for backward compatibility
-          // Ensure we're passing the correctly formatted data
-          sessions: planData.sessions,
-          timezone: planData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
+        body: preparedPlanData
       });
     } else if (type === 'microcycle') {
-      console.log(`[DEBUG] Creating microcycle with coach_id: ${coachId}`);
-      // Call the edge function to create a microcycle
+      console.log(`[DEBUG] Calling edge function to create microcycle with clerk_id: ${userId}`);
       result = await fetchFromEdgeFunction('/api/planner/microcycle', {
         method: 'POST',
-        body: {
-          ...planData,
-          coach_id: coachId, // Use the actual coach ID from the database
-          userRole: 'coach', // Ensure we still send this for backward compatibility
-          // Ensure we're passing the microcycle data in the right format
-          microcycle: planData.microcycle,
-          sessions: planData.sessions
-        }
+        body: preparedPlanData
       });
     } else {
       return NextResponse.json({ error: `Invalid plan type: ${type}. Must be 'mesocycle' or 'microcycle'` }, { status: 400 });
     }
 
     console.log(`[DEBUG] Edge function response:`, JSON.stringify(result));
+    
     // Return the result from the edge function
     return NextResponse.json(result);
   } catch (error: any) {

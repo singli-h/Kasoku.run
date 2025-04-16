@@ -145,6 +145,49 @@ const deleteItem = async (supabase: any, table: string, id: string) => {
   return new Response(null, { status: 204, headers: corsHeaders });
 };
 
+// Helper function to get coach ID from clerk ID
+const getCoachIdFromClerkId = async (supabase: any, clerkId: string) => {
+  console.log(`[Edge] Looking up coach_id for clerk_id: ${clerkId}`);
+  
+  try {
+    // First get the user record
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id, metadata")
+      .eq("clerk_id", clerkId)
+      .single();
+    
+    if (userError) {
+      console.error(`[Edge] Error finding user with clerk_id ${clerkId}:`, userError);
+      throw new Error("User not found");
+    }
+    
+    // Check if user has coach role in metadata
+    const userRole = userData.metadata?.role;
+    if (userRole !== 'coach') {
+      console.log(`[Edge] User ${clerkId} is not a coach. Role in metadata: ${userRole}`);
+      throw new Error("Only coaches can create training plans");
+    }
+    
+    // Get the coach record using user.id
+    const { data: coachData, error: coachError } = await supabase
+      .from("coaches")
+      .select("id")
+      .eq("user_id", userData.id)
+      .single();
+    
+    if (coachError || !coachData) {
+      console.error(`[Edge] Error finding coach record for user_id ${userData.id}:`, coachError);
+      throw new Error("Coach record not found for this user");
+    }
+    
+    console.log(`[Edge] Found coach_id: ${coachData.id} for clerk_id: ${clerkId}`);
+    return coachData.id;
+  } catch (error) {
+    throw error;
+  }
+};
+
 /**
  * POST /api/dashboard/exercisesDetail
  *
@@ -1213,13 +1256,37 @@ Deno.serve(async (req) => {
       
       // POST /api/planner/mesocycle
       if (pathname === "/api/planner/mesocycle" && method === "POST") {
-        if (!coachId) {
+        try {
+          // Get the request body
+          const reqBody = await req.json();
+          const { clerk_id } = reqBody;
+          
+          if (!clerk_id) {
+            return new Response(
+              JSON.stringify({ error: "Missing clerk_id in request" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          
+          // Get coach ID from clerk ID
+          let coachId;
+          try {
+            coachId = await getCoachIdFromClerkId(supabase, clerk_id);
+          } catch (error: any) {
+            return new Response(
+              JSON.stringify({ error: error.message }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          
+          return await postMesocycle(supabase, parsedUrl, req, coachId);
+        } catch (error: any) {
+          console.error("[Edge] Error processing mesocycle request:", error);
           return new Response(
-            JSON.stringify({ error: "Only coaches can create mesocycles" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            JSON.stringify({ error: error.message || "Error processing request" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await postMesocycle(supabase, parsedUrl, req, coachId);
       }
       
       // GET /api/planner/mesocycle/:id
@@ -1230,13 +1297,37 @@ Deno.serve(async (req) => {
       
       // POST /api/planner/microcycle
       if (pathname === "/api/planner/microcycle" && method === "POST") {
-        if (!coachId) {
+        try {
+          // Get the request body
+          const reqBody = await req.json();
+          const { clerk_id } = reqBody;
+          
+          if (!clerk_id) {
+            return new Response(
+              JSON.stringify({ error: "Missing clerk_id in request" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          
+          // Get coach ID from clerk ID
+          let coachId;
+          try {
+            coachId = await getCoachIdFromClerkId(supabase, clerk_id);
+          } catch (error: any) {
+            return new Response(
+              JSON.stringify({ error: error.message }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          
+          return await postMicrocycle(supabase, parsedUrl, req, coachId);
+        } catch (error: any) {
+          console.error("[Edge] Error processing microcycle request:", error);
           return new Response(
-            JSON.stringify({ error: "Only coaches can create microcycles" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            JSON.stringify({ error: error.message || "Error processing request" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await postMicrocycle(supabase, parsedUrl, req, coachId);
       }
       
       // GET /api/planner/microcycle/:id
