@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { edgeFunctions } from '@/lib/edge-functions';
+import { auth } from "@clerk/nextjs/server";
+import { dynamic, runtime } from '../route-config';
+
+export { dynamic, runtime };
 
 /**
  * GET /api/user-profile
