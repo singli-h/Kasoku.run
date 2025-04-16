@@ -52,18 +52,23 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST handler for /api/planner route
- * Forwards requests to the appropriate dynamic route based on data
+ * Handles plan creation directly to avoid redirect issues
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log("[DEBUG] POST to /api/planner received");
+    
+    // Authenticate user
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized - User not authenticated" }, { status: 401 });
     }
     
-    // Clone the request for reading
-    const requestClone = request.clone();
-    const planData = await requestClone.json();
+    console.log(`[DEBUG] User authenticated: ${userId}`);
+    
+    // Extract the plan data
+    const planData = await request.json();
+    console.log(`[DEBUG] Plan data type: ${planData.planType || (planData.microcycle ? 'microcycle' : 'mesocycle')}`);
     
     // Determine the plan type from the request data
     let planType = '';
@@ -73,14 +78,90 @@ export async function POST(request: NextRequest) {
       planType = 'mesocycle';
     }
     
-    // Create a new request URL based on the plan type
-    const redirectUrl = `/api/planner/${planType}`;
-    const url = new URL(redirectUrl, request.url);
+    // Get the user's profile to determine coach status
+    console.log(`[DEBUG] Fetching user profile from /api/users/${userId}/profile`);
+    const userProfile = await fetchFromEdgeFunction(`/api/users/${userId}/profile`);
     
-    // Redirect to the appropriate dynamic route
-    return NextResponse.redirect(url, 307); // 307 temporary redirect preserves the HTTP method and body
+    console.log(`[DEBUG] User profile response:`, JSON.stringify({
+      role: userProfile?.data?.role,
+      hasRoleSpecificData: !!userProfile?.data?.roleSpecificData,
+      metadata: userProfile?.data?.user?.metadata
+    }));
+    
+    // Check if the user has the coach role in metadata (most reliable source)
+    const userMetadata = userProfile?.data?.user?.metadata || {};
+    const userRole = userMetadata.role || userProfile?.data?.role;
+    
+    console.log(`[DEBUG] User role from metadata: ${userRole}`);
+    
+    if (userRole !== 'coach') {
+      console.log(`[DEBUG] User ${userId} is not a coach. Role: ${userRole}`);
+      return NextResponse.json({ 
+        error: "Only coaches can create training plans. This user does not have coach privileges." 
+      }, { status: 403 });
+    }
+    
+    // Get coach data - try both locations for maximum compatibility
+    let coachData = userProfile?.data?.roleSpecificData;
+    
+    // If no coach data found but user has coach role, we need to query the coaches table directly
+    if (!coachData && userRole === 'coach') {
+      console.log(`[DEBUG] Coach role found but no roleSpecificData. Querying coaches table for user_id: ${userProfile?.data?.user?.id}`);
+      
+      // Make a direct database call to get the coach record
+      try {
+        const coachResponse = await fetchFromEdgeFunction(`/api/coaches?user_id=${userProfile?.data?.user?.id}`);
+        console.log(`[DEBUG] Coach query response:`, JSON.stringify(coachResponse));
+        
+        if (coachResponse?.data?.coaches && coachResponse.data.coaches.length > 0) {
+          coachData = coachResponse.data.coaches[0];
+        }
+      } catch (err) {
+        console.error(`[DEBUG] Error fetching coach data:`, err);
+      }
+    }
+    
+    // Final check for coach record
+    if (!coachData || !coachData.id) {
+      console.log(`[DEBUG] No coach record found for user ${userId} with role ${userRole}`);
+      return NextResponse.json({ 
+        error: "Your account has coach permissions but no coach record exists. Please complete your coach profile." 
+      }, { status: 403 });
+    }
+    
+    // Get the coach ID from the role-specific data
+    const coachId = coachData.id;
+    console.log(`[DEBUG] Coach ID found: ${coachId}`);
+    
+    // Prepare plan data with coach ID
+    const preparedPlanData = {
+      ...planData,
+      coach_id: coachId,
+      userRole: 'coach', // Include for backwards compatibility
+      // Include specific fields for each plan type
+      ...(planType === 'mesocycle' ? {
+        sessions: planData.sessions,
+        timezone: planData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+      } : {
+        microcycle: planData.microcycle,
+        sessions: planData.sessions
+      })
+    };
+    
+    console.log(`[DEBUG] Calling edge function /api/planner/${planType} with coach_id: ${coachId}`);
+    
+    // Call the edge function directly
+    const result = await fetchFromEdgeFunction(`/api/planner/${planType}`, {
+      method: 'POST',
+      body: preparedPlanData
+    });
+    
+    console.log(`[DEBUG] Edge function response:`, JSON.stringify(result));
+    
+    // Return the result
+    return NextResponse.json(result);
   } catch (error: any) {
-    console.error(`Error in planner POST route:`, error);
+    console.error(`[DEBUG] Error in planner POST route:`, error);
     return NextResponse.json(
       { error: error.message || "Failed to process request" },
       { status: 500 }
