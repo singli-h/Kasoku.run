@@ -52,6 +52,9 @@ export async function fetchFromEdgeFunction(endpoint, options = {}) {
       ...options.headers
     };
     
+    // Add debug info to detect missing authorization
+    console.log(`[API Debug] Headers present: ${Object.keys(headers).join(', ')}`);
+    
     // Properly serialize body to JSON if it's an object
     let requestBody = undefined;
     if (options.body) {
@@ -82,22 +85,38 @@ export async function fetchFromEdgeFunction(endpoint, options = {}) {
       body: requestBody
     });
     
-    // Handle non-success responses
+    // Enhanced error handling for HTTP status codes
     if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
+      // Try to parse error response first
       let errorData = null;
+      let errorMessage = `Error ${response.status}: ${response.statusText}`;
       
       try {
-        errorData = JSON.parse(errorText);
-        if (errorData.error) {
-          errorMessage = errorData.error;
+        // Try to get the response as text first
+        const errorText = await response.text();
+        
+        // If the response contains HTML, it's likely a server-rendered error page
+        if (errorText.trim().startsWith('<!DOCTYPE html>')) {
+          // This is an HTML response, likely a 404 page or server error
+          errorMessage = `Server returned HTML instead of JSON (${response.status}). This usually indicates a routing error or missing endpoint.`;
+          // Extract just the first part of HTML for debugging
+          const truncatedHtml = errorText.substring(0, 150) + '...';
+          errorData = { htmlPreview: truncatedHtml };
+        } else {
+          // Try to parse as JSON
+          try {
+            errorData = JSON.parse(errorText);
+            if (errorData.error) {
+              errorMessage = errorData.error;
+            }
+          } catch (parseError) {
+            // If not valid JSON, use the raw text
+            errorData = { rawResponse: errorText };
+          }
         }
-      } catch (e) {
-        // If not valid JSON, use the raw text
-        if (errorText) {
-          errorMessage = errorText;
-        }
+      } catch (responseError) {
+        console.error(`[API Error] Failed to read error response:`, responseError);
+        errorData = { parseError: responseError.message };
       }
       
       console.error(`[API Error] ${endpoint}:`, {

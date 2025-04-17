@@ -32,9 +32,17 @@ const publicRoutes = [
   '/auth/session',
   '/auth/callback',
   '/auth/sso-callback',
-  '/auth'
-  // Removed general '/api' to enforce authentication on API routes
-  // Add specific public API endpoints here if needed
+  '/auth',
+  // Include API test page in public routes
+  '/api-test',
+  // Add specific public API endpoints here
+  '/api/user-status'  // This endpoint handles its own auth
+]
+
+// API routes that should be public (no authentication required)
+const publicApiRoutes = [
+  '/api/health',      // Health check endpoint if you have one
+  '/api/public'       // Any other public APIs
 ]
 
 // Use clerkMiddleware wrapper
@@ -43,17 +51,38 @@ export default clerkMiddleware(async (auth, req) => {
     // Handle public routes
     const url = new URL(req.url)
     const isPublicRoute = publicRoutes.some(route => url.pathname.startsWith(route))
-    if (isPublicRoute) return NextResponse.next()
+    const isPublicApiRoute = publicApiRoutes.some(route => url.pathname.startsWith(route))
+    
+    // Log request paths for debugging
+    console.log(`[Middleware] Processing ${url.pathname}`)
+    
+    // Allow public routes and public API routes to pass through
+    if (isPublicRoute || isPublicApiRoute) {
+      console.log(`[Middleware] Public route: ${url.pathname}`)
+      return NextResponse.next()
+    }
 
     // Check if user is authenticated
     const { userId } = await auth()
+    console.log(`[Middleware] User auth result: ${userId ? 'Authenticated' : 'Not authenticated'}`)
 
     // If user is not signed in and trying to access protected route, redirect to sign in
     if (!userId) {
       const isProtectedRoute = protectedRoutes.some(route => url.pathname.startsWith(route))
       const isOnboardingRoute = onboardingRoutes.some(route => url.pathname.startsWith(route))
       
+      // For API routes, return 401 instead of redirecting
+      // This is critical for proper API functioning
+      if (url.pathname.startsWith('/api/')) {
+        console.log(`[Middleware] Unauthorized API access: ${url.pathname}`)
+        return NextResponse.json(
+          { error: "Unauthorized - User not authenticated" },
+          { status: 401 }
+        )
+      }
+      
       if (isProtectedRoute || isOnboardingRoute) {
+        console.log(`[Middleware] Redirecting unauthenticated user to login`)
         const signInUrl = new URL('/login', req.url)
         return NextResponse.redirect(signInUrl)
       }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { edgeFunctions } from '@/lib/edge-functions';
 import { useAuth } from '@clerk/nextjs';
 
@@ -13,7 +13,26 @@ export default function ApiTest() {
   const [results, setResults] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<Record<string, any>>({});
-  const { userId } = useAuth();
+  const { userId, getToken } = useAuth();
+  const [authToken, setAuthToken] = useState<string | null>(null);
+
+  // Get auth token on component mount
+  useEffect(() => {
+    const fetchToken = async () => {
+      if (userId) {
+        try {
+          // Get a session token specifically for API access
+          const token = await getToken({ template: "supabase" });
+          setAuthToken(token);
+          console.log("Auth token fetched successfully");
+        } catch (err) {
+          console.error("Error fetching auth token:", err);
+        }
+      }
+    };
+    
+    fetchToken();
+  }, [userId, getToken]);
 
   // Helper function to run a test
   const runTest = async (name: string, testFn: () => Promise<any>) => {
@@ -40,7 +59,12 @@ export default function ApiTest() {
     
     try {
       console.log(`[Test] Adding coach role for user: ${userId}`);
-      const response = await fetch(`/api-test/add-coach-role?clerk_id=${userId}`);
+      const response = await fetch(`/api-test/add-coach-role?clerk_id=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -61,39 +85,59 @@ export default function ApiTest() {
     }
   };
 
+  // Modified fetchWithAuth helper to ensure all API calls include auth
+  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+    if (!authToken) {
+      throw new Error("No auth token available. Please sign in first.");
+    }
+    
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      },
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text);
+    }
+    
+    return response.json();
+  };
+
   // Test functions
   const tests = {
     getEvents: async () => {
-      const data = await edgeFunctions.events.getAll();
-      return data;
+      return fetchWithAuth('/api/events');
     },
 
     getAthletes: async () => {
-      const data = await edgeFunctions.athletes.getAll();
-      return data;
+      return fetchWithAuth('/api/athletes');
     },
 
     getDashboardInit: async () => {
-      const data = await edgeFunctions.dashboard.getExercisesInit();
-      return data;
+      return fetchWithAuth('/api/dashboard/exercisesInit');
     },
 
     testUserStatus: async () => {
-      const response = await fetch('/api/user-status');
-      const data = await response.json();
-      return data;
+      const response = await fetch('/api/user-status', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        credentials: 'include'
+      });
+      return response.json();
     },
     
     getUserProfile: async () => {
       console.log(`[Test] Fetching user profile for userId: ${userId}`);
-      try {
-        const data = await edgeFunctions.users.getProfile(userId);
-        console.log(`[Test] User profile data:`, data);
-        return data;
-      } catch (err) {
-        console.error(`[Test] Error fetching user profile:`, err);
-        throw err;
-      }
+      return fetchWithAuth(`/api/users/${userId}/profile`);
     },
     
     createMicrocycle: async () => {
@@ -103,7 +147,7 @@ export default function ApiTest() {
       let hasCoachRole = false;
       
       try {
-        const profileResponse = await edgeFunctions.users.getProfile(userId);
+        const profileResponse = await fetchWithAuth(`/api/users/${userId}/profile`);
         console.log(`[Test] User profile data for coach check:`, profileResponse);
         
         if (profileResponse?.data?.user?.metadata?.role !== 'coach') {
@@ -139,29 +183,22 @@ export default function ApiTest() {
         },
         sessions: [
           {
-            group: {
-              week: 1,
-              day: 1,
-              date: new Date().toISOString().split('T')[0],
-              name: "Test Session 1",
-              description: "Test session description"
-            },
-            presets: [
+            name: "Test Session 1",
+            description: "Test session description",
+            date: new Date().toISOString().split('T')[0],
+            exercises: [
               {
-                preset: {
-                  exercise_id: 43, // Barbell Back Squat
-                  superset_id: null,
-                  preset_order: 1
-                },
-                details: [
+                exerciseId: 43, // Barbell Back Squat
+                sets: 3,
+                reps: 5,
+                weight: 100,
+                notes: "Test exercise",
+                presetDetails: [
                   {
-                    set_index: 1,
+                    setNumber: 1,
                     reps: 5,
-                    weight: 100,
-                    metadata: {
-                      rpe: 7,
-                      exercise_name: "Barbell Back Squat"
-                    }
+                    resistance: 100,
+                    resistanceUnitId: 1
                   }
                 ]
               }
@@ -172,19 +209,11 @@ export default function ApiTest() {
       
       console.log(`[Test] Microcycle test data:`, JSON.stringify(testData, null, 2));
       
-      // Now try to create the microcycle using the edge functions client
-      try {
-        const result = await edgeFunctions.planner.createMicrocycle({
-          ...testData
-          // clerk_id is no longer required in the request body as it will be handled by authentication
-        });
-        
-        console.log(`[Test] Microcycle creation response:`, result);
-        return result;
-      } catch (err) {
-        console.error(`[Test] Error creating microcycle:`, err);
-        throw err;
-      }
+      // Now try to create the microcycle using the direct fetch with auth
+      return fetchWithAuth('/api/planner/microcycle', {
+        method: 'POST',
+        body: JSON.stringify(testData)
+      });
     }
   };
 
@@ -198,9 +227,36 @@ export default function ApiTest() {
     return results;
   };
 
+  if (!userId) {
+    return (
+      <div className="p-8">
+        <h1 className="text-2xl font-bold mb-6">API Connection Test</h1>
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6">
+          <p>You must be signed in to use the API test page. Please sign in first.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (userId && !authToken) {
+    return (
+      <div className="p-8">
+        <h1 className="text-2xl font-bold mb-6">API Connection Test</h1>
+        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6">
+          <p>Loading authentication token...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-6">API Connection Test</h1>
+      
+      <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6">
+        <p>Your user ID: {userId}</p>
+        <p>Authentication token: {authToken ? 'Available ✓' : 'Not available ✗'}</p>
+      </div>
       
       <div className="space-y-6">
         <div className="flex flex-wrap gap-4">
