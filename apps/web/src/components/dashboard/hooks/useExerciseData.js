@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { edgeFunctions } from '@/lib/edge-functions'
+import { useBrowserSupabaseClient } from '@/lib/supabase'
 
 // Remove hardcoded URL and use edge functions directly
 // const API_BASE_URL = "http://localhost:54321/functions/v1/api"  // Remove this
@@ -7,6 +7,7 @@ import { edgeFunctions } from '@/lib/edge-functions'
 export const useExerciseData = () => {
   // Add a ref to keep track of the latest state
   const stateRef = useRef(null);
+  const supabase = useBrowserSupabaseClient()
   
   // Add a dedicated state for exercise training details
   const [trainingDetails, setTrainingDetails] = useState([]);
@@ -40,7 +41,12 @@ export const useExerciseData = () => {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
       try {
-        const data = await edgeFunctions.dashboard.getExercisesInit();
+        const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
+          method: 'GET',
+          path: '/dashboard/exercisesInit'
+        })
+        if (fnError) throw fnError
+        const data = JSON.parse(rawData)
         
         // Extract all training details into the flat array
         const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets
@@ -68,7 +74,7 @@ export const useExerciseData = () => {
     };
 
     fetchInitialData();
-  }, []);
+  }, [supabase]);
 
   const startSession = async () => {
     if (!state.session?.details?.id) {
@@ -86,10 +92,17 @@ export const useExerciseData = () => {
         reps: preset.exercise_training_details[0]?.reps || 0,
       }));
 
-      await edgeFunctions.dashboard.createTrainingSession({
-        exercise_training_session_id: state.session.details.id,
-        exercisesDetail
-      });
+      // Invoke createTrainingSession edge function
+      const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
+        method: 'POST',
+        path: '/dashboard/trainingSession',
+        body: {
+          exercise_training_session_id: state.session.details.id,
+          exercisesDetail
+        }
+      })
+      if (fnError) throw fnError
+      JSON.parse(rawData)
 
       await refreshSessionData();
       return { success: true };
@@ -106,7 +119,12 @@ export const useExerciseData = () => {
 
   const refreshSessionData = async () => {
     try {
-      const data = await edgeFunctions.dashboard.getExercisesInit();
+      const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
+        method: 'GET',
+        path: '/dashboard/exercisesInit'
+      })
+      if (fnError) throw fnError
+      const data = JSON.parse(rawData)
 
       // Refresh the flat training details array
       const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets
@@ -153,11 +171,18 @@ export const useExerciseData = () => {
         completed: detail.completed
       }));
       
-      await edgeFunctions.dashboard.updateTrainingSession({
-        exercise_training_session_id: state.session.details.id,
-        exercisesDetail: exerciseDetails,
-        ...(status ? { status } : {})
-      });
+      // Invoke updateTrainingSession edge function
+      const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
+        method: 'PUT',
+        path: '/dashboard/trainingSession',
+        body: {
+          exercise_training_session_id: state.session.details.id,
+          exercisesDetail: exerciseDetails,
+          ...(status ? { status } : {})
+        }
+      })
+      if (fnError) throw fnError
+      JSON.parse(rawData)
 
       await refreshSessionData();
       return { success: true };

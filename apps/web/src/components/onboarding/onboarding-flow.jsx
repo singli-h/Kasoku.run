@@ -12,12 +12,13 @@ import CompletionStep from "./steps/completion-step"
 import DashboardTourStep from "./steps/dashboard-tour-step"
 import { useRouter } from "next/navigation"
 import { useAuth, useUser } from "@clerk/nextjs"
-import { edgeFunctions } from "@/lib/edge-functions"
+import { useBrowserSupabaseClient } from "@/lib/supabase"
 
 export default function OnboardingFlow() {
   const router = useRouter()
   const { userId } = useAuth()
   const { user, isLoaded: isUserLoaded } = useUser()
+  const supabase = useBrowserSupabaseClient();
   
   const [userData, setUserData] = useState({
     firstName: "",
@@ -170,25 +171,75 @@ export default function OnboardingFlow() {
       // Debugging - Log the request data
       console.log('Sending onboarding data to API:', JSON.stringify(userDataForApi, null, 2))
 
-      // Use edge functions utility to call the API
-      const response = await edgeFunctions.users.onboard(userDataForApi)
-      
-      // Debugging - Log the API response
-      console.log('API Response:', JSON.stringify(response, null, 2))
-      
+      // Onboard user via direct Supabase client
+      const { data: response, error } = await supabase
+        .from('users')
+        .upsert(userDataForApi, { onConflict: ['clerk_id'], returning: 'representation' })
+      if (error) {
+        console.error('Error onboarding user:', error)
+        throw error
+      }
+      console.log('Supabase upsert response:', response)
+
+      // Extract new user ID
+      const [userRecord] = response || [];
+      const newUserId = userRecord?.id;
+
+      // Always create athlete record
+      const sanitizedEvents = userData.events.map(event => ({
+        id: event.id,
+        name: event.name,
+        type: event.type,
+        category: event.category
+      }));
+      const { error: athleteError } = await supabase
+        .from('athletes')
+        .insert({
+          user_id: newUserId,
+          height: userData.height,
+          weight: userData.weight,
+          training_goals: userData.trainingGoals,
+          experience: userData.trainingHistory,
+          events: sanitizedEvents
+        });
+      if (athleteError) {
+        console.error('Error creating athlete record:', athleteError);
+        throw athleteError;
+      }
+
+      // If coach role, also create coach record
+      if (userData.role === 'coach') {
+        const coachPayload = {
+          user_id: newUserId,
+          speciality: userData.specialization,
+          experience: userData.experience,
+          philosophy: userData.coachingPhilosophy,
+          sport_focus: userData.sportFocus
+        };
+        const { error: coachError } = await supabase
+          .from('coaches')
+          .insert(coachPayload);
+        if (coachError) {
+          console.error('Error creating coach record:', coachError);
+          throw coachError;
+        }
+      }
+
       // Verify onboarding status after completion
       console.log('Verifying onboarding status after completion...')
       try {
-        const statusResponse = await fetch('/api/user-status?t=' + Date.now(), {
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate', 
-            'Pragma': 'no-cache'
-          }
-        })
-        const statusData = await statusResponse.json()
-        console.log('Onboarding status check result:', statusData)
+        const { data: statusData, error: statusError } = await supabase
+          .from('users')
+          .select('onboarding_completed')
+          .eq('clerk_id', userId)
+          .single();
+        if (statusError) {
+          console.error('Error fetching onboarding status:', statusError);
+        } else {
+          console.log('Onboarding status check result:', statusData.onboarding_completed);
+        }
       } catch (verifyError) {
-        console.error('Error verifying onboarding status:', verifyError)
+        console.error('Error verifying onboarding status:', verifyError);
       }
 
       console.log('Onboarding complete, redirecting to dashboard...')

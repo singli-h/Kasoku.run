@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight } from "lucide-react"
-import { edgeFunctions } from '@/lib/edge-functions'
+import { useBrowserSupabaseClient } from '@/lib/supabase'
 import { PlusCircle, Save } from "lucide-react"
 
 const PlanButton = ({ children, isActive, className = "", ...props }) => {
@@ -26,7 +26,7 @@ const PlanButton = ({ children, isActive, className = "", ...props }) => {
 }
 
 export default function PlanBuilder({ mesocycle, onUpdate }) {
-  // Combined state: history array and current index
+  const supabase = useBrowserSupabaseClient()
   const [historyState, setHistoryState] = useState({ history: [mesocycle], index: 0 })
   const [expandedSessions, setExpandedSessions] = useState([])
   const [searchTerms, setSearchTerms] = useState({})
@@ -34,6 +34,28 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
   const [exercises, setExercises] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const fetchExercises = async () => {
+      try {
+        setLoading(true)
+        const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
+          method: 'GET',
+          path: '/dashboard/exercises'
+        })
+        if (fnErr) throw fnErr
+        const json = JSON.parse(raw)
+        setExercises(json.data || [])
+      } catch (err) {
+        console.error('Error fetching exercises:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchExercises()
+  }, [])
 
   // Reset history when a new mesocycle is passed in
   useEffect(() => {
@@ -210,23 +232,6 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
       </div>
     )
   }
-
-  useEffect(() => {
-    const fetchExercises = async () => {
-      try {
-        setLoading(true)
-        const response = await edgeFunctions.dashboard.getExercises()
-        setExercises(response.data || [])
-      } catch (err) {
-        console.error('Error fetching exercises:', err)
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchExercises()
-  }, [])
 
   if (loading) return <div>Loading...</div>
   if (error) return <div>Error: {error}</div>

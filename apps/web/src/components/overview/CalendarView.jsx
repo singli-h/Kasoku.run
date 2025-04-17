@@ -15,7 +15,7 @@ import {
   subWeeks,
   parseISO
 } from "date-fns"
-import { edgeFunctions } from '@/lib/edge-functions'
+import { useBrowserSupabaseClient } from '@/lib/supabase'
 import {
   DndContext,
   closestCenter,
@@ -68,13 +68,21 @@ const CalendarView = () => {
     })
   )
   
+  const supabase = useBrowserSupabaseClient()
+  
   // Side effects - update sessions when mesocycle changes
   useEffect(() => {
     const fetchMesocycleData = async () => {
       try {
         setLoading(true)
-        const response = await edgeFunctions.dashboard.getMesocycle()
-        setMesocycleData(response.data)
+        // Invoke Supabase Edge Function for mesocycle
+        const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
+          method: 'GET',
+          path: '/dashboard/mesocycle'
+        })
+        if (fnErr) throw fnErr
+        const json = JSON.parse(raw)
+        setMesocycleData(json.data)
       } catch (err) {
         console.error('Error fetching mesocycle data:', err)
         setError(err.message)

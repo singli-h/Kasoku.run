@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { edgeFunctions } from '@/lib/edge-functions'
+import { useBrowserSupabaseClient } from '@/lib/supabase'
 import { formatMicrocycleData } from './formatMicrocycleData'
 
 /**
@@ -10,6 +10,7 @@ import { formatMicrocycleData } from './formatMicrocycleData'
  * @returns {Object} - Functions and state for saving mesocycle and microcycle plans
  */
 export const useSaveTrainingPlan = () => {
+  const supabase = useBrowserSupabaseClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
@@ -30,12 +31,15 @@ export const useSaveTrainingPlan = () => {
       // Format the data according to the microcycle API structure using the imported function
       const formattedData = formatMicrocycleData(formData);
       
-      // Use the planner API function
-      const data = await edgeFunctions.planner.createMicrocycle(formattedData);
-      
-      setSuccess(true);
-      setSavedData(data);
-      return data;
+      // Invoke the edge function for microcycle creation via RPC
+      const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
+        method: 'POST',
+        path: '/planner/microcycle',
+        body: formattedData
+      })
+      if (fnError) throw fnError
+      const json = JSON.parse(rawData)
+      return json
     } catch (err) {
       console.error('Error saving microcycle:', err);
       setError(err.message || 'An unexpected error occurred');
@@ -374,16 +378,16 @@ export const useSaveTrainingPlan = () => {
       // For mesocycle plans, use the original format
       const sessions = transformFormData(formData)
 
-      // Use the planner API function
-      // No need to pass clerk_id or coach_id - authentication is handled by the edge function
-      const data = await edgeFunctions.planner.createMesocycle({
-        sessions,
-        timezone
-      });
-      
-      setSuccess(true)
-      setSavedData(data)
-      return data
+      // Invoke edge function for mesocycle creation
+      const payload = { sessions, timezone }
+      const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
+        method: 'POST',
+        path: '/planner/mesocycle',
+        body: payload
+      })
+      if (fnError) throw fnError
+      const json = JSON.parse(rawData)
+      return json
     } catch (err) {
       console.error('Error saving mesocycle:', err);
       setError(err.message || 'An unexpected error occurred')

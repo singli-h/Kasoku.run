@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { edgeFunctions } from '@/lib/edge-functions'
+import { useBrowserSupabaseClient } from '@/lib/supabase'
 import { useSaveTrainingPlan } from "./useSaveCycle"
 
 /**
@@ -44,14 +44,20 @@ export const useMesoWizardState = (onComplete) => {
   // Calculate progress percentage
   const progressPercentage = ((step - 1) / 4) * 100
 
+  const supabase = useBrowserSupabaseClient()
+
   // Fetch exercises from edge function instead of sample data
   useEffect(() => {
     const getExercises = async () => {
       setLoadingExercises(true)
       try {
-        // Use planner API to fetch exercises - fixed to use correct endpoint
-        const response = await edgeFunctions.planner.getExercises();
-        const exercises = response.data || [];
+        const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
+          method: 'GET',
+          path: '/planner/exercises'
+        })
+        if (fnError) throw fnError
+        const json = JSON.parse(rawData)
+        const exercises = json.exercises || []
         setAllExercises(exercises)
         setFilteredExercises(exercises)
       } catch (error) {
@@ -62,7 +68,7 @@ export const useMesoWizardState = (onComplete) => {
     }
     
     getExercises()
-  }, [])
+  }, [supabase])
 
   // Filter exercises based on search term
   useEffect(() => {

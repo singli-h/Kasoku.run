@@ -6,7 +6,7 @@ import  Button  from "../ui/button"
 import { ChevronDown, ChevronUp, Target, Zap, Activity, Dumbbell, TrendingUp } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line } from "recharts"
 import { cn } from "../../lib/utils"
-import { edgeFunctions } from '@/lib/edge-functions'
+import { useBrowserSupabaseClient } from '@/lib/supabase'
 
 export default function MesocycleOverview() {
   const [mesocycle, setMesocycle] = useState(null)
@@ -14,13 +14,19 @@ export default function MesocycleOverview() {
   const [error, setError] = useState(null)
   const [expandedWeeks, setExpandedWeeks] = useState([])
   const [hoveredWeek, setHoveredWeek] = useState(null)
+  const supabase = useBrowserSupabaseClient()
 
   useEffect(() => {
     const fetchMesocycle = async () => {
       try {
         setLoading(true)
-        const response = await edgeFunctions.dashboard.getMesocycle()
-        setMesocycle(response.data)
+        const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
+          method: 'GET',
+          path: '/dashboard/mesocycle'
+        })
+        if (fnErr) throw fnErr
+        const json = JSON.parse(raw)
+        setMesocycle(json.data)
       } catch (err) {
         console.error('Error fetching mesocycle:', err)
         setError(err.message)

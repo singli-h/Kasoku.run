@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Badge } from "@/components/ui/badge"
 import { X, Target } from "lucide-react"
 import { motion } from "framer-motion"
-import { edgeFunctions } from "@/lib/edge-functions"
+import { useBrowserSupabaseClient } from "@/lib/supabase"
 
 export default function AthleteDetailsStep({ userData, updateUserData, onNext, onPrev }) {
+  const supabase = useBrowserSupabaseClient()
   const [errors, setErrors] = useState({})
   const [events, setEvents] = useState({ track: [], field: [], combined: [] })
   const [loading, setLoading] = useState(true)
@@ -24,8 +25,13 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
       try {
         setLoading(true)
         
-        // Use the edge functions utility
-        const response = await edgeFunctions.events.getAll()
+        // Invoke catch-all API Edge Function for events
+        const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
+          method: 'GET',
+          path: '/events'
+        })
+        if (fnErr) throw fnErr
+        const response = JSON.parse(raw)
         
         // Handle different response formats
         if (response && response.status === "success" && response.data) {
