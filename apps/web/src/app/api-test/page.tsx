@@ -158,30 +158,15 @@ export default function ApiTest() {
         console.error(`[Test] Error fetching profile for coach check:`, err);
       }
       
-      // Now try to create the microcycle
+      // Now try to create the microcycle using the edge functions client
       try {
-        const result = await fetch('/api/planner/microcycle', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ...testData,
-            userRole: 'coach' // Include this explicitly
-          })
+        const result = await edgeFunctions.planner.createMicrocycle({
+          ...testData,
+          clerk_id: userId // Include clerk_id for coach lookup
         });
         
-        const responseText = await result.text();
-        console.log(`[Test] Raw microcycle creation response:`, responseText);
-        
-        try {
-          const data = JSON.parse(responseText);
-          console.log(`[Test] Parsed microcycle creation response:`, data);
-          return data;
-        } catch (err) {
-          console.error(`[Test] Error parsing response:`, err);
-          return { rawResponse: responseText, status: result.status };
-        }
+        console.log(`[Test] Microcycle creation response:`, result);
+        return result;
       } catch (err) {
         console.error(`[Test] Error creating microcycle:`, err);
         throw err;
