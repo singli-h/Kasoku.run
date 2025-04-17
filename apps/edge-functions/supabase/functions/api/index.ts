@@ -71,10 +71,20 @@ const DEFAULT_USER_DATA: UserData = {
 };
 
 // Helper function to verify user and get role-specific ID
+/**
+ * Gets user data including role-specific IDs based on the external clerk_id
+ * 
+ * Flow:
+ * 1. Look up the user record in Supabase using the external clerk_id
+ * 2. Get the internal Supabase user.id
+ * 3. Use that Supabase user.id to find role-specific records (athlete or coach)
+ * 4. Return all relevant IDs for the user
+ */
 async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promise<UserData> {
   try {
     console.log("[getUserRoleData] Fetching user data for clerk_id:", clerkId);
     
+    // Step 1: Find the Supabase user record using the external clerk_id
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("id, metadata")
@@ -86,28 +96,31 @@ async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promi
       throw new Error("User not found");
     }
 
-    console.log("[getUserRoleData] Found user:", { id: userData.id, role: userData.metadata?.role });
+    // Step 2: Get the internal Supabase user.id
+    const supabaseUserId = userData.id;
+    console.log("[getUserRoleData] Found user:", { id: supabaseUserId, role: userData.metadata?.role });
 
-    const result: UserData = { userId: userData.id };
+    const result: UserData = { userId: supabaseUserId };
     const role = userData.metadata?.role;
 
+    // Step 3: Use the Supabase user.id to find role-specific records
     if (role === 'athlete') {
-      console.log("[getUserRoleData] Fetching athlete data for user_id:", userData.id);
+      console.log("[getUserRoleData] Fetching athlete data for user_id:", supabaseUserId);
       const { data: athleteData } = await supabase
         .from("athletes")
         .select("id")
-        .eq("user_id", userData.id)
+        .eq("user_id", supabaseUserId)
         .single();
       if (athleteData) {
         result.athleteId = String(athleteData.id);
         console.log("[getUserRoleData] Found athlete ID:", result.athleteId);
       }
     } else if (role === 'coach') {
-      console.log("[getUserRoleData] Fetching coach data for user_id:", userData.id);
+      console.log("[getUserRoleData] Fetching coach data for user_id:", supabaseUserId);
       const { data: coachData } = await supabase
         .from("coaches")
         .select("id")
-        .eq("user_id", userData.id)
+        .eq("user_id", supabaseUserId)
         .single();
       if (coachData) {
         result.coachId = String(coachData.id);
@@ -115,6 +128,7 @@ async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promi
       }
     }
 
+    // Step 4: Return all relevant IDs
     console.log("[getUserRoleData] Final user data:", result);
     return result;
   } catch (error) {
@@ -1354,10 +1368,19 @@ Deno.serve(async (req) => {
   // Extract the pathname - either from query param (for clients using our SDK) or from the URL path
   let pathname = parsedUrl.pathname; // Extract the pathname
   
+  // Normalize the path - the edge function might be called with /api in the path already,
+  // or it might be called directly. Ensure we strip the function name if present
+  const parts = pathname.split('/');
+  if (parts[1] === 'api' && parts.length > 2) {
+    // If the path is like /api/users/123, strip the initial /api
+    pathname = '/' + parts.slice(2).join('/');
+  }
+  
   console.log("[API] Received request:", { 
     method, 
     url, 
-    originalPathname: pathname,
+    originalPathname: parsedUrl.pathname,
+    processedPathname: pathname,
     search: parsedUrl.search
   });
   
@@ -1395,7 +1418,27 @@ Deno.serve(async (req) => {
 
       // Get user role data including athlete/coach IDs if available
       userData = await getUserRoleData(supabase, authData.user.id);
+    } else {
+      // When AUTH_ENABLED is false, we still try to get user data from the request
+      try {
+        const reqBody = await req.clone().json();
+        if (reqBody.clerk_id) {
+          console.log("[API] Auth disabled but clerk_id provided, attempting to get user data");
+          userData = await getUserRoleData(supabase, reqBody.clerk_id);
+          console.log("[API] Retrieved user data:", userData);
+        }
+      } catch (error) {
+        // Ignore errors when parsing body - might be a GET request
+        console.log("[API] No clerk_id in request body, using default user data");
+      }
     }
+
+    // Log the user data for debugging
+    console.log("[API] Request will use userData:", { 
+      userId: userData.userId,
+      athleteId: userData.athleteId,
+      coachId: userData.coachId
+    });
 
     // Handle routes that need role-specific IDs
     if (pathname.includes('/dashboard') || pathname.includes('/athlete') || pathname.includes('/planner')) {
@@ -1421,19 +1464,30 @@ Deno.serve(async (req) => {
       // POST /api/planner/mesocycle or microcycle
       if ((pathname === "/api/planner/mesocycle" || pathname === "/api/planner/microcycle") && method === "POST") {
         try {
-          // Check if the request includes coach_id directly
-          const reqBody = await req.clone().json();
-          const explicitCoachId = reqBody.coach_id;
-          
           let coachId;
-          if (explicitCoachId) {
-            // Use the explicitly provided coach_id
-            console.log("[API] Using explicit coach_id from request:", explicitCoachId);
-            coachId = explicitCoachId;
+          
+          // Use coach ID from authenticated user data which comes from getUserRoleData
+          if (userData && userData.coachId) {
+            console.log("[API] Using coach ID from authenticated user data:", userData.coachId);
+            coachId = userData.coachId;
           } else {
-            // Get coach ID from request via clerk_id
-            console.log("[API] No explicit coach_id provided, looking up via clerk_id");
-            coachId = await getCoachIdFromRequest(supabase, req);
+            // If userData doesn't have coachId, fetch it from clerk_id
+            const reqBody = await req.clone().json();
+            
+            if (reqBody.clerk_id) {
+              console.log("[API] No coach ID in userData, looking up via clerk_id:", reqBody.clerk_id);
+              // Get user data including coach ID
+              const userRoleData = await getUserRoleData(supabase, reqBody.clerk_id);
+              
+              if (userRoleData && userRoleData.coachId) {
+                coachId = userRoleData.coachId;
+                console.log("[API] Found coach ID via clerk_id lookup:", coachId);
+              } else {
+                throw new Error("Coach record not found for clerk_id: " + reqBody.clerk_id);
+              }
+            } else {
+              throw new Error("No clerk_id provided and no authenticated user data available");
+            }
           }
           
           // Now handle the specific endpoint

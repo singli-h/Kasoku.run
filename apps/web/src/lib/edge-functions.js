@@ -264,10 +264,20 @@ export const edgeFunctions = {
     getExercises: () => fetchFromEdgeFunction("/api/planner/exercises"),
     getMesocycle: (id) => fetchFromEdgeFunction(`/api/planner/mesocycle?id=${id}`),
     getMicrocycle: (id) => fetchFromEdgeFunction(`/api/planner/microcycle?id=${id}`),
+    
+    /**
+     * Creates a mesocycle training plan
+     * Note: No need to include coach_id - the edge function will determine it from the clerk_id
+     */
     createMesocycle: (data) => fetchFromEdgeFunction("/api/planner/mesocycle", {
       method: 'POST',
       body: data
     }),
+    
+    /**
+     * Creates a microcycle training plan
+     * Note: No need to include coach_id - the edge function will determine it from the clerk_id
+     */
     createMicrocycle: (data) => fetchFromEdgeFunction("/api/planner/microcycle", {
       method: 'POST',
       body: data
