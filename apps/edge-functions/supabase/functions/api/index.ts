@@ -266,6 +266,7 @@ export async function getCoachIdFromClerkId(clerkId: string): Promise<string> {
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
+      // Use Service Role Key for backend operations to bypass RLS
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
@@ -1340,7 +1341,8 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      // Use Service Role Key for backend operations to bypass RLS
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
     
     let userData: UserData = DEFAULT_USER_DATA;
