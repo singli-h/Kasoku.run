@@ -1,5 +1,10 @@
+/// <reference lib="deno.ns" />
+/// <reference lib="dom" />
+
+// @deno-types="https://deno.land/std@0.188.0/http/server.ts"
 import { serve } from "https://deno.land/std@0.188.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
+// @deno-types="https://esm.sh/@supabase/supabase-js@2.23.0"
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
 import { corsHeaders, handleError } from './utils.ts';
 import { getAthletes, createAthlete } from './athletes.ts';
 import { getUserStatus, getUserProfile } from './users.ts';
@@ -14,19 +19,115 @@ import {
 // Toggle for authentication (default is enabled)
 const AUTH_ENABLED = false;
 
-// Helper function to create Supabase client
-const createSupabaseClient = (req: Request) => {
-  // Use anon key to respect RLS policies (requires proper policies to be set up)
-  return createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-    {
-      global: {
-        headers: { Authorization: req.headers.get("Authorization")! },
-      },
-    },
-  );
+// Type declarations for Deno environment
+declare global {
+  const Deno: {
+    env: {
+      get(key: string): string | undefined;
+    };
+    serve: typeof serve;
+  };
+  
+  class URLPattern {
+    constructor(init: { pathname: string });
+    exec(input: string): { pathname: { groups: Record<string, string> } } | null;
+  }
+}
+
+// Type definitions for common parameters and records
+type AthleteId = string | number;
+type CoachId = string;
+
+interface UserRecord {
+  id: string;
+  clerk_id: string;
+  email: string;
+  metadata?: {
+    role?: string;
+  };
+}
+
+interface CoachRecord {
+  id: string;
+  user_id: string;
+}
+
+interface AthleteRecord {
+  id: string;
+  user_id: string;
+  athlete_group_id?: string;
+}
+
+// Type definitions for user data
+interface UserData {
+  userId: string;
+  athleteId?: string;
+  coachId?: string;
+}
+
+// Default user data
+const DEFAULT_USER_DATA: UserData = {
+  userId: '1'
 };
+
+// Helper function to verify user and get role-specific ID
+async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promise<UserData> {
+  try {
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id, metadata")
+      .eq("clerk_id", clerkId)
+      .single();
+
+    if (userError || !userData) {
+      throw new Error("User not found");
+    }
+
+    const result: UserData = { userId: userData.id };
+    const role = userData.metadata?.role;
+
+    if (role === 'athlete') {
+      const { data: athleteData } = await supabase
+        .from("athletes")
+        .select("id")
+        .eq("user_id", userData.id)
+        .single();
+      if (athleteData) {
+        result.athleteId = athleteData.id;
+      }
+    } else if (role === 'coach') {
+      const { data: coachData } = await supabase
+        .from("coaches")
+        .select("id")
+        .eq("user_id", userData.id)
+        .single();
+      if (coachData) {
+        result.coachId = coachData.id;
+      }
+    }
+
+    return result;
+  } catch (error) {
+    throw new Error(`Failed to get user role data: ${error.message}`);
+  }
+}
+
+// Helper function to create standardized success response
+function createSuccessResponse(data: any, status: number = 200) {
+  return new Response(
+    JSON.stringify({
+      status: "success",
+      data,
+      metadata: {
+        timestamp: new Date().toISOString()
+      }
+    }),
+    {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    }
+  );
+}
 
 // Helper function to parse request body from a URL
 const parseRequestBody = async (url: URL): Promise<any> => {
@@ -46,7 +147,7 @@ const extractPathParams = (url: string) => {
 };
 
 // GET /api/:table/:id - Get one item by ID
-const getItem = async (supabase: any, table: string, id: string) => {
+const getItem = async (supabase: SupabaseClient, table: string, id: string) => {
   const { data, error } = await supabase.from(table).select("*").eq("id", id);
   if (error) {
     return handleError(error);
@@ -58,7 +159,7 @@ const getItem = async (supabase: any, table: string, id: string) => {
 };
 
 // GET /api/:table - Get all items
-const getAllItems = async (supabase: any, table: string, params: Record<string, string>) => {
+const getAllItems = async (supabase: SupabaseClient, table: string, params: Record<string, string>) => {
   try {
     let query = supabase.from(table).select("*");
     for (const [key, value] of Object.entries(params)) {
@@ -89,7 +190,7 @@ const getAllItems = async (supabase: any, table: string, params: Record<string, 
 };
 
 // POST /api/:table - Create new item(s)
-const createItem = async (supabase: any, table: string, req: Request) => {
+const createItem = async (supabase: SupabaseClient, table: string, req: Request) => {
   try {
     const newItems = await req.json(); 
 
@@ -111,7 +212,7 @@ const createItem = async (supabase: any, table: string, req: Request) => {
 };
 
 // PUT /api/:table - Update existing item(s)
-const updateItem = async (supabase: any, table: string, req: Request) => {
+const updateItem = async (supabase: SupabaseClient, table: string, req: Request) => {
   try {
     const updatedItems = await req.json();
 
@@ -137,7 +238,7 @@ const updateItem = async (supabase: any, table: string, req: Request) => {
 };
 
 // DELETE /api/:table/:id - Delete an item
-const deleteItem = async (supabase: any, table: string, id: string) => {
+const deleteItem = async (supabase: SupabaseClient, table: string, id: string) => {
   const { error } = await supabase.from(table).delete().eq("id", id);
   if (error) {
     return handleError(error);
@@ -145,47 +246,28 @@ const deleteItem = async (supabase: any, table: string, id: string) => {
   return new Response(null, { status: 204, headers: corsHeaders });
 };
 
-// Get coach ID for a given clerk ID
-export async function getCoachIdFromClerkId(supabase: any, clerkId: string): Promise<string> {
+// Update the getCoachIdFromClerkId return type
+export async function getCoachIdFromClerkId(clerkId: string): Promise<string> {
   if (!clerkId) {
-    throw new Error("Clerk ID is required");
+    throw new Error("Missing clerkId parameter");
   }
 
-  // Get the user ID for this clerk ID
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select("id")
-    .eq("clerk_id", clerkId)
-    .maybeSingle();
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
 
-  if (userError) {
-    console.error("[Edge] Error fetching user:", userError);
-    throw new Error("Failed to fetch user information");
+    const userData = await getUserRoleData(supabase, clerkId);
+    
+    if (!userData.coachId) {
+      throw new Error("User is not a coach or coach record not found");
+    }
+
+    return userData.coachId;
+  } catch (error) {
+    throw error;
   }
-
-  if (!userData) {
-    throw new Error("User not found");
-  }
-
-  const userId = userData.id;
-
-  // Check if there's a coach record for this user
-  const { data: coachData, error: coachError } = await supabase
-    .from("coaches")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (coachError) {
-    console.error("[Edge] Error fetching coach:", coachError);
-    throw new Error("Failed to fetch coach information");
-  }
-
-  if (!coachData) {
-    throw new Error("Only users with a coach record can create training plans");
-  }
-
-  return coachData.id;
 }
 
 /**
@@ -198,7 +280,7 @@ export async function getCoachIdFromClerkId(supabase: any, clerkId: string): Pro
  * 4) Inserts all new details in a single call (all or nothing).
  */
 export const postExercisesDetail = async (
-  supabase: any,
+  supabase: SupabaseClient,
   url: URL,
   athleteId: number | string
 ): Promise<Response> => {
@@ -277,7 +359,7 @@ export const postExercisesDetail = async (
  * 4) Performs an upsert or update in one call (all or nothing).
  */
 export const putExercisesDetail = async (
-  supabase: any,
+  supabase: SupabaseClient,
   url: URL,
   athleteId: number | string
 ): Promise<Response> => {
@@ -369,7 +451,7 @@ export const putExercisesDetail = async (
  * - Retrieving all exercises, preset groups, and training sessions for the athlete.
  */
 export const getExercisesInit = async (
-  supabase: any,
+  supabase: SupabaseClient,
   url: URL,
   athleteId: number | string,
   athleteGroupId: number | string,
@@ -966,17 +1048,11 @@ export const getWeeklyOverview = async (
   }
 };
 
-/**
- * GET /api/dashboard/mesocycle
- *
- * Returns mesocycle data for the dashboard.
- * For now, this returns mock data, but in the future it should:
- * - Fetch actual mesocycle data from the database.
- */
-export const getMesocycle = async (
+// Rename the dashboard getMesocycle to avoid conflict
+export const getDashboardMesocycle = async (
   supabase: any,
   url: URL,
-  athleteId: number | string
+  athleteId: AthleteId
 ): Promise<Response> => {
   try {
     // Mock mesocycle data
@@ -1160,6 +1236,11 @@ export const getExercises = async (
   }
 };
 
+// Helper function to ensure valid ID
+function ensureValidId(id: string | undefined | null): string {
+  return id || '0';
+}
+
 /**
  * Main request handler
  *
@@ -1177,69 +1258,42 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Create a Supabase client
-    const supabase = createSupabaseClient(req);
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    );
     
-    let userId = 1; // Default for when auth is disabled
-    const timezone = "Europe/London"; // Default timezone
+    let userData: UserData = DEFAULT_USER_DATA;
+    const timezone = "Europe/London";
      
-    if(AUTH_ENABLED){
-      // Authentication handling
+    if (AUTH_ENABLED) {
       const authHeader = req.headers.get("Authorization");
       if (!authHeader) {
-        return new Response(
-          JSON.stringify({ error: "Missing Authorization header" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return handleError(new Error("Missing Authorization header"), "auth");
       }
 
-      // Extract the token
       const token = authHeader.replace("Bearer ", "");
-      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+      const supabaseAuthClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      );
       
-      // Use an anon client to verify the token
-      const supabaseAuthClient = createClient(supabaseUrl, supabaseAnonKey);
       const { data: authData, error: authError } = await supabaseAuthClient.auth.getUser(token);
       if (authError || !authData.user) {
-        return new Response(
-          JSON.stringify({ error: "Invalid or expired token" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return handleError(new Error("Invalid or expired token"), "auth");
       }
-      userId = authData.user.id;
+
+      // Get user role data including athlete/coach IDs if available
+      userData = await getUserRoleData(supabase, authData.user.id);
     }
 
-    // For athlete and coach endpoints, fetch the IDs based on user
-    let athleteId = null;
-    let coachId = null;
-    if (!AUTH_ENABLED || pathname.includes('/dashboard') || pathname.includes('/athlete') || pathname.includes('/planner')) {
-      // Fetch the athlete ID
-      const { data: athleteData, error: athleteError } = await supabase
-        .from("athletes")
-        .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (athleteError) {
-        console.error("Error fetching athlete ID:", athleteError);
-        // Don't throw error - athlete ID might not be needed for all endpoints
-      } else {
-        athleteId = athleteData?.id;
+    // Handle routes that need role-specific IDs
+    if (pathname.includes('/dashboard') || pathname.includes('/athlete') || pathname.includes('/planner')) {
+      if (!userData.athleteId && pathname.includes('/athlete')) {
+        return handleError(new Error("Athlete record not found"), "access");
       }
-      
-      // Fetch the coach ID
-      const { data: coachData, error: coachError } = await supabase
-        .from("coaches")
-        .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (coachError) {
-        console.error("Error fetching coach ID:", coachError);
-        // Don't throw error - coach ID might not be needed for all endpoints
-      } else {
-        coachId = coachData?.id;
+      if (!userData.coachId && pathname.includes('/planner')) {
+        return handleError(new Error("Coach record not found"), "access");
       }
     }
 
@@ -1257,56 +1311,18 @@ Deno.serve(async (req) => {
       // POST /api/planner/mesocycle
       if (pathname === "/api/planner/mesocycle" && method === "POST") {
         try {
-          // Use the already fetched coachId instead of re-fetching it
-          if (!coachId) {
-            // If coach ID wasn't fetched earlier (which shouldn't happen),
-            // check if we have a clerk_id in the request body as a fallback
-            const reqClone = new Request(req.url, {
-              method: req.method,
-              headers: req.headers,
-              body: await req.clone().text()
-            });
-            
-            const reqText = await reqClone.text();
-            let reqBody;
-            try {
-              reqBody = JSON.parse(reqText);
-            } catch (e) {
-              console.error("[Edge] Error parsing request body:", e, "Raw body:", reqText);
-              return new Response(
-                JSON.stringify({ error: "Invalid JSON in request body" }),
-                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-              );
-            }
-            
-            // If we don't have coachId but we have clerk_id, use it to get coach ID
-            if (reqBody?.clerk_id) {
-              try {
-                coachId = await getCoachIdFromClerkId(supabase, reqBody.clerk_id);
-              } catch (error: any) {
-                return new Response(
-                  JSON.stringify({ error: error.message }),
-                  { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-                );
-              }
-            } else {
-              // Neither coachId nor clerk_id available
-              return new Response(
-                JSON.stringify({ error: "Coach not found for this user" }),
-                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-              );
-            }
+          if (!userData.coachId) {
+            userData.coachId = await getCoachIdFromClerkId(userData.userId);
           }
           
-          // Ensure coachId is not null or undefined before calling the function
-          if (!coachId) {
+          if (!userData.coachId) {
             return new Response(
-              JSON.stringify({ error: "Coach ID not found" }),
+              JSON.stringify({ error: "Coach not found for this user" }),
               { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
           
-          return await postMesocycle(supabase, parsedUrl, req, coachId);
+          return await postMesocycle(supabase, parsedUrl, req, userData.coachId);
         } catch (error: any) {
           console.error("[Edge] Error processing mesocycle request:", error);
           return new Response(
@@ -1319,62 +1335,30 @@ Deno.serve(async (req) => {
       // GET /api/planner/mesocycle/:id
       if (pathname.match(/^\/api\/planner\/mesocycle\/\d+$/) && method === "GET") {
         const mesocycleId = pathname.split("/").pop();
+        if (!mesocycleId) {
+          return new Response(
+            JSON.stringify({ error: "Invalid mesocycle ID" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         return await getMesocycle(supabase, mesocycleId);
       }
       
       // POST /api/planner/microcycle
       if (pathname === "/api/planner/microcycle" && method === "POST") {
         try {
-          // Use the already fetched coachId instead of re-fetching it
-          if (!coachId) {
-            // If coach ID wasn't fetched earlier (which shouldn't happen),
-            // check if we have a clerk_id in the request body as a fallback
-            const reqClone = new Request(req.url, {
-              method: req.method,
-              headers: req.headers,
-              body: await req.clone().text()
-            });
-            
-            const reqText = await reqClone.text();
-            let reqBody;
-            try {
-              reqBody = JSON.parse(reqText);
-            } catch (e) {
-              console.error("[Edge] Error parsing request body:", e, "Raw body:", reqText);
-              return new Response(
-                JSON.stringify({ error: "Invalid JSON in request body" }),
-                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-              );
-            }
-            
-            // If we don't have coachId but we have clerk_id, use it to get coach ID
-            if (reqBody?.clerk_id) {
-              try {
-                coachId = await getCoachIdFromClerkId(supabase, reqBody.clerk_id);
-              } catch (error: any) {
-                return new Response(
-                  JSON.stringify({ error: error.message }),
-                  { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-                );
-              }
-            } else {
-              // Neither coachId nor clerk_id available
-              return new Response(
-                JSON.stringify({ error: "Coach not found for this user" }),
-                { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-              );
-            }
+          if (!userData.coachId) {
+            userData.coachId = await getCoachIdFromClerkId(userData.userId);
           }
           
-          // Ensure coachId is not null or undefined before calling the function
-          if (!coachId) {
+          if (!userData.coachId) {
             return new Response(
-              JSON.stringify({ error: "Coach ID not found" }),
+              JSON.stringify({ error: "Coach not found for this user" }),
               { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
           
-          return await postMicrocycle(supabase, parsedUrl, req, coachId);
+          return await postMicrocycle(supabase, parsedUrl, req, userData.coachId);
         } catch (error: any) {
           console.error("[Edge] Error processing microcycle request:", error);
           return new Response(
@@ -1387,6 +1371,12 @@ Deno.serve(async (req) => {
       // GET /api/planner/microcycle/:id
       if (pathname.match(/^\/api\/planner\/microcycle\/\d+$/) && method === "GET") {
         const microcycleId = pathname.split("/").pop();
+        if (!microcycleId) {
+          return new Response(
+            JSON.stringify({ error: "Invalid microcycle ID" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         return await getMicrocycle(supabase, microcycleId);
       }
       
@@ -1422,12 +1412,9 @@ Deno.serve(async (req) => {
     // Handle dashboard exercises endpoint
     if (pathname === "/api/dashboard/exercises") {
       if (method !== "GET") {
-        return new Response(
-          JSON.stringify({ error: `${method} Method not allowed for exercises` }),
-          { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return handleError(new Error("Method not allowed"), "method");
       }
-      return await getExercises(supabase, parsedUrl, athleteId || 1);
+      return await getExercises(supabase, parsedUrl, ensureValidId(userData.athleteId));
     }
 
     // Handle dashboard endpoints
@@ -1436,7 +1423,7 @@ Deno.serve(async (req) => {
       const { data: athleteData, error: athleteError } = await supabase
         .from("athletes")
         .select("id")
-        .eq("user_id", userId)
+        .eq("user_id", userData.userId)
         .maybeSingle();
       if (athleteError || !athleteData) {
         return new Response(
@@ -1448,35 +1435,39 @@ Deno.serve(async (req) => {
 
       if (pathname === "/api/dashboard/exercisesInit") {
         if (method !== "GET") {
-          return new Response(`${method} Method not allowed for dashboard`, { status: 405 });
+          return handleError(new Error("Method not allowed"), "method");
         }
-        // Pass the parsedUrl and athleteId to the handler
-        return await getExercisesInit(supabase, parsedUrl, athleteId, athleteGroupId, timezone);
+        return await getExercisesInit(
+          supabase,
+          parsedUrl,
+          ensureValidId(userData.athleteId),
+          athleteGroupId || '0',
+          timezone
+        );
       }
 
       if (pathname === "/api/dashboard/weeklyOverview") {
         if (method !== "GET") {
-          return new Response(`${method} Method not allowed for weekly overview`, { status: 405 });
+          return handleError(new Error("Method not allowed"), "method");
         }
-        return await getWeeklyOverview(supabase, parsedUrl, athleteId);
+        return await getWeeklyOverview(supabase, parsedUrl, ensureValidId(userData.athleteId));
       }
 
       if (pathname === "/api/dashboard/mesocycle") {
         if (method !== "GET") {
-          return new Response(`${method} Method not allowed for mesocycle`, { status: 405 });
+          return handleError(new Error("Method not allowed"), "method");
         }
-        return await getMesocycle(supabase, parsedUrl, athleteId);
+        return await getDashboardMesocycle(supabase, parsedUrl, ensureValidId(userData.athleteId));
       }
 
       if (pathname === "/api/dashboard/exercisesDetail") {
-        if(method == "Post"){
-          return await postExercisesDetail(supabase, parsedUrl, athleteId)
+        if (method === "POST") {
+          return await postExercisesDetail(supabase, parsedUrl, ensureValidId(userData.athleteId));
         }
-        if(method == "Put"){
-          return await putExercisesDetail(supabase, parsedUrl, athleteId)
+        if (method === "PUT") {
+          return await putExercisesDetail(supabase, parsedUrl, ensureValidId(userData.athleteId));
         }
-        //No other method allowed
-        return new Response(`${method} Method not allowed for dashboard`, { status: 405 });
+        return handleError(new Error("Method not allowed"), "method");
       }
     }
 
@@ -1509,7 +1500,17 @@ Deno.serve(async (req) => {
 
     // Handle GET /api/users/:clerkId/profile
     if (method === "GET" && pathname.includes("/users/") && pathname.endsWith("/profile")) {
-      return getUserProfile(supabase, pathname.split("/")[2]);
+      // Extract clerk_id from the path segments
+      const segments = pathname.split("/");
+      const userIndex = segments.findIndex(segment => segment === "users");
+      if (userIndex === -1 || userIndex + 1 >= segments.length) {
+        return new Response(
+          JSON.stringify({ error: "Invalid user profile URL" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const clerkId = segments[userIndex + 1].split("?")[0]; // Remove any query parameters
+      return getUserProfile(supabase, clerkId);
     }
 
     // Handle generic /api/dashboard/:table endpoints
