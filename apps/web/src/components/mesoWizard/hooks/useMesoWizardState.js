@@ -49,8 +49,8 @@ export const useMesoWizardState = (onComplete) => {
     const getExercises = async () => {
       setLoadingExercises(true)
       try {
-        // Use edge function to fetch exercises
-        const response = await edgeFunctions.dashboard.getExercises();
+        // Use planner API to fetch exercises - fixed to use correct endpoint
+        const response = await edgeFunctions.planner.getExercises();
         const exercises = response.data || [];
         setAllExercises(exercises)
         setFilteredExercises(exercises)
