@@ -63,11 +63,15 @@ interface UserData {
   userId: string;
   athleteId?: string;
   coachId?: string;
+  timezone?: string;
 }
 
-// Default user data
+// Default user data - Properly initialized with null values
 const DEFAULT_USER_DATA: UserData = {
-  userId: '1'
+  userId: '',
+  athleteId: undefined,
+  coachId: undefined,
+  timezone: 'UTC'
 };
 
 // Helper function to verify user and get role-specific ID
@@ -77,7 +81,7 @@ async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promi
     
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("id, metadata")
+      .select("id, metadata, timezone")
       .eq("clerk_id", clerkId)
       .single();
 
@@ -88,7 +92,11 @@ async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promi
 
     console.log("[getUserRoleData] Found user:", { id: userData.id, role: userData.metadata?.role });
 
-    const result: UserData = { userId: userData.id };
+    // Ensure userId is always a string
+    const result: UserData = { 
+      userId: String(userData.id),
+      timezone: userData.timezone || "UTC"
+    };
     const role = userData.metadata?.role;
 
     if (role === 'athlete') {
@@ -462,12 +470,15 @@ export const putExercisesDetail = async (
  * - Retrieving all exercises, preset groups, and training sessions for the athlete.
  */
 export const getExercisesInit = async (
-  supabase: SupabaseClient,
+  supabase: any,
   url: URL,
   athleteId: number | string,
   athleteGroupId: number | string,
   timezone: string
 ): Promise<Response> => {
+  // Log timezone for debugging
+  console.log(`[getExercisesInit] Using timezone: ${timezone}`);
+
   // 1) Compute the date range for "the last 7 days"
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -1373,8 +1384,21 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
     
-    let userData: UserData = DEFAULT_USER_DATA;
-    const timezone = "Europe/London";
+    // Initialize userData with default values
+    let userData: UserData = { ...DEFAULT_USER_DATA };
+    
+    // Try to get timezone from the request body
+    let timezone = "UTC"; // Default fallback timezone
+    try {
+      const reqBody = await req.clone().json();
+      if (reqBody.timezone) {
+        console.log("[API] Using timezone from request:", reqBody.timezone);
+        timezone = reqBody.timezone;
+        userData.timezone = timezone;
+      }
+    } catch (error) {
+      console.log("[API] No timezone in request body, using default:", timezone);
+    }
      
     if (AUTH_ENABLED) {
       const authHeader = req.headers.get("Authorization");
@@ -1402,9 +1426,7 @@ Deno.serve(async (req) => {
       if (!userData.athleteId && pathname.includes('/athlete')) {
         return handleError(new Error("Athlete record not found"), "access");
       }
-      if (!userData.coachId && pathname.includes('/planner')) {
-        return handleError(new Error("Coach record not found"), "access");
-      }
+      // Note: We don't check for coach ID here anymore since we handle that in the specific endpoint
     }
 
     // -------------------------
