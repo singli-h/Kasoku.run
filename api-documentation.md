@@ -70,44 +70,30 @@ export const edgeFunctions = {
 };
 ```
 
-### 2. Next.js API Routes (`apps/web/src/app/api/*`)
+### 2. Next.js Dynamic API Proxy (`apps/web/src/app/api/[...slug]/route.ts`)
 
-Next.js API routes serve as middleware between frontend components and the Edge Functions. They provide:
+All FE API calls are now handled by a single dynamic catch‑all route. This proxy:
+- Authenticates requests with Clerk (`auth()`).
+- Forwards `/api/<path>` to Supabase Edge Functions via Service Role key.
+- Eliminates the need for individual route files under `/app/api`.
 
-- User authentication via Clerk
-- Request validation
-- Error handling
-- Transformations and mapping
-- Routing and forwarding to appropriate Edge Functions
-
-#### Structure:
+Structure (simplified):
 ```typescript
-// Example route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { edgeFunctions } from '@/lib/edge-functions';
-import { auth } from "@clerk/nextjs/server";
+import { auth } from '@clerk/nextjs/server';
 
-export async function GET(request: NextRequest) {
-  try {
-    // Authentication
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    
-    // Call Edge Function
-    const data = await edgeFunctions.[domain].getAll();
-    
-    // Return response
-    return NextResponse.json(data);
-  } catch (error) {
-    // Error handling
-    return NextResponse.json(
-      { error: error.message || "Failed to process request" },
-      { status: error.status || 500 }
-    );
-  }
-}
+export const dynamic = 'force-dynamic';
+
+async function proxy(
+  request: NextRequest,
+  { params }: { params: { slug: string[] } }
+) { /* auth + fetch logic */ }
+
+export const GET = proxy;
+export const POST = proxy;
+export const PUT = proxy;
+export const PATCH = proxy;
+export const DELETE = proxy;
 ```
 
 ### 3. Supabase Edge Functions (`apps/edge-functions/supabase/functions/api/*`)
@@ -196,30 +182,25 @@ Errors are consistently handled at each layer:
 
 ### Creating New API Endpoints
 
-When adding a new endpoint:
+When adding a new endpoint now only two steps are required:
 
 1. **Edge Function Implementation**:
-   - Create/update domain-specific functions in Edge Functions
-   - Ensure proper validation, error handling, and response formatting
-   - Follow the established patterns for database operations
+   - Add or update the domain-specific function in your Supabase edge functions.
+   - Include validation, business logic, and response formatting.
 
-2. **Next.js API Route**:
-   - Create a route matching the endpoint path
-   - Implement authentication and validation
-   - Forward to the appropriate Edge Function
+2. **Edge Functions Client Method**:
+   - Add the corresponding method in `apps/web/src/lib/edge-functions.js`.
+   - Use the existing `fetchFromEdgeFunction('/api/<domain>[/...]', { ... })` pattern.
 
-3. **Edge Functions Client Method**:
-   - Add a new method to the appropriate domain in `edge-functions.js`
-   - Follow the established naming conventions and patterns
+> Note: The Next.js dynamic proxy automatically routes and authenticates calls, so you do not need to create or modify route files in `/app/api`.
 
 ## Implementation Checklist
 
-When implementing a new API endpoint, ensure all the following components are created and properly connected:
+When implementing a new API endpoint, ensure the following components are in place:
 
 - [ ] Edge Function implementation in `apps/edge-functions/supabase/functions/api/`
-- [ ] Next.js API Route in `apps/web/src/app/api/`
 - [ ] Edge Functions Client method in `apps/web/src/lib/edge-functions.js`
-- [ ] Documentation update (optional but recommended)
+- [ ] Documentation update (if applicable)
 
 ### 1. Edge Function Implementation
 
@@ -354,135 +335,6 @@ export const create[Resource] = async (
 - Use try/catch blocks for error handling
 - Return consistent response structures
 - Use appropriate HTTP status codes
-
-### 2. Next.js API Route
-
-File: `apps/web/src/app/api/[domain]/route.ts`
-
-```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { edgeFunctions } from '@/lib/edge-functions';
-import { auth } from "@clerk/nextjs/server";
-
-// Configure for dynamic rendering if needed
-export const dynamic = 'force-dynamic';
-
-/**
- * GET /api/[domain]
- * Description of what this endpoint does
- */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. Authentication
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized - User not authenticated" }, 
-        { status: 401 }
-      );
-    }
-    
-    // 2. Extract query parameters if needed
-    const { searchParams } = new URL(request.url);
-    const paramName = searchParams.get('paramName');
-    
-    // 3. Call Edge Function with appropriate parameters
-    let data;
-    if (paramName) {
-      data = await edgeFunctions.[domain].getByParam(paramName);
-    } else {
-      data = await edgeFunctions.[domain].getAll();
-    }
-    
-    // 4. Return the response directly
-    return NextResponse.json(data);
-  } catch (error) {
-    // 5. Standardized error handling
-    console.error(`[API] Error in ${request.url}:`, error);
-    return NextResponse.json(
-      { error: error.message || "Failed to process request" },
-      { status: error.status || 500 }
-    );
-  }
-}
-
-/**
- * POST /api/[domain]
- * Description of what this endpoint does
- */
-export async function POST(request: NextRequest) {
-  try {
-    // 1. Authentication
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized - User not authenticated" }, 
-        { status: 401 }
-      );
-    }
-    
-    // 2. Parse request body
-    const requestData = await request.json();
-    
-    // 3. Validate required fields
-    if (!requestData.requiredField) {
-      return NextResponse.json(
-        { error: "Missing required field 'requiredField'" },
-        { status: 400 }
-      );
-    }
-    
-    // 4. Add authenticated user ID to request data
-    const enrichedData = {
-      ...requestData,
-      clerk_id: userId
-    };
-    
-    // 5. Call Edge Function
-    const result = await edgeFunctions.[domain].create(enrichedData);
-    
-    // 6. Return the response
-    return NextResponse.json(result);
-  } catch (error) {
-    // 7. Standardized error handling
-    console.error(`[API] Error in ${request.url}:`, error);
-    return NextResponse.json(
-      { error: error.message || "Failed to process request" },
-      { status: error.status || 500 }
-    );
-  }
-}
-```
-
-### 3. Edge Functions Client Method
-
-File: `apps/web/src/lib/edge-functions.js`
-
-Add new methods to the appropriate domain object (or create a new domain):
-
-```javascript
-// Add to edgeFunctions object
-[domain]: {
-  // Basic CRUD operations
-  getAll: () => fetchFromEdgeFunction("/api/[domain]"),
-  getById: (id) => fetchFromEdgeFunction(`/api/[domain]/${id}`),
-  getByParam: (param) => fetchFromEdgeFunction(`/api/[domain]?paramName=${param}`),
-  create: (data) => fetchFromEdgeFunction("/api/[domain]", {
-    method: "POST",
-    body: data
-  }),
-  update: (id, data) => fetchFromEdgeFunction(`/api/[domain]/${id}`, {
-    method: "PUT",
-    body: data
-  }),
-  delete: (id) => fetchFromEdgeFunction(`/api/[domain]/${id}`, {
-    method: "DELETE"
-  }),
-  
-  // Domain-specific operations (as needed)
-  customOperation: (param1, param2) => fetchFromEdgeFunction(`/api/[domain]/customOperation?param1=${param1}&param2=${param2}`),
-}
-```
 
 ## Response Format Standards
 
