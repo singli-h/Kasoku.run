@@ -71,20 +71,10 @@ const DEFAULT_USER_DATA: UserData = {
 };
 
 // Helper function to verify user and get role-specific ID
-/**
- * Gets user data including role-specific IDs based on the external clerk_id
- * 
- * Flow:
- * 1. Look up the user record in Supabase using the external clerk_id
- * 2. Get the internal Supabase user.id
- * 3. Use that Supabase user.id to find role-specific records (athlete or coach)
- * 4. Return all relevant IDs for the user
- */
 async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promise<UserData> {
   try {
     console.log("[getUserRoleData] Fetching user data for clerk_id:", clerkId);
     
-    // Step 1: Find the Supabase user record using the external clerk_id
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("id, metadata")
@@ -96,31 +86,28 @@ async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promi
       throw new Error("User not found");
     }
 
-    // Step 2: Get the internal Supabase user.id
-    const supabaseUserId = userData.id;
-    console.log("[getUserRoleData] Found user:", { id: supabaseUserId, role: userData.metadata?.role });
+    console.log("[getUserRoleData] Found user:", { id: userData.id, role: userData.metadata?.role });
 
-    const result: UserData = { userId: supabaseUserId };
+    const result: UserData = { userId: userData.id };
     const role = userData.metadata?.role;
 
-    // Step 3: Use the Supabase user.id to find role-specific records
     if (role === 'athlete') {
-      console.log("[getUserRoleData] Fetching athlete data for user_id:", supabaseUserId);
+      console.log("[getUserRoleData] Fetching athlete data for user_id:", userData.id);
       const { data: athleteData } = await supabase
         .from("athletes")
         .select("id")
-        .eq("user_id", supabaseUserId)
+        .eq("user_id", userData.id)
         .single();
       if (athleteData) {
         result.athleteId = String(athleteData.id);
         console.log("[getUserRoleData] Found athlete ID:", result.athleteId);
       }
     } else if (role === 'coach') {
-      console.log("[getUserRoleData] Fetching coach data for user_id:", supabaseUserId);
+      console.log("[getUserRoleData] Fetching coach data for user_id:", userData.id);
       const { data: coachData } = await supabase
         .from("coaches")
         .select("id")
-        .eq("user_id", supabaseUserId)
+        .eq("user_id", userData.id)
         .single();
       if (coachData) {
         result.coachId = String(coachData.id);
@@ -128,7 +115,6 @@ async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promi
       }
     }
 
-    // Step 4: Return all relevant IDs
     console.log("[getUserRoleData] Final user data:", result);
     return result;
   } catch (error) {
