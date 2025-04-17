@@ -195,11 +195,10 @@ export const edgeFunctions = {
       // Add timestamp for cache busting - critical for auth checks
       const timestamp = Date.now();
       
-      console.log('[Client] Checking onboarding status for clerk_id:', clerkId);
+      console.log('[Client] Checking onboarding status via API for clerk_id:', clerkId);
       
-      // We should never call Supabase directly from the frontend
-      // Instead, call our own Next.js API route which handles the middleware
-      // This follows the n-tier architecture: Frontend -> Next.js API -> Edge Functions -> Database
+      // Call our own Next.js API route which handles all the authentication
+      // and communication with the Supabase edge function
       const url = `/api/user-status?t=${timestamp}`;
       
       console.log('[Client] Requesting URL:', url);
@@ -214,6 +213,7 @@ export const edgeFunctions = {
       })
       .then(response => {
         if (!response.ok) {
+          console.error('[Client] Error response from user-status API:', response.status);
           throw new Error(`Error checking onboarding status: ${response.status}`);
         }
         return response.json();
@@ -221,10 +221,9 @@ export const edgeFunctions = {
       .then(data => {
         console.log('[Client] Onboarding status response:', JSON.stringify(data));
         
-        // Format the response to match what the middleware expects
         // The API returns { onboardingCompleted: boolean }
         if (data && data.hasOwnProperty('onboardingCompleted')) {
-          console.log('[Client] Onboarding completed value:', data.onboardingCompleted, 'type:', typeof data.onboardingCompleted);
+          console.log('[Client] Onboarding completed value:', data.onboardingCompleted);
           
           // Return in the expected format for backward compatibility
           return { 
@@ -237,7 +236,8 @@ export const edgeFunctions = {
       })
       .catch(error => {
         console.error('[Client] Error checking onboarding status:', error);
-        return { users: [] }; // Return empty users array on error
+        // Default to assuming onboarding is completed to prevent redirect loops in production
+        return { users: [{ onboarding_completed: true }] };
       });
     },
     update: (clerkId, data) => fetchFromEdgeFunction(`/api/users/${clerkId}`, {
