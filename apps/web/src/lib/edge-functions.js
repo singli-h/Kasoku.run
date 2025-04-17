@@ -53,26 +53,58 @@ export async function fetchFromEdgeFunction(endpoint, options = {}) {
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   
   // Build the full URL to the edge function
-  const url = `${supabaseUrl}/functions/v1${path}`;
+  // In Supabase production, edge functions are accessed at a fixed URL
+  // We'll include the original path in the body instead
+  const url = `${supabaseUrl}/functions/v1/api`;
   
   try {
     // Log the request (without sensitive data)
-    console.log(`[Edge Function] ${options.method || 'GET'} ${endpoint}`);
+    console.log(`[Edge Function] ${options.method || 'GET'} ${endpoint} (via ${url})`);
     
     // Set default headers
     const headers = {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${serviceRoleKey}`,
+      "X-API-Route": path, // Add route as header
       ...options.headers
     };
     
-    // Properly serialize body to JSON if it's an object
-    let requestBody = undefined;
-    if (options.body) {
+    // Add path info to the request body
+    let requestBody = options.body;
+    if (requestBody) {
+      // If body is already provided, merge with it
+      if (typeof requestBody === 'string') {
+        try {
+          requestBody = JSON.parse(requestBody);
+        } catch (e) {
+          // If it's not valid JSON, leave it as is
+          console.warn('Request body is not valid JSON, cannot add path info');
+        }
+      }
+      
+      if (typeof requestBody === 'object') {
+        // Add path and method to the body
+        requestBody = {
+          ...requestBody,
+          _path: path,
+          _method: options.method || 'GET'
+        };
+      }
+    } else {
+      // If no body, create one with path info
+      requestBody = {
+        _path: path,
+        _method: options.method || 'GET'
+      };
+    }
+    
+    // Properly serialize body to JSON
+    let serializedBody = undefined;
+    if (requestBody) {
       try {
-        requestBody = typeof options.body === 'string' 
-          ? options.body 
-          : JSON.stringify(options.body);
+        serializedBody = typeof requestBody === 'string' 
+          ? requestBody 
+          : JSON.stringify(requestBody);
       } catch (e) {
         console.error('Error serializing request body:', e);
         throw new EdgeFunctionError(
@@ -88,10 +120,10 @@ export async function fetchFromEdgeFunction(endpoint, options = {}) {
     const response = await fetch(url, {
       method: options.method || "GET",
       headers,
-      body: requestBody,
+      body: serializedBody,
       ...options,
       // Override options.body as we've already processed it
-      body: requestBody
+      body: serializedBody
     });
     
     // Handle non-success responses

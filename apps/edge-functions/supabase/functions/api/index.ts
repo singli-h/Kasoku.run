@@ -1350,7 +1350,49 @@ async function getCoachIdFromRequest(supabase: SupabaseClient, req: Request): Pr
 Deno.serve(async (req) => {
   const { url, method } = req;
   const parsedUrl = new URL(url); // Parse the URL
-  const pathname = parsedUrl.pathname; // Extract the pathname
+  
+  // Extract the pathname - either from header, body, or URL
+  let pathname = parsedUrl.pathname; // Extract the pathname
+  
+  // Check for route in X-API-Route header
+  const routeHeader = req.headers.get("X-API-Route");
+  
+  // Try to extract route from the request body if it's a POST or PUT request
+  let routeFromBody = null;
+  let actualMethod = method;
+  
+  if (method === "POST" || method === "PUT") {
+    try {
+      const clone = req.clone();
+      const body = await clone.json();
+      
+      if (body._path) {
+        routeFromBody = body._path;
+        console.log("[API] Found path in request body:", routeFromBody);
+      }
+      
+      if (body._method && method === "POST") {
+        actualMethod = body._method;
+        console.log("[API] Using method from request body:", actualMethod);
+      }
+    } catch (e) {
+      console.error("[API] Error parsing request body:", e);
+    }
+  }
+  
+  // Use the route from header or body if available
+  if (routeHeader) {
+    pathname = routeHeader;
+    console.log("[API] Using path from X-API-Route header:", pathname);
+  } else if (routeFromBody) {
+    pathname = routeFromBody;
+    console.log("[API] Using path from request body:", pathname);
+  }
+  
+  console.log("[API] Received request:", { 
+    original: { method, url, pathname: parsedUrl.pathname },
+    resolved: { method: actualMethod, pathname }
+  });
   
   // Handle CORS preflight
   if (method === "OPTIONS") {
@@ -1405,12 +1447,12 @@ Deno.serve(async (req) => {
     // Handle planner endpoints
     if (pathname.startsWith("/api/planner")) {
       // GET /api/planner/exercises
-      if (pathname === "/api/planner/exercises" && method === "GET") {
+      if (pathname === "/api/planner/exercises" && actualMethod === "GET") {
         return await getExercisesForPlanner(supabase);
       }
       
       // POST /api/planner/mesocycle or microcycle
-      if ((pathname === "/api/planner/mesocycle" || pathname === "/api/planner/microcycle") && method === "POST") {
+      if ((pathname === "/api/planner/mesocycle" || pathname === "/api/planner/microcycle") && actualMethod === "POST") {
         try {
           // Check if the request includes coach_id directly
           const reqBody = await req.clone().json();
@@ -1440,7 +1482,7 @@ Deno.serve(async (req) => {
       }
       
       // GET endpoints remain the same
-      if (pathname.match(/^\/api\/planner\/mesocycle\/\d+$/) && method === "GET") {
+      if (pathname.match(/^\/api\/planner\/mesocycle\/\d+$/) && actualMethod === "GET") {
         try {
           const mesocycleId = extractIdFromPath(pathname);
           return await getMesocycle(supabase, mesocycleId);
@@ -1449,7 +1491,7 @@ Deno.serve(async (req) => {
         }
       }
       
-      if (pathname.match(/^\/api\/planner\/microcycle\/\d+$/) && method === "GET") {
+      if (pathname.match(/^\/api\/planner\/microcycle\/\d+$/) && actualMethod === "GET") {
         try {
           const microcycleId = extractIdFromPath(pathname);
           return await getMicrocycle(supabase, microcycleId);
@@ -1459,25 +1501,25 @@ Deno.serve(async (req) => {
       }
       
       // Method not allowed
-      return handleError(new Error(`${method} Method not allowed for this planner endpoint`), "method");
+      return handleError(new Error(`${actualMethod} Method not allowed for this planner endpoint`), "method");
     }
 
     // Handle user onboarding
     if (pathname === "/api/onboarding/user") {
-      if (method === "POST") {
+      if (actualMethod === "POST") {
         return await postOnboardingUser(supabase, parsedUrl, req);
       }
       return new Response(
-        JSON.stringify({ error: `${method} Method not allowed for onboarding` }),
+        JSON.stringify({ error: `${actualMethod} Method not allowed for onboarding` }),
         { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
     // Handle events endpoint
     if (pathname === "/api/events") {
-      if (method !== "GET") {
+      if (actualMethod !== "GET") {
         return new Response(
-          JSON.stringify({ error: `${method} Method not allowed for events endpoint` }),
+          JSON.stringify({ error: `${actualMethod} Method not allowed for events endpoint` }),
           { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -1486,7 +1528,7 @@ Deno.serve(async (req) => {
 
     // Handle dashboard exercises endpoint
     if (pathname === "/api/dashboard/exercises") {
-      if (method !== "GET") {
+      if (actualMethod !== "GET") {
         return handleError(new Error("Method not allowed"), "method");
       }
       return await getExercises(supabase, parsedUrl, ensureValidId(userData.athleteId));
@@ -1509,7 +1551,7 @@ Deno.serve(async (req) => {
       const athleteGroupId = athleteData.athlete_group_id
 
       if (pathname === "/api/dashboard/exercisesInit") {
-        if (method !== "GET") {
+        if (actualMethod !== "GET") {
           return handleError(new Error("Method not allowed"), "method");
         }
         return await getExercisesInit(
@@ -1522,24 +1564,24 @@ Deno.serve(async (req) => {
       }
 
       if (pathname === "/api/dashboard/weeklyOverview") {
-        if (method !== "GET") {
+        if (actualMethod !== "GET") {
           return handleError(new Error("Method not allowed"), "method");
         }
         return await getWeeklyOverview(supabase, parsedUrl, ensureValidId(userData.athleteId));
       }
 
       if (pathname === "/api/dashboard/mesocycle") {
-        if (method !== "GET") {
+        if (actualMethod !== "GET") {
           return handleError(new Error("Method not allowed"), "method");
         }
         return await getDashboardMesocycle(supabase, parsedUrl, ensureValidId(userData.athleteId));
       }
 
       if (pathname === "/api/dashboard/exercisesDetail") {
-        if (method === "POST") {
+        if (actualMethod === "POST") {
           return await postExercisesDetail(supabase, parsedUrl, ensureValidId(userData.athleteId));
         }
-        if (method === "PUT") {
+        if (actualMethod === "PUT") {
           return await putExercisesDetail(supabase, parsedUrl, ensureValidId(userData.athleteId));
         }
         return handleError(new Error("Method not allowed"), "method");
@@ -1548,14 +1590,14 @@ Deno.serve(async (req) => {
 
     // Handle athletes endpoints
     if (pathname === "/api/athletes") {
-      if (method === "GET") {
+      if (actualMethod === "GET") {
         const { params: queryParams } = extractPathParams(url);
         return await getAthletes(supabase, queryParams);
       }
-      if (method === "POST") {
+      if (actualMethod === "POST") {
         return await createAthlete(supabase, req);
       }
-      return new Response(`${method} Method not allowed for athletes endpoint`, { 
+      return new Response(`${actualMethod} Method not allowed for athletes endpoint`, { 
         status: 405,
         headers: corsHeaders
       });
@@ -1563,8 +1605,8 @@ Deno.serve(async (req) => {
 
     // Handle user status endpoint
     if (pathname.startsWith("/api/users/") && pathname.endsWith("/status")) {
-      if (method !== "GET") {
-        return new Response(`${method} Method not allowed for user status`, { 
+      if (actualMethod !== "GET") {
+        return new Response(`${actualMethod} Method not allowed for user status`, { 
           status: 405,
           headers: corsHeaders
         });
@@ -1574,7 +1616,7 @@ Deno.serve(async (req) => {
     }
 
     // Handle GET /api/users/:clerkId/profile
-    if (method === "GET" && pathname.includes("/users/") && pathname.endsWith("/profile")) {
+    if (actualMethod === "GET" && pathname.includes("/users/") && pathname.endsWith("/profile")) {
       // Extract clerk_id from the path segments
       const segments = pathname.split("/");
       const userIndex = segments.findIndex(segment => segment === "users");
@@ -1597,7 +1639,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    switch (method) {
+    switch (actualMethod) {
       case "GET":
         return id
           ? await getItem(supabase, table, id)
