@@ -85,9 +85,13 @@ export default clerkMiddleware(async (auth, req) => {
 
         const data = await response.json()
         console.log(`Onboarding status: ${data.onboardingCompleted ? 'completed' : 'not completed'}`)
+        console.log(`Onboarding raw value: ${JSON.stringify(data)}`)
+        console.log(`Onboarding type: ${typeof data.onboardingCompleted}`)
 
         // If onboarding is not completed, redirect to onboarding
-        if (!data.onboardingCompleted) {
+        // Ensure consistent boolean evaluation by using loose equality checking
+        // This handles both `false` and falsy values like undefined/null/0/"false"
+        if (data.hasOwnProperty('onboardingCompleted') && !data.onboardingCompleted) {
           console.log(`Redirecting to onboarding: User ${userId} has not completed onboarding`)
           const onboardingUrl = new URL('/onboarding', req.url)
           return NextResponse.redirect(onboardingUrl)
@@ -125,9 +129,12 @@ export default clerkMiddleware(async (auth, req) => {
 
         const data = await response.json()
         console.log(`Onboarding status for redirect check: ${data.onboardingCompleted ? 'completed' : 'not completed'}`)
+        console.log(`Onboarding raw value for redirect: ${JSON.stringify(data)}`)
+        console.log(`Onboarding type for redirect: ${typeof data.onboardingCompleted}`)
 
         // If onboarding is completed, redirect to planner
-        if (data.onboardingCompleted) {
+        // Ensure consistent boolean evaluation by checking property existence and using loose equality
+        if (data.hasOwnProperty('onboardingCompleted') && data.onboardingCompleted) {
           console.log(`Redirecting to planner: User ${userId} has already completed onboarding`)
           const plannerUrl = new URL('/planner', req.url)
           return NextResponse.redirect(plannerUrl)

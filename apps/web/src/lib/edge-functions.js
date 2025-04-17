@@ -225,9 +225,20 @@ export const edgeFunctions = {
         .then(data => {
           console.log('[Edge Function Client] Onboarding status response:', JSON.stringify(data));
           if (data && data.status === "success" && data.data) {
-            console.log('[Edge Function Client] Onboarding completed value:', data.data.onboardingCompleted);
+            // Store the raw value for debugging
+            const onboardingValue = data.data.onboardingCompleted;
+            console.log('[Edge Function Client] Onboarding completed value:', onboardingValue, 'type:', typeof onboardingValue);
+            
+            // Ensure we're handling boolean values correctly
+            // Convert to boolean explicitly to handle string values like "true"/"false"
+            const normalizedValue = typeof onboardingValue === 'string' 
+              ? onboardingValue.toLowerCase() === 'true'
+              : Boolean(onboardingValue);
+              
+            console.log('[Edge Function Client] Normalized onboarding value:', normalizedValue);
+            
             return { 
-              users: [{ onboarding_completed: data.data.onboardingCompleted }] 
+              users: [{ onboarding_completed: normalizedValue }] 
             };
           } else {
             console.log('[Edge Function Client] User not found or data malformed:', data);
