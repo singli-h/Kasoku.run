@@ -1442,8 +1442,12 @@ Deno.serve(async (req) => {
 
     // Handle planner endpoints
     if (pathname.startsWith("/api/planner")) {
-      // For planner endpoints, we need to ensure the user has a coach role
+      // GET /api/planner/exercises is accessible to all authenticated users
+      if (pathname === "/api/planner/exercises" && method === "GET") {
+        return await getExercisesForPlanner(supabase);
+      }
       
+      // For other planner endpoints, we need to ensure the user has a coach role
       try {
         // Use userData from the auth flow (which will be active in production)
         // If AUTH_ENABLED is false during development, provide fallback by examining the request body
@@ -1458,11 +1462,6 @@ Deno.serve(async (req) => {
         console.log("[API] Using coach ID for planner request:", coachId);
         
         // Now handle specific endpoints
-        // GET /api/planner/exercises
-        if (pathname === "/api/planner/exercises" && method === "GET") {
-          return await getExercisesForPlanner(supabase);
-        }
-        
         // POST /api/planner/mesocycle or microcycle
         if ((pathname === "/api/planner/mesocycle" || pathname === "/api/planner/microcycle") && method === "POST") {
           try {

@@ -36,16 +36,6 @@ async function getCoachIdFromProfile(userId: string): Promise<string | null> {
  */
 export async function GET(request: NextRequest, { params }: { params: { type: string } }) {
   try {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      console.log('[API] Unauthorized access attempt to planner');
-      return NextResponse.json(
-        { error: "Unauthorized - User not authenticated" },
-        { status: 401 }
-      );
-    }
-
     const { type } = params;
     const searchParams = request.nextUrl.searchParams;
     const id = searchParams.get('id');
@@ -59,6 +49,18 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
     }
 
     console.log(`[API] Processing ${type} request`);
+
+    // For protected endpoints, verify authentication
+    if (type !== 'exercises') {
+      const { userId } = await auth();
+      if (!userId) {
+        console.log('[API] Unauthorized access attempt to planner');
+        return NextResponse.json(
+          { error: "Unauthorized - User not authenticated" },
+          { status: 401 }
+        );
+      }
+    }
 
     try {
       let response;

@@ -1,4 +1,5 @@
 import { corsHeaders, handleError } from './utils.ts';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Helper function to convert camelCase parameters to snake_case for database operations
@@ -419,51 +420,67 @@ export const postMicrocycle = async (
  * @param supabase - Supabase client
  * @returns Response with all exercises and their types
  */
-export const getExercisesForPlanner = async (
-  supabase: any
-): Promise<Response> => {
+export async function getExercisesForPlanner(supabase: SupabaseClient) {
   try {
-    // Fetch exercises with type information
+    console.log("[API] Fetching exercises for planner");
+    
+    // Fetch exercises with their types
     const { data: exercises, error } = await supabase
       .from("exercises")
       .select(`
         id,
         name,
         description,
-        exercise_type_id,
-        exercise_types(type)
+        exercise_type (
+          id,
+          name,
+          description
+        )
       `)
-      .order('name');
-
-    if (error) throw error;
-
-    // Format exercises for the frontend
+      .order("name");
+    
+    if (error) {
+      console.error("[API] Error fetching exercises:", error);
+      return handleError(error, "database");
+    }
+    
+    if (!exercises || exercises.length === 0) {
+      console.log("[API] No exercises found");
+      return new Response(
+        JSON.stringify({ exercises: [] }),
+        {
+          headers: { "Content-Type": "application/json" },
+          status: 200
+        }
+      );
+    }
+    
+    console.log("[API] Successfully fetched exercises:", exercises.length);
+    
+    // Format exercises for frontend
     const formattedExercises = exercises.map(exercise => ({
       id: exercise.id,
       name: exercise.name,
       description: exercise.description,
-      type: exercise.exercise_types?.type?.toLowerCase() || 'gym'
+      type: {
+        id: exercise.exercise_type.id,
+        name: exercise.exercise_type.name,
+        description: exercise.exercise_type.description
+      }
     }));
-
-    // Return formatted exercise data
+    
     return new Response(
-      JSON.stringify({
-        status: "success",
-        data: formattedExercises,
-        metadata: {
-          timestamp: new Date().toISOString()
-        }
-      }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      JSON.stringify({ exercises: formattedExercises }),
+      {
+        headers: { "Content-Type": "application/json" },
+        status: 200
       }
     );
-  } catch (error: any) {
-    console.error("Error fetching exercises for planner:", error);
-    return handleError(error);
+  } catch (error) {
+    console.error("[API] Unexpected error in getExercisesForPlanner:", error);
+    return handleError(error, "unexpected");
   }
-};
+}
 
 /**
  * GET /api/planner/mesocycle/:id
