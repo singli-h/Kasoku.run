@@ -261,16 +261,126 @@ export const edgeFunctions = {
   
   // Planner APIs
   planner: {
-    getExercises: () => fetchFromEdgeFunction("/api/planner/exercises"),
-    getMesocycle: (id) => fetchFromEdgeFunction(`/api/planner/mesocycle?id=${id}`),
-    getMicrocycle: (id) => fetchFromEdgeFunction(`/api/planner/microcycle?id=${id}`),
-    createMesocycle: (data) => fetchFromEdgeFunction("/api/planner/mesocycle", {
-      method: 'POST',
-      body: data
-    }),
-    createMicrocycle: (data) => fetchFromEdgeFunction("/api/planner/microcycle", {
-      method: 'POST',
-      body: data
-    })
+    getExercises: () => {
+      console.log('[Edge Function] Requesting planner exercises');
+      return fetchFromEdgeFunction("/api/planner/exercises")
+        .then(data => {
+          console.log(`[Edge Function] Planner exercises response received with ${data?.exercises?.length || 0} exercises`);
+          return data;
+        });
+    },
+    getMesocycle: (id) => {
+      console.log(`[Edge Function] Requesting mesocycle with ID: ${id}`);
+      return fetchFromEdgeFunction(`/api/planner/mesocycle?id=${id}`)
+        .then(data => {
+          console.log(`[Edge Function] Mesocycle response received: ${data?.status || 'unknown status'}`);
+          return data;
+        });
+    },
+    getMicrocycle: (id) => {
+      console.log(`[Edge Function] Requesting microcycle with ID: ${id}`);
+      return fetchFromEdgeFunction(`/api/planner/microcycle?id=${id}`)
+        .then(data => {
+          console.log(`[Edge Function] Microcycle response received: ${data?.status || 'unknown status'}`);
+          return data;
+        });
+    },
+    createMesocycle: (data) => {
+      console.log(`[Edge Function] Creating mesocycle with name: ${data?.name || 'unnamed'}`);
+      return fetchFromEdgeFunction("/api/planner/mesocycle", {
+        method: 'POST',
+        body: data
+      }).then(response => {
+        console.log(`[Edge Function] Mesocycle created with ID: ${response?.data?.id || 'unknown'}`);
+        return response;
+      });
+    },
+    createMicrocycle: (data) => {
+      console.log(`[Edge Function] Creating microcycle with name: ${data?.name || 'unnamed'}, containing ${data?.sessions?.length || 0} sessions`);
+      return fetchFromEdgeFunction("/api/planner/microcycle", {
+        method: 'POST',
+        body: data
+      }).then(response => {
+        console.log(`[Edge Function] Microcycle created with ID: ${response?.data?.id || 'unknown'}`);
+        return response;
+      });
+    }
   }
+};
+
+// Add console logging to debug API calls
+export const createAPIClient = (supabaseClient) => {
+  // Add common logging function for requests
+  const logRequest = (endpoint, method, payload) => {
+    console.log(`[DEBUG] API Request: ${method} ${endpoint}`);
+    if (payload) {
+      console.log(`[DEBUG] API Payload:`, payload);
+    }
+  };
+
+  // Add common logging function for responses
+  const logResponse = (endpoint, response) => {
+    console.log(`[DEBUG] API Response from ${endpoint}:`, response);
+    return response;
+  };
+
+  return {
+    // Planner Functions
+    planner: {
+      // Create a microcycle (week plan)
+      createMicrocycle: async (data) => {
+        logRequest('/api/planner/microcycle', 'POST', data);
+        try {
+          const response = await supabaseClient.functions.invoke('api', {
+            body: {
+              path: '/planner/microcycle',
+              method: 'POST',
+              body: data
+            }
+          });
+          return logResponse('/api/planner/microcycle', response);
+        } catch (error) {
+          console.error('[DEBUG] API Error in createMicrocycle:', error);
+          throw error;
+        }
+      },
+      
+      // Create a mesocycle (multi-week plan)
+      createMesocycle: async (data) => {
+        logRequest('/api/planner/mesocycle', 'POST', data);
+        try {
+          const response = await supabaseClient.functions.invoke('api', {
+            body: {
+              path: '/planner/mesocycle',
+              method: 'POST',
+              body: data
+            }
+          });
+          return logResponse('/api/planner/mesocycle', response);
+        } catch (error) {
+          console.error('[DEBUG] API Error in createMesocycle:', error);
+          throw error;
+        }
+      },
+      
+      // Get exercises for planner
+      getExercises: async () => {
+        logRequest('/api/planner/exercises', 'GET');
+        try {
+          const response = await supabaseClient.functions.invoke('api', {
+            body: {
+              path: '/planner/exercises',
+              method: 'GET'
+            }
+          });
+          return logResponse('/api/planner/exercises', response);
+        } catch (error) {
+          console.error('[DEBUG] API Error in getExercises:', error);
+          throw error;
+        }
+      }
+    },
+    
+    // ... rest of the existing code ...
+  };
 }; 

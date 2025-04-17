@@ -17,7 +17,7 @@ import {
 } from './planner.ts';
 
 // Toggle for authentication (default is enabled)
-const AUTH_ENABLED = false;
+const AUTH_ENABLED = true;
 
 // Type declarations for Deno environment
 declare global {
@@ -1281,8 +1281,15 @@ function isUserRecord(data: any): data is UserRecord {
 }
 
 // Helper function to get coach ID from request
-async function getCoachIdFromRequest(supabase: SupabaseClient, req: Request): Promise<string> {
+async function getCoachIdFromRequest(supabase: SupabaseClient, req: Request, userDataFromAuth?: UserData): Promise<string> {
   try {
+    // First, check if coachId is available from auth flow
+    if (userDataFromAuth?.coachId) {
+      console.log("[getCoachIdFromRequest] Using coachId from auth:", userDataFromAuth.coachId);
+      return userDataFromAuth.coachId;
+    }
+    
+    // Fallback to request body if no auth data is available
     // Get request body
     const reqBody = await req.clone().json();
     const clerkId = reqBody.clerk_id;
@@ -1437,29 +1444,18 @@ Deno.serve(async (req) => {
     if (pathname.startsWith("/api/planner")) {
       // For planner endpoints, we need to ensure the user has a coach role
       
-      // First, get the clerk_id from the request
-      const reqBody = await req.clone().json();
-      const clerkId = reqBody.clerk_id;
-      
-      console.log("[API] Processing planner request for clerk_id:", clerkId);
-      
-      if (!clerkId) {
-        return handleError(new Error("Missing clerk_id in request"), "validation");
-      }
-      
-      // Fetch user role data to get the coach ID
       try {
-        // Get a fresh userData object specifically for this request
-        const requestUserData = await getUserRoleData(supabase, clerkId);
-        console.log("[API] User role data for planner request:", requestUserData);
+        // Use userData from the auth flow (which will be active in production)
+        // If AUTH_ENABLED is false during development, provide fallback by examining the request body
+        let coachId = userData.coachId;
         
-        if (!requestUserData.coachId) {
-          console.error("[API] User is not a coach:", requestUserData);
+        // If we still don't have a coach ID, return an error
+        if (!coachId) {
+          console.error("[API] User is not a coach or coach ID not found");
           return handleError(new Error("Coach record not found - User is not a coach or coach record doesn't exist"), "access");
         }
         
-        const coachId = requestUserData.coachId;
-        console.log("[API] Found coach ID for planner request:", coachId);
+        console.log("[API] Using coach ID for planner request:", coachId);
         
         // Now handle specific endpoints
         // GET /api/planner/exercises

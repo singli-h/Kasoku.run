@@ -126,16 +126,11 @@ export async function POST(request: Request, { params }: { params: { type: strin
       const clone = request.clone();
       const planData = await clone.json();
       
-      // Only send clerk_id, let the edge function handle coach ID lookup
-      const preparedPlanData = {
-        ...planData,
-        clerk_id: userId  // Use snake_case to match edge function expectation
-      };
-      
       // Call the appropriate edge function based on type
+      // No need to pass clerk_id as the edge function will get it from the authorization header
       const response = await fetchFromEdgeFunction(`/api/planner/${type}`, {
         method: 'POST',
-        body: preparedPlanData
+        body: planData
       });
       
       return NextResponse.json(response);

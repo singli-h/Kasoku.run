@@ -175,8 +175,8 @@ export default function ApiTest() {
       // Now try to create the microcycle using the edge functions client
       try {
         const result = await edgeFunctions.planner.createMicrocycle({
-          ...testData,
-          clerk_id: userId // Only include clerk_id - the server will handle coach ID lookup
+          ...testData
+          // clerk_id is no longer required in the request body as it will be handled by authentication
         });
         
         console.log(`[Test] Microcycle creation response:`, result);
