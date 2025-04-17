@@ -1,5 +1,5 @@
+"use client"
 // Create a Supabase client helper for Clerk integration
-import { auth } from '@clerk/nextjs/server';
 import { useSession } from '@clerk/nextjs';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { useEffect, useMemo, useState } from 'react';
@@ -15,29 +15,6 @@ const getSupabaseEnv = () => {
   
   return { supabaseUrl, supabaseKey };
 };
-
-// Server-side Supabase client with Clerk session JWT
-export async function createServerSupabaseClient(): Promise<SupabaseClient> {
-  const { supabaseUrl, supabaseKey } = getSupabaseEnv();
-  const { getToken } = await auth();
-  const token = await getToken({ template: 'supabase' });
-  
-  // Create client with global settings
-  const options = {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-    global: {
-      headers: token ? {
-        Authorization: `Bearer ${token}`,
-      } : undefined,
-    },
-  };
-  
-  return createClient(supabaseUrl, supabaseKey, options);
-}
 
 // Browser-side Supabase client hook that auto-refreshes with session changes
 export function useBrowserSupabaseClient(): SupabaseClient {
