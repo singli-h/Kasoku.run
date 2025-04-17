@@ -36,35 +36,39 @@ async function getCoachIdFromProfile(userId: string): Promise<string | null> {
  */
 async function callEdgeFunctionWithAuth(endpoint: string, options: RequestInit = {}) {
   try {
-    // 1. Grab the Auth object (has userId & getToken)
-    const { userId, getToken } = await auth();
-    if (!userId) {
+    // 1. Get the auth session
+    const session = await auth();
+    if (!session?.userId) {
       throw new Error("No active user session found");
     }
 
-    // 2. Retrieve a Supabase JWT
-    const sessionToken = await getToken({ template: "supabase" });
-    if (!sessionToken) {
+    // 2. Get the token with the Supabase template
+    const token = await session.getToken({
+      template: "supabase"
+    });
+    
+    if (!token) {
       throw new Error("Failed to get authentication token");
     }
 
-    // 3. Build the Edge Function URL
+    // 3. Build the Edge Function URL with proper encoding
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) {
       throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable");
     }
+    
     const timestamp = Date.now();
-    const url = `${supabaseUrl}/functions/v1${endpoint}${
-      endpoint.includes("?") ? `&_t=${timestamp}` : `?_t=${timestamp}`
-    }`;
+    const baseUrl = `${supabaseUrl}/functions/v1${endpoint}`;
+    const url = new URL(baseUrl);
+    url.searchParams.append('_t', timestamp.toString());
 
-    console.log(`[Planner API] Calling edge function: ${url}`);
+    console.log(`[Planner API] Calling edge function: ${url.toString()}`);
 
-    // 4. Call your Supabase Edge Function with the Bearer token
-    const response = await fetch(url, {
+    // 4. Make the request with proper headers
+    const response = await fetch(url.toString(), {
       ...options,
       headers: {
-        Authorization: `Bearer ${sessionToken}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
         "Cache-Control": "no-cache, no-store, must-revalidate",
         Pragma: "no-cache",
@@ -73,8 +77,8 @@ async function callEdgeFunctionWithAuth(endpoint: string, options: RequestInit =
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Planner API] Edge function error (${response.status}):`, errorText);
+      const errorData = await response.json().catch(() => null);
+      console.error(`[Planner API] Edge function error (${response.status}):`, errorData || await response.text());
       throw new Error(`Edge function error: ${response.status}`);
     }
     
