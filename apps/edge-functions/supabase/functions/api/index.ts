@@ -73,6 +73,8 @@ const DEFAULT_USER_DATA: UserData = {
 // Helper function to verify user and get role-specific ID
 async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promise<UserData> {
   try {
+    console.log("[getUserRoleData] Fetching user data for clerk_id:", clerkId);
+    
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("id, metadata")
@@ -80,34 +82,43 @@ async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promi
       .single();
 
     if (userError || !userData) {
+      console.error("[getUserRoleData] Error fetching user:", userError);
       throw new Error("User not found");
     }
+
+    console.log("[getUserRoleData] Found user:", { id: userData.id, role: userData.metadata?.role });
 
     const result: UserData = { userId: userData.id };
     const role = userData.metadata?.role;
 
     if (role === 'athlete') {
+      console.log("[getUserRoleData] Fetching athlete data for user_id:", userData.id);
       const { data: athleteData } = await supabase
         .from("athletes")
         .select("id")
         .eq("user_id", userData.id)
         .single();
       if (athleteData) {
-        result.athleteId = athleteData.id;
+        result.athleteId = String(athleteData.id);
+        console.log("[getUserRoleData] Found athlete ID:", result.athleteId);
       }
     } else if (role === 'coach') {
+      console.log("[getUserRoleData] Fetching coach data for user_id:", userData.id);
       const { data: coachData } = await supabase
         .from("coaches")
         .select("id")
         .eq("user_id", userData.id)
         .single();
       if (coachData) {
-        result.coachId = coachData.id;
+        result.coachId = String(coachData.id);
+        console.log("[getUserRoleData] Found coach ID:", result.coachId);
       }
     }
 
+    console.log("[getUserRoleData] Final user data:", result);
     return result;
   } catch (error) {
+    console.error("[getUserRoleData] Error:", error);
     throw new Error(`Failed to get user role data: ${error.message}`);
   }
 }
@@ -735,11 +746,10 @@ export const postOnboardingUser = async (
       throw findError;
     }
     
-    let userRecord = null;
+    let userRecord: UserRecord | null = null;
     
     if (existingUser) {
       console.log(`User with clerk_id ${clerk_id} found. Updating existing record.`);
-      // User exists, update their record
       const { data, error } = await supabase
         .from('users')
         .update({
@@ -754,14 +764,17 @@ export const postOnboardingUser = async (
           metadata: updatedMetadata
         })
         .eq('clerk_id', clerk_id)
-        .select();
+        .select()
+        .single();
         
       if (error) {
         console.error("Error updating existing user:", error);
         throw error;
       }
       
-      userRecord = data?.[0];
+      if (isUserRecord(data)) {
+        userRecord = data;
+      }
     } else {
       console.log(`User with clerk_id ${clerk_id} not found. This shouldn't happen. Using email as fallback.`);
       // This shouldn't happen, but as a fallback, we'll try to find by email
@@ -801,7 +814,9 @@ export const postOnboardingUser = async (
           throw error;
         }
         
-        userRecord = data?.[0];
+        if (isUserRecord(data)) {
+          userRecord = data;
+        }
       } else {
         console.error("No user found with clerk_id or email. This should not happen.");
         throw new Error("User not found. This should not happen during onboarding.");
@@ -1236,9 +1251,69 @@ export const getExercises = async (
   }
 };
 
-// Helper function to ensure valid ID
+// Helper functions for ID handling
 function ensureValidId(id: string | undefined | null): string {
   return id || '0';
+}
+
+function extractIdFromPath(pathname: string): string {
+  const id = pathname.split("/").pop();
+  if (!id || isNaN(parseInt(id))) {
+    throw new Error("Invalid ID in path");
+  }
+  return id;
+}
+
+// Type guard for user record
+function isUserRecord(data: any): data is UserRecord {
+  return data && typeof data === 'object' && 'id' in data;
+}
+
+// Helper function to get coach ID from request
+async function getCoachIdFromRequest(supabase: SupabaseClient, req: Request): Promise<string> {
+  try {
+    // Get request body
+    const reqBody = await req.clone().json();
+    const clerkId = reqBody.clerk_id;
+    
+    console.log("[getCoachIdFromRequest] Processing request for clerk_id:", clerkId);
+    
+    if (!clerkId) {
+      throw new Error("Missing clerk_id in request");
+    }
+
+    // Get user data
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("clerk_id", clerkId)
+      .single();
+
+    if (userError || !userData) {
+      console.error("[getCoachIdFromRequest] Error fetching user:", userError);
+      throw new Error("User not found");
+    }
+
+    console.log("[getCoachIdFromRequest] Found user:", { id: userData.id });
+
+    // Get coach record using user_id
+    const { data: coachData, error: coachError } = await supabase
+      .from("coaches")
+      .select("id")
+      .eq("user_id", userData.id)
+      .single();
+
+    if (coachError || !coachData) {
+      console.error("[getCoachIdFromRequest] Error fetching coach:", coachError);
+      throw new Error("Coach record not found");
+    }
+
+    console.log("[getCoachIdFromRequest] Found coach ID:", coachData.id);
+    return String(coachData.id);
+  } catch (error) {
+    console.error("[getCoachIdFromRequest] Error:", error);
+    throw error;
+  }
 }
 
 /**
@@ -1308,83 +1383,45 @@ Deno.serve(async (req) => {
         return await getExercisesForPlanner(supabase);
       }
       
-      // POST /api/planner/mesocycle
-      if (pathname === "/api/planner/mesocycle" && method === "POST") {
+      // POST /api/planner/mesocycle or microcycle
+      if ((pathname === "/api/planner/mesocycle" || pathname === "/api/planner/microcycle") && method === "POST") {
         try {
-          if (!userData.coachId) {
-            userData.coachId = await getCoachIdFromClerkId(userData.userId);
-          }
+          // Get coach ID from request
+          const coachId = await getCoachIdFromRequest(supabase, req);
           
-          if (!userData.coachId) {
-            return new Response(
-              JSON.stringify({ error: "Coach not found for this user" }),
-              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
+          // Now handle the specific endpoint
+          if (pathname === "/api/planner/mesocycle") {
+            return await postMesocycle(supabase, parsedUrl, req, coachId);
+          } else {
+            return await postMicrocycle(supabase, parsedUrl, req, coachId);
           }
-          
-          return await postMesocycle(supabase, parsedUrl, req, userData.coachId);
         } catch (error: any) {
-          console.error("[Edge] Error processing mesocycle request:", error);
-          return new Response(
-            JSON.stringify({ error: error.message || "Error processing request" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          console.error("[Edge] Error processing planner request:", error);
+          return handleError(error, "planner");
         }
       }
       
-      // GET /api/planner/mesocycle/:id
+      // GET endpoints remain the same
       if (pathname.match(/^\/api\/planner\/mesocycle\/\d+$/) && method === "GET") {
-        const mesocycleId = pathname.split("/").pop();
-        if (!mesocycleId) {
-          return new Response(
-            JSON.stringify({ error: "Invalid mesocycle ID" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        return await getMesocycle(supabase, mesocycleId);
-      }
-      
-      // POST /api/planner/microcycle
-      if (pathname === "/api/planner/microcycle" && method === "POST") {
         try {
-          if (!userData.coachId) {
-            userData.coachId = await getCoachIdFromClerkId(userData.userId);
-          }
-          
-          if (!userData.coachId) {
-            return new Response(
-              JSON.stringify({ error: "Coach not found for this user" }),
-              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-          
-          return await postMicrocycle(supabase, parsedUrl, req, userData.coachId);
-        } catch (error: any) {
-          console.error("[Edge] Error processing microcycle request:", error);
-          return new Response(
-            JSON.stringify({ error: error.message || "Error processing request" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          const mesocycleId = extractIdFromPath(pathname);
+          return await getMesocycle(supabase, mesocycleId);
+        } catch (error) {
+          return handleError(error, "validation");
         }
       }
       
-      // GET /api/planner/microcycle/:id
       if (pathname.match(/^\/api\/planner\/microcycle\/\d+$/) && method === "GET") {
-        const microcycleId = pathname.split("/").pop();
-        if (!microcycleId) {
-          return new Response(
-            JSON.stringify({ error: "Invalid microcycle ID" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        try {
+          const microcycleId = extractIdFromPath(pathname);
+          return await getMicrocycle(supabase, microcycleId);
+        } catch (error) {
+          return handleError(error, "validation");
         }
-        return await getMicrocycle(supabase, microcycleId);
       }
       
-      // Method not allowed for planner endpoints
-      return new Response(
-        JSON.stringify({ error: `${method} Method not allowed for this planner endpoint` }),
-        { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Method not allowed
+      return handleError(new Error(`${method} Method not allowed for this planner endpoint`), "method");
     }
 
     // Handle user onboarding
@@ -1441,7 +1478,7 @@ Deno.serve(async (req) => {
           supabase,
           parsedUrl,
           ensureValidId(userData.athleteId),
-          athleteGroupId || '0',
+          ensureValidId(athleteGroupId),
           timezone
         );
       }
