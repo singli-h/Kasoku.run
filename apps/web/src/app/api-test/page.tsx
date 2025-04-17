@@ -184,7 +184,7 @@ export default function ApiTest() {
       try {
         const result = await edgeFunctions.planner.createMicrocycle({
           ...testData,
-          clerk_id: userId // Include clerk_id for user identification only
+          clerk_id: userId, // Include clerk_id for coach lookup
         });
         
         console.log(`[Test] Microcycle creation response:`, result);

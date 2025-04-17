@@ -1452,27 +1452,29 @@ Deno.serve(async (req) => {
         try {
           let coachId;
           
-          // Use coach ID from authenticated user data which comes from getUserRoleData
+          // Use the coach ID from authenticated user data
           if (userData && userData.coachId) {
             console.log("[API] Using coach ID from authenticated user data:", userData.coachId);
             coachId = userData.coachId;
           } else {
-            // If userData doesn't have coachId, fetch it from clerk_id
+            // No coach ID available, try to get it from clerk_id in request
             const reqBody = await req.clone().json();
+            const clerkId = reqBody.clerk_id;
             
-            if (reqBody.clerk_id) {
-              console.log("[API] No coach ID in userData, looking up via clerk_id:", reqBody.clerk_id);
-              // Get user data including coach ID
-              const userRoleData = await getUserRoleData(supabase, reqBody.clerk_id);
+            if (clerkId) {
+              console.log("[API] Getting user role data for clerk_id:", clerkId);
+              const userRoleData = await getUserRoleData(supabase, clerkId);
               
               if (userRoleData && userRoleData.coachId) {
+                console.log("[API] Found coach ID for clerk_id:", userRoleData.coachId);
                 coachId = userRoleData.coachId;
-                console.log("[API] Found coach ID via clerk_id lookup:", coachId);
               } else {
-                throw new Error("Coach record not found for clerk_id: " + reqBody.clerk_id);
+                console.error("[API] No coach ID found for clerk_id:", clerkId);
+                throw new Error("Coach record not found for this user");
               }
             } else {
-              throw new Error("No clerk_id provided and no authenticated user data available");
+              console.error("[API] No clerk_id provided in request");
+              throw new Error("Missing clerk_id in request");
             }
           }
           
