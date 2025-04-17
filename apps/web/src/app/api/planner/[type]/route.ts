@@ -112,10 +112,9 @@ export async function POST(request: Request, { params }: { params: { type: strin
       );
     }
     
-    // Fetch the user's coach ID
-    const coachId = await getCoachIdFromProfile(userId);
-    
-    if (!coachId) {
+    // Verify user has a coach record
+    const profileResponse = await fetchFromEdgeFunction(`/api/users/${userId}/profile`);
+    if (!profileResponse?.data?.role || profileResponse.data.role !== 'coach' || !profileResponse.data.roleSpecificData?.id) {
       return NextResponse.json(
         { error: "You need a coach record to create training plans" },
         { status: 403 }
@@ -127,11 +126,10 @@ export async function POST(request: Request, { params }: { params: { type: strin
       const clone = request.clone();
       const planData = await clone.json();
       
-      // Prepare plan data with user ID and coach ID
+      // Only send clerk_id, let the edge function handle coach ID lookup
       const preparedPlanData = {
         ...planData,
-        clerkId: userId,
-        coachId: coachId
+        clerk_id: userId  // Use snake_case to match edge function expectation
       };
       
       // Call the appropriate edge function based on type

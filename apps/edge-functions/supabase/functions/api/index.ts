@@ -1282,33 +1282,38 @@ async function getCoachIdFromRequest(supabase: SupabaseClient, req: Request): Pr
       throw new Error("Missing clerk_id in request");
     }
 
-    // Get user data
+    // Get user data with full profile for debugging
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("id")
+      .select("id, email, first_name, last_name, metadata")
       .eq("clerk_id", clerkId)
       .single();
 
     if (userError || !userData) {
       console.error("[getCoachIdFromRequest] Error fetching user:", userError);
-      throw new Error("User not found");
+      throw new Error(`User not found for clerk_id: ${clerkId}`);
     }
 
-    console.log("[getCoachIdFromRequest] Found user:", { id: userData.id });
+    console.log("[getCoachIdFromRequest] Found user:", userData);
 
     // Get coach record using user_id
     const { data: coachData, error: coachError } = await supabase
       .from("coaches")
-      .select("id")
+      .select("id, user_id, sport_focus, speciality")
       .eq("user_id", userData.id)
       .single();
 
     if (coachError || !coachData) {
       console.error("[getCoachIdFromRequest] Error fetching coach:", coachError);
-      throw new Error("Coach record not found");
+      throw new Error(`Coach record not found for user: ${JSON.stringify({
+        id: userData.id,
+        email: userData.email,
+        name: `${userData.first_name} ${userData.last_name}`,
+        metadata: userData.metadata
+      })}`);
     }
 
-    console.log("[getCoachIdFromRequest] Found coach ID:", coachData.id);
+    console.log("[getCoachIdFromRequest] Found coach record:", coachData);
     return String(coachData.id);
   } catch (error) {
     console.error("[getCoachIdFromRequest] Error:", error);
