@@ -32,8 +32,9 @@ const publicRoutes = [
   '/auth/session',
   '/auth/callback',
   '/auth/sso-callback',
-  '/auth',
-  '/api'
+  '/auth'
+  // Removed general '/api' to enforce authentication on API routes
+  // Add specific public API endpoints here if needed
 ]
 
 // Use clerkMiddleware wrapper
