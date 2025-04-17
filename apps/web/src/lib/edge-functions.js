@@ -27,45 +27,29 @@ export class EdgeFunctionError extends Error {
  * @throws {EdgeFunctionError} - When the request fails
  */
 export async function fetchFromEdgeFunction(endpoint, options = {}) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
-                         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // We should never attempt to call Supabase directly from the frontend
+  // Always route through the Next.js API routes which will handle auth
   
-  if (!supabaseUrl) {
-    throw new EdgeFunctionError(
-      "NEXT_PUBLIC_SUPABASE_URL is not defined",
-      500,
-      null,
-      endpoint
-    );
-  }
-  
-  if (!serviceRoleKey) {
-    throw new EdgeFunctionError(
-      "Supabase API key is not defined",
-      500,
-      null,
-      endpoint
-    );
-  }
-  
-  // Make sure endpoint starts with "/"
-  const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  
-  // Build the full URL to the edge function
-  // Note: In Supabase, the edge function name is 'api', so we need to remove the /api prefix
-  // and use a query parameter to pass the route
-  const adjustedPath = path.startsWith('/api/') ? path.substring(4) : path;
-  const url = `${supabaseUrl}/functions/v1/api${adjustedPath.includes('?') ? adjustedPath : adjustedPath + '?_route=true'}`;
+  // In production or preview, we need to use relative URLs to the Next.js API
+  // This ensures the request goes through our middleware and API routes
   
   try {
+    // Make sure endpoint starts with "/"
+    const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    
+    // Build the full URL to our own Next.js API, not directly to Supabase
+    // This is critical for the n-tier architecture to work properly
+    let url;
+    
+    // Use relative URL to ensure requests go through our Next.js API
+    url = path;
+    
     // Log the request (without sensitive data)
-    console.log(`[Edge Function] ${options.method || 'GET'} ${endpoint} (${url})`);
+    console.log(`[API Request] ${options.method || 'GET'} ${endpoint}`);
     
     // Set default headers
     const headers = {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${serviceRoleKey}`,
       ...options.headers
     };
     
@@ -87,11 +71,12 @@ export async function fetchFromEdgeFunction(endpoint, options = {}) {
       }
     }
     
-    // Make the request
+    // Make the request to our Next.js API, not directly to Supabase
     const response = await fetch(url, {
       method: options.method || "GET",
       headers,
       body: requestBody,
+      credentials: 'include', // Include cookies for auth
       ...options,
       // Override options.body as we've already processed it
       body: requestBody
@@ -115,7 +100,7 @@ export async function fetchFromEdgeFunction(endpoint, options = {}) {
         }
       }
       
-      console.error(`[Edge Function Error] ${endpoint}:`, {
+      console.error(`[API Error] ${endpoint}:`, {
         status: response.status,
         message: errorMessage,
         data: errorData
@@ -131,7 +116,7 @@ export async function fetchFromEdgeFunction(endpoint, options = {}) {
     
     // Parse and return the response
     const data = await response.json();
-    console.log(`[Edge Function Success] ${endpoint}`);
+    console.log(`[API Success] ${endpoint}`);
     return data;
   } catch (error) {
     // If it's already an EdgeFunctionError, rethrow it
@@ -140,7 +125,7 @@ export async function fetchFromEdgeFunction(endpoint, options = {}) {
     }
     
     // Otherwise, wrap it in an EdgeFunctionError
-    console.error(`[Edge Function Error] ${endpoint}:`, error);
+    console.error(`[API Error] ${endpoint}:`, error);
     throw new EdgeFunctionError(
       error.message || 'Unknown error occurred',
       error.status || 500,
@@ -207,44 +192,53 @@ export const edgeFunctions = {
       return fetchFromEdgeFunction(url);
     },
     checkOnboarding: (clerkId) => {
-      // Extract the base clerk_id without any query parameters
-      const baseClerkId = clerkId.split('?')[0];
-      console.log('[Edge Function Client] Checking onboarding status for clerk_id:', baseClerkId);
-      
-      // Use the proper endpoint, which is /api/users/{clerkId}/status
-      // This matches the Edge Function route that handles the getUserStatus function
-      const url = `/api/users/${baseClerkId}/status`;
-      
-      // Add timestamp for cache busting
+      // Add timestamp for cache busting - critical for auth checks
       const timestamp = Date.now();
-      const finalUrl = `${url}?_t=${timestamp}`;
       
-      console.log('[Edge Function Client] Requesting URL:', finalUrl);
+      console.log('[Client] Checking onboarding status for clerk_id:', clerkId);
       
-      return fetchFromEdgeFunction(finalUrl)
-        .then(data => {
-          console.log('[Edge Function Client] Onboarding status response:', JSON.stringify(data));
-          if (data && data.status === "success" && data.data) {
-            // Store the raw value for debugging
-            const onboardingValue = data.data.onboardingCompleted;
-            console.log('[Edge Function Client] Onboarding completed value:', onboardingValue, 'type:', typeof onboardingValue);
-            
-            // Ensure we're handling boolean values correctly
-            // Convert to boolean explicitly to handle string values like "true"/"false"
-            const normalizedValue = typeof onboardingValue === 'string' 
-              ? onboardingValue.toLowerCase() === 'true'
-              : Boolean(onboardingValue);
-              
-            console.log('[Edge Function Client] Normalized onboarding value:', normalizedValue);
-            
-            return { 
-              users: [{ onboarding_completed: normalizedValue }] 
-            };
-          } else {
-            console.log('[Edge Function Client] User not found or data malformed:', data);
-            return { users: [] };
-          }
-        });
+      // We should never call Supabase directly from the frontend
+      // Instead, call our own Next.js API route which handles the middleware
+      // This follows the n-tier architecture: Frontend -> Next.js API -> Edge Functions -> Database
+      const url = `/api/user-status?t=${timestamp}`;
+      
+      console.log('[Client] Requesting URL:', url);
+      
+      // Using fetch with credentials included to ensure auth cookies are sent
+      return fetch(url, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        credentials: 'include'
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Error checking onboarding status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('[Client] Onboarding status response:', JSON.stringify(data));
+        
+        // Format the response to match what the middleware expects
+        // The API returns { onboardingCompleted: boolean }
+        if (data && data.hasOwnProperty('onboardingCompleted')) {
+          console.log('[Client] Onboarding completed value:', data.onboardingCompleted, 'type:', typeof data.onboardingCompleted);
+          
+          // Return in the expected format for backward compatibility
+          return { 
+            users: [{ onboarding_completed: data.onboardingCompleted }] 
+          };
+        } else {
+          console.log('[Client] User not found or data malformed:', data);
+          return { users: [] };
+        }
+      })
+      .catch(error => {
+        console.error('[Client] Error checking onboarding status:', error);
+        return { users: [] }; // Return empty users array on error
+      });
     },
     update: (clerkId, data) => fetchFromEdgeFunction(`/api/users/${clerkId}`, {
       method: "PUT",

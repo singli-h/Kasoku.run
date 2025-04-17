@@ -12,19 +12,78 @@ export const getUserStatus = async (
   try {
     console.log(`Checking status for user: ${clerkId}`);
     
+    // Validate input
+    if (!clerkId) {
+      console.error("No clerk_id provided");
+      return new Response(
+        JSON.stringify({
+          status: "error",
+          error: "Missing clerk_id parameter",
+          context: "validation"
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
+    }
+    
+    // Query the database
     const { data, error } = await supabase
       .from("users")
       .select("onboarding_completed")
       .eq("clerk_id", clerkId)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error(`Database error for clerk_id ${clerkId}:`, error);
+      
+      // Check if it's a not found error
+      if (error.code === 'PGRST116') {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              onboardingCompleted: false
+            },
+            context: "user_not_found"
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          }
+        );
+      }
+      
+      throw error;
+    }
+
+    // Log the actual value for debugging
+    console.log(`User ${clerkId} onboarding_completed value:`, data?.onboarding_completed);
+    console.log(`User ${clerkId} onboarding_completed type:`, typeof data?.onboarding_completed);
+
+    // Ensure boolean consistency
+    let onboardingCompleted = false;
+    
+    if (data && data.onboarding_completed !== undefined && data.onboarding_completed !== null) {
+      if (typeof data.onboarding_completed === 'boolean') {
+        onboardingCompleted = data.onboarding_completed;
+      } else if (typeof data.onboarding_completed === 'string') {
+        onboardingCompleted = data.onboarding_completed.toLowerCase() === 'true';
+      } else if (typeof data.onboarding_completed === 'number') {
+        onboardingCompleted = data.onboarding_completed !== 0;
+      } else {
+        onboardingCompleted = Boolean(data.onboarding_completed);
+      }
+    }
+    
+    console.log(`Final onboardingCompleted value for ${clerkId}:`, onboardingCompleted);
 
     return new Response(
       JSON.stringify({
         status: "success",
         data: {
-          onboardingCompleted: data?.onboarding_completed || false
+          onboardingCompleted: onboardingCompleted
         }
       }),
       {
@@ -34,16 +93,17 @@ export const getUserStatus = async (
     );
   } catch (error: any) {
     console.error("Error in getUserStatus:", error);
-    // Return false for onboarding status on error
+    
+    // Return consistent error response
     return new Response(
       JSON.stringify({
-        status: "success",
-        data: {
-          onboardingCompleted: false
-        }
+        status: "error",
+        error: error.message || "Error checking user status",
+        context: "server_error",
+        timestamp: new Date().toISOString()
       }),
       {
-        status: 200,
+        status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       }
     );
