@@ -1354,19 +1354,10 @@ Deno.serve(async (req) => {
   // Extract the pathname - either from query param (for clients using our SDK) or from the URL path
   let pathname = parsedUrl.pathname; // Extract the pathname
   
-  // Normalize the path - the edge function might be called with /api in the path already,
-  // or it might be called directly. Ensure we strip the function name if present
-  const parts = pathname.split('/');
-  if (parts[1] === 'api' && parts.length > 2) {
-    // If the path is like /api/users/123, strip the initial /api
-    pathname = '/' + parts.slice(2).join('/');
-  }
-  
   console.log("[API] Received request:", { 
     method, 
     url, 
-    originalPathname: parsedUrl.pathname,
-    processedPathname: pathname,
+    originalPathname: pathname,
     search: parsedUrl.search
   });
   
@@ -1404,27 +1395,7 @@ Deno.serve(async (req) => {
 
       // Get user role data including athlete/coach IDs if available
       userData = await getUserRoleData(supabase, authData.user.id);
-    } else {
-      // When AUTH_ENABLED is false, we still try to get user data from the request
-      try {
-        const reqBody = await req.clone().json();
-        if (reqBody.clerk_id) {
-          console.log("[API] Auth disabled but clerk_id provided, attempting to get user data");
-          userData = await getUserRoleData(supabase, reqBody.clerk_id);
-          console.log("[API] Retrieved user data:", userData);
-        }
-      } catch (error) {
-        // Ignore errors when parsing body - might be a GET request
-        console.log("[API] No clerk_id in request body, using default user data");
-      }
     }
-
-    // Log the user data for debugging
-    console.log("[API] Request will use userData:", { 
-      userId: userData.userId,
-      athleteId: userData.athleteId,
-      coachId: userData.coachId
-    });
 
     // Handle routes that need role-specific IDs
     if (pathname.includes('/dashboard') || pathname.includes('/athlete') || pathname.includes('/planner')) {
@@ -1450,32 +1421,19 @@ Deno.serve(async (req) => {
       // POST /api/planner/mesocycle or microcycle
       if ((pathname === "/api/planner/mesocycle" || pathname === "/api/planner/microcycle") && method === "POST") {
         try {
-          let coachId;
+          // Check if the request includes coach_id directly
+          const reqBody = await req.clone().json();
+          const explicitCoachId = reqBody.coach_id;
           
-          // Use the coach ID from authenticated user data
-          if (userData && userData.coachId) {
-            console.log("[API] Using coach ID from authenticated user data:", userData.coachId);
-            coachId = userData.coachId;
+          let coachId;
+          if (explicitCoachId) {
+            // Use the explicitly provided coach_id
+            console.log("[API] Using explicit coach_id from request:", explicitCoachId);
+            coachId = explicitCoachId;
           } else {
-            // No coach ID available, try to get it from clerk_id in request
-            const reqBody = await req.clone().json();
-            const clerkId = reqBody.clerk_id;
-            
-            if (clerkId) {
-              console.log("[API] Getting user role data for clerk_id:", clerkId);
-              const userRoleData = await getUserRoleData(supabase, clerkId);
-              
-              if (userRoleData && userRoleData.coachId) {
-                console.log("[API] Found coach ID for clerk_id:", userRoleData.coachId);
-                coachId = userRoleData.coachId;
-              } else {
-                console.error("[API] No coach ID found for clerk_id:", clerkId);
-                throw new Error("Coach record not found for this user");
-              }
-            } else {
-              console.error("[API] No clerk_id provided in request");
-              throw new Error("Missing clerk_id in request");
-            }
+            // Get coach ID from request via clerk_id
+            console.log("[API] No explicit coach_id provided, looking up via clerk_id");
+            coachId = await getCoachIdFromRequest(supabase, req);
           }
           
           // Now handle the specific endpoint

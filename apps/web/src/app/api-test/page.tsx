@@ -185,6 +185,7 @@ export default function ApiTest() {
         const result = await edgeFunctions.planner.createMicrocycle({
           ...testData,
           clerk_id: userId, // Include clerk_id for coach lookup
+          coach_id: coachId // Explicitly include the coach ID to bypass lookup
         });
         
         console.log(`[Test] Microcycle creation response:`, result);
