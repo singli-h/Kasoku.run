@@ -27,25 +27,24 @@ export class EdgeFunctionError extends Error {
  * @throws {EdgeFunctionError} - When the request fails
  */
 export async function fetchFromEdgeFunction(endpoint, options = {}) {
-  // We should never attempt to call Supabase directly from the frontend
-  // Always route through the Next.js API routes which will handle auth
-  
-  // In production or preview, we need to use relative URLs to the Next.js API
-  // This ensures the request goes through our middleware and API routes
-  
   try {
     // Make sure endpoint starts with "/"
     const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
     
-    // Build the full URL to our own Next.js API, not directly to Supabase
-    // This is critical for the n-tier architecture to work properly
+    // Build the full URL
     let url;
-    
-    // Use relative URL to ensure requests go through our Next.js API
-    url = path;
-    
-    // Log the request (without sensitive data)
-    console.log(`[API Request] ${options.method || 'GET'} ${endpoint}`);
+    try {
+      // First try to use the base URL from environment
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      url = new URL(path, baseUrl || 'http://localhost:3000').toString();
+      
+      // Log the constructed URL (without sensitive data)
+      console.log(`[API Request] ${options.method || 'GET'} ${url}`);
+    } catch (urlError) {
+      // If URL construction fails, try using relative path
+      console.log(`[API Request] Using relative path: ${path}`);
+      url = path;
+    }
     
     // Set default headers
     const headers = {
@@ -61,7 +60,7 @@ export async function fetchFromEdgeFunction(endpoint, options = {}) {
           ? options.body 
           : JSON.stringify(options.body);
       } catch (e) {
-        console.error('Error serializing request body:', e);
+        console.error('[API Error] Failed to serialize request body:', e);
         throw new EdgeFunctionError(
           `Failed to serialize request body: ${e.message}`,
           500,
@@ -71,12 +70,13 @@ export async function fetchFromEdgeFunction(endpoint, options = {}) {
       }
     }
     
-    // Make the request to our Next.js API, not directly to Supabase
+    // Make the request
     const response = await fetch(url, {
       method: options.method || "GET",
       headers,
       body: requestBody,
       credentials: 'include', // Include cookies for auth
+      cache: 'no-store', // Prevent caching
       ...options,
       // Override options.body as we've already processed it
       body: requestBody

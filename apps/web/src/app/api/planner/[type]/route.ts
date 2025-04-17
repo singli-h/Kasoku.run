@@ -60,14 +60,19 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
 
     console.log(`[API] Processing ${type} request`);
 
-    // Handle each type with proper validation
     try {
       let response;
       switch (type as PlannerType) {
         case 'exercises': 
-          const { data: exercisesData } = await edgeFunctions.planner.getExercises();
-          console.log('[API] Exercises data fetched successfully');
-          response = exercisesData;
+          try {
+            console.log('[API] Fetching exercises data');
+            const { data: exercisesData } = await edgeFunctions.planner.getExercises();
+            console.log('[API] Exercises data fetched successfully');
+            response = exercisesData;
+          } catch (exerciseError) {
+            console.error('[API] Error fetching exercises:', exerciseError);
+            throw new Error('Failed to fetch exercises data');
+          }
           break;
         
         case 'mesocycle':
@@ -77,8 +82,13 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               { status: 400 }
             );
           }
-          const { data: mesocycleData } = await edgeFunctions.planner.getMesocycle(id);
-          response = mesocycleData;
+          try {
+            const { data: mesocycleData } = await edgeFunctions.planner.getMesocycle(id);
+            response = mesocycleData;
+          } catch (mesocycleError) {
+            console.error('[API] Error fetching mesocycle:', mesocycleError);
+            throw new Error(`Failed to fetch mesocycle with ID: ${id}`);
+          }
           break;
         
         case 'microcycle':
@@ -88,8 +98,13 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               { status: 400 }
             );
           }
-          const { data: microcycleData } = await edgeFunctions.planner.getMicrocycle(id);
-          response = microcycleData;
+          try {
+            const { data: microcycleData } = await edgeFunctions.planner.getMicrocycle(id);
+            response = microcycleData;
+          } catch (microcycleError) {
+            console.error('[API] Error fetching microcycle:', microcycleError);
+            throw new Error(`Failed to fetch microcycle with ID: ${id}`);
+          }
           break;
         
         default:
@@ -112,7 +127,8 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       return NextResponse.json(
         { 
           error: 'Failed to fetch data from the server', 
-          details: edgeFunctionError.message || 'Unknown error' 
+          details: edgeFunctionError.message || 'Unknown error',
+          type: type
         },
         { status: 500 }
       );
