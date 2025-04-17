@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getAuth } from '@clerk/nextjs/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,8 +7,8 @@ async function proxy(
   request: NextRequest,
   { params }: { params: { slug: string[] } }
 ) {
-  // Authenticate via Clerk
-  const { userId } = await auth();
+  // Authenticate via Clerk token or session cookie
+  const { userId } = getAuth(request);
   if (!userId) {
     return NextResponse.json(
       { error: 'Unauthorized - User not authenticated' },
@@ -28,16 +28,19 @@ async function proxy(
 
   // Prepare fetch to Supabase Edge Function
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error('Missing Supabase environment variables');
+  if (!supabaseUrl) {
+    console.error('Missing Supabase base URL');
     return NextResponse.json(
       { error: 'Server misconfiguration' },
       { status: 500 }
     );
   }
 
-  const url = `${supabaseUrl}/functions/v1/api/${apiPath}`;
+  // Build target URL with query parameters
+  const base = supabaseUrl.endsWith('/') ? supabaseUrl.slice(0, -1) : supabaseUrl;
+  const apiUrl = `${base}/functions/v1/api/${apiPath}`;
+  const urlObj = new URL(apiUrl);
+  urlObj.search = request.nextUrl.search;
   const method = request.method;
 
   // Read body for methods that include one
@@ -54,15 +57,14 @@ async function proxy(
     }
   }
 
-  // Proxy the request
-  const response = await fetch(url, {
+  // Proxy the request to Supabase Edge Function
+  const response = await fetch(urlObj.toString(), {
     method,
     headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${serviceRoleKey}`,
+      'Content-Type': 'application/json'
     },
     body: body ? JSON.stringify(body) : undefined,
-    cache: 'no-store',
+    cache: 'no-store'
   });
 
   // Forward status and JSON response
