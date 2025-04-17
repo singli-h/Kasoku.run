@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { edgeFunctions, fetchFromEdgeFunction } from '@/lib/edge-functions';
 
 // Configure this route for dynamic rendering
@@ -32,6 +32,74 @@ async function getCoachIdFromProfile(userId: string): Promise<string | null> {
 }
 
 /**
+ * Helper function to call the edge function with proper authentication
+ */
+async function callEdgeFunctionWithAuth(endpoint: string, options: RequestInit = {}) {
+  try {
+    // Get user session for JWT
+    const user = await currentUser();
+    if (!user) {
+      throw new Error('No user session found');
+    }
+    
+    // Get JWT token
+    let sessionToken: string | null = null;
+    try {
+      // @ts-ignore - getToken may not be in type definitions but is available at runtime
+      sessionToken = await user.getToken({ template: "supabase" });
+      
+      if (!sessionToken) {
+        // Alternative method to get session token
+        // @ts-ignore
+        sessionToken = user.sessionToken || user.sessionId;
+      }
+    } catch (tokenError) {
+      console.error('[Planner API] Error getting token:', tokenError);
+      throw new Error('Failed to get authentication token');
+    }
+    
+    if (!sessionToken) {
+      throw new Error('No authentication token available');
+    }
+    
+    // Prepare the URL to the Supabase Edge Function
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) {
+      throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+    }
+    
+    // Add timestamp for cache busting
+    const timestamp = Date.now();
+    const url = `${supabaseUrl}/functions/v1${endpoint.includes('?') ? endpoint + `&_t=${timestamp}` : endpoint + `?_t=${timestamp}`}`;
+    
+    console.log(`[Planner API] Calling edge function: ${url}`);
+    
+    // Make request with proper authentication
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${sessionToken}`,
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        ...(options.headers || {})
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Planner API] Edge function error (${response.status}):`, errorText);
+      throw new Error(`Edge function error: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('[Planner API] Error calling edge function:', error);
+    throw error;
+  }
+}
+
+/**
  * Route handler for /api/planner/[type] routes
  */
 export async function GET(request: NextRequest, { params }: { params: { type: string } }) {
@@ -54,34 +122,52 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       );
     }
 
+    console.log(`[Planner API] Processing ${type} request`);
+
     // Handle each type with proper validation
-    switch (type as PlannerType) {
-      case 'exercises':
-        return NextResponse.json(await edgeFunctions.planner.getExercises());
-      
-      case 'mesocycle':
-        if (!id) {
+    try {
+      switch (type as PlannerType) {
+        case 'exercises': 
+          // Use direct edge function call with proper auth
+          const exercisesData = await callEdgeFunctionWithAuth('/api/planner/exercises');
+          console.log('[Planner API] Exercises data fetched successfully');
+          return NextResponse.json(exercisesData);
+        
+        case 'mesocycle':
+          if (!id) {
+            return NextResponse.json(
+              { error: 'Missing mesocycle ID' },
+              { status: 400 }
+            );
+          }
+          return NextResponse.json(await edgeFunctions.planner.getMesocycle(id));
+        
+        case 'microcycle':
+          if (!id) {
+            return NextResponse.json(
+              { error: 'Missing microcycle ID' },
+              { status: 400 }
+            );
+          }
+          return NextResponse.json(await edgeFunctions.planner.getMicrocycle(id));
+        
+        default:
           return NextResponse.json(
-            { error: 'Missing mesocycle ID' },
+            { error: 'Invalid request type' },
             { status: 400 }
           );
-        }
-        return NextResponse.json(await edgeFunctions.planner.getMesocycle(id));
+      }
+    } catch (edgeFunctionError: any) {
+      console.error(`[Planner API] Edge function error for ${type}:`, edgeFunctionError);
       
-      case 'microcycle':
-        if (!id) {
-          return NextResponse.json(
-            { error: 'Missing microcycle ID' },
-            { status: 400 }
-          );
-        }
-        return NextResponse.json(await edgeFunctions.planner.getMicrocycle(id));
-      
-      default:
-        return NextResponse.json(
-          { error: 'Invalid request type' },
-          { status: 400 }
-        );
+      // Provide a more user-friendly error response
+      return NextResponse.json(
+        { 
+          error: 'Failed to fetch data from the server', 
+          details: edgeFunctionError.message || 'Unknown error' 
+        },
+        { status: 500 }
+      );
     }
   } catch (error: any) {
     console.error(`Error in GET /api/planner/${params.type}:`, error);
