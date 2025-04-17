@@ -55,12 +55,12 @@ export default function ApiTest() {
 
   // Modified fetchWithAuth helper to ensure all API calls include auth
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    // Determine function name by using the full path after '/api'
-    const fnName = url.startsWith('/api/') ? `api${url}` : url;
-    // Normalize method to Supabase HttpMethod union
+    // Use catch-all 'api' Edge Function with searchParams
+    const relativePath = url.startsWith('/api') ? url.slice('/api'.length) : url;
     const method = (options.method?.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE') ?? 'GET';
-    const { data: rawData, error } = await supabase.functions.invoke(fnName, {
+    const { data: rawData, error } = await supabase.functions.invoke('api', {
       method,
+      searchParams: { path: relativePath },
       body: options.body ? JSON.parse(options.body as string) : undefined,
     });
     if (error) throw error;
