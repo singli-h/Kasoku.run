@@ -43,7 +43,7 @@ export const useExerciseData = () => {
       try {
         const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
           method: 'GET',
-          path: '/dashboard/exercisesInit'
+          searchParams: '/dashboard/exercisesInit'
         })
         if (fnError) throw fnError
         const data = JSON.parse(rawData)
@@ -95,7 +95,7 @@ export const useExerciseData = () => {
       // Invoke createTrainingSession edge function
       const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
         method: 'POST',
-        path: '/dashboard/trainingSession',
+        searchParams: '/dashboard/trainingSession',
         body: {
           exercise_training_session_id: state.session.details.id,
           exercisesDetail
@@ -121,7 +121,7 @@ export const useExerciseData = () => {
     try {
       const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
         method: 'GET',
-        path: '/dashboard/exercisesInit'
+        searchParams: '/dashboard/exercisesInit'
       })
       if (fnError) throw fnError
       const data = JSON.parse(rawData)
@@ -174,7 +174,7 @@ export const useExerciseData = () => {
       // Invoke updateTrainingSession edge function
       const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
         method: 'PUT',
-        path: '/dashboard/trainingSession',
+        searchParams: '/dashboard/trainingSession',
         body: {
           exercise_training_session_id: state.session.details.id,
           exercisesDetail: exerciseDetails,

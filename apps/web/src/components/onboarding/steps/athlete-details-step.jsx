@@ -28,7 +28,7 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
         // Invoke catch-all API Edge Function for events
         const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
           method: 'GET',
-          path: '/events'
+          searchParams: '/events'
         })
         if (fnErr) throw fnErr
         const response = JSON.parse(raw)

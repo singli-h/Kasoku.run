@@ -22,7 +22,7 @@ export default function MesocycleOverview() {
         setLoading(true)
         const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
           method: 'GET',
-          path: '/dashboard/mesocycle'
+          searchParams: '/dashboard/mesocycle'
         })
         if (fnErr) throw fnErr
         const json = JSON.parse(raw)

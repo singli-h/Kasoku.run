@@ -41,7 +41,7 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
         setLoading(true)
         const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
           method: 'GET',
-          path: '/dashboard/exercises'
+          searchParams: '/dashboard/exercises'
         })
         if (fnErr) throw fnErr
         const json = JSON.parse(raw)

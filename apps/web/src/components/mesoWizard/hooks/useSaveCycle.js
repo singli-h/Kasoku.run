@@ -34,7 +34,7 @@ export const useSaveTrainingPlan = () => {
       // Invoke the edge function for microcycle creation via RPC
       const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
         method: 'POST',
-        path: '/planner/microcycle',
+        searchParams: '/planner/microcycle',
         body: formattedData
       })
       if (fnError) throw fnError
@@ -382,7 +382,7 @@ export const useSaveTrainingPlan = () => {
       const payload = { sessions, timezone }
       const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
         method: 'POST',
-        path: '/planner/mesocycle',
+        searchParams: '/planner/mesocycle',
         body: payload
       })
       if (fnError) throw fnError
