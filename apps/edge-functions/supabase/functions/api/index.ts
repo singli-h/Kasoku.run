@@ -1296,21 +1296,41 @@ async function getCoachIdFromRequest(supabase: SupabaseClient, req: Request): Pr
 
     console.log("[getCoachIdFromRequest] Found user:", userData);
 
-    // Get coach record using user_id
-    const { data: coachData, error: coachError } = await supabase
+    // Verify the user has coach role in metadata
+    if (!userData.metadata?.role || userData.metadata.role !== 'coach') {
+      console.error("[getCoachIdFromRequest] User does not have coach role:", userData.metadata);
+      throw new Error(`User does not have coach role. Current role: ${userData.metadata?.role || 'undefined'}`);
+    }
+
+    // Get coach record using user_id - use service role key for this query
+    const serviceRoleSupabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+    
+    // Log all coaches in the database for debugging
+    const { data: allCoaches, error: allCoachesError } = await serviceRoleSupabase
+      .from("coaches")
+      .select("id, user_id")
+      .limit(10);
+      
+    console.log("[getCoachIdFromRequest] All coaches in system:", allCoaches);
+    
+    // Try to find the specific coach
+    const { data: coachData, error: coachError } = await serviceRoleSupabase
       .from("coaches")
       .select("id, user_id, sport_focus, speciality")
       .eq("user_id", userData.id)
       .single();
 
-    if (coachError || !coachData) {
+    if (coachError) {
       console.error("[getCoachIdFromRequest] Error fetching coach:", coachError);
-      throw new Error(`Coach record not found for user: ${JSON.stringify({
-        id: userData.id,
-        email: userData.email,
-        name: `${userData.first_name} ${userData.last_name}`,
-        metadata: userData.metadata
-      })}`);
+      throw new Error(`Coach record not found (DB error). User ID: ${userData.id}, Error: ${coachError.message}`);
+    }
+    
+    if (!coachData) {
+      console.error("[getCoachIdFromRequest] No coach record found for user ID:", userData.id);
+      throw new Error(`Coach record not found for user (no record). User ID: ${userData.id}, Name: ${userData.first_name} ${userData.last_name}`);
     }
 
     console.log("[getCoachIdFromRequest] Found coach record:", coachData);
@@ -1392,8 +1412,20 @@ Deno.serve(async (req) => {
       // POST /api/planner/mesocycle or microcycle
       if ((pathname === "/api/planner/mesocycle" || pathname === "/api/planner/microcycle") && method === "POST") {
         try {
-          // Get coach ID from request
-          const coachId = await getCoachIdFromRequest(supabase, req);
+          // Check if the request includes coach_id directly
+          const reqBody = await req.clone().json();
+          const explicitCoachId = reqBody.coach_id;
+          
+          let coachId;
+          if (explicitCoachId) {
+            // Use the explicitly provided coach_id
+            console.log("[API] Using explicit coach_id from request:", explicitCoachId);
+            coachId = explicitCoachId;
+          } else {
+            // Get coach ID from request via clerk_id
+            console.log("[API] No explicit coach_id provided, looking up via clerk_id");
+            coachId = await getCoachIdFromRequest(supabase, req);
+          }
           
           // Now handle the specific endpoint
           if (pathname === "/api/planner/mesocycle") {

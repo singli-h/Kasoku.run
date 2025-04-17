@@ -1,97 +1,98 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from "@clerk/nextjs/server";
 import { fetchFromEdgeFunction } from '@/lib/edge-functions';
 
-export const dynamic = 'force-dynamic';
-
-/**
- * Helper API route that adds coach role to the current user and creates a coach record
- * This is for testing purposes only
- */
 export async function GET(request: NextRequest) {
   try {
-    // Verify the user is authenticated
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized - User not authenticated" }, { status: 401 });
+    // Get clerk_id from query params
+    const clerkId = request.nextUrl.searchParams.get('clerk_id');
+    
+    if (!clerkId) {
+      return NextResponse.json(
+        { error: "Missing clerk_id parameter" },
+        { status: 400 }
+      );
     }
     
-    console.log(`[DEBUG] Attempting to add coach role to user: ${userId}`);
+    console.log(`[Add Coach Role] Processing request for clerk_id: ${clerkId}`);
     
-    // 1. Get the current user profile
-    const profileUrl = `/api/users/${userId}/profile?_t=${Date.now()}`;
-    const profileResponse = await fetchFromEdgeFunction(profileUrl);
-    
-    console.log(`[DEBUG] Current user profile:`, profileResponse);
+    // First, get the user profile to check current status
+    const profileResponse = await fetchFromEdgeFunction(`/api/users/${clerkId}/profile`);
     
     if (!profileResponse?.data?.user) {
-      return NextResponse.json({ error: "User profile not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
     }
     
     const user = profileResponse.data.user;
-    const userData = {
-      clerk_id: userId,
-      email: user.email,
-      username: user.username || userId,
-      first_name: user.first_name || 'Test',
-      last_name: user.last_name || 'Coach',
-      role: 'coach',
-      metadata: {
-        ...user.metadata,
-        role: 'coach'
-      },
-      coach_specialization: 'Running',
-      coach_sport_focus: 'Track',
-      coach_experience: '5+',
-      coach_philosophy: 'Testing philosophy',
-      onboarding_completed: true
-    };
+    console.log(`[Add Coach Role] Found user: ${user.first_name} ${user.last_name}, ID: ${user.id}`);
     
-    // 2. Call the onboarding API to update the user and create coach record
-    try {
-      const onboardingResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/onboarding/user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData)
-      });
-      
-      const onboardingData = await onboardingResponse.json();
-      
-      if (!onboardingResponse.ok) {
-        console.error(`[DEBUG] Error updating user:`, onboardingData);
-        return NextResponse.json({ 
-          error: "Failed to update user", 
-          details: onboardingData 
-        }, { status: 500 });
-      }
-      
-      // 3. Check if the coach record was created
-      const updatedProfileUrl = `/api/users/${userId}/profile?_t=${Date.now() + 1}`;
-      const updatedProfile = await fetchFromEdgeFunction(updatedProfileUrl);
-      
-      console.log(`[DEBUG] Updated user profile:`, updatedProfile);
-      
+    // Check if coach record already exists
+    let coachId = null;
+    if (profileResponse.data.role === 'coach' && profileResponse.data.roleSpecificData) {
+      coachId = profileResponse.data.roleSpecificData.id;
+      console.log(`[Add Coach Role] User already has coach role with ID: ${coachId}`);
+    }
+    
+    // If coach record already exists, just return it
+    if (coachId) {
       return NextResponse.json({
         success: true,
-        message: "Successfully added coach role and created coach record",
-        originalProfile: profileResponse.data,
-        updatedProfile: updatedProfile.data,
-        onboardingResponse: onboardingData
+        message: "User already has coach role",
+        user: user,
+        coach: profileResponse.data.roleSpecificData
       });
-    } catch (error) {
-      console.error(`[DEBUG] Error calling onboarding API:`, error);
-      return NextResponse.json({ 
-        error: "Error updating user with coach role", 
-        details: error 
-      }, { status: 500 });
     }
-  } catch (error) {
-    console.error(`[DEBUG] Unexpected error:`, error);
-    return NextResponse.json({ 
-      error: "An unexpected error occurred", 
-      details: error 
-    }, { status: 500 });
+    
+    // Otherwise, create a coach record
+    console.log(`[Add Coach Role] Creating coach record for user ID: ${user.id}`);
+    
+    // Update user's metadata to include coach role
+    const userUpdate = await fetchFromEdgeFunction(`/api/users/${clerkId}`, {
+      method: 'PUT',
+      body: {
+        clerk_id: clerkId,
+        metadata: {
+          ...user.metadata,
+          role: 'coach'
+        }
+      }
+    });
+    
+    console.log(`[Add Coach Role] Updated user metadata:`, userUpdate);
+    
+    // Create a coach record directly in Supabase
+    const coachCreate = await fetchFromEdgeFunction(`/api/coaches`, {
+      method: 'POST',
+      body: {
+        user_id: user.id,
+        speciality: 'Sprint Training',
+        experience: '12+ years',
+        philosophy: 'asrgakjsrgbl',
+        sport_focus: 'Running'
+      }
+    });
+    
+    console.log(`[Add Coach Role] Created coach record:`, coachCreate);
+    
+    // Get updated profile
+    const updatedProfile = await fetchFromEdgeFunction(`/api/users/${clerkId}/profile`);
+    
+    return NextResponse.json({
+      success: true,
+      message: "Coach role added successfully",
+      user: updatedProfile.data.user,
+      coach: updatedProfile.data.roleSpecificData
+    });
+  } catch (error: any) {
+    console.error(`[Add Coach Role] Error:`, error);
+    return NextResponse.json(
+      { 
+        error: error.message || "Failed to add coach role",
+        details: error.data || {}
+      },
+      { status: error.status || 500 }
+    );
   }
 } 

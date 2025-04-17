@@ -40,7 +40,7 @@ export default function ApiTest() {
     
     try {
       console.log(`[Test] Adding coach role for user: ${userId}`);
-      const response = await fetch('/api-test/add-coach-role');
+      const response = await fetch(`/api-test/add-coach-role?clerk_id=${userId}`);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -99,6 +99,44 @@ export default function ApiTest() {
     createMicrocycle: async () => {
       console.log(`[Test] Creating microcycle for userId: ${userId}`);
       
+      // First, ensure the user has a coach role
+      let hasCoachRole = false;
+      let coachId = null;
+      
+      try {
+        const profileResponse = await edgeFunctions.users.getProfile(userId);
+        console.log(`[Test] User profile data for coach check:`, profileResponse);
+        
+        if (profileResponse?.data?.user?.metadata?.role !== 'coach') {
+          console.warn(`[Test] User does not have coach role. Current role: ${profileResponse?.data?.user?.metadata?.role}`);
+          console.log(`[Test] Attempting to add coach role first...`);
+          
+          // Add coach role
+          const coachRoleResult = await addCoachRole();
+          
+          if (coachRoleResult?.success) {
+            hasCoachRole = true;
+            coachId = coachRoleResult.coach?.id;
+            console.log(`[Test] Coach role added successfully. Coach ID: ${coachId}`);
+          } else {
+            console.error(`[Test] Failed to add coach role:`, coachRoleResult);
+            throw new Error("Failed to add coach role required for this test");
+          }
+        } else {
+          hasCoachRole = true;
+          coachId = profileResponse?.data?.roleSpecificData?.id;
+          console.log(`[Test] User already has coach role. Coach ID: ${coachId}`);
+        }
+        
+        if (!coachId) {
+          console.error(`[Test] Coach record not found in user profile:`, profileResponse?.data?.roleSpecificData);
+          throw new Error("User has coach role but no coach record was found");
+        }
+      } catch (err) {
+        console.error(`[Test] Error while checking/setting up coach role:`, err);
+        throw err;
+      }
+      
       // Sample minimal data for testing
       const testData = {
         microcycle: {
@@ -142,27 +180,12 @@ export default function ApiTest() {
       
       console.log(`[Test] Microcycle test data:`, JSON.stringify(testData, null, 2));
       
-      // First, check if the user has coach role and coach ID
-      try {
-        const profileResponse = await edgeFunctions.users.getProfile(userId);
-        console.log(`[Test] User profile data for coach check:`, profileResponse);
-        
-        if (profileResponse?.data?.user?.metadata?.role !== 'coach') {
-          console.error(`[Test] User does not have coach role. Current role:`, profileResponse?.data?.user?.metadata?.role);
-        }
-        
-        if (!profileResponse?.data?.roleSpecificData?.id) {
-          console.error(`[Test] User does not have a coach record:`, profileResponse?.data?.roleSpecificData);
-        }
-      } catch (err) {
-        console.error(`[Test] Error fetching profile for coach check:`, err);
-      }
-      
       // Now try to create the microcycle using the edge functions client
       try {
         const result = await edgeFunctions.planner.createMicrocycle({
           ...testData,
-          clerk_id: userId // Include clerk_id for coach lookup
+          clerk_id: userId, // Include clerk_id for coach lookup
+          coach_id: coachId // Explicitly include the coach ID to bypass lookup
         });
         
         console.log(`[Test] Microcycle creation response:`, result);
