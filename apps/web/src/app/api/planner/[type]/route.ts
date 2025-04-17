@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { edgeFunctions, fetchFromEdgeFunction } from '@/lib/edge-functions';
+import { auth } from "@clerk/nextjs/server";
+import { edgeFunctions } from '@/lib/edge-functions';
 
 // Configure this route for dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -12,80 +12,22 @@ type PlannerType = 'mesocycle' | 'microcycle' | 'exercises';
  */
 async function getCoachIdFromProfile(userId: string): Promise<string | null> {
   try {
-    const profileResponse = await fetchFromEdgeFunction(`/api/users/${userId}/profile`);
+    const { data } = await edgeFunctions.users.getProfile(userId);
     
-    if (!profileResponse?.data?.role || !profileResponse?.data?.roleSpecificData?.id) {
-      console.error('Invalid profile data:', profileResponse);
+    if (!data?.role || !data?.roleSpecificData?.id) {
+      console.error('[API] Invalid profile data:', data);
       return null;
     }
     
-    if (profileResponse.data.role !== 'coach') {
-      console.error('User is not a coach:', profileResponse.data.role);
+    if (data.role !== 'coach') {
+      console.error('[API] User is not a coach:', data.role);
       return null;
     }
     
-    return String(profileResponse.data.roleSpecificData.id);
+    return String(data.roleSpecificData.id);
   } catch (error) {
-    console.error('Error fetching coach profile:', error);
+    console.error('[API] Error fetching coach profile:', error);
     return null;
-  }
-}
-
-/**
- * Helper function to call the edge function with proper authentication
- */
-async function callEdgeFunctionWithAuth(endpoint: string, options: RequestInit = {}) {
-  try {
-    // 1. Get the auth session
-    const session = await auth();
-    if (!session?.userId) {
-      throw new Error("No active user session found");
-    }
-
-    // 2. Get the token with the Supabase template
-    const token = await session.getToken({
-      template: "supabase"
-    });
-    
-    if (!token) {
-      throw new Error("Failed to get authentication token");
-    }
-
-    // 3. Build the Edge Function URL with proper encoding
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!supabaseUrl) {
-      throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable");
-    }
-    
-    const timestamp = Date.now();
-    const baseUrl = `${supabaseUrl}/functions/v1${endpoint}`;
-    const url = new URL(baseUrl);
-    url.searchParams.append('_t', timestamp.toString());
-
-    console.log(`[Planner API] Calling edge function: ${url.toString()}`);
-
-    // 4. Make the request with proper headers
-    const response = await fetch(url.toString(), {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        Pragma: "no-cache",
-        ...(options.headers || {}),
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      console.error(`[Planner API] Edge function error (${response.status}):`, errorData || await response.text());
-      throw new Error(`Edge function error: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('[Planner API] Error calling edge function:', error);
-    throw error;
   }
 }
 
@@ -94,10 +36,14 @@ async function callEdgeFunctionWithAuth(endpoint: string, options: RequestInit =
  */
 export async function GET(request: NextRequest, { params }: { params: { type: string } }) {
   try {
-    const authResult = await auth();
+    const { userId } = await auth();
     
-    if (!authResult?.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!userId) {
+      console.log('[API] Unauthorized access attempt to planner');
+      return NextResponse.json(
+        { error: "Unauthorized - User not authenticated" },
+        { status: 401 }
+      );
     }
 
     const { type } = params;
@@ -112,16 +58,17 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       );
     }
 
-    console.log(`[Planner API] Processing ${type} request`);
+    console.log(`[API] Processing ${type} request`);
 
     // Handle each type with proper validation
     try {
+      let response;
       switch (type as PlannerType) {
         case 'exercises': 
-          // Use direct edge function call with proper auth
-          const exercisesData = await callEdgeFunctionWithAuth('/api/planner/exercises');
-          console.log('[Planner API] Exercises data fetched successfully');
-          return NextResponse.json(exercisesData);
+          const { data: exercisesData } = await edgeFunctions.planner.getExercises();
+          console.log('[API] Exercises data fetched successfully');
+          response = exercisesData;
+          break;
         
         case 'mesocycle':
           if (!id) {
@@ -130,7 +77,9 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               { status: 400 }
             );
           }
-          return NextResponse.json(await edgeFunctions.planner.getMesocycle(id));
+          const { data: mesocycleData } = await edgeFunctions.planner.getMesocycle(id);
+          response = mesocycleData;
+          break;
         
         case 'microcycle':
           if (!id) {
@@ -139,7 +88,9 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
               { status: 400 }
             );
           }
-          return NextResponse.json(await edgeFunctions.planner.getMicrocycle(id));
+          const { data: microcycleData } = await edgeFunctions.planner.getMicrocycle(id);
+          response = microcycleData;
+          break;
         
         default:
           return NextResponse.json(
@@ -147,8 +98,15 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
             { status: 400 }
           );
       }
-    } catch (edgeFunctionError: any) {
-      console.error(`[Planner API] Edge function error for ${type}:`, edgeFunctionError);
+
+      // Return with cache control headers
+      const nextResponse = NextResponse.json(response, { status: 200 });
+      nextResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      nextResponse.headers.set('Pragma', 'no-cache');
+      nextResponse.headers.set('Expires', '0');
+      return nextResponse;
+    } catch (edgeFunctionError) {
+      console.error(`[API] Edge function error for ${type}:`, edgeFunctionError);
       
       // Provide a more user-friendly error response
       return NextResponse.json(
@@ -160,7 +118,7 @@ export async function GET(request: NextRequest, { params }: { params: { type: st
       );
     }
   } catch (error: any) {
-    console.error(`Error in GET /api/planner/${params.type}:`, error);
+    console.error(`[API] Error in GET /api/planner/${params.type}:`, error);
     return NextResponse.json(
       { error: error.message || 'An error occurred' },
       { status: error.status || 500 }
@@ -175,7 +133,11 @@ export async function POST(request: Request, { params }: { params: { type: strin
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      console.log('[API] Unauthorized attempt to create plan');
+      return NextResponse.json(
+        { error: "Unauthorized - User not authenticated" },
+        { status: 401 }
+      );
     }
 
     const { type } = params;
@@ -189,8 +151,8 @@ export async function POST(request: Request, { params }: { params: { type: strin
     }
     
     // Verify user has a coach record
-    const profileResponse = await fetchFromEdgeFunction(`/api/users/${userId}/profile`);
-    if (!profileResponse?.data?.role || profileResponse.data.role !== 'coach' || !profileResponse.data.roleSpecificData?.id) {
+    const coachId = await getCoachIdFromProfile(userId);
+    if (!coachId) {
       return NextResponse.json(
         { error: "You need a coach record to create training plans" },
         { status: 403 }
@@ -202,16 +164,30 @@ export async function POST(request: Request, { params }: { params: { type: strin
       const clone = request.clone();
       const planData = await clone.json();
       
+      // Add coach ID to the plan data
+      const enrichedData = {
+        ...planData,
+        coach_id: coachId
+      };
+
       // Call the appropriate edge function based on type
-      // No need to pass clerk_id as the edge function will get it from the authorization header
-      const response = await fetchFromEdgeFunction(`/api/planner/${type}`, {
-        method: 'POST',
-        body: planData
-      });
+      let response;
+      if (type === 'mesocycle') {
+        const { data } = await edgeFunctions.planner.createMesocycle(enrichedData);
+        response = data;
+      } else {
+        const { data } = await edgeFunctions.planner.createMicrocycle(enrichedData);
+        response = data;
+      }
       
-      return NextResponse.json(response);
+      // Return with cache control headers
+      const nextResponse = NextResponse.json(response, { status: 201 });
+      nextResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      nextResponse.headers.set('Pragma', 'no-cache');
+      nextResponse.headers.set('Expires', '0');
+      return nextResponse;
     } catch (edgeFunctionError: any) {
-      console.error(`Error from edge function for ${type}:`, edgeFunctionError);
+      console.error(`[API] Error from edge function for ${type}:`, edgeFunctionError);
       return NextResponse.json(
         { 
           error: edgeFunctionError.message || `Error creating ${type}`,
@@ -221,7 +197,7 @@ export async function POST(request: Request, { params }: { params: { type: strin
       );
     }
   } catch (error: any) {
-    console.error("Error in planner POST:", error);
+    console.error("[API] Error in planner POST:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "An unknown error occurred" },
       { status: 500 }
