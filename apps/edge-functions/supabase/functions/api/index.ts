@@ -1413,58 +1413,74 @@ Deno.serve(async (req) => {
 
     // Handle planner endpoints
     if (pathname.startsWith("/api/planner")) {
-      // GET /api/planner/exercises
-      if (pathname === "/api/planner/exercises" && method === "GET") {
-        return await getExercisesForPlanner(supabase);
+      // For planner endpoints, we need to ensure the user has a coach role
+      
+      // First, get the clerk_id from the request
+      const reqBody = await req.clone().json();
+      const clerkId = reqBody.clerk_id;
+      
+      console.log("[API] Processing planner request for clerk_id:", clerkId);
+      
+      if (!clerkId) {
+        return handleError(new Error("Missing clerk_id in request"), "validation");
       }
       
-      // POST /api/planner/mesocycle or microcycle
-      if ((pathname === "/api/planner/mesocycle" || pathname === "/api/planner/microcycle") && method === "POST") {
-        try {
-          // Check if the request includes coach_id directly
-          const reqBody = await req.clone().json();
-          const explicitCoachId = reqBody.coach_id;
-          
-          let coachId;
-          if (explicitCoachId) {
-            // Use the explicitly provided coach_id
-            console.log("[API] Using explicit coach_id from request:", explicitCoachId);
-            coachId = explicitCoachId;
-          } else {
-            // Get coach ID from request via clerk_id
-            console.log("[API] No explicit coach_id provided, looking up via clerk_id");
-            coachId = await getCoachIdFromRequest(supabase, req);
+      // Fetch user role data to get the coach ID
+      try {
+        // Get a fresh userData object specifically for this request
+        const requestUserData = await getUserRoleData(supabase, clerkId);
+        console.log("[API] User role data for planner request:", requestUserData);
+        
+        if (!requestUserData.coachId) {
+          console.error("[API] User is not a coach:", requestUserData);
+          return handleError(new Error("Coach record not found - User is not a coach or coach record doesn't exist"), "access");
+        }
+        
+        const coachId = requestUserData.coachId;
+        console.log("[API] Found coach ID for planner request:", coachId);
+        
+        // Now handle specific endpoints
+        // GET /api/planner/exercises
+        if (pathname === "/api/planner/exercises" && method === "GET") {
+          return await getExercisesForPlanner(supabase);
+        }
+        
+        // POST /api/planner/mesocycle or microcycle
+        if ((pathname === "/api/planner/mesocycle" || pathname === "/api/planner/microcycle") && method === "POST") {
+          try {
+            // Now handle the specific endpoint with the coach ID from userData
+            if (pathname === "/api/planner/mesocycle") {
+              return await postMesocycle(supabase, parsedUrl, req, coachId);
+            } else {
+              return await postMicrocycle(supabase, parsedUrl, req, coachId);
+            }
+          } catch (error: any) {
+            console.error("[Edge] Error processing planner request:", error);
+            return handleError(error, "planner");
           }
-          
-          // Now handle the specific endpoint
-          if (pathname === "/api/planner/mesocycle") {
-            return await postMesocycle(supabase, parsedUrl, req, coachId);
-          } else {
-            return await postMicrocycle(supabase, parsedUrl, req, coachId);
+        }
+        
+        // GET endpoints remain the same
+        if (pathname.match(/^\/api\/planner\/mesocycle\/\d+$/) && method === "GET") {
+          try {
+            const mesocycleId = extractIdFromPath(pathname);
+            return await getMesocycle(supabase, mesocycleId);
+          } catch (error) {
+            return handleError(error, "validation");
           }
-        } catch (error: any) {
-          console.error("[Edge] Error processing planner request:", error);
-          return handleError(error, "planner");
         }
-      }
-      
-      // GET endpoints remain the same
-      if (pathname.match(/^\/api\/planner\/mesocycle\/\d+$/) && method === "GET") {
-        try {
-          const mesocycleId = extractIdFromPath(pathname);
-          return await getMesocycle(supabase, mesocycleId);
-        } catch (error) {
-          return handleError(error, "validation");
+        
+        if (pathname.match(/^\/api\/planner\/microcycle\/\d+$/) && method === "GET") {
+          try {
+            const microcycleId = extractIdFromPath(pathname);
+            return await getMicrocycle(supabase, microcycleId);
+          } catch (error) {
+            return handleError(error, "validation");
+          }
         }
-      }
-      
-      if (pathname.match(/^\/api\/planner\/microcycle\/\d+$/) && method === "GET") {
-        try {
-          const microcycleId = extractIdFromPath(pathname);
-          return await getMicrocycle(supabase, microcycleId);
-        } catch (error) {
-          return handleError(error, "validation");
-        }
+      } catch (error: any) {
+        console.error("[API] Error processing planner user data:", error);
+        return handleError(error, "access");
       }
       
       // Method not allowed
