@@ -36,56 +36,42 @@ async function getCoachIdFromProfile(userId: string): Promise<string | null> {
  */
 async function callEdgeFunctionWithAuth(endpoint: string, options: RequestInit = {}) {
   try {
-    // Get user session for JWT
-    const user = await currentUser();
-    if (!user) {
-      throw new Error('No user session found');
+    // 1. Grab the Auth object (has userId & getToken)
+    const { userId, getToken } = await auth();
+    if (!userId) {
+      throw new Error("No active user session found");
     }
-    
-    // Get JWT token
-    let sessionToken: string | null = null;
-    try {
-      // @ts-ignore - getToken may not be in type definitions but is available at runtime
-      sessionToken = await user.getToken({ template: "supabase" });
-      
-      if (!sessionToken) {
-        // Alternative method to get session token
-        // @ts-ignore
-        sessionToken = user.sessionToken || user.sessionId;
-      }
-    } catch (tokenError) {
-      console.error('[Planner API] Error getting token:', tokenError);
-      throw new Error('Failed to get authentication token');
-    }
-    
+
+    // 2. Retrieve a Supabase JWT
+    const sessionToken = await getToken({ template: "supabase" });
     if (!sessionToken) {
-      throw new Error('No authentication token available');
+      throw new Error("Failed to get authentication token");
     }
-    
-    // Prepare the URL to the Supabase Edge Function
+
+    // 3. Build the Edge Function URL
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) {
-      throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+      throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable");
     }
-    
-    // Add timestamp for cache busting
     const timestamp = Date.now();
-    const url = `${supabaseUrl}/functions/v1${endpoint.includes('?') ? endpoint + `&_t=${timestamp}` : endpoint + `?_t=${timestamp}`}`;
-    
+    const url = `${supabaseUrl}/functions/v1${endpoint}${
+      endpoint.includes("?") ? `&_t=${timestamp}` : `?_t=${timestamp}`
+    }`;
+
     console.log(`[Planner API] Calling edge function: ${url}`);
-    
-    // Make request with proper authentication
+
+    // 4. Call your Supabase Edge Function with the Bearer token
     const response = await fetch(url, {
       ...options,
       headers: {
-        'Authorization': `Bearer ${sessionToken}`,
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        ...(options.headers || {})
-      }
+        Authorization: `Bearer ${sessionToken}`,
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        ...(options.headers || {}),
+      },
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[Planner API] Edge function error (${response.status}):`, errorText);
