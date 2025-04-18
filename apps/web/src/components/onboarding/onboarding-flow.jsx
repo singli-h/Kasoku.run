@@ -224,7 +224,7 @@ export default function OnboardingFlow() {
           throw coachError;
         }
       }
-
+      
       // Verify onboarding status after completion
       console.log('Verifying onboarding status after completion...')
       try {

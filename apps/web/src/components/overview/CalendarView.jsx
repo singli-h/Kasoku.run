@@ -78,7 +78,7 @@ const CalendarView = () => {
         // Invoke Supabase Edge Function for mesocycle
         const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
           method: 'GET',
-          searchParams: '/dashboard/mesocycle'
+          searchParams: { searchParams: { path: '/dashboard/mesocycle' } }
         })
         if (fnErr) throw fnErr
         const json = JSON.parse(raw)
