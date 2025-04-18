@@ -17,22 +17,28 @@ const getSupabaseEnv = () => {
 // Server-side Supabase client with Clerk session JWT
 export async function createServerSupabaseClient(): Promise<SupabaseClient> {
   const { supabaseUrl, supabaseKey } = getSupabaseEnv();
-  const { getToken } = await auth();
-  const token = await getToken({ template: 'supabase' });
   
-  // Create client with global settings
-  const options = {
+  return createClient(supabaseUrl, supabaseKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
     global: {
-      headers: token ? {
-        Authorization: `Bearer ${token}`,
-      } : undefined,
+      // Use the new Clerk-Supabase integration method
+      async fetch(url, options = {}) {
+        const { getToken } = await auth();
+        // Get the session token directly without specifying a template
+        const token = await getToken();
+        
+        if (token) {
+          const headers = new Headers(options.headers);
+          headers.set('Authorization', `Bearer ${token}`);
+          options = { ...options, headers };
+        }
+        
+        return fetch(url, options);
+      }
     },
-  };
-  
-  return createClient(supabaseUrl, supabaseKey, options);
+  });
 } 
