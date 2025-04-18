@@ -13,12 +13,20 @@ export function useBrowserSupabaseClient(): SupabaseClient {
     {
       global: {
         fetch: async (url, options: any = {}) => {
-          // Use Clerk session to get Supabase-specific JWT
-          const clerkToken = await session?.getToken({ template: 'supabase' });
-          const headers = new Headers(options.headers);
-          if (clerkToken) {
-            headers.set('Authorization', `Bearer ${clerkToken}`);
+          // Fetch a fresh Clerk Supabase JWT for each request
+          let token: string | null = null;
+          try {
+            token = await session?.getToken({ template: 'supabase' }) ?? null;
+            console.log('🚩 Clerk token (should not decode to role: "anon"):', token);
+          } catch (e) {
+            console.error('[auth] Error fetching Clerk token:', e);
           }
+          const headers = new Headers(options.headers);
+          if (token) {
+            headers.set('Authorization', `Bearer ${token}`);
+          }
+          // Log fallback anon key usage
+          console.log('[auth] Using anon key prefix:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.slice(0, 20));
           return fetch(url, { ...options, headers });
         }
       }

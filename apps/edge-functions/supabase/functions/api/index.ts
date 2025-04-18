@@ -1424,6 +1424,8 @@ Deno.serve(async (req) => {
     if (AUTH_ENABLED) {
       // Debug logs for authentication
       console.log("[auth] Incoming headers:", Object.fromEntries(req.headers.entries()));
+      // Debug: explicitly log the Supabase anon-key header
+      console.log("[auth] apikey header:", req.headers.get("apikey"));
       const authHeader = req.headers.get("Authorization");
       console.log("[auth] Authorization header:", authHeader);
       if (!authHeader) {
@@ -1431,6 +1433,19 @@ Deno.serve(async (req) => {
       }
       const token = authHeader.replace("Bearer ", "");
       console.log("[auth] Extracted token:", token);
+      // Debug: dump Clerk env vars
+      console.log("[auth] CLERK_SECRET_KEY:", CLERK_SECRET_KEY);
+      console.log("[auth] CLERK_PUBLISHABLE_KEY:", CLERK_PUBLISHABLE_KEY);
+      console.log("[auth] CLERK_JWT_KEY (first 100 chars):", CLERK_JWT_KEY?.substring(0, 100));
+      // Debug: try to decode the token payload
+      try {
+        const [, payload] = token.split(".");
+        const raw = atob(payload);
+        const decoded = JSON.parse(raw);
+        console.log("[auth] Decoded token payload:", decoded);
+      } catch (e) {
+        console.error("[auth] Token decode error:", e);
+      }
       try {
         // Initialize Clerk client
         const clerkClient = createClerkClient({
