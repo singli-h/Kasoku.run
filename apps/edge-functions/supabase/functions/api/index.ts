@@ -5,6 +5,8 @@
 import { serve } from "https://deno.land/std@0.188.0/http/server.ts";
 // @deno-types="https://esm.sh/@supabase/supabase-js@2.23.0"
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
+// Import Clerk's backend SDK for JWT verification (pinned version)
+import { Clerk } from "https://esm.sh/@clerk/backend@1.30.0/dist/clerk.mjs";
 import { corsHeaders, handleError } from './utils.ts';
 import { getAthletes, createAthlete } from './athletes.ts';
 import { getUserStatus, getUserProfile } from './users.ts';
@@ -18,6 +20,10 @@ import {
 
 // Toggle for authentication (default is enabled)
 const AUTH_ENABLED = true;
+
+// Clerk configuration
+const CLERK_SECRET_KEY = Deno.env.get("CLERK_SECRET_KEY"); // Clerk secret key for JWT verification
+const CLERK_ISSUER = Deno.env.get("CLERK_ISSUER"); // Clerk issuer for verification (e.g. https://your-org.clerk.accounts.dev)
 
 // Type declarations for Deno environment
 declare global {
@@ -1407,25 +1413,73 @@ Deno.serve(async (req) => {
       console.log("[API] No timezone in request body, using default:", timezone);
     }
      
+    // -------------------------
+    // Authentication section
+    // -------------------------
+    
     if (AUTH_ENABLED) {
       const authHeader = req.headers.get("Authorization");
+      console.log("[API] Auth header exists:", !!authHeader);
+      
       if (!authHeader) {
         return handleError(new Error("Missing Authorization header"), "auth");
       }
 
       const token = authHeader.replace("Bearer ", "");
-      const supabaseAuthClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-      );
       
-      const { data: authData, error: authError } = await supabaseAuthClient.auth.getUser(token);
-      if (authError || !authData.user) {
-        return handleError(new Error("Invalid or expired token"), "auth");
+      try {
+        // Use Clerk's SDK for secure session token verification
+        if (!CLERK_SECRET_KEY) {
+          console.error("[API] Missing Clerk configuration environment variable", {
+            hasSecretKey: !!CLERK_SECRET_KEY
+          });
+          return handleError(new Error("Server configuration error: Missing Clerk verification configuration"), "auth");
+        }
+        
+        console.log("[API] Verifying Clerk token...");
+        
+        // Initialize Clerk instance
+        const clerk = new Clerk({ secretKey: CLERK_SECRET_KEY });
+        
+        // Verify the session token
+        const session = await clerk.verifyToken({
+          token,
+          sessionToken: true
+        });
+        
+        if (!session || !session.userId) {
+          console.error("[API] Token verification failed: No valid user ID");
+          return handleError(new Error("Invalid authentication token"), "auth");
+        }
+        
+        // The userId in session is the clerk_id
+        const clerkId = session.userId;
+        console.log("[API] Token verified successfully. Clerk ID:", clerkId);
+        
+        // Get user information using clerk_id
+        const { data: clerkUserData, error: clerkUserError } = await supabase
+          .from("users")
+          .select("id, email, metadata, timezone")
+          .eq("clerk_id", clerkId)
+          .single();
+          
+        if (clerkUserError || !clerkUserData) {
+          console.error("[API] Error fetching user with clerk_id:", clerkId, clerkUserError);
+          return handleError(new Error(`User not found for clerk_id: ${clerkId}`), "auth");
+        }
+        
+        console.log("[API] Successfully found user:", {
+          id: clerkUserData.id,
+          role: clerkUserData.metadata?.role
+        });
+        
+        // Get user role data including athlete/coach IDs if available
+        userData = await getUserRoleData(supabase, clerkId);
+        
+      } catch (error) {
+        console.error("[API] Token verification error:", error);
+        return handleError(new Error(`Authentication failed: ${error.message}`), "auth");
       }
-
-      // Get user role data including athlete/coach IDs if available
-      userData = await getUserRoleData(supabase, authData.user.id);
     }
 
     // Handle routes that need role-specific IDs

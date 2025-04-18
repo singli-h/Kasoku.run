@@ -1,20 +1,54 @@
-// Create a Supabase client helper for Clerk integration
+"use client";
+import { createBrowserClient } from "@supabase/ssr";
+import { useAuth } from "@clerk/nextjs";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { auth } from '@clerk/nextjs/server';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
-// Helper to get environment variables
-const getSupabaseEnv = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Simplified hook for Clerk-authenticated Supabase client
+export function useSupabaseClient(): SupabaseClient {
+  const { getToken } = useAuth();
+  
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: {
+        fetch: async (url, options = {}) => {
+          const token = await getToken();
+          
+          if (token) {
+            const headers = new Headers(options.headers);
+            headers.set('Authorization', `Bearer ${token}`);
+            options = { ...options, headers };
+          }
+          
+          return fetch(url, options);
+        }
+      }
+    }
+  );
+}
+
+// Singleton client for non-auth or default access
+export default createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// Helper function to get Supabase environment variables
+function getSupabaseEnv() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing Supabase environment variables');
   }
   
   return { supabaseUrl, supabaseKey };
-};
+}
 
-// Server-side Supabase client with Clerk session JWT
+// Create a server-side Supabase client with Clerk authentication
 export async function createServerSupabaseClient(): Promise<SupabaseClient> {
   const { supabaseUrl, supabaseKey } = getSupabaseEnv();
   
@@ -25,11 +59,9 @@ export async function createServerSupabaseClient(): Promise<SupabaseClient> {
       detectSessionInUrl: false,
     },
     global: {
-      // Use the new Clerk-Supabase integration method
       async fetch(url, options = {}) {
-        const { getToken } = await auth();
-        // Get the session token directly without specifying a template
-        const token = await getToken();
+        const authInstance = await auth();
+        const token = await authInstance.getToken();
         
         if (token) {
           const headers = new Headers(options.headers);

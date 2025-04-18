@@ -1,5 +1,5 @@
 import { corsHeaders, handleError } from './utils.ts';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
 
 /**
  * Helper function to convert camelCase parameters to snake_case for database operations
