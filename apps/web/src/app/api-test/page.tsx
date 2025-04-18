@@ -16,6 +16,13 @@ export default function ApiTest() {
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<Record<string, any>>({});
   const { userId, getToken } = useAuth();
+  const [debugToken, setDebugToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAuthToken()
+      .then(token => setDebugToken(token))
+      .catch(() => setDebugToken(null));
+  }, []);
 
   // Helper function to get token, throws if not available
   const getAuthToken = async () => {
@@ -124,6 +131,14 @@ export default function ApiTest() {
       </div>
     );
   }
+
+  // Debug display for JWT and anon-key
+  const anonKeyPrefix = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20) || '';
+  <div className="p-8">
+    <h2 className="text-lg font-semibold mb-2">Debug Info</h2>
+    <pre className="bg-gray-100 p-2 mb-4">Clerk Supabase JWT: {debugToken || 'none'}</pre>
+    <pre className="bg-gray-100 p-2 mb-4">Anon Key Prefix: {anonKeyPrefix}</pre>
+  </div>
 
   return (
     <div className="p-8">
