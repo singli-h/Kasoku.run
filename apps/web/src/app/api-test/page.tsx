@@ -25,20 +25,34 @@ export default function ApiTest() {
   };
 
   // Helper function to run a test
-  const runTest = async (name: string, testFn: () => Promise<any>) => {
-    setLoading(prev => ({ ...prev, [name]: true }));
-    setError(prev => ({ ...prev, [name]: null }));
+  const runTest = async (testName: string, testFn: () => Promise<any>) => {
+    console.log(`[API Test] Starting test: ${testName}`);
+    setLoading(prev => {
+      console.log(`[API Test] Setting loading state for ${testName}:`, true);
+      return { ...prev, [testName]: true };
+    });
+    setError(prev => ({ ...prev, [testName]: null }));
+    
     try {
+      console.log(`[API Test] Executing test function for ${testName}`);
       const result = await testFn();
-      setResults(prev => ({ ...prev, [name]: result }));
-      console.log(`${name} test result:`, result);
+      console.log(`[API Test] Test ${testName} completed successfully:`, result);
+      setResults(prev => ({
+        ...prev,
+        [testName]: { result, error: null },
+      }));
       return true;
-    } catch (err) {
-      console.error(`${name} test error:`, err);
-      setError(prev => ({ ...prev, [name]: err }));
+    } catch (error) {
+      console.error(`[API Test] Test ${testName} failed with error:`, error);
+      setResults(prev => ({
+        ...prev,
+        [testName]: { result: null, error },
+      }));
+      setError(prev => ({ ...prev, [testName]: error }));
       return false;
     } finally {
-      setLoading(prev => ({ ...prev, [name]: false }));
+      console.log(`[API Test] Cleaning up test ${testName}`);
+      setLoading(prev => ({ ...prev, [testName]: false }));
     }
   };
 
@@ -67,26 +81,11 @@ export default function ApiTest() {
 
   // Test functions using Supabase edge functions
   const tests = {
-    getEvents: async () => {
-      const token = await getAuthToken();
-      return supabaseApi.events.getAll(supabase, token);
-    },
-    getAthletes: async () => {
-      const token = await getAuthToken();
-      return supabaseApi.athletes.getAll(supabase, token);
-    },
-    getDashboardInit: async () => {
-      const token = await getAuthToken();
-      return supabaseApi.dashboard.getExercisesInit(supabase, token);
-    },
-    testUserStatus: async () => {
-      const token = await getAuthToken();
-      return supabaseApi.users.getStatus(supabase, token);
-    },
-    getUserProfile: async () => {
-      const token = await getAuthToken();
-      return supabaseApi.users.getProfile(supabase, userId!, token);
-    },
+    getEvents: () => supabaseApi.events.getAll(supabase),
+    getAthletes: () => supabaseApi.athletes.getAll(supabase),
+    getDashboardInit: () => supabaseApi.dashboard.getExercisesInit(supabase),
+    testUserStatus: () => supabaseApi.users.getStatus(supabase),
+    getUserProfile: () => supabaseApi.users.getProfile(supabase, userId!),
   };
 
   // Run all tests
