@@ -134,11 +134,7 @@ export default function ApiTest() {
 
   // Debug display for JWT and anon-key
   const anonKeyPrefix = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20) || '';
-  <div className="p-8">
-    <h2 className="text-lg font-semibold mb-2">Debug Info</h2>
-    <pre className="bg-gray-100 p-2 mb-4">Clerk Supabase JWT: {debugToken || 'none'}</pre>
-    <pre className="bg-gray-100 p-2 mb-4">Anon Key Prefix: {anonKeyPrefix}</pre>
-  </div>
+  
 
   return (
     <div className="p-8">
@@ -149,6 +145,11 @@ export default function ApiTest() {
           <p>This page tests the connection to various API endpoints.</p>
           <p>User ID: {userId}</p>
         </div>
+      <div className="p-8">
+        <h2 className="text-lg font-semibold mb-2">Debug Info</h2>
+        <pre className="bg-gray-100 p-2 mb-4">Clerk Supabase JWT: {debugToken || 'none'}</pre>
+        <pre className="bg-gray-100 p-2 mb-4">Anon Key Prefix: {anonKeyPrefix}</pre>
+      </div>
 
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Individual Tests</h2>
