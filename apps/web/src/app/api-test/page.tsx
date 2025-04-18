@@ -63,10 +63,11 @@ export default function ApiTest() {
     
     try {
       console.log(`[Test] Adding coach role for user: ${userId}`);
-      const token = await getAuthToken();
+      // Ensure session is active
+      await getAuthToken();
       const data = await supabaseApi.users.update(supabase, userId!, {
         metadata: { role: 'coach' }
-      }, token);
+      });
       console.log(`[Test] Coach role added:`, data);
       setResults(prev => ({ ...prev, addCoachRole: data }));
       return data;
@@ -82,24 +83,24 @@ export default function ApiTest() {
   // Test functions using Supabase edge functions
   const tests = {
     getEvents: async () => {
-      const token = await getAuthToken();
-      return supabaseApi.events.getAll(supabase, token);
+      await getAuthToken();
+      return supabaseApi.events.getAll(supabase);
     },
     getAthletes: async () => {
-      const token = await getAuthToken();
-      return supabaseApi.athletes.getAll(supabase, token);
+      await getAuthToken();
+      return supabaseApi.athletes.getAll(supabase);
     },
     getDashboardInit: async () => {
-      const token = await getAuthToken();
-      return supabaseApi.dashboard.getExercisesInit(supabase, token);
+      await getAuthToken();
+      return supabaseApi.dashboard.getExercisesInit(supabase);
     },
     testUserStatus: async () => {
-      const token = await getAuthToken();
-      return supabaseApi.users.getStatus(supabase, token);
+      await getAuthToken();
+      return supabaseApi.users.getStatus(supabase);
     },
     getUserProfile: async () => {
-      const token = await getAuthToken();
-      return supabaseApi.users.getProfile(supabase, userId!, token);
+      await getAuthToken();
+      return supabaseApi.users.getProfile(supabase, userId!);
     },
   };
 
