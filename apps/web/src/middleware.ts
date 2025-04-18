@@ -9,6 +9,7 @@
 
 import { clerkMiddleware } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
+import { createServerSupabaseClient } from "@/lib/supabase.server"
 
 // Define protected routes that require authentication
 const protectedRoutes = [
@@ -93,35 +94,22 @@ export default clerkMiddleware(async (auth, req) => {
     const isProtectedRoute = protectedRoutes.some(route => url.pathname.startsWith(route))
     if (userId && isProtectedRoute) {
       try {
-        // Use our API endpoint that leverages edge functions with cache-busting
-        const timestamp = Date.now();
-        const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/user-status?t=${timestamp}`
-        console.log(`Checking onboarding status for user ${userId}`)
-        
-        const response = await fetch(apiUrl, {
-          headers: {
-            'Authorization': `Bearer ${req.headers.get('Authorization') || ''}`,
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          }
-        })
-
-        if (!response.ok) {
-          console.error(`Failed to fetch user status: ${response.status}`)
-          // On error, allow access to continue rather than blocking the user
+        // Query onboarding status directly via Supabase
+        const supabase = await createServerSupabaseClient()
+        const { data: userRecord, error: dbError } = await supabase
+          .from('users')
+          .select('onboarding_completed')
+          .eq('clerk_id', userId)
+          .single()
+        if (dbError) {
+          console.error(`Failed to fetch onboarding status:`, dbError)
           return NextResponse.next()
         }
-
-        const data = await response.json()
-        console.log(`Onboarding status: ${data.onboardingCompleted ? 'completed' : 'not completed'}`)
-        console.log(`Onboarding raw value: ${JSON.stringify(data)}`)
-        console.log(`Onboarding type: ${typeof data.onboardingCompleted}`)
+        const onboardingCompleted = userRecord.onboarding_completed
+        console.log(`Onboarding status for ${userId}:`, onboardingCompleted)
 
         // If onboarding is not completed, redirect to onboarding
-        // Ensure consistent boolean evaluation by using loose equality checking
-        // This handles both `false` and falsy values like undefined/null/0/"false"
-        if (data.hasOwnProperty('onboardingCompleted') && !data.onboardingCompleted) {
+        if (!onboardingCompleted) {
           console.log(`Redirecting to onboarding: User ${userId} has not completed onboarding`)
           const onboardingUrl = new URL('/onboarding', req.url)
           return NextResponse.redirect(onboardingUrl)
@@ -137,34 +125,22 @@ export default clerkMiddleware(async (auth, req) => {
     const isOnboardingRoute = onboardingRoutes.some(route => url.pathname.startsWith(route))
     if (userId && isOnboardingRoute) {
       try {
-        // Use our API endpoint that leverages edge functions with cache-busting
-        const timestamp = Date.now();
-        const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/user-status?t=${timestamp}`
-        console.log(`Checking if user ${userId} has already completed onboarding`)
-        
-        const response = await fetch(apiUrl, {
-          headers: {
-            'Authorization': `Bearer ${req.headers.get('Authorization') || ''}`,
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          }
-        })
-
-        if (!response.ok) {
-          console.error(`Failed to fetch user status: ${response.status}`)
-          // On error, allow access to continue
+        // Query onboarding status directly via Supabase
+        const supabase = await createServerSupabaseClient()
+        const { data: userRecord, error: dbError } = await supabase
+          .from('users')
+          .select('onboarding_completed')
+          .eq('clerk_id', userId)
+          .single()
+        if (dbError) {
+          console.error(`Failed to fetch onboarding status:`, dbError)
           return NextResponse.next()
         }
-
-        const data = await response.json()
-        console.log(`Onboarding status for redirect check: ${data.onboardingCompleted ? 'completed' : 'not completed'}`)
-        console.log(`Onboarding raw value for redirect: ${JSON.stringify(data)}`)
-        console.log(`Onboarding type for redirect: ${typeof data.onboardingCompleted}`)
+        const onboardingCompleted = userRecord.onboarding_completed
+        console.log(`Onboarding status for redirect: ${onboardingCompleted}`)
 
         // If onboarding is completed, redirect to planner
-        // Ensure consistent boolean evaluation by checking property existence and using loose equality
-        if (data.hasOwnProperty('onboardingCompleted') && data.onboardingCompleted) {
+        if (onboardingCompleted) {
           console.log(`Redirecting to planner: User ${userId} has already completed onboarding`)
           const plannerUrl = new URL('/planner', req.url)
           return NextResponse.redirect(plannerUrl)

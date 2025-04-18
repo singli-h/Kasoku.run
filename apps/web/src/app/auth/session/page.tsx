@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+import { useBrowserSupabaseClient } from '@/lib/supabase';
+import supabaseApi from '@/lib/supabase-api';
 import Image from "next/image";
 
 /**
@@ -14,6 +16,7 @@ import Image from "next/image";
 export default function SessionHandler() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
+  const supabase = useBrowserSupabaseClient();
 
   useEffect(() => {
     // Don't do anything until Clerk is loaded
@@ -27,13 +30,7 @@ export default function SessionHandler() {
 
     async function checkOnboardingStatus() {
       try {
-        // Get user's onboarding status
-        const response = await fetch('/api/user-status');
-        if (!response.ok) {
-          throw new Error('Failed to fetch user status');
-        }
-        
-        const data = await response.json();
+        const data = await supabaseApi.users.getStatus(supabase);
         
         // Redirect based on onboarding status
         if (data.onboardingCompleted) {
@@ -52,7 +49,7 @@ export default function SessionHandler() {
 
     // Check onboarding status
     checkOnboardingStatus();
-  }, [isLoaded, isSignedIn, router]);
+  }, [isLoaded, isSignedIn, router, supabase]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center">

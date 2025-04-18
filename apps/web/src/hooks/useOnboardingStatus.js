@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
+import { useBrowserSupabaseClient } from '@/lib/supabase';
+import supabaseApi from '@/lib/supabase-api';
 
 /**
  * Custom hook to check if the user has completed onboarding
@@ -19,6 +21,7 @@ export default function useOnboardingStatus({
 } = {}) {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
+  const supabase = useBrowserSupabaseClient();
   const [onboardingCompleted, setOnboardingCompleted] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,13 +35,7 @@ export default function useOnboardingStatus({
 
       try {
         setIsLoading(true);
-        const response = await fetch('/api/user-status');
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch user status');
-        }
-        
-        const data = await response.json();
+        const data = await supabaseApi.users.getStatus(supabase);
         setOnboardingCompleted(data.onboardingCompleted);
         
         // Handle redirects based on onboarding status
@@ -63,7 +60,7 @@ export default function useOnboardingStatus({
     }
 
     checkOnboardingStatus();
-  }, [isLoaded, isSignedIn, redirect, redirectTo, requireOnboarding, router]);
+  }, [isLoaded, isSignedIn, redirect, redirectTo, requireOnboarding, router, supabase]);
 
   return { onboardingCompleted, isLoading, error };
 } 

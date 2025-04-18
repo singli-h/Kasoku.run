@@ -5,10 +5,13 @@ import Image from "next/image"
 import { SignIn } from "@clerk/nextjs"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
+import { useBrowserSupabaseClient } from "@/lib/supabase"
+import supabaseApi from "@/lib/supabase-api"
 
 const LoginPage = () => {
   const { isSignedIn, isLoaded } = useAuth()
   const router = useRouter()
+  const supabase = useBrowserSupabaseClient()
   const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
@@ -19,10 +22,9 @@ const LoginPage = () => {
 
     const checkOnboardingStatus = async () => {
       try {
-        const response = await fetch('/api/user-status')
-        const data = await response.json()
+        const { onboardingCompleted } = await supabaseApi.users.getStatus(supabase)
 
-        if (data.onboardingCompleted) {
+        if (onboardingCompleted) {
           // If onboarding is completed, go to planner
           router.push('/planner')
         } else {
@@ -41,7 +43,7 @@ const LoginPage = () => {
     if (isSignedIn) {
       checkOnboardingStatus()
     }
-  }, [isSignedIn, isLoaded, router])
+  }, [isSignedIn, isLoaded, router, supabase])
 
   // Don't render anything while checking to avoid flickering
   if (isLoaded && isSignedIn && isChecking) {

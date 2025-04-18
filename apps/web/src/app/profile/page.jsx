@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { useBrowserSupabaseClient } from '@/lib/supabase'
+import supabaseApi from '@/lib/supabase-api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -13,55 +15,33 @@ import { format } from 'date-fns'
 
 export default function ProfilePage() {
   const { user, isLoaded: isUserLoaded } = useUser()
+  const supabase = useBrowserSupabaseClient()
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    const fetchProfileData = async () => {
+    // Fetch user profile data
+    if (process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true') {
+      setLoading(false)
+      return
+    }
+    if (!isUserLoaded) return
+
+    setLoading(true)
+    ;(async () => {
       try {
-        // If in development with BYPASS_AUTH enabled, use mock data
-        if (process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true') {
-          console.log('Using mock profile data for development')
-          const mockProfile = generateMockProfile()
-          setProfile(mockProfile)
-          setLoading(false)
-          return
-        }
-        
-        if (!isUserLoaded) return
-        
-        setLoading(true)
-        const response = await fetch('/api/user-profile', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        })
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch profile data')
-        }
-        
-        const data = await response.json()
-        console.log('Profile data:', data)
-        
-        if (data.status === 'success') {
-          setProfile(data.data)
-          setError(null)
-        } else {
-          setError(data.message || 'Failed to load profile data')
-        }
+        const data = await supabaseApi.users.getProfile(supabase, user.id)
+        setProfile(data)
+        setError(null)
       } catch (err) {
         console.error('Error fetching profile:', err)
         setError(err.message || 'An error occurred while loading your profile')
       } finally {
         setLoading(false)
       }
-    }
-    
-    fetchProfileData()
-  }, [isUserLoaded])
+    })()
+  }, [isUserLoaded, supabase, user?.id])
 
   // Mock profile for development
   const generateMockProfile = () => {

@@ -5,20 +5,22 @@ import Image from "next/image"
 import { SignUp } from "@clerk/nextjs"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
+import { useBrowserSupabaseClient } from "@/lib/supabase"
+import supabaseApi from "@/lib/supabase-api"
 
 const RegisterPage = () => {
   const { isSignedIn } = useAuth()
   const router = useRouter()
+  const supabase = useBrowserSupabaseClient()
 
   useEffect(() => {
     // If user is already signed in, check their onboarding status
     if (isSignedIn) {
       const checkOnboardingStatus = async () => {
         try {
-          const response = await fetch('/api/user-status')
-          const data = await response.json()
+          const { onboardingCompleted } = await supabaseApi.users.getStatus(supabase)
 
-          if (data.onboardingCompleted) {
+          if (onboardingCompleted) {
             // If onboarding is completed, go to planner
             router.push('/planner')
           } else {
@@ -34,7 +36,7 @@ const RegisterPage = () => {
 
       checkOnboardingStatus()
     }
-  }, [isSignedIn, router])
+  }, [isSignedIn, router, supabase])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">

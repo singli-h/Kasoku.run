@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { edgeFunctions } from '@/lib/edge-functions';
+import { useBrowserSupabaseClient } from '@/lib/supabase';
+import supabaseApi from '@/lib/supabase-api';
 import { useAuth } from '@clerk/nextjs';
 
 interface TestResult {
@@ -10,6 +11,7 @@ interface TestResult {
 }
 
 export default function ApiTest() {
+  const supabase = useBrowserSupabaseClient();
   const [results, setResults] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<Record<string, any>>({});
@@ -19,16 +21,7 @@ export default function ApiTest() {
   // Get auth token on component mount
   useEffect(() => {
     const fetchToken = async () => {
-      if (userId) {
-        try {
-          // Get a session token specifically for API access
-          const token = await getToken({ template: "supabase" });
-          setAuthToken(token);
-          console.log("Auth token fetched successfully");
-        } catch (err) {
-          console.error("Error fetching auth token:", err);
-        }
-      }
+      // Supabase client handles authentication token automatically
     };
     
     fetchToken();
@@ -59,20 +52,9 @@ export default function ApiTest() {
     
     try {
       console.log(`[Test] Adding coach role for user: ${userId}`);
-      const response = await fetch(`/api-test/add-coach-role?clerk_id=${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
+      const data = await supabaseApi.users.update(supabase, userId!, {
+        metadata: { role: 'coach' }
       });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[Test] Error adding coach role:`, errorText);
-        throw new Error(`Failed to add coach role: ${errorText}`);
-      }
-      
-      const data = await response.json();
       console.log(`[Test] Coach role added:`, data);
       setResults(prev => ({ ...prev, addCoachRole: data }));
       return data;
@@ -85,130 +67,13 @@ export default function ApiTest() {
     }
   };
 
-  // Modified fetchWithAuth helper to ensure all API calls include auth
-  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    // Remove leading '/api/' to avoid duplicate 'api' in the path
-    const trimmed = url.replace(/^\/api\//, '');
-    
-    // Invoke the Edge Function with function name 'api' and path parameter
-    // Normalize method to Supabase HttpMethod union
-    const method = (options.method?.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE') ?? 'GET';
-    const { data: rawData, error } = await edgeFunctions.invoke('api', {
-      method,
-      body: options.body ? JSON.parse(options.body as string) : undefined,
-      // Pass the endpoint path as query parameter to avoid URL path issues
-      queryParams: { path: trimmed }
-    });
-    if (error) throw error;
-    return JSON.parse(rawData);
-  };
-
-  // Test functions
+  // Test functions using Supabase edge functions
   const tests = {
-    getEvents: async () => {
-      return fetchWithAuth('/api/events');
-    },
-
-    getAthletes: async () => {
-      return fetchWithAuth('/api/athletes');
-    },
-
-    getDashboardInit: async () => {
-      return fetchWithAuth('/api/dashboard/exercisesInit');
-    },
-
-    testUserStatus: async () => {
-      const response = await fetch('/api/user-status', {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        },
-        credentials: 'include'
-      });
-      return response.json();
-    },
-    
-    getUserProfile: async () => {
-      console.log(`[Test] Fetching user profile for userId: ${userId}`);
-      return fetchWithAuth(`/api/users/${userId}/profile`);
-    },
-    
-    createMicrocycle: async () => {
-      console.log(`[Test] Creating microcycle for userId: ${userId}`);
-      
-      // First, ensure the user has a coach role
-      let hasCoachRole = false;
-      
-      try {
-        const profileResponse = await fetchWithAuth(`/api/users/${userId}/profile`);
-        console.log(`[Test] User profile data for coach check:`, profileResponse);
-        
-        if (profileResponse?.data?.user?.metadata?.role !== 'coach') {
-          console.warn(`[Test] User does not have coach role. Current role: ${profileResponse?.data?.user?.metadata?.role}`);
-          console.log(`[Test] Attempting to add coach role first...`);
-          
-          // Add coach role
-          const coachRoleResult = await addCoachRole();
-          
-          if (coachRoleResult?.success) {
-            hasCoachRole = true;
-            console.log(`[Test] Coach role added successfully.`);
-          } else {
-            console.error(`[Test] Failed to add coach role:`, coachRoleResult);
-            throw new Error("Failed to add coach role required for this test");
-          }
-        } else {
-          hasCoachRole = true;
-          console.log(`[Test] User already has coach role.`);
-        }
-      } catch (err) {
-        console.error(`[Test] Error while checking/setting up coach role:`, err);
-        throw err;
-      }
-      
-      // Sample minimal data for testing
-      const testData = {
-        microcycle: {
-          name: "Test Microcycle",
-          description: "Test description",
-          startDate: new Date().toISOString().split('T')[0], // Today's date
-          endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
-        },
-        sessions: [
-          {
-            name: "Test Session 1",
-            description: "Test session description",
-            date: new Date().toISOString().split('T')[0],
-            exercises: [
-              {
-                exerciseId: 43, // Barbell Back Squat
-                sets: 3,
-                reps: 5,
-                weight: 100,
-                notes: "Test exercise",
-                presetDetails: [
-                  {
-                    setNumber: 1,
-                    reps: 5,
-                    resistance: 100,
-                    resistanceUnitId: 1
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      };
-      
-      console.log(`[Test] Microcycle test data:`, JSON.stringify(testData, null, 2));
-      
-      // Now try to create the microcycle using the direct fetch with auth
-      return fetchWithAuth('/api/planner/microcycle', {
-        method: 'POST',
-        body: JSON.stringify(testData)
-      });
-    }
+    getEvents: () => supabaseApi.events.getAll(supabase),
+    getAthletes: () => supabaseApi.athletes.getAll(supabase),
+    getDashboardInit: () => supabaseApi.dashboard.getInit(supabase),
+    testUserStatus: () => supabaseApi.users.getStatus(supabase),
+    getUserProfile: () => supabaseApi.users.getProfile(supabase, userId!),
   };
 
   // Run all tests
