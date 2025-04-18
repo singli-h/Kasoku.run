@@ -81,11 +81,26 @@ export default function ApiTest() {
 
   // Test functions using Supabase edge functions
   const tests = {
-    getEvents: () => supabaseApi.events.getAll(supabase),
-    getAthletes: () => supabaseApi.athletes.getAll(supabase),
-    getDashboardInit: () => supabaseApi.dashboard.getExercisesInit(supabase),
-    testUserStatus: () => supabaseApi.users.getStatus(supabase),
-    getUserProfile: () => supabaseApi.users.getProfile(supabase, userId!),
+    getEvents: async () => {
+      const token = await getAuthToken();
+      return supabaseApi.events.getAll(supabase, token);
+    },
+    getAthletes: async () => {
+      const token = await getAuthToken();
+      return supabaseApi.athletes.getAll(supabase, token);
+    },
+    getDashboardInit: async () => {
+      const token = await getAuthToken();
+      return supabaseApi.dashboard.getExercisesInit(supabase, token);
+    },
+    testUserStatus: async () => {
+      const token = await getAuthToken();
+      return supabaseApi.users.getStatus(supabase, token);
+    },
+    getUserProfile: async () => {
+      const token = await getAuthToken();
+      return supabaseApi.users.getProfile(supabase, userId!, token);
+    },
   };
 
   // Run all tests
