@@ -6,6 +6,7 @@ import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight } from "lucide-react"
 import { useBrowserSupabaseClient } from '@/lib/supabase'
+import { dashboardApi } from '@/lib/supabase-api'
 import { PlusCircle, Save } from "lucide-react"
 
 const PlanButton = ({ children, isActive, className = "", ...props }) => {
@@ -39,13 +40,9 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
     const fetchExercises = async () => {
       try {
         setLoading(true)
-        const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
-          method: 'GET',
-          query: { path: '/dashboard/exercises' }
-        })
-        if (fnErr) throw fnErr
-        const json = JSON.parse(raw)
-        setExercises(json.data || [])
+        const { data, error } = await dashboardApi.getExercises(supabase)
+        if (error) throw error
+        setExercises(data || [])
       } catch (err) {
         console.error('Error fetching exercises:', err)
         setError(err.message)

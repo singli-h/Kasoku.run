@@ -41,9 +41,8 @@ export const useExerciseData = () => {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
       try {
-        const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
-          method: 'GET',
-          query: { path: '/dashboard/exercisesInit' }
+        const { data: rawData, error: fnError } = await supabase.functions.invoke('api/dashboard/exercisesInit', {
+          method: 'GET'
         })
         if (fnError) throw fnError
         const data = JSON.parse(rawData)
@@ -93,9 +92,8 @@ export const useExerciseData = () => {
       }));
 
       // Invoke createTrainingSession edge function
-      const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
+      const { data: rawData, error: fnError } = await supabase.functions.invoke('api/dashboard/trainingSession', {
         method: 'POST',
-        query: { path: '/dashboard/trainingSession' },
         body: {
         exercise_training_session_id: state.session.details.id,
         exercisesDetail
@@ -119,9 +117,8 @@ export const useExerciseData = () => {
 
   const refreshSessionData = async () => {
     try {
-      const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
-        method: 'GET',
-        query: { path: '/dashboard/exercisesInit' }
+      const { data: rawData, error: fnError } = await supabase.functions.invoke('api/dashboard/exercisesInit', {
+        method: 'GET'
       })
       if (fnError) throw fnError
       const data = JSON.parse(rawData)
@@ -172,9 +169,8 @@ export const useExerciseData = () => {
       }));
       
       // Invoke updateTrainingSession edge function
-      const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
+      const { data: rawData, error: fnError } = await supabase.functions.invoke('api/dashboard/trainingSession', {
         method: 'PUT',
-        query: { path: '/dashboard/trainingSession' },
         body: {
         exercise_training_session_id: state.session.details.id,
         exercisesDetail: exerciseDetails,

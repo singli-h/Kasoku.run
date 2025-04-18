@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useBrowserSupabaseClient } from '@/lib/supabase'
+import { dashboardApi } from '@/lib/supabase-api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 
@@ -13,13 +14,10 @@ export default function WeeklyOverview() {
     const fetchWeeklyData = async () => {
       try {
         setLoading(true)
-        const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
-          method: 'GET',
-          query: { path: '/dashboard/weeklyOverview' }
-        })
-        if (fnErr) throw fnErr
-        const json = JSON.parse(raw)
-        setWeeklyData(json.data)
+        const { data, error: apiError } = await dashboardApi.getWeeklyOverview(supabase);
+        
+        if (apiError) throw apiError;
+        setWeeklyData(data);
       } catch (err) {
         console.error('Error fetching weekly data:', err)
         setError(err.message)
@@ -28,8 +26,10 @@ export default function WeeklyOverview() {
       }
     }
 
-    fetchWeeklyData()
-  }, [])
+    if (supabase) {
+      fetchWeeklyData();
+    }
+  }, [supabase])
 
   if (loading) return <div>Loading...</div>
   if (error) return <div>Error: {error}</div>

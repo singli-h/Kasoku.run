@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { X, Target } from "lucide-react"
 import { motion } from "framer-motion"
 import { useBrowserSupabaseClient } from "@/lib/supabase"
+import { eventsApi } from "@/lib/supabase-api"
 
 export default function AthleteDetailsStep({ userData, updateUserData, onNext, onPrev }) {
   const supabase = useBrowserSupabaseClient()
@@ -25,13 +26,8 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
       try {
         setLoading(true)
         
-        // Invoke catch-all API Edge Function for events
-        const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
-          method: 'GET',
-          query: { path: '/events' }
-        })
-        if (fnErr) throw fnErr
-        const response = JSON.parse(raw)
+        // Use the events API helper
+        const response = await eventsApi.getAll(supabase)
         
         // Handle different response formats
         if (response && response.status === "success" && response.data) {

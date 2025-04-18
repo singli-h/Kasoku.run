@@ -16,6 +16,7 @@ import {
   parseISO
 } from "date-fns"
 import { useBrowserSupabaseClient } from '@/lib/supabase'
+import { dashboardApi } from '@/lib/supabase-api'
 import {
   DndContext,
   closestCenter,
@@ -75,14 +76,15 @@ const CalendarView = () => {
     const fetchMesocycleData = async () => {
       try {
         setLoading(true)
-        // Invoke Supabase Edge Function for mesocycle
-        const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
-          method: 'GET',
-          query: { path: '/dashboard/mesocycle' }
-        })
-        if (fnErr) throw fnErr
-        const json = JSON.parse(raw)
-        setMesocycleData(json.data)
+        // Use the dashboard API helper for mesocycle
+        const { data, error } = await dashboardApi.getMesocycle(supabase)
+        if (error) throw error
+        setMesocycleData(data)
+        
+        // Process and format the mesocycle data for the calendar
+        // Each week should have a distinct color/status
+        const formattedEvents = formatEventsForCalendar(data)
+        setSessions(formattedEvents)
       } catch (err) {
         console.error('Error fetching mesocycle data:', err)
         setError(err.message)

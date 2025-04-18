@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { useBrowserSupabaseClient } from '@/lib/supabase'
+import { plannerApi } from '@/lib/supabase-api'
 import { useSaveTrainingPlan } from "./useSaveCycle"
 
 /**
@@ -51,13 +52,9 @@ export const useMesoWizardState = (onComplete) => {
     const getExercises = async () => {
       setLoadingExercises(true)
       try {
-        const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
-          method: 'GET',
-          query: { path: '/planner/exercises' }
-        })
-        if (fnError) throw fnError
-        const json = JSON.parse(rawData)
-        const exercises = json.exercises || []
+        // Use the planner API helper
+        const response = await plannerApi.getExercises(supabase)
+        const exercises = response.exercises || []
         setAllExercises(exercises)
         setFilteredExercises(exercises)
       } catch (error) {

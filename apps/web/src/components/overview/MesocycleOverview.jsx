@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp, Target, Zap, Activity, Dumbbell, TrendingUp } f
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line } from "recharts"
 import { cn } from "../../lib/utils"
 import { useBrowserSupabaseClient } from '@/lib/supabase'
+import { dashboardApi } from '@/lib/supabase-api'
 
 export default function MesocycleOverview() {
   const [mesocycle, setMesocycle] = useState(null)
@@ -20,13 +21,9 @@ export default function MesocycleOverview() {
     const fetchMesocycle = async () => {
       try {
         setLoading(true)
-        const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
-          method: 'GET',
-          query: { path: '/dashboard/mesocycle' }
-        })
-        if (fnErr) throw fnErr
-        const json = JSON.parse(raw)
-        setMesocycle(json.data)
+        const { data, error } = await dashboardApi.getMesocycle(supabase)
+        if (error) throw error
+        setMesocycle(data)
       } catch (err) {
         console.error('Error fetching mesocycle:', err)
         setError(err.message)
