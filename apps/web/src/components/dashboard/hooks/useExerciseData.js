@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useBrowserSupabaseClient } from '@/lib/supabase'
+import { useAuth } from '@clerk/nextjs'
 
 // Remove hardcoded URL and use edge functions directly
 // const API_BASE_URL = "http://localhost:54321/functions/v1/api"  // Remove this
@@ -8,6 +9,14 @@ export const useExerciseData = () => {
   // Add a ref to keep track of the latest state
   const stateRef = useRef(null);
   const supabase = useBrowserSupabaseClient()
+  const { getToken } = useAuth();
+  
+  // Helper function to get token, throws if not available
+  const getAuthToken = async () => {
+    const token = await getToken();
+    if (!token) throw new Error('Authentication token not available');
+    return token;
+  };
   
   // Add a dedicated state for exercise training details
   const [trainingDetails, setTrainingDetails] = useState([]);
@@ -41,11 +50,15 @@ export const useExerciseData = () => {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
       try {
+        const token = await getAuthToken();
         const { data: rawData, error: fnError } = await supabase.functions.invoke('api/dashboard/exercisesInit', {
-          method: 'GET'
-        })
-        if (fnError) throw fnError
-        const data = JSON.parse(rawData)
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (fnError) throw fnError;
+        const data = JSON.parse(rawData);
         
         // Extract all training details into the flat array
         const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets
@@ -73,7 +86,7 @@ export const useExerciseData = () => {
     };
 
     fetchInitialData();
-  }, [supabase]);
+  }, [supabase, getToken]);
 
   const startSession = async () => {
     if (!state.session?.details?.id) {
@@ -91,16 +104,20 @@ export const useExerciseData = () => {
         reps: preset.exercise_training_details[0]?.reps || 0,
       }));
 
+      const token = await getAuthToken();
       // Invoke createTrainingSession edge function
       const { data: rawData, error: fnError } = await supabase.functions.invoke('api/dashboard/trainingSession', {
         method: 'POST',
         body: {
-        exercise_training_session_id: state.session.details.id,
-        exercisesDetail
+          exercise_training_session_id: state.session.details.id,
+          exercisesDetail
+        },
+        headers: {
+          Authorization: `Bearer ${token}`
         }
-      })
-      if (fnError) throw fnError
-      JSON.parse(rawData)
+      });
+      if (fnError) throw fnError;
+      JSON.parse(rawData);
 
       await refreshSessionData();
       return { success: true };
@@ -117,11 +134,15 @@ export const useExerciseData = () => {
 
   const refreshSessionData = async () => {
     try {
+      const token = await getAuthToken();
       const { data: rawData, error: fnError } = await supabase.functions.invoke('api/dashboard/exercisesInit', {
-        method: 'GET'
-      })
-      if (fnError) throw fnError
-      const data = JSON.parse(rawData)
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (fnError) throw fnError;
+      const data = JSON.parse(rawData);
 
       // Refresh the flat training details array
       const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets

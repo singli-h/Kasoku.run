@@ -15,7 +15,14 @@ export default function ApiTest() {
   const [results, setResults] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<Record<string, any>>({});
-  const { userId } = useAuth();
+  const { userId, getToken } = useAuth();
+
+  // Helper function to get token, throws if not available
+  const getAuthToken = async () => {
+    const token = await getToken();
+    if (!token) throw new Error('Authentication token not available');
+    return token;
+  };
 
   // Helper function to run a test
   const runTest = async (name: string, testFn: () => Promise<any>) => {
@@ -42,9 +49,10 @@ export default function ApiTest() {
     
     try {
       console.log(`[Test] Adding coach role for user: ${userId}`);
+      const token = await getAuthToken();
       const data = await supabaseApi.users.update(supabase, userId!, {
         metadata: { role: 'coach' }
-      });
+      }, token);
       console.log(`[Test] Coach role added:`, data);
       setResults(prev => ({ ...prev, addCoachRole: data }));
       return data;
@@ -59,11 +67,26 @@ export default function ApiTest() {
 
   // Test functions using Supabase edge functions
   const tests = {
-    getEvents: () => supabaseApi.events.getAll(supabase),
-    getAthletes: () => supabaseApi.athletes.getAll(supabase),
-    getDashboardInit: () => supabaseApi.dashboard.getExercisesInit(supabase),
-    testUserStatus: () => supabaseApi.users.getStatus(supabase),
-    getUserProfile: () => supabaseApi.users.getProfile(supabase, userId!),
+    getEvents: async () => {
+      const token = await getAuthToken();
+      return supabaseApi.events.getAll(supabase, token);
+    },
+    getAthletes: async () => {
+      const token = await getAuthToken();
+      return supabaseApi.athletes.getAll(supabase, token);
+    },
+    getDashboardInit: async () => {
+      const token = await getAuthToken();
+      return supabaseApi.dashboard.getExercisesInit(supabase, token);
+    },
+    testUserStatus: async () => {
+      const token = await getAuthToken();
+      return supabaseApi.users.getStatus(supabase, token);
+    },
+    getUserProfile: async () => {
+      const token = await getAuthToken();
+      return supabaseApi.users.getProfile(supabase, userId!, token);
+    },
   };
 
   // Run all tests
