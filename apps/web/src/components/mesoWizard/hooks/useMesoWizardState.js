@@ -53,7 +53,7 @@ export const useMesoWizardState = (onComplete) => {
       try {
         const { data: rawData, error: fnError } = await supabase.functions.invoke('api', {
           method: 'GET',
-          searchParams: { searchParams: { path: '/planner/exercises' } }
+          query: { path: '/planner/exercises' }
         })
         if (fnError) throw fnError
         const json = JSON.parse(rawData)

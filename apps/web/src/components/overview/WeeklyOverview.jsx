@@ -15,7 +15,7 @@ export default function WeeklyOverview() {
         setLoading(true)
         const { data: raw, error: fnErr } = await supabase.functions.invoke('api', {
           method: 'GET',
-          searchParams: { searchParams: { path: '/dashboard/weeklyOverview' } }
+          query: { path: '/dashboard/weeklyOverview' }
         })
         if (fnErr) throw fnErr
         const json = JSON.parse(raw)

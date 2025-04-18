@@ -55,13 +55,12 @@ export default function ApiTest() {
 
   // Modified fetchWithAuth helper to ensure all API calls include auth
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    // Derive function path by removing '/api' prefix
-    const path = url.startsWith('/api') ? url.slice('/api'.length) : url;
+    // Determine function name by using the full path after '/api'
+    const fnName = url.startsWith('/api/') ? `api${url}` : url;
     // Normalize method to Supabase HttpMethod union
     const method = (options.method?.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE') ?? 'GET';
-    const { data: rawData, error } = await supabase.functions.invoke('api', {
+    const { data: rawData, error } = await supabase.functions.invoke(fnName, {
       method,
-      path,
       body: options.body ? JSON.parse(options.body as string) : undefined,
     });
     if (error) throw error;
@@ -70,32 +69,32 @@ export default function ApiTest() {
 
   // Define key API tests
   const tests = {
-    getEvents: async () => fetchWithAuth('/events'),
-    getAthletes: async () => fetchWithAuth('/athletes'),
-    getDashboardInit: async () => fetchWithAuth('/dashboard/exercisesInit'),
-    getDashboardWeekly: async () => fetchWithAuth('/dashboard/weeklyOverview'),
-    getDashboardMesocycle: async () => fetchWithAuth('/dashboard/mesocycle'),
-    getDashboardExercises: async () => fetchWithAuth('/dashboard/exercises'),
-    createTrainingSession: async () => fetchWithAuth('/dashboard/trainingSession', {
+    getEvents: async () => fetchWithAuth('/api/events'),
+    getAthletes: async () => fetchWithAuth('/api/athletes'),
+    getDashboardInit: async () => fetchWithAuth('/api/dashboard/exercisesInit'),
+    getDashboardWeekly: async () => fetchWithAuth('/api/dashboard/weeklyOverview'),
+    getDashboardMesocycle: async () => fetchWithAuth('/api/dashboard/mesocycle'),
+    getDashboardExercises: async () => fetchWithAuth('/api/dashboard/exercises'),
+    createTrainingSession: async () => fetchWithAuth('/api/dashboard/trainingSession', {
       method: 'POST',
       body: JSON.stringify({ exercise_training_session_id: 1, exercisesDetail: [] })
     }),
-    updateTrainingSession: async () => fetchWithAuth('/dashboard/trainingSession', {
+    updateTrainingSession: async () => fetchWithAuth('/api/dashboard/trainingSession', {
       method: 'PUT',
       body: JSON.stringify({ exercise_training_session_id: 1, exercisesDetail: [], status: 'completed' })
     }),
-    getPlannerExercises: async () => fetchWithAuth('/planner/exercises'),
-    createMicrocycle: async () => fetchWithAuth('/planner/microcycle', {
+    getPlannerExercises: async () => fetchWithAuth('/api/planner/exercises'),
+    createMicrocycle: async () => fetchWithAuth('/api/planner/microcycle', {
       method: 'POST',
       body: JSON.stringify({ microcycle: { name: 'Test', description: 'Test', start_date: new Date().toISOString().split('T')[0], end_date: new Date(Date.now()+6*24*60*60*1000).toISOString().split('T')[0] }, sessions: [] })
     }),
-    createMesocycle: async () => fetchWithAuth('/planner/mesocycle', {
+    createMesocycle: async () => fetchWithAuth('/api/planner/mesocycle', {
         method: 'POST',
       body: JSON.stringify({ sessions: [], timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })
     }),
-    testUserStatus: async () => fetchWithAuth('/user-status'),
-    getUserProfile: async () => fetchWithAuth(`/users/${userId}/profile`),
-    updateUser: async () => fetchWithAuth(`/users/${userId}`, {
+    testUserStatus: async () => fetchWithAuth('/api/user-status'),
+    getUserProfile: async () => fetchWithAuth(`/api/users/${userId}/profile`),
+    updateUser: async () => fetchWithAuth(`/api/users/${userId}`, {
       method: 'PUT',
       body: JSON.stringify({ metadata: {} })
     }),
