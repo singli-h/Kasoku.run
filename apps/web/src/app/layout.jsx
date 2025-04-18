@@ -12,6 +12,7 @@
  * - Conditional rendering of header or sidebar based on route
  */
 
+import '@/polyfills/useEffectEventPolyfill.js';
 import "./css/style.css"
 import { Inter } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
