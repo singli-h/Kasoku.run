@@ -5,8 +5,8 @@
 import { serve } from "https://deno.land/std@0.188.0/http/server.ts";
 // @deno-types="https://esm.sh/@supabase/supabase-js@2.23.0"
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
-// Import Clerk's backend SDK for JWT verification (pinned version)
-import { Clerk } from "https://esm.sh/@clerk/backend@1.30.0/dist/clerk.mjs";
+// Import Clerk's backend SDK for JWT verification (using npm: specifier)
+import { Clerk } from "npm:@clerk/backend@1.29.1";
 import { corsHeaders, handleError } from './utils.ts';
 import { getAthletes, createAthlete } from './athletes.ts';
 import { getUserStatus, getUserProfile } from './users.ts';
