@@ -5,6 +5,7 @@
  * avoiding the duplicate 'api' path issue by carefully formatting the function names.
  */
 import { SupabaseClient } from '@supabase/supabase-js';
+import { useBrowserSupabaseClient } from './supabase';
 
 /**
  * Calls a Supabase Edge Function without duplicate API path
@@ -38,6 +39,11 @@ export async function invokeFunction(
   // Parse the response data
   const jsonData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
   return jsonData;
+}
+
+// Create a hook to get the authenticated client
+export function useSupabaseApiClient() {
+  return useBrowserSupabaseClient();
 }
 
 /**
@@ -106,141 +112,13 @@ export const usersApi = {
     invokeFunction(supabase, `users/${userId}`, 'PUT', data),
 };
 
-// Base function to invoke the Supabase Edge Functions with proper error handling
-const invokeEdgeFunction = async (
-  supabase: SupabaseClient,
-  path: string,
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
-  body?: any
-) => {
-  try {
-    // Remove any leading slashes to avoid double slashes in the path
-    const cleanPath = path.replace(/^\/+/, '');
-    
-    // Invoke the 'api' edge function, passing the path as part of the path parameter
-    const { data: rawData, error } = await supabase.functions.invoke('api', {
-      method,
-      // Path is passed directly to the 'api' function name
-      body
-    });
-
-    if (error) throw error;
-    
-    // Parse the response if it's a string
-    const response = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-    
-    // Return data directly and normalize error format
-    if (response && response.status === 'success') {
-      return response.data ? response.data : response;
-    } else if (response && response.status === 'error') {
-      throw new Error(response.message || 'API error');
-    }
-    
-    return response;
-  } catch (error) {
-    console.error(`API error for ${path}:`, error);
-    throw error;
-  }
-};
-
-// Events API
-export const eventsApiEdge = {
-  getAll: async (supabase: SupabaseClient) => {
-    return invokeEdgeFunction(supabase, 'events');
-  },
-  
-  getById: async (supabase: SupabaseClient, id: string) => {
-    return invokeEdgeFunction(supabase, `events/${id}`);
-  },
-  
-  create: async (supabase: SupabaseClient, data: any) => {
-    return invokeEdgeFunction(supabase, 'events', 'POST', data);
-  },
-  
-  update: async (supabase: SupabaseClient, id: string, data: any) => {
-    return invokeEdgeFunction(supabase, `events/${id}`, 'PUT', data);
-  },
-  
-  delete: async (supabase: SupabaseClient, id: string) => {
-    return invokeEdgeFunction(supabase, `events/${id}`, 'DELETE');
-  }
-};
-
-// Athletes API
-export const athletesApiEdge = {
-  getAll: async (supabase: SupabaseClient) => {
-    return invokeEdgeFunction(supabase, 'athletes');
-  },
-  
-  getById: async (supabase: SupabaseClient, id: string) => {
-    return invokeEdgeFunction(supabase, `athletes/${id}`);
-  }
-};
-
-// Dashboard API
-export const dashboardApiEdge = {
-  getInit: async (supabase: SupabaseClient) => {
-    return invokeEdgeFunction(supabase, 'dashboard/exercisesInit');
-  },
-  
-  getWeeklyOverview: async (supabase: SupabaseClient) => {
-    return invokeEdgeFunction(supabase, 'dashboard/weeklyOverview');
-  },
-  
-  getMesocycle: async (supabase: SupabaseClient) => {
-    return invokeEdgeFunction(supabase, 'dashboard/mesocycle');
-  },
-  
-  getExercises: async (supabase: SupabaseClient) => {
-    return invokeEdgeFunction(supabase, 'dashboard/exercises');
-  },
-  
-  createTrainingSession: async (supabase: SupabaseClient, data: any) => {
-    return invokeEdgeFunction(supabase, 'dashboard/trainingSession', 'POST', data);
-  },
-  
-  updateTrainingSession: async (supabase: SupabaseClient, data: any) => {
-    return invokeEdgeFunction(supabase, 'dashboard/trainingSession', 'PUT', data);
-  }
-};
-
-// Planner API
-export const plannerApiEdge = {
-  getExercises: async (supabase: SupabaseClient) => {
-    return invokeEdgeFunction(supabase, 'planner/exercises');
-  },
-  
-  createMicrocycle: async (supabase: SupabaseClient, data: any) => {
-    return invokeEdgeFunction(supabase, 'planner/microcycle', 'POST', data);
-  },
-  
-  createMesocycle: async (supabase: SupabaseClient, data: any) => {
-    return invokeEdgeFunction(supabase, 'planner/mesocycle', 'POST', data);
-  }
-};
-
-// Users API
-export const usersApiEdge = {
-  getStatus: async (supabase: SupabaseClient) => {
-    return invokeEdgeFunction(supabase, 'user-status');
-  },
-  
-  getProfile: async (supabase: SupabaseClient, userId: string) => {
-    return invokeEdgeFunction(supabase, `users/${userId}/profile`);
-  },
-  
-  update: async (supabase: SupabaseClient, userId: string, data: any) => {
-    return invokeEdgeFunction(supabase, `users/${userId}`, 'PUT', data);
-  }
-};
-
 // Export all APIs as a unified object
 export const supabaseApi = {
-  events: eventsApiEdge,
-  athletes: athletesApiEdge,
-  dashboard: dashboardApiEdge,
-  planner: plannerApiEdge,
-  users: usersApiEdge
+  events: eventsApi,
+  athletes: athletesApi,
+  dashboard: dashboardApi,
+  planner: plannerApi,
+  users: usersApi
 };
 
 export default supabaseApi;

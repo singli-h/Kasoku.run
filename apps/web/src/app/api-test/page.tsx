@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useBrowserSupabaseClient } from '@/lib/supabase';
+import { useSupabaseApiClient } from '@/lib/supabase-api';
 import supabaseApi from '@/lib/supabase-api';
 import { useAuth } from '@clerk/nextjs';
 
@@ -11,21 +11,11 @@ interface TestResult {
 }
 
 export default function ApiTest() {
-  const supabase = useBrowserSupabaseClient();
+  const supabase = useSupabaseApiClient();
   const [results, setResults] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<Record<string, any>>({});
-  const { userId, getToken } = useAuth();
-  const [authToken, setAuthToken] = useState<string | null>(null);
-
-  // Get auth token on component mount
-  useEffect(() => {
-    const fetchToken = async () => {
-      // Supabase client handles authentication token automatically
-    };
-    
-    fetchToken();
-  }, [userId, getToken]);
+  const { userId } = useAuth();
 
   // Helper function to run a test
   const runTest = async (name: string, testFn: () => Promise<any>) => {
@@ -71,7 +61,7 @@ export default function ApiTest() {
   const tests = {
     getEvents: () => supabaseApi.events.getAll(supabase),
     getAthletes: () => supabaseApi.athletes.getAll(supabase),
-    getDashboardInit: () => supabaseApi.dashboard.getInit(supabase),
+    getDashboardInit: () => supabaseApi.dashboard.getExercisesInit(supabase),
     testUserStatus: () => supabaseApi.users.getStatus(supabase),
     getUserProfile: () => supabaseApi.users.getProfile(supabase, userId!),
   };
@@ -97,99 +87,55 @@ export default function ApiTest() {
     );
   }
 
-  if (userId && !authToken) {
-    return (
-      <div className="p-8">
-        <h1 className="text-2xl font-bold mb-6">API Connection Test</h1>
-        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6">
-          <p>Loading authentication token...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-6">API Connection Test</h1>
       
-      <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6">
-        <p>Your user ID: {userId}</p>
-        <p>Authentication token: {authToken ? 'Available ✓' : 'Not available ✗'}</p>
-      </div>
-      
       <div className="space-y-6">
-        <div className="flex flex-wrap gap-4">
-          <button
-            onClick={() => runAllTests()}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Run All Tests
-          </button>
-          
-          <button
-            onClick={addCoachRole}
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            disabled={loading.addCoachRole}
-          >
-            {loading.addCoachRole ? 'Adding Coach Role...' : 'Add Coach Role for Testing'}
-          </button>
-          
-          {Object.keys(tests).map(testName => (
-            <button
-              key={testName}
-              onClick={() => runTest(testName, tests[testName])}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              Test {testName}
-            </button>
-          ))}
+        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4">
+          <p>This page tests the connection to various API endpoints.</p>
+          <p>User ID: {userId}</p>
         </div>
 
-        {/* Add Coach Role Results */}
-        {(results.addCoachRole || error.addCoachRole || loading.addCoachRole) && (
-          <div className="border p-4 rounded">
-            <h2 className="text-xl font-semibold mb-2">Add Coach Role</h2>
-            
-            {loading.addCoachRole && (
-              <div className="text-blue-500">Adding coach role...</div>
-            )}
-            
-            {error.addCoachRole && (
-              <div className="text-red-500">
-                Error: {error.addCoachRole.message || JSON.stringify(error.addCoachRole)}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Individual Tests</h2>
+          {Object.entries(tests).map(([name, test]) => (
+            <div key={name} className="border rounded p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-medium">{name}</h3>
+                <button
+                  onClick={() => runTest(name, test)}
+                  disabled={loading[name]}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                >
+                  {loading[name] ? 'Running...' : 'Run Test'}
+                </button>
               </div>
-            )}
-            
-            {results.addCoachRole && (
-              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-60">
-                {JSON.stringify(results.addCoachRole, null, 2)}
-              </pre>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-6">
-          {Object.keys(tests).map(testName => (
-            <div key={testName} className="border p-4 rounded">
-              <h2 className="text-xl font-semibold mb-2">{testName}</h2>
               
-              {loading[testName] && (
-                <div className="text-blue-500">Testing...</div>
-              )}
-              
-              {error[testName] && (
-                <div className="text-red-500">
-                  Error: {error[testName].message || JSON.stringify(error[testName])}
+              {error[name] && (
+                <div className="mt-2 text-red-600">
+                  Error: {error[name].message}
                 </div>
               )}
               
-              {results[testName] && (
-                <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-60">
-                  {JSON.stringify(results[testName], null, 2)}
-                </pre>
+              {results[name] && (
+                <div className="mt-2">
+                  <pre className="bg-gray-100 p-2 rounded overflow-auto">
+                    {JSON.stringify(results[name], null, 2)}
+                  </pre>
+                </div>
               )}
             </div>
           ))}
+        </div>
+
+        <div className="mt-8">
+          <button
+            onClick={runAllTests}
+            className="px-6 py-3 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Run All Tests
+          </button>
         </div>
       </div>
     </div>
