@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { useBrowserSupabaseClient } from '@/lib/supabase'
-import { plannerApi } from '@/lib/supabase-api'
+import { useSession } from '@clerk/nextjs'
 import { useSaveTrainingPlan } from "./useSaveCycle"
 
 /**
@@ -10,6 +9,8 @@ import { useSaveTrainingPlan } from "./useSaveCycle"
  * @returns {Object} State and handlers for the MesoWizard
  */
 export const useMesoWizardState = (onComplete) => {
+  // Clerk session for auth
+  const { session, isLoaded: isSessionLoaded, isSignedIn } = useSession()
   // Main wizard step state
   const [step, setStep] = useState(1)
   
@@ -45,27 +46,33 @@ export const useMesoWizardState = (onComplete) => {
   // Calculate progress percentage
   const progressPercentage = ((step - 1) / 4) * 100
 
-  const supabase = useBrowserSupabaseClient()
-
   // Fetch exercises from edge function instead of sample data
   useEffect(() => {
     const getExercises = async () => {
       setLoadingExercises(true)
+      if (!isSessionLoaded) return
+      if (!isSignedIn) {
+        console.error('Not signed in for fetching exercises')
+        setLoadingExercises(false)
+        return
+      }
       try {
-        // Use the planner API helper
-        const response = await plannerApi.getExercises(supabase)
-        const exercises = response.exercises || []
+        const token = await session.getToken()
+        const res = await fetch('/api/planner/exercises', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const body = await res.json()
+        const exercises = body.data?.exercises || []
         setAllExercises(exercises)
         setFilteredExercises(exercises)
       } catch (error) {
-        console.error("Error fetching exercises:", error)
+        console.error('Error fetching exercises:', error)
       } finally {
         setLoadingExercises(false)
       }
     }
-    
     getExercises()
-  }, [supabase])
+  }, [session, isSessionLoaded, isSignedIn])
 
   // Filter exercises based on search term
   useEffect(() => {

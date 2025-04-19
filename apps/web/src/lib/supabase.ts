@@ -1,4 +1,4 @@
-"use client";
+// Removed "use client" to allow server-side imports
 
 import { createBrowserClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";

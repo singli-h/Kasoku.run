@@ -32,6 +32,12 @@ export default function ApiTest() {
     }
 
     async function checkAuthToken() {
+      if (!session) {
+        console.error("[API Test] Clerk session not available");
+        setAuthHeaderStatus("error");
+        setDebugToken(null);
+        return;
+      }
       try {
         setAuthHeaderStatus("loading");
         console.log("[API Test] Session loaded, retrieving token...");

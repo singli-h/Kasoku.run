@@ -15,8 +15,7 @@ import {
   subWeeks,
   parseISO
 } from "date-fns"
-import { useBrowserSupabaseClient } from '@/lib/supabase'
-import { dashboardApi } from '@/lib/supabase-api'
+import { useMediaQuery } from "../../hooks/useMediaQuery"
 import {
   DndContext,
   closestCenter,
@@ -34,9 +33,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { restrictToWindowEdges } from "@dnd-kit/modifiers"
-import { useMediaQuery } from "../../hooks/useMediaQuery"
 
-const CalendarView = () => {
+const CalendarView = ({ mesocycle, onUpdate }) => {
   const [mesocycleData, setMesocycleData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -51,56 +49,18 @@ const CalendarView = () => {
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)')
   const isMobile = useMediaQuery('(max-width: 767px)')
   
-  // Setup DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250,
-        tolerance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
-  
-  const supabase = useBrowserSupabaseClient()
-  
-  // Side effects - update sessions when mesocycle changes
+  // Process passed mesocycle prop
   useEffect(() => {
-    const fetchMesocycleData = async () => {
-      try {
-        setLoading(true)
-        // Use the dashboard API helper for mesocycle
-        const { data, error } = await dashboardApi.getMesocycle(supabase)
-        if (error) throw error
-        setMesocycleData(data)
-        
-        // Process and format the mesocycle data for the calendar
-        // Each week should have a distinct color/status
-        const formattedEvents = formatEventsForCalendar(data)
-        setSessions(formattedEvents)
-      } catch (err) {
-        console.error('Error fetching mesocycle data:', err)
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
+    if (!mesocycle) return
+    setLoading(false)
+    try {
+      const formattedEvents = formatEventsForCalendar(mesocycle)
+      setSessions(formattedEvents)
+    } catch (err) {
+      console.error('Error formatting mesocycle events:', err)
+      setError(err.message)
     }
-
-    fetchMesocycleData()
-  }, [])
-  
-  useEffect(() => {
-    if (mesocycleData?.sessions?.length) {
-      setSessions(mesocycleData.sessions)
-    }
-  }, [mesocycleData?.sessions])
+  }, [mesocycle])
   
   // Calculate days to display
   useEffect(() => {
@@ -270,7 +230,7 @@ const CalendarView = () => {
   
   if (loading) return <div>Loading...</div>
   if (error) return <div>Error: {error}</div>
-  if (!mesocycleData) return <div>No data available</div>
+  if (!mesocycle) return <div>No data available</div>
   
   return (
     <Card className="h-full">

@@ -5,8 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight } from "lucide-react"
-import { useBrowserSupabaseClient } from '@/lib/supabase'
-import { dashboardApi } from '@/lib/supabase-api'
+import { useSession } from '@clerk/nextjs'
 import { PlusCircle, Save } from "lucide-react"
 
 const PlanButton = ({ children, isActive, className = "", ...props }) => {
@@ -27,7 +26,7 @@ const PlanButton = ({ children, isActive, className = "", ...props }) => {
 }
 
 export default function PlanBuilder({ mesocycle, onUpdate }) {
-  const supabase = useBrowserSupabaseClient()
+  const { session, isLoaded: isSessionLoaded, isSignedIn } = useSession()
   const [historyState, setHistoryState] = useState({ history: [mesocycle], index: 0 })
   const [expandedSessions, setExpandedSessions] = useState([])
   const [searchTerms, setSearchTerms] = useState({})
@@ -38,11 +37,19 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
 
   useEffect(() => {
     const fetchExercises = async () => {
+      if (!isSessionLoaded) return
+      if (!isSignedIn) {
+        setError('Not signed in')
+        setLoading(false)
+        return
+      }
       try {
         setLoading(true)
-        const { data, error } = await dashboardApi.getExercises(supabase)
-        if (error) throw error
-        setExercises(data || [])
+        const token = await session.getToken()
+        const res = await fetch('/api/planner/exercises', { headers: { Authorization: `Bearer ${token}` } })
+        const body = await res.json()
+        if (!res.ok || body.status !== 'success') throw new Error(body.message || 'Failed to fetch exercises')
+        setExercises(body.data.exercises || [])
       } catch (err) {
         console.error('Error fetching exercises:', err)
         setError(err.message)
@@ -52,7 +59,7 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
     }
 
     fetchExercises()
-  }, [])
+  }, [session, isSessionLoaded, isSignedIn])
 
   // Reset history when a new mesocycle is passed in
   useEffect(() => {

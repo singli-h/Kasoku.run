@@ -1,8 +1,7 @@
 "use client"
 
-import { useState } from 'react'
-import { useUser } from '@clerk/nextjs'
-import { useUserProfile } from '@/lib/useUserProfile'
+import { useState, useEffect } from 'react'
+import { useUser, useSession } from '@clerk/nextjs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -14,44 +13,35 @@ import { format } from 'date-fns'
 
 export default function ProfilePage() {
   const { user, isLoaded: isUserLoaded } = useUser()
-  // Fetch profile via our secure API
-  const profile = useUserProfile()
+  const { session, isLoaded: isSessionLoaded, isSignedIn } = useSession()
+  const [profileData, setProfileData] = useState(null)
+  const [loadingProfile, setLoadingProfile] = useState(true)
+  const [profileError, setProfileError] = useState(null)
 
-  // Mock profile for development
-  const generateMockProfile = () => {
-    return {
-      user: {
-        id: 'mock-user-id',
-        clerk_id: 'mock-clerk-id',
-        username: 'runner42',
-        email: 'dev@example.com',
-        first_name: 'Dev',
-        last_name: 'User',
-        birthdate: '1990-01-01',
-        timezone: 'UTC',
-        subscription_status: 'free',
-        onboarding_completed: true,
-        avatar_url: null,
-        metadata: {
-          role: 'athlete'
-        }
-      },
-      role: 'athlete',
-      roleSpecificData: {
-        height: '180 cm',
-        weight: '75 kg',
-        training_history: '5 years of running',
-        training_goals: 'Complete a marathon under 3:30',
-        events: [
-          { id: 1, name: '10K', type: 'Running', category: 'track' },
-          { id: 2, name: 'Half Marathon', type: 'Running', category: 'road' }
-        ]
+  useEffect(() => {
+    if (!isSessionLoaded) return
+    if (!isSignedIn) {
+      setProfileError('Not signed in')
+      setLoadingProfile(false)
+      return
+    }
+    const fetchProfile = async () => {
+      try {
+        const token = await session.getToken()
+        const res = await fetch('/api/users/profile', { headers: { Authorization: `Bearer ${token}` } })
+        const body = await res.json()
+        if (!res.ok || body.status !== 'success') throw new Error(body.message || 'Failed to fetch profile')
+        setProfileData(body.data)
+      } catch (err) {
+        setProfileError(err.message)
+      } finally {
+        setLoadingProfile(false)
       }
     }
-  }
+    fetchProfile()
+  }, [session, isSessionLoaded, isSignedIn])
 
-  // Loading state
-  if (!isUserLoaded || !profile) {
+  if (!isUserLoaded || loadingProfile) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="h-12 w-12 animate-spin text-blue-600 dark:text-blue-500 mb-4" />
@@ -60,8 +50,20 @@ export default function ProfilePage() {
     )
   }
 
+  if (profileError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <h2 className="text-xl font-medium text-red-500 mb-4">Error: {profileError}</h2>
+        <Button variant="outline" className="flex items-center border-blue-300 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-800">
+          <Edit className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
+          Try Again
+        </Button>
+      </div>
+    )
+  }
+
   // Extract user info from profile data
-  const { user: userData, role } = profile
+  const { user: userData, role } = profileData
   const fullName = user?.fullName || `${userData.first_name} ${userData.last_name}`
   const email = user?.primaryEmailAddress?.emailAddress || userData.email || ''
   const username = userData.username || ''
@@ -235,29 +237,29 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Height</dt>
-                          <dd className="mt-1 text-slate-800 dark:text-white">{profile?.roleSpecificData?.height || 'Not set'}</dd>
+                          <dd className="mt-1 text-slate-800 dark:text-white">{profileData?.roleSpecificData?.height || 'Not set'}</dd>
                         </div>
                         <div>
                           <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Weight</dt>
-                          <dd className="mt-1 text-slate-800 dark:text-white">{profile?.roleSpecificData?.weight || 'Not set'}</dd>
+                          <dd className="mt-1 text-slate-800 dark:text-white">{profileData?.roleSpecificData?.weight || 'Not set'}</dd>
                         </div>
                       </div>
                       
                       <div>
                         <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Training History</dt>
-                        <dd className="mt-1 text-slate-800 dark:text-white">{profile?.roleSpecificData?.training_history || 'Not set'}</dd>
+                        <dd className="mt-1 text-slate-800 dark:text-white">{profileData?.roleSpecificData?.training_history || 'Not set'}</dd>
                       </div>
                       
                       <div>
                         <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Training Goals</dt>
-                        <dd className="mt-1 text-slate-800 dark:text-white">{profile?.roleSpecificData?.training_goals || 'Not set'}</dd>
+                        <dd className="mt-1 text-slate-800 dark:text-white">{profileData?.roleSpecificData?.training_goals || 'Not set'}</dd>
                       </div>
                       
                       <div>
                         <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Events</dt>
                         <dd className="mt-1">
-                          {profile?.roleSpecificData?.events && profile.roleSpecificData.events.length > 0 
-                            ? profile.roleSpecificData.events.map((event, i) => (
+                          {profileData?.roleSpecificData?.events && profileData.roleSpecificData.events.length > 0 
+                            ? profileData.roleSpecificData.events.map((event, i) => (
                                 <Badge key={i} className="inline-block bg-blue-100 hover:bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 px-2 py-1 rounded text-xs mr-2 mb-2">
                                   {event.name}
                                 </Badge>
@@ -298,22 +300,22 @@ export default function ProfilePage() {
                     <dl className="space-y-4">
                       <div>
                         <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Specialization</dt>
-                        <dd className="mt-1 text-slate-800 dark:text-white">{profile?.roleSpecificData?.specialization || 'Not set'}</dd>
+                        <dd className="mt-1 text-slate-800 dark:text-white">{profileData?.roleSpecificData?.specialization || 'Not set'}</dd>
                       </div>
                       
                       <div>
                         <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Experience</dt>
-                        <dd className="mt-1 text-slate-800 dark:text-white">{profile?.roleSpecificData?.experience || 'Not set'}</dd>
+                        <dd className="mt-1 text-slate-800 dark:text-white">{profileData?.roleSpecificData?.experience || 'Not set'}</dd>
                       </div>
                       
                       <div>
                         <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Coaching Philosophy</dt>
-                        <dd className="mt-1 text-slate-800 dark:text-white">{profile?.roleSpecificData?.philosophy || 'Not set'}</dd>
+                        <dd className="mt-1 text-slate-800 dark:text-white">{profileData?.roleSpecificData?.philosophy || 'Not set'}</dd>
                       </div>
                       
                       <div>
                         <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">Sport Focus</dt>
-                        <dd className="mt-1 text-slate-800 dark:text-white">{profile?.roleSpecificData?.sport_focus || 'Not set'}</dd>
+                        <dd className="mt-1 text-slate-800 dark:text-white">{profileData?.roleSpecificData?.sport_focus || 'Not set'}</dd>
                       </div>
                     </dl>
                     

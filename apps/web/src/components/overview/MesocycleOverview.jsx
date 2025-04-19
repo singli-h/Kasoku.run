@@ -1,52 +1,20 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import  Button  from "../ui/button"
 import { ChevronDown, ChevronUp, Target, Zap, Activity, Dumbbell, TrendingUp } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line } from "recharts"
 import { cn } from "../../lib/utils"
-import { useBrowserSupabaseClient } from '@/lib/supabase'
-import { dashboardApi } from '@/lib/supabase-api'
 
-export default function MesocycleOverview() {
-  const [mesocycle, setMesocycle] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+export default function MesocycleOverview({ mesocycle }) {
+  // State for expanded weeks and hover state
   const [expandedWeeks, setExpandedWeeks] = useState([])
   const [hoveredWeek, setHoveredWeek] = useState(null)
-  const supabase = useBrowserSupabaseClient()
-
-  useEffect(() => {
-    const fetchMesocycle = async () => {
-      try {
-        setLoading(true)
-        const { data, error } = await dashboardApi.getMesocycle(supabase)
-        if (error) throw error
-        setMesocycle(data)
-      } catch (err) {
-        console.error('Error fetching mesocycle:', err)
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchMesocycle()
-  }, [])
-
-  if (loading) return <div>Loading...</div>
-  if (error) return <div>Error: {error}</div>
-  if (!mesocycle) return <div>No mesocycle data available</div>
-
-  // Calculate mesocycle totals
-  const mesocycleStats = {
-    totalWeeks: mesocycle.weeks.length,
-    totalVolume: mesocycle.weeks.reduce((sum, week) => sum + week.totalVolume, 0),
-    avgIntensity: Math.round(mesocycle.weeks.reduce((sum, week) => {
-      const intensityValue = parseFloat(week.intensity) || 0;
-      return sum + intensityValue;
-    }, 0) / mesocycle.weeks.length)
+  
+  // If no mesocycle provided, render fallback
+  if (!mesocycle) {
+    return <div>No mesocycle data available</div>
   }
 
   const toggleWeek = (weekIndex) => {
@@ -83,6 +51,16 @@ export default function MesocycleOverview() {
         <span>{intensity}% ({intensityLevel})</span>
       </div>
     )
+  }
+
+  // Calculate mesocycle totals
+  const mesocycleStats = {
+    totalWeeks: mesocycle.weeks.length,
+    totalVolume: mesocycle.weeks.reduce((sum, week) => sum + week.totalVolume, 0),
+    avgIntensity: Math.round(mesocycle.weeks.reduce((sum, week) => {
+      const intensityValue = parseFloat(week.intensity) || 0;
+      return sum + intensityValue;
+    }, 0) / mesocycle.weeks.length)
   }
 
   return (

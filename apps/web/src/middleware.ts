@@ -54,7 +54,11 @@ export default clerkMiddleware()
  */
 export const config = {
   matcher: [
-    '/((?!_next|.*\\.(css|js|png|jpg)).*)',
+    '/dashboard/:path*',
+    '/planner/:path*',
+    '/overview/:path*',
+    '/settings/:path*',
+    '/profile/:path*',
     '/api/:path*'
-  ]
+  ],
 } 

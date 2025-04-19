@@ -9,11 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Badge } from "@/components/ui/badge"
 import { X, Target } from "lucide-react"
 import { motion } from "framer-motion"
-import { useBrowserSupabaseClient } from "@/lib/supabase"
-import { eventsApi } from "@/lib/supabase-api"
+import { useSession } from '@clerk/nextjs'
 
 export default function AthleteDetailsStep({ userData, updateUserData, onNext, onPrev }) {
-  const supabase = useBrowserSupabaseClient()
+  const { session, isLoaded: isSessionLoaded, isSignedIn } = useSession()
   const [errors, setErrors] = useState({})
   const [events, setEvents] = useState({ track: [], field: [], combined: [] })
   const [loading, setLoading] = useState(true)
@@ -23,49 +22,39 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
   // Fetch events when component mounts
   useEffect(() => {
     const fetchEvents = async () => {
+      setLoading(true)
+      if (!isSessionLoaded) return
+      if (!isSignedIn) {
+        console.error('Not signed in for fetching events')
+        setLoading(false)
+        return
+      }
       try {
-        setLoading(true)
-        
-        // Use the events API helper
-        const response = await eventsApi.getAll(supabase)
-        
-        // Handle different response formats
-        if (response && response.status === "success" && response.data) {
-          // New standardized format
-          setEvents(response.data)
-        } else if (response && response.events) {
-          // Old format - events array directly
-          console.log("Converting old response format to new format")
-          
-          // Group events by type/category if possible
-          const groupedEvents = response.events.reduce((acc, event) => {
-            const category = event.type?.toLowerCase() || "track"
-            if (!acc[category]) {
-              acc[category] = []
-            }
-            acc[category].push(event)
-            return acc
-          }, { track: [], field: [], combined: [] })
-          
-          setEvents(groupedEvents)
-        } else {
-          console.error("Unexpected response format:", response)
-          setEvents({ track: [], field: [], combined: [] })
-        }
-      } catch (error) {
-        console.error("Error fetching events:", error)
+        const token = await session.getToken()
+        const res = await fetch('/api/events', { headers: { Authorization: `Bearer ${token}` } })
+        const body = await res.json()
+        if (!res.ok || body.status !== 'success') throw new Error(body.message || 'Failed to fetch events')
+        const eventsList = body.data.events || []
+        // Group events by type
+        const grouped = { track: [], field: [], combined: [] }
+        eventsList.forEach(evt => {
+          const cat = evt.type?.toLowerCase() || 'track'
+          if (!grouped[cat]) grouped[cat] = []
+          grouped[cat].push(evt)
+        })
+        setEvents(grouped)
+      } catch (err) {
+        console.error('Error fetching events:', err)
         setEvents({ track: [], field: [], combined: [] })
       } finally {
         setLoading(false)
       }
     }
-
     fetchEvents()
-    // Use existing events from userData if available
     if (userData.events) {
       setSelectedEvents(userData.events)
     }
-  }, [userData.events])
+  }, [session, isSessionLoaded, isSignedIn, userData.events])
 
   const validateForm = () => {
     const newErrors = {}

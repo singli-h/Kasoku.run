@@ -2,9 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
-import { useBrowserSupabaseClient } from '@/lib/supabase';
-import supabaseApi from '@/lib/supabase-api';
+import { useSession } from '@clerk/nextjs';
 import Image from "next/image";
 
 /**
@@ -14,9 +12,8 @@ import Image from "next/image";
  * and redirecting the user to the appropriate page.
  */
 export default function SessionHandler() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, session } = useSession();
   const router = useRouter();
-  const supabase = useBrowserSupabaseClient();
 
   useEffect(() => {
     // Don't do anything until Clerk is loaded
@@ -29,8 +26,17 @@ export default function SessionHandler() {
     }
 
     async function checkOnboardingStatus() {
+      if (!session) {
+        console.error('Clerk session not available yet');
+        return;
+      }
       try {
-        const data = await supabaseApi.users.getStatus(supabase);
+        const token = await session.getToken();
+        const res = await fetch('/api/users/status', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const body = await res.json();
+        const data = body.data;
         
         // Redirect based on onboarding status
         if (data.onboardingCompleted) {
@@ -49,7 +55,7 @@ export default function SessionHandler() {
 
     // Check onboarding status
     checkOnboardingStatus();
-  }, [isLoaded, isSignedIn, router, supabase]);
+  }, [isLoaded, isSignedIn, router, session]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center">
