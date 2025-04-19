@@ -72,7 +72,7 @@ export default function ApiTest() {
       console.log(`[Test] Adding coach role for user: ${userId}`);
       // Ensure session is active
       await getAuthToken();
-      const data = await supabaseApi.users.update(supabase, userId!, {
+      const data = await supabaseApi.users.update(supabase, {
         metadata: { role: 'coach' }
       });
       console.log(`[Test] Coach role added:`, data);
@@ -107,7 +107,7 @@ export default function ApiTest() {
     },
     getUserProfile: async () => {
       await getAuthToken();
-      return supabaseApi.users.getProfile(supabase, userId!);
+      return supabaseApi.users.getProfile(supabase);
     },
   };
 

@@ -6,9 +6,6 @@
 import { serve } from "https://deno.land/std@0.188.0/http/server.ts";
 // @deno-types="https://esm.sh/@supabase/supabase-js@2.23.0"
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
-// Import jose functions for JWT verification
-// @deno-types="npm:jose@5.9.6"
-import { createClerkClient } from "npm:@clerk/backend@1.29.1";
 import { corsHeaders, handleError } from './utils.ts';
 import { getAthletes, createAthlete } from './athletes.ts';
 import { getUserStatus, getUserProfile } from './users.ts';
@@ -22,13 +19,6 @@ import {
 
 // Toggle for authentication (default is enabled)
 const AUTH_ENABLED = true;
-
-// Clerk configuration
-const CLERK_SECRET_KEY = Deno.env.get("CLERK_SECRET_KEY"); // Clerk Secret Key for JWT verification
-const CLERK_PUBLISHABLE_KEY = Deno.env.get("CLERK_PUBLISHABLE_KEY"); // Clerk Publishable Key for client operations
-const CLERK_JWT_KEY = Deno.env.get("CLERK_JWT_KEY"); // Clerk JWKS public key for networkless verification
-const CLERK_ISSUER = Deno.env.get("CLERK_ISSUER"); // Clerk issuer for verification (e.g. https://your-org.clerk.accounts.dev)
-
 // Type declarations for Deno environment
 declare global {
   const Deno: {
@@ -282,12 +272,8 @@ export async function getCoachIdFromClerkId(clerkId: string): Promise<string> {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-
-    const userData = await getUserRoleData(supabase, clerkId);
+    // Use the admin client for this privileged operation
+    const userData = await getUserRoleData(adminSupabase, clerkId);
     
     if (!userData.coachId) {
       throw new Error("User is not a coach or coach record not found");
@@ -1330,14 +1316,10 @@ async function getCoachIdFromRequest(supabase: SupabaseClient, req: Request, use
       throw new Error(`User does not have coach role. Current role: ${userData.metadata?.role || 'undefined'}`);
     }
 
-    // Get coach record using user_id - use service role key for this query
-    const serviceRoleSupabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    // Get coach record using user_id - use admin client for this privileged query
     
     // Log all coaches in the database for debugging
-    const { data: allCoaches, error: allCoachesError } = await serviceRoleSupabase
+    const { data: allCoaches, error: allCoachesError } = await adminSupabase
       .from("coaches")
       .select("id, user_id")
       .limit(10);
@@ -1345,7 +1327,7 @@ async function getCoachIdFromRequest(supabase: SupabaseClient, req: Request, use
     console.log("[getCoachIdFromRequest] All coaches in system:", allCoaches);
     
     // Try to find the specific coach
-    const { data: coachData, error: coachError } = await serviceRoleSupabase
+    const { data: coachData, error: coachError } = await adminSupabase
       .from("coaches")
       .select("id, user_id, sport_focus, speciality")
       .eq("user_id", userData.id)
@@ -1395,15 +1377,38 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // -------------------------
+    // Authentication section (use Supabase Auth)
+    // -------------------------
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace("Bearer ", "");
+
+    // Create two separate Supabase clients:
+    // 1. Standard client with anon key that respects RLS policies
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      // Use Service Role Key for backend operations to bypass RLS
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    );
+
+    // 2. Admin client with service role key that bypasses RLS - use only when necessary
+    const adminSupabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
-    
-    // Initialize userData with default values
+
+    // Authenticate the user with the token
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !authData.user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    console.log("[API] Authenticated Supabase user:", authData.user.id);
+    // Populate userData for downstream routes
     let userData: UserData = { ...DEFAULT_USER_DATA };
-    
+    userData.userId = String(authData.user.id);
+
     // Try to get timezone from the request body
     let timezone = "UTC"; // Default fallback timezone
     try {
@@ -1415,62 +1420,6 @@ Deno.serve(async (req) => {
       }
     } catch (error) {
       console.log("[API] No timezone in request body, using default:", timezone);
-    }
-     
-    // -------------------------
-    // Authentication section
-    // -------------------------
-    
-    if (AUTH_ENABLED) {
-      // Debug logs for authentication
-      console.log("[auth] Incoming headers:", Object.fromEntries(req.headers.entries()));
-      // Debug: explicitly log the Supabase anon-key header
-      console.log("[auth] apikey header:", req.headers.get("apikey"));
-      const authHeader = req.headers.get("Authorization");
-      console.log("[auth] Authorization header:", authHeader);
-      if (!authHeader) {
-        return handleError(new Error("Missing Authorization header"), "auth");
-      }
-      const token = authHeader.replace("Bearer ", "");
-      console.log("[auth] Extracted token:", token);
-      // Debug: dump Clerk env vars
-      console.log("[auth] CLERK_SECRET_KEY:", CLERK_SECRET_KEY);
-      console.log("[auth] CLERK_PUBLISHABLE_KEY:", CLERK_PUBLISHABLE_KEY);
-      console.log("[auth] CLERK_JWT_KEY (first 100 chars):", CLERK_JWT_KEY?.substring(0, 100));
-      // Debug: try to decode the token payload
-      try {
-        const [, payload] = token.split(".");
-        const raw = atob(payload);
-        const decoded = JSON.parse(raw);
-        console.log("[auth] Decoded token payload:", decoded);
-      } catch (e) {
-        console.error("[auth] Token decode error:", e);
-      }
-      try {
-        // Initialize Clerk client
-        const clerkClient = createClerkClient({
-          secretKey: CLERK_SECRET_KEY!,
-          publishableKey: CLERK_PUBLISHABLE_KEY!,
-        });
-        // Authenticate request (networkless if jwtKey provided, authorize based on origin)
-        const origin = req.headers.get("origin");
-        console.log("[auth] Origin header:", origin);
-        const authOpts: any = {};
-        if (CLERK_JWT_KEY) authOpts.jwtKey = CLERK_JWT_KEY;
-        console.log("[auth] JWKS key present:", !!CLERK_JWT_KEY);
-        if (origin) authOpts.authorizedParties = [origin];
-        console.log("[auth] authenticateRequest options:", authOpts);
-        const { isSignedIn, userId: clerkId } = await clerkClient.authenticateRequest(req, authOpts);
-        console.log("[auth] authenticateRequest result:", { isSignedIn, clerkId });
-        if (!isSignedIn || !clerkId) {
-          return handleError(new Error("Invalid authentication token"), "auth");
-        }
-        console.log("[API] Authentication successful. Clerk ID:", clerkId);
-        userData = await getUserRoleData(supabase, clerkId);
-      } catch (error: any) {
-        console.error("[API] Authentication error:", error);
-        return handleError(new Error(`Authentication failed: ${error.message}`), "auth");
-      }
     }
 
     // Handle routes that need role-specific IDs

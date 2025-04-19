@@ -5,7 +5,8 @@
  * avoiding the duplicate 'api' path issue by carefully formatting the function names.
  */
 import { SupabaseClient } from '@supabase/supabase-js';
-import { useBrowserSupabaseClient } from './supabase';
+import { useAuthenticatedSupabaseClient } from './supabase';
+import { addDays, formatISO } from 'date-fns';
 
 /**
  * Calls a Supabase Edge Function without duplicate API path
@@ -14,15 +15,13 @@ import { useBrowserSupabaseClient } from './supabase';
  * @param path The path (without leading /api)
  * @param method The HTTP method to use
  * @param body Optional request body
- * @param authToken Optional auth token to forward
  * @returns The parsed response data
  */
-export async function invokeFunction(
+export async function invokeFunction<T>(
   supabase: SupabaseClient,
   path: string,
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
-  body?: any,
-  authToken?: string
+  body?: any
 ) {
   // Remove any leading slashes, but preserve path segments
   const cleanPath = path.replace(/^\/+/, '');
@@ -30,20 +29,17 @@ export async function invokeFunction(
   // Construct the full edge function name including its path segments
   const functionName = `api/${cleanPath}`;
   
-  // Prepare headers: forward Clerk token if provided
-  const headers: Record<string, string> = {};
-  if (authToken) {
-    headers.Authorization = `Bearer ${authToken}`;
-  }
-  
-  // Use global fetch in Supabase client to inject Clerk session JWT
+  // The useAuthenticatedSupabaseClient already includes the auth token in requests
+  // Our global fetch interceptor handles authentication headers
   const { data: rawData, error } = await supabase.functions.invoke(functionName, {
     method,
-    body,
-    headers,
+    body
   });
   
-  if (error) throw error;
+  if (error) {
+    console.error(`[API Error] ${path}:`, error);
+    throw error;
+  }
   
   // Parse the response data
   const jsonData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
@@ -52,7 +48,7 @@ export async function invokeFunction(
 
 // Create a hook to get the authenticated client
 export function useSupabaseApiClient() {
-  return useBrowserSupabaseClient();
+  return useAuthenticatedSupabaseClient();
 }
 
 /**
@@ -60,65 +56,65 @@ export function useSupabaseApiClient() {
  */
 export const dashboardApi = {
   // Dashboard APIs
-  getExercisesInit: async (supabase: SupabaseClient, authToken?: string) => 
-    invokeFunction(supabase, 'dashboard/exercisesInit', 'GET', undefined, authToken),
+  getExercisesInit: async (supabase: SupabaseClient) => 
+    invokeFunction(supabase, 'dashboard/exercisesInit', 'GET'),
   
-  getWeeklyOverview: async (supabase: SupabaseClient, authToken?: string) => 
-    invokeFunction(supabase, 'dashboard/weeklyOverview', 'GET', undefined, authToken),
+  getWeeklyOverview: async (supabase: SupabaseClient) => 
+    invokeFunction(supabase, 'dashboard/weeklyOverview', 'GET'),
   
-  getMesocycle: async (supabase: SupabaseClient, authToken?: string) => 
-    invokeFunction(supabase, 'dashboard/mesocycle', 'GET', undefined, authToken),
+  getMesocycle: async (supabase: SupabaseClient) => 
+    invokeFunction(supabase, 'dashboard/mesocycle', 'GET'),
   
-  getExercises: async (supabase: SupabaseClient, authToken?: string) => 
-    invokeFunction(supabase, 'dashboard/exercises', 'GET', undefined, authToken),
+  getExercises: async (supabase: SupabaseClient, payload: any) => 
+    invokeFunction(supabase, 'dashboard/exercises', 'GET', payload),
   
-  createTrainingSession: async (supabase: SupabaseClient, data: any, authToken?: string) => 
-    invokeFunction(supabase, 'dashboard/trainingSession', 'POST', data, authToken),
+  createTrainingSession: async (supabase: SupabaseClient, data: any) => 
+    invokeFunction(supabase, 'dashboard/trainingSession', 'POST', data),
   
-  updateTrainingSession: async (supabase: SupabaseClient, data: any, authToken?: string) => 
-    invokeFunction(supabase, 'dashboard/trainingSession', 'PUT', data, authToken),
+  updateTrainingSession: async (supabase: SupabaseClient, data: any) => 
+    invokeFunction(supabase, 'dashboard/trainingSession', 'PUT', data),
 };
 
 export const eventsApi = {
   // Events APIs
-  getAll: async (supabase: SupabaseClient, authToken?: string) => 
-    invokeFunction(supabase, 'events', 'GET', undefined, authToken),
+  getAll: async (supabase: SupabaseClient) => 
+    invokeFunction(supabase, 'events', 'GET'),
   
-  getById: async (supabase: SupabaseClient, id: string, authToken?: string) => 
-    invokeFunction(supabase, `events/${id}`, 'GET', undefined, authToken),
+  getById: async (supabase: SupabaseClient, id: string) => 
+    invokeFunction(supabase, `events/${id}`, 'GET'),
 };
 
 export const athletesApi = {
   // Athletes APIs
-  getAll: async (supabase: SupabaseClient, authToken?: string) => 
-    invokeFunction(supabase, 'athletes', 'GET', undefined, authToken),
+  getAll: async (supabase: SupabaseClient) => 
+    invokeFunction(supabase, 'athletes', 'GET'),
   
-  getById: async (supabase: SupabaseClient, id: string, authToken?: string) => 
-    invokeFunction(supabase, `athletes/${id}`, 'GET', undefined, authToken),
+  getById: async (supabase: SupabaseClient, id: string) => 
+    invokeFunction(supabase, `athletes/${id}`, 'GET'),
 };
 
 export const plannerApi = {
   // Planner APIs
-  getExercises: async (supabase: SupabaseClient, authToken?: string) => 
-    invokeFunction(supabase, 'planner/exercises', 'GET', undefined, authToken),
+  getExercises: async (supabase: SupabaseClient) => 
+    invokeFunction(supabase, 'planner/exercises', 'GET'),
   
-  createMicrocycle: async (supabase: SupabaseClient, data: any, authToken?: string) => 
-    invokeFunction(supabase, 'planner/microcycle', 'POST', data, authToken),
+  createMicrocycle: async (supabase: SupabaseClient, data: any) => 
+    invokeFunction(supabase, 'planner/microcycle', 'POST', data),
   
-  createMesocycle: async (supabase: SupabaseClient, data: any, authToken?: string) => 
-    invokeFunction(supabase, 'planner/mesocycle', 'POST', data, authToken),
+  createMesocycle: async (supabase: SupabaseClient, data: any) => 
+    invokeFunction(supabase, 'planner/mesocycle', 'POST', data),
 };
 
 export const usersApi = {
   // User APIs
-  getStatus: async (supabase: SupabaseClient, authToken?: string) => 
-    invokeFunction(supabase, 'user-status', 'GET', undefined, authToken),
+  getStatus: async (supabase: SupabaseClient) => 
+    invokeFunction(supabase, 'user-status', 'GET'),
   
-  getProfile: async (supabase: SupabaseClient, userId: string, authToken?: string) => 
-    invokeFunction(supabase, `users/${userId}/profile`, 'GET', undefined, authToken),
+  getProfile: async (supabase: SupabaseClient) => 
+    invokeFunction(supabase, 'users/profile', 'GET'),
   
-  update: async (supabase: SupabaseClient, userId: string, data: any, authToken?: string) => 
-    invokeFunction(supabase, `users/${userId}`, 'PUT', data, authToken),
+  update: async (supabase: SupabaseClient, payload: any) => 
+    invokeFunction(supabase, 'users/update', 'PUT', payload),
 };
 
 // Export all APIs as a unified object

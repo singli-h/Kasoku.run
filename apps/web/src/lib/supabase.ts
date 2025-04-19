@@ -1,43 +1,58 @@
 "use client";
-import { createBrowserClient } from "@supabase/ssr";
-import { useSession } from "@clerk/nextjs";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Create a custom browser client that injects Clerk auth token
-export function useBrowserSupabaseClient(): SupabaseClient {
+import { createClient } from '@supabase/supabase-js';
+import { useSession } from '@clerk/nextjs';
+
+// Environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+
+// Unauthenticated client (uses anon key only)
+// Use this for public operations that don't require auth
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+/**
+ * Hook to get an authenticated Supabase client.
+ * Automatically includes the Clerk session JWT in all requests.
+ * Use this client for operations that require authentication and proper RLS enforcement.
+ */
+export function useAuthenticatedSupabaseClient() {
   const { session } = useSession();
   
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: {
-        fetch: async (url, options: any = {}) => {
-          // Fetch a fresh Clerk Supabase JWT for each request
-          let token: string | null = null;
-          try {
-            token = await session?.getToken({ template: 'supabase' }) ?? null;
-            console.log('🚩 Clerk token (should not decode to role: "anon"):', token);
-          } catch (e) {
-            console.error('[auth] Error fetching Clerk token:', e);
-          }
+  // If no session exists, return the public client
+  if (!session) {
+    return supabase;
+  }
+
+  // Create a client that includes the auth token in all requests
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      fetch: async (url, options = {}) => {
+        const token = await session.getToken();
+        
+        if (token) {
           const headers = new Headers(options.headers);
-          if (token) {
-            headers.set('Authorization', `Bearer ${token}`);
-          }
-          // Log fallback anon key usage
-          console.log('[auth] Using anon key prefix:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.slice(0, 20));
-          return fetch(url, { ...options, headers });
+          headers.set('Authorization', `Bearer ${token}`);
+          options = { ...options, headers };
         }
+        
+        return fetch(url, options);
       }
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
     }
-  );
-  
-  return supabase;
+  });
 }
 
-// Default export uses singleton pattern for non-hook usage
-export default createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-); 
+/**
+ * @deprecated Use useAuthenticatedSupabaseClient() instead
+ */
+export function useBrowserSupabaseClient() {
+  return useAuthenticatedSupabaseClient();
+}
+
+// Export the unauthenticated client as the default export
+export default supabase; 
