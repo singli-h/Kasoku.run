@@ -36,15 +36,23 @@ export default function SessionHandler() {
           headers: { Authorization: `Bearer ${token}` }
         });
         const body = await res.json();
-        const data = body.data;
-        
-        // Redirect based on onboarding status
-        if (data.onboardingCompleted) {
-          // If onboarding is completed, go to planner
+        // Ensure API returned success
+        if (!res.ok || body.status !== 'success' || !body.data) {
+          console.error('Failed to fetch user status:', body);
+          // Default to planner if status cannot be determined
           router.push('/planner');
-        } else {
-          // If onboarding is not completed, go to onboarding
+          return;
+        }
+        const userStatus = body.data;
+        
+        // Redirect based on onboarding status (snake_case field)
+        if (userStatus.onboarding_completed === true) {
+          router.push('/planner');
+        } else if (userStatus.onboarding_completed === false) {
           router.push('/onboarding');
+        } else {
+          // Unknown value, default to planner
+          router.push('/planner');
         }
       } catch (error) {
         console.error('Error checking onboarding status:', error);

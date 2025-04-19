@@ -58,7 +58,7 @@ export const useMesoWizardState = (onComplete) => {
       }
       try {
         const token = await session.getToken()
-        const res = await fetch('/api/planner/exercises', {
+        const res = await fetch('/api/exercises', {
           headers: { Authorization: `Bearer ${token}` }
         })
         const body = await res.json()
