@@ -31,7 +31,7 @@ export const useMesoWizardState = (onComplete) => {
   // UI states
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredExercises, setFilteredExercises] = useState([])
-  const [loadingExercises, setLoadingExercises] = useState(true)
+  const [loadingExercises, setLoadingExercises] = useState(false)
   const [allExercises, setAllExercises] = useState([])
   const [activeSession, setActiveSession] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
@@ -46,33 +46,39 @@ export const useMesoWizardState = (onComplete) => {
   // Calculate progress percentage
   const progressPercentage = ((step - 1) / 4) * 100
 
-  // Fetch exercises from edge function instead of sample data
+  // Fetch exercises only when the user reaches the planning step (step 3)
   useEffect(() => {
-    const getExercises = async () => {
-      setLoadingExercises(true)
-      if (!isSessionLoaded) return
-      if (!isSignedIn) {
-        console.error('Not signed in for fetching exercises')
-        setLoadingExercises(false)
-        return
-      }
+    // Only run when on Step 3 (Planning)
+    if (step !== 3) return;
+    // Don't refetch if we've already loaded exercises
+    if (allExercises.length > 0) return;
+    // Only fetch once Clerk session is ready and user is signed in
+    if (!isSessionLoaded || !isSignedIn) {
+      setLoadingExercises(false);
+      return;
+    }
+
+    const fetchExercises = async () => {
+      setLoadingExercises(true);
       try {
-        const token = await session.getToken()
+        const token = await session.getToken();
         const res = await fetch('/api/exercises', {
           headers: { Authorization: `Bearer ${token}` }
-        })
-        const body = await res.json()
-        const exercises = body.data?.exercises || []
-        setAllExercises(exercises)
-        setFilteredExercises(exercises)
+        });
+        const body = await res.json();
+        const exercises = Array.isArray(body.data) ? body.data : [];
+        setAllExercises(exercises);
+        setFilteredExercises(exercises);
       } catch (error) {
-        console.error('Error fetching exercises:', error)
+        console.error('Error fetching exercises:', error);
+        setAllExercises([]);
+        setFilteredExercises([]);
       } finally {
-        setLoadingExercises(false)
+        setLoadingExercises(false);
       }
-    }
-    getExercises()
-  }, [session, isSessionLoaded, isSignedIn])
+    };
+    fetchExercises();
+  }, [step, session, isSessionLoaded, isSignedIn]);
 
   // Filter exercises based on search term
   useEffect(() => {
