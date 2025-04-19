@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useSupabaseApiClient } from '@/lib/supabase-api';
-import supabaseApi from '@/lib/supabase-api';
 import { useAuth, useSession } from '@clerk/nextjs';
 
 interface TestResult {
@@ -11,12 +9,11 @@ interface TestResult {
 }
 
 export default function ApiTest() {
-  const supabase = useSupabaseApiClient();
+  const { session, isLoaded: isSessionLoaded, isSignedIn } = useSession();
   const [results, setResults] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<Record<string, any>>({});
-  const { userId, getToken } = useAuth();
-  const { isLoaded: isSessionLoaded, isSignedIn } = useSession();
+  const { userId } = useAuth();
   const [debugToken, setDebugToken] = useState<string | null>(null);
   const [authHeaderStatus, setAuthHeaderStatus] = useState<"loading" | "success" | "error" | "waiting">("waiting");
 
@@ -38,7 +35,7 @@ export default function ApiTest() {
       try {
         setAuthHeaderStatus("loading");
         console.log("[API Test] Session loaded, retrieving token...");
-        const token = await getToken();
+        const token = await session.getToken();
         if (!token) {
           console.error("[API Test] No token available from Clerk");
           setAuthHeaderStatus("error");
@@ -79,21 +76,16 @@ export default function ApiTest() {
     }
     
     checkAuthToken();
-  }, [getToken, isSessionLoaded, isSignedIn]);
+  }, [session, isSessionLoaded, isSignedIn]);
 
   // Helper function to get token, throws if not available
   const getAuthToken = async () => {
     // Make sure session is loaded
-    if (!isSessionLoaded) {
-      throw new Error('Clerk session not yet loaded');
-    }
+    if (!session) throw new Error('Clerk session not yet loaded');
     
-    if (!isSignedIn) {
-      throw new Error('User not signed in');
-    }
-    
-    const token = await getToken();
+    const token = await session.getToken();
     if (!token) throw new Error('Authentication token not available');
+    console.log("[API Test] Using token for request:", token.substring(0, 10) + '...');
     return token;
   };
 
@@ -141,10 +133,15 @@ export default function ApiTest() {
     
     try {
       console.log(`[Test] Adding coach role for user: ${userId}`);
-      // Ensure session is active
-      await getAuthToken();
-      const data = await supabaseApi.users.update(supabase, {
-        metadata: { role: 'coach' }
+      // Get token explicitly
+      const token = await getAuthToken();
+      const data = await fetch('/api/users/update', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ metadata: { role: 'coach' } })
       });
       console.log(`[Test] Coach role added:`, data);
       setResults(prev => ({ ...prev, addCoachRole: data }));
@@ -161,24 +158,42 @@ export default function ApiTest() {
   // Test functions using Supabase edge functions
   const tests = {
     getEvents: async () => {
-      await getAuthToken();
-      return supabaseApi.events.getAll(supabase);
+      const token = await getAuthToken();
+      const res = await fetch('/api/events', { headers: { Authorization: `Bearer ${token}` } });
+      return res.json();
     },
     getAthletes: async () => {
-      await getAuthToken();
-      return supabaseApi.athletes.getAll(supabase);
+      const token = await getAuthToken();
+      const res = await fetch('/api/athletes', { headers: { Authorization: `Bearer ${token}` } });
+      return res.json();
     },
     getDashboardInit: async () => {
-      await getAuthToken();
-      return supabaseApi.dashboard.getExercisesInit(supabase);
+      const token = await getAuthToken();
+      const res = await fetch('/api/dashboard/exercisesInit', { headers: { Authorization: `Bearer ${token}` } });
+      return res.json();
     },
     testUserStatus: async () => {
-      await getAuthToken();
-      return supabaseApi.users.getStatus(supabase);
+      const token = await getAuthToken();
+      const res = await fetch('/api/users/status', { headers: { Authorization: `Bearer ${token}` } });
+      return res.json();
     },
     getUserProfile: async () => {
-      await getAuthToken();
-      return supabaseApi.users.getProfile(supabase);
+      const token = await getAuthToken();
+      const res = await fetch('/api/users/profile', { headers: { Authorization: `Bearer ${token}` } });
+      return res.json();
+    },
+    addCoachRole: async () => {
+      const token = await getAuthToken();
+      const data = await fetch('/api/users/update', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ metadata: { role: 'coach' } })
+      });
+      setResults(prev => ({ ...prev, addCoachRole: data }));
+      return data;
     },
   };
 

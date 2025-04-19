@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { useBrowserSupabaseClient } from '@/lib/supabase';
-import supabaseApi from '@/lib/supabase-api';
 
 /**
  * Custom hook to check if the user has completed onboarding
@@ -21,7 +19,6 @@ export default function useOnboardingStatus({
 } = {}) {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
-  const supabase = useBrowserSupabaseClient();
   const [onboardingCompleted, setOnboardingCompleted] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,18 +32,20 @@ export default function useOnboardingStatus({
 
       try {
         setIsLoading(true);
-        const data = await supabaseApi.users.getStatus(supabase);
-        setOnboardingCompleted(data.onboardingCompleted);
+        const res = await fetch('/api/users/status');
+        const json = await res.json();
+        const data = json.data;
+        setOnboardingCompleted(data.onboarding_completed);
         
         // Handle redirects based on onboarding status
         if (redirect) {
-          if (requireOnboarding && !data.onboardingCompleted) {
+          if (requireOnboarding && !data.onboarding_completed) {
             // If the page requires onboarding to be complete, but it's not, redirect to onboarding
             router.push(redirectTo);
-          } else if (!requireOnboarding && data.onboardingCompleted && window.location.pathname === '/onboarding') {
-            // If we're on the onboarding page but it's already completed, redirect to dashboard
+          } else if (!requireOnboarding && data.onboarding_completed && window.location.pathname === '/onboarding') {
+            // If we're on the onboarding page but it's already completed, redirect to planner
             router.push('/planner');
-          } else if (!data.onboardingCompleted && window.location.pathname !== '/onboarding' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          } else if (!data.onboarding_completed && window.location.pathname !== '/onboarding' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
             // If onboarding is not completed and we're not on the login/register/onboarding pages, redirect to onboarding
             router.push(redirectTo);
           }
@@ -60,7 +59,7 @@ export default function useOnboardingStatus({
     }
 
     checkOnboardingStatus();
-  }, [isLoaded, isSignedIn, redirect, redirectTo, requireOnboarding, router, supabase]);
+  }, [isLoaded, isSignedIn, redirect, redirectTo, requireOnboarding, router]);
 
   return { onboardingCompleted, isLoading, error };
 } 

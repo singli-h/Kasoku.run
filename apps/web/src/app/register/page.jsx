@@ -6,19 +6,19 @@ import { SignUp } from "@clerk/nextjs"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { useBrowserSupabaseClient } from "@/lib/supabase"
-import supabaseApi from "@/lib/supabase-api"
 
 const RegisterPage = () => {
   const { isSignedIn } = useAuth()
   const router = useRouter()
-  const supabase = useBrowserSupabaseClient()
 
   useEffect(() => {
     // If user is already signed in, check their onboarding status
     if (isSignedIn) {
       const checkOnboardingStatus = async () => {
         try {
-          const { onboardingCompleted } = await supabaseApi.users.getStatus(supabase)
+          const res = await fetch('/api/users/status');
+          const json = await res.json();
+          const onboardingCompleted = res.ok && json.data?.onboarding_completed;
 
           if (onboardingCompleted) {
             // If onboarding is completed, go to planner
@@ -36,7 +36,7 @@ const RegisterPage = () => {
 
       checkOnboardingStatus()
     }
-  }, [isSignedIn, router, supabase])
+  }, [isSignedIn, router])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">

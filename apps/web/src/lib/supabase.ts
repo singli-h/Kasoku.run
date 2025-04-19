@@ -1,6 +1,7 @@
 "use client";
 
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { useSession } from '@clerk/nextjs';
 import { useMemo } from 'react';
 
@@ -75,4 +76,24 @@ export function useBrowserSupabaseClient() {
 }
 
 // Export the unauthenticated singleton client as the default export
-export default supabaseClient; 
+export default supabaseClient;
+
+/**
+ * Client-side Supabase client (for use in client components)
+ */
+export const createBrowserSupabaseClient = () =>
+  createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+/**
+ * Server-side Supabase client (for use in API route handlers)
+ */
+export function createServerSupabaseClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+} 

@@ -1,9 +1,8 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { useBrowserSupabaseClient } from '@/lib/supabase'
-import supabaseApi from '@/lib/supabase-api'
+import { useUserProfile } from '@/lib/useUserProfile'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -15,33 +14,8 @@ import { format } from 'date-fns'
 
 export default function ProfilePage() {
   const { user, isLoaded: isUserLoaded } = useUser()
-  const supabase = useBrowserSupabaseClient()
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    // Fetch user profile data
-    if (process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true') {
-      setLoading(false)
-      return
-    }
-    if (!isUserLoaded) return
-
-    setLoading(true)
-    ;(async () => {
-      try {
-        const data = await supabaseApi.users.getProfile(supabase, user.id)
-        setProfile(data)
-        setError(null)
-      } catch (err) {
-        console.error('Error fetching profile:', err)
-        setError(err.message || 'An error occurred while loading your profile')
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [isUserLoaded, supabase, user?.id])
+  // Fetch profile via our secure API
+  const profile = useUserProfile()
 
   // Mock profile for development
   const generateMockProfile = () => {
@@ -77,7 +51,7 @@ export default function ProfilePage() {
   }
 
   // Loading state
-  if (loading) {
+  if (!isUserLoaded || !profile) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="h-12 w-12 animate-spin text-blue-600 dark:text-blue-500 mb-4" />
@@ -86,39 +60,15 @@ export default function ProfilePage() {
     )
   }
 
-  // Error state
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="bg-red-100 dark:bg-red-900/20 p-6 rounded-lg max-w-md">
-          <h2 className="text-xl font-medium text-red-800 dark:text-red-300 mb-2">
-            Error Loading Profile
-          </h2>
-          <p className="text-red-700 dark:text-red-400">{error}</p>
-          <Button 
-            variant="outline" 
-            className="mt-4"
-            onClick={() => window.location.reload()}
-          >
-            Try Again
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  // Extract user info from Clerk and profile data
-  const fullName = user?.fullName || (profile?.user?.first_name && profile?.user?.last_name 
-    ? `${profile.user.first_name} ${profile.user.last_name}` 
-    : 'User')
-    
-  const email = user?.primaryEmailAddress?.emailAddress || profile?.user?.email || ''
-  const username = profile?.user?.username || ''
-  const role = profile?.role || ''
-  const subscription = profile?.user?.subscription_status || 'Free'
-  const avatarUrl = user?.imageUrl || profile?.user?.avatar_url
-  const birthdate = profile?.user?.birthdate ? format(new Date(profile.user.birthdate), 'MMMM d, yyyy') : 'Not set'
-  const timezone = profile?.user?.timezone || 'UTC'
+  // Extract user info from profile data
+  const { user: userData, role } = profile
+  const fullName = user?.fullName || `${userData.first_name} ${userData.last_name}`
+  const email = user?.primaryEmailAddress?.emailAddress || userData.email || ''
+  const username = userData.username || ''
+  const subscription = userData.subscription_status || 'Free'
+  const avatarUrl = user?.imageUrl || userData.avatar_url
+  const birthdate = userData.birthdate ? format(new Date(userData.birthdate), 'MMMM d, yyyy') : 'Not set'
+  const timezone = userData.timezone || 'UTC'
   const initials = fullName.split(' ').map(n => n?.[0] || '').join('').toUpperCase()
   
   return (

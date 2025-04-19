@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from '@clerk/nextjs';
 import CalendarView from "../../components/overview/CalendarView"
 import PlanBuilder from "../../components/overview/PlanBuilder"
 import MesocycleOverview from "../../components/overview/MesocycleOverview"
@@ -25,13 +26,45 @@ const CustomButton = ({ children, isActive, className = "", ...props }) => {
 }
 
 export default function OverviewPage() {
-  const [mesocycle, setMesocycle] = useState({ weeks: [] })
+  const { session, isLoaded: isSessionLoaded, isSignedIn } = useSession();
+  const [mesocycles, setMesocycles] = useState([]);
+  const [mesocycle, setMesocycle] = useState(null);
+  const [loadingMesocycles, setLoadingMesocycles] = useState(true);
+  const [errorMesocycles, setErrorMesocycles] = useState(null);
   const [activeView, setActiveView] = useState("calendar")
 
   const handleMesocycleUpdate = (updatedMesocycle) => {
     setMesocycle(updatedMesocycle)
     // Here you would typically save the updated mesocycle to your API or state management solution
   }
+
+  useEffect(() => {
+    if (!isSessionLoaded) return;
+    if (!isSignedIn) {
+      setErrorMesocycles('Not signed in');
+      setLoadingMesocycles(false);
+      return;
+    }
+    const fetchMesocycles = async () => {
+      try {
+        const token = await session.getToken();
+        const res = await fetch('/api/planner/mesocycle', { headers: { Authorization: `Bearer ${token}` } });
+        const body = await res.json();
+        if (!res.ok || body.status !== 'success') throw new Error(body.message || 'Failed to fetch mesocycles');
+        setMesocycles(body.data);
+        setMesocycle(body.data[0] || null);
+      } catch (err) {
+        setErrorMesocycles(err.message);
+      } finally {
+        setLoadingMesocycles(false);
+      }
+    };
+    fetchMesocycles();
+  }, [session, isSessionLoaded, isSignedIn]);
+
+  if (loadingMesocycles) return <div>Loading mesocycles...</div>;
+  if (errorMesocycles) return <div>Error: {errorMesocycles}</div>;
+  if (!mesocycle) return <div>No mesocycles available</div>;
 
   const renderActiveView = () => {
     switch (activeView) {

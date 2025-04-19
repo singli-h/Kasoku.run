@@ -6,7 +6,6 @@ import { SignIn } from "@clerk/nextjs"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { useBrowserSupabaseClient } from "@/lib/supabase"
-import supabaseApi from "@/lib/supabase-api"
 
 const LoginPage = () => {
   const { isSignedIn, isLoaded } = useAuth()
@@ -22,23 +21,20 @@ const LoginPage = () => {
 
     const checkOnboardingStatus = async () => {
       try {
-        const { onboardingCompleted } = await supabaseApi.users.getStatus(supabase)
-
-        if (onboardingCompleted) {
-          // If onboarding is completed, go to planner
-          router.push('/planner')
+        const res = await fetch('/api/users/status');
+        const json = await res.json();
+        if (res.ok && json.data?.onboarding_completed) {
+          router.push('/planner');
         } else {
-          // If onboarding is not completed, go to onboarding
-          router.push('/onboarding')
+          router.push('/onboarding');
         }
       } catch (error) {
-        console.error('Error checking onboarding status:', error)
-        // On error, default to planner page
-        router.push('/planner')
+        console.error('Error checking onboarding status:', error);
+        router.push('/planner');
       } finally {
-        setIsChecking(false)
+        setIsChecking(false);
       }
-    }
+    };
 
     if (isSignedIn) {
       checkOnboardingStatus()

@@ -1,23 +1,31 @@
 import { useState, useEffect } from 'react'
-import { useBrowserSupabaseClient } from '@/lib/supabase'
-import { dashboardApi } from '@/lib/supabase-api'
+import { useSession } from '@clerk/nextjs'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 
 export default function WeeklyOverview() {
+  const { session, isLoaded: isSessionLoaded, isSignedIn } = useSession()
   const [weeklyData, setWeeklyData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const supabase = useBrowserSupabaseClient()
 
   useEffect(() => {
     const fetchWeeklyData = async () => {
+      setLoading(true)
+      if (!isSessionLoaded) {
+        return
+      }
+      if (!isSignedIn) {
+        setError('Not signed in')
+        setLoading(false)
+        return
+      }
       try {
-        setLoading(true)
-        const { data, error: apiError } = await dashboardApi.getWeeklyOverview(supabase);
-        
-        if (apiError) throw apiError;
-        setWeeklyData(data);
+        const token = await session.getToken()
+        const res = await fetch('/api/dashboard/weeklyOverview', { headers: { Authorization: `Bearer ${token}` } })
+        const body = await res.json()
+        if (!res.ok || body.status !== 'success') throw new Error(body.message || 'Failed to fetch weekly overview')
+        setWeeklyData(body.data)
       } catch (err) {
         console.error('Error fetching weekly data:', err)
         setError(err.message)
@@ -26,10 +34,8 @@ export default function WeeklyOverview() {
       }
     }
 
-    if (supabase) {
-      fetchWeeklyData();
-    }
-  }, [supabase])
+    fetchWeeklyData()
+  }, [session, isSessionLoaded, isSignedIn])
 
   if (loading) return <div>Loading...</div>
   if (error) return <div>Error: {error}</div>
