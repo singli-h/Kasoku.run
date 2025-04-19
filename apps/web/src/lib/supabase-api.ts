@@ -29,21 +29,35 @@ export async function invokeFunction<T>(
   // Construct the full edge function name including its path segments
   const functionName = `api/${cleanPath}`;
   
-  // The useAuthenticatedSupabaseClient already includes the auth token in requests
-  // Our global fetch interceptor handles authentication headers
-  const { data: rawData, error } = await supabase.functions.invoke(functionName, {
-    method,
-    body
-  });
+  console.log(`[API Debug] Invoking function: ${functionName}`);
   
-  if (error) {
-    console.error(`[API Error] ${path}:`, error);
+  try {
+    // The authenticated client should add JWT token via global fetch
+    const { data: rawData, error } = await supabase.functions.invoke(functionName, {
+      method,
+      body
+    });
+    
+    if (error) {
+      console.error(`[API Error] ${path}:`, error);
+      // Log more details about the error for debugging
+      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        console.error('[API Auth Error] Function returned 401 Unauthorized - check token', {
+          functionName,
+          status: error.status,
+          message: error.message,
+        });
+      }
+      throw error;
+    }
+    
+    // Parse the response data
+    const jsonData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+    return jsonData;
+  } catch (error) {
+    console.error(`[API Error] Exception in invokeFunction for ${path}:`, error);
     throw error;
   }
-  
-  // Parse the response data
-  const jsonData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-  return jsonData;
 }
 
 // Create a hook to get the authenticated client

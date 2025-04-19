@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSupabaseApiClient } from '@/lib/supabase-api';
 import supabaseApi from '@/lib/supabase-api';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth, useSession } from '@clerk/nextjs';
 
 interface TestResult {
   name: string;
@@ -16,16 +16,82 @@ export default function ApiTest() {
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<Record<string, any>>({});
   const { userId, getToken } = useAuth();
+  const { isLoaded: isSessionLoaded, isSignedIn } = useSession();
   const [debugToken, setDebugToken] = useState<string | null>(null);
+  const [authHeaderStatus, setAuthHeaderStatus] = useState<"loading" | "success" | "error" | "waiting">("waiting");
 
   useEffect(() => {
-    getAuthToken()
-      .then(token => setDebugToken(token))
-      .catch(() => setDebugToken(null));
-  }, []);
+    // Only try to get the token when the session is fully loaded
+    if (!isSessionLoaded) {
+      console.log("[API Test] Waiting for Clerk session to load...");
+      setAuthHeaderStatus("waiting");
+      return;
+    }
+
+    if (!isSignedIn) {
+      console.log("[API Test] User not signed in");
+      setAuthHeaderStatus("error");
+      return;
+    }
+
+    async function checkAuthToken() {
+      try {
+        setAuthHeaderStatus("loading");
+        console.log("[API Test] Session loaded, retrieving token...");
+        const token = await getToken();
+        if (!token) {
+          console.error("[API Test] No token available from Clerk");
+          setAuthHeaderStatus("error");
+          setDebugToken(null);
+        } else {
+          // Only show first 10 characters and last 5 for security
+          const tokenPreview = token.substring(0, 10) + '...' + token.substring(token.length - 5);
+          setDebugToken(tokenPreview);
+          
+          // Test token format
+          const [header, payload, signature] = token.split('.');
+          if (!header || !payload || !signature) {
+            console.error("[API Test] Token does not appear to be a valid JWT (needs 3 parts)");
+            setAuthHeaderStatus("error");
+          } else {
+            console.log("[API Test] Token appears to be a valid JWT format");
+            setAuthHeaderStatus("success");
+            
+            // Log JWT payload for debugging (decoded)
+            try {
+              const decodedPayload = JSON.parse(atob(payload));
+              console.log("[API Test] Token payload:", {
+                iss: decodedPayload.iss,
+                sub: decodedPayload.sub,
+                exp: new Date(decodedPayload.exp * 1000).toISOString(),
+                iat: new Date(decodedPayload.iat * 1000).toISOString()
+              });
+            } catch (e) {
+              console.error("[API Test] Failed to decode JWT payload", e);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[API Test] Error getting auth token:", error);
+        setAuthHeaderStatus("error");
+        setDebugToken(null);
+      }
+    }
+    
+    checkAuthToken();
+  }, [getToken, isSessionLoaded, isSignedIn]);
 
   // Helper function to get token, throws if not available
   const getAuthToken = async () => {
+    // Make sure session is loaded
+    if (!isSessionLoaded) {
+      throw new Error('Clerk session not yet loaded');
+    }
+    
+    if (!isSignedIn) {
+      throw new Error('User not signed in');
+    }
+    
     const token = await getToken();
     if (!token) throw new Error('Authentication token not available');
     return token;
@@ -41,6 +107,11 @@ export default function ApiTest() {
     setError(prev => ({ ...prev, [testName]: null }));
     
     try {
+      // First, ensure session is loaded and token is available
+      if (!isSessionLoaded) {
+        throw new Error('Clerk session not yet loaded - please wait');
+      }
+      
       console.log(`[API Test] Executing test function for ${testName}`);
       const result = await testFn();
       console.log(`[API Test] Test ${testName} completed successfully:`, result);
@@ -113,6 +184,12 @@ export default function ApiTest() {
 
   // Run all tests
   const runAllTests = async () => {
+    // First, ensure session is loaded
+    if (!isSessionLoaded) {
+      alert('Clerk session not yet loaded - please wait');
+      return [];
+    }
+    
     const results: TestResult[] = [];
     for (const [name, test] of Object.entries(tests)) {
       const success = await runTest(name, test);
@@ -121,7 +198,18 @@ export default function ApiTest() {
     return results;
   };
 
-  if (!userId) {
+  if (!isSessionLoaded) {
+    return (
+      <div className="p-8">
+        <h1 className="text-2xl font-bold mb-6">API Connection Test</h1>
+        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6">
+          <p>Loading Clerk session, please wait...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
     return (
       <div className="p-8">
         <h1 className="text-2xl font-bold mb-6">API Connection Test</h1>
@@ -144,10 +232,24 @@ export default function ApiTest() {
         <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4">
           <p>This page tests the connection to various API endpoints.</p>
           <p>User ID: {userId}</p>
+          <p>Session Status: {isSessionLoaded ? 'Loaded' : 'Loading...'}</p>
         </div>
       <div className="p-8">
         <h2 className="text-lg font-semibold mb-2">Debug Info</h2>
-        <pre className="bg-gray-100 p-2 mb-4">Clerk Supabase JWT: {debugToken || 'none'}</pre>
+        <div className={`p-2 mb-4 ${
+          authHeaderStatus === "success" ? "bg-green-100" : 
+          authHeaderStatus === "error" ? "bg-red-100" : 
+          authHeaderStatus === "waiting" ? "bg-yellow-100" : 
+          "bg-gray-100"
+        }`}>
+          <p>Clerk Supabase JWT: {debugToken || 'none'}</p>
+          <p>Token Status: {
+            authHeaderStatus === "waiting" ? "Waiting for session..." :
+            authHeaderStatus === "loading" ? "Checking..." : 
+            authHeaderStatus === "success" ? "Valid token format" : 
+            "⚠️ Invalid token format"
+          }</p>
+        </div>
         <pre className="bg-gray-100 p-2 mb-4">Anon Key Prefix: {anonKeyPrefix}</pre>
       </div>
 
@@ -159,7 +261,7 @@ export default function ApiTest() {
                 <h3 className="font-medium">{name}</h3>
                 <button
                   onClick={() => runTest(name, test)}
-                  disabled={loading[name]}
+                  disabled={loading[name] || !isSessionLoaded}
                   className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
                 >
                   {loading[name] ? 'Running...' : 'Run Test'}
@@ -186,7 +288,8 @@ export default function ApiTest() {
         <div className="mt-8">
           <button
             onClick={runAllTests}
-            className="px-6 py-3 bg-green-500 text-white rounded hover:bg-green-600"
+            disabled={!isSessionLoaded}
+            className="px-6 py-3 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
           >
             Run All Tests
           </button>
