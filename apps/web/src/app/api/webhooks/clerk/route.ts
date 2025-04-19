@@ -22,9 +22,6 @@ export async function POST(req: NextRequest) {
   const supabase = createServerSupabaseClient();
   const { type, data } = evt;
 
-  // Log all webhook payloads
-  await supabase.from('webhook_logs').insert({ event_type: type, payload: evt });
-
   try {
     if (type === 'user.created') {
       const { id, email_addresses, first_name, last_name, username, created_at } = data;
