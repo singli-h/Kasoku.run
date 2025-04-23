@@ -54,15 +54,6 @@ const MesoWizard = ({ onComplete }) => {
 
   // Render the appropriate step
   const renderStep = () => {
-    if (loadingExercises && step === 3) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-          <p className="text-lg text-gray-600">Loading exercise library...</p>
-        </div>
-      )
-    }
-    
     switch (step) {
       case 1:
         return (

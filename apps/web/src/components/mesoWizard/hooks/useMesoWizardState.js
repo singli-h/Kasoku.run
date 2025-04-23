@@ -31,7 +31,7 @@ export const useMesoWizardState = (onComplete) => {
   // UI states
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredExercises, setFilteredExercises] = useState([])
-  const [loadingExercises, setLoadingExercises] = useState(false)
+  const [loadingExercises, setLoadingExercises] = useState(true)
   const [allExercises, setAllExercises] = useState([])
   const [activeSession, setActiveSession] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
@@ -46,51 +46,54 @@ export const useMesoWizardState = (onComplete) => {
   // Calculate progress percentage
   const progressPercentage = ((step - 1) / 4) * 100
 
-  // Fetch exercises only when the user reaches the planning step (step 3)
+  // Fetch exercises immediately when component mounts - not tied to any step
   useEffect(() => {
-    // Only run when on Step 3 (Planning)
-    if (step !== 3) return;
-    // Don't refetch if we've already loaded exercises
-    if (allExercises.length > 0) return;
-    // Only fetch once Clerk session is ready and user is signed in
-    if (!isSessionLoaded || !isSignedIn) {
-      setLoadingExercises(false);
-      return;
-    }
-
-    const fetchExercises = async () => {
-      setLoadingExercises(true);
-      try {
-        const token = await session.getToken();
-        const res = await fetch('/api/exercises', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const body = await res.json();
-        const exercises = Array.isArray(body.data) ? body.data : [];
-        setAllExercises(exercises);
-        setFilteredExercises(exercises);
-      } catch (error) {
-        console.error('Error fetching exercises:', error);
-        setAllExercises([]);
-        setFilteredExercises([]);
-      } finally {
-        setLoadingExercises(false);
+    const getExercises = async () => {
+      setLoadingExercises(true)
+      if (!isSessionLoaded) return
+      if (!isSignedIn) {
+        console.error('Not signed in for fetching exercises')
+        setLoadingExercises(false)
+        return
       }
-    };
-    fetchExercises();
-  }, [step, session, isSessionLoaded, isSignedIn]);
+      try {
+        const token = await session.getToken()
+        const res = await fetch('/api/planner/exercises', {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include'
+        })
+        const body = await res.json()
+        const exercises = body.data?.exercises || []
+        console.log('exercises', exercises)
+        setAllExercises(exercises)
+        setFilteredExercises(exercises)
+      } catch (error) {
+        console.error('Error fetching exercises:', error)
+      } finally {
+        setLoadingExercises(false)
+      }
+    }
+    getExercises()
+  }, [session, isSessionLoaded, isSignedIn])
 
   // Filter exercises based on search term
   useEffect(() => {
-    if (!allExercises.length) return
+    if (!allExercises.length) return;
     
-    setFilteredExercises(
-      allExercises.filter((exercise) => 
-        exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exercise.category.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    )
-  }, [searchTerm, allExercises])
+    // Make sure exercises have the required properties for the UI components
+    const enrichedExercises = allExercises.map(exercise => ({
+      ...exercise,
+      // Add a category property based on the type for display and filtering
+      category: exercise.type ? exercise.type.charAt(0).toUpperCase() + exercise.type.slice(1) : 'Gym'
+    }));
+    
+    const filtered = enrichedExercises.filter((exercise) => 
+      exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exercise.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    setFilteredExercises(filtered);
+  }, [searchTerm, allExercises]);
 
   // Handle basic input changes
   const handleInputChange = useCallback((e) => {
@@ -466,7 +469,7 @@ export const useMesoWizardState = (onComplete) => {
         }
         
         // Save plan data to Supabase
-        const result = await saveMesocycle(processedData)
+        const result = await saveMesocycle(processedData, allExercises)
         
         console.log(`${planTypeLabel} saved successfully:`, result)
         
@@ -484,7 +487,7 @@ export const useMesoWizardState = (onComplete) => {
         setIsLoading(false)
       }
     }
-  }, [step, formData, aiSuggestions, validateStep, onComplete, saveMesocycle, saveError])
+  }, [step, formData, aiSuggestions, validateStep, onComplete, saveMesocycle, saveError, allExercises])
 
   // Initialize sessions based on sessionsPerWeek
   useEffect(() => {

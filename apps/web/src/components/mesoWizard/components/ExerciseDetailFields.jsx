@@ -106,14 +106,14 @@ const ExerciseDetailFields = ({ exercise, handleExerciseDetailChange }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="effort" className="text-sm font-medium">
-                Effort (RPE 1-10)
+                Effort (%)
               </Label>
               <Input
                 id="effort"
                 type="number"
                 min="1"
-                max="10"
-                step="0.5"
+                max="150"
+                step="1"
                 value={exercise.effort || ""}
                 onChange={(e) => handleInputChange("effort", e.target.value)}
                 className="mt-1 h-10"

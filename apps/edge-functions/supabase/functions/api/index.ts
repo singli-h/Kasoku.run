@@ -81,7 +81,7 @@ async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promi
     
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("id, metadata, timezone")
+      .select("id, role, timezone")
       .eq("clerk_id", clerkId)
       .single();
 
@@ -90,14 +90,14 @@ async function getUserRoleData(supabase: SupabaseClient, clerkId: string): Promi
       throw new Error("User not found");
     }
 
-    console.log("[getUserRoleData] Found user:", { id: userData.id, role: userData.metadata?.role });
+    console.log("[getUserRoleData] Found user:", { id: userData.id, role: userData.role });
 
     // Ensure userId is always a string
     const result: UserData = { 
       userId: String(userData.id),
       timezone: userData.timezone || "UTC"
     };
-    const role = userData.metadata?.role;
+    const role = userData.role;
 
     if (role === 'athlete') {
       console.log("[getUserRoleData] Fetching athlete data for user_id:", userData.id);
@@ -705,8 +705,7 @@ export const postOnboardingUser = async (
       coach_experience,
       coach_philosophy,
       athlete_events,
-      subscription_status,
-      metadata
+      subscription_status
     } = userData;
 
     // Debug - Log extracted fields
@@ -733,15 +732,7 @@ export const postOnboardingUser = async (
       throw new Error(`Missing required fields: clerk_id and email are required. Got clerk_id: ${!!clerk_id}, email: ${!!email}`);
     }
 
-    // Store role in metadata but don't use it as a column in users table
-    const updatedMetadata = {
-      ...metadata,
-      role: role // Ensure the role is stored in metadata
-    };
-
-    console.log("Updating user with onboarding_completed: true");
-    
-    // First, check if the user already exists
+    // Insert or update user record
     const { data: existingUser, error: findError } = await supabase
       .from('users')
       .select('id')
@@ -768,7 +759,7 @@ export const postOnboardingUser = async (
           subscription_status,
           onboarding_completed: true,
           updated_at: new Date().toISOString(),
-          metadata: updatedMetadata
+          role
         })
         .eq('clerk_id', clerk_id)
         .select()
@@ -811,7 +802,7 @@ export const postOnboardingUser = async (
             subscription_status,
             onboarding_completed: true,
             updated_at: new Date().toISOString(),
-            metadata: updatedMetadata
+            role
           })
           .eq('email', email)
           .select();
@@ -1299,7 +1290,7 @@ async function getCoachIdFromRequest(supabase: SupabaseClient, req: Request, use
     // Get user data with full profile for debugging
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("id, email, first_name, last_name, metadata")
+      .select("id, role, email, first_name, last_name")
       .eq("clerk_id", clerkId)
       .single();
 
@@ -1311,9 +1302,9 @@ async function getCoachIdFromRequest(supabase: SupabaseClient, req: Request, use
     console.log("[getCoachIdFromRequest] Found user:", userData);
 
     // Verify the user has coach role in metadata
-    if (!userData.metadata?.role || userData.metadata.role !== 'coach') {
-      console.error("[getCoachIdFromRequest] User does not have coach role:", userData.metadata);
-      throw new Error(`User does not have coach role. Current role: ${userData.metadata?.role || 'undefined'}`);
+    if (!userData.role || userData.role !== 'coach') {
+      console.error("[getCoachIdFromRequest] User does not have coach role:", userData.role);
+      throw new Error(`User does not have coach role. Current role: ${userData.role || 'undefined'}`);
     }
 
     // Get coach record using user_id - use admin client for this privileged query

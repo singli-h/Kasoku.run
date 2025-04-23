@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
+import { getUserRoleData } from '@/lib/roles';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
 /**
@@ -12,16 +13,28 @@ export async function GET(
 ) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  const clerkId = auth;
 
-  const microcycleId = params.id;
-  const supabase = createServerSupabaseClient();
-
+  // Get user role and verify coach access
   try {
-    // 1) Fetch microcycle
+    const { role, coachId } = await getUserRoleData(clerkId);
+    
+    if (role !== 'coach') {
+      return NextResponse.json(
+        { status: 'error', message: 'Access forbidden: Coach role required' },
+        { status: 403 }
+      );
+    }
+
+    const microcycleId = params.id;
+    const supabase = createServerSupabaseClient();
+
+    // 1) Fetch microcycle and verify ownership
     const { data: microcycle, error: mcErr } = await supabase
       .from('microcycles')
       .select('*')
       .eq('id', microcycleId)
+      .eq('coach_id', coachId)
       .single();
     if (mcErr || !microcycle) {
       return NextResponse.json({ status: 'error', message: 'Microcycle not found' }, { status: 404 });

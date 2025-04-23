@@ -11,15 +11,22 @@ export async function GET(req: NextRequest) {
   if (authResult instanceof NextResponse) return authResult;
   const clerkId = authResult;
 
-  const supabase = createServerSupabaseClient();
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('id, email, first_name, last_name, username, avatar_url, subscription_status, timezone')
-    .eq('clerk_id', clerkId)
-    .single();
+  try {
+    const supabase = createServerSupabaseClient();
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, email, first_name, last_name, username, avatar_url, subscription_status, timezone, metadata')
+      .eq('clerk_id', clerkId)
+      .single();
 
-  if (error) {
+    if (error) {
+      console.error('[API] Error fetching user profile:', error);
+      return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
+    }
+    
+    return NextResponse.json({ status: 'success', data: user });
+  } catch (error: any) {
+    console.error('[API] Unexpected error in profile retrieval:', error);
     return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
   }
-  return NextResponse.json({ status: 'success', data: user });
 } 

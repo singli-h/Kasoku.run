@@ -614,7 +614,8 @@ const ExerciseSectionManager = memo(({
     // Create a new exercise with the superset ID
     const newExercise = {
       ...exercise,
-      id: Date.now(), // Generate a unique ID
+      originalId: exercise.id, // preserve DB exercise ID for backend mapping
+      id: Date.now(), // unique frontend ID
       session: sessionId,
       part: exercise.type, // Keep original exercise type for categorization
       section: targetSectionId, // Store the section where this superset is displayed

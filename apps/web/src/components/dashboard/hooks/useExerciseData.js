@@ -1,14 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useBrowserSupabaseClient } from '@/lib/supabase'
 import { useAuth } from '@clerk/nextjs'
-
-// Remove hardcoded URL and use edge functions directly
-// const API_BASE_URL = "http://localhost:54321/functions/v1/api"  // Remove this
 
 export const useExerciseData = () => {
   // Add a ref to keep track of the latest state
   const stateRef = useRef(null);
-  const supabase = useBrowserSupabaseClient()
   const { getToken } = useAuth();
   
   // Helper function to get token, throws if not available
@@ -51,14 +46,21 @@ export const useExerciseData = () => {
       
       try {
         const token = await getAuthToken();
-        const { data: rawData, error: fnError } = await supabase.functions.invoke('api/dashboard/exercisesInit', {
+        
+        // Use fetch to call the new API endpoint
+        const response = await fetch('/api/dashboard/exercisesInit', {
           method: 'GET',
           headers: {
-            Authorization: `Bearer ${token}`
+            'Authorization': `Bearer ${token}`
           }
         });
-        if (fnError) throw fnError;
-        const data = JSON.parse(rawData);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to fetch initial exercises data');
+        }
+        
+        const data = await response.json();
         
         // Extract all training details into the flat array
         const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets
@@ -86,7 +88,7 @@ export const useExerciseData = () => {
     };
 
     fetchInitialData();
-  }, [supabase, getToken]);
+  }, [getToken]);
 
   const startSession = async () => {
     if (!state.session?.details?.id) {
@@ -105,20 +107,25 @@ export const useExerciseData = () => {
       }));
 
       const token = await getAuthToken();
-      // Invoke createTrainingSession edge function
-      const { data: rawData, error: fnError } = await supabase.functions.invoke('api/dashboard/trainingSession', {
+      
+      // Use fetch to call the new API endpoint
+      const response = await fetch('/api/dashboard/trainingSession', {
         method: 'POST',
-        body: {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
           exercise_training_session_id: state.session.details.id,
           exercisesDetail
-        },
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        })
       });
-      if (fnError) throw fnError;
-      JSON.parse(rawData);
-
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to start training session');
+      }
+      
       await refreshSessionData();
       return { success: true };
     } catch (error) {
@@ -135,14 +142,21 @@ export const useExerciseData = () => {
   const refreshSessionData = async () => {
     try {
       const token = await getAuthToken();
-      const { data: rawData, error: fnError } = await supabase.functions.invoke('api/dashboard/exercisesInit', {
+      
+      // Use fetch to call the new API endpoint
+      const response = await fetch('/api/dashboard/exercisesInit', {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`
         }
       });
-      if (fnError) throw fnError;
-      const data = JSON.parse(rawData);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to refresh session data');
+      }
+      
+      const data = await response.json();
 
       // Refresh the flat training details array
       const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets
@@ -189,17 +203,26 @@ export const useExerciseData = () => {
         completed: detail.completed
       }));
       
-      // Invoke updateTrainingSession edge function
-      const { data: rawData, error: fnError } = await supabase.functions.invoke('api/dashboard/trainingSession', {
+      const token = await getAuthToken();
+      
+      // Use fetch to call the new API endpoint
+      const response = await fetch('/api/dashboard/trainingSession', {
         method: 'PUT',
-        body: {
-        exercise_training_session_id: state.session.details.id,
-        exercisesDetail: exerciseDetails,
-        ...(status ? { status } : {})
-        }
-      })
-      if (fnError) throw fnError
-      JSON.parse(rawData)
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          exercise_training_session_id: state.session.details.id,
+          exercisesDetail: exerciseDetails,
+          ...(status ? { status } : {})
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save training session');
+      }
 
       await refreshSessionData();
       return { success: true };
@@ -249,89 +272,77 @@ export const useExerciseData = () => {
   // Update multiple training details for an exercise
   const updateExerciseTrainingDetails = useCallback((exerciseId, updatedDetails) => {
     setTrainingDetails(prev => {
-      // First, filter out any details that belong to this exercise
-      const otherDetails = prev.filter(detail => detail.exercise_preset_id !== exerciseId);
-      
-      // Then add the updated details with the exercise_preset_id
-      const newDetails = [
-        ...otherDetails,
-        ...updatedDetails.map(detail => ({
-          ...detail,
-          exercise_preset_id: exerciseId
-        }))
-      ];
-      
-      return newDetails;
+      return prev.map(detail => {
+        const matchingUpdate = updatedDetails.find(ud => ud.id === detail.id);
+        return matchingUpdate 
+          ? { ...detail, ...matchingUpdate } 
+          : detail;
+      });
     });
-    
-    // Also update the context state for UI updates
-    updateExerciseDetailsInState(exerciseId, updatedDetails);
   }, []);
-  
-  // This function updates the visual state but doesn't affect saving
-  const updateExerciseDetailsInState = useCallback((exerciseId, updatedDetails) => {
-    if (!state.session) return;
 
-    // Create a deep copy of the current session
-    const updatedSession = {
-      ...state.session,
-      details: {
-        ...state.session.details,
-        exercise_preset_groups: {
-          ...state.session.details.exercise_preset_groups,
-          exercise_presets: state.session.details.exercise_preset_groups.exercise_presets.map(
-            preset => {
-              if (preset.id === exerciseId) {
-                return {
-                  ...preset,
-                  exercise_training_details: updatedDetails
-                };
-              }
-              return preset;
-            }
-          )
-        }
+  // Grouped training details by exercise preset
+  const groupedTrainingDetailsByExercise = useCallback(() => {
+    const grouped = {};
+    trainingDetails.forEach(detail => {
+      if (!grouped[detail.exercise_preset_id]) {
+        grouped[detail.exercise_preset_id] = [];
       }
-    };
-
-    setState(prev => ({
-      ...prev,
-      session: updatedSession,
-      _version: prev._version + 1
-    }));
-  }, [state.session]);
-  
-  // Legacy function - now delegate to the specific functions
-  const updateExerciseDetails = useCallback((sectionType, updatedPresets) => {
-    if (!state.session) return;
-    
-    // Process each updated preset
-    updatedPresets.forEach(updatedPreset => {
-      // Update in the flat structure
-      updateExerciseTrainingDetails(updatedPreset.id, updatedPreset.exercise_training_details);
+      grouped[detail.exercise_preset_id].push(detail);
     });
-  }, [state.session, updateExerciseTrainingDetails]);
+    return grouped;
+  }, [trainingDetails]);
 
-  const toggleSection = useCallback((title) => {
+  // Handle toggling section visibility
+  const toggleSectionOpen = useCallback((sectionName) => {
     setState(prev => ({
       ...prev,
-      openSections: { ...prev.openSections, [title]: !prev.openSections[title] }
+      openSections: {
+        ...prev.openSections,
+        [sectionName]: !prev.openSections[sectionName]
+      }
     }));
   }, []);
+
+  // Helper to get all exercises for a specific section
+  const getExercisesForSection = useCallback((sectionName) => {
+    const session = state.session;
+    if (!session || !session.details || !session.details.exercise_preset_groups) {
+      return [];
+    }
+    
+    // Filter exercises to this section
+    return session.details.exercise_preset_groups.exercise_presets.filter(
+      preset => preset.exercises.location === sectionName
+    );
+  }, [state.session]);
+
+  // Check if a section is empty
+  const isSectionEmpty = useCallback((sectionName) => {
+    return getExercisesForSection(sectionName).length === 0;
+  }, [getExercisesForSection]);
+
+  // Handle marking a set as completed
+  const markSetCompleted = useCallback((detailId, completed = true) => {
+    updateTrainingDetail(detailId, { completed });
+  }, [updateTrainingDetail]);
 
   return {
-    ...state,
+    isLoading: state.isLoading,
+    error: state.error,
+    session: state.session,
+    openSections: state.openSections,
     trainingDetails,
-    version: state._version,
     startSession,
     saveSession,
     completeSession,
-    toggleSection,
-    updateExerciseDetails,
     updateTrainingDetail,
     updateExerciseTrainingDetails,
-    isOngoing: state.session?.details?.status === 'ongoing',
-    isAssigned: state.session?.details?.status === 'assigned',
-    isCompleted: state.session?.details?.status === 'completed'
+    groupedTrainingDetailsByExercise,
+    toggleSectionOpen,
+    getExercisesForSection,
+    isSectionEmpty,
+    markSetCompleted,
+    version: state._version
   };
 }; 

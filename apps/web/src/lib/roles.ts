@@ -8,7 +8,7 @@ export async function getUserRoleData(clerkId: string) {
   // Fetch the user record and role from metadata
   const { data: user, error: userError } = await supabase
     .from("users")
-    .select("id, metadata->>role as role")
+    .select("id, role")
     .eq("clerk_id", clerkId)
     .single<{ id: number; role: string }>();
 

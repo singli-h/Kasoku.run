@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         subscription_status: 'free',
         avatar_url: data.image_url,
         onboarding_completed: false,
-        metadata: { first_name, last_name }
+        role: 'athlete'
       });
 
       // Ensure a default athlete record exists
@@ -57,8 +57,7 @@ export async function POST(req: NextRequest) {
         last_name: last_name || '',
         username: username || (first_name?.toLowerCase() || ''),
         avatar_url: data.image_url,
-        updated_at: new Date().toISOString(),
-        metadata: { first_name, last_name }
+        updated_at: new Date().toISOString()
       }).eq('clerk_id', id);
     }
 
