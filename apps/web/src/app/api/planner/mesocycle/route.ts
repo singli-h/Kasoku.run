@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
               rep_rest_time: ex.repRestTime || ex.rep_rest_time,
               order: ex.order || eIdx + 1,
               superset_id: ex.supersetId || ex.superset_id,
-              preset_order: ex.presetOrder || ex.preset_order || eIdx + 1,
+              preset_order: ex.position !== undefined ? ex.position : (ex.presetOrder || ex.preset_order || eIdx + 1),
               notes: ex.notes
             })
             .select()

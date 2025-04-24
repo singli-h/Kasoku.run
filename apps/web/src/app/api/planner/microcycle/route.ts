@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
         exercise_preset_group_id: grp.id,
         exercise_id: ex.exercise_id || ex.exerciseId,  // Support both naming formats
         superset_id: ex.superset_id || ex.supersetId,  // Support both naming formats
-        preset_order: ex.preset_order || ex.presetOrder || i,  // Support both, default to index
+        preset_order: ex.position !== undefined ? ex.position : (ex.preset_order || ex.presetOrder || i),  // Prioritize position for superset ordering
         notes: ex.notes
       }));
 

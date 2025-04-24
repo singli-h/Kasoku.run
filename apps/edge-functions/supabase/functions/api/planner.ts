@@ -125,7 +125,8 @@ export const postMesocycle = async (
           // Handle both camelCase and snake_case formats
           const exerciseId = exercise.exerciseId || exercise.exercise_id;
           const supersetId = exercise.supersetId || exercise.superset_id;
-          const presetOrder = exercise.presetOrder || exercise.preset_order || exerciseIndex + 1;
+          // Prioritize position for preset_order to maintain superset ordering
+          const presetOrder = exercise.position !== undefined ? exercise.position : (exercise.presetOrder || exercise.preset_order || exerciseIndex + 1);
           const setRestTime = exercise.setRestTime || exercise.set_rest_time;
           const repRestTime = exercise.repRestTime || exercise.rep_rest_time;
           
@@ -338,6 +339,7 @@ export const postMicrocycle = async (
           order,
           supersetId,
           presetOrder,
+          position,
           presetDetails = []
         } = exercise;
 
@@ -354,7 +356,7 @@ export const postMicrocycle = async (
             rep_rest_time: repRestTime,
             order: order || exerciseIndex + 1,
             superset_id: supersetId,
-            preset_order: presetOrder,
+            preset_order: position !== undefined ? position : (presetOrder || exerciseIndex + 1),
             notes
           })
           .select()

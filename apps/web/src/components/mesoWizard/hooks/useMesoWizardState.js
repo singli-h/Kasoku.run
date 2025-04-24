@@ -154,10 +154,9 @@ export const useMesoWizardState = (onComplete) => {
       : -1;
     
     // Create the new exercise with a position value one higher than the current maximum
-    const newExercise = {
+    const newExerciseWithPos = {
       ...exercise,
-      originalId: exercise.id, // Store the original BE exercise ID
-      id: Date.now(), // Generate a unique ID for frontend use only
+      id: Date.now(), // Generate a new unique ID *only* for the frontend id property
       session: activeSession,
       part: exercise.type,
       section: exercise.section || null, // Preserve section for superset exercises
@@ -167,9 +166,12 @@ export const useMesoWizardState = (onComplete) => {
       position: maxPosition + 1, // Set position to be after all existing exercises
     }
     
+    // *** Log the object right before adding to state ***
+    console.log(`[useMesoWizardState.handleAddExercise] Adding to state:`, JSON.stringify(newExerciseWithPos));
+
     setFormData((prev) => ({
       ...prev,
-      exercises: [...prev.exercises, newExercise],
+      exercises: [...prev.exercises, newExerciseWithPos],
     }))
     
     // Update exercise order
@@ -178,7 +180,7 @@ export const useMesoWizardState = (onComplete) => {
       const currentOrder = prev[sectionKey] || []
       return {
         ...prev,
-        [sectionKey]: [...currentOrder, newExercise.id]
+        [sectionKey]: [...currentOrder, newExerciseWithPos.id]
       }
     })
   }, [activeSession, formData.exercises])

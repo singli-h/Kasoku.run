@@ -597,6 +597,9 @@ const ExerciseSectionManager = memo(({
       return;
     }
     
+    // *** Log the incoming exercise object ID ***
+    console.log(`[handleAddExerciseToSuperset] Received exercise: "${exercise.name}" with ID: ${exercise.id} (Type: ${typeof exercise.id})`);
+
     // Find the superset to get its display number for proper UI feedback
     const superset = supersets.find(s => s.id === supersetId);
     if (!superset) {
@@ -627,6 +630,9 @@ const ExerciseSectionManager = memo(({
       position: originalPosition + exerciseCount
     };
     
+    // *** Log the object being passed to the state hook ***
+    console.log(`[handleAddExerciseToSuperset] Passing to handleAddExercise:`, JSON.stringify(newExercise));
+
     // Add the exercise to the parent component's state
     handleAddExercise(newExercise);
     

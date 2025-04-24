@@ -107,6 +107,8 @@ export const useSaveTrainingPlan = () => {
             if (isNaN(exerciseId) || exerciseId <= 0) {
               throw new Error(`Invalid exercise ID (${exerciseId}) for "${exercise.name}".`);
             }
+            // *** Add this log for debugging ***
+            console.log(`[formatMicrocycleData] Exercise: "${exercise.name}", originalId: ${exercise.originalId}, frontendId: ${exercise.id}, Final API exercise_id: ${exerciseId}`);
 
             // Parse superset ID if present
             let supersetId = null;
@@ -124,7 +126,7 @@ export const useSaveTrainingPlan = () => {
             const presetPayload = {
               exercise_id: exerciseId,
               superset_id: supersetId,
-              preset_order: exercise.position ?? exerciseIndex, // Use position if available, fallback to index
+              preset_order: exercise.position !== undefined ? exercise.position : exerciseIndex, // Always prioritize position for superset ordering
               notes: exercise.notes || null,
               // Fields like sets, reps, weight, rest DO NOT belong here for the API
               // They belong in the presetDetails below
@@ -328,9 +330,9 @@ export const useSaveTrainingPlan = () => {
           const preset = {
             exercise_id: exerciseId,
             superset_id: supersetId,
-            preset_order: exercise.position || index,
+            preset_order: exercise.position !== undefined ? exercise.position : index, // Prioritize position for superset ordering
             notes: exercise.notes || null
-          }
+          };
 
           // Create details for each set following database schema
           const details = Array.from({ length: parseInt(exercise.sets) || 1 }, (_, i) => {
@@ -467,9 +469,9 @@ export const useSaveTrainingPlan = () => {
         const preset = {
           exercise_id: exerciseId,
           superset_id: supersetId,
-          preset_order: exercise.position || index,
+          preset_order: exercise.position !== undefined ? exercise.position : index, // Prioritize position for superset ordering
           notes: exercise.notes || null
-        }
+        };
 
         // Create details for each set following database schema
         const details = Array.from({ length: parseInt(exercise.sets) || 1 }, (_, i) => {
