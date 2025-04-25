@@ -22,7 +22,7 @@ export default function WeeklyOverview() {
       }
       try {
         const token = await session.getToken()
-        const res = await fetch('/api/dashboard/weeklyOverview', { headers: { Authorization: `Bearer ${token}` } })
+        const res = await fetch('/api/workout/weeklyOverview', { headers: { Authorization: `Bearer ${token}` } })
         const body = await res.json()
         if (!res.ok || body.status !== 'success') throw new Error(body.message || 'Failed to fetch weekly overview')
         setWeeklyData(body.data)

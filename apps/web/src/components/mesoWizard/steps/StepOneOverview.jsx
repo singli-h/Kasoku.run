@@ -11,6 +11,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import IntensityVolumePicker from "../components/IntensityVolumePicker"
 import WeeklyProgressionChart from "../components/WeeklyProgressionChart"
 import ProgressionTemplates from "../components/ProgressionTemplates"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { useAuthenticatedSupabaseClient } from "@/lib/supabase"
+import { useSession } from "@clerk/nextjs"
 
 /**
  * Step One: Mesocycle Overview
@@ -56,6 +59,11 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
   // Track the selected model type
   const [selectedModel, setSelectedModel] = useState(null);
 
+  const { session, isLoaded, isSignedIn } = useSession()
+  const supabase = useAuthenticatedSupabaseClient()
+  const [groups, setGroups] = useState([])
+  const [groupLoading, setGroupLoading] = useState(true)
+
   // Initialize intensity and volume in formData when component mounts
   useEffect(() => {
     // Initialize the intensity and volume in formData 
@@ -100,6 +108,31 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
       });
     }
   }, [defaultFormData.duration, defaultFormData.intensity, defaultFormData.volume]);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return
+    const fetchGroups = async () => {
+      setGroupLoading(true)
+      // get current coach
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('id')
+        .eq('clerk_id', session.user.id)
+        .single()
+      const { data: coachRow } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('user_id', userRow.id)
+        .single()
+      const { data, error } = await supabase
+        .from('athlete_groups')
+        .select('id, group_name')
+        .eq('coach_id', coachRow.id)
+      if (!error) setGroups(data)
+      setGroupLoading(false)
+    }
+    fetchGroups()
+  }, [session, isLoaded, isSignedIn])
 
   // Handle intensity/volume changes
   const handleIntensityChange = (value) => {
@@ -165,6 +198,30 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
           <p className="text-gray-600 max-w-xl mx-auto">
             Configure your training parameters and progression pattern
           </p>
+        </div>
+
+        {/* Athlete Group Selector */}
+        <div>
+          <Label htmlFor="athleteGroupId" className="text-base">Athlete Group</Label>
+          {groupLoading ? (
+            <div>Loading groups...</div>
+          ) : (
+            <Select
+              value={formData.athleteGroupId || ''}
+              onValueChange={(value) => handleInputChange({ target: { name: 'athleteGroupId', value } })}
+            >
+              <SelectTrigger id="athleteGroupId" className="w-full mt-1">
+                <SelectValue placeholder="Select a group" />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={String(g.id)}>
+                    {g.group_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Basic Parameters Card */}

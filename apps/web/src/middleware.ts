@@ -12,8 +12,11 @@ import { NextResponse } from "next/server"
 
 // Define protected routes that require authentication
 const protectedRoutes = [
-  '/dashboard',
-  '/planner',
+  '/workout',
+  '/plans',
+  '/athletes',
+  '/insights',
+  '/performance',
   '/overview',
   '/settings',
   '/profile'
@@ -54,8 +57,11 @@ export default clerkMiddleware()
  */
 export const config = {
   matcher: [
-    '/dashboard/:path*',
-    '/planner/:path*',
+    '/workout/:path*',
+    '/plans/:path*',
+    '/athletes/:path*',
+    '/insights/:path*',
+    '/performance/:path*',
     '/overview/:path*',
     '/settings/:path*',
     '/profile/:path*',

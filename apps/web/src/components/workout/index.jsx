@@ -6,10 +6,10 @@ import ExerciseDashboard from "./components/ExerciseDashboard"
 import { useExerciseData } from "./hooks/useExerciseData"
 
 /**
- * Dashboard Wrapper Component
- * Integrates the ExerciseProvider, NotificationProvider, and ExerciseDashboard
+ * Workout Wrapper Component
+ * Integrates the ExerciseProvider, NotificationProvider, and ExerciseDashboard for workout
  */
-const Dashboard = ({ session: initialSession, isReadOnly = false }) => {
+const Workout = ({ session: initialSession, isReadOnly = false }) => {
   // Add local state to track session status updates
   const [sessionStatus, setSessionStatus] = useState(initialSession?.details?.status || 'unknown');
   
@@ -64,7 +64,7 @@ const Dashboard = ({ session: initialSession, isReadOnly = false }) => {
     }
   }
 
-  // If there's no session yet or it's still loading, don't render the dashboard
+  // If there's no session yet or it's still loading, don't render the workout UI
   if (!currentSession || isLoading) {
     return <div className="p-8 text-center">Loading session data...</div>;
   }
@@ -85,7 +85,7 @@ const Dashboard = ({ session: initialSession, isReadOnly = false }) => {
   )
 }
 
-export default Dashboard 
+export default Workout
 
 // For backward compatibility with previous imports
-export { default as DashboardMain } from './components/ExerciseDashboard' 
+export { default as WorkoutMain } from './components/ExerciseDashboard' 

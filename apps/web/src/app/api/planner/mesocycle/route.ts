@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     // 1. Create mesocycle
     const { data: mesocycle, error: mesoErr } = await supabase
       .from('mesocycles')
-      .insert({ name, description, start_date: startDate, end_date: endDate, ...(planData.macrocycle_id && { macrocycle_id: planData.macrocycle_id }) })
+      .insert({ name, description, start_date: startDate, end_date: endDate, ...(planData.macrocycle_id && { macrocycle_id: planData.macrocycle_id }), athlete_group_id: athleteGroupId })
       .select()
       .single();
     if (mesoErr || !mesocycle) throw mesoErr;

@@ -72,7 +72,7 @@ const StepThreeConfirmation = ({
       await handleSubmit(e)
       
       // Show success message
-      showSuccess(`${planTypeText} plan saved successfully! You can now view it in your dashboard.`)
+      showSuccess(`${planTypeText} plan saved successfully! You can now view it in your Workout page.`)
     } catch (error) {
       console.error('Error submitting plan:', error);
       showError(error.message || `Failed to save ${planTypeText.toLowerCase()} plan. Please try again.`)

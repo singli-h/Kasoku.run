@@ -11,6 +11,7 @@ import {
   User, 
   Calendar, 
   BarChart3, 
+  Users, 
   Settings,
   ChevronRight,
   LogOut
@@ -76,10 +77,12 @@ const Sidebar = ({ onCollapse }) => {
   
   // Navigation items with icons and paths
   const navItems = [
-    { name: "Dashboard", icon: <LayoutDashboard />, path: "/dashboard" },
+    { name: "Workout", icon: <LayoutDashboard />, path: "/workout" },
+    { name: "Athletes", icon: <Users />, path: "/athletes" },
     { name: "Profile", icon: <User />, path: "/profile" },
-    { name: "Planner", icon: <Calendar />, path: "/planner" },
-    { name: "Overview", icon: <BarChart3 />, path: "/overview" },
+    { name: "Plans", icon: <Calendar />, path: "/plans" },
+    { name: "Insights", icon: <BarChart3 />, path: "/insights" },
+    { name: "Performance", icon: <BarChart3 />, path: "/performance" },
     { name: "Settings", icon: <Settings />, path: "/settings" },
   ];
   

@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase';
 import { getUserRoleData } from '@/lib/roles';
 
 /**
- * GET /api/dashboard/exercisesInit
+ * GET /api/workout/exercisesInit
  * Retrieves the athlete's latest session (ongoing/today/completed) or null.
  */
 export async function GET(req: NextRequest) {

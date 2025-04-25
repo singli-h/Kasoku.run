@@ -59,11 +59,11 @@ export const useSaveTrainingPlan = () => {
     // Structure the main microcycle payload
     const microcyclePayload = {
       name: formData.name,
-      description: formData.goals || `Microcycle starting ${formatDate(startDate)}`, // Use goals as description
+      description: formData.goals || `Microcycle starting ${formatDate(startDate)}`,
       start_date: formatDate(startDate),
-      end_date: formatDate(endDate), // Ensure end_date is calculated correctly
-      // mesocycle_id: formData.mesocycleId || null, // Include if available
-      // athlete_group_id: formData.athleteGroupId || null, // Include if available
+      end_date: formatDate(endDate),
+      mesocycle_id: formData.mesocycleId || null,
+      athlete_group_id: formData.athleteGroupId || null,
       sessions: formData.sessions.map((session, sessionIndex) => {
         const sessionExercises = formData.exercises.filter((ex) => ex.session === session.id);
         
@@ -563,15 +563,30 @@ export const useSaveTrainingPlan = () => {
       // Get authentication token
       const token = await getAuthToken()
       
-      // Call the mesocycle API endpoint with the formatted payload
-      const payload = { sessions, timezone }
+      // Build mesocycle plan payload
+      // Compute end date for mesocycle based on startDate + duration
+      const startDateObj = new Date(formData.startDate)
+      const weeksDuration = parseInt(formData.duration) || 1
+      const endDateObj = new Date(startDateObj)
+      endDateObj.setDate(startDateObj.getDate() + (weeksDuration * 7) - 1)
+      const endDateStr = endDateObj.toISOString().split('T')[0]
+      const weeks = transformFormData(formData, exerciseList)
+      const planPayload = {
+        name: formData.name,
+        description: formData.goals || '',
+        startDate: formData.startDate,
+        endDate: endDateStr,
+        athleteGroupId: formData.athleteGroupId || null,
+        ...(formData.macrocycleId && { macrocycleId: formData.macrocycleId }),
+        weeks
+      }
       const response = await fetch('/api/planner/mesocycle', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(planPayload)
       })
       
       // Handle response

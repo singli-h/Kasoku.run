@@ -1,10 +1,10 @@
 'use client'
 
-import ExerciseDashboard from "../../components/dashboard/index"
+import ExerciseDashboard from "../../components/workout/index"
 import { ErrorAndLoadingOverlay } from "../../components/ui/loading"
-import { useExerciseData } from "../../components/dashboard/hooks/useExerciseData"
+import { useExerciseData } from "../../components/workout/hooks/useExerciseData"
 
-export default function DashboardPage() {
+export default function WorkoutPage() {
   const {
     session,
     isLoading,
@@ -24,7 +24,7 @@ export default function DashboardPage() {
         error={error} 
         blocking={false} 
         position="top-right"
-        loadingMessage="Loading dashboard data..."
+        loadingMessage="Loading workout data..."
       />
       
       {isAssigned && (

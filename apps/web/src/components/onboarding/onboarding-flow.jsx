@@ -98,7 +98,7 @@ export default function OnboardingFlow() {
     try {
       // In development mode with BYPASS_AUTH, skip profile update
       if (process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true') {
-        router.push('/dashboard')
+        router.push('/workout')
         return
       }
 

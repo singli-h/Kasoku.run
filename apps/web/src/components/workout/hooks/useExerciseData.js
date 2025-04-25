@@ -39,7 +39,7 @@ export const useExerciseData = () => {
     trainingDetailsRef.current = trainingDetails;
   }, [state, trainingDetails]);
 
-  // Initialize dashboard data
+  // Initialize workout data
   useEffect(() => {
     const fetchInitialData = async () => {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -48,7 +48,7 @@ export const useExerciseData = () => {
         const token = await getAuthToken();
         
         // Use fetch to call the new API endpoint
-        const response = await fetch('/api/dashboard/exercisesInit', {
+        const response = await fetch('/api/workout/exercisesInit', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -109,7 +109,7 @@ export const useExerciseData = () => {
       const token = await getAuthToken();
       
       // Use fetch to call the new API endpoint
-      const response = await fetch('/api/dashboard/trainingSession', {
+      const response = await fetch('/api/workout/trainingSession', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,7 +144,7 @@ export const useExerciseData = () => {
       const token = await getAuthToken();
       
       // Use fetch to call the new API endpoint
-      const response = await fetch('/api/dashboard/exercisesInit', {
+      const response = await fetch('/api/workout/exercisesInit', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -206,7 +206,7 @@ export const useExerciseData = () => {
       const token = await getAuthToken();
       
       // Use fetch to call the new API endpoint
-      const response = await fetch('/api/dashboard/trainingSession', {
+      const response = await fetch('/api/workout/trainingSession', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

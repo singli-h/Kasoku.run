@@ -93,14 +93,14 @@ export async function POST(req: NextRequest) {
       const { data: grp, error: gErr } = await supabase
         .from('exercise_preset_groups')
         .insert({ 
-          name: sName, 
-          description: sDesc, 
-          week: 1, 
-          day: idx + 1, 
-          date, 
-          coach_id: coachId, 
-          //athlete_group_id: athleteGroupId, //not implemented yet
-          microcycle_id: microcycle.id 
+          name: sName,
+          description: sDesc,
+          week: 1,
+          day: idx + 1,
+          date,
+          coach_id: coachId,
+          athlete_group_id: athleteGroupId,
+          microcycle_id: microcycle.id
         })
         .select()
         .single();

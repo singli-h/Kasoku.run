@@ -53,22 +53,19 @@ const DropdownMenu = ({ children, open, onOpenChange }) => {
   )
 }
 
-const DropdownMenuTrigger = React.forwardRef(({ children, asChild, ...props }, forwardedRef) => {
+const DropdownMenuTrigger = ({ children, asChild, ...props }) => {
   const { setOpen, triggerRef } = React.useContext(DropdownMenuContext)
   const ref = React.useRef(null)
   
-  React.useImperativeHandle(forwardedRef, () => ref.current)
-  React.useEffect(() => {
-    if (forwardedRef) {
-      triggerRef.current = ref.current
-    }
-  }, [forwardedRef])
+  // Track the trigger DOM element for positioning before paint
+  React.useLayoutEffect(() => {
+    triggerRef.current = ref.current
+  }, [triggerRef])
   
   const Comp = asChild ? React.Children.only(children).type : "button"
   
   return React.cloneElement(
-    asChild ? React.Children.only(children) : <Comp {...props} />,
-    {
+    asChild ? React.Children.only(children) : <Comp {...props} />, {
       ref,
       onClick: (e) => {
         const childOnClick = asChild ? React.Children.only(children).props.onClick : props.onClick
@@ -78,7 +75,7 @@ const DropdownMenuTrigger = React.forwardRef(({ children, asChild, ...props }, f
       ...(!asChild && props)
     }
   )
-})
+}
 DropdownMenuTrigger.displayName = "DropdownMenuTrigger"
 
 const DropdownMenuGroup = React.forwardRef(({ className, ...props }, ref) => (
@@ -186,11 +183,13 @@ const DropdownMenuSubContent = React.forwardRef(({ className, ...props }, ref) =
 })
 DropdownMenuSubContent.displayName = "DropdownMenuSubContent"
 
-const DropdownMenuContent = React.forwardRef(({ className, sideOffset = 4, ...props }, ref) => {
+const DropdownMenuContent = ({ className, sideOffset = 4, ...props }) => {
   const { open, triggerRef, setOpen } = React.useContext(DropdownMenuContext)
   const [position, setPosition] = React.useState({ top: 0, left: 0 })
+  const contentRef = React.useRef(null)
   
-  React.useEffect(() => {
+  // Measure position synchronously before painting
+  React.useLayoutEffect(() => {
     if (open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
       setPosition({
@@ -198,16 +197,16 @@ const DropdownMenuContent = React.forwardRef(({ className, sideOffset = 4, ...pr
         left: rect.left + window.scrollX
       })
     }
-  }, [open, sideOffset, triggerRef])
+  }, [open, sideOffset, triggerRef.current])
   
   // Close on outside click
   React.useEffect(() => {
     const handleClickOutside = (e) => {
       if (
-        open && 
-        ref.current && 
-        !ref.current.contains(e.target) && 
-        triggerRef.current && 
+        open &&
+        contentRef.current &&
+        !contentRef.current.contains(e.target) &&
+        triggerRef.current &&
         !triggerRef.current.contains(e.target)
       ) {
         setOpen(false)
@@ -216,26 +215,24 @@ const DropdownMenuContent = React.forwardRef(({ className, sideOffset = 4, ...pr
     
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [open, ref, triggerRef, setOpen])
+  }, [open, triggerRef, setOpen])
   
   if (!open) return null
   
   return (
-    <div
-      ref={ref}
-      style={{ 
-        position: 'absolute',
-        top: `${position.top}px`,
-        left: `${position.left}px`
-      }}
-      className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-md border border-slate-200 bg-white p-1 text-slate-950 shadow-md animate-in fade-in-80 data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50",
-        className
-      )}
-      {...props}
-    />
+    <DropdownMenuPortal>
+      <div
+        ref={contentRef}
+        style={{ position: 'absolute', top: position.top, left: position.left }}
+        className={cn(
+          "z-50 min-w-[8rem] overflow-hidden rounded-md border border-slate-200 bg-white p-1 text-slate-950 shadow-lg animate-in fade-in-80 data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50",
+          className
+        )}
+        {...props}
+      />
+    </DropdownMenuPortal>
   )
-})
+}
 DropdownMenuContent.displayName = "DropdownMenuContent"
 
 const DropdownMenuItem = React.forwardRef(({ className, inset, onClick, ...props }, ref) => {

@@ -8,8 +8,8 @@ import SupersetContainer from "./SupersetContainer"
 import { ExerciseType } from "../../../types/exercise"
 
 /**
- * Main Dashboard Component
- * Integrates all exercise components and handles overall session management
+ * Main Workout Component
+ * Integrates all exercise components and handles overall session management for workout
  */
 const ExerciseDashboard = ({ 
   session, 

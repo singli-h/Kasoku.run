@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input, dateInputStyles } from "@/components/ui/input"
@@ -8,6 +8,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { useSession } from "@clerk/nextjs"
+import { useAuthenticatedSupabaseClient } from "@/lib/supabase"
 
 /**
  * Step: Microcycle Plan Setup
@@ -22,6 +25,12 @@ const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, e
     sessionsPerWeek: "3", // Default: 3 sessions per week
     ...formData
   };
+
+  // Session & Supabase for fetching groups
+  const { session, isLoaded, isSignedIn } = useSession()
+  const supabase = useAuthenticatedSupabaseClient()
+  const [groups, setGroups] = useState([])
+  const [groupLoading, setGroupLoading] = useState(true)
 
   // Initialize fields in formData when component mounts
   useEffect(() => {
@@ -44,6 +53,31 @@ const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, e
     });
   }, []);
 
+  // Fetch groups for coach
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return
+    const fetchGroups = async () => {
+      setGroupLoading(true)
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('id')
+        .eq('clerk_id', session.user.id)
+        .single()
+      const { data: coachRow } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('user_id', userRow.id)
+        .single()
+      const { data, error } = await supabase
+        .from('athlete_groups')
+        .select('id, group_name')
+        .eq('coach_id', coachRow.id)
+      if (!error) setGroups(data)
+      setGroupLoading(false)
+    }
+    fetchGroups()
+  }, [session, isLoaded, isSignedIn])
+
   return (
     <div className="space-y-6 w-full max-w-4xl mx-auto">
       {/* Add date input styles */}
@@ -55,6 +89,30 @@ const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, e
           <p className="text-gray-600 max-w-xl mx-auto">
             Configure your one-week training plan
           </p>
+        </div>
+
+        {/* Athlete Group Selector */}
+        <div>
+          <Label htmlFor="athleteGroupId" className="text-base">Athlete Group</Label>
+          {groupLoading ? (
+            <div>Loading groups...</div>
+          ) : (
+            <Select
+              value={formData.athleteGroupId || ''}
+              onValueChange={(value) => handleInputChange({ target: { name: 'athleteGroupId', value } })}
+            >
+              <SelectTrigger id="athleteGroupId" className="w-full mt-1">
+                <SelectValue placeholder="Select a group" />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={String(g.id)}>
+                    {g.group_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Basic Parameters Card */}

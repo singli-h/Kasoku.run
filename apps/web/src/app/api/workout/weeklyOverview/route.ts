@@ -3,7 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { getUserRoleData } from '@/lib/roles';
 
 /**
- * GET /api/dashboard/weeklyOverview
+ * GET /api/workout/weeklyOverview
  * Returns mock weekly stats for the dashboard.
  * Only accessible to coaches.
  */
