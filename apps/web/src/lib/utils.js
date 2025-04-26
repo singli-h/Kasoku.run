@@ -1,5 +1,6 @@
 import { clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { cva } from "class-variance-authority"
 
 /**
  * Utility function to merge class names with Tailwind CSS classes
@@ -8,4 +9,7 @@ import { twMerge } from "tailwind-merge"
  */
 export function cn(...inputs) {
   return twMerge(clsx(inputs))
-} 
+}
+
+// Export cva for reuse in component variants
+export { cva } 

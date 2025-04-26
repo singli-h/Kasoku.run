@@ -90,30 +90,45 @@ export async function POST(req: NextRequest) {
     .select('id')
     .eq('email', email)
     .single()
-  if (userErr || !user) {
-    return NextResponse.json({ status: 'error', message: 'Athlete not found' }, { status: 404 })
+  if (userErr) {
+    return NextResponse.json({ status: 'error', message: userErr.message }, { status: 500 })
+  }
+  if (!user) {
+    return NextResponse.json({ status: 'error', message: 'Athlete not registered' }, { status: 404 })
   }
 
-  // Check existing athlete record
-  const { data: athlete, error: athleteErr } = await supabase
+  // Find existing athlete record
+  const { data: athleteRec, error: athleteErr } = await supabase
     .from('athletes')
     .select('id')
     .eq('user_id', user.id)
     .single()
-  if (athleteErr || !athlete) {
+  
+  if (athleteErr || !athleteRec) {
     return NextResponse.json({ status: 'error', message: 'Athlete record not found' }, { status: 404 })
   }
 
   // Update athlete's group assignment
-  const { data: updated, error: updErr } = await supabase
+  const { error: updErr } = await supabase
     .from('athletes')
     .update({ athlete_group_id: Number(athleteGroupId) })
-    .eq('user_id', user.id)
-    .select('id, user_id, athlete_group_id')
-    .single()
+    .eq('id', athleteRec.id)
   if (updErr) {
     return NextResponse.json({ status: 'error', message: updErr.message }, { status: 500 })
   }
 
-  return NextResponse.json({ status: 'success', data: updated }, { status: 200 })
+  // Record assignment history
+  const { error: historyErr } = await supabase
+    .from('athlete_group_histories')
+    .insert({
+      athlete_id: athleteRec.id,
+      group_id: Number(athleteGroupId),
+      created_by: coachId,
+      notes: message || 'Added via coach invitation'
+    })
+  if (historyErr) {
+    console.error('History record error:', historyErr)
+  }
+
+  return NextResponse.json({ status: 'success', data: athleteRec }, { status: 200 })
 } 

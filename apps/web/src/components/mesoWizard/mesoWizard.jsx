@@ -34,6 +34,8 @@ const MesoWizard = ({ onComplete }) => {
     errors,
     sessionSections,
     progressPercentage,
+    groups,
+    groupLoading,
     
     setActiveSession,
     handleInputChange,
@@ -65,7 +67,6 @@ const MesoWizard = ({ onComplete }) => {
           />
         )
       case 2:
-        // For microcycle, show the microcycle setup page instead of the standard overview
         if (formData.planType === "microcycle") {
           return (
             <StepMicroPlanSelection
@@ -74,6 +75,8 @@ const MesoWizard = ({ onComplete }) => {
               errors={errors}
               handleNext={handleNext}
               handleBack={handleBack}
+              groups={groups}
+              groupLoading={groupLoading}
             />
           )
         }
@@ -85,6 +88,8 @@ const MesoWizard = ({ onComplete }) => {
             errors={errors}
             handleNext={handleNext}
             handleBack={handleBack}
+            groups={groups}
+            groupLoading={groupLoading}
           />
         )
       case 3:
@@ -98,11 +103,10 @@ const MesoWizard = ({ onComplete }) => {
             handleExerciseDetailChange={handleExerciseDetailChange}
             handleExerciseReorder={handleExerciseReorder}
             getOrderedExercises={getOrderedExercises}
-            handleProgressionModelChange={handleProgressionModelChange}
-            handleProgressionValueChange={handleProgressionValueChange}
             sessionSections={sessionSections}
             handleSetActiveSections={handleSetActiveSections}
             filteredExercises={filteredExercises}
+            loadingExercises={loadingExercises}
             activeSession={activeSession}
             setActiveSession={setActiveSession}
             errors={errors}

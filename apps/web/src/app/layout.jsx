@@ -10,6 +10,7 @@
  * - Clerk authentication provider
  * - Responsive layout structure
  * - Conditional rendering of header or sidebar based on route
+ * - Toast notifications via ToastProvider
  */
 
 import '@/polyfills/useEffectEventPolyfill.js';
@@ -17,6 +18,7 @@ import "./css/style.css"
 import { Inter } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
 import dynamic from "next/dynamic"
+import { ToastProvider } from "@/components/ui/toast"
 
 // Dynamically import the NavigationWrapper component to avoid SSR issues
 const NavigationWrapper = dynamic(() => import("../components/ui/navigationWrapper"), {
@@ -80,11 +82,14 @@ export default function RootLayout({ children }) {
           afterSignInUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL}
           afterSignUpUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL}
         >
-          {/* Main layout structure with flex column and minimum height */}
-          <div className="flex flex-col min-h-screen overflow-hidden">
-            {/* Client-side navigation component to conditionally render header or sidebar */}
-            <NavigationWrapper>{children}</NavigationWrapper>
-          </div>
+          {/* ToastProvider makes toast notifications available application-wide */}
+          <ToastProvider>
+            {/* Main layout structure with flex column and minimum height */}
+            <div className="flex flex-col min-h-screen overflow-hidden">
+              {/* Client-side navigation component to conditionally render header or sidebar */}
+              <NavigationWrapper>{children}</NavigationWrapper>
+            </div>
+          </ToastProvider>
         </ClerkProvider>
       </body>
     </html>

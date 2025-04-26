@@ -12,8 +12,6 @@ import IntensityVolumePicker from "../components/IntensityVolumePicker"
 import WeeklyProgressionChart from "../components/WeeklyProgressionChart"
 import ProgressionTemplates from "../components/ProgressionTemplates"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { useAuthenticatedSupabaseClient } from "@/lib/supabase"
-import { useSession } from "@clerk/nextjs"
 
 /**
  * Step One: Mesocycle Overview
@@ -32,8 +30,10 @@ import { useSession } from "@clerk/nextjs"
  * @param {Object} props.errors - Validation errors
  * @param {Function} props.handleNext - Function to go to the next step
  * @param {Function} props.handleBack - Function to go to the previous step
+ * @param {Array} props.groups - List of athlete groups
+ * @param {boolean} props.groupLoading - Indicates if groups are being loaded
  */
-const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors = {}, handleNext = () => {}, handleBack = () => {} }) => {
+const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors = {}, handleNext = () => {}, handleBack = () => {}, groups = [], groupLoading = false }) => {
   // Set default values for formData
   const defaultFormData = {
     goals: "",
@@ -58,11 +58,6 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
   
   // Track the selected model type
   const [selectedModel, setSelectedModel] = useState(null);
-
-  const { session, isLoaded, isSignedIn } = useSession()
-  const supabase = useAuthenticatedSupabaseClient()
-  const [groups, setGroups] = useState([])
-  const [groupLoading, setGroupLoading] = useState(true)
 
   // Initialize intensity and volume in formData when component mounts
   useEffect(() => {
@@ -108,31 +103,6 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
       });
     }
   }, [defaultFormData.duration, defaultFormData.intensity, defaultFormData.volume]);
-
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) return
-    const fetchGroups = async () => {
-      setGroupLoading(true)
-      // get current coach
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clerk_id', session.user.id)
-        .single()
-      const { data: coachRow } = await supabase
-        .from('coaches')
-        .select('id')
-        .eq('user_id', userRow.id)
-        .single()
-      const { data, error } = await supabase
-        .from('athlete_groups')
-        .select('id, group_name')
-        .eq('coach_id', coachRow.id)
-      if (!error) setGroups(data)
-      setGroupLoading(false)
-    }
-    fetchGroups()
-  }, [session, isLoaded, isSignedIn])
 
   // Handle intensity/volume changes
   const handleIntensityChange = (value) => {

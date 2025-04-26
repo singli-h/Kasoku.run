@@ -75,13 +75,29 @@ export async function PATCH(
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
 
-  const { athlete_group_id } = await req.json();
+  const { athlete_group_id, notes } = await req.json();
+  // athlete_group_id may be null to remove from group
   if (athlete_group_id === undefined) {
     return NextResponse.json({ status: 'error', message: 'Missing athlete_group_id' }, { status: 400 });
   }
 
   const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
+  
+  // If assigning to a new group, verify coach access. If null, skip.
+  if (athlete_group_id !== null) {
+    const { data: grp, error: grpErr } = await supabase
+      .from('athlete_groups')
+      .select('id')
+      .eq('coach_id', coachId)
+      .eq('id', athlete_group_id)
+      .single();
+    if (grpErr || !grp) {
+      return NextResponse.json({ status: 'error', message: 'Invalid group' }, { status: 404 });
+    }
+  }
+
+  // Update the athlete's group
+  const { data: updated, error } = await supabase
     .from('athletes')
     .update({ athlete_group_id })
     .eq('id', Number(params.id))
@@ -91,5 +107,18 @@ export async function PATCH(
     return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ status: 'success', data }, { status: 200 });
+  // Record the group change in history
+  const { error: historyErr } = await supabase
+    .from('athlete_group_histories')
+    .insert({
+      athlete_id: Number(params.id),
+      group_id: athlete_group_id,
+      created_by: coachId,
+      notes: notes || (athlete_group_id === null ? 'Removed from group' : 'Group assignment updated by coach')
+    });
+  if (historyErr) {
+    console.error('Failed to record group assignment history:', historyErr);
+  }
+
+  return NextResponse.json({ status: 'success', data: updated }, { status: 200 });
 } 

@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight, ChevronLeft, Info } from "lucide-react"
+import { ChevronRight, ChevronLeft, Info, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,6 +31,7 @@ import { useState, useCallback } from "react"
  * @param {Object} props.sessionSections - Session sections data
  * @param {Function} props.handleSetActiveSections - Function to set active sections
  * @param {Array} props.filteredExercises - Filtered exercises
+ * @param {boolean} props.loadingExercises - Indicates if exercises are loading
  * @param {number} props.activeSession - Active session ID
  * @param {Function} props.setActiveSession - Function to set active session
  * @param {Object} props.errors - Validation errors
@@ -48,12 +49,22 @@ const StepTwoPlanner = ({
   sessionSections,
   handleSetActiveSections,
   filteredExercises,
+  loadingExercises,
   activeSession,
   setActiveSession,
   errors,
   handleNext,
   handleBack,
 }) => {
+  // Show loader while exercises are loading
+  if (loadingExercises) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader2 className="animate-spin w-8 h-8 text-gray-500" />
+      </div>
+    )
+  }
+
   // State to track supersets for each session
   const [sessionSupersets, setSessionSupersets] = useState({});
 

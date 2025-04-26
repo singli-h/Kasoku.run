@@ -6,12 +6,14 @@ import AthletesList from "@/components/athletes/AthletesList"
 import { Heading } from '@/components/ui/heading'
 import { Button } from '@/components/ui/button'
 import GroupManagerDialog from '@/components/athletes/GroupManagerDialog'
+import { useToast } from '@/components/ui/toast'
 
 export default function AthletesPage() {
   const [athletes, setAthletes] = useState([])
   const [groups, setGroups] = useState([])
   const [isGroupOpen, setIsGroupOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -29,6 +31,23 @@ export default function AthletesPage() {
     fetchData()
   }, [])
 
+  const handleAddAthlete = async (record) => {
+    try {
+      const res = await fetch(`/api/athletes/${record.id}`, { credentials: 'include' })
+      const json = await res.json()
+      if (res.ok && json.status === 'success') {
+        setAthletes(prev => [...prev, json.data])
+        toast({ title: 'Success', description: 'Athlete added', variant: 'success', duration: 3000 })
+      }
+    } catch (err) {
+      console.error('Failed to fetch new athlete:', err)
+    }
+  }
+
+  const handleRemoveAthlete = (athleteId) => {
+    setAthletes(prev => prev.filter(a => a.id !== athleteId))
+  }
+
   if (loading) {
     return <div className="p-4">Loading athletes...</div>
   }
@@ -42,7 +61,7 @@ export default function AthletesPage() {
           Manage Groups
         </Button>
       </div>
-      <AthletesList athletes={athletes} groups={groups} />
+      <AthletesList athletes={athletes} groups={groups} setAthletes={setAthletes} onAdd={handleAddAthlete} onRemove={handleRemoveAthlete} />
       <GroupManagerDialog
         open={isGroupOpen}
         onOpenChange={setIsGroupOpen}

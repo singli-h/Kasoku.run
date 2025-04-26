@@ -18,5 +18,8 @@
   "devDependencies": {
     "turbo": "latest"
   },
-  "packageManager": "npm@10.5.2"
+  "packageManager": "npm@10.5.2",
+  "dependencies": {
+    "class-variance-authority": "^0.7.1"
+  }
 }

@@ -11,18 +11,21 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AddAthleteDialog } from '@/components/athletes/AddAthleteDialog'
+import { useToast } from '@/components/ui/toast'
 
 /**
  * AthletesList renders grid and table views of athletes with search and filter functionality.
- * @param {{ athletes: Array, groups: Array }} props
+ * @param {{ athletes: Array, groups: Array, onAdd: Function, onRemove: Function }} props
  */
-export default function AthletesList({ athletes, groups }) {
+export default function AthletesList({ athletes, groups, onAdd, onRemove }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedGroup, setSelectedGroup] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState(null)
+  const [view, setView] = useState('grid')
+  const { toast } = useToast()
 
   // Filter logic
   const filtered = athletes.filter((athlete) => {
@@ -34,6 +37,29 @@ export default function AthletesList({ athletes, groups }) {
   })
 
   const groupNames = ['all', ...groups.map(g => g.group_name)]
+
+  // Handler to remove athlete from group
+  const handleRemove = async (athleteId) => {
+    try {
+      const res = await fetch(`/api/athletes/${athleteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ athlete_group_id: null, notes: 'Removed from group' })
+      })
+      const json = await res.json()
+      if (res.ok && json.status === 'success') {
+        onRemove?.(athleteId)
+        toast({ title: 'Removed', description: 'Athlete removed from group', variant: 'success', duration: 3000 })
+      } else {
+        toast({ title: 'Error', description: json.message || 'Failed to remove', variant: 'destructive', duration: 3000 })
+      }
+    } catch (err) {
+      console.error(err)
+      toast({ title: 'Error', description: 'Network error', variant: 'destructive', duration: 3000 })
+    }
+    setMenuOpenId(null)
+  }
 
   return (
     <div className="space-y-4">
@@ -88,7 +114,7 @@ export default function AthletesList({ athletes, groups }) {
       </div>
 
       {/* View toggles */}
-      <Tabs defaultValue="grid" className="w-full">
+      <Tabs value={view} onValueChange={setView} className="w-full">
         <div className="flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="grid">Grid View</TabsTrigger>
@@ -126,7 +152,7 @@ export default function AthletesList({ athletes, groups }) {
                             <button type="button" className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit Details</button>
                             <button type="button" className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Message</button>
                             <div className="border-t border-gray-200 my-1" />
-                            <button type="button" className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-gray-100">Remove Athlete</button>
+                            <button type="button" className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-gray-100" onClick={() => handleRemove(athlete.id)}>Remove Athlete</button>
                           </div>
                         </div>
                       )}
@@ -191,7 +217,7 @@ export default function AthletesList({ athletes, groups }) {
                               <button type="button" className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit Details</button>
                               <button type="button" className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Message</button>
                               <div className="border-t border-gray-200 my-1" />
-                              <button type="button" className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-gray-100">Remove Athlete</button>
+                              <button type="button" className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-gray-100" onClick={() => handleRemove(athlete.id)}>Remove Athlete</button>
                             </div>
                           </div>
                         )}
@@ -204,7 +230,7 @@ export default function AthletesList({ athletes, groups }) {
           </div>
         </TabsContent>
       </Tabs>
-      <AddAthleteDialog open={isAddOpen} onOpenChange={setIsAddOpen} groups={groups} />
+      <AddAthleteDialog open={isAddOpen} onOpenChange={setIsAddOpen} groups={groups} onAdd={onAdd} />
     </div>
   )
 } 

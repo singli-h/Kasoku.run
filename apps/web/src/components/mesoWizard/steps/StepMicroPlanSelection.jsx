@@ -10,14 +10,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { useSession } from "@clerk/nextjs"
-import { useAuthenticatedSupabaseClient } from "@/lib/supabase"
 
 /**
  * Step: Microcycle Plan Setup
  * 
  * This step allows users to configure the basic information for a one-week microcycle plan
  */
-const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, errors = {}, handleNext = () => {}, handleBack = () => {} }) => {
+const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, errors = {}, handleNext = () => {}, handleBack = () => {}, groups = [], groupLoading = false }) => {
   // Set default values for formData
   const defaultFormData = {
     goals: "",
@@ -25,12 +24,6 @@ const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, e
     sessionsPerWeek: "3", // Default: 3 sessions per week
     ...formData
   };
-
-  // Session & Supabase for fetching groups
-  const { session, isLoaded, isSignedIn } = useSession()
-  const supabase = useAuthenticatedSupabaseClient()
-  const [groups, setGroups] = useState([])
-  const [groupLoading, setGroupLoading] = useState(true)
 
   // Initialize fields in formData when component mounts
   useEffect(() => {
@@ -52,31 +45,6 @@ const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, e
       }
     });
   }, []);
-
-  // Fetch groups for coach
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) return
-    const fetchGroups = async () => {
-      setGroupLoading(true)
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clerk_id', session.user.id)
-        .single()
-      const { data: coachRow } = await supabase
-        .from('coaches')
-        .select('id')
-        .eq('user_id', userRow.id)
-        .single()
-      const { data, error } = await supabase
-        .from('athlete_groups')
-        .select('id, group_name')
-        .eq('coach_id', coachRow.id)
-      if (!error) setGroups(data)
-      setGroupLoading(false)
-    }
-    fetchGroups()
-  }, [session, isLoaded, isSignedIn])
 
   return (
     <div className="space-y-6 w-full max-w-4xl mx-auto">

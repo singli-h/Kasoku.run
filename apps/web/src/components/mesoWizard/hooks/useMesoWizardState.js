@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { useSession } from '@clerk/nextjs'
+import useSWRImmutable from 'swr/immutable'
 import { useSaveTrainingPlan } from "./useSaveCycle"
 
 /**
@@ -31,8 +32,6 @@ export const useMesoWizardState = (onComplete) => {
   // UI states
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredExercises, setFilteredExercises] = useState([])
-  const [loadingExercises, setLoadingExercises] = useState(true)
-  const [allExercises, setAllExercises] = useState([])
   const [activeSession, setActiveSession] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [aiSuggestions, setAiSuggestions] = useState(null)
@@ -40,41 +39,40 @@ export const useMesoWizardState = (onComplete) => {
   const [sessionSections, setSessionSections] = useState({})
   const [exerciseOrder, setExerciseOrder] = useState({}) // Track exercise order by section
 
+  // Note: exercises and groups fetched via SWR below
+
   // Use the save mesocycle hook
   const { saveMesocycle, isSubmitting, error: saveError } = useSaveTrainingPlan()
 
   // Calculate progress percentage
   const progressPercentage = ((step - 1) / 4) * 100
 
-  // Fetch exercises immediately when component mounts - not tied to any step
-  useEffect(() => {
-    const getExercises = async () => {
-      setLoadingExercises(true)
-      if (!isSessionLoaded) return
-      if (!isSignedIn) {
-        console.error('Not signed in for fetching exercises')
-        setLoadingExercises(false)
-        return
-      }
-      try {
-        const token = await session.getToken()
-        const res = await fetch('/api/planner/exercises', {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'include'
-        })
-        const body = await res.json()
-        const exercises = body.data?.exercises || []
-        console.log('exercises', exercises)
-        setAllExercises(exercises)
-        setFilteredExercises(exercises)
-      } catch (error) {
-        console.error('Error fetching exercises:', error)
-      } finally {
-        setLoadingExercises(false)
-      }
-    }
-    getExercises()
-  }, [session, isSessionLoaded, isSignedIn])
+  // SWR fetcher to include Clerk token
+  const fetcherWithToken = async (url) => {
+    const token = await session.getToken()
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include'
+    })
+    if (!res.ok) throw new Error('Network response was not ok')
+    return res.json()
+  }
+
+  // Fetch and cache exercises (immutable fetch to avoid duplicate calls in dev)
+  const { data: exerciseBody, error: exerciseError } = useSWRImmutable(
+    isSessionLoaded && isSignedIn ? '/api/planner/exercises' : null,
+    fetcherWithToken
+  )
+  const allExercises = exerciseBody?.data?.exercises || []
+  const loadingExercises = !exerciseBody && !exerciseError
+
+  // Fetch and cache groups (immutable fetch to avoid duplicate calls in dev)
+  const { data: groupsBody, error: groupsError } = useSWRImmutable(
+    isSessionLoaded && isSignedIn ? '/api/athlete-groups' : null,
+    fetcherWithToken
+  )
+  const groups = groupsBody?.data || []
+  const groupLoading = !groupsBody && !groupsError
 
   // Filter exercises based on search term
   useEffect(() => {
@@ -623,6 +621,8 @@ export const useMesoWizardState = (onComplete) => {
     sessionSections,
     progressPercentage,
     exerciseOrder,
+    groups,
+    groupLoading,
     
     // Handlers
     setStep,
