@@ -13,12 +13,24 @@ import { ExerciseType } from "../../../types/exercise"
  */
 const ExerciseDashboard = ({ 
   session, 
+  startSession,
   onSave, 
   onComplete, 
   updateExerciseDetails,
   updateExerciseTrainingDetails
 }) => {
   const { exercises, updateExercise, showVideo, toggleVideo } = useExerciseContext()
+
+  // Handler to initiate a new training session
+  const handleStart = React.useCallback(async () => {
+    try {
+      const result = await startSession()
+      return result
+    } catch (err) {
+      console.error('Failed to start session:', err)
+      return { success: false, error: err }
+    }
+  }, [startSession])
 
   // Get session status
   const sessionStatus = session?.details?.status || 'unknown';
@@ -331,20 +343,31 @@ const ExerciseDashboard = ({
 
 
         <div className="mt-12 flex justify-end space-x-4">
-          {sessionStatus !== 'completed' && (
-            <button 
-              onClick={handleSave}
-              className="bg-blue-500 text-white px-8 py-3 rounded-xl text-lg font-semibold hover:bg-blue-600 transition-colors duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+          {sessionStatus === 'assigned' ? (
+            <button
+              onClick={handleStart}
+              className="bg-indigo-500 text-white px-8 py-3 rounded-xl text-lg font-semibold hover:bg-indigo-600 transition-colors duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
             >
-              Save Progress
+              Start Session
             </button>
+          ) : (
+            <>
+              {sessionStatus === 'ongoing' && (
+                <button
+                  onClick={handleSave}
+                  className="bg-blue-500 text-white px-8 py-3 rounded-xl text-lg font-semibold hover:bg-blue-600 transition-colors duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  Save Progress
+                </button>
+              )}
+              <button
+                onClick={handleComplete}
+                className="bg-green-500 text-white px-8 py-3 rounded-xl text-lg font-semibold hover:bg-green-600 transition-colors duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              >
+                {sessionStatus === 'completed' ? 'Amend Session' : 'Complete Session'}
+              </button>
+            </>
           )}
-          <button 
-            onClick={handleComplete}
-            className="bg-green-500 text-white px-8 py-3 rounded-xl text-lg font-semibold hover:bg-green-600 transition-colors duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-          >
-            {sessionStatus === 'completed' ? 'Amend Session' : 'Complete Session'}
-          </button>
         </div>
     </div>
   )

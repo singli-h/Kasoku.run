@@ -34,6 +34,7 @@ export const useSaveTrainingPlan = () => {
    * @returns {Object} - Formatted data for the API
    */
   const formatMicrocycleData = (formData, exerciseList = []) => {
+    console.log('[formatMicrocycleData] sessions:', formData.sessions.map(s => ({ id: s.id, sessionMode: s.sessionMode, weekday: s.weekday })));
     // Map frontend weekdays to numbers (adjust if API expects different mapping)
     const weekdayToNumber = {
       monday: 1, tuesday: 2, wednesday: 3, thursday: 4,
@@ -65,6 +66,7 @@ export const useSaveTrainingPlan = () => {
       mesocycle_id: formData.mesocycleId || null,
       athlete_group_id: formData.athleteGroupId || null,
       sessions: formData.sessions.map((session, sessionIndex) => {
+        console.log('[formatMicrocycleData] building session payload for:', session.id, session.sessionMode);
         const sessionExercises = formData.exercises.filter((ex) => ex.session === session.id);
         
         // Calculate session date based on weekday relative to start date
@@ -87,6 +89,7 @@ export const useSaveTrainingPlan = () => {
 
         return {
           name: session.name,
+          session_mode: session.sessionMode || 'individual',
           description: `${session.name} - ${formData.name}`,
           date: formatDate(sessionDate), // Session date
           // API expects 'exercises', not 'presets'
@@ -418,6 +421,8 @@ export const useSaveTrainingPlan = () => {
       // Create the group object as required by API, with all required fields
       const group = {
         name: session.name,
+        // Include the selected session mode (individual or group)
+        session_mode: session.sessionMode || 'individual',
         description: `${session.name} from mesocycle "${formData.name || formData.goals}"`,
         day: weekdayToNumber[session.weekday?.toLowerCase()] || null,
         week: weekNumber || 1,
@@ -544,6 +549,7 @@ export const useSaveTrainingPlan = () => {
    * @returns {Promise<Object>} - The response from the API
    */
   const saveMesocycle = async (formData, exerciseList, timezone = Intl.DateTimeFormat().resolvedOptions().timeZone) => {
+    console.log('[saveMesocycle] planType:', formData.planType);
     setIsSubmitting(true)
     setError(null)
     setSuccess(false)
@@ -558,7 +564,8 @@ export const useSaveTrainingPlan = () => {
       
       // For mesocycle plans, use the original format (transformFormData -> API call)
       console.log("Calling transformFormData for MESOCYCLE");
-      const sessions = transformFormData(formData, exerciseList) // Ensure this doesn't handle microcycle case anymore
+      const weeks = transformFormData(formData, exerciseList)
+      console.log('[saveMesocycle] mesocycle weeks payload:', JSON.stringify(weeks, null, 2));
       
       // Get authentication token
       const token = await getAuthToken()
@@ -570,7 +577,6 @@ export const useSaveTrainingPlan = () => {
       const endDateObj = new Date(startDateObj)
       endDateObj.setDate(startDateObj.getDate() + (weeksDuration * 7) - 1)
       const endDateStr = endDateObj.toISOString().split('T')[0]
-      const weeks = transformFormData(formData, exerciseList)
       const planPayload = {
         name: formData.name,
         description: formData.goals || '',
@@ -580,6 +586,7 @@ export const useSaveTrainingPlan = () => {
         ...(formData.macrocycleId && { macrocycleId: formData.macrocycleId }),
         weeks
       }
+      console.log('[saveMesocycle] planPayload for API:', planPayload);
       const response = await fetch('/api/planner/mesocycle', {
         method: 'POST',
         headers: {

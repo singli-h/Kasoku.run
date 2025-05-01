@@ -96,17 +96,20 @@ export async function POST(req: NextRequest) {
     // 2. Iterate weeks & sessions
     for (const [wIdx, week] of weeks.entries()) {
       for (const [dIdx, session] of (week.sessions || []).entries()) {
-        // create group
+        // Destructure session including session_mode
+        const { name, description, date, session_mode } = session;
+        // create group with session_mode
         const { data: group, error: gErr } = await supabase
           .from('exercise_preset_groups')
           .insert({
-            name: session.name,
-            description: session.description,
+            name,
+            description,
             week: wIdx + 1,
             day: dIdx + 1,
-            date: session.date,
+            date,
             coach_id: coachId,
-            athlete_group_id: athleteGroupId
+            athlete_group_id: athleteGroupId,
+            session_mode: session_mode || 'individual'
           })
           .select()
           .single();

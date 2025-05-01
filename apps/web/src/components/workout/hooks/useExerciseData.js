@@ -64,10 +64,14 @@ export const useExerciseData = () => {
         
         // Extract all training details into the flat array
         const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets
-          ?.flatMap(preset => preset.exercise_training_details.map(detail => ({
+          ?.flatMap(preset => {
+            // Handle both existing training_details and preset_details for assigned sessions
+            const details = preset.exercise_training_details ?? preset.exercise_preset_details ?? [];
+            return details.map(detail => ({
               ...detail,
-              exercise_preset_id: preset.id // Keep track of which preset it belongs to
-          }))) || [];
+              exercise_preset_id: preset.id
+            }));
+          }) || [];
         
         setTrainingDetails(allTrainingDetails);
         
@@ -160,10 +164,13 @@ export const useExerciseData = () => {
 
       // Refresh the flat training details array
       const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets
-        ?.flatMap(preset => preset.exercise_training_details.map(detail => ({
+        ?.flatMap(preset => {
+          const details = preset.exercise_training_details ?? preset.exercise_preset_details ?? [];
+          return details.map(detail => ({
             ...detail,
             exercise_preset_id: preset.id
-        }))) || [];
+          }));
+        }) || [];
       
       setTrainingDetails(allTrainingDetails);
       

@@ -63,15 +63,16 @@ export default function ProfilePage() {
   }
 
   // Extract user info from profile data
-  const { user: userData, role } = profileData
-  const fullName = user?.fullName || `${userData.first_name} ${userData.last_name}`
-  const email = user?.primaryEmailAddress?.emailAddress || userData.email || ''
-  const username = userData.username || ''
-  const subscription = userData.subscription_status || 'Free'
-  const avatarUrl = user?.imageUrl || userData.avatar_url
-  const birthdate = userData.birthdate ? format(new Date(userData.birthdate), 'MMMM d, yyyy') : 'Not set'
-  const timezone = userData.timezone || 'UTC'
-  const initials = fullName.split(' ').map(n => n?.[0] || '').join('').toUpperCase()
+  const userData = profileData;
+  const role = userData?.role || 'user';
+  const fullName = user?.fullName || `${userData?.first_name || ''} ${userData?.last_name || ''}`;
+  const email = user?.primaryEmailAddress?.emailAddress || userData?.email || '';
+  const username = userData?.username || '';
+  const subscription = userData?.subscription_status || 'Free';
+  const avatarUrl = user?.imageUrl || userData?.avatar_url;
+  const birthdate = userData?.birthdate ? format(new Date(userData.birthdate), 'MMMM d, yyyy') : 'Not set';
+  const timezone = userData?.timezone || 'UTC';
+  const initials = fullName.split(' ').map(n => n?.[0] || '').join('').toUpperCase();
   
   return (
     <div className="container mx-auto py-10 px-4 max-w-6xl">

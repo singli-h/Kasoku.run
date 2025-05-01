@@ -169,35 +169,33 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
             Configure your training parameters and progression pattern
           </p>
         </div>
-
-        {/* Athlete Group Selector */}
-        <div>
-          <Label htmlFor="athleteGroupId" className="text-base">Athlete Group</Label>
-          {groupLoading ? (
-            <div>Loading groups...</div>
-          ) : (
-            <Select
-              value={formData.athleteGroupId || ''}
-              onValueChange={(value) => handleInputChange({ target: { name: 'athleteGroupId', value } })}
-            >
-              <SelectTrigger id="athleteGroupId" className="w-full mt-1">
-                <SelectValue placeholder="Select a group" />
-              </SelectTrigger>
-              <SelectContent>
-                {groups.map((g) => (
-                  <SelectItem key={g.id} value={String(g.id)}>
-                    {g.group_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-
         {/* Basic Parameters Card */}
         <Card className="border border-gray-200">
           <CardContent className="pt-6 px-4 sm:px-6">
             <div className="grid gap-6">
+              {/* Athlete Group Selector */}
+              <div>
+                <Label htmlFor="athleteGroupId" className="text-base">Athlete Group</Label>
+                {groupLoading ? (
+                  <div>Loading groups...</div>
+                ) : (
+                  <Select
+                    value={formData.athleteGroupId || ''}
+                    onValueChange={(value) => handleInputChange({ target: { name: 'athleteGroupId', value } })}
+                  >
+                    <SelectTrigger id="athleteGroupId" className="w-full mt-1">
+                      <SelectValue placeholder="Select a group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups.map((g) => (
+                        <SelectItem key={g.id} value={String(g.id)}>
+                          {g.group_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
               {/* Plan Name */}
               <div>
                 <div className="flex items-center gap-2">

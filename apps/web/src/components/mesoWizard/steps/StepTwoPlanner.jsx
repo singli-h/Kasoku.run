@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight, ChevronLeft, Info, Loader2 } from "lucide-react"
+import { ChevronRight, ChevronLeft, Info, Loader2, User, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -56,15 +56,6 @@ const StepTwoPlanner = ({
   handleNext,
   handleBack,
 }) => {
-  // Show loader while exercises are loading
-  if (loadingExercises) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <Loader2 className="animate-spin w-8 h-8 text-gray-500" />
-      </div>
-    )
-  }
-
   // State to track supersets for each session
   const [sessionSupersets, setSessionSupersets] = useState({});
 
@@ -83,6 +74,15 @@ const StepTwoPlanner = ({
       [sessionId]: supersets
     }));
   }, []);
+
+  // Show loader while exercises are loading
+  if (loadingExercises) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader2 className="animate-spin w-8 h-8 text-gray-500" />
+      </div>
+    )
+  }
 
   // Get section name from ID
   const getSectionName = (sectionId) => {
@@ -201,7 +201,7 @@ const StepTwoPlanner = ({
                             <Info className="h-4 w-4 text-gray-400" />
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Select the weekday for this session. Each weekday can only be used once.</p>
+                            <p>Select the weekday for this session. Multiple sessions per weekday are allowed.</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -210,23 +210,55 @@ const StepTwoPlanner = ({
                       id={`session-weekday-${session.id}`}
                       value={session.weekday}
                       onChange={(e) => handleSessionInputChange(session.id, "weekday", e.target.value)}
-                      className={`w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors[`session-${session.id}-weekday`] ? "border-red-500" : ""}`}
+                      className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <option value="">Select a weekday</option>
-                      {weekdays.map((day) => {
-                        const selectedWeekdays = getSelectedWeekdays(session.id);
-                        const isDisabled = selectedWeekdays.includes(day.value);
-                        
-                        return (
-                          <option key={day.value} value={day.value} disabled={isDisabled}>
-                            {day.label}
-                          </option>
-                        );
-                      })}
+                      {weekdays.map((day) => (
+                        <option key={day.value} value={day.value}>
+                          {day.label}
+                        </option>
+                      ))}
                     </select>
                     {errors[`session-${session.id}-weekday`] && (
                       <p className="mt-1 text-sm text-red-500">{errors[`session-${session.id}-weekday`]}</p>
                     )}
+                  </div>
+
+                  {/* Session Mode Selector */}
+                  <div className="mt-4">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-base font-medium">Session Mode</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-gray-400" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Individual: Athlete logs this session; Group: Coach records all athletes&rsquo; results.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <div className="flex space-x-2 mt-2">
+                      <Button
+                        size="sm"
+                        variant={session.sessionMode === 'individual' ? 'default' : 'outline'}
+                        onClick={() => handleSessionInputChange(session.id, 'sessionMode', 'individual')}
+                        className="flex items-center"
+                      >
+                        <User className="mr-1 h-4 w-4" />
+                        Individual
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={session.sessionMode === 'group' ? 'default' : 'outline'}
+                        onClick={() => handleSessionInputChange(session.id, 'sessionMode', 'group')}
+                        className="flex items-center"
+                      >
+                        <Users className="mr-1 h-4 w-4" />
+                        Group
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>

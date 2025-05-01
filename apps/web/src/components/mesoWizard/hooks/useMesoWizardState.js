@@ -120,7 +120,8 @@ export const useMesoWizardState = (onComplete) => {
           [field]: value,
         }
       }
-      
+      // Debug log to confirm field update
+      console.log(`[useMesoWizardState] session ${sessionId} updated ${field} ->`, value, updatedSessions[sessionIndex]);
       return { ...prev, sessions: updatedSessions }
     })
     
@@ -458,6 +459,9 @@ export const useMesoWizardState = (onComplete) => {
         const planTypeLabel = formData.planType || "mesocycle";
         
         // Process AI suggestions if needed
+        // Debug: log sessions and their modes
+        console.log('handleSubmit - sessions with modes:', formData.sessions.map(s => ({ id: s.id, sessionMode: s.sessionMode })));
+        console.log('handleSubmit - full sessions array:', formData.sessions);
         const processedData = {
           ...formData,
           id: Date.now().toString(), // Generate unique plan ID
@@ -501,6 +505,7 @@ export const useMesoWizardState = (onComplete) => {
           progressionModel: "",
           progressionValue: "",
           weekday: "",
+          sessionMode: "individual", // default per session
         }))
         
         setFormData((prev) => ({ ...prev, sessions: newSessions }))

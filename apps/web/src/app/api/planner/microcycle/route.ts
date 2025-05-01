@@ -87,7 +87,8 @@ export async function POST(req: NextRequest) {
 
     // 2) Process each session
     for (const [idx, session] of sessions.entries()) {
-      const { name: sName, description: sDesc, date, exercises = [] } = session;
+      // Destructure session and include session_mode
+      const { name: sName, description: sDesc, date, session_mode, exercises = [] } = session;
       
       // Insert exercise_preset_group for this session
       const { data: grp, error: gErr } = await supabase
@@ -100,7 +101,9 @@ export async function POST(req: NextRequest) {
           date,
           coach_id: coachId,
           athlete_group_id: athleteGroupId,
-          microcycle_id: microcycle.id
+          microcycle_id: microcycle.id,
+          // Set session mode for each session (default to 'individual')
+          session_mode: session_mode || 'individual'
         })
         .select()
         .single();

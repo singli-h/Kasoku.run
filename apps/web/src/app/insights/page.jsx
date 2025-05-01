@@ -6,7 +6,6 @@ import { WeeklyOverview } from "@/components/overview/WeeklyOverview"
 import MesocycleOverview from "@/components/overview/MesocycleOverview"
 import { useEffect, useState } from "react"
 import { Card, CardTitle } from "@/components/ui/card"
-import { requireAuth } from "@/lib/auth"
 import { getUserRoleData } from "@/lib/roles"
 
 export default function InsightsPage() {

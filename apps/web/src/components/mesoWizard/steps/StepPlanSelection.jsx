@@ -3,8 +3,10 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Info, User, Users } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Label } from "@/components/ui/label"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 /**
  * Step One: Plan Selection

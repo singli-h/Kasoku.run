@@ -16,6 +16,7 @@ const Workout = ({ session: initialSession, isReadOnly = false }) => {
   // Centralize all useExerciseData logic in the parent component
   const { 
     session, 
+    startSession,
     saveSession, 
     completeSession, 
     updateExerciseDetails, 
@@ -73,6 +74,7 @@ const Workout = ({ session: initialSession, isReadOnly = false }) => {
     <ExerciseProvider initialData={currentSession?.details?.exercise_preset_groups?.exercise_presets}>
       <ExerciseDashboard 
         session={currentSession}
+        startSession={startSession}
         onSave={handleSave}
         onComplete={handleComplete}
         isReadOnly={isReadOnly || sessionStatus === 'completed'}

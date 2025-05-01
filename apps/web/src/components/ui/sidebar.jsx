@@ -12,7 +12,7 @@ import {
   Calendar, 
   BarChart3, 
   Users, 
-  Settings,
+  Settings, 
   ChevronRight,
   LogOut
 } from "lucide-react";
@@ -75,15 +75,18 @@ const Sidebar = ({ onCollapse }) => {
     }
   }, [isCollapsed, onCollapse]);
   
-  // Navigation items with icons and paths
-  const navItems = [
+  // Replace the existing navItems array and mapping with two sections: athleteNavItems and coachNavItems
+  // Athlete section nav items (only Workout and Performance)
+  const athleteNavItems = [
     { name: "Workout", icon: <LayoutDashboard />, path: "/workout" },
+    { name: "Performance", icon: <BarChart3 />, path: "/performance" },
+  ];
+
+  // Coach section nav items (Athletes, Plans, Insights)
+  const coachNavItems = [
     { name: "Athletes", icon: <Users />, path: "/athletes" },
-    { name: "Profile", icon: <User />, path: "/profile" },
     { name: "Plans", icon: <Calendar />, path: "/plans" },
     { name: "Insights", icon: <BarChart3 />, path: "/insights" },
-    { name: "Performance", icon: <BarChart3 />, path: "/performance" },
-    { name: "Settings", icon: <Settings />, path: "/settings" },
   ];
   
   // Animation variants for the sidebar - faster animation
@@ -263,28 +266,41 @@ const Sidebar = ({ onCollapse }) => {
           {/* Navigation links */}
           <nav className="flex-grow py-6 px-3 overflow-y-auto">
             <ul className="space-y-2">
-              {navItems.map((item) => (
+              {/* Athlete section header */}
+              <li className="px-4 pt-4 text-xs text-gray-400 uppercase">Athlete</li>
+              {/* Athlete section */}
+              {athleteNavItems.map(item => (
                 <motion.li key={item.name} variants={itemVariants}>
-                  <Link
-                    href={item.path}
-                    className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                      pathname === item.path
-                        ? "bg-blue-600 text-white"
-                        : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                    }`}
-                    aria-current={pathname === item.path ? "page" : undefined}
-                  >
-                    <motion.div
-                      whileHover={{ rotate: 5, scale: 1.1 }}
-                      transition={{ duration: 0.2 }}
-                      className="text-xl flex-shrink-0"
-                    >
+                  <Link href={item.path} className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                          pathname === item.path
+                            ? "bg-blue-600 text-white"
+                            : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                        }`} aria-current={pathname === item.path ? "page" : undefined}>
+                    <motion.div whileHover={{ rotate: 5, scale: 1.1 }} transition={{ duration: 0.2 }} className="text-xl flex-shrink-0">
                       {item.icon}
                     </motion.div>
-                    <motion.span 
-                      variants={textVariants}
-                      animate={isCollapsed ? "hide" : "show"}
-                    >
+                    <motion.span variants={textVariants} animate={isCollapsed ? "hide" : "show"}>
+                      {item.name}
+                    </motion.span>
+                  </Link>
+                </motion.li>
+              ))}
+
+              {/* Coach section header */}
+              <li className="px-4 pt-4 text-xs text-gray-400 uppercase">Coach</li>
+
+              {/* Coach section links */}
+              {coachNavItems.map(item => (
+                <motion.li key={item.name} variants={itemVariants}>
+                  <Link href={item.path} className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                          pathname === item.path
+                            ? "bg-green-600 text-white"
+                            : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                        }`} aria-current={pathname === item.path ? "page" : undefined}>
+                    <motion.div whileHover={{ rotate: 5, scale: 1.1 }} transition={{ duration: 0.2 }} className="text-xl flex-shrink-0">
+                      {item.icon}
+                    </motion.div>
+                    <motion.span variants={textVariants} animate={isCollapsed ? "hide" : "show"}>
                       {item.name}
                     </motion.span>
                   </Link>
@@ -316,7 +332,22 @@ const Sidebar = ({ onCollapse }) => {
                 Profile
               </motion.span>
             </Link>
-            
+            {/* Settings link moved to bottom under Profile */}
+            <Link
+              href="/settings"
+              className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} space-x-3 px-4 py-3 mt-2 rounded-lg transition-all duration-200 text-gray-300 hover:bg-gray-700 hover:text-white`}
+            >
+              <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center flex-shrink-0">
+                <Settings className="w-5 h-5" />
+              </div>
+              <motion.span
+                variants={textVariants}
+                animate={isCollapsed ? "hide" : "show"}
+              >
+                Settings
+              </motion.span>
+            </Link>
+
             <button
               onClick={handleLogout}
               className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} w-full space-x-3 px-4 py-3 mt-2 rounded-lg transition-all duration-200 text-gray-300 hover:bg-red-600 hover:text-white`}
