@@ -40,9 +40,9 @@ export default function Hero() {
 
             <div className="flex flex-col sm:flex-row gap-4">
               {isSignedIn ? (
-                <Link href="/planner">
+                <Link href="/plans">
                   <Button className="gap-2 group">
-                    Go to Planner
+                    Start Training
                     <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>

@@ -215,8 +215,8 @@ const StepTwoPlanner = ({
                       <option value="">Select a weekday</option>
                       {weekdays.map((day) => (
                         <option key={day.value} value={day.value}>
-                          {day.label}
-                        </option>
+                            {day.label}
+                          </option>
                       ))}
                     </select>
                     {errors[`session-${session.id}-weekday`] && (

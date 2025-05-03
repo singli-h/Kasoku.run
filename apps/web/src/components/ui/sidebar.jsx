@@ -12,7 +12,7 @@ import {
   Calendar, 
   BarChart3, 
   Users, 
-  Settings, 
+  Settings,
   ChevronRight,
   LogOut
 } from "lucide-react";
@@ -86,6 +86,7 @@ const Sidebar = ({ onCollapse }) => {
   const coachNavItems = [
     { name: "Athletes", icon: <Users />, path: "/athletes" },
     { name: "Plans", icon: <Calendar />, path: "/plans" },
+    { name: "Sessions", icon: <Calendar />, path: "/sessions" },
     { name: "Insights", icon: <BarChart3 />, path: "/insights" },
   ];
   
@@ -272,9 +273,9 @@ const Sidebar = ({ onCollapse }) => {
               {athleteNavItems.map(item => (
                 <motion.li key={item.name} variants={itemVariants}>
                   <Link href={item.path} className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                          pathname === item.path
-                            ? "bg-blue-600 text-white"
-                            : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      pathname === item.path
+                        ? "bg-blue-600 text-white"
+                        : "text-gray-300 hover:bg-gray-700 hover:text-white"
                         }`} aria-current={pathname === item.path ? "page" : undefined}>
                     <motion.div whileHover={{ rotate: 5, scale: 1.1 }} transition={{ duration: 0.2 }} className="text-xl flex-shrink-0">
                       {item.icon}
@@ -347,7 +348,7 @@ const Sidebar = ({ onCollapse }) => {
                 Settings
               </motion.span>
             </Link>
-
+            
             <button
               onClick={handleLogout}
               className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} w-full space-x-3 px-4 py-3 mt-2 rounded-lg transition-all duration-200 text-gray-300 hover:bg-red-600 hover:text-white`}

@@ -16,7 +16,37 @@ export async function GET(req: NextRequest) {
   const supabase = createServerSupabaseClient()
   const { data, error } = await supabase
     .from('exercise_preset_groups')
-    .select('id, name, week, day, date, session_mode, exercise_presets ( id ), exercise_training_sessions ( id, athlete_id, status, session_mode )')
+    .select(
+      `
+      id,
+      athlete_group_id,
+      group_name:athlete_groups(group_name),
+      name,
+      week,
+      day,
+      date,
+      session_mode,
+      exercise_presets (
+        id,
+        exercise_id,
+        exercises!inner ( exercise_type_id ),
+        exercise_preset_details ( id, set_index, distance )
+      ),
+      exercise_training_sessions (
+        id,
+        athlete_id,
+        status,
+        session_mode,
+        exercise_training_details (
+          id,
+          exercise_preset_id,
+          set_index,
+          distance,
+          duration
+        )
+      )
+      `
+    )
     .eq('coach_id', coachId)
     .eq('session_mode', 'group')
     .order('date', { ascending: false })

@@ -19,7 +19,8 @@ const protectedRoutes = [
   '/performance',
   '/overview',
   '/settings',
-  '/profile'
+  '/profile',
+  '/sessions'
 ]
 
 // Define onboarding route
@@ -65,6 +66,7 @@ export const config = {
     '/overview/:path*',
     '/settings/:path*',
     '/profile/:path*',
+    '/sessions/:path*',
     '/api/:path*'
   ],
 } 
