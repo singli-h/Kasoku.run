@@ -183,7 +183,7 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
                     value={formData.athleteGroupId || ''}
                     onValueChange={(value) => handleInputChange({ target: { name: 'athleteGroupId', value } })}
                   >
-                    <SelectTrigger id="athleteGroupId" className="w-full mt-1">
+                    <SelectTrigger id="athleteGroupId" className={`w-full mt-1${errors.athleteGroupId ? ' border-red-500' : ''}`}>
                       <SelectValue placeholder="Select a group" />
                     </SelectTrigger>
                     <SelectContent>
@@ -194,6 +194,9 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
                       ))}
                     </SelectContent>
                   </Select>
+                )}
+                {errors.athleteGroupId && (
+                  <p className="mt-1 text-sm text-red-500">{errors.athleteGroupId}</p>
                 )}
               </div>
               {/* Plan Name */}

@@ -70,8 +70,17 @@ const Workout = ({ session: initialSession, isReadOnly = false }) => {
     return <div className="p-8 text-center">Loading session data...</div>;
   }
 
+  // Normalize and flatten preset groups for initial data
+  const presetGroupsRaw = currentSession?.details?.exercise_preset_groups;
+  const presetGroupsArr = Array.isArray(presetGroupsRaw)
+    ? presetGroupsRaw
+    : presetGroupsRaw
+      ? [presetGroupsRaw]
+      : [];
+  const initialData = presetGroupsArr.flatMap(group => group.exercise_presets ?? []);
+
   return (
-    <ExerciseProvider initialData={currentSession?.details?.exercise_preset_groups?.exercise_presets}>
+    <ExerciseProvider initialData={initialData}>
       <ExerciseDashboard 
         session={currentSession}
         startSession={startSession}

@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       exercise_presets (
         id,
         exercise_id,
-        exercises!inner ( exercise_type_id ),
+        exercises!inner ( exercise_type_id, name ),
         exercise_preset_details ( id, set_index, distance )
       ),
       exercise_training_sessions (

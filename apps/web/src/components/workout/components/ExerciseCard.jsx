@@ -60,24 +60,22 @@ const ExerciseCard = ({ exercise, onComplete, onExerciseUpdate }) => {
     [exercise, onExerciseUpdate]
   )
 
-  // Calculate the number of visible columns for consistent layout
-  const getVisibleColumnsCount = () => {
-    if (!exercise.exercise_training_details.length) return 0;
-    
-    const detail = exercise.exercise_training_details[0];
-    let count = 2; // Set and Reps are always visible
-    
-    if (detail.weight !== null) count++;
-    if (detail.resistance_value !== null) count++;
-    if (detail.power !== null) count++;
-    if (detail.velocity !== null) count++;
-    if (detail.rest_time !== null) count++;
-    
-    return count;
-  }
-
-  const visibleColumnsCount = getVisibleColumnsCount();
-  const tableClass = visibleColumnsCount <= 4 ? "table-fixed" : "table-auto";
+  // Determine which columns to display dynamically
+  const FIELD_CONFIG = [
+    { key: 'reps', label: 'Reps', always: true },
+    { key: 'rest_time', label: 'Rest (s)', always: true },
+    { key: 'distance', label: 'Distance (m)' },
+    { key: 'duration', label: 'Duration (s)' },
+    { key: 'resistance', label: 'Resistance (kg)' },
+    { key: 'power', label: 'Power (W)' },
+    { key: 'velocity', label: 'Velocity (m/s)' },
+    { key: 'tempo', label: 'Tempo' },
+  ];
+  const details = exercise.exercise_training_details;
+  const columns = FIELD_CONFIG.filter(cfg => 
+    cfg.always || details.some(d => d[cfg.key] !== null)
+  );
+  const tableClass = columns.length <= 4 ? 'table-fixed' : 'table-auto';
 
   return (
     <motion.div
@@ -134,27 +132,25 @@ const ExerciseCard = ({ exercise, onComplete, onExerciseUpdate }) => {
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-2 py-2 text-left font-medium text-gray-500 w-10">Set</th>
-                  <th className="px-2 py-2 text-left font-medium text-gray-500 w-20">Reps</th>
-                  {exercise.exercise_training_details[0].weight !== null && (
-                    <th className="px-2 py-2 text-left font-medium text-gray-500 w-20">Weight</th>
-                  )}
-                  {exercise.exercise_training_details[0].resistance_value !== null && (
-                    <th className="px-2 py-2 text-left font-medium text-gray-500 w-20">Resistance</th>
-                  )}
-                  {exercise.exercise_training_details[0].power !== null && (
-                    <th className="px-2 py-2 text-left font-medium text-gray-500 w-20">Power</th>
-                  )}
-                  {exercise.exercise_training_details[0].velocity !== null && (
-                    <th className="px-2 py-2 text-left font-medium text-gray-500 w-20">Velocity</th>
-                  )}
-                  {exercise.exercise_training_details[0].rest_time !== null && (
-                    <th className="px-2 py-2 text-left font-medium text-gray-500 w-20">Rest</th>
-                  )}
+                  {columns.map(cfg => (
+                    <th
+                      key={cfg.key}
+                      className="px-2 py-2 text-left font-medium text-gray-500 w-20"
+                    >
+                      {cfg.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {exercise.exercise_training_details.map((detail, index) => (
-                  <SetRow key={detail.id} detail={detail} index={index} onInputChange={handleInputChange} />
+                {details.map((detail, index) => (
+                  <SetRow
+                    key={detail.id}
+                    detail={detail}
+                    index={index}
+                    columns={columns}
+                    onInputChange={handleInputChange}
+                  />
                 ))}
               </tbody>
             </table>

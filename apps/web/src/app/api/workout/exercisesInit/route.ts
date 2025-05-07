@@ -13,10 +13,22 @@ export async function GET(req: NextRequest) {
   if (authResult instanceof NextResponse) return authResult;
   const clerkId = authResult;
 
-  // Resolve athlete ID
-  const { athleteId } = await getUserRoleData(clerkId);
-
+  // Initialize Supabase and resolve athlete profile (includes coaches with athlete entries)
   const supabase = createServerSupabaseClient();
+  const roleData = await getUserRoleData(clerkId);
+  const userId = roleData.userId;
+  const { data: athlete, error: athleteError } = await supabase
+    .from('athletes')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
+  if (athleteError || !athlete) {
+    return NextResponse.json(
+      { status: 'error', message: 'No athlete profile found for user' },
+      { status: 403 }
+    );
+  }
+  const athleteId = athlete.id;
 
   // Timezone support via query param
   const timezone = req.nextUrl.searchParams.get('timezone') || 'UTC';

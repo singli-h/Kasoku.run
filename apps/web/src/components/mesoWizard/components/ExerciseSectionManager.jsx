@@ -60,6 +60,7 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
  * @param {Array} props.activeSections - Active sections for this session
  * @param {Function} props.setActiveSections - Function to set active sections
  * @param {Function} props.onSupersetChange - Function to track supersets at parent level
+ * @param {string} props.mode - Mode of operation ('individual' or 'group')
  */
 const ExerciseSectionManager = memo(({
   sessionId,
@@ -71,8 +72,27 @@ const ExerciseSectionManager = memo(({
   handleExerciseDetailChange,
   activeSections = [],
   setActiveSections,
-  onSupersetChange
+  onSupersetChange,
+  mode = 'individual'  // 'individual' or 'group'
 }) => {
+  // Available section types based on ExerciseType enum
+  const sectionTypes = useMemo(() => [
+    { id: "warmup", name: "Warm-up", icon: <Flame className="h-4 w-4" />, typeId: ExerciseType.WarmUp },
+    { id: "gym", name: "Gym Exercises", icon: <Dumbbell className="h-4 w-4" />, typeId: ExerciseType.Gym },
+    { id: "circuit", name: "Circuits", icon: <RotateCcw className="h-4 w-4" />, typeId: ExerciseType.Circuit },
+    { id: "plyometric", name: "Plyometrics", icon: <ArrowUpCircle className="h-4 w-4" />, typeId: ExerciseType.Plyometric },
+    { id: "isometric", name: "Isometrics", icon: <Pause className="h-4 w-4" />, typeId: ExerciseType.Isometric },
+    { id: "sprint", name: "Sprints", icon: <Timer className="h-4 w-4" />, typeId: ExerciseType.Sprint },
+    { id: "drill", name: "Drills", icon: <Target className="h-4 w-4" />, typeId: ExerciseType.Drill },
+  ], [])
+  
+  // Limit section types when in group mode to only Sprint
+  const availableSectionTypes = useMemo(() =>
+    mode === 'group'
+      ? sectionTypes.filter(s => s.id === 'sprint')
+      : sectionTypes
+  , [mode, sectionTypes])
+
   // State for expanded sections
   const [expandedSections, setExpandedSections] = useState([])
   
@@ -84,17 +104,6 @@ const ExerciseSectionManager = memo(({
   
   // Reference to store previous supersets state to prevent unnecessary updates
   const prevSupersetsRef = useRef('');
-  
-  // Available section types based on ExerciseType enum
-  const sectionTypes = useMemo(() => [
-    { id: "warmup", name: "Warm-up", icon: <Flame className="h-4 w-4" />, typeId: ExerciseType.WarmUp },
-    { id: "gym", name: "Gym Exercises", icon: <Dumbbell className="h-4 w-4" />, typeId: ExerciseType.Gym },
-    { id: "circuit", name: "Circuits", icon: <RotateCcw className="h-4 w-4" />, typeId: ExerciseType.Circuit },
-    { id: "plyometric", name: "Plyometrics", icon: <ArrowUpCircle className="h-4 w-4" />, typeId: ExerciseType.Plyometric },
-    { id: "isometric", name: "Isometrics", icon: <Pause className="h-4 w-4" />, typeId: ExerciseType.Isometric },
-    { id: "sprint", name: "Sprints", icon: <Timer className="h-4 w-4" />, typeId: ExerciseType.Sprint },
-    { id: "drill", name: "Drills", icon: <Target className="h-4 w-4" />, typeId: ExerciseType.Drill },
-  ], [])
   
   // Initialize expanded sections
   useEffect(() => {
@@ -1020,7 +1029,8 @@ const ExerciseSectionManager = memo(({
           <div className="flex items-center gap-2">
             <ExerciseContextMenu
               exercise={exercise}
-              onCreateSuperset={handleCreateSuperset}
+              // disable superset creation in group mode
+              onCreateSuperset={mode === 'group' ? undefined : handleCreateSuperset}
               onRemoveExercise={handleRemoveExercise}
               onMoveExercise={handleMoveExercise}
               sessionId={sessionId}
@@ -1143,28 +1153,30 @@ const ExerciseSectionManager = memo(({
             index={idx}
             className="relative"
           >
-            {({isDragging}) => (
-              <SupersetContainer
-                supersetId={item.id}
-                exercises={item.exercises}
-                sectionId={sectionId}
-                onRemoveFromSuperset={handleRemoveFromSuperset}
-                onExitSuperset={handleExitSuperset}
-                onAddExerciseToSuperset={handleAddExerciseToSuperset}
-                availableExercises={filteredExercises}
-                isDraggable={true}
-                isDragging={isDragging}
-                displayNumber={displayNumber}
-                needsMoreExercises={item.exercises.length < 2}
-                dragHandleProps={{}} // Not needed with dnd-kit
-                onMoveSuperset={handleMoveSuperset}
-                disableMoveUp={idx === 0}
-                disableMoveDown={isLast}
-                onRemoveExercise={handleRemoveExercise}
-                sessionId={sessionId}
-                menuDirection="bottom"
-              />
-            )}
+            {({ isDragging }) =>
+              mode === 'group' ? null : (
+                <SupersetContainer
+                  supersetId={item.id}
+                  exercises={item.exercises}
+                  sectionId={sectionId}
+                  onRemoveFromSuperset={handleRemoveFromSuperset}
+                  onExitSuperset={handleExitSuperset}
+                  onAddExerciseToSuperset={handleAddExerciseToSuperset}
+                  availableExercises={filteredExercises}
+                  isDraggable={true}
+                  isDragging={isDragging}
+                  displayNumber={displayNumber}
+                  needsMoreExercises={item.exercises.length < 2}
+                  dragHandleProps={{}} // Not needed with dnd-kit
+                  onMoveSuperset={handleMoveSuperset}
+                  disableMoveUp={idx === 0}
+                  disableMoveDown={isLast}
+                  onRemoveExercise={handleRemoveExercise}
+                  sessionId={sessionId}
+                  menuDirection="bottom"
+                />
+              )
+            }
           </SortableItem>
         );
       }
@@ -1182,7 +1194,8 @@ const ExerciseSectionManager = memo(({
     handleCreateSuperset,
     handleRemoveExercise,
     handleMoveExercise,
-    sessionId
+    sessionId,
+    mode
   ]);
 
   // Effect to notify parent of supersets changes
@@ -1283,56 +1296,60 @@ const ExerciseSectionManager = memo(({
             
             {/* Add Section dropdown using custom implementation */}
             <div className="relative inline-block text-left">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex items-center gap-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAddSectionMenuOpen(!addSectionMenuOpen);
-                }}
-              >
-                <PlusCircle className="h-4 w-4" />
-                <span>Add Section</span>
-              </Button>
-              
-              {addSectionMenuOpen && (
-                <div 
-                  className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[3000] animate-in fade-in-50 zoom-in-95 duration-100"
-                >
-                  {/* Header showing available sections */}
-                  <div className="px-4 py-2 text-sm font-semibold border-b">
-                    Available sections: {sectionTypes.filter((type) => !activeSections.includes(type.id)).length}
-                  </div>
+              {mode !== 'group' && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAddSectionMenuOpen(!addSectionMenuOpen);
+                    }}
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    <span>Add Section</span>
+                  </Button>
                   
-                  {/* Section options */}
-                  <div className="px-1 py-1">
-                    {sectionTypes
-                      .filter((type) => !activeSections.includes(type.id))
-                      .map((type) => (
-                        <button
-                          key={type.id}
-                          className="group flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 hover:bg-blue-50 hover:text-blue-700"
-                          onClick={() => {
-                            handleAddSection(type.id);
-                            setAddSectionMenuOpen(false);
-                          }}
-                        >
-                          <div className="text-blue-500 mr-2">
-                            {type.icon}
-                          </div>
-                          <span className="font-medium">{type.name}</span>
-                        </button>
-                      ))}
-                    
-                    {/* Show message when all sections are added */}
-                    {sectionTypes.filter((type) => !activeSections.includes(type.id)).length === 0 && (
-                      <div className="px-2 py-2 text-sm text-gray-400">
-                        All section types added
+                  {addSectionMenuOpen && (
+                    <div 
+                      className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[3000] animate-in fade-in-50 zoom-in-95 duration-100"
+                    >
+                      {/* Header showing available sections */}
+                      <div className="px-4 py-2 text-sm font-semibold border-b">
+                        Available sections: {availableSectionTypes.filter((type) => !activeSections.includes(type.id)).length}
                       </div>
-                    )}
-                  </div>
-                </div>
+                      
+                      {/* Section options */}
+                      <div className="px-1 py-1">
+                        {availableSectionTypes
+                          .filter((type) => !activeSections.includes(type.id))
+                          .map((type) => (
+                            <button
+                              key={type.id}
+                              className="group flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 hover:bg-blue-50 hover:text-blue-700"
+                              onClick={() => {
+                                handleAddSection(type.id);
+                                setAddSectionMenuOpen(false);
+                              }}
+                            >
+                              <div className="text-blue-500 mr-2">
+                                {type.icon}
+                              </div>
+                              <span className="font-medium">{type.name}</span>
+                            </button>
+                          ))}
+                        
+                        {/* Show message when all sections are added */}
+                        {availableSectionTypes.filter((type) => !activeSections.includes(type.id)).length === 0 && (
+                          <div className="px-2 py-2 text-sm text-gray-400">
+                            All section types added
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1376,14 +1393,16 @@ const ExerciseSectionManager = memo(({
                               {getSectionExercises(sectionId).length} exercises
                             </Badge>
                           </div>
-                          {/* Delete button - simplified to just a minus icon */}
-                          <Minus 
-                            className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer" 
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent toggle
-                              handleRemoveSection(sectionId);
-                            }}
-                          />
+                          {/* hide remove button in group mode */}
+                          {mode !== 'group' && (
+                            <Minus
+                              className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRemoveSection(sectionId)
+                              }}
+                            />
+                          )}
                         </div>
                         
                         {expandedSections.includes(sectionId) && (

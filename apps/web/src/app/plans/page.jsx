@@ -1,4 +1,5 @@
 "use client"
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import MesoWizard from '../../components/mesoWizard/mesoWizard'
@@ -11,15 +12,22 @@ export const dynamic = 'force-dynamic'
 
 export default function PlansPage() {
   const router = useRouter()
+  // Controlled tab state to ensure Wizard is default on load
+  const [tab, setTab] = useState('wizard')
+
+  // Ensure Wizard tab is selected on initial load
+  useEffect(() => {
+    setTab('wizard')
+  }, [])
 
   // Handle completion of the wizard
   const handleComplete = (data) => {
     console.log('Training plan created:', data)
-    router.push('/workout')
+    router.push('/sessions')
   }
 
   return (
-    <Tabs defaultValue="wizard" className="min-h-screen">
+    <Tabs value={tab} onValueChange={setTab} className="min-h-screen">
       <TabsList className="flex space-x-4 p-4 bg-white">
         <TabsTrigger value="wizard">Wizard</TabsTrigger>
         <TabsTrigger value="calendar">Calendar</TabsTrigger>

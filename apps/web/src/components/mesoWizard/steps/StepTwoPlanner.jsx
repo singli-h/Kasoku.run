@@ -252,7 +252,11 @@ const StepTwoPlanner = ({
                       <Button
                         size="sm"
                         variant={session.sessionMode === 'group' ? 'default' : 'outline'}
-                        onClick={() => handleSessionInputChange(session.id, 'sessionMode', 'group')}
+                        onClick={() => {
+                          handleSessionInputChange(session.id, 'sessionMode', 'group')
+                          // force only sprint section
+                          handleSetActiveSections(session.id, ['sprint'])
+                        }}
                         className="flex items-center"
                       >
                         <Users className="mr-1 h-4 w-4" />
@@ -264,7 +268,7 @@ const StepTwoPlanner = ({
               </CardContent>
             </Card>
 
-            {/* Exercise Section Manager */}
+            {/* Compute sections shown based on mode */}
             <ExerciseSectionManager
               sessionId={session.id}
               exercises={formData.exercises}
@@ -276,7 +280,10 @@ const StepTwoPlanner = ({
               getOrderedExercises={getOrderedExercises}
               errors={errors}
               activeSections={sessionSections[session.id] || []}
-              setActiveSections={(sections) => handleSetActiveSections(session.id, sections)}
+              setActiveSections={(sections) =>
+                handleSetActiveSections(session.id, sections)
+              }
+              mode={session.sessionMode}
               onSupersetChange={(supersets) => handleSupersetChange(session.id, supersets)}
             />
             
@@ -285,6 +292,7 @@ const StepTwoPlanner = ({
               sessionId={session.id}
               exercises={formData.exercises}
               activeSections={sessionSections[session.id] || []}
+              mode={session.sessionMode}
               handleExerciseDetailChange={handleExerciseDetailChange}
               errors={errors}
               getSectionName={getSectionName}

@@ -62,16 +62,23 @@ export const useExerciseData = () => {
         
         const data = await response.json();
         
-        // Extract all training details into the flat array
-        const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets
-          ?.flatMap(preset => {
-            // Handle both existing training_details and preset_details for assigned sessions
-            const details = preset.exercise_training_details ?? preset.exercise_preset_details ?? [];
-            return details.map(detail => ({
-              ...detail,
-              exercise_preset_id: preset.id
-            }));
-          }) || [];
+        // Normalize preset groups into an array
+        const presetGroupsRaw = data.data.session?.details?.exercise_preset_groups;
+        const presetGroups = Array.isArray(presetGroupsRaw)
+          ? presetGroupsRaw
+          : presetGroupsRaw
+            ? [presetGroupsRaw]
+            : [];
+
+        // Extract all training details
+        const presets = presetGroups.flatMap(group => group.exercise_presets ?? []);
+        const allTrainingDetails = presets.flatMap(preset => {
+          const details = preset.exercise_training_details ?? preset.exercise_preset_details ?? [];
+          return details.map(detail => ({
+            ...detail,
+            exercise_preset_id: preset.id
+          }));
+        });
         
         setTrainingDetails(allTrainingDetails);
         
@@ -103,7 +110,14 @@ export const useExerciseData = () => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
 
-      const exercisePresets = state.session.details.exercise_preset_groups.exercise_presets;
+      // Normalize and flatten preset groups for session start
+      const presetGroupsRawSS = state.session.details.exercise_preset_groups;
+      const presetGroupsSS = Array.isArray(presetGroupsRawSS)
+        ? presetGroupsRawSS
+        : presetGroupsRawSS
+          ? [presetGroupsRawSS]
+          : [];
+      const exercisePresets = presetGroupsSS.flatMap(group => group.exercise_presets ?? []);
       const exercisesDetail = exercisePresets.map(preset => ({
         name: preset.exercises.name,
         sets: preset.exercise_training_details.length,
@@ -162,15 +176,23 @@ export const useExerciseData = () => {
       
       const data = await response.json();
 
-      // Refresh the flat training details array
-      const allTrainingDetails = data.data.session?.details?.exercise_preset_groups?.exercise_presets
-        ?.flatMap(preset => {
-          const details = preset.exercise_training_details ?? preset.exercise_preset_details ?? [];
-          return details.map(detail => ({
-            ...detail,
-            exercise_preset_id: preset.id
-          }));
-        }) || [];
+      // Normalize preset groups into an array for refresh
+      const presetGroupsRawRefresh = data.data.session?.details?.exercise_preset_groups;
+      const presetGroupsRefresh = Array.isArray(presetGroupsRawRefresh)
+        ? presetGroupsRawRefresh
+        : presetGroupsRawRefresh
+          ? [presetGroupsRawRefresh]
+          : [];
+
+      // Extract all training details
+      const presetsRefresh = presetGroupsRefresh.flatMap(group => group.exercise_presets ?? []);
+      const allTrainingDetails = presetsRefresh.flatMap(preset => {
+        const details = preset.exercise_training_details ?? preset.exercise_preset_details ?? [];
+        return details.map(detail => ({
+          ...detail,
+          exercise_preset_id: preset.id
+        }));
+      });
       
       setTrainingDetails(allTrainingDetails);
       
@@ -313,15 +335,14 @@ export const useExerciseData = () => {
 
   // Helper to get all exercises for a specific section
   const getExercisesForSection = useCallback((sectionName) => {
-    const session = state.session;
-    if (!session || !session.details || !session.details.exercise_preset_groups) {
-      return [];
-    }
-    
-    // Filter exercises to this section
-    return session.details.exercise_preset_groups.exercise_presets.filter(
-      preset => preset.exercises.location === sectionName
-    );
+    const presetGroupsRaw = state.session?.details?.exercise_preset_groups;
+    const presetGroups = Array.isArray(presetGroupsRaw)
+      ? presetGroupsRaw
+      : presetGroupsRaw
+        ? [presetGroupsRaw]
+        : [];
+    const presets = presetGroups.flatMap(group => group.exercise_presets ?? []);
+    return presets.filter(preset => preset.exercises.location === sectionName);
   }, [state.session]);
 
   // Check if a section is empty
@@ -333,6 +354,11 @@ export const useExerciseData = () => {
   const markSetCompleted = useCallback((detailId, completed = true) => {
     updateTrainingDetail(detailId, { completed });
   }, [updateTrainingDetail]);
+
+  // Determine session state flags
+  const isAssigned = state.session?.type === 'assigned';
+  const isOngoing = state.session?.type === 'ongoing';
+  const isCompleted = state.session?.type === 'completed';
 
   return {
     isLoading: state.isLoading,
@@ -350,6 +376,9 @@ export const useExerciseData = () => {
     getExercisesForSection,
     isSectionEmpty,
     markSetCompleted,
+    isAssigned,
+    isOngoing,
+    isCompleted,
     version: state._version
   };
 }; 

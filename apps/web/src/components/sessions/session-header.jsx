@@ -1,26 +1,42 @@
 import React, { useMemo, useState } from 'react'
 import { useSession } from './session-context'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/toast'
 import { mutate } from 'swr'
 
 export default function SessionHeader({ onConfigRuns }) {
-  const { activeGroup, athletes, presets, trainingSessions, trainingDetails } = useSession()
+  const { groups, activeGroup, athletes, presetGroups, trainingSessions, trainingDetails } = useSession()
   const [actionLoading, setActionLoading] = useState(false)
+  const { toast } = useToast()
 
-  // Derive run headers (index + distance) from presets, ensuring at least four runs
+  // Only operate on all groups sharing the current activeGroup date
+  const sameDateGroups = useMemo(() => groups.filter(g => g.date === activeGroup?.date), [groups, activeGroup?.date])
+
+  // Determine flow state
+  const hasPending = trainingSessions.some(s => s.status === 'pending')
+  const hasOngoing = trainingSessions.some(s => s.status === 'ongoing')
+  // allow update when session not pending or ongoing
+  const canUpdate = !hasPending && !hasOngoing
+  const isLocked = hasPending
+
+  // Derive run headers including exercise name
   const runHeaders = useMemo(() => {
-    const map = new Map()
-    // Map each set_index to its DB distance (last one wins)
-    presets.forEach(p => map.set(p.set_index, p.distance))
-    // Ensure at least the first four runs exist
-    for (let i = 1; i <= 4; i++) {
-      if (!map.has(i)) map.set(i, 0)
-    }
-    // Build array of { idx, distance } sorted by idx
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a - b)
-      .map(([idx, distance]) => ({ idx, distance }))
-  }, [presets])
+    const headers = []
+    if (!presetGroups) return headers
+    // sort groups by order, flatten each detail, and include exercise name
+    presetGroups
+      .slice()
+      .sort((a,b) => a.order - b.order)
+      .forEach(pg => {
+        pg.details
+          .slice()
+          .sort((a,b) => a.set_index - b.set_index)
+          .forEach(detail => {
+            headers.push({ setIndex: detail.set_index, distance: detail.distance, name: pg.name })
+          })
+      })
+    return headers.map((h,i) => ({ idx: i+1, ...h }))
+  }, [presetGroups])
 
   const sessionMap = useMemo(() => {
     const m = {}
@@ -37,13 +53,13 @@ export default function SessionHeader({ onConfigRuns }) {
   }, [trainingDetails])
 
   const exportCsv = () => {
-    // Build CSV: header then rows, including distances
-    const header = ['Athlete', ...runHeaders.map(r => `Run ${r.idx} (${r.distance}m)`)]
+    // Build CSV with exercise name headers
+    const header = ['Athlete', ...runHeaders.map(r => `${r.distance}m ${r.name}`)]
     const rows = athletes.map(a => {
       const row = [a.name]
       runHeaders.forEach(r => {
         const sid = sessionMap[a.id]
-        const key = `${sid}:${r.idx}`
+        const key = `${sid}:${r.setIndex}`
         const detail = sid ? detailMap[key] : null
         row.push(detail?.duration != null ? detail.duration.toFixed(2) : '')
       })
@@ -55,38 +71,60 @@ export default function SessionHeader({ onConfigRuns }) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `session-${activeGroup.name}-${activeGroup.date}.csv`
+    a.download = `sessions-${activeGroup.date}.csv`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
   }
 
   // Determine session-state controls
-  const hasPending = trainingSessions.some(s => s.status === 'pending')
-  const hasOngoing = trainingSessions.some(s => s.status === 'ongoing')
-  
   const startSession = async () => {
     setActionLoading(true)
-    await fetch(`/api/coach/sessions/${activeGroup.id}/start`, { method: 'PATCH', credentials: 'include' })
-    await mutate('/api/coach/sessions')
-    setActionLoading(false)
+    try {
+      // Start sessions for all groups on the same date
+      await Promise.all(sameDateGroups.map(g =>
+        fetch(`/api/coach/sessions/${g.id}/start`, { method: 'PATCH', credentials: 'include' })
+      ))
+      await mutate('/api/coach/sessions')
+      toast({ title: 'Session started', description: 'Group session is now ongoing.', variant: 'success' })
+    } catch (err) {
+      console.error(err)
+      toast({ title: 'Error starting session', description: err.message || 'Failed to start session.', variant: 'destructive' })
+    } finally {
+      setActionLoading(false)
+    }
   }
   const completeSession = async () => {
     setActionLoading(true)
-    await fetch(`/api/coach/sessions/${activeGroup.id}/complete`, { method: 'PATCH', credentials: 'include' })
-    await mutate('/api/coach/sessions')
-    setActionLoading(false)
+    try {
+      // Complete sessions for all groups on the same date
+      await Promise.all(sameDateGroups.map(g =>
+        fetch(`/api/coach/sessions/${g.id}/complete`, { method: 'PATCH', credentials: 'include' })
+      ))
+      await mutate('/api/coach/sessions')
+      toast({ title: 'Session completed', description: 'Group session has been completed.', variant: 'success' })
+    } catch (err) {
+      console.error(err)
+      toast({ title: 'Error completing session', description: err.message || 'Failed to complete session.', variant: 'destructive' })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+  const updateSession = async () => {
+    setActionLoading(true)
+    try {
+      // Refresh all sessions
+      await mutate('/api/coach/sessions')
+      toast({ title: 'Session updated', variant: 'success' })
+    } catch {} finally {
+      setActionLoading(false)
+    }
   }
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="bg-white border border-gray-200 rounded-lg px-6 py-4 mb-6 flex items-center justify-between">
       <div>
-        <h2 className="text-2xl font-bold">
-          {typeof activeGroup.group_name === 'object'
-            ? activeGroup.group_name.group_name
-            : activeGroup.group_name || activeGroup.name}
-        </h2>
-        <p className="text-sm text-gray-500">{activeGroup.date}</p>
+        <p className="text-xl">{activeGroup.date}</p>
       </div>
       <div className="flex space-x-2">
         {hasPending && (
@@ -97,6 +135,11 @@ export default function SessionHeader({ onConfigRuns }) {
         {hasOngoing && (
           <Button size="sm" variant="outline" onClick={completeSession} disabled={actionLoading}>
             {actionLoading ? 'Finishing...' : 'Complete Session'}
+          </Button>
+        )}
+        {canUpdate && (
+          <Button size="sm" variant="outline" onClick={updateSession} disabled={actionLoading}>
+            {actionLoading ? 'Updating...' : 'Update Session'}
           </Button>
         )}
         <Button variant="outline" size="sm" onClick={exportCsv}>Export CSV</Button>

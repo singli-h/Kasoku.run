@@ -15,8 +15,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
  * @param {Object} props - Component props
  * @param {Object} props.exercise - Exercise to edit
  * @param {Function} props.handleExerciseDetailChange - Function to handle detail changes
+ * @param {string} props.mode - Mode of the exercise
  */
-const ExerciseDetailFields = ({ exercise, handleExerciseDetailChange }) => {
+const ExerciseDetailFields = ({ exercise, handleExerciseDetailChange, mode }) => {
   const [isOpen, setIsOpen] = useState(false)
   
   // Handle input change
@@ -42,35 +43,51 @@ const ExerciseDetailFields = ({ exercise, handleExerciseDetailChange }) => {
         
         <div className="space-y-4 py-2 bg-white max-h-[400px] overflow-y-auto pr-2">
           {/* Basic Fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="sets" className="text-sm font-medium">
-                Sets
+          {mode === 'group' ? (
+            <div className="mb-4">
+              <Label htmlFor="duration" className="text-sm font-medium">
+                Time (sec)
               </Label>
               <Input
-                id="sets"
-                type="number"
-                min="1"
-                value={exercise.sets || ""}
-                onChange={(e) => handleInputChange("sets", e.target.value)}
-                className="mt-1 h-10"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="reps" className="text-sm font-medium">
-                Reps
-              </Label>
-              <Input
-                id="reps"
+                id="duration"
                 type="number"
                 min="0"
-                value={exercise.reps || ""}
-                onChange={(e) => handleInputChange("reps", e.target.value)}
-                className="mt-1 h-10"
+                step="0.01"
+                value={exercise.duration || ""}
+                onChange={(e) => handleInputChange("duration", e.target.value)}
+                className="mt-1 h-10 w-full"
               />
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="sets" className="text-sm font-medium">
+                  Sets
+                </Label>
+                <Input
+                  id="sets"
+                  type="number"
+                  min="1"
+                  value={exercise.sets || ""}
+                  onChange={(e) => handleInputChange("sets", e.target.value)}
+                  className="mt-1 h-10"
+                />
+              </div>
+              <div>
+                <Label htmlFor="reps" className="text-sm font-medium">
+                  Reps
+                </Label>
+                <Input
+                  id="reps"
+                  type="number"
+                  min="0"
+                  value={exercise.reps || ""}
+                  onChange={(e) => handleInputChange("reps", e.target.value)}
+                  className="mt-1 h-10"
+                />
+              </div>
+            </div>
+          )}
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

@@ -27,9 +27,8 @@ function parsePgIntervalToSeconds(interval) {
   return interval
 }
 
-export function SessionProvider({ children }) {
-  // We'll use fetch to call our server routes to modify training details
-  // helper to call our Next.js API
+export function SessionProvider({ overrideGroup = null, children }) {
+  // We'll use fetch to call our Next.js API
   const fetcher = url => fetch(url, { credentials: 'include' }).then(res => res.json())
 
   // 1) Get all sessions for this coach; server route handles authentication and coach lookup
@@ -37,16 +36,20 @@ export function SessionProvider({ children }) {
   // Use API responses (already flattened) directly
   const groups = sessJson?.sessions || []
 
-  // 2) Determine active group: today, next, last
-  const [activeGroup, setActiveGroup] = useState(null)
+  // 2) Determine active group, allowing overrideGroup to take precedence
+  const [activeGroup, setActiveGroup] = useState(overrideGroup || null)
   useEffect(() => {
+    if (overrideGroup) {
+      setActiveGroup(overrideGroup)
+      return
+    }
     if (!groups.length) return
     const today = new Date().toISOString().split('T')[0]
     let sel = groups.find(g => g.date === today)
     if (!sel) sel = groups.find(g => g.date > today)
     if (!sel) sel = [...groups].reverse().find(g => g.date < today)
     setActiveGroup(sel || null)
-  }, [groups])
+  }, [groups, overrideGroup])
 
   // 3) Ensure training sessions exist once per group (retry on failure)
   const createdSessions = useRef({})
@@ -84,32 +87,28 @@ export function SessionProvider({ children }) {
     ? athletesAll.filter(a => a.athlete_group_id === activeGroup.athlete_group_id)
     : []
 
-  // 4) Derive presets from activeGroup (filter only Sprint/Plyo)
-  const presets = activeGroup
+  // 4) Derive all sprint-type preset groups (flat, hill, resisted, etc.)
+  const sprintTypeIds = [6 /* flat sprint */, 7 /* hill sprint */, 8 /* resisted sprint */]
+  const presetGroups = activeGroup
     ? activeGroup.exercise_presets
-      .filter(p => [2, 6].includes(p.exercises?.exercise_type_id))
-      .flatMap(p =>
-        p.exercise_preset_details.map(d => ({
-          preset_id: p.id,
-          set_index: d.set_index,
-          distance: d.distance
+        .filter(p => sprintTypeIds.includes(p.exercises.exercise_type_id))
+        .map(p => ({
+          id: p.id,
+          exerciseId: p.exercise_id,
+          order: p.preset_order,
+          name: p.metadata?.exerciseName || p.exercises.name,
+          details: p.exercise_preset_details
+            .sort((a,b) => a.set_index - b.set_index)
+            .map(d => ({ set_index: d.set_index, distance: d.distance }))
         }))
-      )
     : []
-
-  // Identify the sprint preset and map run index → exercise_preset_id
-  const sprintPresetId = activeGroup?.exercise_presets.find(
-    p => p.exercises?.exercise_type_id === 6
-  )?.id
-  const getPresetId = si =>
-    presets.find(p => p.set_index === si)?.preset_id ?? sprintPresetId
 
   // 5) trainingSessions loaded in activeGroup via server route
   const trainingSessions = activeGroup
     ? activeGroup.exercise_training_sessions
     : []
 
-  // 6) Derive trainingDetails from activeGroup
+  // 6) Derive flattened trainingDetails for all presets
   const trainingDetails = trainingSessions.flatMap(s =>
     s.exercise_training_details.map(d => ({
       ...d,
@@ -142,43 +141,28 @@ export function SessionProvider({ children }) {
     await mutate('/api/coach/sessions')
   }
 
-  // Save/update a single athlete's time
-  const saveTime = (athleteId, setIndex, duration) =>
-    upsertDetail({
-      athleteId,
-      presetId: getPresetId(setIndex),
-      setIndex,
-      fields: { duration }
-    })
+  // Save/update a single athlete's time for a given preset
+  const saveTime = (athleteId, presetId, setIndex, duration) =>
+    upsertDetail({ athleteId, presetId, setIndex, fields: { duration } })
 
-  // Change distance for all athletes on a given run
-  const changeDistance = (setIndex, distance) =>
+  // Change distance for all athletes on a given preset-run
+  const changeDistance = (presetId, setIndex, distance) =>
     Promise.all(
       athletes.map(a =>
-        upsertDetail({
-          athleteId: a.id,
-          presetId:  getPresetId(setIndex),
-          setIndex,
-          fields:    { distance }
-        })
+        upsertDetail({ athleteId: a.id, presetId, setIndex, fields: { distance } })
       )
     )
 
-  // Add a new run (distance) for all athletes
-  const addRun = (setIndex, distance) =>
+  // Add a new run (distance) for all athletes under a preset
+  const addRun = (presetId, setIndex, distance) =>
     Promise.all(
       athletes.map(a =>
-        upsertDetail({
-          athleteId: a.id,
-          presetId:  getPresetId(setIndex),
-          setIndex,
-          fields:    { distance }
-        })
+        upsertDetail({ athleteId: a.id, presetId, setIndex, fields: { distance } })
       )
     )
 
   // Remove a run for all athletes via DELETE on our training-details API
-  const removeRun = (setIndex) =>
+  const removeRun = (presetId, setIndex) =>
     Promise.all(
       athletes.map(a =>
         fetch(
@@ -189,7 +173,7 @@ export function SessionProvider({ children }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               athleteId: a.id,
-              presetId:  getPresetId(setIndex),
+              presetId,
               setIndex
             })
           }
@@ -202,16 +186,26 @@ export function SessionProvider({ children }) {
     )
 
   // Save distance for a single athlete on a specific run
-  const saveDistance = (athleteId, setIndex, distance) =>
-    upsertDetail({
-      athleteId,
-      presetId: getPresetId(setIndex),
-      setIndex,
-      fields: { distance }
-    })
+  const saveDistance = (athleteId, presetId, setIndex, distance) =>
+    upsertDetail({ athleteId, presetId, setIndex, fields: { distance } })
 
   const isLoading = sessErr || athErr
-  const value = { activeGroup, athletes, presets, trainingSessions, trainingDetails, saveTime, saveDistance, changeDistance, addRun, removeRun, isLoading, error: sessErr || athErr }
+  const value = {
+    groups,
+    athletesAll,
+    activeGroup,
+    athletes,
+    presetGroups,
+    trainingSessions,
+    trainingDetails,
+    saveTime,
+    saveDistance,
+    changeDistance,
+    addRun,
+    removeRun,
+    isLoading: Boolean(sessErr || athErr),
+    error: sessErr || athErr
+  }
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
 

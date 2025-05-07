@@ -113,16 +113,16 @@ export const useMesoWizardState = (onComplete) => {
     setFormData((prev) => {
       const updatedSessions = [...prev.sessions]
       const sessionIndex = updatedSessions.findIndex((s) => s.id === sessionId)
-      
       if (sessionIndex !== -1) {
-        updatedSessions[sessionIndex] = {
-          ...updatedSessions[sessionIndex],
-          [field]: value,
-        }
+        updatedSessions[sessionIndex] = { ...updatedSessions[sessionIndex], [field]: value }
       }
-      // Debug log to confirm field update
+      // If switching to group mode, clear any existing exercises for this session
+      let updatedExercises = prev.exercises
+      if (field === 'sessionMode' && value === 'group') {
+        updatedExercises = prev.exercises.filter(ex => ex.session !== sessionId)
+      }
       console.log(`[useMesoWizardState] session ${sessionId} updated ${field} ->`, value, updatedSessions[sessionIndex]);
-      return { ...prev, sessions: updatedSessions }
+      return { ...prev, sessions: updatedSessions, exercises: updatedExercises }
     })
     
     // Clear errors for this field if any
@@ -138,6 +138,15 @@ export const useMesoWizardState = (onComplete) => {
 
   // Handle adding an exercise
   const handleAddExercise = useCallback((exercise) => {
+    // Determine group mode: either sessionMode is 'group' or only sprint section active
+    const sessionObj = formData.sessions.find(s => s.id === activeSession)
+    const sectionList = sessionSections[activeSession] || []
+    const isGroupMode = sessionObj?.sessionMode === 'group' 
+       || (sectionList.length === 1 && sectionList[0] === 'sprint')
+    // Always use 1x1 for sprint exercises, otherwise use group mode logic
+    const isSprint = exercise.type === 'sprint' || exercise.section === 'sprint'
+    const defaultSets = isSprint || isGroupMode ? 1 : 0
+    const defaultReps = isSprint || isGroupMode ? 1 : 0
     // Determine the appropriate section to add the exercise to
     const targetSection = exercise.section || exercise.type;
     
@@ -155,14 +164,15 @@ export const useMesoWizardState = (onComplete) => {
     // Create the new exercise with a position value one higher than the current maximum
     const newExerciseWithPos = {
       ...exercise,
-      id: Date.now(), // Generate a new unique ID *only* for the frontend id property
+      id: Date.now(),
       session: activeSession,
       part: exercise.type,
-      section: exercise.section || null, // Preserve section for superset exercises
-      sets: "",
-      reps: "",
+      section: exercise.section || null,
+      sets: defaultSets,
+      reps: defaultReps,
       rest: "",
-      position: maxPosition + 1, // Set position to be after all existing exercises
+      duration: "",
+      position: maxPosition + 1,
     }
     
     // *** Log the object right before adding to state ***
@@ -182,7 +192,7 @@ export const useMesoWizardState = (onComplete) => {
         [sectionKey]: [...currentOrder, newExerciseWithPos.id]
       }
     })
-  }, [activeSession, formData.exercises])
+  }, [activeSession, formData.exercises, formData.sessions, sessionSections])
 
   // Handle removing an exercise
   const handleRemoveExercise = useCallback((id, session, part) => {
@@ -366,6 +376,10 @@ export const useMesoWizardState = (onComplete) => {
         newErrors.startDate = "Start date is required"
       }
       
+      if (!formData.athleteGroupId) {
+        newErrors.athleteGroupId = "Please select an athlete group"
+      }
+      
       // For microcycle, duration is fixed at 1 week and doesn't need validation
       if (formData.planType !== "microcycle") {
         if (!formData.duration) {
@@ -409,18 +423,22 @@ export const useMesoWizardState = (onComplete) => {
       
       // Validate exercises
       formData.exercises.forEach((exercise) => {
-        if (!exercise.sets) {
-          newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`] = "Sets required"
-        } else if (isNaN(exercise.sets) || parseInt(exercise.sets) <= 0) {
-          newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`] = "Sets must be a positive number"
+        // Skip sets/reps validation in group mode
+        const sessionObj = formData.sessions.find(s => s.id === exercise.session);
+        const isGroupModeExercise = sessionObj?.sessionMode === 'group';
+        if (!isGroupModeExercise) {
+          if (!exercise.sets) {
+            newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`] = "Sets required"
+          } else if (isNaN(exercise.sets) || parseInt(exercise.sets) <= 0) {
+            newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`] = "Sets must be a positive number"
+          }
+
+          if (!exercise.reps) {
+            newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`] = "Reps required"
+          } else if (isNaN(exercise.reps) || parseInt(exercise.reps) <= 0) {
+            newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`] = "Reps must be a positive number"
+          }
         }
-        
-        if (!exercise.reps) {
-          newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`] = "Reps required"
-        } else if (isNaN(exercise.reps) || parseInt(exercise.reps) <= 0) {
-          newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`] = "Reps must be a positive number"
-        }
-        
         if (isNaN(exercise.rest) || parseInt(exercise.rest) <= 0) {
           newErrors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-rest`] = "Rest time must be a positive number"
         }
@@ -485,160 +503,55 @@ export const useMesoWizardState = (onComplete) => {
       } catch (error) {
         console.error(`Error submitting ${formData.planType || "mesocycle"}:`, error)
         setErrors({ 
-          submit: saveError || `Failed to submit ${formData.planType || "mesocycle"}. Please try again.` 
+          submit: saveError || `Error: ${error?.message || 'Unknown error occurred'}`
         })
-      } finally {
-        setIsLoading(false)
       }
     }
-  }, [step, formData, aiSuggestions, validateStep, onComplete, saveMesocycle, saveError, allExercises])
+  }, [step, validateStep, errors, saveMesocycle, allExercises, aiSuggestions, onComplete, saveError])
 
-  // Initialize sessions based on sessionsPerWeek
+  // Generate default session entries when moving to exercise planning (step 3)
   useEffect(() => {
-    if (formData.sessionsPerWeek && !isNaN(formData.sessionsPerWeek)) {
-      const numSessions = parseInt(formData.sessionsPerWeek)
-      
-      if (numSessions > 0) {
-        const newSessions = Array.from({ length: numSessions }, (_, i) => ({
-          id: i + 1,
-          name: `Session ${i + 1}`,
-          progressionModel: "",
-          progressionValue: "",
-          weekday: "",
-          sessionMode: "individual", // default per session
-        }))
-        
-        setFormData((prev) => ({ ...prev, sessions: newSessions }))
-        
-        // Initialize session sections
-        const initialSections = {}
-        newSessions.forEach((session) => {
-          initialSections[session.id] = ["warmup", "gym"]
-        })
-        
-        setSessionSections(initialSections)
-        
-        // Set active session to 1
-        setActiveSession(1)
-      }
+    if (step === 3 && formData.sessions.length === 0) {
+      const weeks = formData.planType === 'microcycle' ? 1 : Number(formData.duration) || 1;
+      const perWeek = Number(formData.sessionsPerWeek) || 0;
+      const totalSessions = weeks * perWeek;
+      const newSessions = Array.from({ length: totalSessions }, (_, i) => ({
+        id: i + 1,
+        name: '',
+        weekday: '',
+        sessionMode: 'individual',
+        progressionModel: '',
+        progressionValue: ''
+      }));
+      setFormData(prev => ({ ...prev, sessions: newSessions }));
     }
-  }, [formData.sessionsPerWeek])
+  }, [step, formData.duration, formData.sessionsPerWeek, formData.planType, formData.sessions.length]);
 
-  // Generate AI suggestions when moving to step 3
-  useEffect(() => {
-    if (step === 3 && !aiSuggestions) {
-      setIsLoading(true)
-      
-      // Simulate API call to get AI suggestions
-      setTimeout(() => {
-        if (formData.planType === "microcycle") {
-          // Microcycle-specific suggestions
-          setAiSuggestions({
-            overall: "Your microcycle plan looks good. Here are some suggestions to optimize your one-week training:",
-            suggestions: [
-              {
-                id: 1,
-                text: "Balance your training intensity throughout the week to avoid fatigue",
-                accepted: false,
-              },
-              {
-                id: 2,
-                text: "Add variety to your exercise selection to keep workouts engaging",
-                accepted: false,
-              },
-              {
-                id: 3,
-                text: "Ensure at least one full rest day in your weekly schedule",
-                accepted: false,
-              },
-            ],
-          });
-        } else {
-          // Mesocycle suggestions
-          setAiSuggestions({
-            overall: "Your mesocycle looks well-structured. Here are some suggestions to optimize it further:",
-            suggestions: [
-              {
-                id: 1,
-                text: "Add more compound movements to maximize strength gains",
-                accepted: false,
-              },
-              {
-                id: 2,
-                text: "Consider adding a deload week at the end of the mesocycle",
-                accepted: false,
-              },
-              {
-                id: 3,
-                text: "Increase rest periods for heavy compound lifts to 3-5 minutes",
-                accepted: false,
-              },
-            ],
-          });
-        }
-        
-        setIsLoading(false)
-      }, 2000)
-    }
-  }, [step, aiSuggestions, formData.planType])
-
-  // Get ordered exercises for a section
+  // Helper to get ordered exercises for a session and section
   const getOrderedExercises = useCallback((sessionId, sectionId) => {
-    // Get exercises that either:
-    // 1. Belong to this section directly (part === sectionId) AND are not in a superset, or
-    // 2. Are part of a superset that belongs to this section (section === sectionId)
-    // This ensures each exercise only appears in its designated section
-    
-    const sectionExercises = formData.exercises.filter(
-      ex => (ex.session === sessionId) && (
-        // Regular exercises that belong to this section (by type) and aren't in a superset
-        (ex.part === sectionId && !ex.supersetId) || 
-        // Exercises that are part of a superset that's assigned to this section
-        (ex.supersetId && ex.section === sectionId)
-      )
-    );
-    
-    // If we have a custom order, use it
-    const sectionKey = `${sessionId}-${sectionId}`;
-    if (exerciseOrder[sectionKey] && exerciseOrder[sectionKey].length > 0) {
-      const orderedIds = exerciseOrder[sectionKey];
-      return orderedIds
-        .map(id => sectionExercises.find(e => e.id === id))
-        .filter(Boolean) // Filter out undefined (in case some exercises were removed)
-        .concat(sectionExercises.filter(e => !orderedIds.includes(e.id))); // Append any exercises not in the order
-    }
-    
-    // Otherwise return as-is
-    return sectionExercises;
-  }, [formData.exercises, exerciseOrder]);
+    // Filter exercises for this session and section
+    return formData.exercises
+      .filter(ex => ex.session === sessionId && (ex.section === sectionId || (ex.section === null && ex.part === sectionId)))
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
+  }, [formData.exercises]);
 
   return {
-    // State
+    // Include athlete groups fetched via SWR
+    groups,
     step,
     formData,
     searchTerm,
     filteredExercises,
     activeSession,
-    isLoading: isLoading || isSubmitting,
-    loadingExercises,
+    isLoading,
     aiSuggestions,
     errors,
     sessionSections,
-    progressPercentage,
     exerciseOrder,
-    groups,
+    progressPercentage,
+    loadingExercises,
     groupLoading,
-    
-    // Handlers
-    setStep,
-    setFormData,
-    setSearchTerm,
-    setFilteredExercises,
-    setActiveSession,
-    setIsLoading,
-    setAiSuggestions,
-    setErrors,
-    setSessionSections,
+    getOrderedExercises,
     handleInputChange,
     handleSessionInputChange,
     handleAddExercise,
@@ -649,10 +562,9 @@ export const useMesoWizardState = (onComplete) => {
     handleProgressionValueChange,
     handleAcceptSuggestion,
     handleSetActiveSections,
-    getOrderedExercises,
     validateStep,
     handleNext,
     handleBack,
-    handleSubmit,
+    handleSubmit
   }
-} 
+}

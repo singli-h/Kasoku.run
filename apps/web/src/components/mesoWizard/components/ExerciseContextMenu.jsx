@@ -182,23 +182,25 @@ const ExerciseContextMenu = memo(({
         Exercise Options
       </div>
 
-      {/* Superset Options */}
-      <div className="px-1 py-1">
-        {exercise.supersetId ? (
-          <div className="flex items-center px-2 py-1.5 text-sm text-gray-400 cursor-not-allowed">
-            <Layers className="mr-2 h-4 w-4" />
-            <span>Already in a superset</span>
-          </div>
-        ) : (
-          <button
-            className="group flex w-full items-center rounded-md px-2 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-            onClick={handleCreateSupersetClick}
-          >
-            <Layers className="mr-2 h-4 w-4" />
-            Create Superset
-          </button>
-        )}
-      </div>
+      {/* Superset Options (only if superset creation is enabled) */}
+      {onCreateSuperset && (
+        <div className="px-1 py-1">
+          {exercise.supersetId ? (
+            <div className="flex items-center px-2 py-1.5 text-sm text-gray-400 cursor-not-allowed">
+              <Layers className="mr-2 h-4 w-4" />
+              <span>Already in a superset</span>
+            </div>
+          ) : (
+            <button
+              className="group flex w-full items-center rounded-md px-2 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              onClick={handleCreateSupersetClick}
+            >
+              <Layers className="mr-2 h-4 w-4" />
+              Create Superset
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Move Options */}
       <div className="px-1 py-1">
