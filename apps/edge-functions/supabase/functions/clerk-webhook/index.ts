@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0'
 import { Webhook } from 'https://esm.sh/svix@1.7.0'
@@ -26,6 +27,22 @@ const supabase = createClient(
 )
 
 Deno.serve(async (req) => {
+  // Validate required environment variables
+  if (!clerkWebhookSecret) {
+    console.error('Missing CLERK_WEBHOOK_SECRET environment variable');
+    return new Response(
+      JSON.stringify({ error: 'Missing CLERK_WEBHOOK_SECRET environment variable' }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable');
+    return new Response(
+      JSON.stringify({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable' }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -88,19 +105,6 @@ Deno.serve(async (req) => {
 
     // Now `evt` contains the verified webhook payload
     const { type, data } = evt
-
-    // Log the webhook event
-    const { error: logError } = await supabase
-      .from('webhook_logs')
-      .insert({
-        event_type: type,
-        payload: evt
-      })
-
-    if (logError) {
-      console.error('Error logging webhook:', logError)
-      // Continue processing even if logging fails
-    }
 
     // Handle different event types
     switch (type) {

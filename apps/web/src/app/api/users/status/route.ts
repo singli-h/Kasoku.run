@@ -22,6 +22,13 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (error) {
+      // No user record yet: treat as not onboarded
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({
+          status: 'success',
+          data: { onboarding_completed: false, subscription_status: null }
+        }, { status: 200 });
+      }
       console.error('[API] Error fetching user status:', error);
       return NextResponse.json(
         { status: 'error', message: error.message },

@@ -24,26 +24,40 @@ export async function POST(req: NextRequest) {
 
   try {
     if (type === 'user.created') {
-      const { id, email_addresses, first_name, last_name, username, created_at } = data;
+      const { id: clerkId, email_addresses, first_name, last_name, username } = data;
       const primaryEmail = email_addresses.find((e: any) => e.id === data.primary_email_address_id)?.email_address;
 
-      await supabase.from('users').insert({
-        clerk_id: id,
-        email: primaryEmail,
-        username: username || (first_name?.toLowerCase() || ''),
-        first_name: first_name || '',
-        last_name: last_name || '',
-        timezone: 'UTC',
-        subscription_status: 'free',
-        avatar_url: data.image_url,
-        onboarding_completed: false,
-        role: 'athlete'
-      });
+      // Insert new user and get the inserted id
+      const { data: insertedUsers, error: userInsertError } = await supabase
+        .from('users')
+        .insert([
+          {
+            clerk_id: clerkId,
+            email: primaryEmail,
+            username: username || (first_name?.toLowerCase() || ''),
+            first_name: first_name || '',
+            last_name: last_name || '',
+            timezone: 'UTC',
+            subscription_status: 'free',
+            avatar_url: data.image_url,
+            onboarding_completed: false,
+            role: 'athlete'
+          }
+        ])
+        .select('id');
+      if (userInsertError) {
+        console.error('Error inserting user record:', userInsertError);
+        throw userInsertError;
+      }
+      const newUserId = insertedUsers?.[0]?.id;
 
-      // Ensure a default athlete record exists
-      const { data: athlete } = await supabase.from('athletes').select('id').eq('user_id', data.user_id);
-      if (!athlete || athlete.length === 0) {
-        await supabase.from('athletes').insert({ user_id: data.user_id, height: 0, weight: 0, training_goals: '', experience: '', events: [] });
+      // Ensure a default athlete record exists for the new user
+      const { data: existingAthlete } = await supabase
+        .from('athletes')
+        .select('id')
+        .eq('user_id', newUserId);
+      if (!existingAthlete || existingAthlete.length === 0) {
+        await supabase.from('athletes').insert({ user_id: newUserId, height: 0, weight: 0, training_goals: '', experience: '', events: [] });
       }
     }
 
