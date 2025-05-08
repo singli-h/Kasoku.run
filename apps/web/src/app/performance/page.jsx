@@ -5,24 +5,11 @@ import WeeklyOverview from '@/components/overview/WeeklyOverview'
 
 export default function PerformancePage() {
   return (
-    <Tabs defaultValue="progress" className="min-h-screen">
-      <TabsList className="flex space-x-4 p-4 bg-white">
-        <TabsTrigger value="progress">Progress</TabsTrigger>
-        <TabsTrigger value="records">Records</TabsTrigger>
-        <TabsTrigger value="analytics">Analytics</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="progress" className="p-4">
-        <WeeklyOverview />
-      </TabsContent>
-
-      <TabsContent value="records" className="p-4">
-        <div>Records coming soon.</div>
-      </TabsContent>
-
-      <TabsContent value="analytics" className="p-4">
-        <div>Analytics coming soon.</div>
-      </TabsContent>
-    </Tabs>
+    <div className="relative min-h-screen">
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/90">
+        <h1 className="text-3xl font-bold text-gray-800 mb-4">Performance</h1>
+        <p className="text-lg text-gray-600">Coming Soon</p>
+      </div>
+    </div>
   )
 } 

@@ -145,7 +145,11 @@ const StepThreeConfirmation = ({
             </CardHeader>
             <CardContent>
               <h4 className="text-sm font-medium mb-2">Exercises</h4>
-              {session.exercises.length === 0 ? (
+              {session.sessionMode === 'group' ? (
+                <div className="text-base font-semibold text-blue-700">
+                  {session.exercises.length} Sprint (total: {session.exercises.reduce((sum, ex) => sum + (Number(ex.distance) || 0), 0)}m)
+                </div>
+              ) : session.exercises.length === 0 ? (
                 <p className="text-sm text-gray-500">No exercises added to this session.</p>
               ) : (
                 <div className="space-y-2">
@@ -160,13 +164,7 @@ const StepThreeConfirmation = ({
                             <div key={exercise.id} className="flex items-center justify-between text-sm">
                               <span>{exercise.name}</span>
                               <span>
-                                {session.sessionMode === 'group'
-                                  ? (Number(exercise.sets) > 0 ? exercise.sets : 1)
-                                  : exercise.sets}
-                                {' × '}
-                                {session.sessionMode === 'group'
-                                  ? (Number(exercise.reps) > 0 ? exercise.reps : 1)
-                                  : exercise.reps}
+                                {exercise.sets} × {exercise.reps}
                                 {exercise.oneRepMax && ` @ ${exercise.oneRepMax}%`}
                               </span>
                             </div>
