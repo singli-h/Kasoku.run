@@ -7,6 +7,7 @@ import { Label } from "../ui/label"
 import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight } from "lucide-react"
 import { useSession } from '@clerk/nextjs'
 import { PlusCircle, Save } from "lucide-react"
+import { Tooltip } from '../ui/tooltip'
 
 const PlanButton = ({ children, isActive, className = "", ...props }) => {
   return (
@@ -25,7 +26,7 @@ const PlanButton = ({ children, isActive, className = "", ...props }) => {
   )
 }
 
-export default function PlanBuilder({ mesocycle, onUpdate }) {
+export default function PlanBuilder({ mesocycle, onUpdate, userRole }) {
   const { session, isLoaded: isSessionLoaded, isSignedIn } = useSession()
   const [historyState, setHistoryState] = useState({ history: [mesocycle], index: 0 })
   const [expandedSessions, setExpandedSessions] = useState([])
@@ -34,6 +35,9 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
   const [exercises, setExercises] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  // Helper to check if user is athlete
+  const isAthlete = userRole === 'athlete';
 
   useEffect(() => {
     const fetchExercises = async () => {
@@ -243,6 +247,10 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
 
   return (
     <div className="space-y-4">
+      {/* Step 1: Hide group selection for athletes */}
+      {!isAthlete && (
+        <div>{/* Group selection UI here (existing or future) */}</div>
+      )}
       <div className="flex gap-4 mb-6">
         <PlanButton isActive={true}>
           <PlusCircle className="w-5 h-5" />
@@ -509,6 +517,18 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
             )}
           </Card>
         ))}
+      </div>
+      {/* Step 2: Group session mode button (disabled for athletes) */}
+      <div className="mb-4">
+        <Tooltip content={isAthlete ? 'Only coaches can use group session planning.' : ''}>
+          <PlanButton
+            disabled={isAthlete}
+            className={isAthlete ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : ''}
+            onClick={isAthlete ? undefined : () => {/* group session mode logic */}}
+          >
+            Group Session Mode
+          </PlanButton>
+        </Tooltip>
       </div>
     </div>
   )

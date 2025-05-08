@@ -154,47 +154,56 @@ export default function SubscriptionStep({ userData, updateUserData, onNext, onP
         transition={{ delay: 0.2, duration: 0.5 }}
         className="grid grid-cols-1 md:grid-cols-3 gap-6"
       >
-        {plans.map((plan, index) => (
-          <motion.div
-            key={plan.name}
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 + index * 0.1, duration: 0.5 }}
-            className={`relative p-6 rounded-lg border ${
-              selectedPlan === plan.name
-                ? "bg-white/10 border-blue-600"
-                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
-            } transition-all duration-200`}
-          >
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-xl font-semibold text-white">{plan.name}</h3>
-                <p className="text-2xl font-bold mt-2 text-white">{plan.price}</p>
+        {plans.map((plan, index) => {
+          const isBasic = plan.name === 'Basic';
+          return (
+            <motion.div
+              key={plan.name}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 + index * 0.1, duration: 0.5 }}
+              className={`relative p-6 rounded-lg border ${
+                selectedPlan === plan.name
+                  ? "bg-white/10 border-blue-600"
+                  : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+              } transition-all duration-200 ${!isBasic ? 'opacity-50 pointer-events-none' : ''}`}
+            >
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-white">{plan.name}</h3>
+                  <p className="text-2xl font-bold mt-2 text-white">{plan.price}</p>
+                </div>
+
+                <ul className="space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-center gap-2 text-white/80">
+                      <Check className="w-5 h-5 text-blue-600" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <Button
+                  variant={selectedPlan === plan.name ? "default" : "outline"}
+                  className={
+                    selectedPlan === plan.name
+                      ? "w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20"
+                      : "w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30"
+                  }
+                  onClick={() => isBasic && setSelectedPlan(plan.name)}
+                  disabled={!isBasic}
+                >
+                  {selectedPlan === plan.name ? "Selected" : "Select"}
+                </Button>
+                {!isBasic && (
+                  <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center text-lg font-bold text-gray-500 z-10">
+                    Coming Soon
+                  </div>
+                )}
               </div>
-
-              <ul className="space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2 text-white/80">
-                    <Check className="w-5 h-5 text-blue-600" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                variant={selectedPlan === plan.name ? "default" : "outline"}
-                className={
-                  selectedPlan === plan.name
-                    ? "w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20"
-                    : "w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30"
-                }
-                onClick={() => setSelectedPlan(plan.name)}
-              >
-                {selectedPlan === plan.name ? "Selected" : "Select"}
-              </Button>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </motion.div>
 
       {selectedPlan !== "Basic" && (
@@ -303,10 +312,11 @@ export default function SubscriptionStep({ userData, updateUserData, onNext, onP
           Back
         </Button>
         <Button
+          size="lg"
           onClick={handleContinue}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-600/20 px-8"
+          disabled={selectedPlan !== 'Basic'}
         >
-          {selectedPlan === "Basic" ? "Continue" : "Subscribe & Continue"}
+          Continue
         </Button>
       </motion.div>
     </div>

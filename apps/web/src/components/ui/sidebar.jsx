@@ -80,12 +80,12 @@ const Sidebar = ({ onCollapse }) => {
   const athleteNavItems = [
     { name: "Workout", icon: <LayoutDashboard />, path: "/workout" },
     { name: "Performance", icon: <BarChart3 />, path: "/performance" },
+    { name: "Plans", icon: <Calendar />, path: "/plans" },
   ];
 
   // Coach section nav items (Athletes, Plans, Insights)
   const coachNavItems = [
     { name: "Athletes", icon: <Users />, path: "/athletes" },
-    { name: "Plans", icon: <Calendar />, path: "/plans" },
     { name: "Sessions", icon: <Calendar />, path: "/sessions" },
     { name: "Insights", icon: <BarChart3 />, path: "/insights" },
   ];
@@ -233,9 +233,9 @@ const Sidebar = ({ onCollapse }) => {
               <motion.span 
                 variants={textVariants}
                 animate={isCollapsed ? "hide" : "show"}
-                className="font-bold text-xl whitespace-nowrap"
+                className="font-bold text-xl text-white whitespace-nowrap"
               >
-                TrainFast
+                Kasoku
               </motion.span>
             </Link>
             <div className="flex items-center">
@@ -268,7 +268,7 @@ const Sidebar = ({ onCollapse }) => {
           <nav className="flex-grow py-6 px-3 overflow-y-auto">
             <ul className="space-y-2">
               {/* Athlete section header */}
-              <li className="px-4 pt-4 text-xs text-gray-400 uppercase">Athlete</li>
+
               {/* Athlete section */}
               {athleteNavItems.map(item => (
                 <motion.li key={item.name} variants={itemVariants}>
