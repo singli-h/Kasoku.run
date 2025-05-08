@@ -12,13 +12,11 @@ import CompletionStep from "./steps/completion-step"
 import DashboardTourStep from "./steps/dashboard-tour-step"
 import { useRouter } from "next/navigation"
 import { useAuth, useUser } from "@clerk/nextjs"
-import { useBrowserSupabaseClient } from "@/lib/supabase"
 
 export default function OnboardingFlow() {
   const router = useRouter()
   const { userId } = useAuth()
   const { user, isLoaded: isUserLoaded } = useUser()
-  const supabase = useBrowserSupabaseClient();
   
   const [userData, setUserData] = useState({
     firstName: "",
@@ -115,7 +113,7 @@ export default function OnboardingFlow() {
         lastName: userData.lastName
       })
 
-      // Prepare user data for the API with proper field prefixes
+      // Prepare payload for server API
       const userDataForApi = {
         clerk_id: userId,
         username: userData.firstName.toLowerCase() + (userData.lastName ? userData.lastName.charAt(0).toLowerCase() : ''),
@@ -127,123 +125,30 @@ export default function OnboardingFlow() {
         timezone: userData.timezone,
         subscription_status: userData.subscription,
         onboarding_completed: true,
-        metadata: {
-          role: userData.role,
-        },
+        metadata: { role: userData.role },
+        // athlete and coach fields passed as extras
+        athlete_height: userData.height,
+        athlete_weight: userData.weight,
+        athlete_training_history: userData.trainingHistory,
+        athlete_training_goals: userData.trainingGoals,
+        athlete_events: userData.events,
+        coach_specialization: userData.specialization,
+        coach_experience: userData.experience,
+        coach_philosophy: userData.coachingPhilosophy,
+        coach_sport_focus: userData.sportFocus
       }
 
-      // Check if critical fields are present
-      if (!userDataForApi.clerk_id || !userDataForApi.email) {
-        console.error('Critical data missing:', {
-          hasClerkId: !!userDataForApi.clerk_id,
-          hasEmail: !!userDataForApi.email
-        })
+      console.log('Sending onboarding data to server API', userDataForApi)
+      const res = await fetch('/api/users/onboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userDataForApi)
+      })
+      const result = await res.json()
+      if (!res.ok || result.status !== 'success') {
+        console.error('Onboarding API error:', result)
+        throw new Error(result.message || 'Onboarding failed')
       }
-
-      // Log the onboarding completed value being sent
-      console.log('Setting onboarding_completed to:', userDataForApi.onboarding_completed)
-
-      // Add athlete-specific fields
-      if (userData.role === 'athlete') {
-        // Ensure events are properly serializable by extracting only the needed fields
-        const sanitizedEvents = userData.events.map(event => ({
-          id: event.id,
-          name: event.name,
-          type: event.type,
-          category: event.category
-        }))
-        
-        userDataForApi.athlete_height = userData.height
-        userDataForApi.athlete_weight = userData.weight
-        userDataForApi.athlete_training_history = userData.trainingHistory
-        userDataForApi.athlete_training_goals = userData.trainingGoals
-        userDataForApi.athlete_events = sanitizedEvents
-      }
-
-      // Add coach-specific fields
-      if (userData.role === 'coach') {
-        userDataForApi.coach_specialization = userData.specialization
-        userDataForApi.coach_experience = userData.experience
-        userDataForApi.coach_philosophy = userData.coachingPhilosophy
-        userDataForApi.coach_sport_focus = userData.sportFocus
-      }
-
-      // Debugging - Log the request data
-      console.log('Sending onboarding data to API:', JSON.stringify(userDataForApi, null, 2))
-
-      // Onboard user via direct Supabase client
-      const { data: response, error } = await supabase
-        .from('users')
-        .upsert(userDataForApi, { onConflict: ['clerk_id'], returning: 'representation' })
-      if (error) {
-        console.error('Error onboarding user:', error)
-        throw error
-      }
-      console.log('Supabase upsert response:', response)
-
-      // Extract new user ID
-      const [userRecord] = response || [];
-      const newUserId = userRecord?.id;
-
-      // Always create athlete record
-      const sanitizedEvents = userData.events.map(event => ({
-        id: event.id,
-        name: event.name,
-        type: event.type,
-        category: event.category
-      }));
-      const { error: athleteError } = await supabase
-        .from('athletes')
-        .insert({
-          user_id: newUserId,
-          height: userData.height,
-          weight: userData.weight,
-          training_goals: userData.trainingGoals,
-          experience: userData.trainingHistory,
-          events: sanitizedEvents
-        });
-      if (athleteError) {
-        console.error('Error creating athlete record:', athleteError);
-        throw athleteError;
-      }
-
-      // If coach role, also create coach record
-      if (userData.role === 'coach') {
-        const coachPayload = {
-          user_id: newUserId,
-          speciality: userData.specialization,
-          experience: userData.experience,
-          philosophy: userData.coachingPhilosophy,
-          sport_focus: userData.sportFocus
-        };
-        const { error: coachError } = await supabase
-          .from('coaches')
-          .insert(coachPayload);
-        if (coachError) {
-          console.error('Error creating coach record:', coachError);
-          throw coachError;
-        }
-      }
-      
-      // Verify onboarding status after completion
-      console.log('Verifying onboarding status after completion...')
-      try {
-        const { data: statusData, error: statusError } = await supabase
-          .from('users')
-          .select('onboarding_completed')
-          .eq('clerk_id', userId)
-          .single();
-        if (statusError) {
-          console.error('Error fetching onboarding status:', statusError);
-        } else {
-          console.log('Onboarding status check result:', statusData.onboarding_completed);
-        }
-      } catch (verifyError) {
-        console.error('Error verifying onboarding status:', verifyError);
-      }
-
-      console.log('Onboarding complete, redirecting to dashboard...')
-      // Timeout and redirect happens in completion-step.jsx
     } catch (error) {
       console.error('Error saving user data:', error)
       console.log('Actual error object:', error)
