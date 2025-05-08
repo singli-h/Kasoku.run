@@ -28,7 +28,7 @@ const NavigationWrapper = ({ children }) => {
   const headerRoutes = ['/'];
   
   // Define routes that should have no navigation
-  const noNavRoutes = ['/login', '/register', '/auth', '/onboarding'];
+  const noNavRoutes = ['/sign-in', '/sign-up', '/auth', '/onboarding'];
   
   // Check if current path should use header
   const shouldUseHeader = headerRoutes.some(route => 

@@ -17,7 +17,7 @@ export default function OnboardingPage() {
 
     // Check if user is authenticated with Clerk
     if (isLoaded && !isSignedIn) {
-      router.push('/login')
+      router.push('/sign-in')
     }
   }, [isLoaded, isSignedIn, router])
 

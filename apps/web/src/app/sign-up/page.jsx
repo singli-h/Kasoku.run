@@ -55,12 +55,15 @@ const RegisterPage = () => {
           layout: {
             logoPlacement: "none",
             socialButtonsVariant: "iconButton",
+          },
+          elements: {
+            socialButtonFacebook: 'display: none',
           }
         }}
         redirectUrl="/auth/session"
         routing="path"
-        path="/register"
-        signInUrl="/login"
+        path="/sign-up"
+        signInUrl="/sign-in"
       />
     </div>
   )

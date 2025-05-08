@@ -65,7 +65,7 @@ const Header = () => {
               </Link>
             ) : (
               <>
-                <Link href="/login">
+                <Link href="/sign-in">
                   <Button 
                     variant="outline" 
                     className="px-4 py-2"
@@ -73,7 +73,7 @@ const Header = () => {
                     Sign In
                   </Button>
                 </Link>
-                <Link href="/register">
+                <Link href="/sign-up">
                   <Button 
                     className="px-4 py-2"
                   >
@@ -137,14 +137,14 @@ const Header = () => {
               ) : (
                 <>
                   <Link
-                    href="/login"
+                    href="/sign-in"
                     className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Sign In
                   </Link>
                   <Link
-                    href="/register"
+                    href="/sign-up"
                     className="block px-3 py-2 rounded-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700"
                     onClick={() => setIsMenuOpen(false)}
                   >

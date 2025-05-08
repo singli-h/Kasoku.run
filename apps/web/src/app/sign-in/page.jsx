@@ -75,12 +75,15 @@ const LoginPage = () => {
           layout: {
             logoPlacement: "none",
             socialButtonsVariant: "iconButton",
+          },
+          elements: {
+            socialButtonFacebook: 'display: none',
           }
         }}
         redirectUrl="/auth/session"
         routing="path"
-        path="/login"
-        signUpUrl="/register"
+        path="/sign-in"
+        signUpUrl="/sign-up"
       />
     </div>
   )

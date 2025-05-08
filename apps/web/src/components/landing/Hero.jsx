@@ -47,7 +47,7 @@ export default function Hero() {
                   </Button>
                 </Link>
               ) : (
-                <Link href="/register">
+                <Link href="/sign-up">
                   <Button className="gap-2 group">
                     Start Free Trial
                     <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />

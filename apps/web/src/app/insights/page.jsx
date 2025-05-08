@@ -16,7 +16,7 @@ export default function InsightsPage() {
   useEffect(() => {
     if (!isLoaded) return
     if (!isSignedIn) {
-      router.replace('/login')
+      router.replace('/sign-in')
       return
     }
     // client-side check: assume auth token present

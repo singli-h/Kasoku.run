@@ -31,8 +31,8 @@ const onboardingRoutes = [
 // This array contains public routes that should be accessible without authentication
 const publicRoutes = [
   '/',
-  '/login',
-  '/register',
+  '/sign-in',
+  '/sign-up',
   '/auth/session',
   '/auth/callback',
   '/auth/sso-callback',
