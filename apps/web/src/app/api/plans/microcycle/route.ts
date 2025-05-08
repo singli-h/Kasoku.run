@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getRoleDataFromHeader } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { getUserRoleData } from '@/lib/roles';
 
@@ -58,7 +58,9 @@ export async function POST(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
   const clerkId = auth;
 
-  const { role, coachId } = await getUserRoleData(clerkId);
+  let roleData = getRoleDataFromHeader(req)
+  if (!roleData) roleData = await getUserRoleData(clerkId)
+  const { role, coachId } = roleData;
   if (role !== 'coach') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }

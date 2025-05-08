@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getRoleDataFromHeader } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { getUserRoleData } from '@/lib/roles';
 

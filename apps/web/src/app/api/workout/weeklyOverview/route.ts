@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getRoleDataFromHeader } from '@/lib/auth';
 import { getUserRoleData } from '@/lib/roles';
 
 /**
@@ -14,7 +14,9 @@ export async function GET(req: NextRequest) {
 
   try {
     // Verify the user is a coach
-    const { role } = await getUserRoleData(clerkId);
+    let roleData = getRoleDataFromHeader(req)
+  if (!roleData) roleData = await getUserRoleData(clerkId)
+  const { role } = roleData;
     
     if (role !== 'coach') {
       return NextResponse.json(

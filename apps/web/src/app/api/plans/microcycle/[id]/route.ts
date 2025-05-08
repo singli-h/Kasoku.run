@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getRoleDataFromHeader } from '@/lib/auth';
 import { getUserRoleData } from '@/lib/roles';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
@@ -17,7 +17,9 @@ export async function GET(
 
   // Get user role and verify coach access
   try {
-    const { role, coachId } = await getUserRoleData(clerkId);
+    let roleData = getRoleDataFromHeader(req)
+  if (!roleData) roleData = await getUserRoleData(clerkId)
+  const { role, coachId } = roleData;
     
     if (role !== 'coach') {
       return NextResponse.json(

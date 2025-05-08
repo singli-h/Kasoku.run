@@ -7,8 +7,9 @@
  * @module middleware
  */
 
-import { clerkMiddleware } from "@clerk/nextjs/server"
-import { NextResponse } from "next/server"
+import { NextResponse, NextRequest } from 'next/server'
+import { requireAuth } from '@/lib/auth'
+import { getUserRoleData } from '@/lib/roles'
 
 // Define protected routes that require authentication
 const protectedRoutes = [
@@ -49,8 +50,27 @@ const publicApiRoutes = [
   '/api/public'       // Any other public APIs
 ]
 
-// Use clerkMiddleware wrapper
-export default clerkMiddleware()
+/**
+ * Middleware enforcing authentication and injecting x-kasoku-userrole header
+ */
+export default async function middleware(req: NextRequest) {
+  // Authenticate the user via Clerk
+  const authResult = await requireAuth()
+  if (authResult instanceof NextResponse) {
+    return authResult
+  }
+  const clerkId = authResult
+  // Inject cached role data header
+  try {
+    const roleData = await getUserRoleData(clerkId)
+    const headers = new Headers(req.headers)
+    headers.set('x-kasoku-userrole', JSON.stringify(roleData))
+    return NextResponse.next({ request: { headers } })
+  } catch (err) {
+    console.error('Error injecting user role header:', err)
+    return NextResponse.next()
+  }
+}
 
 /**
  * Route protection configuration

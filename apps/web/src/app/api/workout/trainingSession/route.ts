@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, getRoleDataFromHeader } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase'
 import { getUserRoleData } from '@/lib/roles'
 
@@ -14,7 +14,9 @@ export async function POST(req: NextRequest) {
   const clerkId = authResult
 
   // Resolve athlete ID
-  const { athleteId } = await getUserRoleData(clerkId)
+  let roleData = getRoleDataFromHeader(req)
+  if (!roleData) roleData = await getUserRoleData(clerkId)
+  const { athleteId } = roleData
 
   const supabase = createServerSupabaseClient()
   const { exercise_training_session_id: sessionId } = await req.json()

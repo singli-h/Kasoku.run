@@ -18,6 +18,7 @@ import "./css/style.css"
 import { Inter } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
 import dynamic from "next/dynamic"
+import { UserRoleProvider } from '@/context/UserRoleContext'
 import { ToastProvider } from "@/components/ui/toast"
 
 // Dynamically import the NavigationWrapper component to avoid SSR issues
@@ -85,10 +86,12 @@ export default function RootLayout({ children }) {
           {/* ToastProvider makes toast notifications available application-wide */}
           <ToastProvider>
             {/* Main layout structure with flex column and minimum height */}
-            <div className="flex flex-col min-h-screen overflow-hidden">
-              {/* Client-side navigation component to conditionally render header or sidebar */}
-              <NavigationWrapper>{children}</NavigationWrapper>
-            </div>
+            <UserRoleProvider>
+              <div className="flex flex-col min-h-screen overflow-hidden">
+                {/* Client-side navigation component to conditionally render header or sidebar */}
+                <NavigationWrapper>{children}</NavigationWrapper>
+              </div>
+            </UserRoleProvider>
           </ToastProvider>
         </ClerkProvider>
       </body>

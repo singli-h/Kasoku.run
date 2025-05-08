@@ -1,49 +1,33 @@
 import { createServerSupabaseClient } from "@/lib/supabase";
 
+export type UserRoleData = {
+  userId: number;
+  role: string;
+  athleteId?: number;
+  athleteGroupId?: number;
+  coachId?: number;
+};
+
 /**
- * Fetches user role data and specific role IDs (athlete or coach) from the database.
+ * Fetches user, role, and associated athlete/coach IDs via a single RPC.
  */
-export async function getUserRoleData(clerkId: string) {
+export async function getUserRoleData(clerkId: string): Promise<UserRoleData> {
   const supabase = createServerSupabaseClient();
-  // Fetch the user record and role from metadata
-  const { data: user, error: userError } = await supabase
-    .from("users")
-    .select("id, role")
-    .eq("clerk_id", clerkId)
-    .single<{ id: number; role: string }>();
-
-  if (userError || !user) {
-    throw new Error("User not found");
+  // Call database function to retrieve all relevant IDs in one go
+  const { data, error } = await supabase.rpc('get_user_role_data', { clerk_id: clerkId });
+  if (error) {
+    console.error('RPC get_user_role_data error:', error);
+    throw error;
   }
-
-  const { id: userId, role } = user;
-
-  // For athlete, fetch athlete ID and group ID
-  if (role === "athlete") {
-    const { data: athlete, error: athleteError } = await supabase
-      .from("athletes")
-      .select("id, athlete_group_id")
-      .eq("user_id", userId)
-      .single<{ id: number; athlete_group_id: number }>();
-    if (athleteError || !athlete) {
-      throw new Error("Athlete record not found");
-    }
-    return { userId, role, athleteId: athlete.id, athleteGroupId: athlete.athlete_group_id };
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    throw new Error('User not found');
   }
-
-  // For coach, fetch coach ID
-  if (role === "coach") {
-    const { data: coach, error: coachError } = await supabase
-      .from("coaches")
-      .select("id")
-      .eq("user_id", userId)
-      .single<{ id: number }>();
-    if (coachError || !coach) {
-      throw new Error("Coach record not found");
-    }
-    return { userId, role, coachId: coach.id };
-  }
-
-  // Default return for other roles
-  return { userId, role };
+  const row = data[0] as any;
+  return {
+    userId: row.user_id,
+    role: row.role,
+    athleteId: row.athlete_id || undefined,
+    athleteGroupId: row.athlete_group_id || undefined,
+    coachId: row.coach_id || undefined,
+  };
 } 
