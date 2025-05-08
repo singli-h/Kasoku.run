@@ -35,3 +35,59 @@ v0.1
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
 
+## Monorepo with Turborepo
+
+This project is set up as a monorepo using [Turborepo](https://turbo.build/), which provides build optimizations and caching.
+
+### Available Commands
+
+- `npm run dev` - Run development servers for all apps
+- `npm run dev:web` - Run development server for just the web app
+- `npm run build` - Build all apps
+- `npm run build:web` - Build just the web app
+- `npm run lint` - Lint all apps
+
+### Deployment
+
+The web app is configured to deploy to Vercel. The deployment is set up to:
+
+1. Only build the web app (not the entire monorepo)
+2. Take advantage of Turborepo's caching for faster builds
+
+The deployment configuration is in the `vercel.json` file.
+
+## Deploying to Vercel
+
+This monorepo is configured for easy deployment to Vercel. To deploy the front-end application (apps/web) to Vercel:
+
+1. Connect your GitHub repository to Vercel
+2. In the Vercel project settings, set the "Root Directory" to `apps/web`
+3. Vercel will automatically detect the Next.js project and use the proper build settings
+
+With this configuration:
+- Only the front-end app will be deployed to Vercel
+- The build process will be optimized for your Next.js app
+- Vercel will ignore other parts of the monorepo
+
+### Local Development
+
+For local development with Turborepo:
+
+```bash
+# Run just the web app
+npm run dev:web
+
+# Build just the web app
+npm run build:web
+
+# Run lint on just the web app
+npm run lint:web
+```
+
+### Performance Benefits
+
+The monorepo is set up with Turborepo which provides:
+- Incremental builds
+- Local build caching
+- Optimized task running
+

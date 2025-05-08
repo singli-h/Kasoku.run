@@ -1,33 +1,25 @@
 {
-  "name": "open-next-portfolio",
-  "version": "0.1.0",
+  "name": "running-website-monorepo",
   "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "dev:web": "turbo run dev --filter=web",
+    "build:web": "turbo run build --filter=web",
+    "lint:web": "turbo run lint --filter=web"
   },
-  "dependencies": {
-    "aos": "^2.3.4",
-    "autoprefixer": "10.4.14",
-    "eslint-config-next": "13.4.7",
-    "next": "13.4.7",
-    "postcss": "8.4.24",
-    "prop-types": "^15.8.1",
-    "react": "18.2.0",
-    "react-beautiful-dnd": "^13.1.1",
-    "react-datepicker": "^7.5.0",
-    "react-dom": "18.2.0",
-    "react-intersection-observer": "^9.15.1",
-    "react-player": "^2.16.0",
-    "tailwindcss": "3.3.2"
+  "engines": {
+    "node": ">=18.17.0"
   },
   "devDependencies": {
-    "@types/node": "20.3.2",
-    "@types/react": "18.2.14",
-    "eslint": "^8.43.0",
-    "eslint-plugin-react": "^7.32.2",
-    "prettier": "^2.8.8"
+    "turbo": "latest"
+  },
+  "packageManager": "npm@10.5.2",
+  "dependencies": {
+    "class-variance-authority": "^0.7.1"
   }
 }
