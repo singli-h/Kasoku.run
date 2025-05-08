@@ -14,7 +14,7 @@ All API routes live under `apps/web/src/app/api` and follow Next.js file-based r
 - [Endpoints](#endpoints)
   - [/api/users](#apiusers)
   - [/api/dashboard](#apidashboard)
-  - [/api/planner](#apiplanner)
+  - [/api/plans](#apiplanner)
 - [Design Patterns & Best Practices](#design-patterns--best-practices)
 - [Pitfalls & Anti-Patterns](#pitfalls--anti-patterns)
 
@@ -87,35 +87,35 @@ Use appropriate HTTP status codes.
 - **Auth**: **coach-only**
 - **Returns**: mock weekly statistics (Training Volume, Sessions, Calories, Completed Exercises)
 
-### /api/planner
-#### GET /api/planner/exercises
+### /api/plans
+#### GET /api/plans/exercises
 - **Auth**: coach & athlete
 - **Returns**: list of exercises with related `exercise_types`, formatted for UI
 
-#### GET /api/planner/mesocycle
+#### GET /api/plans/mesocycle
 - **Auth**: coach-only
 - **Returns**: list of mesocycles for the authenticated `coach_id`, ordered by `start_date` desc
 
-#### POST /api/planner/mesocycle
+#### POST /api/plans/mesocycle
 - **Auth**: coach-only
 - **Body**: `{ sessions: Array, timezone: string }`
 - **Purpose**: create mesocycle and associated groups, presets, details
 
-#### GET /api/planner/mesocycle/[id]
+#### GET /api/plans/mesocycle/[id]
 - **Auth**: coach-only
 - **Params**: `id`
 - **Returns**: full mesocycle details (`group`, `presets`, `presetDetails`)
 
-#### POST /api/planner/microcycle
+#### POST /api/plans/microcycle
 - **Auth**: coach-only
 - **Body**: array of session objects with `group` and `presets`
 - **Purpose**: create microcycle (1-week plan)
 
-#### GET /api/planner/microcycle
+#### GET /api/plans/microcycle
 - **Auth**: coach-only
 - **Returns**: list of microcycles (if implemented)
 
-#### GET /api/planner/microcycle/[id]
+#### GET /api/plans/microcycle/[id]
 - **Auth**: coach-only
 - **Params**: `id`
 - **Returns**: full microcycle details (`microcycle`, `sessions`)

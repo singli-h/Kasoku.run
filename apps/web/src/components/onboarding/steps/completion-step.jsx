@@ -58,11 +58,11 @@ export default function CompletionStep({ onComplete }) {
           document.cookie = `cache_invalidate=${Date.now()};path=/;max-age=60`
           
           // For a clean start, navigate directly to dashboard with cache-buster
-          window.location.href = `/planner?_=${Date.now()}`
+          window.location.href = `/plans?_=${Date.now()}`
         } catch (err) {
           console.error('Error during cache invalidation:', err)
           // Fall back to regular navigation if cache invalidation fails
-          window.location.href = '/planner'
+          window.location.href = '/plans'
         }
       }, 1500) // Short delay to show success message
     } catch (error) {

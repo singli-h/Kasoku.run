@@ -5,7 +5,7 @@ import { requireAuth } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
 /**
- * GET /api/planner/exercises
+ * GET /api/plans/exercises
  * 
  * Retrieves all exercises with their types for use in the planner.
  * This endpoint is accessible to all authenticated users.

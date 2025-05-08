@@ -201,7 +201,7 @@ export const useSaveTrainingPlan = () => {
       const token = await getAuthToken()
       
       // Call the microcycle API endpoint
-      const response = await fetch('/api/planner/microcycle', {
+      const response = await fetch('/api/plans/microcycle', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -587,7 +587,7 @@ export const useSaveTrainingPlan = () => {
         weeks
       }
       console.log('[saveMesocycle] planPayload for API:', planPayload);
-      const response = await fetch('/api/planner/mesocycle', {
+      const response = await fetch('/api/plans/mesocycle', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

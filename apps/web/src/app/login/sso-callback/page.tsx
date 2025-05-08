@@ -52,7 +52,7 @@ export default function SSOCallback() {
       <div className="mb-8 animate-pulse">
         <Image 
           src="/logo.svg" 
-          alt="RunningApp Logo" 
+          alt="Kasoku Logo" 
           width={80}
           height={80}
           priority

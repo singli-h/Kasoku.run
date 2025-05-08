@@ -22,7 +22,7 @@ const RegisterPage = () => {
 
           if (onboardingCompleted) {
             // If onboarding is completed, go to planner
-            router.push('/planner')
+            router.push('/plans')
           } else {
             // If onboarding is not completed, go to onboarding
             router.push('/onboarding')
@@ -43,7 +43,7 @@ const RegisterPage = () => {
       <div className="mb-8">
         <Image 
           src="/logo.svg" 
-          alt="RunningApp Logo" 
+          alt="Kasoku Logo" 
           width={80}
           height={80}
           priority

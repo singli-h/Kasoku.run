@@ -44,7 +44,7 @@ export default function useOnboardingStatus({
             router.push(redirectTo);
           } else if (!requireOnboarding && data.onboarding_completed && window.location.pathname === '/onboarding') {
             // If we're on the onboarding page but it's already completed, redirect to planner
-            router.push('/planner');
+            router.push('/plans');
           } else if (!data.onboarding_completed && window.location.pathname !== '/onboarding' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
             // If onboarding is not completed and we're not on the login/register/onboarding pages, redirect to onboarding
             router.push(redirectTo);

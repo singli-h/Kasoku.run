@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase';
 import { getUserRoleData } from '@/lib/roles';
 
 /**
- * GET /api/planner/mesocycle/:id
+ * GET /api/plans/mesocycle/:id
  * Retrieves a complete mesocycle with its weeks and sessions.
  */
 export async function GET(

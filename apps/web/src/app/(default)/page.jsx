@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "RunningApp - AI-Powered Training Plans",
+  title: "Kasoku - AI-Powered Training Plans",
   description: "Transform your fitness journey with AI-powered insights, smart training plans, and real-time performance tracking.",
 }
 

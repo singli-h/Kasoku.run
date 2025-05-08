@@ -33,33 +33,33 @@ const inter = Inter({ subsets: ["latin"] })
  * This information is used by Next.js for SEO and document head
  */
 export const metadata = {
-  title: "RunningApp - Track Your Progress",
+  title: "Kasoku - Track Your Progress",
   description: "Track your running performance, set goals, and crush your personal bests with our comprehensive running tracker.",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || 'https://runningapp.com' || 'http://localhost:3000'
+    process.env.NEXT_PUBLIC_APP_URL || 'https://kasoku.com' || 'http://localhost:3000'
   ),
   icons: {
     icon: "/logo.svg",
   },
   openGraph: {
-    title: "RunningApp - Track Your Progress",
+    title: "Kasoku - Track Your Progress",
     description: "Track your running performance, set goals, and crush your personal bests with our comprehensive running tracker.",
     images: [
       {
         url: "/logo.svg",
         width: 1024,
         height: 1024,
-        alt: "RunningApp Logo",
+        alt: "Kasoku Logo",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "RunningApp - Track Your Progress",
+    title: "Kasoku - Track Your Progress",
     description: "Track your running performance, set goals, and crush your personal bests with our comprehensive running tracker.",
     images: ["/logo.svg"],
-    creator: "@runningapp",
+    creator: "@kasoku",
   },
 }
 

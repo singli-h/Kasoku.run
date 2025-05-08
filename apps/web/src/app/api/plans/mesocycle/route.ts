@@ -22,7 +22,7 @@ function normalizeParameters(params: Record<string, any>): Record<string, any> {
 }
 
 /**
- * GET /api/planner/mesocycle
+ * GET /api/plans/mesocycle
  * Lists all mesocycles belonging to the authenticated coach.
  */
 export async function GET(req: NextRequest) {
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST /api/planner/mesocycle
+ * POST /api/plans/mesocycle
  * Creates a full mesocycle with nested groups, presets, and details.
  */
 export async function POST(req: NextRequest) {

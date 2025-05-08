@@ -58,7 +58,7 @@ const Header = () => {
           {/* Authentication buttons */}
           <div className="hidden md:flex items-center gap-4">
             {isSignedIn ? (
-              <Link href="/planner">
+              <Link href="/plans">
                 <Button className="px-4 py-2">
                   Go to Planner
                 </Button>
@@ -128,7 +128,7 @@ const Header = () => {
               
               {isSignedIn ? (
                 <Link
-                  href="/planner"
+                  href="/plans"
                   className="block px-3 py-2 rounded-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700"
                   onClick={() => setIsMenuOpen(false)}
                 >

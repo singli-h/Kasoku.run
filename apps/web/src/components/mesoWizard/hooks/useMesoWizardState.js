@@ -60,7 +60,7 @@ export const useMesoWizardState = (onComplete) => {
 
   // Fetch and cache exercises (immutable fetch to avoid duplicate calls in dev)
   const { data: exerciseBody, error: exerciseError } = useSWRImmutable(
-    isSessionLoaded && isSignedIn ? '/api/planner/exercises' : null,
+    isSessionLoaded && isSignedIn ? '/api/plans/exercises' : null,
     fetcherWithToken
   )
   const allExercises = exerciseBody?.data?.exercises || []

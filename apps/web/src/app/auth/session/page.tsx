@@ -40,19 +40,19 @@ export default function SessionHandler() {
         if (!res.ok || body.status !== 'success' || !body.data) {
           console.error('Failed to fetch user status:', body);
           // Default to planner if status cannot be determined
-          router.push('/planner');
+          router.push('/plans');
           return;
         }
         const userStatus = body.data;
         
         // Redirect based on onboarding status (snake_case field)
         if (userStatus.onboarding_completed === true) {
-          router.push('/planner');
+          router.push('/plans');
         } else if (userStatus.onboarding_completed === false) {
           router.push('/onboarding');
         } else {
           // Unknown value, default to planner
-          router.push('/planner');
+          router.push('/plans');
         }
       } catch (error) {
         console.error('Error checking onboarding status:', error);
@@ -70,7 +70,7 @@ export default function SessionHandler() {
       <div className="mb-8 animate-pulse">
         <Image 
           src="/logo.svg" 
-          alt="RunningApp Logo" 
+          alt="Kasoku Logo" 
           width={80}
           height={80}
           priority

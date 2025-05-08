@@ -24,13 +24,13 @@ const LoginPage = () => {
         const res = await fetch('/api/users/status');
         const json = await res.json();
         if (res.ok && json.data?.onboarding_completed) {
-          router.push('/planner');
+          router.push('/plans');
         } else {
           router.push('/onboarding');
         }
       } catch (error) {
         console.error('Error checking onboarding status:', error);
-        router.push('/planner');
+        router.push('/plans');
       } finally {
         setIsChecking(false);
       }
@@ -48,7 +48,7 @@ const LoginPage = () => {
         <div className="animate-pulse">
           <Image 
             src="/logo.svg" 
-            alt="RunningApp Logo" 
+            alt="Kasoku Logo" 
             width={80}
             height={80}
             priority
@@ -63,7 +63,7 @@ const LoginPage = () => {
       <div className="mb-8">
         <Image 
           src="/logo.svg" 
-          alt="RunningApp Logo" 
+          alt="Kasoku Logo" 
           width={80}
           height={80}
           priority

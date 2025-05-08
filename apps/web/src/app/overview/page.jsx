@@ -48,7 +48,7 @@ export default function OverviewPage() {
     const fetchMesocycles = async () => {
       try {
         const token = await session.getToken();
-        const res = await fetch('/api/planner/mesocycle', { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch('/api/plans/mesocycle', { headers: { Authorization: `Bearer ${token}` } });
         const body = await res.json();
         if (!res.ok || body.status !== 'success') throw new Error(body.message || 'Failed to fetch mesocycles');
         setMesocycles(body.data);

@@ -50,7 +50,7 @@ function normalizeParameters(params: Record<string, any>): Record<string, any> {
 }
 
 /**
- * POST /api/planner/microcycle
+ * POST /api/plans/microcycle
  * Create a microcycle with nested sessions, presets, and details.
  */
 export async function POST(req: NextRequest) {

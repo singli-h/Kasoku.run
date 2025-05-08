@@ -6,6 +6,6 @@ import { NextResponse } from 'next/server'
  */
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
-  const redirectTo = requestUrl.searchParams.get('redirectTo') || '/planner'
+  const redirectTo = requestUrl.searchParams.get('redirectTo') || '/plans'
   return NextResponse.redirect(new URL(redirectTo, requestUrl.origin))
 } 

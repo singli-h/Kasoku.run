@@ -4,7 +4,7 @@ import { getUserRoleData } from '@/lib/roles';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
 /**
- * GET /api/planner/microcycle/:id
+ * GET /api/plans/microcycle/:id
  * Retrieves a complete microcycle with its sessions and details.
  */
 export async function GET(

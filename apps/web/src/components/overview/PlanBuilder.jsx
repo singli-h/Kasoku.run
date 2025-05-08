@@ -46,7 +46,7 @@ export default function PlanBuilder({ mesocycle, onUpdate }) {
       try {
         setLoading(true)
         const token = await session.getToken()
-        const res = await fetch('/api/planner/exercises', { headers: { Authorization: `Bearer ${token}` } })
+        const res = await fetch('/api/plans/exercises', { headers: { Authorization: `Bearer ${token}` } })
         const body = await res.json()
         if (!res.ok || body.status !== 'success') throw new Error(body.message || 'Failed to fetch exercises')
         setExercises(body.data.exercises || [])
