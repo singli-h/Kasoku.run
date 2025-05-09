@@ -34,7 +34,8 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
         const res = await fetch('/api/events', { headers: { Authorization: `Bearer ${token}` } })
         const body = await res.json()
         if (!res.ok || body.status !== 'success') throw new Error(body.message || 'Failed to fetch events')
-        const eventsList = body.data.events || []
+        // API returns data as an array of events
+        const eventsList = Array.isArray(body.data) ? body.data : (body.data.events || [])
         // Group events by type
         const grouped = { track: [], field: [], combined: [] }
         eventsList.forEach(evt => {
