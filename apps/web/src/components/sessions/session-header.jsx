@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useMemo, useState } from 'react'
 import { useSession } from './session-context'
 import { Button } from '@/components/ui/button'

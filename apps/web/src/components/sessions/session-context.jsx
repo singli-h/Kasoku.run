@@ -32,7 +32,11 @@ export function SessionProvider({ overrideGroup = null, children }) {
   const fetcher = url => fetch(url, { credentials: 'include' }).then(res => res.json())
 
   // 1) Get all sessions for this coach; server route handles authentication and coach lookup
-  const { data: sessJson, error: sessErr } = useSWR('/api/coach/sessions', fetcher)
+  const { data: sessJson, error: sessErr } = useSWR(
+    '/api/coach/sessions',
+    fetcher,
+    { dedupingInterval: 60000, revalidateOnFocus: false }
+  )
   // Use API responses (already flattened) directly
   const groups = sessJson?.sessions || []
 
@@ -80,7 +84,8 @@ export function SessionProvider({ overrideGroup = null, children }) {
   // 3) Load all athletes via API and filter by active group
   const { data: athJson, error: athErr } = useSWR(
     () => '/api/athletes',
-    fetcher
+    fetcher,
+    { dedupingInterval: 60000, revalidateOnFocus: false }
   )
   const athletesAll = athJson?.data || []
   const athletes = activeGroup
