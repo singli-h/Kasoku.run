@@ -2,18 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
+// Force Node.js runtime for this API route
+export const runtime = 'nodejs';
+// Force dynamic server runtime to allow headers and prevent static prerendering errors
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/users/status
  * Returns the authenticated user's onboarding and subscription status.
  */
 export async function GET(req: NextRequest) {
-  const authResult = await requireAuth();
-  if (authResult instanceof NextResponse) {
-    return authResult;
-  }
-  const clerkId = authResult;
-
   try {
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+    const clerkId = authResult;
+
     const supabase = createServerSupabaseClient();
     const { data: user, error } = await supabase
       .from('users')
@@ -37,10 +42,10 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ status: 'success', data: user });
-  } catch (error: any) {
-    console.error('[API] Unexpected error in status retrieval:', error);
+  } catch (err: any) {
+    console.error('[API] Unexpected error in GET /api/users/status:', err);
     return NextResponse.json(
-      { status: 'error', message: error.message },
+      { status: 'error', message: err.message },
       { status: 500 }
     );
   }

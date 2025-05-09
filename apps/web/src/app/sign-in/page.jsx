@@ -81,7 +81,7 @@ const LoginPage = () => {
           }
         }}
         redirectUrl="/auth/session"
-        routing="path"
+        routing="hash"
         path="/sign-in"
         signUpUrl="/sign-up"
       />
