@@ -61,7 +61,7 @@ const RegisterPage = () => {
           }
         }}
         redirectUrl="/auth/session"
-        routing="hash"
+        routing="path"
         path="/sign-up"
         signInUrl="/sign-in"
       />
