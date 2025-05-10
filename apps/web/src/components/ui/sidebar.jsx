@@ -269,8 +269,8 @@ const Sidebar = ({ onCollapse }) => {
           {/* Navigation links */}
           <nav className="flex-grow py-6 px-3 overflow-y-auto">
             <ul className="space-y-2">
-              {/* Athlete section header */}
-              {role === 'athlete' && athleteNavItems.map(item => (
+              {/* Main section: available to all roles */}
+              {athleteNavItems.map(item => (
                 <motion.li key={item.name} variants={itemVariants}>
                   <Link href={item.path} className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                       pathname === item.path

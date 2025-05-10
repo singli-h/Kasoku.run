@@ -42,6 +42,15 @@ export default clerkMiddleware(
     try {
       const roleData = await getUserRoleData(userId)
       headers.set('x-kasoku-userrole', JSON.stringify(roleData))
+      // Redirect non-coach users from coach-only pages
+      const pathname = req.nextUrl.pathname
+      if ([
+        '/sessions',
+        '/athletes',
+        '/insights'
+      ].some(p => pathname === p || pathname.startsWith(p + '/')) && roleData.role !== 'coach') {
+        return NextResponse.redirect(new URL('/', req.url))
+      }
     } catch (err) {
       console.error('Error injecting user role header:', err)
     }
