@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useClerk, useUser } from "@clerk/nextjs";
+import { useUserRole } from '@/context/UserRoleContext'
 
 /**
  * Sidebar Component
@@ -34,6 +35,8 @@ const Sidebar = ({ onCollapse }) => {
   const pathname = usePathname();
   const { signOut } = useClerk();
   const { user } = useUser();
+  const { roleData } = useUserRole();
+  const role = roleData?.role;
   
   // Detect if we're on mobile or desktop
   useEffect(() => {
@@ -75,7 +78,6 @@ const Sidebar = ({ onCollapse }) => {
     }
   }, [isCollapsed, onCollapse]);
   
-  // Replace the existing navItems array and mapping with two sections: athleteNavItems and coachNavItems
   // Athlete section nav items (only Workout and Performance)
   const athleteNavItems = [
     { name: "Workout", icon: <LayoutDashboard />, path: "/workout" },
@@ -268,9 +270,7 @@ const Sidebar = ({ onCollapse }) => {
           <nav className="flex-grow py-6 px-3 overflow-y-auto">
             <ul className="space-y-2">
               {/* Athlete section header */}
-
-              {/* Athlete section */}
-              {athleteNavItems.map(item => (
+              {role === 'athlete' && athleteNavItems.map(item => (
                 <motion.li key={item.name} variants={itemVariants}>
                   <Link href={item.path} className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                       pathname === item.path
@@ -288,10 +288,10 @@ const Sidebar = ({ onCollapse }) => {
               ))}
 
               {/* Coach section header */}
-              <li className="px-4 pt-4 text-xs text-gray-400 uppercase">Coach</li>
+              {role === 'coach' && <li className="px-4 pt-4 text-xs text-gray-400 uppercase">Coach</li>}
 
               {/* Coach section links */}
-              {coachNavItems.map(item => (
+              {role === 'coach' && coachNavItems.map(item => (
                 <motion.li key={item.name} variants={itemVariants}>
                   <Link href={item.path} className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                           pathname === item.path

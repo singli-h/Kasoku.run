@@ -6,6 +6,7 @@ import MesoWizard from '../../components/mesoWizard/mesoWizard'
 import CalendarView from '../../components/overview/CalendarView'
 import PlanBuilder from '../../components/overview/PlanBuilder'
 import PageBackground from '@/components/ui/PageBackground'
+import { useUserRole } from '@/context/UserRoleContext'
 
 // Configure this page for dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -14,6 +15,8 @@ export default function PlansPage() {
   const router = useRouter()
   // Controlled tab state to ensure Wizard is default on load
   const [tab, setTab] = useState('wizard')
+  const { roleData } = useUserRole();
+  const userRole = roleData?.role;
 
   // Ensure Wizard tab is selected on initial load
   useEffect(() => {
@@ -50,7 +53,7 @@ export default function PlansPage() {
 
       <TabsContent value="builder">
         <div className="w-full max-w-6xl mx-auto p-4">
-          <PlanBuilder />
+          <PlanBuilder userRole={userRole} />
         </div>
       </TabsContent>
     </Tabs>

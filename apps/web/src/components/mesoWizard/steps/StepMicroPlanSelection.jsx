@@ -16,7 +16,7 @@ import { useSession } from "@clerk/nextjs"
  * 
  * This step allows users to configure the basic information for a one-week microcycle plan
  */
-const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, errors = {}, handleNext = () => {}, handleBack = () => {}, groups = [], groupLoading = false }) => {
+const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, errors = {}, handleNext = () => {}, handleBack = () => {}, groups = [], groupLoading = false, userRole }) => {
   // Set default values for formData
   const defaultFormData = {
     goals: "",
@@ -62,29 +62,31 @@ const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, e
         <Card className="border border-gray-200">
           <CardContent className="pt-6 px-4 sm:px-6">
             <div className="grid gap-6">
-               {/* Athlete Group Selector */}
-              <div>
-                <Label htmlFor="athleteGroupId" className="text-base">Athlete Group</Label>
-                {groupLoading ? (
-                  <div>Loading groups...</div>
-                ) : (
-                  <Select
-                    value={formData.athleteGroupId || ''}
-                    onValueChange={(value) => handleInputChange({ target: { name: 'athleteGroupId', value } })}
-                  >
-                    <SelectTrigger id="athleteGroupId" className="w-full mt-1">
-                      <SelectValue placeholder="Select a group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {groups.map((g) => (
-                        <SelectItem key={g.id} value={String(g.id)}>
-                          {g.group_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+               {/* Athlete Group Selector (coach only) */}
+               {(!userRole || userRole === 'coach') && (
+                 <div>
+                   <Label htmlFor="athleteGroupId" className="text-base">Athlete Group</Label>
+                   {groupLoading ? (
+                     <div>Loading groups...</div>
+                   ) : (
+                     <Select
+                       value={formData.athleteGroupId || ''}
+                       onValueChange={(value) => handleInputChange({ target: { name: 'athleteGroupId', value } })}
+                     >
+                       <SelectTrigger id="athleteGroupId" className="w-full mt-1">
+                         <SelectValue placeholder="Select a group" />
+                       </SelectTrigger>
+                       <SelectContent>
+                         {groups.map((g) => (
+                           <SelectItem key={g.id} value={String(g.id)}>
+                             {g.group_name}
+                           </SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                   )}
+                 </div>
+               )}
               {/* Plan Name */}
               <div>
                 <div className="flex items-center gap-2">

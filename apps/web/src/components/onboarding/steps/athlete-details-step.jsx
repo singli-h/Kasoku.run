@@ -19,7 +19,7 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
   const [currentSelection, setCurrentSelection] = useState("")
   const [selectedEvents, setSelectedEvents] = useState(userData.events || [])
 
-  // Fetch events when component mounts
+  // Fetch events once when session is ready
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true)
@@ -52,10 +52,14 @@ export default function AthleteDetailsStep({ userData, updateUserData, onNext, o
       }
     }
     fetchEvents()
+  }, [session, isSessionLoaded, isSignedIn])
+
+  // Sync selectedEvents when userData.events changes
+  useEffect(() => {
     if (userData.events) {
       setSelectedEvents(userData.events)
     }
-  }, [session, isSessionLoaded, isSignedIn, userData.events])
+  }, [userData.events])
 
   const validateForm = () => {
     const newErrors = {}

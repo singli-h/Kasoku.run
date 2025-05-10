@@ -193,113 +193,32 @@ export default function GroupSection() {
                 <Lock className="h-8 w-8 text-gray-400" />
               </div>
             )}
-            <div className="overflow-x-auto relative">
-              <table className="min-w-full table-fixed border-collapse">
-                <thead className="bg-white border-b border-gray-200">
-                  <tr>
-                    <th className="sticky left-0 z-20 bg-white w-1/4 px-4 py-2 text-left text-sm font-medium text-gray-600">
-                      Athlete
-                    </th>
-                    {localRuns.map(r => {
-                      const key = `${r.presetId}:${r.setIndex}`
-                      return (
-                        <th key={key} className="px-4 py-2 text-center text-sm font-medium text-gray-600">
-                          {editingHeader[key] ? (
-                            <span className="inline-flex items-center space-x-1">
-                              <Input
-                                type="number"
-                                className="w-16 text-center"
-                                value={tempHeader[key] ?? r.distance}
-                                onChange={e => setTempHeader({ ...tempHeader, [key]: e.target.value })}
-                                onKeyDown={e => e.key === 'Enter' && handleSaveHeader(r.presetId, r.setIndex)}
-                              />
-                              <button onClick={() => handleSaveHeader(r.presetId, r.setIndex)} className="text-green-600 hover:text-green-800"><Check /></button>
-                              <button onClick={() => handleCancelHeader(r.presetId, r.setIndex)} className="text-red-600 hover:text-red-800"><X /></button>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center space-x-1">
-                              {`${r.distance}m ${r.name}`}
-                              {!isLocked && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button className="p-1 hover:bg-gray-100 rounded text-gray-600">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent>
-                                    <DropdownMenuItem onClick={() => handleEditHeader(r.presetId, r.setIndex)}>
-                                      Edit Distance
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleRemoveRun(r.presetId, r.idx)}>
-                                      Remove Run
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              )}
-                            </span>
-                          )}
-                        </th>
-                      )
-                    })}
-                    <th className="w-10 px-4 py-2 text-center text-sm font-medium text-gray-600">
-                      <button
-                        onClick={handleAddRun}
-                        disabled={isLocked}
-                        className="p-1 hover:bg-gray-100 rounded text-gray-600"
-                      >
-                        <Plus className="h-5 w-5" />
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {athletes.map(a => {
-                    const sid = sessionMap[a.id]
-                    const name = a.user ? `${a.user.first_name} ${a.user.last_name}` : a.name
-                    return (
-                      <tr key={a.id} className="hover:bg-gray-50">
-                        <td className="sticky left-0 z-10 bg-white px-4 py-2 text-sm font-medium text-gray-800">
-                          {name}
-                        </td>
-                        {localRuns.map(r => {
-                          const key = `${a.id}:${r.presetId}:${r.setIndex}`
-                          const det = sid ? detailMap.get(key) : null
-                          const tmp = tempTime[key] || ''
-                          // Determine custom distance to display (DB override or session-level)
-                          const dbDist = det?.distance
-                          const showDist = customDistances[key] != null
-                            ? customDistances[key]
-                            : (dbDist != null && dbDist !== r.distance ? dbDist : null)
-                          return (
-                            <td
-                              key={`${r.presetId}-${r.setIndex}`}
-                              className="px-4 py-2 text-center text-sm text-gray-800"
-                            >
+              <div className="overflow-x-auto relative">
+                <table className="min-w-full table-fixed border-collapse">
+                  <thead className="bg-white border-b border-gray-200">
+                    <tr>
+                      <th className="sticky left-0 z-20 bg-white w-1/4 px-4 py-2 text-left text-sm font-medium text-gray-600">
+                        Athlete
+                      </th>
+                      {localRuns.map(r => {
+                        const key = `${r.presetId}:${r.setIndex}`
+                        return (
+                          <th key={key} className="px-4 py-2 text-center text-sm font-medium text-gray-600">
+                            {editingHeader[key] ? (
                               <span className="inline-flex items-center space-x-1">
-                                {/* If not editing and a time exists, show clickable display */}
-                                {!editingTime[key] && (customTimes[key] != null || det?.duration != null) ? (
-                                  <span
-                                    className="font-mono text-gray-900 cursor-pointer"
-                                    onClick={() => {
-                                      setEditingTime(prev => ({ ...prev, [key]: true }))
-                                      setTempTime(prev => ({ ...prev, [key]: ((customTimes[key] ?? det?.duration) ?? '').toString() }))
-                                    }}
-                                  >
-                                    {(customTimes[key] ?? det?.duration).toFixed(2)}
-                                  </span>
-                                ) : (
-                                  <Input
-                                    type="number"
-                                    className="w-20 text-center"
-                                    placeholder="Add time"
-                                    value={tmp}
-                                    onChange={e => setTempTime({ ...tempTime, [key]: e.target.value })}
-                                    onBlur={() => handleSaveTime(a.id, r.presetId, r.setIndex)}
-                                    onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()}
-                                    disabled={isLocked}
-                                  />
-                                )}
-                                {/* Dropdown to override distance */}
+                                <Input
+                                  type="number"
+                                  className="w-16 text-center"
+                                  value={tempHeader[key] ?? r.distance}
+                                  onChange={e => setTempHeader({ ...tempHeader, [key]: e.target.value })}
+                                  onKeyDown={e => e.key === 'Enter' && handleSaveHeader(r.presetId, r.setIndex)}
+                                />
+                                <button onClick={() => handleSaveHeader(r.presetId, r.setIndex)} className="text-green-600 hover:text-green-800"><Check /></button>
+                                <button onClick={() => handleCancelHeader(r.presetId, r.setIndex)} className="text-red-600 hover:text-red-800"><X /></button>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center space-x-1">
+                                {`${r.distance}m ${r.name}`}
                                 {!isLocked && (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -308,28 +227,109 @@ export default function GroupSection() {
                                       </button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                      <DropdownMenuItem onClick={() => setDialog({ open: true, athlete: a.id, presetId: r.presetId, runIdx: r.setIndex, value: '' })}>
-                                        Custom Distance
+                                      <DropdownMenuItem onClick={() => handleEditHeader(r.presetId, r.setIndex)}>
+                                        Edit Distance
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleRemoveRun(r.presetId, r.idx)}>
+                                        Remove Run
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 )}
                               </span>
-                              {/* display DB or session-level custom distance if it differs */}
-                              {showDist != null && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  {showDist}m
-                                </div>
-                              )}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            )}
+                          </th>
+                        )
+                      })}
+                      <th className="w-10 px-4 py-2 text-center text-sm font-medium text-gray-600">
+                        <button
+                          onClick={handleAddRun}
+                          disabled={isLocked}
+                          className="p-1 hover:bg-gray-100 rounded text-gray-600"
+                        >
+                          <Plus className="h-5 w-5" />
+                        </button>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {athletes.map(a => {
+                      const sid = sessionMap[a.id]
+                      const name = a.user ? `${a.user.first_name} ${a.user.last_name}` : a.name
+                      return (
+                        <tr key={a.id} className="hover:bg-gray-50">
+                          <td className="sticky left-0 z-10 bg-white px-4 py-2 text-sm font-medium text-gray-800">
+                            {name}
+                          </td>
+                          {localRuns.map(r => {
+                            const key = `${a.id}:${r.presetId}:${r.setIndex}`
+                            const det = sid ? detailMap.get(key) : null
+                            const tmp = tempTime[key] || ''
+                            // Determine custom distance to display (DB override or session-level)
+                            const dbDist = det?.distance
+                            const showDist = customDistances[key] != null
+                              ? customDistances[key]
+                              : (dbDist != null && dbDist !== r.distance ? dbDist : null)
+                            return (
+                              <td
+                                key={`${r.presetId}-${r.setIndex}`}
+                                className="px-4 py-2 text-center text-sm text-gray-800"
+                              >
+                                <span className="inline-flex items-center space-x-1">
+                                  {/* If not editing and a time exists, show clickable display */}
+                                  {!editingTime[key] && (customTimes[key] != null || det?.duration != null) ? (
+                                    <span
+                                      className="font-mono text-gray-900 cursor-pointer"
+                                      onClick={() => {
+                                        setEditingTime(prev => ({ ...prev, [key]: true }))
+                                        setTempTime(prev => ({ ...prev, [key]: ((customTimes[key] ?? det?.duration) ?? '').toString() }))
+                                      }}
+                                    >
+                                      {(customTimes[key] ?? det?.duration).toFixed(2)}
+                                    </span>
+                                  ) : (
+                                    <Input
+                                      type="number"
+                                      className="w-20 text-center"
+                                      placeholder="Add time"
+                                      value={tmp}
+                                      onChange={e => setTempTime({ ...tempTime, [key]: e.target.value })}
+                                      onBlur={() => handleSaveTime(a.id, r.presetId, r.setIndex)}
+                                      onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()}
+                                      disabled={isLocked}
+                                    />
+                                  )}
+                                  {/* Dropdown to override distance */}
+                                  {!isLocked && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <button className="p-1 hover:bg-gray-100 rounded text-gray-600">
+                                          <MoreVertical className="h-4 w-4" />
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent>
+                                        <DropdownMenuItem onClick={() => setDialog({ open: true, athlete: a.id, presetId: r.presetId, runIdx: r.setIndex, value: '' })}>
+                                          Custom Distance
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
+                                </span>
+                                {/* display DB or session-level custom distance if it differs */}
+                                {showDist != null && (
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {showDist}m
+                                  </div>
+                                )}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
           </div>
       )}
       </div>

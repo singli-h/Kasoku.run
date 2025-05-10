@@ -32,8 +32,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
  * @param {Function} props.handleBack - Function to go to the previous step
  * @param {Array} props.groups - List of athlete groups
  * @param {boolean} props.groupLoading - Indicates if groups are being loaded
+ * @param {string} props.userRole - User role
  */
-const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors = {}, handleNext = () => {}, handleBack = () => {}, groups = [], groupLoading = false }) => {
+const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors = {}, handleNext = () => {}, handleBack = () => {}, groups = [], groupLoading = false, userRole }) => {
   // Set default values for formData
   const defaultFormData = {
     goals: "",
@@ -173,32 +174,34 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
         <Card className="border border-gray-200">
           <CardContent className="pt-6 px-4 sm:px-6">
             <div className="grid gap-6">
-              {/* Athlete Group Selector */}
-              <div>
-                <Label htmlFor="athleteGroupId" className="text-base">Athlete Group</Label>
-                {groupLoading ? (
-                  <div>Loading groups...</div>
-                ) : (
-                  <Select
-                    value={formData.athleteGroupId || ''}
-                    onValueChange={(value) => handleInputChange({ target: { name: 'athleteGroupId', value } })}
-                  >
-                    <SelectTrigger id="athleteGroupId" className={`w-full mt-1${errors.athleteGroupId ? ' border-red-500' : ''}`}>
-                      <SelectValue placeholder="Select a group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {groups.map((g) => (
-                        <SelectItem key={g.id} value={String(g.id)}>
-                          {g.group_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {errors.athleteGroupId && (
-                  <p className="mt-1 text-sm text-red-500">{errors.athleteGroupId}</p>
-                )}
-              </div>
+              {/* Athlete Group Selector (coach only) */}
+              {(!userRole || userRole === 'coach') && (
+                <div>
+                  <Label htmlFor="athleteGroupId" className="text-base">Athlete Group</Label>
+                  {groupLoading ? (
+                    <div>Loading groups...</div>
+                  ) : (
+                    <Select
+                      value={formData.athleteGroupId || ''}
+                      onValueChange={(value) => handleInputChange({ target: { name: 'athleteGroupId', value } })}
+                    >
+                      <SelectTrigger id="athleteGroupId" className={`w-full mt-1${errors.athleteGroupId ? ' border-red-500' : ''}`}>
+                        <SelectValue placeholder="Select a group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {groups.map((g) => (
+                          <SelectItem key={g.id} value={String(g.id)}>
+                            {g.group_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {errors.athleteGroupId && (
+                    <p className="mt-1 text-sm text-red-500">{errors.athleteGroupId}</p>
+                  )}
+                </div>
+              )}
               {/* Plan Name */}
               <div>
                 <div className="flex items-center gap-2">
