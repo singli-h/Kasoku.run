@@ -10,22 +10,29 @@ import { getUserRoleData } from '@/lib/roles';
 export async function GET(req: NextRequest) {
   // Enforce Clerk auth
   const authResult = await requireAuth();
+  console.log('[API/users/profile] requireAuth returned:', authResult);
   if (authResult instanceof NextResponse) return authResult;
   const clerkId = authResult;
+  console.log('[API/users/profile] clerkId:', clerkId);
 
   // Try header-injected role data to avoid extra RPC
+  console.log('[API/users/profile] raw header x-kasoku-userrole:', req.headers.get('x-kasoku-userrole'));
   let roleData = getRoleDataFromHeader(req);
   if (!roleData) roleData = await getUserRoleData(clerkId);
+  console.log('[API/users/profile] roleData used:', roleData);
   const { userId, role, athleteId, coachId } = roleData;
 
   try {
     const supabase = createServerSupabaseClient();
+    console.log('[API/users/profile] created Supabase client; service role key present:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
     // Fetch basic user fields including role and birthdate
+    console.log('[API/users/profile] querying users table with id:', userId);
     const { data: user, error: userErr } = await supabase
       .from('users')
       .select('id, email, first_name, last_name, username, avatar_url, subscription_status, timezone, metadata, birthdate, role')
       .eq('id', userId)
       .single();
+    console.log('[API/users/profile] supabase user response:', { user, userErr });
     if (userErr) {
       console.error('[API] Error fetching user profile:', userErr);
       return NextResponse.json({ status: 'error', message: userErr.message }, { status: 500 });

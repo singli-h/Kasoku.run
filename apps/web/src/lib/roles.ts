@@ -12,6 +12,7 @@ export type UserRoleData = {
  * Fetches user, role, and associated athlete/coach IDs via a single RPC.
  */
 export async function getUserRoleData(clerkId: string): Promise<UserRoleData> {
+  console.log('[Roles] getUserRoleData called with clerkId:', clerkId);
   const supabase = createServerSupabaseClient();
   // Call database function to retrieve all relevant IDs in one go
   const { data, error } = await supabase.rpc('get_user_role_data', { clerk_id: clerkId });

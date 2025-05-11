@@ -8,7 +8,10 @@ import { NextRequest } from 'next/server'
  * Returns the Clerk userId or a NextResponse redirect for unauthenticated requests.
  */
 export async function requireAuth() {
-  const { userId } = await auth();
+  const authResult = await auth();
+  console.log('[Auth] auth() result:', authResult);
+  const { userId } = authResult;
+  console.log('[Auth] userId:', userId);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

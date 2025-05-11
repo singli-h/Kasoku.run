@@ -33,6 +33,7 @@ export default clerkMiddleware(
     }
     // Retrieve userId via auth(), guard null
     const { userId } = await auth()
+    console.log('[Middleware] auth() returned userId:', userId);
     const headers = new Headers(req.headers)
     if (!userId) {
       // If no user, skip role injection
@@ -41,7 +42,9 @@ export default clerkMiddleware(
     // Fetch and inject role data
     try {
       const roleData = await getUserRoleData(userId)
+      console.log('[Middleware] roleData from getUserRoleData:', roleData);
       headers.set('x-kasoku-userrole', JSON.stringify(roleData))
+      console.log('[Middleware] injecting x-kasoku-userrole header:', JSON.stringify(roleData));
       // Redirect non-coach users from coach-only pages
       const pathname = req.nextUrl.pathname
       if ([
