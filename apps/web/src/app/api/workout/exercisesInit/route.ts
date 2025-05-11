@@ -94,6 +94,36 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // 2.5) Check for next pending (future) session
+  const { data: upcoming, error: upcomingError } = await supabase
+    .from('exercise_training_sessions')
+    .select(
+      `*,
+       exercise_preset_groups (
+         *,
+         exercise_presets (
+           *,
+           exercises (*),
+           exercise_preset_details (*)
+         )
+       )`
+    )
+    .eq('athlete_id', athleteId)
+    .eq('status', 'pending')
+    .gt('date_time', new Date().toISOString())
+    .order('date_time', { ascending: true })
+    .limit(1);
+  if (upcomingError) {
+    return NextResponse.json({ status: 'error', message: upcomingError.message }, { status: 500 });
+  }
+  if (upcoming && upcoming.length > 0) {
+    return NextResponse.json({
+      status: 'success',
+      data: { session: { type: 'pending', details: upcoming[0] } },
+      metadata: { timestamp: new Date().toISOString(), timezone }
+    });
+  }
+
   // 3) Fetch last completed session in last 7 days
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const { data: completed, error: completedError } = await supabase
