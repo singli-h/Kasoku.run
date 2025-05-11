@@ -31,7 +31,7 @@ export default function PlansPage() {
     // Assign training sessions for each group
     await Promise.all(
       groups.map((g) =>
-        fetch(`/api/plans/preset-groups/${g.id}/assign-sessions`, {
+        fetch(`/api/plans/preset-groups/${g.id}/assign`, {
           method: 'POST',
           credentials: 'include'
         })

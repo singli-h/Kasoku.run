@@ -4,12 +4,12 @@ import { getUserRoleData } from '@/lib/roles';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
 /**
- * POST /api/plans/preset-groups/[planId]/assign-sessions
+ * POST /api/plans/preset-groups/[id]/assign
  * Assigns the specified preset-group session:
  * - Coaches: assigns to all athletes in the group.
  * - Athletes: assigns to themselves.
  */
-export async function POST(req: NextRequest, { params }: { params: { planId: string } }) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   // Authenticate the user
   const authResult = await requireAuth();
   if (authResult instanceof NextResponse) return authResult;
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: { planId: str
   const { data: group, error: groupError } = await supabase
     .from('exercise_preset_groups')
     .select('id, athlete_group_id, date, session_mode, user_id')
-    .eq('id', params.planId)
+    .eq('id', params.id)
     .single();
   if (groupError || !group) {
     return NextResponse.json({ status: 'error', message: 'Preset group not found' }, { status: 404 });

@@ -20,6 +20,7 @@
   },
   "packageManager": "npm@10.5.2",
   "dependencies": {
-    "class-variance-authority": "^0.7.1"
+    "class-variance-authority": "^0.7.1",
+    "openai": "^4.98.0"
   }
 }
