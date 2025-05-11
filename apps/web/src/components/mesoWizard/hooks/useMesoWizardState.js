@@ -39,6 +39,34 @@ export const useMesoWizardState = (onComplete) => {
   const [sessionSections, setSessionSections] = useState({})
   const [exerciseOrder, setExerciseOrder] = useState({}) // Track exercise order by section
 
+  // Cache key for wizard state in localStorage
+  const cacheKey = 'mesoWizardState'
+
+  // Load cached wizard state on mount
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        const { step: cachedStep, formData: cachedFormData, activeSession: cachedActive } = JSON.parse(cached)
+        if (cachedStep) setStep(cachedStep)
+        if (cachedFormData) setFormData(cachedFormData)
+        if (cachedActive) setActiveSession(cachedActive)
+      }
+    } catch (err) {
+      console.error('Failed to load cached wizard state', err)
+    }
+  }, [])
+
+  // Save wizard state to cache whenever it changes
+  useEffect(() => {
+    try {
+      const stateToCache = { step, formData, activeSession }
+      localStorage.setItem(cacheKey, JSON.stringify(stateToCache))
+    } catch (err) {
+      console.error('Failed to save wizard state to cache', err)
+    }
+  }, [step, formData, activeSession])
+
   // Note: exercises and groups fetched via SWR below
 
   // Use the save mesocycle hook
@@ -144,10 +172,12 @@ export const useMesoWizardState = (onComplete) => {
     }
   }, [errors])
 
-  // Handle adding an exercise
+  // Handle adding an exercise (supports optional exercise.session override)
   const handleAddExercise = useCallback((exercise) => {
+    // Determine target session: use exercise.session if provided, otherwise activeSession
+    const targetSession = exercise.session !== undefined ? exercise.session : activeSession;
     // Determine group mode: either sessionMode is 'group' or only sprint section active
-    const sessionObj = formData.sessions.find(s => s.id === activeSession)
+    const sessionObj = formData.sessions.find(s => s.id === targetSession)
     const sectionList = sessionSections[activeSession] || []
     const isGroupMode = sessionObj?.sessionMode === 'group' 
        || (sectionList.length === 1 && sectionList[0] === 'sprint')
@@ -158,9 +188,9 @@ export const useMesoWizardState = (onComplete) => {
     // Determine the appropriate section to add the exercise to
     const targetSection = exercise.section || exercise.type;
     
-    // Get the current exercises in the target section to determine the next position
+    // Get the current exercises in the target section of the target session to determine the next position
     const sectionExercises = formData.exercises.filter(ex => 
-      ex.session === activeSession && 
+      ex.session === targetSession && 
       (ex.section === targetSection || (ex.section === null && ex.part === targetSection))
     );
     
@@ -173,7 +203,7 @@ export const useMesoWizardState = (onComplete) => {
     const newExerciseWithPos = {
       ...exercise,
       id: Date.now(),
-      session: activeSession,
+      session: targetSession,
       part: exercise.type,
       section: exercise.section || null,
       sets: defaultSets,
@@ -184,7 +214,7 @@ export const useMesoWizardState = (onComplete) => {
     }
     
     // *** Log the object right before adding to state ***
-    console.log(`[useMesoWizardState.handleAddExercise] Adding to state:`, JSON.stringify(newExerciseWithPos));
+    console.log(`[useMesoWizardState.handleAddExercise] Adding to session ${targetSession}:`, JSON.stringify(newExerciseWithPos));
 
     setFormData((prev) => ({
       ...prev,
@@ -193,7 +223,7 @@ export const useMesoWizardState = (onComplete) => {
     
     // Update exercise order
     setExerciseOrder((prev) => {
-      const sectionKey = `${activeSession}-${exercise.section || exercise.type}`
+      const sectionKey = `${targetSession}-${targetSection}`
       const currentOrder = prev[sectionKey] || []
       return {
         ...prev,
@@ -511,6 +541,8 @@ export const useMesoWizardState = (onComplete) => {
           formData: processedData, 
           apiResponse: result
         })
+        // Clear cached wizard state
+        localStorage.removeItem(cacheKey)
       } catch (error) {
         console.error(`Error submitting ${formData.planType || "mesocycle"}:`, error)
         setErrors({ 

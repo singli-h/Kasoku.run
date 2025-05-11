@@ -7,13 +7,21 @@ import GroupListView from './GroupListView'
 import GroupEditorView from './GroupEditorView'
 import { Loader2 } from 'lucide-react'
 
-// Fetcher that includes auth token
-const fetcher = async (url, token) => {
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` }
-  })
-  if (!res.ok) throw new Error('Network response was not ok')
-  return res.json()
+// Unified fetcher for SWR that handles array keys [url, token]
+const fetcher = async (key) => {
+  let url, token;
+  if (Array.isArray(key)) {
+    [url, token] = key;
+  } else if (typeof key === 'string' && key.includes(',')) {
+    // handle serialized array key: 'url,token'
+    [url, token] = key.split(',', 2);
+  } else {
+    url = key;
+  }
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(url, { headers });
+  if (!res.ok) throw new Error(`Network response was not ok: ${res.status}`);
+  return res.json();
 }
 
 export default function PresetGroupBuilder({ userRole }) {

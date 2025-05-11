@@ -333,9 +333,6 @@ const ExerciseSectionManager = memo(({
         delay: 250,
         tolerance: 5
       }
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates
     })
   );
 
@@ -1412,7 +1409,7 @@ const ExerciseSectionManager = memo(({
                               sectionId={sectionId}
                               exercises={exercises}
                               allExercises={filteredExercises}
-                              handleAddExercise={handleAddExercise}
+                              handleAddExercise={(exercise) => handleAddExercise({ ...exercise, session: sessionId })}
                               isForSuperset={false}
                             />
                             
@@ -1433,9 +1430,9 @@ const ExerciseSectionManager = memo(({
                                   })}
                                   strategy={verticalListSortingStrategy}
                                 >
-                                  <div className="space-y-2" style={{ minHeight: '20px' }}>
-                                      {renderExerciseList(sectionId)}
-                                    </div>
+                                  <div className="space-y-2 overflow-y-auto max-h-[192px]">
+                                    {renderExerciseList(sectionId)}
+                                  </div>
                                 </SortableContext>
                               </DndContext>
                             </div>
