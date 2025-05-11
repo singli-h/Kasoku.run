@@ -18,10 +18,31 @@ const fetcher = async (key) => {
   } else {
     url = key;
   }
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const res = await fetch(url, { headers });
-  if (!res.ok) throw new Error(`Network response was not ok: ${res.status}`);
-  return res.json();
+  
+  if (!token) {
+    console.warn('No token available for API request:', url);
+    throw new Error('Authentication token not available');
+  }
+  
+  const headers = { Authorization: `Bearer ${token}` };
+  
+  try {
+    const res = await fetch(url, { 
+      headers,
+      credentials: 'include' 
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => 'Unknown error');
+      console.error(`API error (${res.status}):`, errorText);
+      throw new Error(`API request failed: ${res.status}`);
+    }
+    
+    return res.json();
+  } catch (err) {
+    console.error('Fetch error:', err);
+    throw err;
+  }
 }
 
 export default function PresetGroupBuilder({ userRole }) {
