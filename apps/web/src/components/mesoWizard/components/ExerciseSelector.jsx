@@ -195,8 +195,10 @@ const ExerciseSelector = ({
       {/* Exercise grid - smaller for supersets */}
       {!isLoading && filteredExercises.length > 0 && (
         <div className={cn(
-          "grid gap-2",
-          isForSuperset ? "grid-cols-2 max-h-[150px] overflow-y-auto" : "grid-cols-2 sm:grid-cols-3"
+          "grid gap-2 overflow-y-auto",
+          isForSuperset
+            ? "grid-cols-2 max-h-[150px]"
+            : "grid-cols-2 sm:grid-cols-3 max-h-80"
         )}>
           {filteredExercises.map((exercise) => (
             <Button

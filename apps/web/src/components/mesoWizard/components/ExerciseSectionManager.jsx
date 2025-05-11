@@ -1430,7 +1430,7 @@ const ExerciseSectionManager = memo(({
                                   })}
                                   strategy={verticalListSortingStrategy}
                                 >
-                                  <div className="space-y-2 overflow-y-auto max-h-[192px]">
+                                  <div className="space-y-2 overflow-y-auto">
                                     {renderExerciseList(sectionId)}
                                   </div>
                                 </SortableContext>

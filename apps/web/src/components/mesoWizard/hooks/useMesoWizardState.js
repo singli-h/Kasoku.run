@@ -132,8 +132,20 @@ export const useMesoWizardState = (onComplete) => {
   // Handle basic input changes
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-    
+    // Update formData and reset sessions/exercises when key parameters change
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value }
+      if (['sessionsPerWeek', 'duration', 'planType'].includes(name)) {
+        updated.sessions = []
+        updated.exercises = []
+      }
+      return updated
+    })
+    // Reset session sections and active session when key parameters change
+    if (['sessionsPerWeek', 'duration', 'planType'].includes(name)) {
+      setSessionSections({})
+      setActiveSession(1)
+    }
     // Clear errors for this field if any
     if (errors[name]) {
       setErrors((prev) => {
@@ -142,7 +154,7 @@ export const useMesoWizardState = (onComplete) => {
         return newErrors
       })
     }
-  }, [errors])
+  }, [errors, setSessionSections, setActiveSession])
 
   // Handle session-specific input changes
   const handleSessionInputChange = useCallback((sessionId, field, value) => {
