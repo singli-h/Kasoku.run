@@ -1,11 +1,12 @@
 "use client"
 
-import React, { useMemo, memo } from "react"
+import React, { useMemo, memo, useState, useEffect, useCallback } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Layers } from "lucide-react"
 import ExerciseDetailFields from "./ExerciseDetailFields"
+import { Button } from "@/components/ui/button"
 
 /**
  * Exercise Timeline Component
@@ -15,6 +16,7 @@ import ExerciseDetailFields from "./ExerciseDetailFields"
  * 
  * @param {Object} props - Component props
  * @param {number} props.sessionId - Current session ID
+ * @param {string} props.trainingGoals - Training goals text
  * @param {Array} props.activeSections - Active sections for this session
  * @param {Function} props.handleExerciseDetailChange - Function to handle exercise detail changes
  * @param {Object} props.errors - Validation errors
@@ -25,6 +27,7 @@ import ExerciseDetailFields from "./ExerciseDetailFields"
  */
 const ExerciseTimeline = memo(({
   sessionId,
+  trainingGoals,
   activeSections,
   handleExerciseDetailChange,
   errors = {},
@@ -33,6 +36,84 @@ const ExerciseTimeline = memo(({
   supersets = [],
   mode = 'individual',
 }) => {
+  // AI-Fill state
+  const [aiLoading, setAiLoading] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
+  const [aiResults, setAiResults] = useState([])
+  const [history, setHistory] = useState([])
+
+  // Initialize cooldown from localStorage
+  useEffect(() => {
+    const key = `aiCooldown:${sessionId}`
+    const last = parseInt(localStorage.getItem(key) || '0', 10)
+    const now = Date.now()
+    const diff = Math.max(0, 60 - Math.floor((now - last) / 1000))
+    setCooldown(diff)
+  }, [sessionId])
+
+  // Countdown timer
+  useEffect(() => {
+    if (!cooldown) return
+    const id = setInterval(() => {
+      setCooldown(prev => prev <= 1 ? (clearInterval(id), 0) : prev - 1)
+    }, 1000)
+    return () => clearInterval(id)
+  }, [cooldown])
+
+  // Trigger AI fill
+  const handleAi = useCallback(async () => {
+    if (aiLoading || cooldown) return
+    setAiLoading(true)
+    // Backup current details
+    setHistory(prev => [...prev, orderedItems.filter(i => i.type === 'exercise').map(i => ({ ...i.exercise }))])
+    // Start cooldown
+    const key = `aiCooldown:${sessionId}`
+    localStorage.setItem(key, Date.now().toString())
+    setCooldown(60)
+    // Build payload
+    const payload = {
+      sessionId,
+      trainingGoals,
+      exercises: orderedItems.filter(i => i.type === 'exercise').map(i => {
+        const ex = i.exercise
+        const existing = {}
+        ['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo']
+          .forEach(f => { if (ex[f] !== undefined && ex[f] !== '') existing[f] = ex[f] })
+        return { presetId: ex.id, name: ex.name, type: ex.category, existing }
+      })
+    }
+    // Call AI endpoint
+    const res = await fetch('/api/ai/exercise-details', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    const json = await res.json()
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      setAiResults(json.data)
+      json.data.forEach(detail => {
+        Object.entries(detail).forEach(([field, value]) => {
+          if (field === 'presetId' || field === 'explanation') return
+          handleExerciseDetailChange(detail.presetId, sessionId, detail.presetId, field, value)
+        })
+      })
+    }
+    setAiLoading(false)
+  }, [aiLoading, cooldown, sessionId, trainingGoals, handleExerciseDetailChange, orderedItems])
+
+  // Revert AI fill
+  const handleRevert = useCallback(() => {
+    const last = history[history.length - 1]
+    if (!last) return
+    last.forEach(ex => {
+      Object.entries(ex).forEach(([field, value]) => {
+        if (['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo'].includes(field)) {
+          handleExerciseDetailChange(ex.id, sessionId, ex.id, field, value)
+        }
+      })
+    })
+    setHistory(prev => prev.slice(0, -1))
+  }, [history, sessionId, handleExerciseDetailChange])
+
   // Get ordered exercises and supersets for each section
   const getOrderedExercisesAndSupersets = useMemo(() => {
     return (sectionId) => {
@@ -196,8 +277,16 @@ const ExerciseTimeline = memo(({
   
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex items-center justify-between">
         <CardTitle>Exercise Timeline</CardTitle>
+        <div className="flex space-x-2">
+          <Button size="sm" onClick={handleAi} disabled={aiLoading || cooldown > 0}>
+            🧠 Auto-Fill{cooldown > 0 ? ` (${cooldown}s)` : ''}
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleRevert} disabled={history.length === 0}>
+            Revert
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">

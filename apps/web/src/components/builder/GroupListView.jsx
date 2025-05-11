@@ -11,7 +11,7 @@ export default function GroupListView({ groups, onSelect, onNew }) {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Preset Groups</h2>
         <Button onClick={onNew} variant="outline">
-          <Plus className="mr-2" /> New Group
+          <Plus className="mr-2" /> New Preset
         </Button>
       </div>
 

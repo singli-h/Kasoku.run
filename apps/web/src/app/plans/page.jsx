@@ -23,10 +23,26 @@ export default function PlansPage() {
     setTab('wizard')
   }, [])
 
-  // Handle completion of the wizard
-  const handleComplete = (data) => {
-    console.log('Training plan created:', data)
-    router.push('/sessions')
+  // Handle completion of the wizard: assign sessions then redirect
+  const handleComplete = async (result) => {
+    console.log('Training plan created:', result)
+    // Extract created preset-group IDs from API response
+    const groups = result.apiResponse?.data?.groups || []
+    // Assign training sessions for each group
+    await Promise.all(
+      groups.map((g) =>
+        fetch(`/api/plans/preset-groups/${g.id}/assign-sessions`, {
+          method: 'POST',
+          credentials: 'include'
+        })
+      )
+    )
+    // Redirect based on user role
+    if (userRole === 'coach') {
+      router.push('/sessions')
+    } else {
+      router.push('/workout')
+    }
   }
 
   return (

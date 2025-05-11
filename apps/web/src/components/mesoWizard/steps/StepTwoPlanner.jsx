@@ -294,6 +294,7 @@ const StepTwoPlanner = ({
             {/* Exercise Timeline */}
             <ExerciseTimeline
               sessionId={session.id}
+              trainingGoals={formData.goals}
               exercises={formData.exercises}
               activeSections={sessionSections[session.id] || []}
               mode={session.sessionMode}
