@@ -5,11 +5,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import PageBackground from '@/components/ui/PageBackground'
 import { useUserRole } from '@/context/UserRoleContext'
 import { Loader2 } from 'lucide-react' 
+import dynamicImport from 'next/dynamic'
 
 // Lazily load components to avoid circular dependencies
-const MesoWizard = React.lazy(() => import('../../components/mesoWizard/mesoWizard'))
-const CalendarView = React.lazy(() => import('../../components/overview/CalendarView'))
-const PresetGroupBuilder = React.lazy(() => import('../../components/builder/PresetGroupBuilder'))
+const MesoWizard = dynamicImport(() => import('@/components/mesoWizard/mesoWizard'), { suspense: true })
+const CalendarView = dynamicImport(() => import('@/components/overview/CalendarView'), { suspense: true })
+const PresetGroupBuilder = dynamicImport(() => import('@/components/builder/PresetGroupBuilder'), { suspense: true })
 
 // Configure this page for dynamic rendering
 export const dynamic = 'force-dynamic'
