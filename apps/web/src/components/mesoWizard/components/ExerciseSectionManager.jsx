@@ -1449,25 +1449,6 @@ const ExerciseSectionManager = memo(({
               </div>
           </SortableContext>
         </DndContext>
-        
-        {activeSections.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-gray-500 mb-4">No exercise sections added yet.</p>
-            <Button
-              variant="outline"
-              onClick={() => handleAddSection("warmup")}
-              className="mr-2"
-            >
-              Add Warm-up
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleAddSection("gym")}
-            >
-              Add Gym Exercises
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   )
