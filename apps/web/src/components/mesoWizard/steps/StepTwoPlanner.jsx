@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import ExerciseSectionManager from "../components/ExerciseSectionManager"
 import ExerciseTimeline from "../components/ExerciseTimeline"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 
 /**
  * Step Three: Session & Exercise Planning
@@ -60,6 +60,87 @@ const StepTwoPlanner = ({
 }) => {
   // State to track supersets for each session
   const [sessionSupersets, setSessionSupersets] = useState({});
+
+  // Global AI-Fill state
+  const [aiLoadingAll, setAiLoadingAll] = useState(false);
+  const [cooldownAll, setCooldownAll] = useState(0);
+  const [historyAll, setHistoryAll] = useState([]);
+
+  // Initialize global cooldown from localStorage
+  useEffect(() => {
+    const key = 'aiCooldown:all';
+    const last = parseInt(localStorage.getItem(key) || '0', 10);
+    const now = Date.now();
+    const diff = Math.max(0, 60 - Math.floor((now - last) / 1000));
+    setCooldownAll(diff);
+  }, []);
+
+  // Countdown timer for global cooldown
+  useEffect(() => {
+    if (!cooldownAll) return;
+    const id = setInterval(() => {
+      setCooldownAll(prev => prev <= 1 ? (clearInterval(id), 0) : prev - 1);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [cooldownAll]);
+
+  // Auto-fill all sessions with AI
+  const handleAutoFillAll = useCallback(async () => {
+    if (aiLoadingAll || cooldownAll) return;
+    setAiLoadingAll(true);
+    // Backup current exercises
+    const backup = formData.exercises.map(ex => ({ ...ex }));
+    setHistoryAll(prev => [...prev, backup]);
+    // Start cooldown
+    const key = 'aiCooldown:all';
+    localStorage.setItem(key, Date.now().toString());
+    setCooldownAll(60);
+    // Build payload
+    const sessionsPayload = formData.sessions.map(s => ({
+      sessionId: s.id,
+      sessionName: s.name,
+      weekday: s.weekday,
+      exercises: formData.exercises
+        .filter(ex => ex.session === s.id)
+        .map(ex => {
+          const existing = {};
+          ['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo']
+            .forEach(f => { if (ex[f] !== undefined && ex[f] !== '') existing[f] = ex[f]; });
+          return { presetId: ex.id, name: ex.name, type: ex.category, existing };
+        })
+    }));
+    const res = await fetch('/api/ai/exercise-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trainingGoals: formData.goals, sessions: sessionsPayload })
+    });
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      json.data.forEach(sess => {
+        sess.details.forEach(detail => {
+          Object.entries(detail).forEach(([field, value]) => {
+            if (['presetId','explanation'].includes(field)) return;
+            handleExerciseDetailChange(detail.presetId, sess.sessionId, detail.presetId, field, value);
+          });
+        });
+      });
+    }
+    setAiLoadingAll(false);
+  }, [aiLoadingAll, cooldownAll, formData, handleExerciseDetailChange]);
+
+  // Revert all sessions to previous backup
+  const handleRevertAll = useCallback(() => {
+    const last = historyAll[historyAll.length - 1];
+    if (!last) return;
+    last.forEach(ex => {
+      Object.entries(ex).forEach(([field, value]) => {
+        if (['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo'].includes(field)) {
+          handleExerciseDetailChange(ex.id, ex.session, ex.part, field, value);
+        }
+      });
+    });
+    setHistoryAll(prev => prev.slice(0, -1));
+  }, [historyAll, handleExerciseDetailChange]);
 
   // Handle superset changes for a specific session
   const handleSupersetChange = useCallback((sessionId, supersets) => {
@@ -126,6 +207,16 @@ const StepTwoPlanner = ({
       <p className="text-gray-600">
         Configure your training sessions and add exercises to each section.
       </p>
+
+      {/* Global Auto-Fill Controls */}
+      <div className="flex items-center space-x-2 mb-4">
+        <Button size="sm" onClick={handleAutoFillAll} disabled={aiLoadingAll || cooldownAll > 0}>
+          🧠 Auto-Fill All Sessions{cooldownAll > 0 ? ` (${cooldownAll}s)` : ''}
+        </Button>
+        <Button size="sm" variant="outline" onClick={handleRevertAll} disabled={historyAll.length === 0}>
+          Revert All
+        </Button>
+      </div>
 
       {/* Session Tabs */}
       <Tabs
@@ -294,6 +385,8 @@ const StepTwoPlanner = ({
             {/* Exercise Timeline */}
             <ExerciseTimeline
               sessionId={session.id}
+              sessionName={session.name}
+              weekday={session.weekday}
               trainingGoals={formData.goals}
               exercises={formData.exercises}
               activeSections={sessionSections[session.id] || []}

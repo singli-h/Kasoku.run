@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button"
  * 
  * @param {Object} props - Component props
  * @param {number} props.sessionId - Current session ID
+ * @param {string} props.sessionName - Current session name
+ * @param {string} props.weekday - Current weekday
  * @param {string} props.trainingGoals - Training goals text
  * @param {Array} props.activeSections - Active sections for this session
  * @param {Function} props.handleExerciseDetailChange - Function to handle exercise detail changes
@@ -27,7 +29,6 @@ import { Button } from "@/components/ui/button"
  */
 const ExerciseTimeline = memo(({
   sessionId,
-  trainingGoals,
   activeSections,
   handleExerciseDetailChange,
   errors = {},
@@ -36,98 +37,6 @@ const ExerciseTimeline = memo(({
   supersets = [],
   mode = 'individual',
 }) => {
-  // AI-Fill state
-  const [aiLoading, setAiLoading] = useState(false)
-  const [cooldown, setCooldown] = useState(0)
-  const [aiResults, setAiResults] = useState([])
-  const [history, setHistory] = useState([])
-
-  // Initialize cooldown from localStorage
-  useEffect(() => {
-    const key = `aiCooldown:${sessionId}`
-    const last = parseInt(localStorage.getItem(key) || '0', 10)
-    const now = Date.now()
-    const diff = Math.max(0, 60 - Math.floor((now - last) / 1000))
-    setCooldown(diff)
-  }, [sessionId])
-
-  // Countdown timer
-  useEffect(() => {
-    if (!cooldown) return
-    const id = setInterval(() => {
-      setCooldown(prev => prev <= 1 ? (clearInterval(id), 0) : prev - 1)
-    }, 1000)
-    return () => clearInterval(id)
-  }, [cooldown])
-
-  // Trigger AI fill
-  const handleAi = useCallback(async () => {
-    if (aiLoading || cooldown) return
-    setAiLoading(true)
-    // Backup current details
-    setHistory(prev => [...prev, orderedItems.filter(i => i.type === 'exercise').map(i => ({ ...i.exercise }))])
-    // Start cooldown
-    const key = `aiCooldown:${sessionId}`
-    localStorage.setItem(key, Date.now().toString())
-    setCooldown(60)
-    
-    // Get session info from the parent component
-    const sessionObj = orderedItems[0]?.exercise?.session 
-      ? { id: orderedItems[0].exercise.session } 
-      : { id: sessionId }
-      
-    // Get session name and weekday from DOM if possible
-    const sessionNameEl = document.getElementById(`session-name-${sessionId}`)
-    const sessionWeekdayEl = document.getElementById(`session-weekday-${sessionId}`)
-    const sessionName = sessionNameEl?.value || "Training Session"
-    const weekday = sessionWeekdayEl?.value || ""
-      
-    // Build payload
-    const payload = {
-      sessionId,
-      sessionName,
-      weekday,
-      trainingGoals,
-      exercises: orderedItems.filter(i => i.type === 'exercise').map(i => {
-        const ex = i.exercise
-        const existing = {}
-        ['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo']
-          .forEach(f => { if (ex[f] !== undefined && ex[f] !== '') existing[f] = ex[f] })
-        return { presetId: ex.id, name: ex.name, type: ex.category, existing }
-      })
-    }
-    // Call AI endpoint
-    const res = await fetch('/api/ai/exercise-details', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-    const json = await res.json()
-    if (json.status === 'success' && Array.isArray(json.data)) {
-      setAiResults(json.data)
-      json.data.forEach(detail => {
-        Object.entries(detail).forEach(([field, value]) => {
-          if (field === 'presetId' || field === 'explanation') return
-          handleExerciseDetailChange(detail.presetId, sessionId, detail.presetId, field, value)
-        })
-      })
-    }
-    setAiLoading(false)
-  }, [aiLoading, cooldown, sessionId, trainingGoals, handleExerciseDetailChange, orderedItems])
-
-  // Revert AI fill
-  const handleRevert = useCallback(() => {
-    const last = history[history.length - 1]
-    if (!last) return
-    last.forEach(ex => {
-      Object.entries(ex).forEach(([field, value]) => {
-        if (['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo'].includes(field)) {
-          handleExerciseDetailChange(ex.id, sessionId, ex.id, field, value)
-        }
-      })
-    })
-    setHistory(prev => prev.slice(0, -1))
-  }, [history, sessionId, handleExerciseDetailChange])
-
   // Get ordered exercises and supersets for each section
   const getOrderedExercisesAndSupersets = useMemo(() => {
     return (sectionId) => {
@@ -291,16 +200,8 @@ const ExerciseTimeline = memo(({
   
   return (
     <Card>
-      <CardHeader className="flex items-center justify-between">
+      <CardHeader>
         <CardTitle>Exercise Timeline</CardTitle>
-        <div className="flex space-x-2">
-          <Button size="sm" onClick={handleAi} disabled={aiLoading || cooldown > 0}>
-            🧠 Auto-Fill{cooldown > 0 ? ` (${cooldown}s)` : ''}
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleRevert} disabled={history.length === 0}>
-            Revert
-          </Button>
-        </div>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
@@ -343,257 +244,248 @@ const ExerciseTimeline = memo(({
                     const currentNumber = globalExerciseCount++;
                     
                     return (
-                      <>
-                        <tr key={exercise.id} className="border-b hover:bg-gray-50">
-                          <td className="px-4 py-3 text-gray-600">{currentNumber}</td>
-                          {mode !== 'group' && (
-                            <td className="px-1 py-3">
-                              <Badge variant="outline">{getSectionName(exercise.part)}</Badge>
-                            </td>
-                          )}
-                          <td className="px-2 py-3 text-base font-medium">{exercise.name}</td>
-                          {mode === 'group' ? (
-                            // Group mode: show distance & duration columns
-                            <>  
-                              <td className="px-2 py-3">
-                                <Input
-                                  type="text"
-                                  value={exercise.distance || ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value
-                                    if (val === "" || /^\d+$/.test(val)) {
-                                      handleExerciseDetailChange(
-                                        exercise.id,
-                                        exercise.session,
-                                        exercise.part,
-                                        "distance",
-                                        val
-                                      )
-                                    }
-                                  }}
-                                  className={`w-20 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
-                                    errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-distance`]
-                                      ? "border-red-500"
-                                      : "border-gray-300"
-                                  }`}
-                                />
-                              </td>
-                              <td className="px-2 py-3">
-                                <Input
-                                  type="text"
-                                  value={exercise.duration || ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value
-                                    if (val === "" || /^\d+(\.\d+)?$/.test(val)) {
-                                      handleExerciseDetailChange(
-                                        exercise.id,
-                                        exercise.session,
-                                        exercise.part,
-                                        "duration",
-                                        val
-                                      )
-                                    }
-                                  }}
-                                  className={`w-20 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
-                                    errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-duration`]
-                                      ? "border-red-500"
-                                      : "border-gray-300"
-                                  }`}
-                                />
-                              </td>
-                              <td className="px-2 py-3">
-                                <Input
-                                  type="text"
-                                  value={exercise.effort || ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value
-                                    if (val === "" || /^\d+$/.test(val)) {
-                                      handleExerciseDetailChange(
-                                        exercise.id,
-                                        exercise.session,
-                                        exercise.part,
-                                        "effort",
-                                        val
-                                      )
-                                    }
-                                  }}
-                                  className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
-                                    errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-effort`]
-                                      ? "border-red-500"
-                                      : "border-gray-300"
-                                  }`}
-                                />
-                              </td>
-                              <td className="px-2 py-3">
-                                <Input
-                                  type="text"
-                                  value={exercise.rest || ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value
-                                    if (val === "" || /^\d+$/.test(val)) {
-                                      handleExerciseDetailChange(
-                                        exercise.id,
-                                        exercise.session,
-                                        exercise.part,
-                                        "rest",
-                                        val
-                                      )
-                                    }
-                                  }}
-                                  className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
-                                    errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-rest`]
-                                      ? "border-red-500"
-                                      : "border-gray-300"
-                                  }`}
-                                />
-                              </td>
-                              <td className="px-2 py-3">
-                                <ExerciseDetailFields
-                                  exercise={exercise}
-                                  mode={mode}
-                                  handleExerciseDetailChange={handleExerciseDetailChange}
-                                  errors={errors}
-                                />
-                              </td>
-                            </>
-                          ) : (
-                            // Individual mode: show full columns
-                            <>
-                              <td className="px-1 py-3">
-                                <Input
-                                  type="text"
-                                  value={exercise.sets || ""}
-                                  onChange={(e) => {
-                                    const value = e.target.value
-                                    // Only allow numeric input
-                                    if (value === "" || /^\d+$/.test(value)) {
-                                      handleExerciseDetailChange(
-                                        exercise.id,
-                                        exercise.session,
-                                        exercise.part,
-                                        "sets",
-                                        value
-                                      )
-                                    }
-                                  }}
-                                  className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
-                                    errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`]
-                                      ? "border-red-500"
-                                      : "border-gray-300"
-                                  }`}
-                                />
-                                {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`] && (
-                                  <p className="mt-1 text-xs text-red-500">
-                                    {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`]}
-                                  </p>
-                                )}
-                              </td>
-                              <td className="px-1 py-3">
-                                <Input
-                                  type="text"
-                                  value={exercise.reps || ""}
-                                  onChange={(e) => {
-                                    const value = e.target.value
-                                    // Only allow numeric input
-                                    if (value === "" || /^\d+$/.test(value)) {
-                                      handleExerciseDetailChange(
-                                        exercise.id,
-                                        exercise.session,
-                                        exercise.part,
-                                        "reps",
-                                        value
-                                      )
-                                    }
-                                  }}
-                                  className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
-                                    errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`]
-                                      ? "border-red-500"
-                                      : "border-gray-300"
-                                  }`}
-                                />
-                                {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`] && (
-                                  <p className="mt-1 text-xs text-red-500">
-                                    {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`]}
-                                  </p>
-                                )}
-                              </td>
-                              <td className="px-1 py-3">
-                                <Input
-                                  type="text"
-                                  value={exercise.effort || ""}
-                                  onChange={(e) => {
-                                    const value = e.target.value
-                                    // Only allow numeric input
-                                    if (value === "" || /^\d+$/.test(value)) {
-                                      handleExerciseDetailChange(
-                                        exercise.id,
-                                        exercise.session,
-                                        exercise.part,
-                                        "effort",
-                                        value
-                                      )
-                                    }
-                                  }}
-                                  className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
-                                    errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-effort`]
-                                      ? "border-red-500"
-                                      : "border-gray-300"
-                                  }`}
-                                />
-                                {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-effort`] && (
-                                  <p className="mt-1 text-xs text-red-500">
-                                    {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-effort`]}
-                                  </p>
-                                )}
-                              </td>
-                              <td className="px-1 py-3">
-                                <Input
-                                  type="text"
-                                  value={exercise.rest || ""}
-                                  onChange={(e) => {
-                                    const value = e.target.value
-                                    // Only allow numeric input
-                                    if (value === "" || /^\d+$/.test(value)) {
-                                      handleExerciseDetailChange(
-                                        exercise.id,
-                                        exercise.session,
-                                        exercise.part,
-                                        "rest",
-                                        value
-                                      )
-                                    }
-                                  }}
-                                  className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
-                                    errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-rest`]
-                                      ? "border-red-500"
-                                      : "border-gray-300"
-                                  }`}
-                                />
-                                {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-rest`] && (
-                                  <p className="mt-1 text-xs text-red-500">
-                                    {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-rest`]}
-                                  </p>
-                                )}
-                              </td>
-                              <td className="px-2 py-3">
-                                <ExerciseDetailFields
-                                  exercise={exercise}
-                                  mode={mode}
-                                  handleExerciseDetailChange={handleExerciseDetailChange}
-                                  errors={errors}
-                                />
-                              </td>
-                            </>
-                          )}
-                        </tr>
-                        {aiResults.some(r => r.presetId === exercise.id) && (
-                          <tr key={`explanation-${exercise.id}`} className="bg-blue-50">
-                            <td colSpan={mode === 'group' ? 7 : 8} className="px-4 py-2 text-sm italic text-gray-700">
-                              <span className="font-medium">AI Suggestion:</span> {aiResults.find(r => r.presetId === exercise.id)?.explanation || ''}
-                            </td>
-                          </tr>
+                      <tr key={exercise.id} className="border-b hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-600">{currentNumber}</td>
+                        {mode !== 'group' && (
+                          <td className="px-1 py-3">
+                            <Badge variant="outline">{getSectionName(exercise.part)}</Badge>
+                          </td>
                         )}
-                      </>
+                        <td className="px-2 py-3 text-base font-medium">{exercise.name}</td>
+                        {mode === 'group' ? (
+                          // Group mode: show distance & duration columns
+                          <>  
+                            <td className="px-2 py-3">
+                              <Input
+                                type="text"
+                                value={exercise.distance || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  if (val === "" || /^\d+$/.test(val)) {
+                                    handleExerciseDetailChange(
+                                      exercise.id,
+                                      exercise.session,
+                                      exercise.part,
+                                      "distance",
+                                      val
+                                    )
+                                  }
+                                }}
+                                className={`w-20 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
+                                  errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-distance`]
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                              />
+                            </td>
+                            <td className="px-2 py-3">
+                              <Input
+                                type="text"
+                                value={exercise.duration || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  if (val === "" || /^\d+(\.\d+)?$/.test(val)) {
+                                    handleExerciseDetailChange(
+                                      exercise.id,
+                                      exercise.session,
+                                      exercise.part,
+                                      "duration",
+                                      val
+                                    )
+                                  }
+                                }}
+                                className={`w-20 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
+                                  errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-duration`]
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                              />
+                            </td>
+                            <td className="px-2 py-3">
+                              <Input
+                                type="text"
+                                value={exercise.effort || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  if (val === "" || /^\d+$/.test(val)) {
+                                    handleExerciseDetailChange(
+                                      exercise.id,
+                                      exercise.session,
+                                      exercise.part,
+                                      "effort",
+                                      val
+                                    )
+                                  }
+                                }}
+                                className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
+                                  errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-effort`]
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                              />
+                            </td>
+                            <td className="px-2 py-3">
+                              <Input
+                                type="text"
+                                value={exercise.rest || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  if (val === "" || /^\d+$/.test(val)) {
+                                    handleExerciseDetailChange(
+                                      exercise.id,
+                                      exercise.session,
+                                      exercise.part,
+                                      "rest",
+                                      val
+                                    )
+                                  }
+                                }}
+                                className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
+                                  errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-rest`]
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                              />
+                            </td>
+                            <td className="px-2 py-3">
+                              <ExerciseDetailFields
+                                exercise={exercise}
+                                mode={mode}
+                                handleExerciseDetailChange={handleExerciseDetailChange}
+                                errors={errors}
+                              />
+                            </td>
+                          </>
+                        ) : (
+                          // Individual mode: show full columns
+                          <>
+                            <td className="px-1 py-3">
+                              <Input
+                                type="text"
+                                value={exercise.sets || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  // Only allow numeric input
+                                  if (value === "" || /^\d+$/.test(value)) {
+                                    handleExerciseDetailChange(
+                                      exercise.id,
+                                      exercise.session,
+                                      exercise.part,
+                                      "sets",
+                                      value
+                                    )
+                                  }
+                                }}
+                                className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
+                                  errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`]
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                              />
+                              {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`] && (
+                                <p className="mt-1 text-xs text-red-500">
+                                  {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-sets`]}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-1 py-3">
+                              <Input
+                                type="text"
+                                value={exercise.reps || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  // Only allow numeric input
+                                  if (value === "" || /^\d+$/.test(value)) {
+                                    handleExerciseDetailChange(
+                                      exercise.id,
+                                      exercise.session,
+                                      exercise.part,
+                                      "reps",
+                                      value
+                                    )
+                                  }
+                                }}
+                                className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
+                                  errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`]
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                              />
+                              {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`] && (
+                                <p className="mt-1 text-xs text-red-500">
+                                  {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-reps`]}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-1 py-3">
+                              <Input
+                                type="text"
+                                value={exercise.effort || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  // Only allow numeric input
+                                  if (value === "" || /^\d+$/.test(value)) {
+                                    handleExerciseDetailChange(
+                                      exercise.id,
+                                      exercise.session,
+                                      exercise.part,
+                                      "effort",
+                                      value
+                                    )
+                                  }
+                                }}
+                                className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
+                                  errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-effort`]
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                              />
+                              {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-effort`] && (
+                                <p className="mt-1 text-xs text-red-500">
+                                  {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-effort`]}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-1 py-3">
+                              <Input
+                                type="text"
+                                value={exercise.rest || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  // Only allow numeric input
+                                  if (value === "" || /^\d+$/.test(value)) {
+                                    handleExerciseDetailChange(
+                                      exercise.id,
+                                      exercise.session,
+                                      exercise.part,
+                                      "rest",
+                                      value
+                                    )
+                                  }
+                                }}
+                                className={`w-16 h-8 text-sm border focus:border-blue-400 text-center px-1 ${
+                                  errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-rest`]
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                              />
+                              {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-rest`] && (
+                                <p className="mt-1 text-xs text-red-500">
+                                  {errors[`exercise-${exercise.id}-${exercise.session}-${exercise.part}-rest`]}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-2 py-3">
+                              <ExerciseDetailFields
+                                exercise={exercise}
+                                mode={mode}
+                                handleExerciseDetailChange={handleExerciseDetailChange}
+                                errors={errors}
+                              />
+                            </td>
+                          </>
+                        )}
+                      </tr>
                     );
                   } else if (item.type === 'superset') {
                     // Superset containing multiple exercises

@@ -4,58 +4,56 @@ import { getUserRoleData } from '@/lib/roles';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
 /**
- * POST /api/plans/preset-groups/[id]/assign
- * Assigns the specified preset-group session:
- * - Coaches: assigns to all athletes in the group.
- * - Athletes: assigns to themselves.
+ * POST /api/plans/preset-groups/:id/assign-sessions
+ * Assigns (upserts) training sessions for a preset group:
+ * - Coaches: all athletes in the group
+ * - Athletes: themselves only
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  // Authenticate the user
-  const authResult = await requireAuth();
-  if (authResult instanceof NextResponse) return authResult;
-  const clerkId = authResult;
+  // Authenticate
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+  const clerkId = auth;
 
-  // Get role data
+  // Role data
   let roleData = getRoleDataFromHeader(req);
   if (!roleData) roleData = await getUserRoleData(clerkId);
   const { role, userId } = roleData;
-
-  // Only coaches or athletes
   if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
 
   const supabase = createServerSupabaseClient();
+  const groupId = params.id;
 
-  // Fetch the preset group
-  const { data: group, error: groupError } = await supabase
+  // Fetch preset group
+  const { data: group, error: groupErr } = await supabase
     .from('exercise_preset_groups')
     .select('id, athlete_group_id, date, session_mode, user_id')
-    .eq('id', params.id)
+    .eq('id', groupId)
     .single();
-  if (groupError || !group) {
+  if (groupErr || !group) {
     return NextResponse.json({ status: 'error', message: 'Preset group not found' }, { status: 404 });
   }
 
-  // Authorization for coaches
+  // Authorization for coach
   if (role === 'coach' && group.user_id !== userId) {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
 
-  // Prepare session rows
   const dateTime = group.date ? new Date(group.date).toISOString() : new Date().toISOString();
   let rows: any[] = [];
 
   if (role === 'coach') {
-    // Assign to all athletes in the group
-    const { data: athletes, error: athError } = await supabase
+    // Assign to all athletes in group
+    const { data: athletes, error: athErr } = await supabase
       .from('athletes')
       .select('id')
       .eq('athlete_group_id', group.athlete_group_id);
-    if (athError) {
-      return NextResponse.json({ status: 'error', message: athError.message }, { status: 500 });
+    if (athErr) {
+      return NextResponse.json({ status: 'error', message: athErr.message }, { status: 500 });
     }
-    rows = athletes.map((a: { id: number }) => ({
+    rows = athletes.map((a: any) => ({
       athlete_id: a.id,
       athlete_group_id: group.athlete_group_id,
       exercise_preset_group_id: group.id,
@@ -64,13 +62,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       status: 'pending'
     }));
   } else {
-    // Assign to the single athlete
-    const { data: athlete, error: athError } = await supabase
+    // Assign to the athlete themselves
+    const { data: athlete, error: athErr } = await supabase
       .from('athletes')
       .select('id, athlete_group_id')
       .eq('user_id', userId)
       .single();
-    if (athError || !athlete) {
+    if (athErr || !athlete) {
       return NextResponse.json({ status: 'error', message: 'Athlete profile not found' }, { status: 404 });
     }
     rows = [{
@@ -83,12 +81,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }];
   }
 
-  // Upsert sessions to ensure one per athlete/group
-  const { error: upsertError } = await supabase
+  // Upsert sessions
+  const { error: upsertErr } = await supabase
     .from('exercise_training_sessions')
     .upsert(rows, { onConflict: 'athlete_id,exercise_preset_group_id' });
-  if (upsertError) {
-    return NextResponse.json({ status: 'error', message: upsertError.message }, { status: 500 });
+  if (upsertErr) {
+    return NextResponse.json({ status: 'error', message: upsertErr.message }, { status: 500 });
   }
 
   return NextResponse.json({ status: 'success' }, { status: 200 });
