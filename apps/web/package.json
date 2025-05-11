@@ -54,6 +54,7 @@
     "next-auth": "^4.24.11",
     "node-fetch": "^3.3.2",
     "nodemailer": "^6.10.0",
+    "openai": "^4.98.0",
     "openai-edge": "^1.2.2",
     "postcss": "8.4.24",
     "prop-types": "^15.8.1",
