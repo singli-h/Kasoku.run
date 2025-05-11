@@ -15,7 +15,7 @@ export async function getUserRoleData(clerkId: string): Promise<UserRoleData> {
   console.log('[Roles] getUserRoleData called with clerkId:', clerkId);
   const supabase = createServerSupabaseClient();
   // Call database function to retrieve all relevant IDs in one go
-  const { data, error } = await supabase.rpc('get_user_role_data', { clerk_id: clerkId });
+  const { data, error } = await supabase.rpc('get_user_role_data', { _clerk_id: clerkId });
   if (error) {
     console.error('RPC get_user_role_data error:', error);
     throw error;
