@@ -23,7 +23,8 @@ export default function WorkoutPage() {
 
   // DEBUG: log session and state flags to console
   console.log('WorkoutPage debug:', {
-    session,
+    sessionType: session?.type,
+    sessionDetails: session?.details,
     rawGroups,
     groups,
     group,
