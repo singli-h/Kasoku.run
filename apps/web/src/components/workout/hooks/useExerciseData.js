@@ -62,6 +62,9 @@ export const useExerciseData = () => {
         
         const data = await response.json();
         
+        // DEBUG: log API response for exercisesInit
+        console.log('useExerciseData fetchInitialData response:', data);
+        
         // Normalize preset groups into an array
         const presetGroupsRaw = data.data.session?.details?.exercise_preset_groups;
         const presetGroups = Array.isArray(presetGroupsRaw)
