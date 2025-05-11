@@ -21,6 +21,19 @@ export default function WorkoutPage() {
   const groups = Array.isArray(rawGroups) ? rawGroups : rawGroups ? [rawGroups] : [];
   const group = groups[0];
 
+  // DEBUG: log session and state flags to console
+  console.log('WorkoutPage debug:', {
+    session,
+    rawGroups,
+    groups,
+    group,
+    isLoading,
+    error,
+    isAssigned,
+    isOngoing,
+    isCompleted
+  });
+
   return (
     <div className="relative">
       <ErrorAndLoadingOverlay 
