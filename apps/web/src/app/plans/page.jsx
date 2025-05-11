@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import MesoWizard from '../../components/mesoWizard/mesoWizard'
 import CalendarView from '../../components/overview/CalendarView'
-import PlanBuilder from '../../components/overview/PlanBuilder'
+import PresetGroupBuilder from '../../components/builder/PresetGroupBuilder'
 import PageBackground from '@/components/ui/PageBackground'
 import { useUserRole } from '@/context/UserRoleContext'
 
@@ -53,7 +53,7 @@ export default function PlansPage() {
 
       <TabsContent value="builder">
         <div className="w-full max-w-6xl mx-auto p-4">
-          <PlanBuilder userRole={userRole} />
+          <PresetGroupBuilder userRole={userRole} />
         </div>
       </TabsContent>
     </Tabs>
