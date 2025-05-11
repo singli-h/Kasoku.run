@@ -21,7 +21,7 @@ export async function GET(
   if (!roleData) roleData = await getUserRoleData(clerkId)
   const { role, coachId } = roleData;
     
-    if (role !== 'coach') {
+    if (role !== 'coach' && role !== 'athlete') {
       return NextResponse.json(
         { status: 'error', message: 'Access forbidden: Coach role required' },
         { status: 403 }

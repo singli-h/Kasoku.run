@@ -15,10 +15,14 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
   const clerkId = auth;
 
-  // Get user role and coachId
-  let roleData = getRoleDataFromHeader(req);
-  if (!roleData) roleData = await getUserRoleData(clerkId);
+  // Retrieve role data: prefer header, but ensure we have coachId
+  let roleData = getRoleDataFromHeader(req) ?? await getUserRoleData(clerkId);
+  // If header-only data lacked coachId (e.g. athlete), fetch full role data
+  if (roleData.coachId === undefined) {
+    roleData = await getUserRoleData(clerkId);
+  }
   const { role, coachId } = roleData;
+  // Only coaches or athletes can access preset groups
   if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }

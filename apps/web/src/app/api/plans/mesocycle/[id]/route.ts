@@ -18,7 +18,7 @@ export async function GET(
   let roleData = getRoleDataFromHeader(req)
   if (!roleData) roleData = await getUserRoleData(clerkId)
   const { role, coachId } = roleData;
-  if (role !== 'coach') {
+  if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
 

@@ -18,10 +18,15 @@ export async function GET(
   if (auth instanceof NextResponse) return auth;
   const clerkId = auth;
 
-  let roleData = getRoleDataFromHeader(req);
-  if (!roleData) roleData = await getUserRoleData(clerkId);
+  // Retrieve role data: prefer header, but ensure we have coachId
+  let roleData = getRoleDataFromHeader(req) ?? await getUserRoleData(clerkId);
+  // If header-only data lacked coachId (e.g. athlete), fetch full role data
+  if (roleData.coachId === undefined) {
+    roleData = await getUserRoleData(clerkId);
+  }
   const { role, coachId } = roleData;
-  if (role !== 'coach') {
+  // Allow coaches and athletes to access individual preset groups
+  if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
 
@@ -64,10 +69,15 @@ export async function PUT(
   if (auth instanceof NextResponse) return auth;
   const clerkId = auth;
 
-  let roleData = getRoleDataFromHeader(req);
-  if (!roleData) roleData = await getUserRoleData(clerkId);
+  // Retrieve role data: prefer header, but ensure we have coachId
+  let roleData = getRoleDataFromHeader(req) ?? await getUserRoleData(clerkId);
+  // If header-only data lacked coachId (e.g. athlete), fetch full role data
+  if (roleData.coachId === undefined) {
+    roleData = await getUserRoleData(clerkId);
+  }
   const { role, coachId } = roleData;
-  if (role !== 'coach') {
+  // Allow coaches and athletes to access individual preset groups
+  if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
 
