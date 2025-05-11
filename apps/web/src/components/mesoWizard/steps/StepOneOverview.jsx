@@ -175,7 +175,7 @@ const StepOneOverview = ({ formData = {}, handleInputChange = () => {}, errors =
           <CardContent className="pt-6 px-4 sm:px-6">
             <div className="grid gap-6">
               {/* Athlete Group Selector (coach only) */}
-              {(!userRole || userRole === 'coach') && (
+              {userRole === 'coach' && (
                 <div>
                   <Label htmlFor="athleteGroupId" className="text-base">Athlete Group</Label>
                   {groupLoading ? (

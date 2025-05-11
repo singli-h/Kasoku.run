@@ -37,6 +37,7 @@ import { useState, useCallback } from "react"
  * @param {Object} props.errors - Validation errors
  * @param {Function} props.handleNext - Function to go to the next step
  * @param {Function} props.handleBack - Function to go to the previous step
+ * @param {string} props.userRole - User role
  */
 const StepTwoPlanner = ({
   formData,
@@ -55,6 +56,7 @@ const StepTwoPlanner = ({
   errors,
   handleNext,
   handleBack,
+  userRole,
 }) => {
   // State to track supersets for each session
   const [sessionSupersets, setSessionSupersets] = useState({});
@@ -225,6 +227,7 @@ const StepTwoPlanner = ({
                   </div>
 
                   {/* Session Mode Selector */}
+                  {userRole === 'coach' && (
                   <div className="mt-4">
                     <div className="flex items-center gap-2">
                       <Label className="text-base font-medium">Session Mode</Label>
@@ -264,6 +267,7 @@ const StepTwoPlanner = ({
                       </Button>
                     </div>
                   </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

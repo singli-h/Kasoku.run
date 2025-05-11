@@ -91,8 +91,8 @@ export default function ProfilePage() {
                   </AvatarFallback>
                 </Avatar>
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{fullName}</h2>
-                <p className="text-muted-foreground mt-1">{email}</p>
-                <div className="flex items-center text-sm text-muted-foreground mt-2">
+                <p className="text-muted-foreground mt-1 text-white">{email}</p>
+                <div className="flex items-center text-sm text-white text-muted-foreground mt-2">
                   <User className="h-4 w-4 mr-1" />
                   <span>@{username}</span>
                 </div>

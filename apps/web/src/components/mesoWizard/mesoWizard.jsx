@@ -36,6 +36,8 @@ const MesoWizard = ({ onComplete }) => {
     progressPercentage,
     groups,
     groupLoading,
+    userRole,
+    roleLoading,
     
     setActiveSession,
     handleInputChange,
@@ -77,6 +79,7 @@ const MesoWizard = ({ onComplete }) => {
               handleBack={handleBack}
               groups={groups}
               groupLoading={groupLoading}
+              userRole={userRole}
             />
           )
         }
@@ -90,6 +93,7 @@ const MesoWizard = ({ onComplete }) => {
             handleBack={handleBack}
             groups={groups}
             groupLoading={groupLoading}
+            userRole={userRole}
           />
         )
       case 3:

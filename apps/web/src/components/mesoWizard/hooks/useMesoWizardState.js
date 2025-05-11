@@ -74,6 +74,14 @@ export const useMesoWizardState = (onComplete) => {
   const groups = groupsBody?.data || []
   const groupLoading = !groupsBody && !groupsError
 
+  // Fetch and cache user role (coach or athlete)
+  const { data: roleBody, error: roleError } = useSWRImmutable(
+    isSessionLoaded && isSignedIn ? '/api/users/role' : null,
+    fetcherWithToken
+  )
+  const userRole = roleBody?.data?.role
+  const roleLoading = !roleBody && !roleError
+
   // Filter exercises based on search term
   useEffect(() => {
     if (!allExercises.length) return;
@@ -376,8 +384,11 @@ export const useMesoWizardState = (onComplete) => {
         newErrors.startDate = "Start date is required"
       }
       
-      if (!formData.athleteGroupId) {
-        newErrors.athleteGroupId = "Please select an athlete group"
+      // Require selecting an athlete group only for coaches
+      if (userRole === 'coach') {
+        if (!formData.athleteGroupId) {
+          newErrors.athleteGroupId = "Please select an athlete group"
+        }
       }
       
       // For microcycle, duration is fixed at 1 week and doesn't need validation
@@ -447,7 +458,7 @@ export const useMesoWizardState = (onComplete) => {
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }, [formData])
+  }, [formData, userRole])
 
   // Handle next step
   const handleNext = useCallback(() => {
@@ -536,8 +547,11 @@ export const useMesoWizardState = (onComplete) => {
   }, [formData.exercises]);
 
   return {
-    // Include athlete groups fetched via SWR
+    // Include fetched data and state
+    userRole,
+    roleLoading,
     groups,
+    groupLoading,
     step,
     formData,
     searchTerm,
@@ -550,7 +564,6 @@ export const useMesoWizardState = (onComplete) => {
     exerciseOrder,
     progressPercentage,
     loadingExercises,
-    groupLoading,
     getOrderedExercises,
     handleInputChange,
     handleSessionInputChange,
