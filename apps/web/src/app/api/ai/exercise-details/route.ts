@@ -84,14 +84,27 @@ export async function POST(req: NextRequest) {
       { role: 'user', content: JSON.stringify({ trainingGoals, sessions }, null, 2) }
     ];
 
-    // Invoke OpenAI with function_call auto
-    // @ts-ignore: cast messages to any for SDK compatibility
-    const response = await openai.chat.completions.create({
-      model: 'o4-mini-2025-04-16',
-      messages: messages as any,
-      functions,
-      function_call: 'auto'
-    });
+    // Invoke OpenAI with timeout and faster model to avoid server timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    let response;
+    try {
+      // @ts-ignore: cast messages to any for SDK compatibility
+      response = await openai.chat.completions.create({
+        model: 'o4-mini-2025-04-16',
+        messages: messages as any,
+        functions,
+        function_call: 'auto'
+      }, { signal: controller.signal });
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        return NextResponse.json({ status: 'error', message: 'AI request timed out' }, { status: 504 });
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     const choice = response.choices?.[0];
     if (!choice?.message.function_call?.arguments) {

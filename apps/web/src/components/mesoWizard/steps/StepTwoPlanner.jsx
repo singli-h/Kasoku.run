@@ -208,16 +208,6 @@ const StepTwoPlanner = ({
         Configure your training sessions and add exercises to each section.
       </p>
 
-      {/* Global Auto-Fill Controls */}
-      <div className="flex items-center space-x-2 mb-4">
-        <Button size="sm" onClick={handleAutoFillAll} disabled={aiLoadingAll || cooldownAll > 0}>
-          🧠 Auto-Fill All Sessions{cooldownAll > 0 ? ` (${cooldownAll}s)` : ''}
-        </Button>
-        <Button size="sm" variant="outline" onClick={handleRevertAll} disabled={historyAll.length === 0}>
-          Revert All
-        </Button>
-      </div>
-
       {/* Session Tabs */}
       <Tabs
         value={activeSession.toString()}
@@ -385,17 +375,18 @@ const StepTwoPlanner = ({
             {/* Exercise Timeline */}
             <ExerciseTimeline
               sessionId={session.id}
-              sessionName={session.name}
-              weekday={session.weekday}
-              trainingGoals={formData.goals}
-              exercises={formData.exercises}
-              activeSections={sessionSections[session.id] || []}
               mode={session.sessionMode}
+              activeSections={sessionSections[session.id] || []}
               handleExerciseDetailChange={handleExerciseDetailChange}
               errors={errors}
               getSectionName={getSectionName}
               getOrderedExercises={getOrderedExercises}
               supersets={sessionSupersets[session.id] || []}
+              aiLoadingAll={aiLoadingAll}
+              cooldownAll={cooldownAll}
+              handleAutoFillAll={handleAutoFillAll}
+              handleRevertAll={handleRevertAll}
+              historyAllCount={historyAll.length}
             />
           </TabsContent>
         ))}

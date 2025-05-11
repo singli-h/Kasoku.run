@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo, memo, useState, useEffect, useCallback } from "react"
+import React, { useMemo, memo } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,6 +26,11 @@ import { Button } from "@/components/ui/button"
  * @param {Function} props.getOrderedExercises - Function to get ordered exercises for a section
  * @param {Array} props.supersets - Array of supersets for this session
  * @param {string} props.mode - Mode of the timeline ('individual' or 'group')
+ * @param {boolean} props.aiLoadingAll - Indicates if AI is loading all sessions
+ * @param {number} props.cooldownAll - Cooldown time for auto-filling all sessions
+ * @param {Function} props.handleAutoFillAll - Function to handle auto-filling all sessions
+ * @param {Function} props.handleRevertAll - Function to handle reverting all sessions
+ * @param {number} props.historyAllCount - Count of history for all sessions
  */
 const ExerciseTimeline = memo(({
   sessionId,
@@ -36,6 +41,11 @@ const ExerciseTimeline = memo(({
   getOrderedExercises,
   supersets = [],
   mode = 'individual',
+  aiLoadingAll,
+  cooldownAll,
+  handleAutoFillAll,
+  handleRevertAll,
+  historyAllCount
 }) => {
   // Get ordered exercises and supersets for each section
   const getOrderedExercisesAndSupersets = useMemo(() => {
@@ -200,8 +210,27 @@ const ExerciseTimeline = memo(({
   
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex items-center justify-between">
         <CardTitle>Exercise Timeline</CardTitle>
+        <div className="flex items-center space-x-2">
+          <Button
+            size="sm"
+            className={`bg-gradient-to-r from-purple-600 to-blue-500 text-white transform transition hover:scale-105 ${aiLoadingAll || cooldownAll > 0 ? 'opacity-50 cursor-wait' : ''}`}
+            onClick={handleAutoFillAll}
+            disabled={aiLoadingAll || cooldownAll > 0}
+          >
+            🧠 Auto-Fill All Sessions{cooldownAll > 0 ? ` (${cooldownAll}s)` : ''}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="hover:bg-gray-100 transition"
+            onClick={handleRevertAll}
+            disabled={historyAllCount === 0}
+          >
+            Revert All
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">

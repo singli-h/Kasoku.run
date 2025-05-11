@@ -16,8 +16,10 @@ export default function WorkoutPage() {
     isAssigned,
     isCompleted
   } = useExerciseData();
-  // For assigned sessions, pick the first preset group
-  const group = session?.details?.exercise_preset_groups?.[0];
+  // Normalize preset groups into an array and pick the first group
+  const rawGroups = session?.details?.exercise_preset_groups;
+  const groups = Array.isArray(rawGroups) ? rawGroups : rawGroups ? [rawGroups] : [];
+  const group = groups[0];
 
   return (
     <div className="relative">
