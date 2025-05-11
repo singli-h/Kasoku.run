@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   const clerkId = auth;
   let roleData = getRoleDataFromHeader(req)
   if (!roleData) roleData = await getUserRoleData(clerkId)
-  const { role, coachId } = roleData;
+  const { role, coachId, userId } = roleData;
   if (role !== 'coach') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabase
     .from('mesocycles')
     .select('*')
-    .eq('coach_id', coachId)
+    .eq('user_id', userId)
     .order('start_date', { ascending: false });
   if (error) {
     return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
@@ -55,13 +55,13 @@ export async function GET(req: NextRequest) {
  * Creates a full mesocycle with nested groups, presets, and details.
  */
 export async function POST(req: NextRequest) {
-  // Auth + RBAC: only coaches
+  // Auth + RBAC: only coaches or athletes
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
   const clerkId = auth;
   let roleData = getRoleDataFromHeader(req)
   if (!roleData) roleData = await getUserRoleData(clerkId)
-  const { role, coachId } = roleData;
+  const { role, userId } = roleData;
   if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     // 1. Create mesocycle
     const { data: mesocycle, error: mesoErr } = await supabase
       .from('mesocycles')
-      .insert({ name, description, start_date: startDate, end_date: endDate, ...(planData.macrocycle_id && { macrocycle_id: planData.macrocycle_id }), athlete_group_id: athleteGroupId })
+      .insert({ name, description, start_date: startDate, end_date: endDate, user_id: userId, ...(planData.macrocycle_id && { macrocycle_id: planData.macrocycle_id }), athlete_group_id: athleteGroupId })
       .select()
       .single();
     if (mesoErr || !mesocycle) throw mesoErr;
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
             week: wIdx + 1,
             day: dIdx + 1,
             date,
-            coach_id: coachId,
+            user_id: userId,
             athlete_group_id: athleteGroupId,
             session_mode: session_mode || 'individual'
           })

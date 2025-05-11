@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
   let roleData = getRoleDataFromHeader(req)
   if (!roleData) roleData = await getUserRoleData(clerkId)
-  const { role, coachId } = roleData;
+  const { role, userId } = roleData;
   if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     // 1) Insert microcycle
     const { data: microcycle, error: mcErr } = await supabase
       .from('microcycles')
-      .insert({ name, description, start_date: startDate, end_date: endDate, mesocycle_id: mesoId, coach_id: coachId })
+      .insert({ name, description, start_date: startDate, end_date: endDate, mesocycle_id: mesoId, user_id: userId })
       .select()
       .single();
     if (mcErr || !microcycle) throw mcErr;
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
           week: 1,
           day: idx + 1,
           date,
-          coach_id: coachId,
+          user_id: userId,
           athlete_group_id: athleteGroupId,
           microcycle_id: microcycle.id,
           // Set session mode for each session (default to 'individual')

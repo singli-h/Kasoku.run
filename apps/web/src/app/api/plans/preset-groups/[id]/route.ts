@@ -18,13 +18,13 @@ export async function GET(
   if (auth instanceof NextResponse) return auth;
   const clerkId = auth;
 
-  // Retrieve role data: prefer header, but ensure we have coachId
+  // Retrieve role data: prefer header, but ensure we have user id
   let roleData = getRoleDataFromHeader(req) ?? await getUserRoleData(clerkId);
-  // If header-only data lacked coachId (e.g. athlete), fetch full role data
+  // If header-only data lacked user id (e.g. athlete), fetch full role data
   if (roleData.coachId === undefined) {
     roleData = await getUserRoleData(clerkId);
   }
-  const { role, coachId } = roleData;
+  const { role, userId } = roleData;
   // Allow coaches and athletes to access individual preset groups
   if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
@@ -38,7 +38,7 @@ export async function GET(
     .from('exercise_preset_groups')
     .select('*')
     .eq('id', groupId)
-    .eq('coach_id', coachId)
+    .eq('user_id', userId)
     .single();
   if (gErr || !group) {
     return NextResponse.json({ status: 'error', message: 'Group not found' }, { status: 404 });
@@ -69,13 +69,13 @@ export async function PUT(
   if (auth instanceof NextResponse) return auth;
   const clerkId = auth;
 
-  // Retrieve role data: prefer header, but ensure we have coachId
+  // Retrieve role data: prefer header, but ensure we have user id
   let roleData = getRoleDataFromHeader(req) ?? await getUserRoleData(clerkId);
-  // If header-only data lacked coachId (e.g. athlete), fetch full role data
-  if (roleData.coachId === undefined) {
+  // If header-only data lacked user id (e.g. athlete), fetch full role data
+  if (roleData.userId === undefined) {
     roleData = await getUserRoleData(clerkId);
   }
-  const { role, coachId } = roleData;
+  const { role, userId } = roleData;
   // Allow coaches and athletes to access individual preset groups
   if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });

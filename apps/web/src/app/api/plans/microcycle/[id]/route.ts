@@ -15,11 +15,11 @@ export async function GET(
   if (auth instanceof NextResponse) return auth;
   const clerkId = auth;
 
-  // Get user role and verify coach access
+  // Get user role and verify access
   try {
     let roleData = getRoleDataFromHeader(req)
   if (!roleData) roleData = await getUserRoleData(clerkId)
-  const { role, coachId } = roleData;
+  const { role, userId } = roleData;
     
     if (role !== 'coach' && role !== 'athlete') {
       return NextResponse.json(
@@ -36,7 +36,7 @@ export async function GET(
       .from('microcycles')
       .select('*')
       .eq('id', microcycleId)
-      .eq('coach_id', coachId)
+      .eq('user_id', userId)
       .single();
     if (mcErr || !microcycle) {
       return NextResponse.json({ status: 'error', message: 'Microcycle not found' }, { status: 404 });

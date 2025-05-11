@@ -11,13 +11,13 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Authenticate and get coachId
+  // Authenticate and get userId
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
   const clerkId = auth;
   let roleData = getRoleDataFromHeader(req)
   if (!roleData) roleData = await getUserRoleData(clerkId)
-  const { role, coachId } = roleData;
+  const { role, userId } = roleData;
   if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
@@ -31,7 +31,7 @@ export async function GET(
       .from('mesocycles')
       .select('*')
       .eq('id', mesocycleId)
-      .eq('coach_id', coachId)
+      .eq('user_id', userId)
       .single();
     if (mcErr || !mesocycle) {
       return NextResponse.json({ status: 'error', message: 'Mesocycle not found' }, { status: 404 });

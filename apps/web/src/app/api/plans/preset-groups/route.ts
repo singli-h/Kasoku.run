@@ -15,13 +15,13 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
   const clerkId = auth;
 
-  // Retrieve role data: prefer header, but ensure we have coachId
+  // Retrieve role data: prefer header, but ensure we have user id
   let roleData = getRoleDataFromHeader(req) ?? await getUserRoleData(clerkId);
-  // If header-only data lacked coachId (e.g. athlete), fetch full role data
-  if (roleData.coachId === undefined) {
+  // If header-only data lacked user id (e.g. athlete), fetch full role data
+  if (roleData.userId === undefined) {
     roleData = await getUserRoleData(clerkId);
   }
-  const { role, coachId } = roleData;
+  const { role, userId } = roleData;
   // Only coaches or athletes can access preset groups
   if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const { data: groups, error } = await supabase
     .from('exercise_preset_groups')
     .select('id, name, description, date, session_mode, athlete_group_id')
-    .eq('coach_id', coachId)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   let roleData = getRoleDataFromHeader(req);
   if (!roleData) roleData = await getUserRoleData(clerkId);
-  const { role, coachId } = roleData;
+  const { role, userId } = roleData;
   if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         date: date || null,
         session_mode: sessionMode || 'individual',
         athlete_group_id: athleteGroupId || null,
-        coach_id: coachId
+        user_id: userId
       })
       .select()
       .single();
