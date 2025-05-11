@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   let roleData = getRoleDataFromHeader(req);
   if (!roleData) roleData = await getUserRoleData(clerkId);
   const { role, coachId } = roleData;
-  if (role !== 'coach') {
+  if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
 
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   let roleData = getRoleDataFromHeader(req);
   if (!roleData) roleData = await getUserRoleData(clerkId);
   const { role, coachId } = roleData;
-  if (role !== 'coach') {
+  if (role !== 'coach' && role !== 'athlete') {
     return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
   }
 
