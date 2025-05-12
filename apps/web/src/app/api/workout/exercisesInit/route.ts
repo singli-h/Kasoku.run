@@ -117,6 +117,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ status: 'error', message: upcomingError.message }, { status: 500 });
   }
   if (upcoming && upcoming.length > 0) {
+    // Return future pending sessions with type 'pending'
     return NextResponse.json({
       status: 'success',
       data: { session: { type: 'pending', details: upcoming[0] } },

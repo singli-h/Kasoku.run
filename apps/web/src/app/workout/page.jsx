@@ -14,7 +14,8 @@ export default function WorkoutPage() {
     completeSession,
     isOngoing,
     isAssigned,
-    isCompleted
+    isCompleted,
+    isPending
   } = useExerciseData();
   // Normalize preset groups into an array and pick the first group
   const rawGroups = session?.details?.exercise_preset_groups;
@@ -45,7 +46,7 @@ export default function WorkoutPage() {
         loadingMessage="Loading workout data..."
       />
       
-      {isAssigned && (
+      {(isPending) && (
         <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
           <div className="bg-white rounded-xl shadow-lg p-4 text-center">
             <h1 className="text-4xl font-bold mb-4 text-gray-800">

@@ -362,6 +362,7 @@ export const useExerciseData = () => {
   const isAssigned = state.session?.type === 'assigned';
   const isOngoing = state.session?.type === 'ongoing';
   const isCompleted = state.session?.type === 'completed';
+  const isPending = state.session?.type === 'pending';
 
   return {
     isLoading: state.isLoading,
@@ -382,6 +383,7 @@ export const useExerciseData = () => {
     isAssigned,
     isOngoing,
     isCompleted,
+    isPending,
     version: state._version
   };
 }; 
