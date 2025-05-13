@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
 
     // Invoke OpenAI with timeout and faster model to avoid server timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
     let response;
     try {
       // @ts-ignore: cast messages to any for SDK compatibility
