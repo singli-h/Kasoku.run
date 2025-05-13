@@ -17,17 +17,13 @@ export default function WorkoutPage() {
     isCompleted,
     isPending
   } = useExerciseData();
-  // Normalize preset groups into an array and pick the first group
-  const rawGroups = session?.details?.exercise_preset_groups;
-  const groups = Array.isArray(rawGroups) ? rawGroups : rawGroups ? [rawGroups] : [];
-  const group = groups[0];
+  // Access the single preset group directly
+  const group = session?.details?.exercise_preset_groups;
 
   // DEBUG: log session and state flags to console
   console.log('WorkoutPage debug:', {
     sessionType: session?.type,
     sessionDetails: session?.details,
-    rawGroups,
-    groups,
     group,
     isLoading,
     error,
@@ -53,7 +49,13 @@ export default function WorkoutPage() {
               {group?.name}
             </h1>
             <p className="text-xl text-gray-600 mb-8">
+              {group?.date}
+            </p>
+            <p className="text-xl text-gray-600 mb-8">
               Week {group?.week}, Day {group?.day}
+            </p>
+            <p className="text-xl text-gray-600 mb-8">
+              {group?.description}
             </p>
             <button
               onClick={startSession}

@@ -121,11 +121,15 @@ export const useExerciseData = () => {
           ? [presetGroupsRawSS]
           : [];
       const exercisePresets = presetGroupsSS.flatMap(group => group.exercise_presets ?? []);
-      const exercisesDetail = exercisePresets.map(preset => ({
-        name: preset.exercises.name,
-        sets: preset.exercise_training_details.length,
-        reps: preset.exercise_training_details[0]?.reps || 0,
-      }));
+      const exercisesDetail = exercisePresets.map(preset => {
+        // Use training details if present, otherwise fallback to preset details
+        const detailsArray = preset.exercise_training_details ?? preset.exercise_preset_details ?? [];
+        return {
+          name: preset.exercises.name,
+          sets: detailsArray.length,
+          reps: detailsArray[0]?.reps || 0,
+        };
+      });
 
       const token = await getAuthToken();
       
