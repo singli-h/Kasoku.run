@@ -132,22 +132,11 @@ const StepTwoPlanner = ({
         console.error('[AI] Function invoke error:', error)
         return
       }
+      // Stream the function_call.arguments JSON only
       const parser = createParser(event => {
-        if (event.type !== 'event') return
-        if (event.data === '[DONE]') return
+        if (event.type !== 'event' || event.data === '[DONE]') return
         const chunk = JSON.parse(event.data)
         const delta = chunk.choices[0].delta
-        if (delta.content) {
-          if (!switchedToJson.current) {
-            setFeedbackText(prev => prev + delta.content)
-          } else {
-            jsonBuffer.current += delta.content
-          }
-          if (delta.content.includes('"session_details"')) {
-            switchedToJson.current = true
-            jsonBuffer.current = jsonBuffer.current.trimStart()
-          }
-        }
         if (delta.function_call?.arguments) {
           jsonBuffer.current += delta.function_call.arguments
         }
@@ -157,20 +146,18 @@ const StepTwoPlanner = ({
       while (!done) {
         const { value, done: readerDone } = await reader.read()
         done = readerDone
-        if (value) {
-          const text = new TextDecoder().decode(value)
-          parser.feed(text)
-        }
+        if (value) parser.feed(new TextDecoder().decode(value))
       }
-      // Assemble and validate
-      const fullText = `{"feedback":"${feedbackText.replace(/"/g, '\"')}",${jsonBuffer.current}`
-      const payload = JSON.parse(fullText)
-      const ajv = new Ajv()
-      const valid = ajv.validate(ExerciseDetailsSchemaV1, payload)
-      if (!valid) {
-        console.error('[AI] Schema validation failed:', ajv.errors)
+      // Parse JSON arguments into payload
+      let payload
+      try {
+        payload = JSON.parse(jsonBuffer.current)
+      } catch (err) {
+        console.error('[AI] JSON parse failed:', err)
         return
       }
+      // Display feedback and apply session details
+      setFeedbackText(payload.feedback || '')
       payload.session_details.forEach(sess => {
         sess.details.forEach(detail => {
           Object.entries(detail).forEach(([field, value]) => {
