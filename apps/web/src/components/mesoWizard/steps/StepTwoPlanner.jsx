@@ -9,7 +9,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import ExerciseSectionManager from "../components/ExerciseSectionManager"
 import ExerciseTimeline from "../components/ExerciseTimeline"
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
+import { useSupabaseClient } from '@/lib/useSupabaseClient'
+import { createParser } from 'eventsource-parser'
+import Ajv from 'ajv'
+import { ExerciseDetailsSchemaV1 } from '@/app/api/ai/exercise-details/schema'
 
 /**
  * Step Three: Session & Exercise Planning
@@ -66,6 +70,12 @@ const StepTwoPlanner = ({
   const [cooldownAll, setCooldownAll] = useState(0);
   const [historyAll, setHistoryAll] = useState([]);
 
+  // Supabase and streaming AI states
+  const supabase = useSupabaseClient()
+  const [feedbackText, setFeedbackText] = useState('')
+  const switchedToJson = useRef(false)
+  const jsonBuffer = useRef('')
+
   // Initialize global cooldown from localStorage
   useEffect(() => {
     const key = 'aiCooldown:all';
@@ -86,16 +96,18 @@ const StepTwoPlanner = ({
 
   // Auto-fill all sessions with AI
   const handleAutoFillAll = useCallback(async () => {
-    if (aiLoadingAll || cooldownAll) return;
-    setAiLoadingAll(true);
-    // Backup current exercises
-    const backup = formData.exercises.map(ex => ({ ...ex }));
-    setHistoryAll(prev => [...prev, backup]);
-    // Start cooldown
-    const key = 'aiCooldown:all';
-    localStorage.setItem(key, Date.now().toString());
-    setCooldownAll(60);
-    // Build payload
+    if (aiLoadingAll || cooldownAll) return
+    setAiLoadingAll(true)
+    setFeedbackText('')
+    switchedToJson.current = false
+    jsonBuffer.current = ''
+    // Backup and cooldown
+    const backup = formData.exercises.map(ex => ({ ...ex }))
+    setHistoryAll(prev => [...prev, backup])
+    const key = 'aiCooldown:all'
+    localStorage.setItem(key, Date.now().toString())
+    setCooldownAll(60)
+    // Prepare payload
     const sessionsPayload = formData.sessions.map(s => ({
       sessionId: s.id,
       sessionName: s.name,
@@ -103,30 +115,74 @@ const StepTwoPlanner = ({
       exercises: formData.exercises
         .filter(ex => ex.session === s.id)
         .map(ex => {
-          const existing = {};
+          const existing = {}
           ['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo']
-            .forEach(f => { if (ex[f] !== undefined && ex[f] !== '') existing[f] = ex[f]; });
-          return { presetId: ex.id, name: ex.name, type: ex.category, existing };
+            .forEach(f => { if (ex[f] !== undefined && ex[f] !== '') existing[f] = ex[f] })
+          return { presetId: ex.id, name: ex.name, type: ex.category, existing }
         })
-    }));
-    const res = await fetch('/api/ai/exercise-details', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trainingGoals: formData.goals, sessions: sessionsPayload })
-    });
-    const json = await res.json();
-    if (json.status === 'success' && Array.isArray(json.data)) {
-      json.data.forEach(sess => {
+    }))
+    try {
+      const { data: stream, error } = await supabase.functions.invoke('openai', {
+        body: JSON.stringify({ trainingGoals: formData.goals, sessions: sessionsPayload }),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (error || !stream) {
+        console.error('[AI] Function invoke error:', error)
+        return
+      }
+      const parser = createParser(event => {
+        if (event.type !== 'event') return
+        if (event.data === '[DONE]') return
+        const chunk = JSON.parse(event.data)
+        const delta = chunk.choices[0].delta
+        if (delta.content) {
+          if (!switchedToJson.current) {
+            setFeedbackText(prev => prev + delta.content)
+          } else {
+            jsonBuffer.current += delta.content
+          }
+          if (delta.content.includes('"session_details"')) {
+            switchedToJson.current = true
+            jsonBuffer.current = jsonBuffer.current.trimStart()
+          }
+        }
+        if (delta.function_call?.arguments) {
+          jsonBuffer.current += delta.function_call.arguments
+        }
+      })
+      const reader = stream.getReader()
+      let done = false
+      while (!done) {
+        const { value, done: readerDone } = await reader.read()
+        done = readerDone
+        if (value) {
+          const text = new TextDecoder().decode(value)
+          parser.feed(text)
+        }
+      }
+      // Assemble and validate
+      const fullText = `{"feedback":"${feedbackText.replace(/"/g, '\"')}",${jsonBuffer.current}`
+      const payload = JSON.parse(fullText)
+      const ajv = new Ajv()
+      const valid = ajv.validate(ExerciseDetailsSchemaV1, payload)
+      if (!valid) {
+        console.error('[AI] Schema validation failed:', ajv.errors)
+        return
+      }
+      payload.session_details.forEach(sess => {
         sess.details.forEach(detail => {
           Object.entries(detail).forEach(([field, value]) => {
-            if (['presetId','explanation'].includes(field)) return;
-            handleExerciseDetailChange(detail.presetId, sess.sessionId, detail.presetId, field, value);
-          });
-        });
-      });
+            if (['presetId','explanation'].includes(field)) return
+            handleExerciseDetailChange(detail.presetId, sess.sessionId, detail.presetId, field, value)
+          })
+        })
+      })
+    } catch (err) {
+      console.error('[AI] Streaming error:', err)
+    } finally {
+      setAiLoadingAll(false)
     }
-    setAiLoadingAll(false);
-  }, [aiLoadingAll, cooldownAll, formData, handleExerciseDetailChange]);
+  }, [aiLoadingAll, cooldownAll, formData, handleExerciseDetailChange, supabase])
 
   // Revert all sessions to previous backup
   const handleRevertAll = useCallback(() => {
@@ -373,6 +429,11 @@ const StepTwoPlanner = ({
             />
             
             {/* Exercise Timeline */}
+            {feedbackText && (
+              <div className="mb-4 p-4 border-l-4 border-blue-400 bg-blue-50">
+                <p className="italic text-gray-700 whitespace-pre-wrap">{feedbackText}</p>
+              </div>
+            )}
             <ExerciseTimeline
               sessionId={session.id}
               mode={session.sessionMode}
