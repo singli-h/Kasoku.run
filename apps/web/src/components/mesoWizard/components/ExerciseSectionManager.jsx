@@ -182,14 +182,18 @@ const ExerciseSectionManager = memo(({
   
   // Get exercises for a section
   const getSectionExercises = useCallback((sectionId) => {
-    // Only include exercises that:
-    // 1. Are regular exercises that belong to this section type (part === sectionId)
-    // 2. OR are part of a superset that belongs to this section (section === sectionId)
-    // This ensures exercises in supersets only appear in the section where the superset belongs
+    // Warm-up section accepts any exercise type (non-superset)
+    if (sectionId === 'warmup') {
+      return exercises.filter(ex => 
+        ex.session === sessionId && 
+        ((!ex.supersetId) || (ex.supersetId && ex.section === sectionId))
+      );
+    }
+    // Default: only exercises matching this part or belonging to a superset in this section
     return exercises.filter(ex => 
-      (ex.session === sessionId) && ( 
-        (ex.part === sectionId && !ex.supersetId) || // Regular exercises in this section
-        (ex.supersetId && ex.section === sectionId)  // Exercises in supersets that belong here
+      ex.session === sessionId && (
+        (ex.part === sectionId && !ex.supersetId) ||
+        (ex.supersetId && ex.section === sectionId)
       )
     );
   }, [exercises, sessionId]);
@@ -1319,23 +1323,21 @@ const ExerciseSectionManager = memo(({
                       
                       {/* Section options */}
                       <div className="px-1 py-1">
-                        {availableSectionTypes
-                          .filter((type) => !activeSections.includes(type.id))
-                          .map((type) => (
-                            <button
-                              key={type.id}
-                              className="group flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 hover:bg-blue-50 hover:text-blue-700"
-                              onClick={() => {
-                                handleAddSection(type.id);
-                                setAddSectionMenuOpen(false);
-                              }}
-                            >
-                              <div className="text-blue-500 mr-2">
-                                {type.icon}
-                              </div>
-                              <span className="font-medium">{type.name}</span>
-                            </button>
-                          ))}
+                        {availableSectionTypes.map((type) => (
+                          <button
+                            key={type.id}
+                            className="group flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 hover:bg-blue-50 hover:text-blue-700"
+                            onClick={() => {
+                              handleAddSection(type.id);
+                              setAddSectionMenuOpen(false);
+                            }}
+                          >
+                            <div className="text-blue-500 mr-2">
+                              {type.icon}
+                            </div>
+                            <span className="font-medium">{type.name}</span>
+                          </button>
+                        ))}
                         
                         {/* Show message when all sections are added */}
                         {availableSectionTypes.filter((type) => !activeSections.includes(type.id)).length === 0 && (

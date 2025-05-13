@@ -53,113 +53,28 @@ const ExerciseTimeline = memo(({
   // Get ordered exercises and supersets for each section
   const getOrderedExercisesAndSupersets = useMemo(() => {
     return (sectionId) => {
-      // Debug: list raw exercises for this section
-      const rawExercises = getOrderedExercises(sessionId, sectionId);
-      console.log(`[Timeline] getOrderedExercises raw for section ${sectionId}:`, rawExercises);
-      // Get exercises for this section, including those that are part of supersets
-      // but only if the superset belongs to this section
-      const sectionExercises = getOrderedExercises(sessionId, sectionId);
-      
-      // Step 1: Identify all supersets and find the position of the first exercise in each
-      const supersetPositions = new Map();
-      const supersetIds = new Set();
-      
-      // First pass - collect all superset IDs and find the first occurrence position
-      sectionExercises.forEach((exercise) => {
-        if (exercise.supersetId && exercise.section === sectionId) {
-          // Only add supersets that belong to this section
-          supersetIds.add(exercise.supersetId);
-          // Use the minimum position value for each superset
-          const currentPosition = exercise.position || 0;
-          if (!supersetPositions.has(exercise.supersetId) || 
-              currentPosition < (supersetPositions.get(exercise.supersetId) || Infinity)) {
-            supersetPositions.set(exercise.supersetId, currentPosition);
-          }
-        }
-      });
-      
-      // Step 2: Group exercises by superset while preserving order
-      const supersetMap = new Map();
-      const orderedSupersetExercises = new Map();
-      const normalExercises = [];
-      
-      // Initialize maps for each superset
-      supersetIds.forEach(id => {
-        supersetMap.set(id, []);
-        orderedSupersetExercises.set(id, []);
-      });
-      
-      // Collect exercises for each superset
-      sectionExercises.forEach(exercise => {
-        if (exercise.supersetId && supersetIds.has(exercise.supersetId)) {
-          supersetMap.get(exercise.supersetId).push(exercise);
-          
-          // Track the original order of exercises within the superset
-          if (!orderedSupersetExercises.get(exercise.supersetId).some(ex => ex.id === exercise.id)) {
-            orderedSupersetExercises.get(exercise.supersetId).push(exercise);
-          }
-        } else if (!exercise.supersetId) {
-          normalExercises.push(exercise);
-        }
-      });
-      
-      // Sort exercises within each superset strictly by their position
-      orderedSupersetExercises.forEach((exercises) => {
-        exercises.sort((a, b) => {
-          // First sort by position
-          const positionDiff = (a.position || 0) - (b.position || 0);
-          if (positionDiff !== 0) return positionDiff;
-          
-          // If positions are identical, sort by ID (assuming newer items have higher IDs)
-          return a.id - b.id;
-        });
-      });
-      
-      // Step 3: Create a unified list of exercises and supersets
-      const unifiedItems = [];
-      const addedExerciseIds = new Set(); // Track added exercise IDs to avoid duplicates
-      
-      // Add normal exercises
-      normalExercises.forEach(exercise => {
-        if (!addedExerciseIds.has(exercise.id)) {
-          unifiedItems.push({
-            type: 'exercise',
-            exercise,
-            position: exercise.position || 0
-          });
-          addedExerciseIds.add(exercise.id);
-        }
-      });
-      
-      // Add supersets with their exercises
-      supersetIds.forEach(supersetId => {
-        const supersetExercises = orderedSupersetExercises.get(supersetId) || [];
-        
-        // Skip empty supersets
-        if (supersetExercises.length === 0) return;
-        
-        // Get the superset position from the map
-        const position = supersetPositions.get(supersetId) || 0;
-        
-        // Add the superset as a group
-        unifiedItems.push({
+      // Normal exercises for this section (excluding superset members)
+      const normal = getOrderedExercises(sessionId, sectionId).filter(ex => !ex.supersetId);
+      const normalItems = normal.map(ex => ({
+        type: 'exercise',
+        exercise: ex,
+        position: ex.position || 0
+      }));
+      // Superset items for this section (from sessionSupersets)
+      const supersetItems = supersets
+        .filter(s => s.section === sectionId)
+        .map(s => ({
           type: 'superset',
-          id: supersetId,
-          displayNumber: Array.from(supersetIds).indexOf(supersetId) + 1,
-          exercises: supersetExercises,
-          position: position
-        });
-        
-        // Mark all exercises in this superset as added
-        supersetExercises.forEach(ex => addedExerciseIds.add(ex.id));
-      });
-      
-      // Sort the unified items by position
-      unifiedItems.sort((a, b) => (a.position || 0) - (b.position || 0));
-      
-      return unifiedItems;
+          id: s.id,
+          displayNumber: s.displayNumber,
+          exercises: s.exercises || [],
+          position: s.originalPosition || 0
+        }));
+      // Combine and sort by position
+      return [...normalItems, ...supersetItems]
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
     };
-  }, [getOrderedExercises, sessionId]);
+  }, [getOrderedExercises, sessionId, supersets]);
   
   // Get all exercises for the timeline view, properly ordered
   const orderedItems = useMemo(() => {
@@ -527,8 +442,8 @@ const ExerciseTimeline = memo(({
                       </tr>
                     );
                   } else if (item.type === 'superset') {
-                    // Guard: ensure exercises array exists
-                    if (!Array.isArray(item.exercises)) {
+                    // Guard: ensure exercises array exists and has items
+                    if (!Array.isArray(item.exercises) || item.exercises.length === 0) {
                       console.error('[Timeline] superset item missing exercises:', item);
                       return null;
                     }

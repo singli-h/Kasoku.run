@@ -19,6 +19,9 @@ export const ExerciseDetailsSchemaV1 = {
               type: 'object',
               properties: {
                 presetId: { type: 'integer' },
+                part: { type: 'string', description: 'Section or part ID for the exercise' },
+                supersetId: { type: 'string', description: 'Optional superset identifier for grouping exercises' },
+                name: { type: 'string', description: 'Name of the exercise to ensure mapping by name' },
                 sets: { type: 'integer' },
                 reps: { type: 'integer' },
                 effort_pct: { type: 'number' },

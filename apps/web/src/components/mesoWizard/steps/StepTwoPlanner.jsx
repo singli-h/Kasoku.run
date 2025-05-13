@@ -177,10 +177,20 @@ const StepTwoPlanner = ({
           }
           sess.details.forEach(detail => {
             if (!detail) return
-            Object.entries(detail).forEach(([field, value]) => {
-              if (['presetId','explanation'].includes(field)) return
-              handleExerciseDetailChange(detail.presetId, sess.sessionId, detail.presetId, field, value)
+            const { presetId, part, supersetId, explanation, ...metrics } = detail
+            // Ensure we have required fields
+            if (!presetId || !part) {
+              console.warn('[AI] detail missing presetId or part:', detail)
+              return
+            }
+            // Apply metrics to exercise details
+            Object.entries(metrics).forEach(([field, value]) => {
+              handleExerciseDetailChange(presetId, sess.sessionId, part, field, value)
             })
+            // Update supersetId if provided
+            if (supersetId) {
+              handleExerciseDetailChange(presetId, sess.sessionId, part, 'supersetId', supersetId)
+            }
           })
         })
       }

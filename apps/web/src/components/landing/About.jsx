@@ -7,7 +7,7 @@ import { Award, Heart, Star, Zap } from 'lucide-react'
 const stats = [
   {
     icon: Star,
-    value: "50K+",
+    value: "Coming Soon",
     label: "Active Users"
   },
   {
