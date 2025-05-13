@@ -14,6 +14,7 @@ import { useAuthenticatedSupabaseClient } from '@/lib/supabase'
 import { createParser } from 'eventsource-parser'
 import Ajv from 'ajv'
 import { ExerciseDetailsSchemaV1 } from '@/app/api/ai/exercise-details/schema'
+import { useToast } from '@/components/ui/toast'
 
 /**
  * Step Three: Session & Exercise Planning
@@ -72,6 +73,7 @@ const StepTwoPlanner = ({
 
   // Supabase and streaming AI states
   const supabase = useAuthenticatedSupabaseClient()
+  const { toast } = useToast()
   const [feedbackText, setFeedbackText] = useState('')
   const switchedToJson = useRef(false)
   const jsonBuffer = useRef('')
@@ -162,22 +164,32 @@ const StepTwoPlanner = ({
         console.error('[AI] JSON parse failed:', err)
         return
       }
-      // Display feedback and apply session details
+      // Display feedback and safely apply session details
       setFeedbackText(payload.feedback || '')
-      payload.session_details.forEach(sess => {
-        sess.details.forEach(detail => {
-          Object.entries(detail).forEach(([field, value]) => {
-            if (['presetId','explanation'].includes(field)) return
-            handleExerciseDetailChange(detail.presetId, sess.sessionId, detail.presetId, field, value)
+      if (!Array.isArray(payload.session_details)) {
+        console.error('[AI] payload missing session_details:', payload)
+        toast.error('AI response missing session details; please retry.')
+      } else {
+        payload.session_details.forEach(sess => {
+          if (!Array.isArray(sess.details)) {
+            console.warn('[AI] missing details for session', sess.sessionId)
+            return
+          }
+          sess.details.forEach(detail => {
+            if (!detail) return
+            Object.entries(detail).forEach(([field, value]) => {
+              if (['presetId','explanation'].includes(field)) return
+              handleExerciseDetailChange(detail.presetId, sess.sessionId, detail.presetId, field, value)
+            })
           })
         })
-      })
+      }
     } catch (err) {
       console.error('[AI] Streaming error:', err)
     } finally {
       setAiLoadingAll(false)
     }
-  }, [aiLoadingAll, cooldownAll, formData, handleExerciseDetailChange, supabase])
+  }, [aiLoadingAll, cooldownAll, formData, handleExerciseDetailChange, supabase, toast])
 
   // Revert all sessions to previous backup
   const handleRevertAll = useCallback(() => {
