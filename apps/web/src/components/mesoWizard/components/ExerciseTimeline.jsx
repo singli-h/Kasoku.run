@@ -47,9 +47,15 @@ const ExerciseTimeline = memo(({
   handleRevertAll,
   historyAllCount
 }) => {
+  // Debug: inspect key props
+  console.log('[Timeline] sessionId:', sessionId, 'activeSections:', activeSections, 'supersets:', supersets);
+
   // Get ordered exercises and supersets for each section
   const getOrderedExercisesAndSupersets = useMemo(() => {
     return (sectionId) => {
+      // Debug: list raw exercises for this section
+      const rawExercises = getOrderedExercises(sessionId, sectionId);
+      console.log(`[Timeline] getOrderedExercises raw for section ${sectionId}:`, rawExercises);
       // Get exercises for this section, including those that are part of supersets
       // but only if the superset belongs to this section
       const sectionExercises = getOrderedExercises(sessionId, sectionId);
@@ -158,6 +164,7 @@ const ExerciseTimeline = memo(({
   // Get all exercises for the timeline view, properly ordered
   const orderedItems = useMemo(() => {
     // Create a flat array of ordered items
+    console.log('[Timeline] computing orderedItems for sessionId', sessionId);
     const result = [];
     
     // Process each section in their defined order 
@@ -165,6 +172,7 @@ const ExerciseTimeline = memo(({
     activeSections.forEach((sectionId, sectionIndex) => {
       // Get the ordered exercises and supersets for this section
       const sectionItems = getOrderedExercisesAndSupersets(sectionId);
+      console.log(`[Timeline] sectionItems for section ${sectionId}:`, sectionItems);
       
       // Add them to the result, adding section metadata to maintain hierarchy
       sectionItems.forEach(item => {
@@ -517,6 +525,11 @@ const ExerciseTimeline = memo(({
                       </tr>
                     );
                   } else if (item.type === 'superset') {
+                    // Guard: ensure exercises array exists
+                    if (!Array.isArray(item.exercises)) {
+                      console.error('[Timeline] superset item missing exercises:', item);
+                      return null;
+                    }
                     // Superset containing multiple exercises
                     const rows = [];
                     
