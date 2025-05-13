@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import ExerciseSectionManager from "../components/ExerciseSectionManager"
 import ExerciseTimeline from "../components/ExerciseTimeline"
 import { useState, useCallback, useEffect, useRef } from "react"
-import { useSupabaseClient } from '@/lib/useSupabaseClient'
+import { useAuthenticatedSupabaseClient } from '@/lib/supabase'
 import { createParser } from 'eventsource-parser'
 import Ajv from 'ajv'
 import { ExerciseDetailsSchemaV1 } from '@/app/api/ai/exercise-details/schema'
@@ -71,7 +71,7 @@ const StepTwoPlanner = ({
   const [historyAll, setHistoryAll] = useState([]);
 
   // Supabase and streaming AI states
-  const supabase = useSupabaseClient()
+  const supabase = useAuthenticatedSupabaseClient()
   const [feedbackText, setFeedbackText] = useState('')
   const switchedToJson = useRef(false)
   const jsonBuffer = useRef('')
