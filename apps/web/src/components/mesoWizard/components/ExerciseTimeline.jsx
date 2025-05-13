@@ -197,6 +197,8 @@ const ExerciseTimeline = memo(({
       return (a.position || 0) - (b.position || 0);
     });
     
+    // Debug: show final orderedItems to inspect structure
+    console.log('[Timeline] orderedItems:', result);
     return result;
   }, [activeSections, getOrderedExercisesAndSupersets]);
   
