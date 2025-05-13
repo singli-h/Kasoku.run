@@ -96,6 +96,9 @@ const StepTwoPlanner = ({
 
   // Auto-fill all sessions with AI
   const handleAutoFillAll = useCallback(async () => {
+    // Debug: verify incoming sessions and exercises
+    console.log('[AI] handleAutoFillAll: formData.sessions:', formData.sessions);
+    console.log('[AI] handleAutoFillAll: formData.exercises:', formData.exercises);
     if (aiLoadingAll || cooldownAll) return
     setAiLoadingAll(true)
     setFeedbackText('')
@@ -121,6 +124,7 @@ const StepTwoPlanner = ({
           return { presetId: ex.id, name: ex.name, type: ex.category, existing }
         })
     }))
+    console.log('[AI] handleAutoFillAll: sessionsPayload:', sessionsPayload);
     try {
       // Invoke Edge Function and receive raw streaming response
       const { data: response, error } = await supabase.functions.invoke('openai', {
@@ -128,11 +132,11 @@ const StepTwoPlanner = ({
         headers: { 'Content-Type': 'application/json' },
         raw: true
       })
+      console.log('[AI] handleAutoFillAll invoke result:', { error, hasBody: !!response?.body });
       if (error || !response) {
         console.error('[AI] Function invoke error:', error)
         return
       }
-      // Stream the function_call.arguments JSON only
       const parser = createParser(event => {
         if (event.type !== 'event' || event.data === '[DONE]') return
         const chunk = JSON.parse(event.data)
@@ -148,10 +152,12 @@ const StepTwoPlanner = ({
         done = readerDone
         if (value) parser.feed(new TextDecoder().decode(value))
       }
+      console.log('[AI] handleAutoFillAll raw JSON buffer:', jsonBuffer.current);
       // Parse JSON arguments into payload
       let payload
       try {
         payload = JSON.parse(jsonBuffer.current)
+        console.log('[AI] handleAutoFillAll parsed payload:', payload);
       } catch (err) {
         console.error('[AI] JSON parse failed:', err)
         return
