@@ -122,11 +122,13 @@ const StepTwoPlanner = ({
         })
     }))
     try {
-      const { data: stream, error } = await supabase.functions.invoke('openai', {
+      // Invoke Edge Function and receive raw streaming response
+      const { data: response, error } = await supabase.functions.invoke('openai', {
         body: JSON.stringify({ trainingGoals: formData.goals, sessions: sessionsPayload }),
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        raw: true
       })
-      if (error || !stream) {
+      if (error || !response) {
         console.error('[AI] Function invoke error:', error)
         return
       }
@@ -150,7 +152,7 @@ const StepTwoPlanner = ({
           jsonBuffer.current += delta.function_call.arguments
         }
       })
-      const reader = stream.getReader()
+      const reader = response.body.getReader()
       let done = false
       while (!done) {
         const { value, done: readerDone } = await reader.read()

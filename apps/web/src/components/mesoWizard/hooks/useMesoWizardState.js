@@ -47,10 +47,12 @@ export const useMesoWizardState = (onComplete) => {
     try {
       const cached = localStorage.getItem(cacheKey)
       if (cached) {
-        const { step: cachedStep, formData: cachedFormData, activeSession: cachedActive } = JSON.parse(cached)
+        const { step: cachedStep, formData: cachedFormData, activeSession: cachedActive, sessionSections: cachedSections, exerciseOrder: cachedOrder } = JSON.parse(cached)
         if (cachedStep) setStep(cachedStep)
         if (cachedFormData) setFormData(cachedFormData)
         if (cachedActive) setActiveSession(cachedActive)
+        if (cachedSections) setSessionSections(cachedSections)
+        if (cachedOrder) setExerciseOrder(cachedOrder)
       }
     } catch (err) {
       console.error('Failed to load cached wizard state', err)
@@ -60,12 +62,12 @@ export const useMesoWizardState = (onComplete) => {
   // Save wizard state to cache whenever it changes
   useEffect(() => {
     try {
-      const stateToCache = { step, formData, activeSession }
+      const stateToCache = { step, formData, activeSession, sessionSections, exerciseOrder }
       localStorage.setItem(cacheKey, JSON.stringify(stateToCache))
     } catch (err) {
       console.error('Failed to save wizard state to cache', err)
     }
-  }, [step, formData, activeSession])
+  }, [step, formData, activeSession, sessionSections, exerciseOrder])
 
   // Note: exercises and groups fetched via SWR below
 
