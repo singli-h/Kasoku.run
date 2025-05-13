@@ -48,6 +48,11 @@ const SupersetContainer = memo(({
   disableMoveDown = false,
   menuDirection = "bottom",
 }) => {
+  // Extract the base section type from instance ID (e.g., 'gym' from 'gym-1234567890')
+  const sectionType = sectionId && sectionId.includes('-') 
+    ? sectionId.split('-')[0] 
+    : sectionId;
+
   const [isExpanded, setIsExpanded] = useState(true)
   const [showExerciseSelector, setShowExerciseSelector] = useState(needsMoreExercises) // Auto-open selector if needs more exercises
   const [isMenuOpen, setIsMenuOpen] = useState(false)

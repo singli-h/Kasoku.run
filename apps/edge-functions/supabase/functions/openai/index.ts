@@ -59,6 +59,9 @@ Deno.serve(async (req: Request) => {
                   type: 'object',
                   properties: {
                     presetId: { type: 'integer' },
+                    name: { type: 'string', description: 'Name of the exercise' },
+                    part: { type: 'string', description: 'Section or part ID for the exercise' },
+                    supersetId: { type: 'string', description: 'Optional superset identifier for grouping exercises' },
                     sets: { type: 'integer' },
                     reps: { type: 'integer' },
                     effort_pct: { type: 'number' },

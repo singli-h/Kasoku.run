@@ -163,9 +163,6 @@ const ExerciseTimeline = memo(({
             <thead>
               <tr className="bg-gray-50">
                 <th className="px-4 py-2 text-left font-medium text-gray-600 border-b">#</th>
-                {mode !== 'group' && (
-                  <th className="px-4 py-2 text-left font-medium text-gray-600 border-b">Section</th>
-                )}
                 <th className="px-2 py-2 text-left font-medium text-gray-600 border-b">Exercise</th>
                 {mode === 'group' ? (
                   <>
@@ -200,11 +197,6 @@ const ExerciseTimeline = memo(({
                     return (
                       <tr key={exercise.id} className="border-b hover:bg-gray-50">
                         <td className="px-4 py-3 text-gray-600">{currentNumber}</td>
-                        {mode !== 'group' && (
-                          <td className="px-1 py-3">
-                            <Badge variant="outline">{getSectionName(exercise.part)}</Badge>
-                          </td>
-                        )}
                         <td className="px-2 py-3 text-base font-medium">{exercise.name}</td>
                         {mode === 'group' ? (
                           // Group mode: show distance & duration columns
@@ -485,7 +477,7 @@ const ExerciseTimeline = memo(({
                         <td className="px-4 py-2 text-blue-700 font-medium" colSpan={mode === 'group' ? 7 : 8}>
                           <div className="flex items-center gap-2">
                             <Layers className="h-4 w-4 text-blue-500" />
-                            <span>Superset {displayNumber}</span>
+                            <span>Superset</span>
                             <Badge variant="outline" className="ml-1 bg-blue-100 text-blue-700 border-blue-300">
                               {item.exercises.length} exercises
                             </Badge>
@@ -513,11 +505,6 @@ const ExerciseTimeline = memo(({
                           <td className="px-4 py-3 text-gray-600">
                             {currentNumber}
                           </td>
-                          {mode !== 'group' && (
-                            <td className="px-1 py-3">
-                              <Badge variant="outline">{getSectionName(exercise.part)}</Badge>
-                            </td>
-                          )}
                           <td className="px-2 py-3 font-medium">{exercise.name}</td>
                           {mode === 'group' ? (
                             // Group mode: show distance & duration columns

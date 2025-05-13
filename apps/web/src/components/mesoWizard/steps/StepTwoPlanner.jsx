@@ -120,11 +120,17 @@ const StepTwoPlanner = ({
       exercises: formData.exercises
         .filter(ex => ex.session === s.id)
         .map(ex => {
-          const existing = {}
-          ['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo']
-            .forEach(f => { if (ex[f] !== undefined && ex[f] !== '') existing[f] = ex[f] })
-          return { presetId: ex.id, name: ex.name, type: ex.category, existing }
+          const existing = {};
+          
+          // Make sure ex is defined before accessing properties
+          if (ex) {
+            ['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo']
+              .forEach(f => { if (ex[f] !== undefined && ex[f] !== '') existing[f] = ex[f] });
+          }
+          
+          return ex ? { presetId: ex.id, name: ex.name, type: ex.category, existing } : null;
         })
+        .filter(Boolean) // Filter out any null entries if ex was undefined
     }))
     console.log('[AI] handleAutoFillAll: sessionsPayload:', sessionsPayload);
     try {

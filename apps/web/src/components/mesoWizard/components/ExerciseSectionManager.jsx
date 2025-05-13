@@ -86,6 +86,12 @@ const ExerciseSectionManager = memo(({
     { id: "drill", name: "Drills", icon: <Target className="h-4 w-4" />, typeId: ExerciseType.Drill },
   ], [])
   
+  // Helper to extract the original section type from an instance ID
+  const getSectionType = useCallback((instanceId) => {
+    // instanceId may be like 'gym-1623456789'; type is prefix before the first '-'
+    return instanceId.includes('-') ? instanceId.split('-')[0] : instanceId
+  }, [])
+  
   // Limit section types when in group mode to only Sprint
   const availableSectionTypes = useMemo(() =>
     mode === 'group'
@@ -170,31 +176,24 @@ const ExerciseSectionManager = memo(({
   
   // Get section icon
   const getSectionIcon = useCallback((sectionId) => {
-    const section = sectionTypes.find((s) => s.id === sectionId)
+    const typeId = getSectionType(sectionId)
+    const section = sectionTypes.find((s) => s.id === typeId)
     return section ? section.icon : <Dumbbell className="h-4 w-4" />
-  }, [sectionTypes])
+  }, [sectionTypes, getSectionType])
   
   // Get section name
   const getSectionName = useCallback((sectionId) => {
-    const section = sectionTypes.find((s) => s.id === sectionId)
+    const typeId = getSectionType(sectionId)
+    const section = sectionTypes.find((s) => s.id === typeId)
     return section ? section.name : sectionId
-  }, [sectionTypes])
+  }, [sectionTypes, getSectionType])
   
   // Get exercises for a section
   const getSectionExercises = useCallback((sectionId) => {
-    // Warm-up section accepts any exercise type (non-superset)
-    if (sectionId === 'warmup') {
-      return exercises.filter(ex => 
-        ex.session === sessionId && 
-        ((!ex.supersetId) || (ex.supersetId && ex.section === sectionId))
-      );
-    }
-    // Default: only exercises matching this part or belonging to a superset in this section
+    // Only include exercises actually assigned to this section (including superset members)
     return exercises.filter(ex => 
-      ex.session === sessionId && (
-        (ex.part === sectionId && !ex.supersetId) ||
-        (ex.supersetId && ex.section === sectionId)
-      )
+      ex.session === sessionId && 
+      ex.section === sectionId
     );
   }, [exercises, sessionId]);
   
@@ -461,12 +460,13 @@ const ExerciseSectionManager = memo(({
   
   // Handle adding a section
   const handleAddSection = useCallback((sectionType) => {
-    if (!activeSections.includes(sectionType)) {
-      const newSections = [...activeSections, sectionType]
-      setActiveSections(newSections)
-      setExpandedSections([...expandedSections, sectionType])
-    }
-  }, [activeSections, expandedSections, setActiveSections])
+    // Always allow adding multiple sections of the same type by creating a unique instance ID
+    const instanceId = `${sectionType}-${Date.now()}`
+    const newSections = [...activeSections, instanceId]
+    setActiveSections(newSections)
+    // Expand the new section instance
+    setExpandedSections(prev => [...prev, instanceId])
+  }, [activeSections, setActiveSections, setExpandedSections])
   
   // Handle removing a section
   const handleRemoveSection = useCallback((sectionId) => {
@@ -609,6 +609,7 @@ const ExerciseSectionManager = memo(({
     
     // *** Log the incoming exercise object ID ***
     console.log(`[handleAddExerciseToSuperset] Received exercise: "${exercise.name}" with ID: ${exercise.id} (Type: ${typeof exercise.id})`);
+    console.log(`[handleAddExerciseToSuperset] Target section ID: ${targetSectionId}`);
 
     // Find the superset to get its display number for proper UI feedback
     const superset = supersets.find(s => s.id === supersetId);
@@ -1316,11 +1317,6 @@ const ExerciseSectionManager = memo(({
                     <div 
                       className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[3000] animate-in fade-in-50 zoom-in-95 duration-100"
                     >
-                      {/* Header showing available sections */}
-                      <div className="px-4 py-2 text-sm font-semibold border-b">
-                        Available sections: {availableSectionTypes.filter((type) => !activeSections.includes(type.id)).length}
-                      </div>
-                      
                       {/* Section options */}
                       <div className="px-1 py-1">
                         {availableSectionTypes.map((type) => (
@@ -1411,7 +1407,7 @@ const ExerciseSectionManager = memo(({
                               sectionId={sectionId}
                               exercises={exercises}
                               allExercises={filteredExercises}
-                              handleAddExercise={(exercise) => handleAddExercise({ ...exercise, session: sessionId })}
+                              handleAddExercise={(exercise) => handleAddExercise({ ...exercise, session: sessionId, section: sectionId })}
                               isForSuperset={false}
                             />
                             

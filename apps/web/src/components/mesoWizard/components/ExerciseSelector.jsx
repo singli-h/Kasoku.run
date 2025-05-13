@@ -26,6 +26,10 @@ const ExerciseSelector = ({
   handleAddExercise,
   isForSuperset = false
 }) => {
+  // Determine the base section type (e.g., 'gym' from 'gym-12345')
+  const sectionType = sectionId && sectionId.includes('-')
+    ? sectionId.split('-')[0]
+    : sectionId
   const [searchTerm, setSearchTerm] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [hoveredExercise, setHoveredExercise] = useState(null)
@@ -34,21 +38,31 @@ const ExerciseSelector = ({
   
   // Filter exercises based on section type and search term
   const filteredExercises = useMemo(() => {
-    // If in superset mode, don't filter by section type
-    const typeFiltered = isForSuperset 
-      ? allExercises
-      : allExercises.filter(ex => ex.type === sectionId);
-    
-    if (!searchTerm.trim()) {
-      return typeFiltered;
+    let typeFiltered;
+    if (isForSuperset) {
+      // Superset selector: show all exercises
+      typeFiltered = allExercises;
+    } else if (sectionType === 'warmup') {
+      // Warm-up section: show all exercises, but prioritize warmup type first
+      typeFiltered = [...allExercises];
+      typeFiltered.sort((a, b) => {
+        if (a.type === 'warmup' && b.type !== 'warmup') return -1;
+        if (b.type === 'warmup' && a.type !== 'warmup') return 1;
+        return 0;
+      });
+    } else {
+      // Default: only exercises matching this section type
+      typeFiltered = allExercises.filter(ex => ex.type === sectionType);
     }
+    
+    if (!searchTerm.trim()) return typeFiltered;
     
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
     return typeFiltered.filter(ex => 
       ex.name.toLowerCase().includes(lowerSearchTerm) ||
       (ex.category && ex.category.toLowerCase().includes(lowerSearchTerm))
     );
-  }, [allExercises, searchTerm, sectionId, isForSuperset]);
+  }, [allExercises, searchTerm, sectionType, isForSuperset]);
 
   // Debounce search input
   useEffect(() => {
@@ -168,7 +182,7 @@ const ExerciseSelector = ({
       <div className="flex items-center mb-3 relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         <Input
-          placeholder={`Search ${isForSuperset ? 'all exercises' : `${sectionId} exercises`}...`}
+          placeholder={`Search ${isForSuperset ? 'all exercises' : `${sectionType} exercises`}...`}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className={cn(
@@ -198,7 +212,7 @@ const ExerciseSelector = ({
           "grid gap-2 overflow-y-auto",
           isForSuperset
             ? "grid-cols-2 max-h-[150px]"
-            : "grid-cols-2 sm:grid-cols-3 max-h-80"
+            : "grid-cols-2 sm:grid-cols-3 max-h-[180px]"
         )}>
           {filteredExercises.map((exercise) => (
             <Button

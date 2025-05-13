@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useSession } from '@clerk/nextjs'
 import useSWRImmutable from 'swr/immutable'
 import { useSaveTrainingPlan } from "./useSaveCycle"
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Custom hook for managing MesoWizard state
@@ -190,17 +191,14 @@ export const useMesoWizardState = (onComplete) => {
   const handleAddExercise = useCallback((exercise) => {
     // Determine target session: use exercise.session if provided, otherwise activeSession
     const targetSession = exercise.session !== undefined ? exercise.session : activeSession;
-    // Determine group mode: either sessionMode is 'group' or only sprint section active
-    const sessionObj = formData.sessions.find(s => s.id === targetSession)
-    const sectionList = sessionSections[activeSession] || []
-    const isGroupMode = sessionObj?.sessionMode === 'group' 
-       || (sectionList.length === 1 && sectionList[0] === 'sprint')
-    // Always use 1x1 for sprint exercises, otherwise use group mode logic
-    const isSprint = exercise.type === 'sprint' || exercise.section === 'sprint'
-    const defaultSets = isSprint || isGroupMode ? 1 : 0
-    const defaultReps = isSprint || isGroupMode ? 1 : 0
-    // Determine the appropriate section to add the exercise to
-    const targetSection = exercise.section || exercise.type;
+    
+    // Get the specific section from the exercise parameter - this is critical to prevent duplication
+    const targetSection = exercise.section || exercise.type || exercise.category || "gym";
+    
+    console.log(`[handleAddExercise] Adding "${exercise.name}" to session ${targetSession}, section ${targetSection}`);
+    
+    // Generate a unique ID for this exercise instance 
+    const exerciseId = Date.now();
     
     // Get the current exercises in the target section of the target session to determine the next position
     const sectionExercises = formData.exercises.filter(ex => 
@@ -213,23 +211,35 @@ export const useMesoWizardState = (onComplete) => {
       ? Math.max(...sectionExercises.map(ex => ex.position || 0))
       : -1;
     
+    // Determine group mode: either sessionMode is 'group' or only sprint section active
+    const sessionObj = formData.sessions.find(s => s.id === targetSession)
+    const sectionList = sessionSections[targetSession] || []
+    const isGroupMode = sessionObj?.sessionMode === 'group' 
+       || (sectionList.length === 1 && sectionList[0] === 'sprint')
+       
+    // Always use 1x1 for sprint exercises, otherwise use group mode logic
+    const isSprint = exercise.type === 'sprint' || exercise.section === 'sprint'
+    const defaultSets = isSprint || isGroupMode ? 1 : 0
+    const defaultReps = isSprint || isGroupMode ? 1 : 0
+    
     // Create the new exercise with a position value one higher than the current maximum
     const newExerciseWithPos = {
       ...exercise,
-      id: Date.now(),
+      id: exerciseId,
       session: targetSession,
-      part: exercise.type,
-      section: exercise.section || null,
-      sets: defaultSets,
-      reps: defaultReps,
-      rest: "",
-      duration: "",
+      // IMPORTANT FIX - ensure both part and section are set to the target section
+      part: targetSection,
+      section: targetSection,
+      sets: exercise.sets || defaultSets,
+      reps: exercise.reps || defaultReps,
+      rest: exercise.rest || "",
+      duration: exercise.duration || "",
       position: maxPosition + 1,
     }
     
-    // *** Log the object right before adding to state ***
-    console.log(`[useMesoWizardState.handleAddExercise] Adding to session ${targetSession}:`, JSON.stringify(newExerciseWithPos));
-
+    // Log the object right before adding to state
+    console.log(`[handleAddExercise] Adding exercise with section=${targetSection}, part=${targetSection}`);
+    
     setFormData((prev) => ({
       ...prev,
       exercises: [...prev.exercises, newExerciseWithPos],
