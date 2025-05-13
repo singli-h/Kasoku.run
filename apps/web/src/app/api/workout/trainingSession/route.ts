@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   const trainingDetails = presetDetails.map(d => ({
     exercise_training_session_id: sessionId,
     exercise_preset_id: d.exercise_preset_id,
-    set_number: d.set_index ?? d.set_number,
+    set_index: d.set_index,
     reps: d.reps,
     resistance: d.resistance,
     resistance_unit_id: d.resistance_unit_id,
