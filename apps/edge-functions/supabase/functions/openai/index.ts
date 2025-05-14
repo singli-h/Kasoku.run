@@ -6,6 +6,19 @@ import "https://deno.land/x/dotenv/load.ts";
  */
 // @ts-ignore: Deno global provided by Supabase edge runtime
 Deno.serve(async (req: Request) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
+
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }
@@ -16,14 +29,20 @@ Deno.serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ status: 'error', message: 'Invalid JSON payload' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      }
     });
   }
   const { trainingGoals, sessions } = payload;
   if (!trainingGoals || !Array.isArray(sessions)) {
     return new Response(JSON.stringify({ status: 'error', message: 'Invalid request payload' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      }
     });
   }
 
@@ -32,7 +51,10 @@ Deno.serve(async (req: Request) => {
   if (!OPENAI_API_KEY) {
     return new Response(JSON.stringify({ status: 'error', message: 'OpenAI API key not configured' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      }
     });
   }
 
@@ -118,7 +140,10 @@ Provide first a narrative 'feedback' section, then 'session_details' matching th
     console.error('[OpenAI] API error:', aiRes.status, errText);
     return new Response(JSON.stringify({ status: 'error', message: `OpenAI API error (${aiRes.status})` }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      }
     });
   }
 
@@ -127,7 +152,8 @@ Provide first a narrative 'feedback' section, then 'session_details' matching th
     status: 200,
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform'
+      'Cache-Control': 'no-cache, no-transform',
+      'Access-Control-Allow-Origin': '*',
     }
   });
 }); 

@@ -14,7 +14,8 @@ const plans = [
       "Performance tracking",
       "Community support",
       "Mobile app access",
-      "1 training program"
+      "1 training program",
+      "100% free"
     ]
   },
   {
@@ -29,7 +30,6 @@ const plans = [
       "Priority support",
       "Unlimited programs"
     ],
-    highlighted: true
   },
   {
     name: "Elite",
