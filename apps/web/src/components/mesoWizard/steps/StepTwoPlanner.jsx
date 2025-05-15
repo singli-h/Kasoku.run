@@ -137,8 +137,7 @@ const StepTwoPlanner = ({
       // Invoke Edge Function and receive raw streaming response
       const { data: response, error } = await supabase.functions.invoke('openai', {
         body: JSON.stringify({ trainingGoals: formData.goals, sessions: sessionsPayload }),
-        headers: { 'Content-Type': 'application/json' },
-        raw: true
+        headers: { 'Content-Type': 'application/json' }
       })
       console.log('[AI] handleAutoFillAll invoke result:', { error, hasBody: !!response?.body });
       if (error || !response) {

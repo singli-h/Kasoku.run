@@ -4,57 +4,95 @@ import "https://deno.land/x/dotenv/load.ts";
 /**
  * Edge function to stream OpenAI chat completions with structured feedback and exercise details.
  */
+
+// Define allowed origins for CORS
+const allowedOrigins = [
+  'https://www.kasoku.run',
+  'https://kasoku.run',
+  'http://localhost:3000', // Common CRA/Next.js dev port
+  'http://localhost:3001', // Common Vite dev port
+  'http://localhost:3002',
+  'http://localhost:3003',
+  'http://localhost:3004',
+  // Add any other localhost ports you use for development
+];
+
+// Helper function to set CORS headers
+const setCorsHeaders = (responseHeaders: Headers, requestOrigin: string | null) => {
+  if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+    responseHeaders.set('Access-Control-Allow-Origin', requestOrigin);
+  } else if (allowedOrigins.length > 0 && !requestOrigin) {
+    // Fallback or default if needed, or handle as a disallowed origin.
+    // For now, if no origin is present but we have a list, we might allow the first one,
+    // or choose not to set the header, effectively blocking.
+    // Let's be restrictive: if origin is not in the list, or not present, don't allow.
+  }
+  responseHeaders.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, apikey, x-client-info'); // Added common Supabase headers
+  responseHeaders.set('Access-Control-Max-Age', '86400'); // 24 hours
+};
+
 // @ts-ignore: Deno global provided by Supabase edge runtime
 Deno.serve(async (req: Request) => {
+  const requestOrigin = req.headers.get('Origin');
+  const responseHeaders = new Headers();
+  setCorsHeaders(responseHeaders, requestOrigin);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Max-Age': '86400',
-      },
+      headers: responseHeaders,
     });
   }
 
+  // Ensure the origin is allowed for non-OPTIONS requests
+  if (requestOrigin && !allowedOrigins.includes(requestOrigin)) {
+    return new Response(JSON.stringify({ status: 'error', message: 'Origin not allowed' }), {
+      status: 403, // Forbidden
+      headers: {
+        'Content-Type': 'application/json',
+        // No CORS headers here for disallowed origins
+      }
+    });
+  }
+  // If requestOrigin is null but we expect it (e.g. browser clients), it might also be a security concern.
+  // For simplicity, we proceed if it passed the OPTIONS preflight or is a same-origin/non-browser request.
+
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
+    responseHeaders.set('Content-Type', 'application/json');
+    return new Response(JSON.stringify({ status: 'error', message: 'Method Not Allowed' }), { 
+      status: 405, 
+      headers: responseHeaders 
+    });
   }
 
   let payload;
   try {
     payload = await req.json();
   } catch {
+    responseHeaders.set('Content-Type', 'application/json');
     return new Response(JSON.stringify({ status: 'error', message: 'Invalid JSON payload' }), {
       status: 400,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      }
+      headers: responseHeaders
     });
   }
   const { trainingGoals, sessions } = payload;
   if (!trainingGoals || !Array.isArray(sessions)) {
+    responseHeaders.set('Content-Type', 'application/json');
     return new Response(JSON.stringify({ status: 'error', message: 'Invalid request payload' }), {
       status: 400,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      }
+      headers: responseHeaders
     });
   }
 
   // @ts-ignore: Deno.env provided at runtime
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   if (!OPENAI_API_KEY) {
+    responseHeaders.set('Content-Type', 'application/json');
     return new Response(JSON.stringify({ status: 'error', message: 'OpenAI API key not configured' }), {
       status: 500,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      }
+      headers: responseHeaders
     });
   }
 
@@ -127,7 +165,7 @@ Provide first a narrative 'feedback' section, then 'session_details' matching th
       'Authorization': `Bearer ${OPENAI_API_KEY}`
     },
     body: JSON.stringify({
-      model: 'o4-mini-2025-04-16',
+      model: 'gpt-4o-mini',
       messages,
       functions: functionsSchema,
       function_call: 'auto',
@@ -138,22 +176,22 @@ Provide first a narrative 'feedback' section, then 'session_details' matching th
   if (!aiRes.ok) {
     const errText = await aiRes.text();
     console.error('[OpenAI] API error:', aiRes.status, errText);
+    responseHeaders.set('Content-Type', 'application/json');
     return new Response(JSON.stringify({ status: 'error', message: `OpenAI API error (${aiRes.status})` }), {
       status: 500,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      }
+      headers: responseHeaders
     });
   }
 
   // Proxy the event stream back to the client
+  // Ensure specific CORS headers for the stream response
+  const streamResponseHeaders = new Headers(aiRes.headers); // Copy existing headers from AI response
+  setCorsHeaders(streamResponseHeaders, requestOrigin); // Apply our CORS policy
+  streamResponseHeaders.set('Content-Type', 'text/event-stream'); // Ensure correct content type
+  streamResponseHeaders.set('Cache-Control', 'no-cache, no-transform'); // Ensure no caching
+
   return new Response(aiRes.body, {
     status: 200,
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      'Access-Control-Allow-Origin': '*',
-    }
+    headers: streamResponseHeaders
   });
 }); 
