@@ -2,8 +2,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeaders } from '../_shared/cors.ts';
 // @ts-ignore: import via import_map
 import OpenAI from 'openai';
-// @ts-ignore: import via import_map
-import { createClient as createSupabaseClient } from 'jsr:@supabase/functions-js';
 
 // @ts-ignore: Deno global
 declare const Deno: any;
@@ -17,13 +15,6 @@ Deno.serve(async (req: Request) => {
   }
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers });
-  }
-
-  const token = req.headers.get('Authorization');
-  const supa = createSupabaseClient({ auth: { token } });
-  const { data: { user }, error: authError } = await supa.auth.getUser();
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers });
   }
 
   let body: any;
@@ -47,7 +38,9 @@ Deno.serve(async (req: Request) => {
 
   try {
     const res = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      max_tokens: 3000,
       messages,
       functions: [{
         name: 'generate_exercise_details_for_sessions',

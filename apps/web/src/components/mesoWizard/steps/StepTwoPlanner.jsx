@@ -141,7 +141,7 @@ const StepTwoPlanner = ({
         .filter(ex => ex.session === s.id)
         .map(ex => {
           const existing = {};
-          ['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo']
+            ['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo']
             .forEach(f => { if (ex[f] !== undefined && ex[f] !== '') existing[f] = ex[f]; });
           return { presetId: ex.id, name: ex.name, part: ex.part, existing };
         })
@@ -240,7 +240,15 @@ const StepTwoPlanner = ({
   }
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative" aria-busy={aiLoadingAll}>
+      {aiLoadingAll && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+          <Loader2 className="animate-spin w-10 h-10 text-blue-500 mb-4" />
+          <span className="text-lg font-medium text-gray-700" aria-live="polite">
+            AI is analyzing your plan…
+          </span>
+        </div>
+      )}
       <h2 className="text-2xl font-bold">Session & Exercise Planning</h2>
       <p className="text-gray-600">
         Configure your training sessions and add exercises to each section.
