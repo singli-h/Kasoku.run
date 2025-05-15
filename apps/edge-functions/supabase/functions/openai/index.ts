@@ -75,9 +75,8 @@ Deno.serve(async (req: Request) => {
                         height: { type: 'number' },
                         duration: { type: 'number' },
                         tempo: { type: 'string' },
-                        explanation: { type: 'string' },
                       },
-                      required: ['presetId','name','part','explanation']
+                      required: ['presetId','name','part']
                     }
                   }
                 },

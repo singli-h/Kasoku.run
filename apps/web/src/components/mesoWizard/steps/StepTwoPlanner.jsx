@@ -165,7 +165,7 @@ const StepTwoPlanner = ({
     };
 
     // System prompt initialization
-    let systemPrompt = `You are an expert strength-and-conditioning coach with deep knowledge of exercise programming.\nYou need to provide feedback based on the user's overall training goals and exercises choices. **For gym exercises**, always use effort_pct over weight.Optional fields (distance, height, duration, tempo, velocity, power) may be left empty if not applicable.`;
+    let systemPrompt = `You are an expert strength-and-conditioning coach with deep knowledge of exercise programming.\nYou need to provide feedback based on the user's overall training goals and exercises choices. You will also need to provide all the exercise details,you should not leave any exercise's set and reps empty.**For gym exercises**, always use effort over weight.Optional fields (distance, height, duration, tempo, velocity, power) may be left empty if not applicable.`;
 
     // If user is an athlete and profile data is available, add it to context and enhance prompt
     if (userRole === 'athlete' && athleteProfile) {
@@ -194,7 +194,7 @@ const StepTwoPlanner = ({
         setFeedbackText(result.feedback);
         result.session_details.forEach(sess =>
           sess.details.forEach(detail => {
-            const { presetId, part, supersetId, explanation, ...metrics } = detail;
+            const { presetId, part, supersetId, /* explanation, */ ...metrics } = detail;
             Object.entries(metrics).forEach(([field, value]) =>
               handleExerciseDetailChange(presetId, sess.sessionId, part, field, value)
             );
