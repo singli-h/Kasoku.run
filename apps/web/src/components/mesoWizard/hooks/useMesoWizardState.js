@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useSession } from '@clerk/nextjs'
 import useSWRImmutable from 'swr/immutable'
+import useSWR from 'swr' // Added for mutable data like profile
 import { useSaveTrainingPlan } from "./useSaveCycle"
 import { v4 as uuidv4 } from 'uuid';
 
@@ -112,6 +113,30 @@ export const useMesoWizardState = (onComplete) => {
   )
   const userRole = roleBody?.data?.role
   const roleLoading = !roleBody && !roleError
+
+  // Fetch athlete profile if user is an athlete
+  const fetcher = (...args) => fetch(...args).then(res => res.json()); // Ensure fetcher is defined
+
+  const { data: athleteProfile, isLoading: profileLoading } = useSWR(
+    isSessionLoaded && isSignedIn && userRole === 'athlete' && session?.user?.id
+      ? `/api/users/profile?userId=${session.user.id}`
+      : null,
+    fetcher
+  );
+  
+  // Effect to log athlete profile once loaded or if it changes
+  useEffect(() => {
+    if (userRole === 'athlete' && athleteProfile) {
+      console.log('[MesoWizardState] Athlete profile loaded:', athleteProfile);
+    }
+  }, [athleteProfile, userRole]);
+
+  // Debug log for SWR key
+  useEffect(() => {
+    if (userRole === 'athlete') {
+      console.log('[MesoWizardState] SWR key for athleteProfile:', isSessionLoaded && isSignedIn && userRole === 'athlete' && session?.user?.id ? `/api/users/profile?userId=${session.user.id}` : null);
+    }
+  }, [isSessionLoaded, isSignedIn, userRole, session?.user?.id]);
 
   // Filter exercises based on search term
   useEffect(() => {
@@ -634,6 +659,8 @@ export const useMesoWizardState = (onComplete) => {
     validateStep,
     handleNext,
     handleBack,
-    handleSubmit
+    handleSubmit,
+    athleteProfile,
+    profileLoading
   }
 }

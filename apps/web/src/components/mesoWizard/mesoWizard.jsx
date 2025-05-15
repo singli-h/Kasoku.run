@@ -38,6 +38,8 @@ const MesoWizard = ({ onComplete }) => {
     groupLoading,
     userRole,
     roleLoading,
+    athleteProfile,
+    profileLoading,
     
     setActiveSession,
     handleInputChange,
@@ -80,6 +82,8 @@ const MesoWizard = ({ onComplete }) => {
               groups={groups}
               groupLoading={groupLoading}
               userRole={userRole}
+              athleteProfile={athleteProfile}
+              profileLoading={profileLoading}
             />
           )
         }
@@ -116,6 +120,9 @@ const MesoWizard = ({ onComplete }) => {
             errors={errors}
             handleNext={handleNext}
             handleBack={handleBack}
+            userRole={userRole}
+            athleteProfile={athleteProfile}
+            profileLoading={profileLoading}
           />
         )
       case 4:

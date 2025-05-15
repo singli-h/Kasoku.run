@@ -42,6 +42,8 @@ import { useToast } from '@/components/ui/toast'
  * @param {Function} props.handleNext - Function to go to the next step
  * @param {Function} props.handleBack - Function to go to the previous step
  * @param {string} props.userRole - User role
+ * @param {Object} props.athleteProfile - Athlete profile data
+ * @param {boolean} props.profileLoading - Indicates if athlete profile is loading
  */
 const StepTwoPlanner = ({
   formData,
@@ -61,6 +63,8 @@ const StepTwoPlanner = ({
   handleNext,
   handleBack,
   userRole,
+  athleteProfile,
+  profileLoading,
 }) => {
   // State to track supersets for each session
   const [sessionSupersets, setSessionSupersets] = useState({});
@@ -123,6 +127,12 @@ const StepTwoPlanner = ({
       toast.error("Please sign in to use AI features.");
       return;
     }
+    if (userRole === 'athlete' && profileLoading) {
+      toast.info("Athlete profile is loading, please wait a moment and try again.");
+      setAiLoadingAll(false);
+      return;
+    }
+
     setAiLoadingAll(true);
     setFeedbackText('');
 
@@ -148,9 +158,30 @@ const StepTwoPlanner = ({
         .filter(Boolean)
     }));
 
+    // Base user context
+    const userContext = {
+      trainingGoals: formData.goals,
+      sessions: sessionsPayload,
+    };
+
+    // System prompt initialization
+    let systemPrompt = `You are an expert strength-and-conditioning coach with deep knowledge of exercise programming.\nYou need to provide feedback based on the user's overall training goals and exercises choices.`;
+
+    // If user is an athlete and profile data is available, add it to context and enhance prompt
+    if (userRole === 'athlete' && athleteProfile) {
+      userContext.athleteProfile = {
+        age: athleteProfile.age,
+        sex: athleteProfile.sex,
+        weight: athleteProfile.weight,
+        height: athleteProfile.height,
+        training_history: athleteProfile.training_history,
+      };
+      systemPrompt += `\n\nConsider the following athlete profile for tailoring the plan:\n\`\`\`json\n${JSON.stringify(userContext.athleteProfile, null, 2)}\n\`\`\`\nTailor exercise selection, sets, reps, intensity, and overall plan structure based on this profile. If specific metrics like age, weight, or height are missing, make reasonable assumptions or focus on training history and goals.`;
+    }
+
     const messages = [
-      { role: 'system', content: 'You are an expert coach. Generate JSON matching the function schema.' },
-      { role: 'user', content: JSON.stringify({ trainingGoals: formData.goals, sessions: sessionsPayload }) }
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: JSON.stringify(userContext) },
     ];
 
     try {
@@ -178,7 +209,7 @@ const StepTwoPlanner = ({
     } finally {
       setAiLoadingAll(false);
     }
-  }, [aiLoadingAll, cooldownAll, formData, handleExerciseDetailChange, clerkSession, toast, handleRevertAll, supabase]);
+  }, [aiLoadingAll, cooldownAll, formData, handleExerciseDetailChange, clerkSession, toast, handleRevertAll, supabase, userRole, athleteProfile, profileLoading]);
 
   // Handle superset changes for a specific session
   const handleSupersetChange = useCallback((sessionId, supersets) => {
