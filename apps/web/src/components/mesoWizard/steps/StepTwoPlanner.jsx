@@ -116,26 +116,23 @@ const StepTwoPlanner = ({
     toast.info("Changes have been reverted to the previous state.");
   }, [historyAll, handleExerciseDetailChange, toast]);
 
-  // Auto-fill all sessions with AI using new streaming method
+  // Auto-fill all sessions with AI (JSON response)
   const handleAutoFillAll = useCallback(async () => {
     if (aiLoadingAll || cooldownAll) return;
-    if (!clerkSession) { // Check if Clerk session is available
-      toast.error("User session not available. Please ensure you are signed in.");
+    if (!clerkSession) {
+      toast.error("Please sign in to use AI features.");
       return;
     }
-    // also check if supabase client is not the unauthenticated one
-    // supabase object from useAuthenticatedSupabaseClient might be the unauthenticated one if clerkSession was not ready initially
-    // It's better to rely on clerkSession check and assume supabase client will be auth'd if clerkSession is present
-
     setAiLoadingAll(true);
     setFeedbackText('');
 
+    // Backup current state
     const backup = formData.exercises.map(ex => ({ ...ex }));
     setHistoryAll(prev => [...prev, backup]);
-    const key = 'aiCooldown:all';
-    localStorage.setItem(key, Date.now().toString());
+    localStorage.setItem('aiCooldown:all', Date.now().toString());
     setCooldownAll(60);
 
+    // Prepare payload
     const sessionsPayload = formData.sessions.map(s => ({
       sessionId: s.id,
       sessionName: s.name,
@@ -143,130 +140,44 @@ const StepTwoPlanner = ({
       exercises: formData.exercises
         .filter(ex => ex.session === s.id)
         .map(ex => {
-          if (!ex) return null;
           const existing = {};
           ['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo']
             .forEach(f => { if (ex[f] !== undefined && ex[f] !== '') existing[f] = ex[f]; });
-          return { presetId: ex.id, name: ex.name, type: ex.category, part: ex.part, existing };
+          return { presetId: ex.id, name: ex.name, part: ex.part, existing };
         })
-        .filter(Boolean),
+        .filter(Boolean)
     }));
 
     const messages = [
-      {
-        role: 'system',
-        content: `You are an expert strength-and-conditioning coach. Your task is to review the provided training goals and session structures, then fill in or refine exercise metrics (sets, reps, RPE, etc.) for each exercise in each session. Return your response as a single JSON object matching the 'generate_exercise_details_for_sessions' tool's schema, including 'feedback' and 'session_details'. Ensure 'part' in details matches client provided 'part'.`
-      },
-      {
-        role: 'user',
-        content: JSON.stringify({ 
-          trainingGoals: formData.goals, 
-          sessions: sessionsPayload 
-        }, null, 2)
-      }
+      { role: 'system', content: 'You are an expert coach. Generate JSON matching the function schema.' },
+      { role: 'user', content: JSON.stringify({ trainingGoals: formData.goals, sessions: sessionsPayload }) }
     ];
 
     try {
-      // Use supabase.functions.invoke() - auth is handled by the client from useAuthenticatedSupabaseClient
-      const { data: streamResponse, error: invokeError } = await supabase.functions.invoke('openai', {
-        body: { messages }, // Pass messages directly in the body
-        // Supabase client should handle headers and auth token from its initialization
-      });
-
-      if (invokeError) {
-        console.error('[AI] Supabase function invoke error:', invokeError);
-        toast.error(`AI service error: ${invokeError.message || 'Failed to invoke function.'}`);
-        handleRevertAll(); 
-        setCooldownAll(5); 
-        return;
-      }
-
-      if (!streamResponse || !(streamResponse instanceof ReadableStream)) { // Edge functions that stream return ReadableStream
-        toast.error("AI service returned an unexpected response type or empty response.");
-        console.error('[AI] Unexpected response from Edge Function:', streamResponse);
-        return;
-      }
-      
-      const reader = streamResponse.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let receivedPayload = null;
-      let payloadProcessed = false;
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        
-        const parts = buffer.split('\n\n');
-        buffer = parts.pop() || '';
-
-        for (const part of parts) {
-          if (part.startsWith('data: ')) {
-            try {
-              const jsonStr = part.substring(5);
-              receivedPayload = JSON.parse(jsonStr);
-              console.log('[AI] Received payload from stream:', receivedPayload);
-              payloadProcessed = true;
-              break; 
-            } catch (err) {
-              console.error('[AI] JSON parse error from stream:', err, "Part:", part);
-              toast.error("AI response was malformed.");
-              payloadProcessed = true; 
-              break;
-            }
-          }
-        }
-        if (payloadProcessed) break;
-      }
-      
-      if (receivedPayload && Object.keys(receivedPayload).length > 0) {
-        if (typeof receivedPayload.feedback === 'string') {
-          setFeedbackText(receivedPayload.feedback);
-        }
-
-        if (Array.isArray(receivedPayload.session_details)) {
-          receivedPayload.session_details.forEach(sess => {
-            if (!sess || !Array.isArray(sess.details)) {
-              console.warn('[AI] AI response missing or malformed details for session', sess?.sessionId);
-              return;
-            }
-            sess.details.forEach(detail => {
-              if (!detail) return;
-              const { presetId, part, supersetId, explanation, ...metrics } = detail;
-              if (!presetId || !part) {
-                console.warn('[AI] AI detail missing presetId or part:', detail);
-                return;
-              }
-              Object.entries(metrics).forEach(([field, value]) => {
-                handleExerciseDetailChange(presetId, sess.sessionId, part, field, value);
-              });
-              if (supersetId) {
-                handleExerciseDetailChange(presetId, sess.sessionId, part, 'supersetId', supersetId);
-              }
-            });
-          });
-          toast.success("AI suggestions applied!")
-        } else {
-          console.error('[AI] AI response missing session_details array:', receivedPayload);
-          toast.error('AI response was incomplete.');
-        }
+      const { data: result, error } = await supabase.functions.invoke('openai', { body: { messages } });
+      if (error) {
+        toast.error(`AI service error: ${error.message}`);
+        handleRevertAll();
       } else {
-         console.log('[AI] No complete payload received from stream.');
-         toast.info('No AI suggestions were applied from the stream.');
+        // Apply AI response
+        setFeedbackText(result.feedback);
+        result.session_details.forEach(sess =>
+          sess.details.forEach(detail => {
+            const { presetId, part, supersetId, explanation, ...metrics } = detail;
+            Object.entries(metrics).forEach(([field, value]) =>
+              handleExerciseDetailChange(presetId, sess.sessionId, part, field, value)
+            );
+            if (supersetId) handleExerciseDetailChange(presetId, sess.sessionId, part, 'supersetId', supersetId);
+          })
+        );
+        toast.success("AI suggestions applied!");
       }
-
     } catch (err) {
-      console.error('[AI] Streaming or processing error:', err);
-      // @ts-ignore
-      toast.error(`An error occurred: ${err.message || 'Unknown AI error'}`);
-      handleRevertAll(); 
-      setCooldownAll(10); 
+      toast.error(`Error: ${err.message}`);
+      handleRevertAll();
     } finally {
       setAiLoadingAll(false);
     }
-  // Ensure supabase is a dependency if it can change, or ensure useAuthenticatedSupabaseClient provides a stable instance
-  // For now, assuming supabase client from hook is stable if clerkSession is stable.
   }, [aiLoadingAll, cooldownAll, formData, handleExerciseDetailChange, clerkSession, toast, handleRevertAll, supabase]);
 
   // Handle superset changes for a specific session
