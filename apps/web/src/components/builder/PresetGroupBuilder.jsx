@@ -27,7 +27,6 @@ const fetcher = async (key) => {
 export default function PresetGroupBuilder({ userRole }) {
   const { session, isLoaded, isSignedIn } = useSession()
   const [token, setToken] = useState(null)
-  const [selectedGroupId, setSelectedGroupId] = useState(null)
 
   // Get auth token
   useEffect(() => {
@@ -41,79 +40,45 @@ export default function PresetGroupBuilder({ userRole }) {
   )
   const groups = listBody?.data?.groups || []
 
-  // Fetch all exercises for builder
-  const { data: exBody, error: exError } = useSWRImmutable(
-    token ? ['/api/plans/exercises', token] : null,
-    fetcher
-  )
-  const filteredExercises = exBody?.data?.exercises || []
-  const loadingExercises = !exBody && !exError
-
-  // Fetch single group detail when selected
-  const { data: detailBody, error: detailError, mutate: mutateDetail } = useSWRImmutable(
-    selectedGroupId && token ? [`/api/plans/preset-groups/${selectedGroupId}`, token] : null,
-    fetcher
-  )
-  const groupDetail = detailBody?.data || null
-
   // Loading states
-  if (!listBody && !listError) return <div className="flex justify-center py-12"><Loader2 className="animate-spin" /></div>
+  if (!listBody && !listError && !token) {
+    return <div className="flex justify-center py-12"><Loader2 className="animate-spin" /></div>
+  }
   if (listError) return <div className="text-red-500">Error loading groups: {listError.message}</div>
 
-  // If single group selected and exercises loading
-  if (selectedGroupId && loadingExercises) return <div className="flex justify-center py-12"><Loader2 className="animate-spin" /></div>
-  if (selectedGroupId && exError) return <div className="text-red-500">Error loading exercises: {exError.message}</div>
-
-  // If no group selected, show list
-  if (!selectedGroupId) {
-    return (
-      <GroupListView
-        groups={groups}
-        onSelect={(id) => setSelectedGroupId(id)}
-        onNew={async () => {
-          // create new group
+  // Show the list view. Navigation to editor is handled by GroupListView and the new page.
+  return (
+    <GroupListView
+      groups={groups}
+      onNew={async () => {
+        if (!token) {
+          console.error("No auth token available for creating new group.");
+          // Optionally, show a user-facing error/toast
+          return;
+        }
+        try {
           const res = await fetch('/api/plans/preset-groups', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify({ name: 'New Group' })
-          })
-          const json = await res.json()
-          if (json.status === 'success') {
-            mutateList() // refresh list
-            setSelectedGroupId(json.data.group.id)
+            body: JSON.stringify({ name: 'New Preset Group' }) // Default name
+          });
+          const json = await res.json();
+          if (json.status === 'success' && json.data?.group?.id) {
+            mutateList(); // refresh list
+            // Optionally, navigate to the edit page for the new group
+            // router.push(`/preset-groups/${json.data.group.id}/edit`); 
+          } else {
+            console.error("Failed to create new group or missing ID:", json.message || json);
+            // Show error to user
           }
-        }}
-      />
-    )
-  }
-
-  // If detail loading
-  if (!detailBody && !detailError) return <div className="flex justify-center py-12"><Loader2 className="animate-spin" /></div>
-  if (detailError) return <div className="text-red-500">Error loading group: {detailError.message}</div>
-
-  // Show editor view
-  return (
-    <GroupEditorView
-      group={groupDetail.group}
-      presets={groupDetail.presets}
-      onBack={() => setSelectedGroupId(null)}
-      onSave={async (updateData) => {
-        // update group via PUT
-        await fetch(`/api/plans/preset-groups/${selectedGroupId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify(updateData)
-        })
-        mutateDetail()
-        mutateList()
-        setSelectedGroupId(null)
+        } catch (error) {
+          console.error("Error creating new group:", error);
+          // Show error to user
+        }
       }}
     />
-  )
+  );
 } 

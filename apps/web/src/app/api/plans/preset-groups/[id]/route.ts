@@ -183,4 +183,92 @@ export async function PUT(
     console.error('Error in PUT /preset-groups/:id', err);
     return NextResponse.json({ status: 'error', message: err?.message }, { status: 500 });
   }
-} 
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+  const clerkId = auth;
+
+  let roleData = getRoleDataFromHeader(req) ?? await getUserRoleData(clerkId);
+  if (roleData.userId === undefined) {
+    roleData = await getUserRoleData(clerkId);
+  }
+  const { role, userId } = roleData;
+
+  if (role !== 'coach' && role !== 'athlete') {
+    return NextResponse.json({ status: 'error', message: 'Forbidden' }, { status: 403 });
+  }
+
+  const groupId = params.id;
+  const supabase = createServerSupabaseClient();
+
+  try {
+    // Check if the group belongs to the user before deleting
+    const { data: group, error: fetchError } = await supabase
+      .from('exercise_preset_groups')
+      .select('id')
+      .eq('id', groupId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !group) {
+      return NextResponse.json({ status: 'error', message: 'Preset group not found or not authorized to delete.' }, { status: 404 });
+    }
+
+    // First, delete associated exercise_preset_details
+    const { data: presetsToDelete, error: presetsError } = await supabase
+      .from('exercise_presets')
+      .select('id')
+      .eq('exercise_preset_group_id', groupId);
+
+    if (presetsError) {
+      console.error('Error fetching presets for deletion:', presetsError);
+      return NextResponse.json({ status: 'error', message: 'Failed to fetch associated presets for deletion.' }, { status: 500 });
+    }
+
+    if (presetsToDelete && presetsToDelete.length > 0) {
+      const presetIdsToDelete = presetsToDelete.map(p => p.id);
+      const { error: detailsError } = await supabase
+        .from('exercise_preset_details')
+        .delete()
+        .in('exercise_preset_id', presetIdsToDelete);
+
+      if (detailsError) {
+        console.error('Error deleting preset details:', detailsError);
+        return NextResponse.json({ status: 'error', message: 'Failed to delete associated preset details.' }, { status: 500 });
+      }
+    }
+
+    // Second, delete associated exercise_presets
+    const { error: mainPresetsError } = await supabase
+      .from('exercise_presets')
+      .delete()
+      .eq('exercise_preset_group_id', groupId);
+
+    if (mainPresetsError) {
+      console.error('Error deleting presets:', mainPresetsError);
+      return NextResponse.json({ status: 'error', message: 'Failed to delete associated presets.' }, { status: 500 });
+    }
+
+    // Finally, delete the preset group itself
+    const { error: groupDeleteError } = await supabase
+      .from('exercise_preset_groups')
+      .delete()
+      .eq('id', groupId);
+
+    if (groupDeleteError) {
+      console.error('Error deleting preset group:', groupDeleteError);
+      return NextResponse.json({ status: 'error', message: 'Failed to delete preset group.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ status: 'success', message: 'Preset group deleted successfully.' }, { status: 200 });
+
+  } catch (err: any) {
+    console.error('Error in DELETE /preset-groups/:id', err);
+    return NextResponse.json({ status: 'error', message: err?.message || 'Internal server error' }, { status: 500 });
+  }
+}

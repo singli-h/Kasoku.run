@@ -154,39 +154,104 @@ This document provides an in-depth, step-by-step illustration of user interactio
 
 **Purpose:** Allow users (athlete or coach) to create or manage training plans via Wizard, Calendar, or Builder.
 
+**UI Enhancements (New):**
+- The tab navigation (Wizard, Calendar, Builder) is now sticky at the top of the page for better accessibility.
+- Tabs are styled with a modern look, using a light background, clear active state, and icons for visual distinction (Wand for Wizard, Calendar for Calendar, Wrench for Builder).
+
 ### Workflow & Logic Steps
 1. User navigates to `/plans`.
 2. `PlansPage` mounts; obtains `roleData` from `useUserRole()`.
-3. While `loading` → show spinner.
-4. Initialize `tab = 'wizard'` on mount.
-5. **User selects a tab** (`wizard`, `calendar`, `builder`):
-   - On tab change, `setTab(value)`.
-6. **Wizard Tab** (`MesoWizard`):
+3. Initialize `tab = 'wizard'` on mount (or potentially reads from URL query param `?tab=`).
+4. **User selects a tab** (`wizard`, `calendar`, `builder`):
+   - On tab change, `setTab(value)` (updates URL query param if implemented).
+5. **Wizard Tab** (`MesoWizard`):
    a. User completes wizard steps (delegated to component).
    b. On `onComplete(result)`:
       i. Extract `groups = result.apiResponse.data.groups`.
-      ii. For each `group.id`, POST to `/api/plans/preset-groups/${id}/assign`.
+      ii. For each `group.id`, POST to `/api/plans/preset-groups/${id}/assign-sessions`.
       iii. After all assignments:
          - If `role === 'coach'` → `router.push('/sessions')`
          - Else → `router.push('/workout')`
       iv. On error → display error message.
-7. **Calendar Tab** (`CalendarView`):
-   - Fetch existing mesocycle data and render interactive calendar.
-8. **Builder Tab** (`PresetGroupBuilder`):
-   - Custom UI to drag/drop or configure preset groups.
+6. **Calendar Tab** (`CalendarView`):
+   - Fetches and renders existing training plan data in an interactive calendar format.
+7. **Builder Tab** (`PresetGroupBuilder` component is rendered):
+   a. **Displays List**: `PresetGroupBuilder` fetches and renders a list of the user's existing preset groups using the `GroupListView` component.
+      - **Filtering (New)**: `GroupListView` includes a client-side search input to filter groups by name.
+      - **UI (New)**: `GroupListView` has an improved UI with better card styling for each group and an enhanced empty state message.
+   b. **Create New**: A "Create New Preset Group" button in `GroupListView` (managed by `PresetGroupBuilder`) triggers a POST to `/api/plans/preset-groups` to create a new group with a default name. The list then refreshes. (Optionally, can navigate to the edit page for the new group).
+   c. **Select to Edit**: User clicks an "Edit" button on a preset group card in `GroupListView`.
+      - **Navigation (New)**: This action navigates the user to a dedicated RESTful route: `/preset-groups/[id]/edit`.
 
 ### Role Cases
-- **Coach** → redirected to `/sessions` upon plan creation.
-- **Athlete** → redirected to `/workout`.
+- **Coach** → redirected to `/sessions` upon plan creation from Wizard.
+- **Athlete** → redirected to `/workout` upon plan creation from Wizard.
+- Both roles can use the Builder and Calendar tabs according to their permissions for viewing/editing preset groups and plans.
 
 ### API Routes
-- **POST** `/api/plans/preset-groups/{id}/assign`
+- **POST** `/api/plans/preset-groups/{id}/assign-sessions` (used by Wizard)
+- **GET** `/api/plans/preset-groups` (used by Builder to list groups)
+- **POST** `/api/plans/preset-groups` (used by Builder to create new groups)
+- *See `/api/plans/preset-groups/[id]` routes documented in `api-documentation.md` for edit/delete, used by the new edit page.*
 
 ### Design & Patterns
-- Radix UI Tabs.
-- React Suspense + lazy imports for large components.
-- Context API for role-based UI.
+- Radix UI Tabs with enhanced styling.
+- Client-side routing for dedicated edit pages (`/preset-groups/[id]/edit`).
+- SWR for data fetching and caching.
+- Component composition for builder functionality (`PresetGroupBuilder` -> `GroupListView`).
 
+---
+
+## 6.1. Preset Group Edit Page `/preset-groups/[id]/edit` (New Page)
+
+**Purpose:** Allow users to edit the details of a specific preset group, including its metadata and associated exercises.
+
+### Workflow & Logic Steps
+1. User navigates to `/preset-groups/[id]/edit` (typically from the "Edit" button on the Builder tab's group list).
+2. `PresetGroupEditPage` component mounts.
+3. It extracts the `groupId` from the URL parameters.
+4. Fetches authentication token using `useSession`.
+5. **Data Fetching (using SWR):**
+   a. Fetches all available exercises from `/api/plans/exercises`.
+   b. Fetches the specific preset group details (metadata and its current presets/exercises) from `/api/plans/preset-groups/[id]` using the `groupId`.
+6. **Render Logic:**
+   a. While data is loading, a loading spinner is displayed.
+   b. If errors occur during fetching, an error message is shown.
+   c. If data is successfully fetched, the `GroupEditorView` component is rendered, passing down:
+      - The `group` object (metadata).
+      - The `presets` array (exercises within the group).
+      - `allExercises` (all available system exercises for selection).
+      - `loadingExercises` status.
+      - `onBack` handler (navigates back to `/plans?tab=builder`).
+      - `onSave` handler.
+7. **User Interaction (within `GroupEditorView`):**
+   a. **Edit Metadata**: User modifies group name, date, session mode, and description. These are managed by local state within `GroupEditorView`.
+   b. **Manage Exercises**: User adds, removes, reorders, or modifies details of exercises within the group using the integrated `ExerciseSectionManager` and `ExerciseTimeline` components (similar to MesoWizard).
+   c. **Save Changes**: User clicks "Save Changes".
+      - The `onSave` handler in `PresetGroupEditPage` is called.
+      - It makes a `PUT` request to `/api/plans/preset-groups/[id]` with the updated group metadata and exercise preset data.
+      - On success, it revalidates the SWR cache for the group detail and navigates the user back to `/plans?tab=builder`.
+      - On failure, an error message is shown (e.g., via alert or toast).
+   d. **Delete Group**: User clicks "Delete Group".
+      - A confirmation dialog is shown.
+      - If confirmed, the `handleDelete` function in `GroupEditorView` makes a `DELETE` request to `/api/plans/preset-groups/[id]`.
+      - On success, an alert is shown, and the user is navigated back to `/plans?tab=builder`.
+      - On failure, an error message is shown.
+   e. **Cancel**: User clicks "Cancel" or "Back to Builder", navigating back to `/plans?tab=builder` without saving changes.
+
+### API Routes
+- **GET** `/api/plans/exercises`
+- **GET** `/api/plans/preset-groups/[id]`
+- **PUT** `/api/plans/preset-groups/[id]`
+- **DELETE** `/api/plans/preset-groups/[id]`
+
+### Design & Patterns
+- Dedicated dynamic route for editing a specific resource, following RESTful principles.
+- Data fetching at the page level, passing data down to display/form components.
+- Re-use of `GroupEditorView` component.
+- SWR for efficient data fetching and cache management.
+- Clear separation of concerns: page handles data fetching and top-level actions, editor view handles form state and UI.
+- UI Enhancements (New): `GroupEditorView` uses `Card` components for better structure, improved form layout, and includes a description field.
 
 ---
 
@@ -281,12 +346,71 @@ Visual summary charts for progress tracking.
 - **MesocycleOverview**: Calculate aggregate stats from `mesocycle` prop and render progress indicators.
 
 ## F. `PresetGroupBuilder`
-**Location:** `components/builder/PresetGroupBuilder.jsx`
+**Location:** `apps/web/src/components/builder/PresetGroupBuilder.jsx` (Path corrected)
+
+### Purpose
+Manages the main view for the "Builder" tab on the `/plans` page. It is responsible for displaying a list of preset groups and initiating the creation of new ones.
+
+### Workflow & Logic (Updated)
+1. Fetches authentication token.
+2. Fetches the list of all preset groups for the user from `/api/plans/preset-groups` using SWR.
+3. Renders the `GroupListView` component, passing down the fetched `groups` and an `onNew` handler.
+4. **`onNew` Handler**: 
+   - When triggered (e.g., by a "Create New" button in `GroupListView`), it makes a POST request to `/api/plans/preset-groups` with a default name (e.g., "New Preset Group").
+   - On successful creation, it mutates the SWR cache for the group list to refresh it.
+   - Optionally, it can be configured to navigate to the edit page (`/preset-groups/[newGroupId]/edit`) for the newly created group.
+5. Does NOT handle the display or logic for editing a specific group anymore (this is delegated to the `/preset-groups/[id]/edit` page).
+
+## F.1. `GroupListView` (New Component Detail)
+**Location:** `apps/web/src/components/builder/GroupListView.jsx`
+
+### Purpose
+Displays a list of preset groups with options to create a new group or navigate to edit an existing one.
 
 ### Workflow & Logic
-1. Fetch available presets and groups.
-2. Render filterable list; allow selecting multiple presets.
-3. **onSave(selectedPresets)** → POST to `/api/plans/preset-groups`.
+1. Receives `groups` (array of preset group objects) and `onNew` (function to call when "Create New" is clicked) as props.
+2. **Filtering (New)**: Implements a client-side search input that filters the displayed `groups` by matching the `searchTerm` against `group.name`.
+3. **Display Logic**:
+   - Renders a styled header with the title "Preset Groups" and the "Create New Preset Group" button (which calls `onNew`).
+   - Renders the search input.
+   - If `filteredGroups` is empty:
+     - Shows an informative empty state message (e.g., "No preset groups yet" or "No groups match your search").
+     - If the list was empty due to no groups existing (not due to filtering), it shows a prominent "Create First Preset Group" button.
+   - If `filteredGroups` has items:
+     - Maps over `filteredGroups` and renders each group as a styled `Card`.
+     - Each card displays the group's name, mode, and date.
+     - Each card has an "Edit Group" button.
+4. **Edit Action**: When the "Edit Group" button is clicked for a group:
+   - It uses `useRouter().push()` to navigate to the dedicated edit page: `/preset-groups/[groupId]/edit`.
+
+## F.2. `GroupEditorView` (Updated Component Detail)
+**Location:** `apps/web/src/components/builder/GroupEditorView.jsx`
+
+### Purpose
+Provides the UI and handles the local state for editing a single preset group's metadata and its exercises. This component is now primarily rendered by the `/preset-groups/[id]/edit` page.
+
+### Workflow & Logic
+1. **Props**: Receives `group` (the preset group object to edit), `presets` (array of exercise presets within the group), `filteredExercises` (list of all available system exercises), `loadingExercises`, `onBack` (function to navigate back), and `onSave` (function to call with updated data).
+2. **State Management**: 
+   - Initializes local state for group metadata fields (name, date, session mode, description) based on the passed `group` prop.
+   - Manages the state of `exercises` within the group (derived from `presets` prop and modified by user actions).
+   - Manages `activeSections` and `supersets` for the exercises.
+3. **UI Structure (New)**:
+   - Uses `Card` components to visually separate sections: "Group Details" (metadata) and "Exercises".
+   - Metadata section contains input fields for name, date (optional), session mode (select dropdown), and description (textarea, optional).
+   - Exercises section uses a `Tabs` component for "Manage Exercises" (rendering `ExerciseSectionManager`) and "View Timeline" (rendering `ExerciseTimeline`).
+4. **Exercise Management**: Leverages `ExerciseSectionManager` and `ExerciseTimeline` (similar to `MesoWizard`) for adding, removing, reordering, and detailing exercises within the preset group.
+5. **Save Action**: 
+   - The "Save Changes" button calls the `onSave` prop, passing the current state of the group metadata and exercises, formatted for the API.
+6. **Delete Action (New)**:
+   - A "Delete Group" button is present.
+   - When clicked, it shows a confirmation dialog.
+   - If confirmed, it calls its internal `handleDelete` function which:
+     - Fetches the Clerk auth token.
+     - Makes a `DELETE` request to `/api/plans/preset-groups/[groupId]`.
+     - On success, shows an alert and calls `router.push('/plans?tab=builder')` (passed implicitly via `onBack` or directly if router is used within).
+     - On failure, shows an error alert.
+7. **Cancel Action**: The "Cancel" button calls the `onBack` prop.
 
 ## G. `ExerciseDashboard` & `useExerciseData`
 **Location:** `components/workout`, `hooks/useExerciseData.jsx`

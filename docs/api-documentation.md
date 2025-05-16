@@ -14,7 +14,11 @@ All API routes live under `apps/web/src/app/api` and follow Next.js file-based r
 - [Endpoints](#endpoints)
   - [/api/users](#apiusers)
   - [/api/dashboard](#apidashboard)
-  - [/api/plans](#apiplanner)
+  - [/api/plans](#apiplans)
+    - [/api/plans/exercises](#apiplansexercises)
+    - [/api/plans/mesocycle](#apiplansmesocycle)
+    - [/api/plans/microcycle](#apiplansmicrocycle)
+    - [/api/plans/preset-groups](#apiplanspreset-groups)
 - [Design Patterns & Best Practices](#design-patterns--best-practices)
 - [Pitfalls & Anti-Patterns](#pitfalls--anti-patterns)
 
@@ -26,11 +30,12 @@ All API routes live under `apps/web/src/app/api` and follow Next.js file-based r
 
 ## Authentication & Authorization
 - Use `requireAuth()` (in `lib/auth.ts`) at the top of each handler; it returns a `clerkId` or a `NextResponse` (redirect/forbidden).
-- Use `getUserRoleData(clerkId)` (in `lib/roles.ts`) to fetch `{ role, coachId?, athleteId? }` directly from the `users.role` column, no longer reading from metadata.
+- Use `getUserRoleData(clerkId)` (in `lib/roles.ts`) to fetch `{ role, coachId?, athleteId?, userId }` directly from the `users` table (using `clerk_id` to find the `user_id`).
 - **RBAC**:
   - **Coach-only**: check `role === 'coach'`
   - **Athlete-only**: check `role === 'athlete'`
-  - **Open**: verify `role` existence
+  - **Coach & Athlete**: check `role === 'coach' || role === 'athlete'`
+  - **Open**: verify `role` existence if specific roles aren't required but authentication is.
 
 ## Common Utilities
 - `createServerSupabaseClient()`: instantiates Supabase client in server context
@@ -55,6 +60,7 @@ Use appropriate HTTP status codes.
   - **500**: unexpected errors
   - **403**: forbidden / RBAC failures
   - **404**: resource not found
+  - **400**: bad request / validation errors
   - Additional 4xx codes for validation when implemented
 
 ## Endpoints
@@ -93,32 +99,74 @@ Use appropriate HTTP status codes.
 - **Returns**: list of exercises with related `exercise_types`, formatted for UI
 
 #### GET /api/plans/mesocycle
+##### GET /api/plans/mesocycle
 - **Auth**: coach-only
 - **Returns**: list of mesocycles for the authenticated `coach_id`, ordered by `start_date` desc
 
-#### POST /api/plans/mesocycle
+##### POST /api/plans/mesocycle
 - **Auth**: coach-only
-- **Body**: `{ sessions: Array, timezone: string }`
+- **Body**: `{ sessions: Array, timezone: string }` (among other plan details)
 - **Purpose**: create mesocycle and associated groups, presets, details
 
-#### GET /api/plans/mesocycle/[id]
+##### GET /api/plans/mesocycle/[id]
 - **Auth**: coach-only
-- **Params**: `id`
+- **Params**: `id` (mesocycle ID)
 - **Returns**: full mesocycle details (`group`, `presets`, `presetDetails`)
 
-#### POST /api/plans/microcycle
+#### GET /api/plans/microcycle
+##### POST /api/plans/microcycle
 - **Auth**: coach-only
-- **Body**: array of session objects with `group` and `presets`
+- **Body**: array of session objects with `group` and `presets` (among other plan details)
 - **Purpose**: create microcycle (1-week plan)
 
-#### GET /api/plans/microcycle
+##### GET /api/plans/microcycle
 - **Auth**: coach-only
 - **Returns**: list of microcycles (if implemented)
 
-#### GET /api/plans/microcycle/[id]
+##### GET /api/plans/microcycle/[id]
 - **Auth**: coach-only
-- **Params**: `id`
+- **Params**: `id` (microcycle ID)
 - **Returns**: full microcycle details (`microcycle`, `sessions`)
+
+#### GET /api/plans/preset-groups
+##### GET /api/plans/preset-groups
+- **Auth**: coach & athlete
+- **Returns**: List of preset groups for the authenticated user, ordered by `created_at` desc.
+- **Query Params (Optional)**: 
+  - `name` (string): Filter groups by name (case-insensitive, partial match).
+  - *Future: `cycleId`, `cycleType` for filtering by associated cycle.*
+
+##### POST /api/plans/preset-groups
+- **Auth**: coach & athlete
+- **Body**: `{ name: string, description?: string, date?: string, session_mode?: string, athlete_group_id?: string }`
+  - `name` is required.
+- **Purpose**: Create a new preset group with initial metadata.
+- **Returns**: The created preset group object.
+
+##### GET /api/plans/preset-groups/[id]
+- **Auth**: coach & athlete (must own the group)
+- **Params**: `id` (preset group ID)
+- **Returns**: A single preset group object with its `presets` (including nested `exercises` and `exercise_preset_details`).
+
+##### PUT /api/plans/preset-groups/[id]
+- **Auth**: coach & athlete (must own the group)
+- **Params**: `id` (preset group ID)
+- **Body**: `{ name?: string, description?: string, date?: string, session_mode?: string, athlete_group_id?: string, presets?: Array }`
+  - `presets` array contains exercise preset objects with their details. The API will delete existing presets and details for the group and replace them with the provided ones.
+- **Purpose**: Update the group metadata and its associated presets and details.
+- **Returns**: The updated preset group object.
+
+##### DELETE /api/plans/preset-groups/[id]
+- **Auth**: coach & athlete (must own the group)
+- **Params**: `id` (preset group ID)
+- **Purpose**: Delete a preset group and all its associated presets and details.
+- **Returns**: Success or error message.
+
+##### POST /api/plans/preset-groups/[id]/assign-sessions
+- **Auth**: coach & athlete (must own the group)
+- **Params**: `id` (preset group ID)
+- **Purpose**: Assigns the preset group to relevant training sessions (specific logic within handler).
+- **Returns**: Success or error message.
 
 ## Design Patterns & Best Practices
 - **Single Responsibility**: one route handler per HTTP method/file
@@ -126,7 +174,7 @@ Use appropriate HTTP status codes.
 - **Consistent Responses**: uniform `status`, `data`, `message` keys
 - **Early RBAC**: check roles before any DB operations
 - **Logging**: clear, prefixed logs for easier debugging
-- **Input Validation**: sanitize and validate `req.json()` on POST/PUT
+- **Input Validation**: sanitize and validate `req.json()` on POST/PUT (especially required fields).
 
 ## Pitfalls & Anti-Patterns
 - Avoid overly complex nested logic—break into small helpers
