@@ -27,24 +27,31 @@ const StepMicroPlanSelection = ({ formData = {}, handleInputChange = () => {}, e
 
   // Initialize fields in formData when component mounts
   useEffect(() => {
-    // Initialize the sessions per week in formData if not already set
-    if (!formData.sessionsPerWeek || formData.sessionsPerWeek === "") {
+    // Initialize sessionsPerWeek in global formData if it's empty.
+    // Use the static default "3" if formData.sessionsPerWeek is not set.
+    if (!formData.sessionsPerWeek) {
       handleInputChange({
         target: {
           name: "sessionsPerWeek",
-          value: defaultFormData.sessionsPerWeek
+          value: "3" // Use static default "3"
         }
       });
     }
-    
-    // Set duration to 1 week for microcycle
-    handleInputChange({
-      target: {
-        name: "duration",
-        value: "1"
-      }
-    });
-  }, []);
+
+    // For microcycle plans, the duration is fixed at "1" week.
+    // Only call handleInputChange to set duration if it's not already "1"
+    // to prevent unintended data resets when navigating back to this step.
+    if (formData.planType === "microcycle" && formData.duration !== "1") {
+      handleInputChange({
+        target: {
+          name: "duration",
+          value: "1"
+        }
+      });
+    }
+    // This effect should run if the relevant parts of formData change,
+    // or when handleInputChange (the callback itself) might change.
+  }, [formData.planType, formData.duration, formData.sessionsPerWeek, handleInputChange]);
 
   return (
     <div className="space-y-6 w-full max-w-4xl mx-auto">

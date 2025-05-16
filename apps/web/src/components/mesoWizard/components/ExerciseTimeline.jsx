@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo, memo } from "react"
+import React, { useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,7 +32,7 @@ import { Button } from "@/components/ui/button"
  * @param {Function} props.handleRevertAll - Function to handle reverting all sessions
  * @param {number} props.historyAllCount - Count of history for all sessions
  */
-const ExerciseTimeline = memo(({
+const ExerciseTimeline = ({
   sessionId,
   activeSections,
   handleExerciseDetailChange,
@@ -53,21 +53,17 @@ const ExerciseTimeline = memo(({
   // Get ordered exercises and supersets for each section
   const getOrderedExercisesAndSupersets = useMemo(() => {
     return (sectionId) => {
-      // Normal exercises for this section (excluding superset members)
       const normal = getOrderedExercises(sessionId, sectionId).filter(ex => !ex.supersetId);
-      const normalItems = normal.map(ex => ({
-        type: 'exercise',
-        exercise: ex,
-        position: ex.position || 0
-      }));
-      // Superset items for this section (from sessionSupersets)
+      const normalItems = normal.map(ex => ({ type: 'exercise', exercise: ex, position: ex.position || 0 }));
+      // Superset items for this section
       const supersetItems = supersets
         .filter(s => s.section === sectionId)
         .map(s => ({
           type: 'superset',
           id: s.id,
           displayNumber: s.displayNumber,
-          exercises: s.exercises || [],
+          // Derive exercise data directly from current formData via getOrderedExercises
+          exercises: getOrderedExercises(sessionId, sectionId).filter(ex => ex.supersetId === s.id),
           position: s.originalPosition || 0
         }));
       // Combine and sort by position
@@ -755,8 +751,6 @@ const ExerciseTimeline = memo(({
       </CardContent>
     </Card>
   )
-})
-
-ExerciseTimeline.displayName = "ExerciseTimeline"
+}
 
 export default ExerciseTimeline 
