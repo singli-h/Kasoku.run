@@ -44,6 +44,8 @@ import { useToast } from '@/components/ui/toast'
  * @param {string} props.userRole - User role
  * @param {Object} props.athleteProfile - Athlete profile data
  * @param {boolean} props.profileLoading - Indicates if athlete profile is loading
+ * @param {string} props.feedbackText - Feedback text from AI
+ * @param {Function} props.setFeedbackText - Function to set feedback text
  */
 const StepTwoPlanner = ({
   formData,
@@ -65,6 +67,8 @@ const StepTwoPlanner = ({
   userRole,
   athleteProfile,
   profileLoading,
+  feedbackText,
+  setFeedbackText
 }) => {
   // State to track supersets for each session
   const [sessionSupersets, setSessionSupersets] = useState({});
@@ -78,7 +82,6 @@ const StepTwoPlanner = ({
   const supabase = useAuthenticatedSupabaseClient(); 
   const { session: clerkSession } = useSession(); // Still useful for checking if session exists before calling
   const { toast } = useToast()
-  const [feedbackText, setFeedbackText] = useState('')
 
   // Initialize global cooldown from localStorage
   useEffect(() => {
@@ -134,7 +137,6 @@ const StepTwoPlanner = ({
     }
 
     setAiLoadingAll(true);
-    setFeedbackText('');
 
     // Backup current state
     const backup = formData.exercises.map(ex => ({ ...ex }));
@@ -153,7 +155,7 @@ const StepTwoPlanner = ({
           const existing = {};
             ['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo']
             .forEach(f => { if (ex[f] !== undefined && ex[f] !== '') existing[f] = ex[f]; });
-          return { presetId: ex.id, name: ex.name, part: ex.part, existing };
+          return { presetId: ex.presetId || ex.id, name: ex.name, part: ex.part, existing };
         })
         .filter(Boolean)
     }));
@@ -168,6 +170,7 @@ const StepTwoPlanner = ({
     let systemPrompt = `You are an expert strength-and-conditioning coach with deep knowledge of exercise programming.
     You need to provide in-depth feedback and improvements based on the user's overall training goals and exercises choices. 
     You will also need to provide all the exercise details,you should not leave any exercise's set,reps,rest empty or 0.
+    If you deem the exercise is not suitable for the athlete, you should suggest a suitable alternative and state it in the feedback with the reason.
     The effort is in percentage depending on the exercise type (1RM for gym, PB for plyo, sprint etc), the weight is in kg.
     **For gym exercises**, always use effort over weight.
     Optional fields (distance, height, duration, tempo, velocity, power) may be left empty if not applicable.`;
@@ -282,6 +285,7 @@ const StepTwoPlanner = ({
           <Loader2 className="animate-spin w-10 h-10 text-blue-500 mb-4" />
           <span className="text-lg font-medium text-gray-700" aria-live="polite">
             AI is analyzing your plan…
+            (This may take a 30s or so)
           </span>
         </div>
       )}

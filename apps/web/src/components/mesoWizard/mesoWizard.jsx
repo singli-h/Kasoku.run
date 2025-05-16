@@ -40,6 +40,8 @@ const MesoWizard = ({ onComplete }) => {
     roleLoading,
     athleteProfile,
     profileLoading,
+    feedbackText,
+    setFeedbackText,
     
     setActiveSession,
     handleInputChange,
@@ -123,6 +125,8 @@ const MesoWizard = ({ onComplete }) => {
             userRole={userRole}
             athleteProfile={athleteProfile}
             profileLoading={profileLoading}
+            feedbackText={feedbackText}
+            setFeedbackText={setFeedbackText}
           />
         )
       case 4:

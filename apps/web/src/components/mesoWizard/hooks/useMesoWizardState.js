@@ -40,6 +40,7 @@ export const useMesoWizardState = (onComplete) => {
   const [errors, setErrors] = useState({})
   const [sessionSections, setSessionSections] = useState({})
   const [exerciseOrder, setExerciseOrder] = useState({}) // Track exercise order by section
+  const [feedbackText, setFeedbackText] = useState('') // Add feedbackText state here
 
   // Cache key for wizard state in localStorage
   const cacheKey = 'mesoWizardState'
@@ -49,12 +50,13 @@ export const useMesoWizardState = (onComplete) => {
     try {
       const cached = localStorage.getItem(cacheKey)
       if (cached) {
-        const { step: cachedStep, formData: cachedFormData, activeSession: cachedActive, sessionSections: cachedSections, exerciseOrder: cachedOrder } = JSON.parse(cached)
+        const { step: cachedStep, formData: cachedFormData, activeSession: cachedActive, sessionSections: cachedSections, exerciseOrder: cachedOrder, feedbackText: cachedFeedbackText } = JSON.parse(cached) // Load feedbackText
         if (cachedStep) setStep(cachedStep)
         if (cachedFormData) setFormData(cachedFormData)
         if (cachedActive) setActiveSession(cachedActive)
         if (cachedSections) setSessionSections(cachedSections)
         if (cachedOrder) setExerciseOrder(cachedOrder)
+        if (cachedFeedbackText) setFeedbackText(cachedFeedbackText) // Set feedbackText from cache
       }
     } catch (err) {
       console.error('Failed to load cached wizard state', err)
@@ -64,12 +66,12 @@ export const useMesoWizardState = (onComplete) => {
   // Save wizard state to cache whenever it changes
   useEffect(() => {
     try {
-      const stateToCache = { step, formData, activeSession, sessionSections, exerciseOrder }
+      const stateToCache = { step, formData, activeSession, sessionSections, exerciseOrder, feedbackText } // Save feedbackText
       localStorage.setItem(cacheKey, JSON.stringify(stateToCache))
     } catch (err) {
       console.error('Failed to save wizard state to cache', err)
     }
-  }, [step, formData, activeSession, sessionSections, exerciseOrder])
+  }, [step, formData, activeSession, sessionSections, exerciseOrder, feedbackText]) // Add feedbackText to dependency array
 
   // Note: exercises and groups fetched via SWR below
 
@@ -220,10 +222,10 @@ export const useMesoWizardState = (onComplete) => {
     // Get the specific section from the exercise parameter - this is critical to prevent duplication
     const targetSection = exercise.section || exercise.type || exercise.category || "gym";
     
-    console.log(`[handleAddExercise] Adding "${exercise.name}" to session ${targetSession}, section ${targetSection}`);
+    console.log(`[handleAddExercise] Adding "${exercise.name}" (Preset ID: ${exercise.id}) to session ${targetSession}, section ${targetSection}`);
     
-    // Generate a unique ID for this exercise instance 
-    const exerciseId = Date.now();
+    // Generate a unique ID for this exercise *instance* in the plan
+    const instanceId = Date.now();
     
     // Get the current exercises in the target section of the target session to determine the next position
     const sectionExercises = formData.exercises.filter(ex => 
@@ -231,28 +233,24 @@ export const useMesoWizardState = (onComplete) => {
       (ex.section === targetSection || (ex.section === null && ex.part === targetSection))
     );
     
-    // Find the maximum position value in the section, defaulting to -1 if no exercises exist
     const maxPosition = sectionExercises.length > 0
       ? Math.max(...sectionExercises.map(ex => ex.position || 0))
       : -1;
     
-    // Determine group mode: either sessionMode is 'group' or only sprint section active
     const sessionObj = formData.sessions.find(s => s.id === targetSession)
     const sectionList = sessionSections[targetSession] || []
     const isGroupMode = sessionObj?.sessionMode === 'group' 
        || (sectionList.length === 1 && sectionList[0] === 'sprint')
        
-    // Always use 1x1 for sprint exercises, otherwise use group mode logic
     const isSprint = exercise.type === 'sprint' || exercise.section === 'sprint'
     const defaultSets = isSprint || isGroupMode ? 1 : 0
     const defaultReps = isSprint || isGroupMode ? 1 : 0
     
-    // Create the new exercise with a position value one higher than the current maximum
     const newExerciseWithPos = {
       ...exercise,
-      id: exerciseId,
+      id: instanceId, // Unique ID for this instance in the UI
+      presetId: exercise.id, // Original ID from the database/exercise list
       session: targetSession,
-      // IMPORTANT FIX - ensure both part and section are set to the target section
       part: targetSection,
       section: targetSection,
       sets: exercise.sets || defaultSets,
@@ -262,21 +260,19 @@ export const useMesoWizardState = (onComplete) => {
       position: maxPosition + 1,
     }
     
-    // Log the object right before adding to state
-    console.log(`[handleAddExercise] Adding exercise with section=${targetSection}, part=${targetSection}`);
+    console.log(`[handleAddExercise] Adding exercise instance:`, newExerciseWithPos);
     
     setFormData((prev) => ({
       ...prev,
       exercises: [...prev.exercises, newExerciseWithPos],
     }))
     
-    // Update exercise order
     setExerciseOrder((prev) => {
       const sectionKey = `${targetSession}-${targetSection}`
       const currentOrder = prev[sectionKey] || []
       return {
         ...prev,
-        [sectionKey]: [...currentOrder, newExerciseWithPos.id]
+        [sectionKey]: [...currentOrder, newExerciseWithPos.id] // Use instanceId for UI ordering
       }
     })
   }, [activeSession, formData.exercises, formData.sessions, sessionSections])
@@ -646,6 +642,8 @@ export const useMesoWizardState = (onComplete) => {
     progressPercentage,
     loadingExercises,
     getOrderedExercises,
+    feedbackText, // Expose feedbackText
+    setFeedbackText, // Expose setFeedbackText
     handleInputChange,
     handleSessionInputChange,
     handleAddExercise,

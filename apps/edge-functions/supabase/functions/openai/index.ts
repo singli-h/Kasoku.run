@@ -66,6 +66,7 @@ Deno.serve(async (req: Request) => {
                         supersetId: { type: 'string' },
                         sets: { type: 'integer' },
                         reps: { type: 'integer' },
+                        rest: { type: 'integer' },
                         weight: { type: 'number' },
                         effort: { type: 'number' },
                         rpe: { type: 'number' },
@@ -76,7 +77,7 @@ Deno.serve(async (req: Request) => {
                         duration: { type: 'number' },
                         tempo: { type: 'string' },
                       },
-                      required: ['presetId','name','part']
+                      required: ['presetId','name','part','sets','reps','effort','rest']
                     }
                   }
                 },

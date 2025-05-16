@@ -158,7 +158,7 @@ const StepThreeConfirmation = ({
                     const partExercises = session.exercises.filter((ex) => ex.part === part)
                     return (
                       <div key={part} className="border rounded-md p-3">
-                        <h5 className="text-sm font-medium mb-2 capitalize">{part}</h5>
+                        <h5 className="text-sm font-medium mb-2 capitalize">{part.split('-')[0]}</h5>
                         <div className="space-y-2">
                           {partExercises.map((exercise) => (
                             <div key={exercise.id} className="flex items-center justify-between text-sm">
