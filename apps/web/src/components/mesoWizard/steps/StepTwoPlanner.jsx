@@ -200,15 +200,30 @@ const StepTwoPlanner = ({
       } else {
         // Apply AI response
         setFeedbackText(result.feedback);
-        result.session_details.forEach(sess =>
+        result.session_details.forEach(sess => {
           sess.details.forEach(detail => {
-            const { presetId, part, supersetId, /* explanation, */ ...metrics } = detail;
-            Object.entries(metrics).forEach(([field, value]) =>
-              handleExerciseDetailChange(presetId, sess.sessionId, part, field, value)
+            const { presetId: aiPresetId, part: aiPart, supersetId: aiSupersetId, ...metrics } = detail;
+            
+            // Find the corresponding exercise instance in formData
+            // Match aiPresetId against both ex.presetId and ex.id for robustness
+            const exerciseToUpdate = formData.exercises.find(ex => 
+              (ex.presetId === aiPresetId || ex.id === aiPresetId) && 
+              ex.session === sess.sessionId &&
+              ex.part === aiPart 
             );
-            if (supersetId) handleExerciseDetailChange(presetId, sess.sessionId, part, 'supersetId', supersetId);
-          })
-        );
+
+            if (exerciseToUpdate) {
+              Object.entries(metrics).forEach(([field, value]) =>
+                handleExerciseDetailChange(exerciseToUpdate.id, sess.sessionId, aiPart, field, value)
+              );
+              if (aiSupersetId !== undefined) { // Check if supersetId is explicitly provided by AI
+                handleExerciseDetailChange(exerciseToUpdate.id, sess.sessionId, aiPart, 'supersetId', aiSupersetId);
+              }
+            } else {
+              console.warn(`[handleAutoFillAll] Could not find exercise instance for AI presetId: ${aiPresetId}, session: ${sess.sessionId}, part: ${aiPart}`);
+            }
+          });
+        });
         toast.success("AI suggestions applied!");
       }
     } catch (err) {
