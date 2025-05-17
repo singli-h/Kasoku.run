@@ -250,6 +250,9 @@ const StepTwoPlanner = ({
     }));
   }, []);
 
+  // New state for feedback collapse
+  const [showFullFeedback, setShowFullFeedback] = useState(false);
+
   // Show loader while exercises are loading
   if (loadingExercises) {
     return (
@@ -476,7 +479,31 @@ const StepTwoPlanner = ({
             {/* Exercise Timeline */}
             {feedbackText && (
               <div className="mb-4 p-4 border-l-4 border-blue-400 bg-blue-50">
-                <p className="italic text-gray-700 whitespace-pre-wrap">{feedbackText}</p>
+                {// Split feedback into lines for truncation
+                  (() => {
+                    const lines = feedbackText.split(/\r?\n/);
+                    const isTruncated = lines.length > 10;
+                    const displayed = !showFullFeedback && isTruncated
+                      ? lines.slice(0, 10).join('\n') + '\n...'
+                      : feedbackText;
+                    return (
+                      <>
+                        <pre className="italic text-gray-700 whitespace-pre-wrap">{displayed}</pre>
+                        {isTruncated && (
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => setShowFullFeedback(prev => !prev)}
+                          >
+                            {showFullFeedback ? 'Show less' : 'Show more'}
+                          </Button>
+                        )}
+                        {showFullFeedback || !isTruncated ? null : null}
+                      </>
+                    );
+                  })()
+                }
               </div>
             )}
             <ExerciseTimeline

@@ -94,15 +94,18 @@ export const useSaveTrainingPlan = () => {
           date: formatDate(sessionDate), // Session date
           // API expects 'exercises', not 'presets'
           exercises: sessionExercises.map((exercise, exerciseIndex) => {
-            // Use the database's original exercise ID or lookup by name; do not use timestamp IDs
+            // Determine the database's original exercise ID
             let exerciseId;
-            if (exercise.originalId !== undefined && exercise.originalId !== null) {
+            // Prefer presetId (frontend-stored original ID), then originalId, then lookup by name
+            if (exercise.presetId !== undefined && exercise.presetId !== null) {
+              exerciseId = Number(exercise.presetId);
+            } else if (exercise.originalId !== undefined && exercise.originalId !== null) {
               exerciseId = Number(exercise.originalId);
             } else {
-              // Lookup by exercise name in fetched exerciseList
+              // Fallback: lookup by exercise name in fetched exerciseList
               const found = exerciseList.find((item) => item.name === exercise.name);
               if (!found || !found.id) {
-                throw new Error(`Cannot determine exercise ID for "${exercise.name}". Check originalId or exerciseList.`);
+                throw new Error(`Cannot determine exercise ID for "${exercise.name}". Check presetId/originalId or exerciseList.`);
               }
               exerciseId = found.id;
             }
