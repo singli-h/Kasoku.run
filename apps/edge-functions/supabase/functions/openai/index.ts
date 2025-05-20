@@ -54,30 +54,30 @@ Deno.serve(async (req: Request) => {
               items: {
                 type: 'object',
                 properties: {
-                  sessionId: { type: 'integer' },
+                  sessionId: { type: 'integer', description: 'Session identifier.' },
                   details: {
                     type: 'array',
                     items: {
                       type: 'object',
                       properties: {
-                        presetId: { type: 'integer' },
-                        name: { type: 'string' },
-                        part: { type: 'string' },
-                        supersetId: { type: 'string' },
-                        sets: { type: 'integer' },
-                        reps: { type: 'integer' },
-                        rest: { type: 'integer' },
-                        weight: { type: 'number' },
-                        effort: { type: 'number' },
-                        rpe: { type: 'number' },
-                        velocity: { type: 'number' },
-                        power: { type: 'number' },
-                        distance: { type: 'number' },
-                        height: { type: 'number' },
-                        duration: { type: 'number' },
-                        tempo: { type: 'string' },
+                        originalId: { type: 'integer', description: 'Original exercise ID from the database.' },
+                        name: { type: 'string', description: 'Name of the exercise.' },
+                        part: { type: 'string', description: 'Section of the workout (e.g., warmup, gym).' },
+                        supersetId: { type: 'integer', description: 'Superset group ID for this exercise, if applicable.' },
+                        sets: { type: 'integer', description: 'Number of sets.' },
+                        reps: { type: 'integer', description: 'Number of repetitions.' },
+                        rest: { type: 'integer', description: 'Rest time in seconds.' },
+                        weight: { type: 'number', description: 'Weight in kg.' },
+                        effort: { type: 'number', description: 'Effort percentage or RPE.' },
+                        rpe: { type: 'number', description: 'Rate of perceived exertion.' },
+                        velocity: { type: 'number', description: 'Movement velocity.' },
+                        power: { type: 'number', description: 'Power output.' },
+                        distance: { type: 'number', description: 'Distance in meters for sprint or drill.' },
+                        height: { type: 'number', description: 'Height in meters for plyometric.' },
+                        duration: { type: 'number', description: 'Duration in seconds for drills.' },
+                        tempo: { type: 'string', description: 'Tempo notation, e.g., "3-1-1".' },
                       },
-                      required: ['presetId','name','part','sets','reps','effort','rest']
+                      required: ['originalId','name','part','sets','reps','effort','rest']
                     }
                   }
                 },

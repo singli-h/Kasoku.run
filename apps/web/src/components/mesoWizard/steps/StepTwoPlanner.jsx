@@ -155,7 +155,7 @@ const StepTwoPlanner = ({
           const existing = {};
             ['sets','reps','weight','rest','effort','rpe','velocity','power','distance','height','duration','tempo']
             .forEach(f => { if (ex[f] !== undefined && ex[f] !== '') existing[f] = ex[f]; });
-          return { presetId: ex.presetId || ex.id, name: ex.name, part: ex.part, existing };
+          return { originalId: ex.originalId, name: ex.name, part: ex.part, existing };
         })
         .filter(Boolean)
     }));
@@ -202,14 +202,13 @@ const StepTwoPlanner = ({
         setFeedbackText(result.feedback);
         result.session_details.forEach(sess => {
           sess.details.forEach(detail => {
-            const { presetId: aiPresetId, part: aiPart, supersetId: aiSupersetId, ...metrics } = detail;
+            const { originalId: aiOriginalId, part: aiPart, supersetId: aiSupersetId, ...metrics } = detail;
             
-            // Find the corresponding exercise instance in formData
-            // Match aiPresetId against both ex.presetId and ex.id for robustness
+            // Find the corresponding exercise instance in formData by matching DB ID (originalId)
             const exerciseToUpdate = formData.exercises.find(ex => 
-              (ex.presetId === aiPresetId || ex.id === aiPresetId) && 
+              ex.originalId === aiOriginalId && 
               ex.session === sess.sessionId &&
-              ex.part === aiPart 
+              ex.part === aiPart
             );
 
             if (exerciseToUpdate) {
@@ -220,7 +219,7 @@ const StepTwoPlanner = ({
                 handleExerciseDetailChange(exerciseToUpdate.id, sess.sessionId, aiPart, 'supersetId', aiSupersetId);
               }
             } else {
-              console.warn(`[handleAutoFillAll] Could not find exercise instance for AI presetId: ${aiPresetId}, session: ${sess.sessionId}, part: ${aiPart}`);
+              console.warn(`[handleAutoFillAll] Could not find exercise instance for AI originalId: ${aiOriginalId}, session: ${sess.sessionId}, part: ${aiPart}`);
             }
           });
         });

@@ -94,18 +94,15 @@ export const useSaveTrainingPlan = () => {
           date: formatDate(sessionDate), // Session date
           // API expects 'exercises', not 'presets'
           exercises: sessionExercises.map((exercise, exerciseIndex) => {
-            // Determine the database's original exercise ID
+            // Determine the database's original exercise ID (always use originalId)
             let exerciseId;
-            // Prefer presetId (frontend-stored original ID), then originalId, then lookup by name
-            if (exercise.presetId !== undefined && exercise.presetId !== null) {
-              exerciseId = Number(exercise.presetId);
-            } else if (exercise.originalId !== undefined && exercise.originalId !== null) {
+            if (exercise.originalId !== undefined && exercise.originalId !== null) {
               exerciseId = Number(exercise.originalId);
             } else {
               // Fallback: lookup by exercise name in fetched exerciseList
               const found = exerciseList.find((item) => item.name === exercise.name);
               if (!found || !found.id) {
-                throw new Error(`Cannot determine exercise ID for "${exercise.name}". Check presetId/originalId or exerciseList.`);
+                throw new Error(`Cannot determine exercise ID for "${exercise.name}". Ensure originalId or exercise list mapping is correct.`);
               }
               exerciseId = found.id;
             }
@@ -113,7 +110,7 @@ export const useSaveTrainingPlan = () => {
             if (isNaN(exerciseId) || exerciseId <= 0) {
               throw new Error(`Invalid exercise ID (${exerciseId}) for "${exercise.name}".`);
             }
-            // *** Add this log for debugging ***
+            // *** Debug log ***
             console.log(`[formatMicrocycleData] Exercise: "${exercise.name}", originalId: ${exercise.originalId}, frontendId: ${exercise.id}, Final API exercise_id: ${exerciseId}`);
 
             // Parse superset ID if present

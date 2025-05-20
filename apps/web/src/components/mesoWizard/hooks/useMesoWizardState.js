@@ -222,7 +222,11 @@ export const useMesoWizardState = (onComplete) => {
     // Get the specific section from the exercise parameter - this is critical to prevent duplication
     const targetSection = exercise.section || exercise.type || exercise.category || "gym";
     
-    console.log(`[handleAddExercise] Adding "${exercise.name}" (Preset ID: ${exercise.id}) to session ${targetSession}, section ${targetSection}`);
+    // Determine the correct DB ID: use exercise.originalId if it's already set (e.g. from superset flow),
+    // otherwise use exercise.id (from direct add).
+    const dbExerciseId = exercise.originalId || exercise.id;
+
+    console.log(`[handleAddExercise] Adding "${exercise.name}" (DB ID: ${dbExerciseId}, incoming exercise.id: ${exercise.id}, incoming exercise.originalId: ${exercise.originalId}) to session ${targetSession}, section ${targetSection}`);
     
     // Generate a unique ID for this exercise *instance* in the plan
     const instanceId = Date.now();
@@ -248,8 +252,8 @@ export const useMesoWizardState = (onComplete) => {
     
     const newExerciseWithPos = {
       ...exercise,
-      id: instanceId, // Unique ID for this instance in the UI
-      presetId: exercise.id, // Original ID from the database/exercise list
+      id: instanceId,         // Unique ID for this instance in the UI
+      originalId: dbExerciseId, // DB ID for this exercise
       session: targetSession,
       part: targetSection,
       section: targetSection,

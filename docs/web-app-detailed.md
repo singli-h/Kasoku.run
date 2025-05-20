@@ -349,38 +349,54 @@ Visual summary charts for progress tracking.
 **Location:** `apps/web/src/components/builder/PresetGroupBuilder.jsx` (Path corrected)
 
 ### Purpose
-Manages the main view for the "Builder" tab on the `/plans` page. It is responsible for displaying a list of preset groups and initiating the creation of new ones.
+Manages the main view for the "Builder" tab on the `/plans` page. It is responsible for fetching and displaying a list of preset groups with filtering capabilities, and for initiating the creation of new ones.
 
 ### Workflow & Logic (Updated)
-1. Fetches authentication token.
-2. Fetches the list of all preset groups for the user from `/api/plans/preset-groups` using SWR.
-3. Renders the `GroupListView` component, passing down the fetched `groups` and an `onNew` handler.
-4. **`onNew` Handler**: 
-   - When triggered (e.g., by a "Create New" button in `GroupListView`), it makes a POST request to `/api/plans/preset-groups` with a default name (e.g., "New Preset Group").
-   - On successful creation, it mutates the SWR cache for the group list to refresh it.
-   - Optionally, it can be configured to navigate to the edit page (`/preset-groups/[newGroupId]/edit`) for the newly created group.
-5. Does NOT handle the display or logic for editing a specific group anymore (this is delegated to the `/preset-groups/[id]/edit` page).
+1. Fetches authentication token using `useSession`.
+2. Initializes state for filters: `nameFilter`, `microcycleIdFilter`, `athleteGroupIdFilter`, `sessionModeFilter`.
+3. **Data Fetching**: Fetches the list of preset groups for the user from `/api/plans/preset-groups` using SWR (`useSWRImmutable`). 
+   - The SWR key is dynamically built to include the current filter states (`name`, `microcycleId`, `athleteGroupId`, `sessionMode`). Changes to these filters trigger a refetch.
+   - The fetcher function constructs the API URL with these filters as query parameters.
+4. Renders the `GroupListView` component, passing down:
+   - The fetched `groups`.
+   - Current filter values and their state setter functions.
+   - An `isLoading` flag based on the SWR fetch status.
+   - An `onNew` handler.
+5. **`onNew` Handler**: 
+   - When triggered (e.g., by a "Create New" button in `GroupListView`), it makes a POST request to `/api/plans/preset-groups`.
+   - The request body includes a default name (e.g., "New Preset Group - [timestamp]"), today's date, and a default session mode ('individual') to ensure required fields by the database (like `date` if it's NOT NULL) are populated.
+   - On successful creation, it mutates (refreshes) the SWR cache for the group list.
+6. Does NOT handle the display or logic for editing a specific group; this is delegated to the `/preset-groups/[id]/edit` page.
 
 ## F.1. `GroupListView` (New Component Detail)
 **Location:** `apps/web/src/components/builder/GroupListView.jsx`
 
 ### Purpose
-Displays a list of preset groups with options to create a new group or navigate to edit an existing one.
+Displays a filterable list of preset groups with options to create a new group or navigate to edit an existing one. It also handles the UI for filter controls.
 
-### Workflow & Logic
-1. Receives `groups` (array of preset group objects) and `onNew` (function to call when "Create New" is clicked) as props.
-2. **Filtering (New)**: Implements a client-side search input that filters the displayed `groups` by matching the `searchTerm` against `group.name`.
-3. **Display Logic**:
-   - Renders a styled header with the title "Preset Groups" and the "Create New Preset Group" button (which calls `onNew`).
-   - Renders the search input.
-   - If `filteredGroups` is empty:
-     - Shows an informative empty state message (e.g., "No preset groups yet" or "No groups match your search").
-     - If the list was empty due to no groups existing (not due to filtering), it shows a prominent "Create First Preset Group" button.
-   - If `filteredGroups` has items:
-     - Maps over `filteredGroups` and renders each group as a styled `Card`.
-     - Each card displays the group's name, mode, and date.
+### Workflow & Logic (Updated)
+1. **Props**: Receives `groups` (array of preset group objects), `onNew` (function), filter values (`nameFilter`, `microcycleIdFilter`, etc.), filter setter functions (`setNameFilter`, etc.), and `isLoading`.
+2. **Filter UI**: 
+   - Renders a dedicated "Filters" `Card` section.
+   - Includes an `Input` for filtering by `name` (updates `nameFilter` prop).
+   - Includes an `Input` for filtering by `microcycleId` (updates `microcycleIdFilter` prop).
+   - Includes an `Input` for filtering by `athleteGroupId` (updates `athleteGroupIdFilter` prop).
+   - Includes a `Select` dropdown for filtering by `sessionMode` (All, Individual, Group; updates `sessionModeFilter` prop).
+   - A "Clear Filters" button resets all filter states via their setter functions.
+3. **Data Display**: 
+   - The `groups` array received as a prop is already filtered by the API based on the filter states managed in `PresetGroupBuilder`.
+   - **Client-side filtering based on `searchTerm` has been removed.**
+4. **Display Logic**:
+   - Renders a styled header with the title "Preset Groups" and the "Create New Preset Group" button.
+   - If `isLoading` is true, displays a loading indicator.
+   - If not loading and `groups` is empty:
+     - Shows an informative empty state message, indicating whether it's due to active filters or no groups existing.
+     - If no groups exist (and no filters are active), shows a prominent "Create First Preset Group" button.
+   - If not loading and `groups` has items:
+     - Maps over `groups` and renders each group as a styled `Card`.
+     - Each card displays the group's name, mode, date, and (if available) `microcycle_id` and `athlete_group_id`.
      - Each card has an "Edit Group" button.
-4. **Edit Action**: When the "Edit Group" button is clicked for a group:
+5. **Edit Action**: When the "Edit Group" button is clicked for a group:
    - It uses `useRouter().push()` to navigate to the dedicated edit page: `/preset-groups/[groupId]/edit`.
 
 ## F.2. `GroupEditorView` (Updated Component Detail)

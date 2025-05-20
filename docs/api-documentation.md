@@ -131,10 +131,13 @@ Use appropriate HTTP status codes.
 #### GET /api/plans/preset-groups
 ##### GET /api/plans/preset-groups
 - **Auth**: coach & athlete
-- **Returns**: List of preset groups for the authenticated user, ordered by `created_at` desc.
+- **Returns**: List of preset groups for the authenticated user, ordered by `created_at` desc. Also returns `microcycle_id` for each group.
 - **Query Params (Optional)**: 
   - `name` (string): Filter groups by name (case-insensitive, partial match).
-  - *Future: `cycleId`, `cycleType` for filtering by associated cycle.*
+  - `microcycleId` (integer): Filter groups by a specific `microcycle_id`.
+  - `athleteGroupId` (integer): Filter groups by a specific `athlete_group_id`.
+  - `sessionMode` (string): Filter groups by `session_mode` (e.g., 'individual', 'group').
+  - *Future: `cycleId`, `cycleType` for filtering by associated cycle (e.g., mesocycle). Filtering by mesocycle currently requires identifying relevant microcycle IDs first.*
 
 ##### POST /api/plans/preset-groups
 - **Auth**: coach & athlete
