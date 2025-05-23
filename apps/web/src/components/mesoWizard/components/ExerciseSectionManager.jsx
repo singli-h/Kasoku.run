@@ -145,6 +145,14 @@ const ExerciseSectionManager = memo(({
   
   // State for managing supersets
   const [supersets, setSupersets] = useState([])
+
+  // State for selected exercises (for context menu actions like creating supersets)
+  const [selectedExercises, setSelectedExercises] = useState([]);
+
+  // Callback to clear selected exercises
+  const clearSelection = useCallback(() => {
+    setSelectedExercises([]);
+  }, []);
   
   // Reference to store previous supersets state to prevent unnecessary updates
   const prevSupersetsRef = useRef('');
@@ -696,7 +704,7 @@ const ExerciseSectionManager = memo(({
         );
       }
     });
-  }, [errors, mode, getOrderedItemsForSection, onRemoveExerciseFromSuperset, onDeleteSuperset, availableExercises, loadingAvailableExercises, onExerciseFieldChange, onSetDetailChange, onAddSet, onRemoveSet, onCreateSuperset, onRemoveExercise, selectedExercises, clearSelection, onAddExercise]);
+  }, [errors, mode, getOrderedItemsForSection, onRemoveExerciseFromSuperset, onDeleteSuperset, availableExercises, loadingAvailableExercises, onExerciseFieldChange, onSetDetailChange, onAddSet, onRemoveSet, onCreateSuperset, onRemoveExercise, selectedExercises, clearSelection, onAddExercise, getExerciseSpecificErrors, currentGetSectionName, supersets, allExercisesInSession]);
 
   // Helper function to extract errors specific to an exercise
   // Assuming parent error keys are like `exerciseUiId-fieldName` or `exerciseUiId-set_INDEX-fieldName` or `exerciseUiId-set_SETUID-fieldName`
