@@ -10,8 +10,9 @@ const TabsContext = React.createContext({
   orientation: "horizontal"
 })
 
-const Tabs = ({ value, onValueChange, orientation = "horizontal", children, ...props }) => {
-  const [internalValue, setInternalValue] = React.useState(value || "")
+const Tabs = ({ value, defaultValue, onValueChange, orientation = "horizontal", children, ...props }) => {
+  // Support defaultValue for uncontrolled initial tab selection
+  const [internalValue, setInternalValue] = React.useState(value ?? defaultValue ?? "")
   
   React.useEffect(() => {
     if (value !== undefined) {

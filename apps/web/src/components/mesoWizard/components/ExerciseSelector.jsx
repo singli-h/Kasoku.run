@@ -41,18 +41,25 @@ const ExerciseSelector = ({
     let typeFiltered;
     if (isForSuperset) {
       // Superset selector: show all exercises
-      typeFiltered = allExercises;
-    } else if (sectionType === 'warmup') {
-      // Warm-up section: show all exercises, but prioritize warmup type first
-      typeFiltered = [...allExercises];
-      typeFiltered.sort((a, b) => {
+      typeFiltered = [...allExercises]; // Ensure it's a new array for sorting
+    } else {
+      // For regular sections (including warmup), show all exercises but prioritize by section type.
+      typeFiltered = [...allExercises].sort((a, b) => {
+        const isAMatch = a.type === sectionType;
+        const isBMatch = b.type === sectionType;
+        if (isAMatch && !isBMatch) return -1; // a matches, b doesn't -> a comes first
+        if (!isAMatch && isBMatch) return 1;  // b matches, a doesn't -> b comes first
+        
+        // Secondary sort for warmup: if both are/aren't sectionType, or sectionType is not warmup,
+        // then if sectionType itself is 'warmup', give 'warmup' type exercises secondary priority.
+        // This ensures if sectionType = 'gym', warmup exercises don't get undue priority over other non-gym types.
+        if (sectionType === 'warmup') {
         if (a.type === 'warmup' && b.type !== 'warmup') return -1;
         if (b.type === 'warmup' && a.type !== 'warmup') return 1;
-        return 0;
+        }
+        // Optional: further sort by name or category if types are equal or both non-matching
+        return a.name.localeCompare(b.name);
       });
-    } else {
-      // Default: only exercises matching this section type
-      typeFiltered = allExercises.filter(ex => ex.type === sectionType);
     }
     
     if (!searchTerm.trim()) return typeFiltered;

@@ -62,8 +62,7 @@ const ExerciseTimeline = ({
           type: 'superset',
           id: s.id,
           displayNumber: s.displayNumber,
-          // Derive exercise data directly from current formData via getOrderedExercises
-          exercises: getOrderedExercises(sessionId, sectionId).filter(ex => ex.supersetId === s.id),
+          exercises: s.exercises.sort((a,b) => (a.position || 0) - (b.position || 0)),
           position: s.originalPosition || 0
         }));
       // Combine and sort by position
@@ -473,7 +472,7 @@ const ExerciseTimeline = ({
                         <td className="px-4 py-2 text-blue-700 font-medium" colSpan={mode === 'group' ? 7 : 8}>
                           <div className="flex items-center gap-2">
                             <Layers className="h-4 w-4 text-blue-500" />
-                            <span>Superset</span>
+                            <span>Superset {item.displayNumber}</span>
                             <Badge variant="outline" className="ml-1 bg-blue-100 text-blue-700 border-blue-300">
                               {item.exercises.length} exercises
                             </Badge>

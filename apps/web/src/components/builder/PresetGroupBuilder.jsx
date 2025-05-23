@@ -44,25 +44,15 @@ export default function PresetGroupBuilder({ userRole }) {
     if (session) session.getToken().then(setToken)
   }, [session])
 
-  const buildSWRKey = useCallback(() => {
-    if (!token) return null;
-    const params = {};
-    if (nameFilter) params.name = nameFilter;
-    if (microcycleIdFilter) params.microcycleId = microcycleIdFilter;
-    if (athleteGroupIdFilter) params.athleteGroupId = athleteGroupIdFilter;
-    // Only add sessionMode to params if it's a specific filter value ('individual' or 'group')
-    // Treat '' (empty string, initial/cleared) and '_all_' (explicitly selected "All Modes" option) as no filter.
-    if (sessionModeFilter && sessionModeFilter !== '_all_') { 
-      params.sessionMode = sessionModeFilter;
-    }
-    return ['/api/plans/preset-groups', token, params];
-  }, [token, nameFilter, microcycleIdFilter, athleteGroupIdFilter, sessionModeFilter]);
+  // buildSWRKey no longer needs to include filter params for the API call itself
+  // It will fetch all groups once the token is available.
+  const swrKey = token ? ['/api/plans/preset-groups', token] : null;
 
   const { data: listBody, error: listError, mutate: mutateList } = useSWRImmutable(
-    buildSWRKey(),
+    swrKey, // Simplified SWR key
     fetcher
   )
-  const groups = listBody?.data?.groups || []
+  const allGroups = listBody?.data?.groups || [] // Store all fetched groups
 
   if (!token) { // Simplified loading: wait for token first
     return <div className="flex justify-center py-12"><Loader2 className="animate-spin" /> Initializing...</div>
@@ -77,7 +67,7 @@ export default function PresetGroupBuilder({ userRole }) {
 
   return (
     <GroupListView
-      groups={groups}
+      allGroups={allGroups} // Pass all groups to GroupListView
       nameFilter={nameFilter}
       setNameFilter={setNameFilter}
       microcycleIdFilter={microcycleIdFilter}
@@ -86,7 +76,7 @@ export default function PresetGroupBuilder({ userRole }) {
       setAthleteGroupIdFilter={setAthleteGroupIdFilter}
       sessionModeFilter={sessionModeFilter}
       setSessionModeFilter={setSessionModeFilter}
-      isLoading={!listBody && !listError} // Pass loading state for groups
+      isLoading={!listBody && !listError && !!token} // isLoading is true if token exists but data/error hasn't arrived
       onNew={async () => {
         if (!token) {
           console.error("No auth token available for creating new group.");

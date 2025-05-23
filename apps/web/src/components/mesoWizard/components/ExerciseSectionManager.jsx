@@ -37,8 +37,9 @@ import { ExerciseType } from "@/types/exercise"
 import SupersetContainer from "./SupersetContainer"
 import ExerciseContextMenu from "./ExerciseContextMenu"
 import ExerciseSelector from "./ExerciseSelector"
+import ExerciseItemFull from "./ExerciseItemFull"
 import { cn } from "@/lib/utils"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
+import { restrictToVerticalAxis, restrictToWindowEdges } from "@dnd-kit/modifiers"
 
 /**
  * Exercise Section Manager Component
@@ -51,29 +52,66 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
  * 
  * @param {Object} props - Component props
  * @param {number} props.sessionId - Current session ID
- * @param {Array} props.exercises - All exercises
- * @param {Array} props.filteredExercises - Filtered exercises
- * @param {Function} props.handleAddExercise - Function to add an exercise
- * @param {Function} props.handleRemoveExercise - Function to remove an exercise
- * @param {Function} props.handleExerciseReorder - Function to handle exercise reordering
- * @param {Function} props.handleExerciseDetailChange - Function to handle exercise detail changes
+ * @param {Array} props.exercisesInSection - Exercises specifically for the currently active sections in this session instance.
+ * @param {Array} props.allExercisesInSession - All exercises for the entire current session (across all sections).
+ * @param {Array} props.availableExercises - Full list of exercise definitions that can be added (globally filtered).
+ * @param {boolean} props.loadingAvailableExercises - Loading state for availableExercises.
+ * @param {Function} props.onAddExercise - (exerciseData, sectionId) => void
+ * @param {Function} props.onRemoveExercise - (exerciseUiId) => void
+ * @param {Function} props.onExerciseFieldChange - (exerciseUiId, field, value) => void
+ * @param {Function} props.onSetDetailChange - (exerciseUiId, setUiId, field, value) => void
+ * @param {Function} props.onAddSet - (exerciseUiId) => void
+ * @param {Function} props.onRemoveSet - (exerciseUiId, setUiId) => void
+ * @param {Function} props.onCreateSuperset - (sectionId, selectedExerciseUiIds) => void
+ * @param {Function} props.onRemoveExerciseFromSuperset - (exerciseUiId) => void // Exercise knows its superset, just remove it
+ * @param {Function} props.onDeleteSuperset - (supersetUiId, sectionId) => void
+ * @param {Function} props.onReorderExercises - (sectionId, draggedItem, targetItem, position) => void
+ * @param {Function} props.onSupersetStructureChange - Callback when superset structures change (e.g., for timeline) (supersets) => void.
  * @param {Array} props.activeSections - Active sections for this session
  * @param {Function} props.setActiveSections - Function to set active sections
- * @param {Function} props.onSupersetChange - Function to track supersets at parent level
  * @param {string} props.mode - Mode of operation ('individual' or 'group')
+ * @param {Object} props.errors - Validation errors from parent.
+ * @param {Function} props.getSectionName - Function to get a displayable name for a sectionId.
  */
 const ExerciseSectionManager = memo(({
   sessionId,
-  exercises,
-  filteredExercises,
-  handleAddExercise,
-  handleRemoveExercise,
-  handleExerciseReorder,
-  handleExerciseDetailChange,
+  exercisesInSection, // Use this for rendering items within sections
+  allExercisesInSession, // Use this for context, like initializing supersets if they span sections (though current model is per-section)
+  availableExercises, // Renamed from filteredExercises
+  loadingAvailableExercises, // New prop
+  onAddExercise,
+  onRemoveExercise,
+  onExerciseFieldChange,
+  onSetDetailChange,
+  onAddSet,
+  onRemoveSet,
+  onCreateSuperset,
+  onRemoveExerciseFromSuperset,
+  onDeleteSuperset,
+  onReorderExercises,
+  onSupersetStructureChange, // Renamed from onSupersetChange
   activeSections = [],
   setActiveSections,
-  onSupersetChange,
-  mode = 'individual'  // 'individual' or 'group'
+  mode = 'individual',
+  errors,
+  getSectionName: getSectionNameFromParent, // Renamed to avoid conflict with internal getSectionName
+  // Old props (to be removed or their usage replaced):
+  // exercises, (replaced by exercisesInSection and allExercisesInSession)
+  // filteredExercises, (replaced by availableExercises)
+  // handleAddExercise, (replaced by onAddExercise)
+  // handleRemoveExercise, (replaced by onRemoveExercise)
+  // handleExerciseReorder, (replaced by onReorderExercises)
+  // handleExerciseFieldChange, (replaced by onExerciseFieldChange)
+  // handleSetDetailChange, (replaced by onSetDetailChange)
+  // handleAddSet, (replaced by onAddSet)
+  // handleRemoveSet, (replaced by onRemoveSet)
+  // onSupersetChange, (replaced by onSupersetStructureChange)
+  // handleCreateSuperset, (replaced by onCreateSuperset)
+  // handleAddExerciseToSuperset, // More complex, might be part of onReorder or a new specific handler if needed
+  // handleRemoveFromSuperset, (replaced by onRemoveExerciseFromSuperset or onDeleteSuperset)
+  // handleExitSuperset, (replaced by onDeleteSuperset)
+  // handleMoveExercise, // Covered by onReorderExercises
+  // handleMoveSuperset // Covered by onReorderExercises
 }) => {
   // Available section types based on ExerciseType enum
   const sectionTypes = useMemo(() => [
@@ -114,65 +152,56 @@ const ExerciseSectionManager = memo(({
   // Initialize expanded sections
   useEffect(() => {
     if (activeSections.length > 0 && expandedSections.length === 0) {
-      // Only initialize on first load, don't reset after user collapses all
-      const alreadyInitialized = sessionStorage.getItem('expandedSectionsInitialized');
-      if (!alreadyInitialized) {
-        setExpandedSections([activeSections[0]]);
-        sessionStorage.setItem('expandedSectionsInitialized', 'true');
-      }
+      // Expand all sections on first load; preserve across tab switches
+      setExpandedSections(activeSections);
     }
   }, [activeSections, expandedSections]);
   
-  // Initialize supersets based on existing exercises when exercises change
+  // Initialize supersets based on exercises in the current session
   useEffect(() => {
-    // Skip if exercises array is empty to avoid unnecessary updates
-    if (!exercises.length) return;
+    if (!allExercisesInSession || !allExercisesInSession.length) {
+      // If no exercises in the session, or prop not ready, ensure supersets are cleared if they exist
+      if (supersets.length > 0) setSupersets([]);
+      return;
+    }
     
-    // Create a map of supersetId -> superset
     const supersetMap = new Map();
-    
-    // Group exercises by supersetId
-    exercises.forEach(exercise => {
-      if (exercise.supersetId) {
-        if (!supersetMap.has(exercise.supersetId)) {
-          supersetMap.set(exercise.supersetId, {
-            id: exercise.supersetId,
+    allExercisesInSession.forEach(exercise => {
+      if (exercise.superset_ui_id && activeSections.includes(exercise.current_section_id)) { // Process only for active sections
+        if (!supersetMap.has(exercise.superset_ui_id)) {
+          supersetMap.set(exercise.superset_ui_id, {
+            ui_id: exercise.superset_ui_id,
             exercises: [],
-            section: exercise.section || exercise.part, // Use section or fall back to part
-            originalPosition: 0
+            host_section_id: exercise.current_section_id,
+            position_in_section: Infinity,
+            display_number: 0 
           });
         }
-        
-        // Add the exercise to its superset group
-        supersetMap.get(exercise.supersetId).exercises.push(exercise);
+        const supGroup = supersetMap.get(exercise.superset_ui_id);
+        supGroup.exercises.push({ ...exercise }); // Store a copy
+        supGroup.position_in_section = Math.min(supGroup.position_in_section, exercise.position_in_section);
       }
     });
     
-    // If we found supersets, initialize them with display numbers
-    if (supersetMap.size > 0) {
-      const newSupersets = Array.from(supersetMap.values())
-        .map((superset, index) => ({
-          ...superset,
-          displayNumber: index + 1
-        }));
-      
-      // Use functional setState to avoid stale closures and compare with previous state
-      setSupersets(prevSupersets => {
-        // Only update if the supersets have actually changed
-        // This prevents unnecessary re-renders
-        if (JSON.stringify(prevSupersets) === JSON.stringify(newSupersets)) {
-          return prevSupersets;
-        }
-        return newSupersets;
-      });
-    } else if (supersetMap.size === 0 && supersets.length > 0) {
-      // If there are no supersets in exercises but we have supersets in state, clear them
-      setSupersets([]);
+    const newSupersetsFromExercises = Array.from(supersetMap.values()).map((sup, index) => ({
+      ...sup,
+      exercises: sup.exercises.sort((a,b) => a.position_in_superset - b.position_in_superset),
+      display_number: index + 1 // This display_number might need to be based on overall section order
+    }));
+
+    // Debounced or careful update to avoid rapid state changes if allExercisesInSession updates frequently
+    // For now, direct update. Compare to prevent loops.
+    if (JSON.stringify(newSupersetsFromExercises) !== JSON.stringify(supersets)) {
+      setSupersets(newSupersetsFromExercises);
+      if (onSupersetStructureChange) {
+        onSupersetStructureChange(newSupersetsFromExercises); // Notify parent
+      }
     }
-    // Only re-run when the exercises array changes, but use a stringified version of
-    // supersetIds to prevent excessive updates
-  }, [exercises, exercises.reduce((acc, ex) => 
-    ex.supersetId ? `${acc}|${ex.supersetId}` : acc, '')]);
+
+  // Dependency array: include allExercisesInSession and activeSections. 
+  // Stringifying complex objects in dependency arrays can be tricky. 
+  // Consider a more robust way if this causes issues, e.g. useMemo for derived values.
+  }, [allExercisesInSession, activeSections, supersets, onSupersetStructureChange]); // Added supersets to dep array to allow internal changes to also trigger parent update
   
   // Get section icon
   const getSectionIcon = useCallback((sectionId) => {
@@ -181,108 +210,56 @@ const ExerciseSectionManager = memo(({
     return section ? section.icon : <Dumbbell className="h-4 w-4" />
   }, [sectionTypes, getSectionType])
   
-  // Get section name
-  const getSectionName = useCallback((sectionId) => {
+  // Get section name (internal, if different from parent's, or use parent's)
+  const getSectionNameLocal = useCallback((sectionId) => {
     const typeId = getSectionType(sectionId)
     const section = sectionTypes.find((s) => s.id === typeId)
     return section ? section.name : sectionId
   }, [sectionTypes, getSectionType])
   
-  // Get exercises for a section
-  const getSectionExercises = useCallback((sectionId) => {
-    // Only include exercises actually assigned to this section (including superset members)
-    return exercises.filter(ex => 
-      ex.session === sessionId && 
-      ex.section === sectionId
-    );
-  }, [exercises, sessionId]);
+  // Use the one from parent if provided, otherwise local one
+  const currentGetSectionName = getSectionNameFromParent || getSectionNameLocal;
   
-  // Helper function to get exercises sorted by superset and position
-  const getOrderedExercisesAndSupersets = useCallback((sectionId) => {
-    // Get exercises for this section, being careful to avoid duplicates
-    const sectionExercises = getSectionExercises(sectionId);
-    
-    // First, let's sort all exercises by their position to ensure proper order
-    // Use a stable sort to maintain relative ordering when positions are equal
-    const sortedExercises = [...sectionExercises].sort((a, b) => 
-      (a.position || 0) - (b.position || 0)
-    );
-    
-    // Instead of multiple iterations, do everything in a single pass
-    const supersetMap = new Map();
-    const supersetFirstPositions = new Map();
-    const addedExerciseIds = new Set();
-    const addedSupersetIds = new Set();
-    const unifiedItems = [];
-    
-    // First identify all supersets and create the maps
-    for (const exercise of sortedExercises) {
-      if (exercise.supersetId) {
-        // Track the lowest position for each superset
-        if (!supersetFirstPositions.has(exercise.supersetId) || 
-            (exercise.position || 0) < (supersetFirstPositions.get(exercise.supersetId) || Infinity)) {
-          supersetFirstPositions.set(exercise.supersetId, exercise.position || 0);
-        }
-        
-        // Group exercises by superset
-        if (!supersetMap.has(exercise.supersetId)) {
-          supersetMap.set(exercise.supersetId, []);
-        }
-        
-        // Add if not already in the array (avoid duplicates)
-        if (!supersetMap.get(exercise.supersetId).some(ex => ex.id === exercise.id)) {
-          supersetMap.get(exercise.supersetId).push(exercise);
-        }
-      }
-    }
-    
-    // Sort exercises within each superset by position
-    supersetMap.forEach((exercises) => {
-      exercises.sort((a, b) => (a.position || 0) - (b.position || 0));
-    });
-    
-    // Process exercises in order by position to build the unified items list
-    for (const exercise of sortedExercises) {
-      // Skip if already processed
-      if (addedExerciseIds.has(exercise.id)) continue;
-      
-      if (exercise.supersetId) {
-        // This exercise is part of a superset
-        if (!addedSupersetIds.has(exercise.supersetId)) {
-          // First occurrence of this superset, add the entire superset
-          const supersetExercises = supersetMap.get(exercise.supersetId) || [];
-          
-          // Add the superset as a group
-          unifiedItems.push({
-            type: 'superset',
-            id: exercise.supersetId,
-            exercises: supersetExercises,
-            position: supersetFirstPositions.get(exercise.supersetId) || 0
-          });
-          
-          // Mark all exercises in this superset as added
-          supersetExercises.forEach(ex => addedExerciseIds.add(ex.id));
-          addedSupersetIds.add(exercise.supersetId);
+  // Get exercises for a section - now uses exercisesInSection
+  const getSectionExercisesRaw = useCallback((sectionId) => {
+    return exercisesInSection.filter(ex => ex.current_section_id === sectionId);
+  }, [exercisesInSection]);
+  
+  // Helper function to get exercises sorted by superset and position - uses exercisesInSection
+  const getOrderedItemsForSection = useCallback((sectionId) => {
+    const items = [];
+    const exercisesToProcess = exercisesInSection.filter(ex => ex.current_section_id === sectionId);
+    const processedSupersetUiIds = new Set();
+
+    // Ensure exercises are sorted by position_in_section before processing
+    exercisesToProcess.sort((a, b) => a.position_in_section - b.position_in_section);
+
+    exercisesToProcess.forEach(ex => {
+      if (ex.superset_ui_id) {
+        if (!processedSupersetUiIds.has(ex.superset_ui_id)) {
+          // Find the full superset object from our internal supersets state
+          const supersetObject = supersets.find(s => s.ui_id === ex.superset_ui_id && s.host_section_id === sectionId);
+          if (supersetObject) {
+            // Make sure exercises within this supersetObject are also sorted by position_in_superset
+            const sortedExercisesInSuperset = [...supersetObject.exercises].sort((a,b) => a.position_in_superset - b.position_in_superset);
+            items.push({ 
+              ...supersetObject, 
+              exercises: sortedExercisesInSuperset, // Use the sorted list
+              itemType: 'superset' 
+            });
+            processedSupersetUiIds.add(ex.superset_ui_id);
+          }
         }
       } else {
-        // It's a normal exercise (not part of a superset)
-        unifiedItems.push({
-          type: 'exercise',
-          exercise,
-          position: exercise.position || 0
-        });
-        addedExerciseIds.add(exercise.id);
+        items.push({ ...ex, itemType: 'exercise' });
       }
-    }
-    
-    // Sort the unified items by position
-    unifiedItems.sort((a, b) => (a.position || 0) - (b.position || 0));
-    
-    return {
-      unifiedItems,
-      supersetMap
-    };
-  }, [getSectionExercises]);
+    });
+    // The items should already be in correct order due to pre-sorting exercisesToProcess 
+    // and processing them in that order.
+    // If supersets themselves need re-ordering relative to individual exercises based on their shared 'position_in_section',
+    // an additional sort might be needed here on `items` based on `item.position_in_section`.
+    return items.sort((a,b) => a.position_in_section - b.position_in_section);
+  }, [exercisesInSection, supersets]); // Added supersets dependency
   
   // Replace cleanup section of useEffect with dnd-kit compatible version
   useEffect(() => {
@@ -336,147 +313,182 @@ const ExerciseSectionManager = memo(({
         delay: 250,
         tolerance: 5
       }
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
+  // Ensure activeSections is always an array before use
+  const currentActiveSections = Array.isArray(activeSections) ? activeSections : [];
+
   // Replace drag handlers with dnd-kit versions
-  const handleDragStart = useCallback(() => {
+  const handleDragStart = (event) => {
+    const { active } = event;
+    // Check if the item being dragged is a section header or other type
+    // The `type` is now directly available in active.data.current.type
+    if (active.data.current?.type !== 'section') { // Changed from 'section-header' to 'section'
+         document.body.style.cursor = "grabbing";
+    }
       setIsDragging(true);
-      document.body.classList.add('dragging');
-  }, []);
+  };
 
   const handleDragEnd = useCallback((event) => {
-    const { active, over } = event;
-    
+    document.body.style.cursor = "";
     setIsDragging(false);
-    document.body.classList.remove('dragging');
-    
-    if (!over) return;
-    
-    // If source and destination are the same, no need to update
-    if (active.id === over.id) return;
-    
-    // Handle section reordering
-    if (active.id.toString().includes('section-')) {
-      const reorderedSections = arrayMove(
-        activeSections,
-        activeSections.findIndex(id => `section-${id}` === active.id),
-        activeSections.findIndex(id => `section-${id}` === over.id)
-      );
-      
-      setActiveSections(reorderedSections);
-    }
-  }, [activeSections, setActiveSections]);
-  
-  // Handle drag end for exercises within a section
-  const handleExerciseDragEnd = useCallback((event, sectionId) => {
+
     const { active, over } = event;
-    
-    if (!over) return;
-    if (active.id === over.id) return;
-    
-    // Get the unified items for this section
-    const { unifiedItems } = getOrderedExercisesAndSupersets(sectionId);
-    
-    // Find the indexes based on the IDs
-    const oldIndex = unifiedItems.findIndex(item => {
-      if (item.type === 'exercise') 
-        return `exercise-${item.exercise.id}` === active.id;
-      else if (item.type === 'superset')
-        return `superset-${item.id}` === active.id;
-      return false;
-    });
-    
-    const newIndex = unifiedItems.findIndex(item => {
-      if (item.type === 'exercise') 
-        return `exercise-${item.exercise.id}` === over.id;
-      else if (item.type === 'superset')
-        return `superset-${item.id}` === over.id;
-      return false;
-    });
-    
-    if (oldIndex === -1 || newIndex === -1) return;
-      
-    // Avoid deep copy for better performance - only make a shallow copy of the array
-    const itemsCopy = arrayMove(unifiedItems, oldIndex, newIndex);
-      
-    // Build a new flat list of exercises with updated positions
-    const reorderedExercises = [];
-    let position = 0;
-      
-    // Process each item in the reordered list
-    itemsCopy.forEach(item => {
-      if (item.type === 'exercise') {
-        // For normal exercises, just add with updated position
-        reorderedExercises.push({
-          ...item.exercise,
-          position: position++
-        });
-      } else if (item.type === 'superset') {
-        // For supersets, preserve the internal order of exercises
-        // while updating the superset's overall position
-        const positionStart = position; // Remember start position for superset
-        
-        // Get the ordered exercises from the superset
-        const supersetExercises = item.exercises;
-        
-        // Assign sequential positions to all exercises in the superset
-        supersetExercises.forEach(exercise => {
-          reorderedExercises.push({
-            ...exercise,
-            position: position++
-          });
-        });
-        
-        // Update the superset in the UI - split this into its own useEffect to avoid
-        // blocking the drag animation
-        setTimeout(() => {
-          setSupersets(prev => 
-            prev.map(s => 
-              s.id === item.id 
-                ? { 
-                    ...s, 
-                    originalPosition: positionStart, // Update position reference
-                    exercises: supersetExercises.map((ex, idx) => ({
-                      ...ex,
-                      position: positionStart + idx  // Ensure all exercises have correct positions
-                    }))
-                  } 
-                : s
-            )
-          );
-        }, 0);
-      }
-    });
-      
-    // Update exercise order if we have exercises to reorder - wrapped in setTimeout
-    // to improve performance by allowing the drag animation to complete first
-    if (reorderedExercises.length > 0) {
-      setTimeout(() => {
-        handleExerciseReorder(sessionId, sectionId, reorderedExercises);
-      }, 0);
+
+    if (!active || !over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    // Extract data from active.data.current and over.data.current
+    const activeData = active.data.current;
+    const overData = over.data.current;
+
+    if (!activeData) {
+      console.error("DragEnd: Missing active.data.current");
+      return;
     }
-  }, [sessionId, getOrderedExercisesAndSupersets, handleExerciseReorder, setSupersets, supersets]);
+
+    // Avoid processing if item is dropped on itself without a meaningful action change
+    if (activeId === overId) {
+        const isExerciseToDifferentSuperset = 
+            activeData.type === 'exercise' && 
+            overData?.type === 'superset' &&
+            activeData.item?.superset_ui_id !== overData.item?.ui_id;
+
+        if (!isExerciseToDifferentSuperset) {
+            return; 
+        }
+    }
+
+    if (activeData.type === 'section' && overData?.type === 'section') {
+      // Reordering sections themselves
+      // activeId and overId are sectionSortableIds like `section-warmup-timestamp`
+      // We need the original section IDs (e.g., 'warmup-timestamp') from itemData
+      const sourceOriginalSectionId = activeData.itemData?.id; // e.g. { id: sectionId, name: ... }
+      const targetOriginalSectionId = overData.itemData?.id;
+
+      if (sourceOriginalSectionId && targetOriginalSectionId && sourceOriginalSectionId !== targetOriginalSectionId) {
+        setActiveSections((sections) => {
+          const oldIndex = sections.indexOf(sourceOriginalSectionId);
+          const newIndex = sections.indexOf(targetOriginalSectionId);
+          if (oldIndex !== -1 && newIndex !== -1) {
+            return arrayMove(sections, oldIndex, newIndex);
+          }
+          return sections;
+        });
+      }
+    } else if ((activeData.type === 'exercise' || activeData.type === 'superset')) {
+        // Dragging an exercise or a superset block
+        const draggedItemData = activeData.item; // This is the full exercise or superset object
+        const sourceSectionId = activeData.sectionId;
+        const sourceSupersetId = activeData.supersetId; // This is activeData.item.ui_id if activeData.type is 'superset'
+        
+        // Determine target context
+        let targetSectionId = overData?.sectionId;
+        let targetSupersetId = overData?.supersetId; // This is overData.item.ui_id if overData.type is 'superset'
+        let targetItemData = overData?.item;     // This is the full exercise or superset object under cursor
+        let position = 'after'; 
+        let operationType = 'reorder-items';
+
+        if (!draggedItemData || !sourceSectionId) {
+            console.error("DragEnd: Missing dragged item data or source section ID.", { activeData });
+            return;
+        }
+
+        // If `over` is a section header itself, or a droppable area representing the section (not an item within it)
+        if (overData?.type === 'section') {
+            targetSectionId = overData.itemData?.id; // The original section ID
+            position = 'at-end'; 
+            operationType = 'move-to-section-end';
+            targetItemData = null; // No specific item, just the section
+            targetSupersetId = null; 
+        } 
+        // If `over` is an exercise or a superset
+        else if (overData?.type === 'exercise' || overData?.type === 'superset') {
+            targetSectionId = overData.sectionId;
+            targetSupersetId = overData.supersetId; 
+            targetItemData = overData.item;
+
+            const activeRect = active.rect.current.translated;
+            const overRect = over.rect.current.translated;
+            if (activeRect && overRect) {
+                const overMidY = overRect.top + overRect.height / 2;
+                position = activeRect.top < overMidY ? 'before' : 'after';
+            }
+
+            // <<<< START NEW LOGIC FOR CROSS-SECTION SUPERSET CREATION >>>>
+            if (activeData.type === 'exercise' && overData.type === 'exercise' && sourceSectionId !== targetSectionId) {
+                // Dragging exercise A from S1 onto exercise B in S2
+                operationType = 'create-cross-section-superset';
+                // Target for superset creation is effectively the two exercises involved.
+                // The `targetItemData` (exercise B) is relevant. `draggedItemData` is exercise A.
+                // `position` is not directly relevant for creation, more for insertion into an existing list.
+            } else if (activeData.type === 'exercise' && overData.type === 'superset' && sourceSectionId !== targetSectionId && draggedItemData.superset_ui_id !== overData.item.ui_id) {
+                // Dragging exercise A from S1 onto Superset X in S2 (A is not in X)
+                operationType = 'add-to-cross-section-superset';
+                position = 'inside'; // Adding inside the target superset
+                targetSupersetId = overData.item.ui_id; // Target is the superset itself
+            }
+            // <<<< END NEW LOGIC FOR CROSS-SECTION SUPERSET CREATION >>>>
+            else if (activeData.type === 'exercise' && overData.type === 'superset' && draggedItemData.superset_ui_id !== overData.item.ui_id) {
+                // Dragging an exercise onto/into a different superset block (within the same section or cross-section handled above)
+                operationType = 'move-exercise-into-superset';
+                position = 'inside'; // Default to inside, parent can refine position
+            }
+        }
+        // Add case for dropping on placeholder for empty section (if such a droppable exists)
+        // else if (overData?.type === 'droppable-empty-section') { ... }
+
+        if (!targetSectionId) {
+          console.warn("DragEnd: Could not determine target section ID. Defaulting to source section.", { overData });
+          targetSectionId = sourceSectionId;
+        }
+
+        const reorderPayload = {
+            source: {
+                sectionId: sourceSectionId,
+                supersetId: sourceSupersetId,
+                item: { ui_id: draggedItemData.ui_id, type: draggedItemData.itemType || activeData.type } // Ensure type is passed
+            },
+            target: {
+                sectionId: targetSectionId,
+                supersetId: targetSupersetId,
+                item: targetItemData ? { ui_id: targetItemData.ui_id, type: targetItemData.itemType || overData.type, superset_ui_id: targetItemData.superset_ui_id } : null,
+                position: position 
+            },
+            operationType 
+        };
+        
+        if (operationType === 'reorder-within-superset' && draggedItemData.ui_id === targetItemData?.ui_id) return;
+
+        onReorderExercises(reorderPayload);
+
+    } else {
+      console.warn("DragEnd: Unhandled drag scenario or missing/unexpected data types.", { activeData, overData });
+    }
+  }, [setActiveSections, onReorderExercises]);
   
   // Handle adding a section
   const handleAddSection = useCallback((sectionType) => {
     // Always allow adding multiple sections of the same type by creating a unique instance ID
     const instanceId = `${sectionType}-${Date.now()}`
-    const newSections = [...activeSections, instanceId]
-    setActiveSections(newSections)
-    // Expand the new section instance
+    setActiveSections(prev => [...prev, instanceId])
     setExpandedSections(prev => [...prev, instanceId])
-  }, [activeSections, setActiveSections, setExpandedSections])
+  }, [setActiveSections])
   
   // Handle removing a section
-  const handleRemoveSection = useCallback((sectionId) => {
+  const handleRemoveSectionCallback = useCallback((sectionId) => {
     // Remove section from active sections
-    const newSections = activeSections.filter((id) => id !== sectionId)
-    setActiveSections(newSections)
+    setActiveSections(prev => prev.filter((id) => id !== sectionId))
     
     // Remove section from expanded sections
-    setExpandedSections(expandedSections.filter((id) => id !== sectionId))
-  }, [activeSections, expandedSections, setActiveSections])
+    setExpandedSections(prev => prev.filter((id) => id !== sectionId))
+  }, [setActiveSections])
   
   // Update toggleSection to remove longPressTimer
   const toggleSection = useCallback((sectionId) => {
@@ -502,566 +514,48 @@ const ExerciseSectionManager = memo(({
   const expandAllSections = useCallback(() => {
     setExpandedSections([...activeSections])
   }, [activeSections])
-  
-  // Function to create a new superset with exercises
-  const handleCreateSuperset = useCallback((exerciseIds, sectionId) => {
-    // Get the exercises
-    const supersetExercises = exerciseIds.map(id => 
-      exercises.find(ex => ex.id === id)
-    ).filter(Boolean);
-    
-    // Only proceed if we have at least one exercise
-    if (supersetExercises.length === 0) return;
-    
-    // Sort the exercises by their current position to maintain relative order
-    const sortedExercises = [...supersetExercises].sort((a, b) => (a.position || 0) - (b.position || 0));
-    
-    // Important: Save the original position of the first exercise to maintain the superset's position in the list
-    // This ensures the superset appears in the same place as the first exercise was
-    const originalPosition = sortedExercises[0].position || 0;
-    console.log("Creating superset at original position:", originalPosition);
-    
-    // Get the next display number, always start from 1 and increment
-    let nextDisplayNumber = 1;
-    
-    // Find gaps in display numbers or get the next available number
-    const existingSupersets = [...supersets].sort((a, b) => a.displayNumber - b.displayNumber);
-    const usedNumbers = existingSupersets.map(s => s.displayNumber);
-    
-    console.log("Creating superset, current supersets:", existingSupersets.map(s => ({ id: s.id, displayNumber: s.displayNumber })));
-    console.log("Used display numbers:", usedNumbers);
-    
-    // Find the first available number starting from 1
-    while (usedNumbers.includes(nextDisplayNumber)) {
-      nextDisplayNumber++;
-    }
-    
-    console.log("Next display number chosen:", nextDisplayNumber);
-    
-    // Create a superset ID that includes the display number for easy extraction in the timeline
-    // Format: ss-timestamp-displayNumber
-    const timestamp = Date.now();
-    const supersetId = `ss-${timestamp}-${nextDisplayNumber}`;
-    
-    console.log("Created new superset ID:", supersetId);
-    
-    // Create positioned exercises for the superset
-    const positionedExercises = sortedExercises.map((ex, index) => ({
-      ...ex,
-      supersetId,
-      position: originalPosition + index // All exercises maintain relative positions based on the original position
-    }));
-    
-    // Add the new superset to state
-    setSupersets(prev => [
-      ...prev,
-      {
-        id: supersetId,
-        displayNumber: nextDisplayNumber,
-        exercises: positionedExercises,
-        originalPosition: originalPosition, // Store the original position
-        section: sectionId,
-        needsMoreExercises: sortedExercises.length < 2
-      }
-    ]);
-    
-    // Update all exercises with the superset ID, section, and consistent positions
-    positionedExercises.forEach((exercise, index) => {
-      // Set the supersetId property
-      handleExerciseDetailChange(
-        exercise.id, 
-        exercise.session, 
-        exercise.part, 
-        'supersetId', 
-        supersetId
-      );
-      
-      // Set the position property - preserve the original relative positions
-      handleExerciseDetailChange(
-        exercise.id,
-        exercise.session,
-        exercise.part,
-        'position',
-        originalPosition + index // Keep relative positions based on original position
-      );
-      
-      // Also set the section to ensure exercises stay in the desired section
-      handleExerciseDetailChange(
-        exercise.id,
-        exercise.session,
-        exercise.part,
-        'section',
-        sectionId
-      );
-    });
-    
-    console.log("Superset created with originalPosition:", originalPosition, "and positions:", 
-      positionedExercises.map(ex => ex.position));
-  }, [exercises, handleExerciseDetailChange, supersets]);
-
-  // Function to add a new exercise directly to a superset
-  const handleAddExerciseToSuperset = useCallback((exercise, supersetId, targetSectionId) => {
-    // Make sure we have a valid section ID - this is critical to prevent duplicates
-    if (!targetSectionId) {
-      console.error("Missing section ID when adding to superset");
-      return;
-    }
-    
-    // *** Log the incoming exercise object ID ***
-    console.log(`[handleAddExerciseToSuperset] Received exercise: "${exercise.name}" with ID: ${exercise.id} (Type: ${typeof exercise.id})`);
-    console.log(`[handleAddExerciseToSuperset] Target section ID: ${targetSectionId}`);
-
-    // Find the superset to get its display number for proper UI feedback
-    const superset = supersets.find(s => s.id === supersetId);
-    if (!superset) {
-      console.error("Superset not found:", supersetId);
-      return;
-    }
-    
-    // Important: Get the superset's original position to ensure it maintains its place
-    const originalPosition = superset.originalPosition || 0;
-    console.log("Adding to superset at originalPosition:", originalPosition);
-    
-    // Find the number of existing exercises in this superset for position calculation
-    const exerciseCount = superset.exercises?.length || 0;
-    
-    // Create a new exercise with the superset ID
-    const newExercise = {
-      ...exercise,
-      originalId: exercise.id, // preserve DB exercise ID for backend mapping
-      id: Date.now(), // unique frontend ID
-      session: sessionId,
-      part: exercise.type, // Keep original exercise type for categorization
-      section: targetSectionId, // Store the section where this superset is displayed
-      sets: "",
-      reps: "",
-      rest: "",
-      supersetId: supersetId,
-      // Position will be updated after adding to the superset
-      position: originalPosition + exerciseCount
-    };
-    
-    // *** Log the object being passed to the state hook ***
-    console.log(`[handleAddExerciseToSuperset] Passing to handleAddExercise:`, JSON.stringify(newExercise));
-
-    // Add the exercise to the parent component's state
-    handleAddExercise(newExercise);
-    
-    // Create a new array with all exercises including the new one
-    const updatedExercises = [...(superset.exercises || []), newExercise];
-    
-    // Ensure all exercises have consistent positions based on the original position
-    const positionedExercises = updatedExercises.map((ex, idx) => ({
-      ...ex,
-      position: originalPosition + idx
-    }));
-    
-    console.log("Positioned exercises:", positionedExercises.map(ex => ({ 
-      id: ex.id, 
-      position: ex.position 
-    })));
-    
-    // Update the superset with the new exercise and consistent positions
-    setSupersets(prev => 
-      prev.map(s => {
-        if (s.id === supersetId) {
-          return { 
-            ...s, 
-            exercises: positionedExercises,
-            originalPosition: originalPosition, // Reinforce original position
-            needsMoreExercises: positionedExercises.length < 2
-          };
-        }
-        return s;
-      })
-    );
-    
-    // Update positions for ALL exercises in the superset to ensure consistency in the data store
-    positionedExercises.forEach((ex, idx) => {
-      handleExerciseDetailChange(
-        ex.id,
-        ex.session,
-        ex.part,
-        'position',
-        originalPosition + idx // Ensure position is based on original position
-      );
-    });
-  }, [sessionId, handleAddExercise, supersets, handleExerciseDetailChange]);
-
-  // Function to remove an exercise from a superset
-  const handleRemoveFromSuperset = useCallback((supersetId, exerciseId) => {
-    // Find the exercise in the superset
-    const superset = supersets.find(s => s.id === supersetId);
-    if (!superset) return;
-    
-    const exercise = superset.exercises.find(ex => ex.id === exerciseId);
-    if (!exercise) return;
-    
-    // Get the original position of the superset for maintaining order
-    const originalPosition = superset.originalPosition || 0;
-    
-    // Update the superset by removing the exercise
-    let updatedSupersets = supersets.map(superset => {
-      if (superset.id === supersetId) {
-        const newExercises = superset.exercises.filter(ex => ex.id !== exerciseId);
-        
-        // Update positions of remaining exercises to maintain correct ordering
-        const reorderedExercises = newExercises.map((ex, idx) => ({
-          ...ex,
-          position: originalPosition + idx // Maintain consistent positions based on original position
-        }));
-        
-        return { 
-          ...superset, 
-          exercises: reorderedExercises,
-          needsMoreExercises: reorderedExercises.length < 2
-        };
-      }
-      return superset;
-    });
-    
-    // If this would leave the superset with fewer than 2 exercises, dissolve the entire superset
-    const targetSuperset = updatedSupersets.find(s => s.id === supersetId);
-    if (targetSuperset && targetSuperset.exercises.length < 2) {
-      // Extract the remaining exercise to reset its supersetId
-      const remainingExercise = targetSuperset.exercises[0];
-      if (remainingExercise) {
-        // Reset the remaining exercise's supersetId and section
-        handleExerciseDetailChange(
-          remainingExercise.id, 
-          remainingExercise.session, 
-          remainingExercise.part, 
-          'supersetId', 
-          null
-        );
-        handleExerciseDetailChange(
-          remainingExercise.id,
-          remainingExercise.session,
-          remainingExercise.part,
-          'section',
-          null
-        );
-      }
-      
-      // Remove the superset completely
-      updatedSupersets = updatedSupersets.filter(s => s.id !== supersetId);
-      
-      // Reindex all remaining supersets to ensure sequential display numbers starting from 1
-      updatedSupersets = updatedSupersets.map((superset, index) => ({
-        ...superset,
-        displayNumber: index + 1
-      }));
-    } else if (targetSuperset && targetSuperset.exercises.length >= 2) {
-      // If exercises remain in the superset, update their positions in the data store
-      targetSuperset.exercises.forEach((ex, idx) => {
-        handleExerciseDetailChange(
-          ex.id,
-          ex.session,
-          ex.part,
-          'position',
-          originalPosition + idx // Ensure consistent positions based on original position
-        );
-      });
-    }
-    
-    // Update the supersets state
-    setSupersets(updatedSupersets);
-    
-    // Update the exercise to remove supersetId and section
-    handleExerciseDetailChange(exerciseId, exercise.session, exercise.part, 'supersetId', null);
-    handleExerciseDetailChange(exerciseId, exercise.session, exercise.part, 'section', null);
-  }, [supersets, handleExerciseDetailChange]);
-
-  // Function to completely dissolve a superset
-  const handleExitSuperset = useCallback((supersetId) => {
-    // Get the superset and its parent section
-    const superset = supersets.find(s => s.id === supersetId);
-    if (!superset) return;
-    
-    // Get the parent section of the superset
-    const parentSectionId = superset.section;
-    
-    // Get the exercises from the superset
-    const supersetExercises = superset.exercises || [];
-    
-    // Remove the superset
-    setSupersets(prev => {
-      // Remove the target superset
-      const filteredSets = prev.filter(s => s.id !== supersetId);
-      
-      // Reindex the display numbers to be sequential starting from 1
-      return filteredSets.map((superset, index) => ({
-        ...superset,
-        displayNumber: index + 1
-      }));
-    });
-    
-    // Update all exercises to remove superset ID and section
-    supersetExercises.forEach(exercise => {
-      // Check if exercise's original type (part) matches the parent section
-      const exerciseTypeMatchesSection = exercise.part === parentSectionId;
-      
-      if (exerciseTypeMatchesSection) {
-        // If the exercise type matches the section, just remove it from the superset
-        // Remove supersetId
-        handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, 'supersetId', null);
-        // Reset section to match part (original type)
-        handleExerciseDetailChange(exercise.id, exercise.session, exercise.part, 'section', null);
-      } else {
-        // If the exercise type doesn't match the section, remove the exercise completely
-        handleRemoveExercise(exercise.id, exercise.session, exercise.part);
-      }
-    });
-  }, [supersets, handleExerciseDetailChange, handleRemoveExercise]);
-
-  // Function to move an exercise up or down
-  const handleMoveExercise = useCallback((exerciseId, direction, sessionId, sectionId) => {
-    // Get all exercises in this section
-    const sectionExercises = getSectionExercises(sectionId);
-    
-    // Find the exercise
-    const exercise = sectionExercises.find(ex => ex.id === exerciseId);
-    if (!exercise) return;
-    
-    // Get ordered items
-    const { unifiedItems } = getOrderedExercisesAndSupersets(sectionId);
-    
-    // Find the index of the item to move in the unified list
-    let itemIndex = -1;
-    if (exercise.supersetId) {
-      // If it's a superset exercise, find the superset
-      itemIndex = unifiedItems.findIndex(item => 
-        item.type === 'superset' && item.id === exercise.supersetId
-      );
-    } else {
-      // If it's a normal exercise, find it
-      itemIndex = unifiedItems.findIndex(item => 
-        item.type === 'exercise' && item.exercise.id === exerciseId
-      );
-    }
-    
-    if (itemIndex === -1) return;
-    
-    // Calculate new index
-    const newItemIndex = direction === 'up' 
-      ? Math.max(0, itemIndex - 1)
-      : Math.min(unifiedItems.length - 1, itemIndex + 1);
-      
-    if (newItemIndex === itemIndex) return;
-    
-    // Make a copy of the items to avoid mutation
-    const updatedItems = [...unifiedItems];
-    
-    // Perform the move on the unified list
-    const [removed] = updatedItems.splice(itemIndex, 1);
-    updatedItems.splice(newItemIndex, 0, removed);
-    
-    // Convert back to a flat list of exercises with updated positions
-    const reorderedExercises = [];
-    let position = 0;
-    
-    updatedItems.forEach(item => {
-      if (item.type === 'exercise') {
-        // For normal exercises, add with updated position
-        reorderedExercises.push({
-          ...item.exercise,
-          position: position++
-        });
-      } else if (item.type === 'superset') {
-        // For supersets, preserve the internal order of exercises
-        const positionStart = position;
-        
-        // Add all exercises from the superset with sequential positions
-        item.exercises.forEach(ex => {
-          reorderedExercises.push({
-            ...ex,
-            position: position++
-          });
-        });
-        
-        // Update the superset position reference
-        setSupersets(prev => 
-          prev.map(s => 
-            s.id === item.id 
-              ? { ...s, originalPosition: positionStart }
-              : s
-          )
-        );
-      }
-    });
-    
-    // Update exercise order
-    if (reorderedExercises.length > 0) {
-      handleExerciseReorder(sessionId, sectionId, reorderedExercises);
-    }
-  }, [getSectionExercises, getOrderedExercisesAndSupersets, handleExerciseReorder, setSupersets]);
-
-  // Function to duplicate an exercise
-  // Commented out as not implemented yet
-  /*
-  const handleDuplicateExercise = useCallback((exerciseId, sessionId, sectionId) => {
-    const exercise = exercises.find(ex => 
-      ex.id === exerciseId && ex.session === sessionId && ex.part === sectionId
-    );
-    
-    if (!exercise) return;
-    
-    // TODO: In a real implementation, update the parent component's state
-    // Create a duplicate with a new ID
-    // const duplicate = {
-    //   ...exercise,
-    //   id: Date.now(), // Use timestamp as a simple unique ID
-    //   name: `${exercise.name} (Copy)`
-    // };
-    
-    // Add it to the exercises
-    // handleAddExercise({ ...duplicate, part: sectionId });
-  }, [exercises]);
-  */
 
   // Replace the Menu component with custom dropdown
   const [addSectionMenuOpen, setAddSectionMenuOpen] = useState(false)
 
   // Replace MemoizedDraggableItem with a dnd-kit compatible version
-  const SortableItem = memo(({ id, className, style, children }) => {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging: itemIsDragging
-    } = useSortable({ 
+  // SortableDndItem: Component to make items sortable via dnd-kit
+  // It now receives the full item object and its context (sectionId, supersetId)
+  // to provide rich data for drag operations.
+  const SortableItem = memo(({ id, children, itemType, itemData, sectionId, supersetId }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging: itemIsDragging } = useSortable({ 
       id,
       data: {
-        type: id.toString().includes('superset-') ? 'superset' : 'exercise'
-      }
+        type: itemType, // 'section', 'exercise', or 'superset'
+        item: itemData,      // The actual exercise or superset object
+        sectionId,     // The ID of the section this item belongs to
+        supersetId,    // The ID of the superset this item belongs to (if applicable)
+      } 
     });
-
-    // Reference to measure the element
-    const elementRef = useRef(null);
-    // State to store the measured height
-    const [elementHeight, setElementHeight] = useState(null);
-
-    // Capture height before dragging starts
-  useEffect(() => {
-      if (elementRef.current && !elementHeight) {
-        const height = elementRef.current.offsetHeight;
-        setElementHeight(height);
-      }
-    }, [elementHeight]);
-
-    // Set height explicitly during drag
-    useEffect(() => {
-      if (itemIsDragging && elementRef.current && elementHeight) {
-        // Force height during drag
-        elementRef.current.style.height = `${elementHeight}px`;
-      } else if (!itemIsDragging && elementRef.current) {
-        // Reset after drag ends
-        elementRef.current.style.height = '';
-      }
-    }, [itemIsDragging, elementHeight]);
-
-    // Create the combined ref
-    const combinedRef = useMemo(() => {
-      return (node) => {
-        // Set both refs
-        setNodeRef(node);
-        elementRef.current = node;
-      };
-    }, [setNodeRef]);
-
-    const itemStyle = {
-      // Use transform without any scaling to prevent height changes
-      transform: CSS.Transform.toString({
-        ...transform,
-        scaleX: 1,
-        scaleY: 1
-      }),
+    const style = { 
+      transform: CSS.Transform.toString(transform), 
       transition,
-      zIndex: itemIsDragging ? 9999 : undefined,
-      opacity: itemIsDragging ? 0.9 : undefined,
-      // Fixed height during dragging
-      height: itemIsDragging && elementHeight ? `${elementHeight}px` : undefined,
-      ...style
+      zIndex: itemIsDragging ? 100 : 'auto', 
+      opacity: itemIsDragging ? 0.8 : 1 
     };
-
-    return (
-      <div
-        ref={combinedRef}
-        className={cn(
-          className,
-          itemIsDragging ? "dragged-item" : "",
-          id.toString().includes('superset-') ? "superset-item" : "exercise-item"
-        )}
-        style={itemStyle}
-        {...attributes}
-        {...listeners}
-      >
-        {typeof children === 'function' ? children({isDragging: itemIsDragging}) : children}
-      </div>
-    );
+    return <div ref={setNodeRef} style={style} {...attributes} {...listeners}>{children}</div>;
   });
   SortableItem.displayName = "SortableItem";
 
-  // Memoized exercise component
-  const ExerciseItem = memo(({ exercise, index }) => {
-    // Generate a consistent ID
-    const id = `exercise-${exercise.id}`;
-    
-    return (
-      <SortableItem
-        id={id}
-        index={index}
-        className="border rounded-md p-3 bg-white relative"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="cursor-grab">
-              <GripVertical className="h-4 w-4 text-gray-400" />
-            </div>
-            <div>
-              <p className="font-medium">{exercise.name}</p>
-              <Badge variant="outline" className="mt-1">
-                {exercise.category}
-              </Badge>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <ExerciseContextMenu
-              exercise={exercise}
-              // disable superset creation in group mode
-              onCreateSuperset={mode === 'group' ? undefined : handleCreateSuperset}
-              onRemoveExercise={handleRemoveExercise}
-              onMoveExercise={handleMoveExercise}
-              sessionId={sessionId}
-              sectionId={exercise.part}
-              disableMoveUp={index === 0}
-              disableMoveDown={false}
-              popupDirection="bottom"
-            />
-          </div>
-        </div>
-      </SortableItem>
-    );
-  });
-  ExerciseItem.displayName = "ExerciseItem";
-
   // Function to move a superset up or down
   const handleMoveSuperset = useCallback((supersetId, direction) => {
-    const superset = supersets.find(s => s.id === supersetId);
+    const superset = supersets.find(s => s.ui_id === supersetId);
     if (!superset) return;
     
-    const sectionId = superset.section;
+    const sectionId = superset.host_section_id;
     if (!sectionId) return;
     
     // Find all items in the section
-    const { unifiedItems } = getOrderedExercisesAndSupersets(sectionId);
+    const { unifiedItems } = getOrderedItemsForSection(sectionId);
     
     // Find the index of the superset
     const supersetIndex = unifiedItems.findIndex(item => 
-      item.type === 'superset' && item.id === supersetId
+      item.itemType === 'superset' && item.ui_id === supersetId
     );
     
     if (supersetIndex === -1) return;
@@ -1083,13 +577,13 @@ const ExerciseSectionManager = memo(({
     let position = 0;
     
     updatedItems.forEach(item => {
-      if (item.type === 'exercise') {
+      if (item.itemType === 'exercise') {
         // For normal exercises, just add with updated position
         reorderedExercises.push({
-          ...item.exercise,
-          position: position++
+          ...item,
+          position_in_section: position++
         });
-      } else if (item.type === 'superset') {
+      } else if (item.itemType === 'superset') {
         // For supersets, preserve the internal order of exercises
         // while updating the superset's overall position
         const positionStart = position; // Remember start position for superset
@@ -1098,15 +592,15 @@ const ExerciseSectionManager = memo(({
         item.exercises.forEach(exercise => {
           reorderedExercises.push({
             ...exercise,
-            position: position++
+            position_in_section: position++
           });
         });
         
         // Update the superset in the UI
         setSupersets(prev => 
           prev.map(s => 
-            s.id === item.id 
-              ? { ...s, originalPosition: positionStart } // Update position reference
+            s.ui_id === item.ui_id 
+              ? { ...s, position_in_section: positionStart } // Update position reference
               : s
           )
         );
@@ -1115,117 +609,138 @@ const ExerciseSectionManager = memo(({
     
     // Update exercise order if we have exercises to reorder
     if (reorderedExercises.length > 0) {
-      handleExerciseReorder(sessionId, sectionId, reorderedExercises);
+      onReorderExercises(sectionId, reorderedExercises);
     }
-  }, [supersets, getOrderedExercisesAndSupersets, handleExerciseReorder, sessionId, setSupersets]);
+  }, [supersets, getOrderedItemsForSection, onReorderExercises, setSupersets]);
 
-  // Inside the main ExerciseSectionManager component
-  const renderExerciseList = useCallback((sectionId) => {
-    const { unifiedItems } = getOrderedExercisesAndSupersets(sectionId);
-    
-    if (unifiedItems.length === 0) {
-      return (
-        <p className="text-sm text-gray-500 text-center py-4">
-          No exercises added to this section yet.
-        </p>
-      );
+  // Main function to render the list of exercises or superset blocks for a given section
+  const renderExerciseOrSupersetList = useCallback((sectionId) => {
+    const orderedItems = getOrderedItemsForSection(sectionId);
+
+    if (!orderedItems.length) {
+      return <p className="text-sm text-gray-500 py-4 text-center">No exercises in this section. Add some below!</p>;
     }
-    
-    // Memoize the rendering of the entire list to avoid unnecessary re-renders
-    return unifiedItems.map((item, idx) => {
-      const isLast = idx === unifiedItems.length - 1;
+
+    // This function now returns an array of SortableItem components
+    // These will be included in the main SortableContext's items list
+    return orderedItems.map((item, index) => {
+      const itemUiId = item.ui_id; // Exercise ui_id or Superset ui_id
+      const itemType = item.itemType; // 'exercise' or 'superset'
       
-      if (item.type === 'exercise') {
+      if (itemType === 'superset') {
+        const supersetExercisesWithErrors = item.exercises.map(ex => ({
+          ...ex,
+          errors: getExerciseSpecificErrors(ex.ui_id, errors), 
+        }));
         return (
-          <ExerciseItem
-            key={`exercise-${item.exercise.id}`}
-            exercise={item.exercise}
-            index={idx}
-          />
+          <SortableItem 
+            key={itemUiId} 
+            id={itemUiId} 
+            itemType="superset"
+            itemData={item} // Pass the full superset object
+            sectionId={sectionId}
+            supersetId={itemUiId} // Superset's own ID is its supersetId for context
+          >
+            <SupersetContainer
+              supersetId={itemUiId}
+              sectionId={sectionId}
+              exercises={supersetExercisesWithErrors}
+              displayNumber={item.display_number || index + 1}
+              onRemoveFromSuperset={(exerciseUiId) => onRemoveExerciseFromSuperset(exerciseUiId)}
+              onExitSuperset={() => onDeleteSuperset(itemUiId, sectionId)}
+              onAddExerciseToSuperset={(exerciseDefinition, targetSupersetUiId) => {
+                onAddExercise(exerciseDefinition, sectionId, targetSupersetUiId);
+              }}
+              availableExercises={availableExercises}
+              loadingAvailableExercises={loadingAvailableExercises}
+            />
+          </SortableItem>
         );
-      } else if (item.type === 'superset') {
-        // Find the superset display number
-        const superset = supersets.find(s => s.id === item.id);
-        const displayNumber = superset?.displayNumber || 1;
-        
+      } else { // Individual exercise
+        const exerciseErrors = getExerciseSpecificErrors(itemUiId, errors);
         return (
           <SortableItem
-            key={`superset-${item.id}`}
-            id={`superset-${item.id}`}
-            index={idx}
-            className="relative"
+            key={itemUiId} 
+            id={itemUiId} 
+            itemType="exercise"
+            itemData={item} // Pass the full exercise object
+            sectionId={sectionId}
+            supersetId={item.superset_ui_id} // Could be null if not in a superset
           >
-            {({ isDragging }) =>
-              mode === 'group' ? null : (
-                <SupersetContainer
-                  supersetId={item.id}
-                  exercises={item.exercises}
-                  sectionId={sectionId}
-                  onRemoveFromSuperset={handleRemoveFromSuperset}
-                  onExitSuperset={handleExitSuperset}
-                  onAddExerciseToSuperset={handleAddExerciseToSuperset}
-                  availableExercises={filteredExercises}
-                  isDraggable={true}
-                  isDragging={isDragging}
-                  displayNumber={displayNumber}
-                  needsMoreExercises={item.exercises.length < 2}
-                  dragHandleProps={{}} // Not needed with dnd-kit
-                  onMoveSuperset={handleMoveSuperset}
-                  disableMoveUp={idx === 0}
-                  disableMoveDown={isLast}
-                  onRemoveExercise={handleRemoveExercise}
-                  sessionId={sessionId}
-                  menuDirection="bottom"
-                />
-              )
-            }
+            <div className="relative group">
+              <ExerciseItemFull
+                exercise={item}
+                mode={mode}
+                onChangeExerciseField={(field, value) => onExerciseFieldChange(itemUiId, field, value)}
+                onChangeSetDetail={(setIdx, field, value) => {
+                  onSetDetailChange(itemUiId, setIdx, field, value);
+                }}
+                onAddSet={() => onAddSet(itemUiId)}
+                onRemoveSet={(setIdx) => {
+                  onRemoveSet(itemUiId, setIdx);
+                }}
+              />
+              <ExerciseContextMenu
+                item={item}
+                sectionId={sectionId}
+                allExercisesInSection={getOrderedItemsForSection(sectionId).filter(i => i.itemType === 'exercise' && !i.superset_ui_id)}
+                supersetsInCurrentSection={supersets.filter(s => s.host_section_id === sectionId)}
+                allExercisesInSession={allExercisesInSession}
+                onCreateSuperset={onCreateSuperset}
+                onRemoveExercise={onRemoveExercise}
+                onDeleteSuperset={onDeleteSuperset}
+                onRemoveExerciseFromSuperset={(exerciseUiId) => onRemoveExerciseFromSuperset(item.superset_ui_id, exerciseUiId)}
+              />
+            </div>
           </SortableItem>
         );
       }
-      
-      return null;
     });
-  }, [
-    getOrderedExercisesAndSupersets, 
-    supersets, 
-    handleRemoveFromSuperset, 
-    handleExitSuperset, 
-    handleAddExerciseToSuperset, 
-    filteredExercises, 
-    handleMoveSuperset,
-    handleCreateSuperset,
-    handleRemoveExercise,
-    handleMoveExercise,
-    sessionId,
-    mode
-  ]);
+  }, [errors, mode, getOrderedItemsForSection, onRemoveExerciseFromSuperset, onDeleteSuperset, availableExercises, loadingAvailableExercises, onExerciseFieldChange, onSetDetailChange, onAddSet, onRemoveSet, onCreateSuperset, onRemoveExercise, selectedExercises, clearSelection, onAddExercise]);
+
+  // Helper function to extract errors specific to an exercise
+  // Assuming parent error keys are like `exerciseUiId-fieldName` or `exerciseUiId-set_INDEX-fieldName` or `exerciseUiId-set_SETUID-fieldName`
+  const getExerciseSpecificErrors = useCallback((exerciseUiId, allErrors) => {
+    if (!allErrors) return {};
+    const exerciseErrors = {};
+    for (const key in allErrors) {
+      if (key.startsWith(`${exerciseUiId}-`)) {
+        const errorKeyRaw = key.substring(exerciseUiId.length + 1);
+        // Examples: "notes", "set_0-reps", "set_setUID123-reps"
+        // We need to transform "set_0-reps" to "set_0_reps" for ExerciseItemFull
+        const fieldPath = errorKeyRaw.replace(/^(set_\w+)-(\w+)$/, "$1_$2"); 
+        exerciseErrors[fieldPath] = allErrors[key];
+      }
+    }
+    return exerciseErrors;
+  }, []);
 
   // Effect to notify parent of supersets changes
   useEffect(() => {
-    if (onSupersetChange && supersets.length > 0) {
+    if (onSupersetStructureChange && supersets.length > 0) {
       // Create a simplified representation of the superset state to compare
-      const simplifiedSupersets = supersets.map(s => ({ 
-        id: s.id, 
-        displayNumber: s.displayNumber, 
-        exerciseCount: s.exercises?.length || 0 
+      // The parent (StepTwoPlanner) expects a list of superset objects,
+      // each potentially with its exercises if needed for timeline rendering.
+      // The `supersets` state in ExerciseSectionManager already holds this structure.
+      const currentSupersetsState = supersets.map(s => ({ 
+        id: s.ui_id, 
+        displayNumber: s.display_number, 
+        exercises: s.exercises.map(ex => ({ ui_id: ex.ui_id, name: ex.name /* other relevant fields */ })),
+        sectionId: s.host_section_id, // Pass sectionId for context
+        position_in_section: s.position_in_section // Pass position for ordering
       }));
       
-      // Store the simplified state to avoid redundant updates
-      const stateKey = JSON.stringify(simplifiedSupersets);
+      const stateKey = JSON.stringify(currentSupersetsState.map(s => ({id: s.id, count: s.exercises.length, pos: s.position_in_section, disp: s.displayNumber }))); // More stable key
       
-      // Use a ref to store the previous supersets state for comparison
-      if (!prevSupersetsRef.current || prevSupersetsRef.current !== stateKey) {
-        // Only update the parent if the superset state has changed
-        onSupersetChange(supersets);
-        // Store the current state for future comparison
+      if (prevSupersetsRef.current !== stateKey) {
+        onSupersetStructureChange(sessionId, currentSupersetsState); // Pass sessionId if parent needs it, or just supersets
         prevSupersetsRef.current = stateKey;
       }
-    } else if (onSupersetChange && supersets.length === 0 && prevSupersetsRef.current) {
-      // If supersets are cleared, notify parent
-      onSupersetChange([]);
+    } else if (onSupersetStructureChange && supersets.length === 0 && prevSupersetsRef.current !== '') { // Ensure it was previously populated
+      onSupersetStructureChange(sessionId, []); // Pass sessionId if parent needs it
       prevSupersetsRef.current = '';
     }
-  }, [supersets, onSupersetChange]);
+  }, [supersets, onSupersetStructureChange, sessionId, prevSupersetsRef]); // Added sessionId and prevSupersetsRef
 
   // Add CSS style for dragging state
   useEffect(() => {
@@ -1235,43 +750,25 @@ const ExerciseSectionManager = memo(({
       body.dragging * {
         cursor: grabbing !important;
       }
-      body.dragging .section-draggable {
+      body.dragging .section-draggable { /* If you have a specific class for section headers */
         opacity: 0.9;
-        z-index: 1000;
+        z-index: 1000; /* Ensure dragged section header is on top */
       }
-      .dragged-item {
+      /* Style for the dragged item clone by dnd-kit (usually a direct child of body) */
+      body > [style*="transform: translate3d"] {
         z-index: 9999 !important;
-        pointer-events: none;
+        pointer-events: none; /* The clone shouldn't intercept mouse events */
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15) !important;
-        /* Prevent any height changes during drag */
-        height: var(--original-height) !important;
-        min-height: var(--original-height) !important;
-        max-height: var(--original-height) !important;
-        overflow: hidden !important;
       }
-      /* Freeze dimensions during drag operations */
-      .exercise-item, .superset-item {
-        position: relative;
-        transform-origin: top left;
-        transition: transform 200ms ease, opacity 200ms ease;
-        transform: translate3d(0, 0, 0);
-        /* Prevent content from affecting height during drag */
-        box-sizing: border-box !important;
-      }
-      /* Create a placeholder effect for drop targets */
-      .drop-target-active {
-        background-color: rgba(59, 130, 246, 0.1) !important;
-        border: 2px dashed rgba(59, 130, 246, 0.5) !important;
-      }
-      /* Ensure smooth transitions */
-      [data-sortable] {
-        transition: transform 150ms ease;
+      /* Style for the original item while it's being dragged (isDragging=true from useSortable) */
+      /* SortableItem already handles opacity and zIndex via its style prop */
+
+      /* Placeholder/highlight for drop targets could be done via over.rect and custom rendering or ::before/::after */
+      
+      /* Ensure smooth transitions for items managed by SortableContext */
+      [data-sortable-id] { /* dnd-kit sortable items usually get this attribute */
+        transition: transform 250ms ease; /* Smooth re-ordering effect */
         will-change: transform;
-      }
-      /* Lock items in place during drag */
-      body.dragging .exercise-item:not(.dragged-item),
-      body.dragging .superset-item:not(.dragged-item) {
-        transition: transform 250ms ease !important;
       }
     `;
     document.head.appendChild(style);
@@ -1280,6 +777,35 @@ const ExerciseSectionManager = memo(({
       document.head.removeChild(style);
     };
   }, []);
+
+  // useEffect to build the flat list of all draggable items for SortableContext
+  const allSortableItems = useMemo(() => {
+    const items = [];
+    // Add sections first
+    (Array.isArray(activeSections) ? activeSections : []).forEach(sectionId => {
+      items.push({
+        id: `section-${sectionId}`, // Unique ID for the section draggable item
+        type: 'section', // Differentiates from exercises/supersets for SortableItem
+        originalSectionId: sectionId // Keep track of the actual section ID
+      });
+
+      // If section is expanded, add its exercises and supersets
+      if (expandedSections.includes(sectionId)) {
+        const orderedItemsInSection = getOrderedItemsForSection(sectionId);
+        orderedItemsInSection.forEach(item => {
+          items.push({
+            id: item.ui_id, // Exercise ui_id or Superset ui_id
+            type: item.itemType, // 'exercise' or 'superset'
+            // Store full item data and context for SortableItem and handleDragEnd
+            itemData: item,
+            sectionId: sectionId,
+            supersetId: item.itemType === 'superset' ? item.ui_id : item.superset_ui_id,
+          });
+        });
+      }
+    });
+    return items;
+  }, [activeSections, expandedSections, getOrderedItemsForSection]);
 
   return (
     <Card>
@@ -1300,9 +826,9 @@ const ExerciseSectionManager = memo(({
             <div className="relative inline-block text-left">
               {mode !== 'group' && (
                 <>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="flex items-center gap-1"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1312,9 +838,9 @@ const ExerciseSectionManager = memo(({
                     <PlusCircle className="h-4 w-4" />
                     <span>Add Section</span>
                   </Button>
-                  
+
                   {addSectionMenuOpen && (
-                    <div 
+                    <div
                       className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[3000] animate-in fade-in-50 zoom-in-95 duration-100"
                     >
                       {/* Section options */}
@@ -1336,7 +862,7 @@ const ExerciseSectionManager = memo(({
                         ))}
                         
                         {/* Show message when all sections are added */}
-                        {availableSectionTypes.filter((type) => !activeSections.includes(type.id)).length === 0 && (
+                        {availableSectionTypes.filter((type) => !activeSections.map(sId => getSectionType(sId)).includes(type.id)).length === 0 && (
                           <div className="px-2 py-2 text-sm text-gray-400">
                             All section types added
                           </div>
@@ -1358,97 +884,134 @@ const ExerciseSectionManager = memo(({
           modifiers={[restrictToVerticalAxis]}
         >
           <SortableContext 
-            items={activeSections.map(id => `section-${id}`)}
+            items={allSortableItems.map(item => item.id)} // Use the flat list of all draggable item IDs
             strategy={verticalListSortingStrategy}
           >
             <div className="space-y-4">
-              {activeSections.map((sectionId, index) => {
-                const sortableId = `section-${sectionId}`;
+              {(Array.isArray(activeSections) ? activeSections : []).map((sectionId, index) => {
+                const sectionSortableId = `section-${sectionId}`;
+                // Find the section item data from allSortableItems for SortableItem
+                const sectionItemData = allSortableItems.find(item => item.id === sectionSortableId);
+
                 return (
                   <SortableItem
-                    key={sortableId}
-                    id={sortableId}
-                    index={index}
-                    className="border rounded-md overflow-visible relative section-draggable"
+                    key={sectionSortableId}
+                    id={sectionSortableId}
+                    // index={index} // Index might not be needed if SortableContext handles order by ID list
+                    itemType="section" // Explicitly 'section'
+                    itemData={{ id: sectionId, name: currentGetSectionName(sectionId) }} // Pass basic section data
+                    sectionId={sectionId} // Section's own ID
                   >
-                    {({isDragging}) => (
-                      <>
-                        {/* Section Header - Clickable for toggle, draggable with handle */}
-                        <div 
-                          className={`relative bg-gray-50 p-3 flex items-center justify-between ${isDragging ? 'cursor-grabbing' : ''}`}
-                          onClick={() => toggleSection(sectionId)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="cursor-grab">
-                              <GripVertical className="h-4 w-4 text-gray-400" />
-                            </div>
-                            {getSectionIcon(sectionId)}
-                            <span className="font-medium">{getSectionName(sectionId)}</span>
-                            <Badge variant="outline" className="ml-2">
-                              {getSectionExercises(sectionId).length} exercises
-                            </Badge>
-                          </div>
-                          {/* hide remove button in group mode */}
+                    <div className="p-3 rounded-md border bg-slate-50/50 space-y-3">
+                      <div
+                        className={cn(
+                          "flex items-center justify-between cursor-pointer",
+                          isDragging && "cursor-grabbing"
+                        )}
+                        onClick={() => toggleSection(sectionId)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-5 w-5 text-gray-400 cursor-grab" />
+                          <h4 className="font-semibold text-gray-700">{currentGetSectionName(sectionId)}</h4>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">{getOrderedItemsForSection(sectionId).length} items</Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveSectionCallback(sectionId);
+                            }}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {expandedSections.includes(sectionId) && (
+                        <div className="pl-4 space-y-3 border-l-2 border-slate-200 ml-2 pt-2">
+                          {getOrderedItemsForSection(sectionId).map((item, itemIndex) => (
+                            <SortableItem 
+                              key={item.ui_id} 
+                              id={item.ui_id} 
+                              itemType={item.itemType} 
+                              itemData={item} 
+                              sectionId={sectionId} 
+                              supersetId={item.itemType === 'superset' ? item.ui_id : item.superset_ui_id}
+                            >
+                              <div className="relative group">
+                                {item.itemType === 'exercise' ? (
+                                  <ExerciseItemFull
+                                    exercise={item} // item is the exercise object
+                                    mode={mode}
+                                    onChangeExerciseField={(field, value) => onExerciseFieldChange(item.ui_id, field, value)}
+                                    onChangeSetDetail={(setIdx, field, value) => {
+                                      onSetDetailChange(item.ui_id, setIdx, field, value);
+                                    }}
+                                    onAddSet={() => onAddSet(item.ui_id)}
+                                    onRemoveSet={(setIdx) => {
+                                      onRemoveSet(item.ui_id, setIdx);
+                                    }}
+                                    // errors prop is managed internally by ExerciseItemFull now
+                                  />
+                                ) : item.itemType === 'superset' ? (
+                                  <SupersetContainer
+                                    superset={item} // item is the superset object
+                                    sectionId={sectionId}
+                                    mode={mode}
+                                    onExerciseFieldChange={onExerciseFieldChange}
+                                    onSetDetailChange={onSetDetailChange} // SupersetContainer will pass (exerciseUiId, setIndex, field, value)
+                                    onAddSet={onAddSet}
+                                    onRemoveSet={onRemoveSet}
+                                    onRemoveExerciseFromSuperset={(exerciseUiId) => onRemoveExerciseFromSuperset(item.ui_id, exerciseUiId)} // Pass supersetUiId and exerciseUiId
+                                    onDeleteSuperset={() => onDeleteSuperset(item.ui_id, sectionId)}
+                                    availableExercises={availableExercises} // For adding to superset
+                                    loadingAvailableExercises={loadingAvailableExercises}
+                                    onAddExerciseToSuperset={(exerciseDefinition) => {
+                                      onAddExercise(exerciseDefinition, sectionId, item.ui_id);
+                                    }}
+                                    // errors={{}} // Errors are per-exercise, SupersetContainer will pass them to its ExerciseItemFull instances
+                                  />
+                                ) : null}
+                                <ExerciseContextMenu
+                                  item={item}
+                                  sectionId={sectionId}
+                                  allExercisesInSection={getOrderedItemsForSection(sectionId).filter(i => i.itemType === 'exercise' && !i.superset_ui_id)}
+                                  supersetsInCurrentSection={supersets.filter(s => s.host_section_id === sectionId)}
+                                  allExercisesInSession={allExercisesInSession} // Pass all for broader context if needed
+                                  onCreateSuperset={onCreateSuperset} // (sectionId, selectedExerciseUiIds)
+                                  onRemoveExercise={onRemoveExercise} // (exerciseUiId)
+                                  onDeleteSuperset={onDeleteSuperset} // (supersetUiId, sectionId)
+                                  onRemoveExerciseFromSuperset={(exerciseUiId) => onRemoveExerciseFromSuperset(item.superset_ui_id, exerciseUiId)} // For exercises within supersets
+                                />
+                              </div>
+                            </SortableItem>
+                          ))}
                           {mode !== 'group' && (
-                            <Minus
-                              className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleRemoveSection(sectionId)
-                              }}
+                            <ExerciseSelector
+                              sectionId={sectionId}
+                              sectionType={getSectionType(sectionId)}
+                              availableExercises={availableExercises}
+                              loadingExercises={loadingAvailableExercises}                              
+                              onSelect={(exerciseData) => onAddExercise(exerciseData, sectionId)}
+                              mode={mode}
                             />
                           )}
                         </div>
-                        
-                        {expandedSections.includes(sectionId) && (
-                          <div className="p-3">
-                            {/* New inline exercise search and grid */}
-                            <ExerciseSelector
-                              sectionId={sectionId}
-                              exercises={exercises}
-                              allExercises={filteredExercises}
-                              handleAddExercise={(exercise) => handleAddExercise({ ...exercise, session: sessionId, section: sectionId })}
-                              isForSuperset={false}
-                            />
-                            
-                            {/* Existing exercises list */}
-                            <div className="mt-4">
-                              <h4 className="text-sm font-medium text-gray-700 mb-2">Added Exercises</h4>
-                              
-                              <DndContext
-                                sensors={sensors}
-                                collisionDetection={closestCenter}
-                                onDragEnd={(event) => handleExerciseDragEnd(event, sectionId)}
-                                modifiers={[restrictToVerticalAxis]}
-                              >
-                                <SortableContext
-                                  items={getOrderedExercisesAndSupersets(sectionId).unifiedItems.map(item => {
-                                    if (item.type === 'exercise') return `exercise-${item.exercise.id}`;
-                                    return `superset-${item.id}`;
-                                  })}
-                                  strategy={verticalListSortingStrategy}
-                                >
-                                  <div className="space-y-2 overflow-y-auto">
-                                    {renderExerciseList(sectionId)}
-                                  </div>
-                                </SortableContext>
-                              </DndContext>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )}
+                      )}
+                    </div>
                   </SortableItem>
                 );
               })}
-              </div>
+            </div>
           </SortableContext>
         </DndContext>
       </CardContent>
     </Card>
-  )
-})
+  );
+});
 
-ExerciseSectionManager.displayName = "ExerciseSectionManager"
+ExerciseSectionManager.displayName = "ExerciseSectionManager";
 
-export default ExerciseSectionManager 
+export default ExerciseSectionManager; 

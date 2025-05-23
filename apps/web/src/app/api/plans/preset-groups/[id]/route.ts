@@ -52,7 +52,7 @@ export async function GET(
     )
     .eq('exercise_preset_group_id', group.id)
     .order('preset_order')
-    .order('order');
+    
   if (pErr) {
     console.error('Error fetching presets:', pErr);
     return NextResponse.json({ status: 'error', message: pErr?.message }, { status: 500 });

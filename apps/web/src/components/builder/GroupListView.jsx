@@ -10,7 +10,7 @@ import { Pencil, Plus, Search, XCircle, Loader2 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 
 export default function GroupListView({ 
-  groups, 
+  allGroups,
   onNew,
   nameFilter,
   setNameFilter,
@@ -34,6 +34,25 @@ export default function GroupListView({
     setAthleteGroupIdFilter('');
     setSessionModeFilter('');
   };
+
+  const filteredGroups = React.useMemo(() => {
+    if (!allGroups) return [];
+    return allGroups.filter(group => {
+      const nameMatch = nameFilter 
+        ? group.name?.toLowerCase().includes(nameFilter.toLowerCase())
+        : true;
+      const microcycleMatch = microcycleIdFilter 
+        ? group.microcycle_id?.toString() === microcycleIdFilter
+        : true;
+      const athleteGroupMatch = athleteGroupIdFilter 
+        ? group.athlete_group_id?.toString() === athleteGroupIdFilter
+        : true;
+      const sessionModeMatch = (sessionModeFilter && sessionModeFilter !== '_all_')
+        ? group.session_mode === sessionModeFilter
+        : true;
+      return nameMatch && microcycleMatch && athleteGroupMatch && sessionModeMatch;
+    });
+  }, [allGroups, nameFilter, microcycleIdFilter, athleteGroupIdFilter, sessionModeFilter]);
 
   return (
     <div className="space-y-6 p-1">
@@ -111,25 +130,25 @@ export default function GroupListView({
       {isLoading && (
         <div className="flex justify-center items-center py-10">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="ml-2 text-gray-600">Loading groups...</p>
+          <p className="ml-2 text-gray-600">Loading initial group list...</p>
         </div>
       )}
 
-      {!isLoading && groups.length === 0 ? (
+      {!isLoading && filteredGroups.length === 0 ? (
         <Card className="text-center py-10 shadow-sm">
           <CardContent>
             <Search className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-xl font-semibold text-gray-700 mb-2">
-              {nameFilter || microcycleIdFilter || athleteGroupIdFilter || sessionModeFilter 
+              {nameFilter || microcycleIdFilter || athleteGroupIdFilter || (sessionModeFilter && sessionModeFilter !== '_all_') 
                 ? 'No groups match your filters' 
                 : 'No preset groups yet'}
             </h3>
             <p className="text-gray-500 mb-6">
-              {nameFilter || microcycleIdFilter || athleteGroupIdFilter || sessionModeFilter 
+              {nameFilter || microcycleIdFilter || athleteGroupIdFilter || (sessionModeFilter && sessionModeFilter !== '_all_') 
                 ? 'Try adjusting or clearing your filters.' 
                 : 'Get started by creating a new preset group.'}
             </p>
-            {!(nameFilter || microcycleIdFilter || athleteGroupIdFilter || sessionModeFilter) && (
+            {!(nameFilter || microcycleIdFilter || athleteGroupIdFilter || (sessionModeFilter && sessionModeFilter !== '_all_')) && (
               <Button onClick={onNew}>
                 <Plus className="mr-2 h-5 w-5" /> Create First Preset Group
               </Button>
@@ -138,7 +157,7 @@ export default function GroupListView({
         </Card>
       ) : !isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {groups.map(group => (
+          {filteredGroups.map(group => (
             <Card key={group.id} className="hover:shadow-lg transition-shadow duration-300 ease-in-out rounded-lg overflow-hidden flex flex-col bg-white">
               <CardHeader className="bg-slate-50 p-4 border-b">
                 <CardTitle className="truncate text-lg font-semibold text-slate-800">{group.name || 'Untitled Group'}</CardTitle>

@@ -28,32 +28,14 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createServerSupabaseClient();
-  const { searchParams } = new URL(req.url);
-  const name = searchParams.get('name');
-  const microcycleId = searchParams.get('microcycleId');
-  const athleteGroupId = searchParams.get('athleteGroupId');
-  const sessionMode = searchParams.get('sessionMode');
-
-  let query = supabase
+  // Fetch all non-deleted groups for the user. Filtering will be done client-side.
+  const { data: groups, error } = await supabase
     .from('exercise_preset_groups')
-    .select('id, name, description, date, session_mode, athlete_group_id, microcycle_id')
+    // Ensure all necessary fields for display and potential client-side grouping are selected
+    .select('id, name, description, date, session_mode, athlete_group_id, microcycle_id') 
     .eq('user_id', userId)
-    .eq('deleted', false);
-
-  if (name) {
-    query = query.ilike('name', `%${name}%`);
-  }
-  if (microcycleId) {
-    query = query.eq('microcycle_id', parseInt(microcycleId));
-  }
-  if (athleteGroupId) {
-    query = query.eq('athlete_group_id', parseInt(athleteGroupId));
-  }
-  if (sessionMode) {
-    query = query.eq('session_mode', sessionMode);
-  }
-
-  const { data: groups, error } = await query.order('created_at', { ascending: false });
+    .eq('deleted', false)
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching preset groups:', error);
