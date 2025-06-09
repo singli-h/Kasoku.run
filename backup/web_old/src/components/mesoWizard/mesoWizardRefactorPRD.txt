@@ -1,0 +1,49 @@
+Project Title: MesoWizard Stability & TypeScript Enhancement
+
+1. Introduction:
+This project focuses on enhancing the stability and maintainability of the MesoWizard feature within the application. Key objectives include resolving persistent UI warnings and errors, converting critical JavaScript components (`MesoWizard.jsx`, `StepTwoPlanner.jsx`) to TypeScript for improved type safety, and ensuring all related functionalities operate flawlessly.
+
+2. Goals:
+2.1. Eliminate all known console warnings and runtime errors within the MesoWizard planning flow, especially in `StepTwoPlanner.jsx` and its interactions with `ExerciseSectionManager.tsx`.
+2.2. Convert `MesoWizard.jsx` to `MesoWizard.tsx`, implementing comprehensive TypeScript typings for props, state, and internal logic.
+2.3. Convert `StepTwoPlanner.jsx` to `StepTwoPlanner.tsx`, implementing comprehensive TypeScript typings for props, state, internal handlers, and interactions with child components.
+2.4. Guarantee that all exercise and section management features (add, remove, reorder, update) are robust and error-free post-refactor and conversion.
+2.5. Ensure no regressions in user experience, maintaining smooth UI updates.
+
+3. Current Issues to Address:
+3.1. Console Warning (Refs): "Function components cannot be given refs... Check the render method of DropdownMenuTrigger." This needs investigation and resolution, likely involving `React.forwardRef`.
+3.2. Console Warning (Update During Render): "Cannot update a component (HotReload) while rendering a different component (MesoWizard)." This suggests a state update is occurring at an improper time in the render cycle.
+3.3. Drag-and-Drop Reordering: Confirm complete functionality of exercise/section reordering after recent fixes, particularly the data flow for `ReorderPayload` from `ExerciseSectionManager` through `StepTwoPlanner` to `useMesoWizardState`.
+3.4. Prop Drilling & State Integrity: Verify that all props are correctly passed and state is consistently managed across `MesoWizard`, `StepTwoPlanner`, `useMesoWizardState`, and `ExerciseSectionManager`.
+
+4. Scope of Work:
+4.1. Issue Resolution:
+    4.1.1. Address `DropdownMenuTrigger` ref warning: Identify the problematic component and apply `React.forwardRef` or adjust component usage.
+    4.1.2. Address "update during render" warning in `MesoWizard`: Trace and refactor state updates to occur in `useEffect` or event handlers, not during the render phase.
+    4.1.3. Validate Reordering: Conduct thorough testing of all reordering scenarios (exercises within sections, sections themselves, items into/out of supersets if applicable) to ensure stability.
+4.2. TypeScript Conversion:
+    4.2.1. `MesoWizard.jsx` to `MesoWizard.tsx`: Rename file. Define and apply TypeScript interfaces/types for props and state. Ensure all child component props (like those to `StepTwoPlanner`) are correctly typed.
+    4.2.2. `StepTwoPlanner.jsx` to `StepTwoPlanner.tsx`: Rename file. Define and apply TypeScript interfaces/types for props (from `MesoWizard.tsx`) and internal state. Ensure all handlers, memoized values, and props passed to children (like `ExerciseSectionManager`) are strictly typed.
+    4.2.3. Update all import statements across the codebase that reference the renamed files.
+4.3. Typing and Definitions:
+    4.3.1. Review and enhance types in `apps/web/src/components/mesoWizard/types/exercisePlanner.ts` to fully support the new TSX components.
+    4.3.2. Ensure `ExerciseSectionManager.tsx` prop types align perfectly with data passed from `StepTwoPlanner.tsx`.
+4.4. Comprehensive Testing:
+    4.4.1. Functionally test the entire MesoWizard flow, with emphasis on StepTwoPlanner's exercise and section manipulation.
+    4.4.2. Verify adding, removing, and reordering sections.
+    4.4.3. Verify adding, removing, and reordering exercises within sections.
+    4.4.4. Confirm smooth UI updates and absence of new console errors/warnings.
+
+5. Non-Goals:
+5.1. Major UI redesign unless strictly necessary for bug fixing.
+5.2. Introduction of new features unrelated to stability or TypeScript conversion.
+
+6. Assumptions:
+6.1. UI components from `@/components/ui/` are compatible with TypeScript or can be adapted.
+6.2. The `useMesoWizardState` hook is the central source of truth for wizard state and its logic is sound.
+
+7. Success Metrics:
+7.1. Zero persistent console warnings related to refs or updates during render in the MesoWizard.
+7.2. Successful conversion of `MesoWizard.jsx` and `StepTwoPlanner.jsx` to strictly typed `.tsx` files.
+7.3. Flawless operation of all exercise/section management features.
+7.4. Improved code maintainability and developer experience due to TypeScript. 
