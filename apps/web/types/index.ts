@@ -21,6 +21,9 @@ export * from './composed'
 // Export conversation types
 export * from './conversations'
 
+// Export training types
+export * from './training'
+
 // Task types removed - using training sessions instead
 
 // Re-export commonly used types for convenience (simplified for running website)
@@ -65,3 +68,58 @@ export type {
   UserUpdatedWebhookData,
   UserDeletedWebhookData
 } from './api'
+
+// Re-export training types for convenience
+export type {
+  // Training Periodization
+  Macrocycle,
+  MacrocycleInsert,
+  MacrocycleUpdate,
+  Mesocycle,
+  MesocycleInsert,
+  MesocycleUpdate,
+  Microcycle,
+  MicrocycleInsert,
+  MicrocycleUpdate,
+  
+  // Exercise Library
+  Exercise,
+  ExerciseInsert,
+  ExerciseUpdate,
+  ExerciseType,
+  ExerciseTypeInsert,
+  ExerciseTypeUpdate,
+  
+  // Training Sessions
+  ExerciseTrainingSession,
+  ExerciseTrainingSessionInsert,
+  ExerciseTrainingSessionUpdate,
+  ExerciseTrainingDetail,
+  ExerciseTrainingDetailInsert,
+  ExerciseTrainingDetailUpdate,
+  
+  // Extended types
+  MacrocycleWithDetails,
+  MesocycleWithDetails,
+  MicrocycleWithDetails,
+  ExerciseWithDetails,
+  ExerciseTrainingSessionWithDetails,
+  
+  // Form types
+  CreateMacrocycleForm,
+  CreateMesocycleForm,
+  CreateMicrocycleForm,
+  CreateSessionForm,
+  CreateExercisePresetForm,
+  CreateExercisePresetDetailForm,
+  
+  // Filter types
+  TrainingPlanFilters,
+  ExerciseFilters,
+  
+  // Constants
+  TrainingGoal,
+  ExperienceLevel,
+  SessionMode,
+  PlanStatus
+} from './training'

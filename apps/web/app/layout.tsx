@@ -15,7 +15,6 @@ import { Providers } from "@/components/utilities/providers"
 import { TailwindIndicator } from "@/components/utilities/tailwind-indicator"
 import { cn } from "@/lib/utils"
 import { ClerkProvider } from "@clerk/nextjs"
-import { auth } from "@clerk/nextjs/server"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
@@ -35,9 +34,11 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { userId } = await auth()
-
+  // Removed auth() call from root layout to fix Clerk middleware error
+  // Authentication checks are handled by middleware and individual pages that need them
+  
   // TODO: Implement user profile creation with Supabase
+  // This should be handled in protected routes or middleware instead
   // if (userId) {
   //   const profileRes = await getProfileByUserIdAction(userId)
   //   if (!profileRes.isSuccess) {

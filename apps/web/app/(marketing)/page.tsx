@@ -5,7 +5,7 @@ export const metadata = {
   description: "Transform your fitness journey with AI-powered insights, smart training plans, and real-time performance tracking.",
 }
 
-export default async function LandingPage() {
+export default async function RootPage() {
   return (
     <div className="max-w-[2000px] mx-auto relative">
       <Hero />

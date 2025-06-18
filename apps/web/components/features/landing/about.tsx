@@ -99,12 +99,11 @@ export default function About() {
             <div className="relative bg-white dark:bg-card rounded-3xl shadow-xl dark:shadow-2xl overflow-hidden border border-transparent dark:border-border/50">
               <div className="aspect-w-4 aspect-h-3">
                 <Image
-                  src="/about-image.jpg"
-                  alt="Athletes training"
-                  className="object-cover dark:brightness-90"
-                  width={800}
-                  height={600}
-                  priority
+                  src="/hero.png"
+                  alt="About Kasoku"
+                  width={600}
+                  height={400}
+                  className="rounded-lg shadow-lg"
                 />
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />

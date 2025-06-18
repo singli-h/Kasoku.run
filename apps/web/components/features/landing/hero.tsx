@@ -72,8 +72,8 @@ export default function Hero() {
             <div className="relative h-full flex items-center justify-center">
               <div className="w-64 h-64 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 rounded-full mix-blend-multiply dark:mix-blend-normal opacity-20 dark:opacity-30 blur-3xl" />
               <Image 
-                src="/logo.svg" 
-                alt="Kasoku Logo" 
+                src="/hero.png" 
+                alt="Kasoku Hero Image" 
                 className="absolute w-full h-full object-contain dark:brightness-110"
                 width={512}
                 height={512}

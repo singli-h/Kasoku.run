@@ -5,7 +5,7 @@ Includes sidebar navigation and protected header with search and user controls.
 </ai_context>
 */
 
-"use server"
+"use client"
 
 import { AppSidebar } from "@/components/layout/sidebar/app-sidebar"
 import { ProtectedHeader } from "@/components/layout/header"
