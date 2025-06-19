@@ -80,9 +80,9 @@ export async function startTrainingSessionAction(
     const sessionData: ExerciseTrainingSessionInsert = {
       exercise_preset_group_id: exercisePresetGroupId,
       athlete_id: finalAthleteId,
-      date: new Date().toISOString(),
+      date_time: new Date().toISOString(),
       notes: null,
-      completion_status: 'not_started'
+      status: 'planned'
     }
 
     const { data: session, error } = await supabase
@@ -193,7 +193,7 @@ export async function getTrainingSessionsAction(
         exercise_training_details(*)
       `)
       .eq('athlete_id', finalAthleteId)
-      .order('date', { ascending: false })
+      .order('date_time', { ascending: false })
 
     if (limit) {
       query = query.limit(limit)

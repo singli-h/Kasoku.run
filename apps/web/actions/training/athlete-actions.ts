@@ -13,9 +13,9 @@ import { ActionState } from "@/types"
 import { 
   Athlete, AthleteInsert, AthleteUpdate,
   AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate,
-  User,
   ExperienceLevel
 } from "@/types/training"
+import { User } from "@/types/database"
 
 // ============================================================================
 // ATHLETE ACTIONS

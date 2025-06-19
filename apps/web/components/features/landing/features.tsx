@@ -54,7 +54,8 @@ const FeatureCard = ({ icon: Icon, title, description, index }: FeatureCardProps
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ duration: 0.4, delay: index * 0.05 }}
       className="relative p-6 bg-white dark:bg-card rounded-2xl shadow-xl dark:shadow-2xl hover:shadow-2xl dark:hover:shadow-3xl transition-shadow duration-300 border border-transparent dark:border-border/50"
     >
       <div className="absolute -top-4 -left-4 p-3 bg-gradient-to-br from-blue-500 to-purple-500 dark:from-blue-400 dark:to-purple-400 rounded-xl shadow-lg">
