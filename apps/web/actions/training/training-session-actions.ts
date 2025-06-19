@@ -366,9 +366,8 @@ export async function completeTrainingSessionAction(
     const supabase = createServerSupabaseClient()
 
     const updates: Partial<ExerciseTrainingSessionUpdate> = {
-      completion_status: 'completed',
-      notes: notes || null,
-      completed_at: new Date().toISOString()
+      status: 'completed',
+      notes: notes || null
     }
 
     const { data: session, error } = await supabase
