@@ -1,6 +1,6 @@
 /*
 <ai_context>
-This client page provides the login form from Clerk.
+This client page provides the sign-in form from Clerk.
 </ai_context>
 */
 
@@ -11,7 +11,7 @@ import { dark } from "@clerk/themes"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 
-export default function LoginPage() {
+export default function SignInPage() {
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -31,4 +31,4 @@ export default function LoginPage() {
       appearance={{ baseTheme: theme === "dark" ? dark : undefined }}
     />
   )
-}
+} 

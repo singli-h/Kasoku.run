@@ -1,39 +1,35 @@
 "use server"
 
+import { Suspense } from "react"
+import { MesoWizard } from "@/components/features/plans"
+
 export default async function PlansPage() {
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Training Plans</h2>
+    <div className="flex-1">
+      <Suspense fallback={<PlansPageSkeleton />}>
+        <MesoWizard />
+      </Suspense>
+    </div>
+  )
+}
+
+function PlansPageSkeleton() {
+  return (
+    <div className="max-w-6xl mx-auto p-6 space-y-8">
+      <div className="text-center space-y-4">
+        <div className="h-10 bg-gray-200 rounded w-64 mx-auto animate-pulse" />
+        <div className="h-6 bg-gray-200 rounded w-96 mx-auto animate-pulse" />
       </div>
-      <div className="space-y-4">
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-lg font-semibold mb-2">MesoWizard</h3>
-          <p className="text-muted-foreground">
-            Create comprehensive training plans with our intelligent planning wizard.
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-lg border bg-card p-4">
-            <h4 className="font-medium">Macrocycles</h4>
-            <p className="text-sm text-muted-foreground mt-1">
-              Long-term training periods
-            </p>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <h4 className="font-medium">Mesocycles</h4>
-            <p className="text-sm text-muted-foreground mt-1">
-              Medium-term training blocks
-            </p>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <h4 className="font-medium">Microcycles</h4>
-            <p className="text-sm text-muted-foreground mt-1">
-              Weekly training plans
-            </p>
-          </div>
-        </div>
+      
+      <div className="h-24 bg-gray-200 rounded animate-pulse" />
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-32 bg-gray-200 rounded animate-pulse" />
+        ))}
       </div>
+      
+      <div className="h-96 bg-gray-200 rounded animate-pulse" />
     </div>
   )
 } 

@@ -1,7 +1,7 @@
 "use server"
 
 import { auth, currentUser } from "@clerk/nextjs/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import supabase from "@/lib/supabase-server"
 import { ActionState } from "@/types"
 import { User, UserInsert, RoleName } from "@/types/database"
 
@@ -49,7 +49,7 @@ export async function getCurrentUserAction(): Promise<ActionState<User>> {
     }
 
     // Use the correct 2025 approach with createServerSupabaseClient
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
     console.log("🔍 Supabase client created successfully")
     
     console.log("🔍 Querying users table with clerk_id:", userId)
@@ -121,7 +121,7 @@ export async function checkUserExistsAction(): Promise<ActionState<boolean>> {
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
     
     const { data: user, error } = await supabase
       .from('users')
@@ -162,7 +162,7 @@ export async function createSupabaseUserAction(
   avatarUrl?: string
 ): Promise<ActionState<User>> {
   try {
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const userData: UserInsert = {
       clerk_id: clerkUserId,
@@ -245,7 +245,7 @@ export async function updateSupabaseUserAction(
   updates: Partial<UserInsert>
 ): Promise<ActionState<User>> {
   try {
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: user, error } = await supabase
       .from('users')
@@ -281,7 +281,7 @@ export async function updateSupabaseUserAction(
  */
 export async function getUserByClerkIdAction(clerkId: string): Promise<ActionState<User | null>> {
   try {
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
     
     const { data: user, error } = await supabase
       .from('users')

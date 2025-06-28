@@ -88,7 +88,7 @@ export default function RouteLayout({ children }) {
 
 #### Auth Layout (`app/(auth)/layout.tsx`)
 - **No header** - Clean centered layout for authentication
-- Provides centered container for login/signup forms
+- Provides centered container for sign-in/sign-up forms
 
 #### Onboarding Layout (`app/onboarding/layout.tsx`)
 - **No header** - Focused onboarding experience

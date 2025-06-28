@@ -1,6 +1,6 @@
 /*
 <ai_context>
-This client page provides the signup form from Clerk.
+This client page provides the sign-up form from Clerk.
 </ai_context>
 */
 
@@ -31,4 +31,4 @@ export default function SignUpPage() {
       appearance={{ baseTheme: theme === "dark" ? dark : undefined }}
     />
   )
-}
+} 

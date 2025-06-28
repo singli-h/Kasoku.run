@@ -8,6 +8,7 @@ import { ListContainer } from "@/components/composed"
 import { ConversationItem } from "./conversation-item"
 import type { ConversationListItem } from "@/types/conversations"
 import type { FilterConfig } from "@/types/composed"
+import { getConversationsAction } from "@/actions/conversations"
 
 interface ConversationListProps {
   userId: string
@@ -67,9 +68,16 @@ export function ConversationList({ userId }: ConversationListProps) {
       setError(null)
       
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500))
-        setAllConversations(mockConversations)
+        const result = await getConversationsAction()
+        if (result.isSuccess) {
+          setAllConversations(result.data.map(conv => ({
+            ...conv,
+            last_message: conv.last_message || "No messages yet",
+            last_message_at: conv.last_message_at || conv.created_at
+          })))
+        } else {
+          setError(result.message || "Failed to load conversations")
+        }
       } catch (err) {
         setError("Failed to load conversations")
       } finally {

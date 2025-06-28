@@ -10,7 +10,7 @@ import { ArrowLeft, Send, Bot, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import type { ConversationWithMessages } from "@/types/conversations"
-import { RichMessageContent } from "./rich-message-content"
+import { RichMessageContentOptimized } from "./rich-message-content-optimized"
 
 interface ConversationDetailContentProps {
   conversation: ConversationWithMessages
@@ -110,7 +110,7 @@ export function ConversationDetailContent({
                     : "bg-muted/30 border-border"
                 )}>
                   <CardContent className="p-3">
-                    <RichMessageContent 
+                    <RichMessageContentOptimized 
                       content={message.content} 
                       role={message.role as 'user' | 'assistant'} 
                     />

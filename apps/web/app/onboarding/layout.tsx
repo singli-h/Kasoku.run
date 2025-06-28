@@ -11,7 +11,7 @@ export default async function OnboardingLayout({ children }: OnboardingLayoutPro
   const { userId } = await auth()
   
   if (!userId) {
-    redirect('/login')
+    redirect('/sign-in')
   }
 
   return (

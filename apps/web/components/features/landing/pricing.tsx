@@ -104,7 +104,7 @@ const PricingCard = ({ plan, index }: PricingCardProps) => {
       </ul>
 
       <div className="mt-8">
-        <Link href="/signup">
+                            <Link href="/sign-up">
           <Button 
             className={`w-full py-3 ${
               highlighted 

@@ -14,6 +14,9 @@ export * from './exercise-actions'
 // Athlete and Group Management Actions
 export * from './athlete-actions'
 
+// Coach Profile Management Actions
+export * from './coach-actions'
+
 // Training Session and Performance Tracking Actions
 export * from './training-session-actions'
 
@@ -107,6 +110,16 @@ export {
   removeAthleteFromGroupAction,
   deleteAthleteGroupAction
 } from './athlete-actions'
+
+export {
+  // Coach profile actions
+  getCurrentCoachProfileAction,
+  createOrUpdateCoachProfileAction,
+  updateCoachProfileAction,
+  getCoachProfileAction,
+  getCoachProfileWithDetailsAction,
+  updateCoachSpecializationAction
+} from './coach-actions'
 
 export {
   // Training session actions

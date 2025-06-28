@@ -9,7 +9,8 @@ Includes hierarchical operations for the periodization model.
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import supabase from "@/lib/supabase-server"
+import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { 
   Macrocycle, MacrocycleInsert, MacrocycleUpdate,
@@ -39,7 +40,7 @@ export async function createMacrocycleAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -106,7 +107,7 @@ export async function getMacrocyclesAction(): Promise<ActionState<MacrocycleWith
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -171,7 +172,7 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -249,7 +250,7 @@ export async function updateMacrocycleAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -309,7 +310,7 @@ export async function deleteMacrocycleAction(id: number): Promise<ActionState<bo
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -373,7 +374,7 @@ export async function createMesocycleAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -441,7 +442,7 @@ export async function getMesocyclesByMacrocycleAction(macrocycleId: number): Pro
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -504,7 +505,7 @@ export async function getMesocycleByIdAction(id: number): Promise<ActionState<Me
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -579,7 +580,7 @@ export async function updateMesocycleAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -639,7 +640,7 @@ export async function deleteMesocycleAction(id: number): Promise<ActionState<boo
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -725,7 +726,7 @@ export async function createMicrocycleAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -792,7 +793,7 @@ export async function getMicrocyclesByMesocycleAction(mesocycleId: number): Prom
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -855,7 +856,7 @@ export async function getMicrocycleByIdAction(id: number): Promise<ActionState<M
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -933,7 +934,7 @@ export async function updateMicrocycleAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -993,7 +994,7 @@ export async function deleteMicrocycleAction(id: number): Promise<ActionState<bo
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -1083,7 +1084,7 @@ export async function copyMacrocycleAsTemplateAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase

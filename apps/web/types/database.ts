@@ -176,6 +176,77 @@ export type Database = {
           },
         ]
       }
+      chat_messages: {
+        Row: {
+          conversation_id: string
+          content: Json
+          created_at: string
+          id: string
+          metadata: Json | null
+          role: string
+        }
+        Insert: {
+          conversation_id: string
+          content: Json
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role: string
+        }
+        Update: {
+          conversation_id?: string
+          content?: Json
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          archived: boolean
+          created_at: string
+          id: string
+          last_message: string | null
+          last_message_at: string | null
+          message_count: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          message_count?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          message_count?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       coaches: {
         Row: {
           experience: string | null
@@ -1054,6 +1125,8 @@ export type Microcycle = Tables<"microcycles">
 export type Unit = Tables<"units">
 export type Tag = Tables<"tags">
 export type Event = Tables<"events">
+export type Conversation = Tables<"conversations">
+export type ChatMessage = Tables<"chat_messages">
 
 // Insert types
 export type UserInsert = TablesInsert<"users">
@@ -1067,6 +1140,8 @@ export type ExerciseTrainingSessionInsert = TablesInsert<"exercise_training_sess
 export type MacrocycleInsert = TablesInsert<"macrocycles">
 export type MesocycleInsert = TablesInsert<"mesocycles">
 export type MicrocycleInsert = TablesInsert<"microcycles">
+export type ConversationInsert = TablesInsert<"conversations">
+export type ChatMessageInsert = TablesInsert<"chat_messages">
 
 // Update types
 export type UserUpdate = TablesUpdate<"users">
@@ -1080,6 +1155,8 @@ export type ExerciseTrainingSessionUpdate = TablesUpdate<"exercise_training_sess
 export type MacrocycleUpdate = TablesUpdate<"macrocycles">
 export type MesocycleUpdate = TablesUpdate<"mesocycles">
 export type MicrocycleUpdate = TablesUpdate<"microcycles">
+export type ConversationUpdate = TablesUpdate<"conversations">
+export type ChatMessageUpdate = TablesUpdate<"chat_messages">
 
 // Extended types with relationships
 export interface UserWithProfile extends User {
@@ -1140,6 +1217,10 @@ export interface MicrocycleWithDetails extends Microcycle {
   mesocycle?: Mesocycle | null
   exercise_preset_groups?: ExercisePresetGroup[]
   user?: User | null
+}
+
+export interface ConversationWithMessages extends Conversation {
+  messages?: ChatMessage[]
 }
 
 // Enums and constants

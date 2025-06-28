@@ -18,7 +18,7 @@ async function ConversationDetailFetcher({
   const { userId } = await auth()
   
   if (!userId) {
-    redirect("/login")
+    redirect("/sign-in")
   }
 
   // TODO: Fetch conversation from database

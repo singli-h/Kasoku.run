@@ -1,4 +1,4 @@
-import { Hero, Features, Pricing, About } from "@/components/features/landing"
+import { Hero, Features, Pricing, About, Testimonials, CTA, FAQ } from "@/components/features/landing"
 
 export const metadata = {
   title: "Kasoku - AI-Powered Training Plans",
@@ -10,7 +10,10 @@ export default async function RootPage() {
     <div className="max-w-[2000px] mx-auto relative">
       <Hero />
       <Features />
+      <Testimonials />
       <Pricing />
+      <FAQ />
+      <CTA />
       <About />
     </div>
   )

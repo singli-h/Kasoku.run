@@ -8,7 +8,8 @@ Handles actual workout execution, performance recording, and progress tracking.
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import supabase from "@/lib/supabase-server"
+import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { 
   ExerciseTrainingSession, ExerciseTrainingSessionInsert, ExerciseTrainingSessionUpdate,
@@ -39,7 +40,7 @@ export async function startTrainingSessionAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -130,7 +131,7 @@ export async function getTrainingSessionsAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -239,7 +240,7 @@ export async function getTrainingSessionByIdAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: session, error } = await supabase
       .from('exercise_training_sessions')
@@ -315,7 +316,7 @@ export async function updateTrainingSessionAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: session, error } = await supabase
       .from('exercise_training_sessions')
@@ -363,7 +364,7 @@ export async function completeTrainingSessionAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const updates: Partial<ExerciseTrainingSessionUpdate> = {
       status: 'completed',
@@ -432,7 +433,7 @@ export async function addExercisePerformanceAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const detailData = {
       exercise_training_session_id: sessionId,
@@ -494,7 +495,7 @@ export async function updateExercisePerformanceAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: detail, error } = await supabase
       .from('exercise_training_details')
@@ -547,7 +548,7 @@ export async function getPerformanceMetricsAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -681,7 +682,7 @@ export async function getExerciseProgressAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase

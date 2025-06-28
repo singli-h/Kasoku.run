@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send, Bot, User } from "lucide-react"
-import { RichMessageContent } from "./rich-message-content"
+import { RichMessageContentOptimized } from "./rich-message-content-optimized"
 
 interface ChatProps {
   className?: string
@@ -60,7 +60,7 @@ export default function Chat({ className }: ChatProps) {
                       : "bg-muted/30 border-border mr-12"
                   }`}
                 >
-                  <RichMessageContent 
+                  <RichMessageContentOptimized 
                     content={message.content} 
                     role={message.role as 'user' | 'assistant'} 
                   />

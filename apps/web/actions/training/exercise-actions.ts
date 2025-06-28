@@ -8,7 +8,8 @@ Handles exercise CRUD operations, exercise types, and preset group management.
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import supabase from "@/lib/supabase-server"
+import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { 
   Exercise, ExerciseInsert, ExerciseUpdate,
@@ -32,7 +33,7 @@ import {
  */
 export async function getExercisesAction(filters?: ExerciseFilters): Promise<ActionState<ExerciseWithDetails[]>> {
   try {
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     let query = supabase
       .from('exercises')
@@ -95,7 +96,7 @@ export async function getExercisesAction(filters?: ExerciseFilters): Promise<Act
  */
 export async function getExercisesByTagsAction(tagIds: number[]): Promise<ActionState<ExerciseWithDetails[]>> {
   try {
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Use a more complex query to filter by tags
     const { data: exerciseTagsData, error: tagsError } = await supabase
@@ -167,7 +168,7 @@ export async function getExercisesByTagsAction(tagIds: number[]): Promise<Action
  */
 export async function getExerciseByIdAction(id: number): Promise<ActionState<ExerciseWithDetails>> {
   try {
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: exercise, error } = await supabase
       .from('exercises')
@@ -232,7 +233,7 @@ export async function createExerciseAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: exercise, error } = await supabase
       .from('exercises')
@@ -279,7 +280,7 @@ export async function updateExerciseAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: exercise, error } = await supabase
       .from('exercises')
@@ -324,7 +325,7 @@ export async function deleteExerciseAction(id: number): Promise<ActionState<bool
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // First, remove any tag associations
     await supabase
@@ -369,7 +370,7 @@ export async function deleteExerciseAction(id: number): Promise<ActionState<bool
  */
 export async function getExerciseTypesAction(): Promise<ActionState<ExerciseType[]>> {
   try {
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: exerciseTypes, error } = await supabase
       .from('exercise_types')
@@ -415,7 +416,7 @@ export async function createExerciseTypeAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: exerciseType, error } = await supabase
       .from('exercise_types')
@@ -454,7 +455,7 @@ export async function createExerciseTypeAction(
  */
 export async function getTagsAction(): Promise<ActionState<Tag[]>> {
   try {
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: tags, error } = await supabase
       .from('tags')
@@ -497,7 +498,7 @@ export async function createTagAction(name: string): Promise<ActionState<Tag>> {
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: tag, error } = await supabase
       .from('tags')
@@ -544,7 +545,7 @@ export async function addTagsToExerciseAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Create the exercise-tag relationships
     const exerciseTagData = tagIds.map(tagId => ({
@@ -595,7 +596,7 @@ export async function removeTagsFromExerciseAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { error } = await supabase
       .from('exercise_tags')
@@ -634,7 +635,7 @@ export async function removeTagsFromExerciseAction(
  */
 export async function getUnitsAction(): Promise<ActionState<Unit[]>> {
   try {
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: units, error } = await supabase
       .from('units')
@@ -680,7 +681,7 @@ export async function createUnitAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: unit, error } = await supabase
       .from('units')
@@ -728,7 +729,7 @@ export async function exportExercisesAction(): Promise<ActionState<any>> {
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: exercises, error } = await supabase
       .from('exercises')
@@ -790,7 +791,7 @@ export async function importExercisesAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
     
     let imported = 0
     const errors: string[] = []
@@ -894,7 +895,7 @@ export async function createExercisePresetGroupAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -966,7 +967,7 @@ export async function getExercisePresetGroupsByMicrocycleAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -1040,7 +1041,7 @@ export async function getExercisePresetGroupByIdAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -1124,7 +1125,7 @@ export async function addExerciseToPresetGroupAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const presetData: ExercisePresetInsert = {
       exercise_preset_group_id: presetGroupId,
@@ -1179,7 +1180,7 @@ export async function updateExercisePresetGroupAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -1239,7 +1240,7 @@ export async function deleteExercisePresetGroupAction(id: number): Promise<Actio
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -1304,7 +1305,7 @@ export async function addExercisePresetDetailsAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Prepare the details data for insertion
     const detailsData = details.map((detail, index) => ({
@@ -1370,7 +1371,7 @@ export async function updateExercisePresetDetailsAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: detail, error } = await supabase
       .from('exercise_preset_details')
@@ -1417,7 +1418,7 @@ export async function removeExercisePresetDetailsAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { error } = await supabase
       .from('exercise_preset_details')
@@ -1469,7 +1470,7 @@ export async function applyProgressionToPresetAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get existing preset details
     const { data: details, error: fetchError } = await supabase
@@ -1592,7 +1593,7 @@ export async function copySessionWithAdaptationsAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase
@@ -1771,7 +1772,7 @@ export async function getSessionCountAnalyticsAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID
     const { data: user, error: userError } = await supabase

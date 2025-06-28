@@ -13,7 +13,8 @@ import {
   Users,
   TrendingUp,
   Settings,
-  Target
+  Target,
+  BookOpen
 } from "lucide-react"
 import * as React from "react"
 import { usePathname } from "next/navigation"
@@ -39,6 +40,11 @@ const navItems = [
     title: "Workout",
     url: "/workout",
     icon: Dumbbell
+  },
+  {
+    title: "Exercise Library",
+    url: "/library",
+    icon: BookOpen
   },
   {
     title: "Training Plans",

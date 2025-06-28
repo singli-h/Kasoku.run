@@ -8,7 +8,8 @@ Handles athlete profiles, group assignments, and coach-athlete relationships.
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import supabase from "@/lib/supabase-server"
+import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { 
   Athlete, AthleteInsert, AthleteUpdate,
@@ -35,21 +36,8 @@ export async function getCurrentAthleteProfileAction(): Promise<ActionState<Athl
       }
     }
 
-    const supabase = createServerSupabaseClient()
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Get database user ID from cache (avoids repeated DB lookup)
+    const dbUserId = await getDbUserId(userId)
 
     const { data: athlete, error } = await supabase
       .from('athletes')
@@ -57,7 +45,7 @@ export async function getCurrentAthleteProfileAction(): Promise<ActionState<Athl
         *,
         athlete_group:athlete_groups(*)
       `)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .single()
 
     if (error && error.code !== 'PGRST116') {
@@ -98,32 +86,19 @@ export async function createOrUpdateAthleteProfileAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Get database user ID from cache
+    const dbUserId = await getDbUserId(userId)
 
     // Check if athlete profile already exists
     const { data: existingAthlete } = await supabase
       .from('athletes')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .single()
 
     const completeAthleteData = {
       ...athleteData,
-      user_id: user.id
+      user_id: dbUserId
     }
 
     let result
@@ -132,7 +107,7 @@ export async function createOrUpdateAthleteProfileAction(
       result = await supabase
         .from('athletes')
         .update(completeAthleteData)
-        .eq('user_id', user.id)
+        .eq('user_id', dbUserId)
         .select()
         .single()
     } else {
@@ -182,7 +157,7 @@ export async function getAthletesByGroupAction(groupId: number): Promise<ActionS
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: athletes, error } = await supabase
       .from('athletes')
@@ -235,7 +210,7 @@ export async function getAthleteByIdAction(athleteId: number): Promise<ActionSta
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     const { data: athlete, error } = await supabase
       .from('athletes')
@@ -283,6 +258,100 @@ export async function getAthleteByIdAction(athleteId: number): Promise<ActionSta
   }
 }
 
+/**
+ * Update athlete profile information
+ */
+export async function updateAthleteProfileAction(
+  userId: number,
+  updates: AthleteUpdate
+): Promise<ActionState<Athlete>> {
+  try {
+    // Using singleton supabase client
+    
+    // First check if athlete profile exists
+    const { data: existingAthlete, error: checkError } = await supabase
+      .from('athletes')
+      .select('id')
+      .eq('user_id', userId)
+      .single()
+    
+    if (checkError && checkError.code !== 'PGRST116') {
+      throw checkError
+    }
+    
+    let result
+    
+    if (existingAthlete) {
+      // Update existing athlete profile
+      const { data, error } = await supabase
+        .from('athletes')
+        .update(updates)
+        .eq('user_id', userId)
+        .select()
+        .single()
+      
+      if (error) throw error
+      result = data
+    } else {
+      // Create new athlete profile
+      const { data, error } = await supabase
+        .from('athletes')
+        .insert({
+          user_id: userId,
+          ...updates
+        })
+        .select()
+        .single()
+      
+      if (error) throw error
+      result = data
+    }
+    
+    return {
+      isSuccess: true,
+      message: "Athlete profile updated successfully",
+      data: result
+    }
+  } catch (error) {
+    console.error('Error updating athlete profile:', error)
+    return {
+      isSuccess: false,
+      message: `Failed to update athlete profile: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Get athlete profile by user ID
+ */
+export async function getAthleteProfileAction(userId: number): Promise<ActionState<Athlete | null>> {
+  try {
+    // Using singleton supabase client
+    
+    const { data, error } = await supabase
+      .from('athletes')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+    
+    if (error && error.code !== 'PGRST116') {
+      throw error
+    }
+    
+    return {
+      isSuccess: true,
+      message: data ? "Athlete profile found" : "No athlete profile found",
+      data: data || null
+    }
+  } catch (error) {
+    console.error('Error getting athlete profile:', error)
+    return {
+      isSuccess: false,
+      message: `Failed to get athlete profile: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
 // ============================================================================
 // ATHLETE GROUP ACTIONS
 // ============================================================================
@@ -301,7 +370,7 @@ export async function getCoachAthleteGroupsAction(): Promise<ActionState<Athlete
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's database ID and check if they're a coach
     const { data: user, error: userError } = await supabase
@@ -389,7 +458,7 @@ export async function createAthleteGroupAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's coach ID
     const { data: user, error: userError } = await supabase
@@ -466,7 +535,7 @@ export async function updateAthleteGroupAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's coach ID
     const { data: user, error: userError } = await supabase
@@ -540,7 +609,7 @@ export async function assignAthleteToGroupAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's coach ID to verify permission
     const { data: user, error: userError } = await supabase
@@ -628,7 +697,7 @@ export async function removeAthleteFromGroupAction(
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Remove the athlete's group assignment
     const { data: athlete, error } = await supabase
@@ -674,7 +743,7 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
 
     // Get current user's coach ID
     const { data: user, error: userError } = await supabase

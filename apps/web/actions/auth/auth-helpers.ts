@@ -1,7 +1,7 @@
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import supabase from "@/lib/supabase-server"
 import { ActionState } from "@/types"
 import { RoleName } from "@/types/database"
 
@@ -46,7 +46,7 @@ export async function hasRoleAction(requiredRole: RoleName): Promise<ActionState
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
     
     // Get user's role from the users table
     const { data: user, error: userError } = await supabase
@@ -115,7 +115,7 @@ export async function getUserRoleAction(): Promise<ActionState<RoleName | null>>
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
     
     // Get user's role from the users table
     const { data: user, error: userError } = await supabase
@@ -192,7 +192,7 @@ export async function getUserProfileAction(): Promise<ActionState<{ role: RoleNa
       }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
     
     // Get user's basic profile
     const { data: user, error: userError } = await supabase

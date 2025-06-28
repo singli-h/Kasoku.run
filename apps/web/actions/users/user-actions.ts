@@ -1,6 +1,6 @@
 "use server"
 
-import { createServerSupabaseClient } from "@/lib/supabase"
+import supabase from "@/lib/supabase-server"
 import { ActionState } from "@/types"
 import { auth } from "@clerk/nextjs/server"
 
@@ -27,7 +27,7 @@ export async function getUserProfileAction(): Promise<ActionState<any>> {
       return { isSuccess: false, message: "Not authenticated" }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
     const { data: user, error } = await supabase
       .from('users')
       .select(`
@@ -67,7 +67,7 @@ export async function updateUserProfileAction(
       return { isSuccess: false, message: "Not authenticated" }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
     
     // Build update object with only provided fields
     const updateData: any = {
@@ -118,7 +118,7 @@ export async function completeOnboardingAction(): Promise<ActionState<any>> {
       return { isSuccess: false, message: "Not authenticated" }
     }
 
-    const supabase = createServerSupabaseClient()
+    // Using singleton supabase client
     const { data, error } = await supabase
       .from('users')
       .update({ 

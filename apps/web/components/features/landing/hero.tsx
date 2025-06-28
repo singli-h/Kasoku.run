@@ -27,16 +27,28 @@ export default function Hero() {
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="space-y-8"
           >
-            <h1 className="text-5xl font-bold leading-tight text-gray-900 dark:text-gray-100">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-gray-900 dark:text-gray-100">
               Transform Your Fitness Journey with
               <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                 {" "}AI-Powered Insights
               </span>
             </h1>
             
-            <p className="text-xl text-gray-600 dark:text-gray-300">
-              Smart training plans, real-time performance tracking, and personalized coaching powered by artificial intelligence.
+            <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
+              Smart training plans, real-time performance tracking, and personalized coaching powered by artificial intelligence. Join thousands of athletes achieving their goals.
             </p>
+
+            {/* Trust indicators */}
+            <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>10,000+ Active Athletes</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span>4.9★ Rating</span>
+              </div>
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
               {isSignedIn ? (
@@ -47,7 +59,7 @@ export default function Hero() {
                   </Button>
                 </Link>
               ) : (
-                <Link href="/signup">
+                <Link href="/sign-up">
                   <Button className="gap-2 group">
                     Start Free Trial
                     <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
