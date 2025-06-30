@@ -4,7 +4,6 @@ Exports the types for the app.
 </ai_context>
 */
 
-// Main types export file for GuideLayer AI
 
 // Export all database types
 export * from './database'
