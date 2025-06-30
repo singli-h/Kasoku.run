@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { completeOnboardingAction } from "@/actions/auth/user-actions"
+import { completeOnboardingAction as legacyCompleteOnboardingAction } from "@/actions/auth/user-actions"
 
 export default function OnboardingForm() {
   const [firstName, setFirstName] = useState("")
@@ -31,7 +31,7 @@ export default function OnboardingForm() {
     setIsSubmitting(true)
 
     try {
-      const result = await completeOnboardingAction(firstName, lastName)
+      const result = await legacyCompleteOnboardingAction(firstName, lastName)
       
       if (result.isSuccess) {
         toast({

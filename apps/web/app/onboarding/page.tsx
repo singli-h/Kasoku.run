@@ -4,7 +4,8 @@ import { Suspense } from "react"
 export const dynamic = 'force-dynamic'
 import { redirect } from "next/navigation"
 import { checkUserNeedsOnboardingAction } from "@/actions/auth/user-actions"
-import { OnboardingForm, OnboardingFormSkeleton } from "@/components/features/onboarding"
+import OnboardingWizard from "@/components/features/onboarding/onboarding-wizard"
+import { OnboardingFormSkeleton } from "@/components/features/onboarding"
 
 async function OnboardingContent() {
   // Check if user has already completed onboarding
@@ -16,18 +17,10 @@ async function OnboardingContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Complete Your Profile
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Just a few quick details to get you started
-          </p>
-        </div>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
         <Suspense fallback={<OnboardingFormSkeleton />}>
-          <OnboardingForm />
+          <OnboardingWizard />
         </Suspense>
       </div>
     </div>

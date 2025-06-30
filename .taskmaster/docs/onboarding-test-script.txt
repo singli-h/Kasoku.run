@@ -1,0 +1,205 @@
+ONBOARDING FLOW - COMPREHENSIVE TEST SCRIPT
+============================================
+
+Goal: Test the new multi-step onboarding wizard for both athlete and coach roles
+
+Pre-requisites:
+- User must be signed in to Clerk
+- User should not have completed onboarding yet
+- Test on both localhost:3000 (dev) and production URL
+
+TEST CASE 1: ATHLETE ONBOARDING FLOW
+====================================
+
+Step 1: Navigate to Onboarding
+- Go to /onboarding
+- Verify the welcome step loads with:
+  - Welcome message and icon
+  - "Get Started" button
+  - Progress bar showing 0% completion
+- Take screenshot
+
+Step 2: Welcome Step
+- Click "Get Started" button
+- Verify transition to role selection step
+- Progress bar should show ~16% completion
+- Take screenshot
+
+Step 3: Role Selection
+- Verify two role cards are displayed:
+  - Athlete card with trophy icon
+  - Coach card with users icon
+- Click on "Athlete" card
+- Verify card becomes selected (highlighted)
+- Click "Continue" button
+- Verify transition to athlete details step
+- Progress bar should show ~33% completion
+- Take screenshot
+
+Step 4: Athlete Details
+- Fill in athlete-specific fields:
+  - Height: "175" (cm)
+  - Weight: "70" (kg)
+  - Training Goals: "Improve 5K time to under 20 minutes"
+  - Experience: "2 years recreational running"
+  - Select events: Check "5000m" and "10000m"
+- Verify all fields accept input correctly
+- Click "Continue" button
+- Verify transition to subscription step
+- Progress bar should show ~50% completion
+- Take screenshot
+
+Step 5: Subscription Selection
+- Verify two subscription options are displayed:
+  - Free plan with basic features
+  - Paid plan with premium features
+- Select "Free Plan"
+- Click "Continue" button
+- Verify transition to dashboard tour step
+- Progress bar should show ~66% completion
+- Take screenshot
+
+Step 6: Dashboard Tour
+- Verify feature overview cards are displayed:
+  - Performance Analytics
+  - Training Calendar
+  - Workout Library
+  - Progress Tracking
+- Click "Continue" button
+- Verify transition to completion step
+- Progress bar should show ~83% completion
+- Take screenshot
+
+Step 7: Completion
+- Verify completion message is displayed
+- Verify "Complete Setup" button is present
+- Click "Complete Setup" button
+- Verify loading state shows "Setting up your account..."
+- Wait for completion (may take a few seconds)
+- Verify redirect to /dashboard
+- Take screenshot of dashboard
+
+Step 8: Verify Database Records
+- Check that user record was created/updated with:
+  - role: "athlete"
+  - onboarding_completed: true
+  - subscription_status: "free"
+- Check that athlete record was created with:
+  - height: 175
+  - weight: 70
+  - training_goals: "Improve 5K time to under 20 minutes"
+  - experience: "2 years recreational running"
+  - events: ["5000m", "10000m"]
+
+TEST CASE 2: COACH ONBOARDING FLOW
+==================================
+
+Step 1: Reset State
+- Clear browser data or use incognito mode
+- Sign in with a different test account
+- Navigate to /onboarding
+
+Step 2: Navigate Through Initial Steps
+- Click "Get Started" on welcome step
+- Select "Coach" role in role selection
+- Click "Continue"
+- Take screenshot
+
+Step 3: Coach Details
+- Fill in coach-specific fields:
+  - Specialization: "Middle Distance"
+  - Years of Experience: "5"
+  - Coaching Philosophy: "Focus on consistent training and injury prevention"
+  - Sport Focus: "Track and Field"
+- Verify all fields accept input correctly
+- Click "Continue" button
+- Take screenshot
+
+Step 4: Complete Coach Flow
+- Follow steps 5-7 from athlete flow
+- Verify redirect to /dashboard
+- Take screenshot
+
+Step 5: Verify Coach Database Records
+- Check that user record was created with role: "coach"
+- Check that coach record was created with:
+  - speciality: "Middle Distance"
+  - experience: "5"
+  - philosophy: "Focus on consistent training and injury prevention"
+  - sport_focus: "Track and Field"
+
+TEST CASE 3: VALIDATION & ERROR HANDLING
+========================================
+
+Step 1: Field Validation
+- Navigate to /onboarding
+- Progress through to athlete details step
+- Try to continue without filling required fields
+- Verify appropriate validation messages appear
+- Take screenshot
+
+Step 2: Navigation Testing
+- Test back/previous buttons work correctly
+- Verify progress bar updates appropriately
+- Test step skipping is prevented
+- Take screenshot
+
+Step 3: Error Recovery
+- Fill in invalid data (e.g., negative numbers for height/weight)
+- Verify validation prevents submission
+- Correct the data and verify submission works
+- Take screenshot
+
+TEST CASE 4: RESPONSIVE DESIGN
+=============================
+
+Step 1: Mobile Testing
+- Resize browser to mobile dimensions (375px width)
+- Complete full onboarding flow
+- Verify all elements are properly sized and accessible
+- Take screenshots at key steps
+
+Step 2: Tablet Testing
+- Resize browser to tablet dimensions (768px width)
+- Verify layout adapts correctly
+- Take screenshots
+
+EXPECTED RESULTS
+===============
+
+Success Criteria:
+✅ All 7 steps of onboarding complete without errors
+✅ Proper form validation on all fields
+✅ Smooth transitions between steps with animations
+✅ Progress bar updates correctly
+✅ Database records created correctly for both roles
+✅ Redirect to dashboard after completion
+✅ Mobile/tablet responsive design works
+✅ Back navigation works correctly
+✅ Loading states display properly
+
+Failure Indicators:
+❌ JavaScript errors in console
+❌ Steps don't advance or get stuck
+❌ Form validation doesn't work
+❌ Database records not created
+❌ No redirect after completion
+❌ Layout breaks on different screen sizes
+❌ Missing or broken animations
+❌ Progress bar doesn't update
+
+DEBUGGING TIPS
+==============
+
+If tests fail:
+1. Check browser console for JavaScript errors
+2. Check network tab for failed API calls
+3. Verify Clerk authentication is working
+4. Check Supabase connection and RLS policies
+5. Verify environment variables are set correctly
+6. Check server logs for backend errors
+
+API Endpoints to Monitor:
+- POST /api/users/onboard
+- Supabase users table operations
+- Supabase athletes/coaches table operations 
