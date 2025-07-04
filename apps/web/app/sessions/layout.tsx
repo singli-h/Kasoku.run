@@ -2,7 +2,7 @@
 
 import ProtectedLayout from "@/components/layout/protected-layout"
 
-export default function SessionsLayout({
+export default async function SessionsLayout({
   children
 }: {
   children: React.ReactNode
