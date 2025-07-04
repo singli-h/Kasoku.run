@@ -116,6 +116,8 @@ interface PlanTypeSelectionProps {
   selectedPlanType: PlanType | null
   onPlanTypeSelect: (planType: PlanType) => void
   onNext: () => void
+  onPrevious?: () => void
+  isLoading?: boolean
   className?: string
 }
 
@@ -123,6 +125,8 @@ export function PlanTypeSelection({
   selectedPlanType, 
   onPlanTypeSelect, 
   onNext,
+  onPrevious,
+  isLoading = false,
   className 
 }: PlanTypeSelectionProps) {
   const [hoveredType, setHoveredType] = useState<PlanType | null>(null)

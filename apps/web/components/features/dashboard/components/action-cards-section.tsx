@@ -36,9 +36,9 @@ export function ActionCardsSection() {
                     )} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm text-foreground">
+                    <h2 className="font-semibold text-sm text-foreground">
                       {card.title}
-                    </h3>
+                    </h2>
                     <p className="text-xs mt-1 text-muted-foreground">
                       {card.subtitle}
                     </p>

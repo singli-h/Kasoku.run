@@ -101,12 +101,16 @@ interface SessionPlanningProps {
   onSessionPlanChange: (plan: SessionPlan) => void
   onNext: () => void
   onPrevious: () => void
+  isLoading?: boolean
   className?: string
 }
 
 // Helper function to generate default sessions based on plan type
 const generateDefaultSessions = (planType: PlanType, configuration: PlanConfiguration): SessionData[] => {
   const sessions: SessionData[] = []
+  if (!configuration?.duration) {
+    return sessions;
+  }
   const weeks = configuration.duration.weeks
   
   // Default session structure based on plan type
@@ -144,6 +148,7 @@ export function SessionPlanning({
   onSessionPlanChange, 
   onNext, 
   onPrevious,
+  isLoading = false,
   className 
 }: SessionPlanningProps) {
   // State management

@@ -18,10 +18,10 @@ export function AICopilotActivitySection({ activities }: AICopilotActivitySectio
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-foreground flex items-center">
+            <h2 className="text-lg font-semibold text-foreground flex items-center">
               <Bot className="h-5 w-5 mr-2 text-primary" />
               AI Copilot Activity
-            </CardTitle>
+            </h2>
             <CardDescription className="text-muted-foreground">
               Recent AI conversations and help
             </CardDescription>
@@ -59,9 +59,9 @@ export function AICopilotActivitySection({ activities }: AICopilotActivitySectio
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-2">
-                        <h4 className="text-sm font-medium text-foreground truncate">
+                        <h3 className="text-sm font-medium text-foreground truncate">
                           {activity.title}
-                        </h4>
+                        </h3>
                         {activity.isUnread && (
                           <Badge 
                             variant="default" 

@@ -9,6 +9,19 @@ All server actions should import this singleton instead of creating their own cl
 </ai_context>
 */
 
+/*
+  🚨 CRITICAL 2025 SETUP REQUIRED:
+  
+  Before using this client, you MUST configure Clerk as a third-party auth provider:
+  
+  1. Clerk Dashboard → Integrations → Supabase → Activate integration
+  2. Copy your Clerk domain (e.g., https://included-sawfly-62.clerk.accounts.dev)
+  3. Supabase Dashboard → Authentication → Sign In / Up → Add provider → Clerk
+  4. Paste domain and enable the provider
+  
+  Without this setup, all authentication will fail with 401 errors!
+*/
+
 import { createClient } from "@supabase/supabase-js"
 import { auth } from "@clerk/nextjs/server"
 import type { Database } from "@/types/database"

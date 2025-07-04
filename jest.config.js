@@ -8,9 +8,9 @@ const createJestConfig = nextJest({
 // Add any custom config to be passed to Jest
 const customJestConfig = {
   testEnvironment: 'jest-environment-jsdom',
-  roots: ['<rootDir>/apps/web/src'], // Adjust if your tests are elsewhere
+  roots: ['<rootDir>/apps/web'], // Adjust if your tests are elsewhere
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/apps/web/src/$1',
+    '^@/(.*)$': '<rootDir>/apps/web/$1',
     '\\\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     'lucide-react': '<rootDir>/__mocks__/lucide-react.js',
     'uuid': '<rootDir>/__mocks__/uuid.js' // Mock uuid

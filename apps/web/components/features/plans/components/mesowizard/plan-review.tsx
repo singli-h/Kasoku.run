@@ -53,6 +53,7 @@ interface PlanReviewProps {
   onSubmit: () => void
   onPrevious: () => void
   onEdit: (step: number) => void
+  isLoading?: boolean
   className?: string
 }
 
@@ -179,9 +180,9 @@ export function PlanReview({
   onSubmit, 
   onPrevious, 
   onEdit,
+  isLoading = false,
   className 
 }: PlanReviewProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [validationChecks, setValidationChecks] = useState<ValidationCheck[]>([])
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
   const [showValidationDetails, setShowValidationDetails] = useState(false)
@@ -197,13 +198,7 @@ export function PlanReview({
 
   // Handle final submission
   const handleSubmit = async () => {
-    setIsSubmitting(true)
-    
-    // Simulate submission process
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    setIsSubmitting(false)
-    onSubmit()
+    await onSubmit()
   }
 
   // Toggle session expansion
@@ -622,10 +617,10 @@ export function PlanReview({
         
         <Button 
           onClick={handleSubmit} 
-          disabled={!canSubmit || isSubmitting}
+          disabled={!canSubmit || isLoading}
           className="flex items-center gap-2"
         >
-          {isSubmitting ? (
+          {isLoading ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               Creating Plan...

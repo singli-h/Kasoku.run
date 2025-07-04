@@ -35,6 +35,15 @@ import {
   ChevronUp,
   Info
 } from "lucide-react"
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts"
 
 // UI Components
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -54,174 +63,18 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { useIsMobile } from "@/lib/hooks/use-mobile"
-
-// Types
-interface PerformanceMetric {
-  id: string
-  name: string
-  value: number
-  unit: string
-  trend: 'up' | 'down' | 'stable'
-  trendPercentage: number
-  icon: any
-  color: string
-}
-
-interface ExerciseProgress {
-  exerciseId: string
-  exerciseName: string
-  category: string
-  personalRecord: {
-    weight: number
-    reps: number
-    date: string
-  }
-  recentProgress: Array<{
-    date: string
-    weight: number
-    reps: number
-    sets: number
-    volume: number
-    rpe: number
-  }>
-  trends: {
-    volume: 'up' | 'down' | 'stable'
-    strength: 'up' | 'down' | 'stable'
-    consistency: number
-  }
-}
-
-interface GoalProgress {
-  id: string
-  title: string
-  category: string
-  targetValue: number
-  currentValue: number
-  unit: string
-  deadline: string
-  progress: number
-  status: 'on-track' | 'behind' | 'ahead' | 'completed'
-}
+import { useIsMobile } from "@/hooks/use-mobile"
+import { getIndividualPerformanceDataAction } from "@/actions/performance/performance-actions"
+import type { 
+  PerformanceMetric, 
+  ExerciseProgress, 
+  GoalProgress 
+} from "@/components/features/performance/types/performance-types"
 
 interface IndividualPerformanceAnalyticsProps {
   athleteId?: string
   className?: string
 }
-
-// Mock data - would come from actual API
-const mockPerformanceMetrics: PerformanceMetric[] = [
-  {
-    id: 'total-volume',
-    name: 'Total Volume',
-    value: 12500,
-    unit: 'lbs',
-    trend: 'up',
-    trendPercentage: 8.5,
-    icon: Weight,
-    color: 'text-blue-500'
-  },
-  {
-    id: 'avg-intensity',
-    name: 'Avg Intensity',
-    value: 7.8,
-    unit: 'RPE',
-    trend: 'up',
-    trendPercentage: 2.1,
-    icon: Zap,
-    color: 'text-orange-500'
-  },
-  {
-    id: 'workout-frequency',
-    name: 'Workout Frequency',
-    value: 4.2,
-    unit: '/week',
-    trend: 'stable',
-    trendPercentage: 0.5,
-    icon: Calendar,
-    color: 'text-green-500'
-  },
-  {
-    id: 'personal-records',
-    name: 'Personal Records',
-    value: 3,
-    unit: 'this month',
-    trend: 'up',
-    trendPercentage: 50,
-    icon: Trophy,
-    color: 'text-yellow-500'
-  }
-]
-
-const mockExerciseProgress: ExerciseProgress[] = [
-  {
-    exerciseId: 'squat',
-    exerciseName: 'Back Squat',
-    category: 'Legs',
-    personalRecord: {
-      weight: 315,
-      reps: 5,
-      date: '2024-01-15'
-    },
-    recentProgress: [
-      { date: '2024-01-01', weight: 275, reps: 5, sets: 3, volume: 4125, rpe: 7 },
-      { date: '2024-01-08', weight: 285, reps: 5, sets: 3, volume: 4275, rpe: 7.5 },
-      { date: '2024-01-15', weight: 315, reps: 5, sets: 3, volume: 4725, rpe: 8 },
-      { date: '2024-01-22', weight: 295, reps: 6, sets: 3, volume: 5310, rpe: 7.5 },
-    ],
-    trends: {
-      volume: 'up',
-      strength: 'up',
-      consistency: 92
-    }
-  },
-  {
-    exerciseId: 'bench',
-    exerciseName: 'Bench Press',
-    category: 'Chest',
-    personalRecord: {
-      weight: 225,
-      reps: 8,
-      date: '2024-01-20'
-    },
-    recentProgress: [
-      { date: '2024-01-01', weight: 185, reps: 8, sets: 3, volume: 4440, rpe: 7 },
-      { date: '2024-01-08', weight: 195, reps: 8, sets: 3, volume: 4680, rpe: 7.5 },
-      { date: '2024-01-15', weight: 205, reps: 8, sets: 3, volume: 4920, rpe: 8 },
-      { date: '2024-01-20', weight: 225, reps: 8, sets: 3, volume: 5400, rpe: 8.5 },
-    ],
-    trends: {
-      volume: 'up',
-      strength: 'up',
-      consistency: 88
-    }
-  }
-]
-
-const mockGoals: GoalProgress[] = [
-  {
-    id: 'squat-goal',
-    title: 'Squat 350lbs x 5',
-    category: 'Strength',
-    targetValue: 350,
-    currentValue: 315,
-    unit: 'lbs',
-    deadline: '2024-06-01',
-    progress: 90,
-    status: 'on-track'
-  },
-  {
-    id: 'volume-goal',
-    title: 'Weekly Volume 15,000lbs',
-    category: 'Volume',
-    targetValue: 15000,
-    currentValue: 12500,
-    unit: 'lbs',
-    deadline: '2024-03-01',
-    progress: 83,
-    status: 'behind'
-  }
-]
 
 export default function IndividualPerformanceAnalytics({ 
   athleteId, 
@@ -229,18 +82,76 @@ export default function IndividualPerformanceAnalytics({
 }: IndividualPerformanceAnalyticsProps) {
   const { toast } = useToast()
   const isMobile = useIsMobile()
-  
-  // State management
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState("4weeks")
   const [selectedMetric, setSelectedMetric] = useState("volume")
   const [selectedExercise, setSelectedExercise] = useState("all")
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [data, setData] = useState<{
+    performanceMetrics: PerformanceMetric[],
+    exerciseProgress: ExerciseProgress[],
+    goals: GoalProgress[]
+  } | null>(null)
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!athleteId) {
+        setError("Athlete ID is required for performance analytics.")
+        setLoading(false)
+        return
+      }
+      try {
+        setLoading(true)
+        const result = await getIndividualPerformanceDataAction(athleteId)
+        if (result.isSuccess) {
+          setData(result.data)
+        } else {
+          setError(result.message)
+          toast({
+            title: "Error",
+            description: result.message,
+            variant: "destructive",
+          })
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred."
+        setError(errorMessage)
+        toast({
+          title: "Error",
+          description: "Failed to load individual performance data.",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [athleteId, toast])
+
+  const { performanceMetrics, exerciseProgress, goals } = useMemo(() => {
+    if (!data) {
+      return {
+        performanceMetrics: [],
+        exerciseProgress: [],
+        goals: []
+      }
+    }
+    return data
+  }, [data])
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>
+  }
 
   // Computed values
-  const totalPRs = mockExerciseProgress.reduce((acc, exercise) => acc + 1, 0)
-  const averageConsistency = mockExerciseProgress.reduce((acc, exercise) => 
-    acc + exercise.trends.consistency, 0) / mockExerciseProgress.length
+  const totalPRs = exerciseProgress.reduce((acc, exercise) => acc + 1, 0)
+  const averageConsistency = exerciseProgress.length > 0 ? exerciseProgress.reduce((acc, exercise) => 
+    acc + exercise.trends.consistency, 0) / exerciseProgress.length : 0
 
   const renderMetricCard = (metric: PerformanceMetric) => {
     const IconComponent = metric.icon
@@ -418,138 +329,84 @@ export default function IndividualPerformanceAnalytics({
   }
 
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Header */}
-      <div className="flex-mobile-center gap-4">
+    <div className={cn("space-y-8", className)}>
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-mobile-xl font-bold tracking-tight">Performance Analytics</h1>
-          <p className="text-muted-foreground text-mobile-base">
-            Track your progress and analyze performance trends
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">Performance Dashboard</h1>
+          <p className="text-muted-foreground">Your detailed performance analysis</p>
         </div>
-        
-        <div className="mobile-button-group">
+        <div className="flex items-center gap-2">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className={`w-full sm:w-[150px] ${isMobile ? 'touch-target' : ''}`}>
+            <SelectTrigger className="w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="1week">Last Week</SelectItem>
+              <SelectItem value="7days">Last 7 Days</SelectItem>
               <SelectItem value="4weeks">Last 4 Weeks</SelectItem>
               <SelectItem value="3months">Last 3 Months</SelectItem>
-              <SelectItem value="6months">Last 6 Months</SelectItem>
-              <SelectItem value="1year">Last Year</SelectItem>
+              <SelectItem value="all">All Time</SelectItem>
             </SelectContent>
           </Select>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                size={isMobile ? "lg" : "default"}
-                className={isMobile ? "touch-target" : ""}
-              >
-                <Settings className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem>
-                <Download className="h-4 w-4 mr-2" />
-                Export Data
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Share2 className="h-4 w-4 mr-2" />
-                Share Report
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh Data
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button variant="outline" size="icon">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon">
+            <Download className="h-4 w-4" />
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {/* Key Metrics */}
-      <div className="grid-mobile-cards">
-        {mockPerformanceMetrics.map(renderMetricCard)}
-      </div>
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {performanceMetrics.map(renderMetricCard)}
+      </section>
 
-      {/* Analytics Tabs */}
-      <Tabs defaultValue="trends" className="w-full">
-        <TabsList className={`grid w-full ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
-          <TabsTrigger value="trends" className={isMobile ? "text-xs" : ""}>
-            Trends
-          </TabsTrigger>
-          <TabsTrigger value="exercises" className={isMobile ? "text-xs" : ""}>
-            Exercises
-          </TabsTrigger>
-          <TabsTrigger value="goals" className={isMobile ? "text-xs" : ""}>
-            Goals
-          </TabsTrigger>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="exercises">Exercise Deep-Dive</TabsTrigger>
+          <TabsTrigger value="goals">Goal Tracking</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="trends" className="space-y-6">
-          {/* Performance Trends */}
-          <Card className="mobile-card-spacing">
+        <TabsContent value="overview" className="mt-6 space-y-6">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-mobile-lg">Performance Trends</CardTitle>
-              <CardDescription>
-                Track your training volume and intensity over time
-              </CardDescription>
+              <CardTitle>Performance Trends</CardTitle>
+              <CardDescription>Overall performance trends over the selected time range.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-500">+15%</div>
-                    <div className="text-sm text-muted-foreground">Volume</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-500">+8%</div>
-                    <div className="text-sm text-muted-foreground">Strength</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-500">7.8</div>
-                    <div className="text-sm text-muted-foreground">Avg RPE</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-500">92%</div>
-                    <div className="text-sm text-muted-foreground">Consistency</div>
-                  </div>
-                </div>
+              <div className="h-[300px] bg-gray-100 rounded-md flex items-center justify-center">
+                <p>Chart Placeholder</p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="exercises" className="space-y-6">
-          {/* Exercise Filter */}
-          <div className="flex-mobile-stack gap-4">
+        <TabsContent value="exercises" className="mt-6 space-y-6">
+          <div className="flex justify-end">
             <Select value={selectedExercise} onValueChange={setSelectedExercise}>
-              <SelectTrigger className={`w-full sm:w-[200px] ${isMobile ? 'touch-target' : ''}`}>
+              <SelectTrigger className="w-[240px]">
                 <SelectValue placeholder="Filter by exercise" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Exercises</SelectItem>
-                <SelectItem value="squat">Back Squat</SelectItem>
-                <SelectItem value="bench">Bench Press</SelectItem>
-                <SelectItem value="deadlift">Deadlift</SelectItem>
+                {exerciseProgress.map(ex => (
+                  <SelectItem key={ex.exerciseId} value={ex.exerciseId}>
+                    {ex.exerciseName}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-
-          {/* Exercise Progress Cards */}
-          <div className="grid-mobile-cards">
-            {mockExerciseProgress.map(renderExerciseProgressCard)}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {exerciseProgress
+              .filter(ex => selectedExercise === 'all' || ex.exerciseId === selectedExercise)
+              .map(renderExerciseProgressCard)}
           </div>
         </TabsContent>
 
-        <TabsContent value="goals" className="space-y-6">
-          <div className="grid-mobile-cards">
-            {mockGoals.map(renderGoalCard)}
+        <TabsContent value="goals" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {goals.map(renderGoalCard)}
           </div>
         </TabsContent>
       </Tabs>

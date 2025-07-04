@@ -1,14 +1,12 @@
 /**
- * ESLint plugin for internal Kasoku rules
- * 
- * This plugin contains custom ESLint rules specific to our codebase
- * to enforce best practices and prevent common mistakes.
+ * Custom ESLint rules for Kasoku
  */
+import noRecreateSupabase from './no-recreate-supabase.js'
+import enforceConventions from './enforce-conventions.js'
 
-const noRecreateSupabase = require('./no-recreate-supabase')
-
-module.exports = {
+export default {
   rules: {
     'no-recreate-supabase': noRecreateSupabase,
+    'enforce-conventions': enforceConventions,
   },
 } 

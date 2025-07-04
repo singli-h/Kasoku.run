@@ -82,6 +82,7 @@ interface PlanConfigurationProps {
   onConfigurationChange: (config: PlanConfiguration) => void
   onNext: () => void
   onPrevious: () => void
+  isLoading?: boolean
   className?: string
 }
 
@@ -172,6 +173,7 @@ export function PlanConfiguration({
   onConfigurationChange, 
   onNext, 
   onPrevious,
+  isLoading = false,
   className 
 }: PlanConfigurationProps) {
   const planConfig = getPlanTypeConfig(planType)

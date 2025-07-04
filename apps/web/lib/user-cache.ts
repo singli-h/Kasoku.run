@@ -6,6 +6,12 @@ that happens in virtually every server action after user authentication.
 
 The cache is process-local (per Node worker) and automatically clears in test environments
 to prevent stale data issues.
+
+SERVERLESS CAVEATS:
+This cache is in-memory and process-local. In a serverless environment (like Vercel), 
+each function invocation can be a cold start, resulting in an empty cache. The cache is
+most effective for "warm" functions handling multiple requests but do not assume
+persistence between different serverless function invocations or across different regions.
 </ai_context>
 */
 

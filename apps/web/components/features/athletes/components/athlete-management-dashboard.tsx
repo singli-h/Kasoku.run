@@ -62,7 +62,7 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { useIsMobile } from "@/lib/hooks/use-mobile"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 // Import group management component
 import { AthleteGroupManagement } from "./athlete-group-management"

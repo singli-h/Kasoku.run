@@ -1,110 +1,182 @@
 "use server"
 
+import supabase from "@/lib/supabase-server"
 import { auth } from "@clerk/nextjs/server"
 import type { ActionState } from "@/types/server-action-types"
 import type { DashboardData, Task, AIConversation, DashboardStats } from "@/components/features/dashboard/types/dashboard-types"
+import type { Tables } from "@/types/database"
 
-// Mock data for now - replace with actual database calls
-const mockTasks: Task[] = [
-  {
-    id: "1",
-    title: "Implement user authentication",
-    status: "in-progress",
-    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-    assignee: {
-      id: "user1",
-      firstName: "John",
-      lastName: "Doe",
-      email: "john@example.com",
-      initials: "JD"
-    },
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
-  },
-  {
-    id: "2",
-    title: "Setup CI/CD pipeline",
-    status: "completed",
-    assignee: {
-      id: "user2",
-      firstName: "Jane",
-      lastName: "Smith",
-      email: "jane@example.com",
-      initials: "JS"
-    },
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
-  },
-  {
-    id: "3",
-    title: "Design landing page",
-    status: "todo",
-    dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-    assignee: {
-      id: "user3",
-      firstName: "Alice",
-      lastName: "Johnson",
-      email: "alice@example.com",
-      initials: "AJ"
-    },
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
-  }
-]
+async function getRecentTasksFromDB(userId: string): Promise<Task[]> {
+  const { data: athleteData, error: athleteError } = await supabase
+    .from("athletes")
+    .select("id")
+    .eq("user_id", parseInt(userId))
+    .single()
 
-const mockAIActivities: AIConversation[] = [
-  {
-    id: "conv1",
-    title: "Help with React hooks",
-    lastMessage: "You can use useEffect with an empty dependency array to run code only once when the component mounts...",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-    isUnread: true,
-    messageCount: 5
-  },
-  {
-    id: "conv2",
-    title: "Database schema design",
-    lastMessage: "For user authentication, you'll want to create a users table with email, password hash, and profile information...",
-    timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
-    isUnread: false,
-    messageCount: 12
-  },
-  {
-    id: "conv3",
-    title: "API endpoint optimization",
-    lastMessage: "Consider using database indexing on frequently queried fields to improve performance...",
-    timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-    isUnread: false,
-    messageCount: 8
+  if (athleteError || !athleteData) {
+    console.error("Error fetching athlete ID:", athleteError)
+    return []
   }
-]
+
+  const athleteId = athleteData.id
+
+  const { data, error } = await supabase
+    .from("exercise_training_sessions")
+    .select(
+      `
+      id,
+      description,
+      status,
+      date_time,
+      athletes (
+        users (
+          id,
+          first_name,
+          last_name,
+          email,
+          avatar_url
+        )
+      )
+    `
+    )
+    .eq("athlete_id", athleteId)
+    .order("date_time", { ascending: false })
+    .limit(5)
+
+  if (error) {
+    console.error("Error fetching recent tasks:", error)
+    return []
+  }
+
+  return data.map((session: any) => ({
+    id: session.id.toString(),
+    title: session.description || 'Untitled Session',
+    status: session.status === 'completed' ? 'completed' : session.status === 'in_progress' ? 'in-progress' : 'todo',
+    dueDate: new Date(session.date_time),
+    assignee: session.athletes?.users ? {
+      id: session.athletes.users.id.toString(),
+      firstName: session.athletes.users.first_name || '',
+      lastName: session.athletes.users.last_name || '',
+      email: session.athletes.users.email,
+      avatar: session.athletes.users.avatar_url || '',
+      initials: `${session.athletes.users.first_name?.[0] || ''}${session.athletes.users.last_name?.[0] || ''}`
+    } : undefined,
+    createdAt: new Date(session.date_time),
+    updatedAt: new Date(session.date_time),
+  }))
+  }
+
+async function getAIActivityFromDB(userId: string): Promise<AIConversation[]> {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+    .limit(5)
+
+  if (error) {
+    console.error("Error fetching AI activity:", error)
+    return []
+  }
+
+  return data.map((convo: any) => ({
+    id: convo.id,
+    title: convo.title,
+    lastMessage: convo.last_message || '',
+    timestamp: new Date(convo.updated_at),
+    isUnread: false, // This needs a schema change to support
+    messageCount: convo.message_count,
+  }))
+}
+
+async function getDashboardStatsFromDB(userId: string): Promise<DashboardStats> {
+  const { data: athleteData, error: athleteError } = await supabase
+    .from("athletes")
+    .select("id")
+    .eq("user_id", parseInt(userId))
+    .single()
+
+  if (athleteError || !athleteData) {
+    console.error("Error fetching athlete ID for stats:", athleteError)
+    return {
+      totalTasks: 0,
+      completedTasks: 0,
+      inProgressTasks: 0,
+      activeConversations: 0
+    }
+  }
+
+  const athleteId = athleteData.id
+
+  const { count: totalTasks, error: totalTasksError } = await supabase
+    .from("exercise_training_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("athlete_id", athleteId)
+
+  const { count: completedTasks, error: completedTasksError } = await supabase
+    .from("exercise_training_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("athlete_id", athleteId)
+    .eq("status", "completed")
+
+  const { count: inProgressTasks, error: inProgressTasksError } =
+    await supabase
+      .from("exercise_training_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("athlete_id", athleteId)
+      .eq("status", "in-progress")
+
+  const { count: activeConversations, error: activeConversationsError } =
+    await supabase
+      .from("conversations")
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+    // .eq('is_unread', true) // is_unread doesn't exist
+
+  if (totalTasksError || completedTasksError || inProgressTasksError || activeConversationsError) {
+    console.error({ totalTasksError, completedTasksError, inProgressTasksError, activeConversationsError })
+  }
+
+  return {
+    totalTasks: totalTasks || 0,
+    completedTasks: completedTasks || 0,
+    inProgressTasks: inProgressTasks || 0,
+    activeConversations: activeConversations || 0,
+  }
+}
+
 
 export async function getDashboardDataAction(): Promise<ActionState<DashboardData>> {
   try {
-    const { userId } = await auth()
+    const { userId: clerkUserId } = await auth()
     
-    if (!userId) {
+    if (!clerkUserId) {
       return {
         isSuccess: false,
         message: "Authentication required"
       }
     }
 
-    // TODO: Replace with actual database queries
-    // const recentTasks = await getRecentTasksFromDB(userId)
-    // const aiActivity = await getAIActivityFromDB(userId)
-    // const stats = await getDashboardStatsFromDB(userId)
+    const { data: user } = await supabase.from('users').select('id').eq('clerk_id', clerkUserId).single()
 
-    const stats: DashboardStats = {
-      totalTasks: mockTasks.length,
-      completedTasks: mockTasks.filter(t => t.status === 'completed').length,
-      inProgressTasks: mockTasks.filter(t => t.status === 'in-progress').length,
-      activeConversations: mockAIActivities.filter(c => c.isUnread).length
+    if (!user) {
+      return {
+        isSuccess: false,
+        message: "User not found"
+      }
     }
+    const userId = user.id.toString()
+
+
+    const [recentTasks, aiActivity, stats] = await Promise.all([
+      getRecentTasksFromDB(userId),
+      getAIActivityFromDB(userId),
+      getDashboardStatsFromDB(userId)
+    ])
 
     const dashboardData: DashboardData = {
-      recentTasks: mockTasks.slice(0, 5), // Get 5 most recent
-      aiActivity: mockAIActivities.slice(0, 5), // Get 5 most recent
+      recentTasks,
+      aiActivity,
       stats
     }
 
@@ -124,22 +196,30 @@ export async function getDashboardDataAction(): Promise<ActionState<DashboardDat
 
 export async function getRecentTasksAction(): Promise<ActionState<Task[]>> {
   try {
-    const { userId } = await auth()
+    const { userId: clerkUserId } = await auth()
     
-    if (!userId) {
+    if (!clerkUserId) {
       return {
         isSuccess: false,
         message: "Authentication required"
       }
     }
+    const { data: user } = await supabase.from('users').select('id').eq('clerk_id', clerkUserId).single()
 
-    // TODO: Replace with actual database query
-    // const tasks = await getRecentTasksFromDB(userId, 5)
+    if (!user) {
+      return {
+        isSuccess: false,
+        message: "User not found"
+      }
+    }
+    const userId = user.id.toString()
+
+    const tasks = await getRecentTasksFromDB(userId)
 
     return {
       isSuccess: true,
       message: "Recent tasks retrieved successfully",
-      data: mockTasks.slice(0, 5)
+      data: tasks
     }
   } catch (error) {
     console.error("Error fetching recent tasks:", error)
@@ -152,22 +232,31 @@ export async function getRecentTasksAction(): Promise<ActionState<Task[]>> {
 
 export async function getAICopilotActivityAction(): Promise<ActionState<AIConversation[]>> {
   try {
-    const { userId } = await auth()
+    const { userId: clerkUserId } = await auth()
     
-    if (!userId) {
+    if (!clerkUserId) {
       return {
         isSuccess: false,
         message: "Authentication required"
       }
     }
 
-    // TODO: Replace with actual database query
-    // const activities = await getAIActivitiesFromDB(userId, 5)
+    const { data: user } = await supabase.from('users').select('id').eq('clerk_id', clerkUserId).single()
+
+    if (!user) {
+      return {
+        isSuccess: false,
+        message: "User not found"
+      }
+    }
+    const userId = user.id.toString()
+
+    const activities = await getAIActivityFromDB(userId)
 
     return {
       isSuccess: true,
       message: "AI activity retrieved successfully",
-      data: mockAIActivities.slice(0, 5)
+      data: activities
     }
   } catch (error) {
     console.error("Error fetching AI activity:", error)
@@ -180,22 +269,26 @@ export async function getAICopilotActivityAction(): Promise<ActionState<AIConver
 
 export async function getDashboardStatsAction(): Promise<ActionState<DashboardStats>> {
   try {
-    const { userId } = await auth()
+    const { userId: clerkUserId } = await auth()
     
-    if (!userId) {
+    if (!clerkUserId) {
       return {
         isSuccess: false,
         message: "Authentication required"
       }
     }
 
-    // TODO: Replace with actual database queries
-    const stats: DashboardStats = {
-      totalTasks: mockTasks.length,
-      completedTasks: mockTasks.filter(t => t.status === 'completed').length,
-      inProgressTasks: mockTasks.filter(t => t.status === 'in-progress').length,
-      activeConversations: mockAIActivities.filter(c => c.isUnread).length
+    const { data: user } = await supabase.from('users').select('id').eq('clerk_id', clerkUserId).single()
+
+    if (!user) {
+      return {
+        isSuccess: false,
+        message: "User not found"
+      }
     }
+    const userId = user.id.toString()
+
+    const stats = await getDashboardStatsFromDB(userId)
 
     return {
       isSuccess: true,

@@ -20,7 +20,7 @@ export function RecentTasksSection({ tasks }: RecentTasksSectionProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-foreground">Recent Tasks</CardTitle>
+            <h2 className="text-lg font-semibold text-foreground">Recent Tasks</h2>
             <CardDescription className="text-muted-foreground">
               Your latest tasks and updates
             </CardDescription>
@@ -68,9 +68,9 @@ export function RecentTasksSection({ tasks }: RecentTasksSectionProps) {
                     )} />
                     
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-foreground truncate">
+                      <h3 className="text-sm font-medium text-foreground truncate">
                         {task.title}
-                      </h4>
+                      </h3>
                       <div className="flex items-center space-x-2 mt-1">
                         <Badge 
                           variant={statusConfig.variant}
