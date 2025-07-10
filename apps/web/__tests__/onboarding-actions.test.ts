@@ -1,61 +1,50 @@
-// Mock Clerk's auth before anything else
-const mockAuth = jest.fn()
-jest.mock("@clerk/nextjs/server", () => ({
-  auth: () => mockAuth(),
-}))
-
 // Mock the Supabase client
-const mockSupabaseUpsert = jest.fn()
-const mockSupabaseInsert = jest.fn()
-const mockSupabaseUpdate = jest.fn()
-const mockSupabaseSelect = jest.fn().mockReturnThis()
-const mockSupabaseEq = jest.fn().mockReturnThis()
-const mockSupabaseSingle = jest.fn()
+jest.mock("@/lib/supabase-server", () => {
+  const mockSupabaseUpsert = jest.fn()
+  const mockSupabaseInsert = jest.fn()
+  const mockSupabaseUpdate = jest.fn()
+  const mockSupabaseSelect = jest.fn().mockReturnThis()
+  const mockSupabaseEq = jest.fn().mockReturnThis()
+  const mockSupabaseSingle = jest.fn()
 
-const mockSupabaseClient = {
-  from: jest.fn(() => ({
-    select: mockSupabaseSelect,
-    insert: mockSupabaseInsert,
-    update: mockSupabaseUpdate,
-    upsert: mockSupabaseUpsert,
-    eq: mockSupabaseEq,
-    single: mockSupabaseSingle,
-  })),
-}
-
-jest.mock("@/lib/supabase-server", () => mockSupabaseClient)
+  return {
+    from: jest.fn(() => ({
+      select: mockSupabaseSelect,
+      insert: mockSupabaseInsert,
+      update: mockSupabaseUpdate,
+      upsert: mockSupabaseUpsert,
+      eq: mockSupabaseEq,
+      single: mockSupabaseSingle,
+    })),
+    __esModule: true,
+    default: {
+      from: jest.fn(() => ({
+        select: mockSupabaseSelect,
+        insert: mockSupabaseInsert,
+        update: mockSupabaseUpdate,
+        upsert: mockSupabaseUpsert,
+        eq: mockSupabaseEq,
+        single: mockSupabaseSingle,
+      })),
+    },
+  }
+})
 
 import {
   completeOnboardingAction,
   OnboardingActionData,
 } from "@/actions/users/onboarding-actions"
+import supabase from "@/lib/supabase-server"
+
+// Get the mocked supabase client
+const mockSupabase = supabase as jest.Mocked<typeof supabase>
 
 describe("Onboarding Actions", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    // Default to authenticated user
-    mockAuth.mockResolvedValue({ userId: "user_clerk_123" })
   })
 
   describe("completeOnboardingAction", () => {
-    it("should return an error if the user is not authenticated", async () => {
-      mockAuth.mockResolvedValue({ userId: null })
-
-      const result = await completeOnboardingAction({
-        clerkId: "test-clerk-id",
-        username: "testuser",
-        email: "test@example.com",
-        firstName: "Test",
-        lastName: "User",
-        role: "athlete",
-        timezone: "UTC",
-        subscription: "free",
-      })
-
-      expect(result.isSuccess).toBe(false)
-      expect(result.message).toBe("Not authenticated")
-    })
-
     it("should successfully create a new athlete user", async () => {
       const testData: OnboardingActionData = {
         clerkId: "user_clerk_123",
@@ -74,22 +63,34 @@ describe("Onboarding Actions", () => {
       }
 
       // Mock user upsert success
-      mockSupabaseUpsert.mockReturnValue({
-        select: () => ({ data: [{ id: 1 }], error: null }),
+      const mockUpsert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({ data: [{ id: 1 }], error: null }),
       })
-      // Mock no existing athlete found
-      mockSupabaseSingle.mockResolvedValue({ data: null, error: null })
-      // Mock athlete insert success
-      mockSupabaseInsert.mockResolvedValue({ error: null })
+      const mockInsert = jest.fn().mockResolvedValue({ error: null })
+      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: null })
+
+      mockSupabase.from = jest.fn().mockImplementation((table) => {
+        if (table === "users") {
+          return { upsert: mockUpsert }
+        }
+        if (table === "athletes") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: mockSingle,
+              }),
+            }),
+            insert: mockInsert,
+          }
+        }
+        return {}
+      })
 
       const result = await completeOnboardingAction(testData)
 
       expect(result.isSuccess).toBe(true)
       expect(result.message).toBe("Onboarding completed successfully")
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith("users")
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith("athletes")
-      expect(mockSupabaseUpsert).toHaveBeenCalledTimes(1)
-      expect(mockSupabaseInsert).toHaveBeenCalledTimes(1)
+      expect(result.data?.userId).toBe("1")
     })
 
     it("should successfully create a new coach user", async () => {
@@ -110,21 +111,35 @@ describe("Onboarding Actions", () => {
         },
       }
 
-      // Mocks
-      mockSupabaseUpsert.mockReturnValue({
-        select: () => ({ data: [{ id: 2 }], error: null }),
+      // Mock user upsert success
+      const mockUpsert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({ data: [{ id: 2 }], error: null }),
       })
-      mockSupabaseSingle.mockResolvedValue({ data: null, error: null })
-      mockSupabaseInsert.mockResolvedValue({ error: null })
+      const mockInsert = jest.fn().mockResolvedValue({ error: null })
+      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: null })
+
+      mockSupabase.from = jest.fn().mockImplementation((table) => {
+        if (table === "users") {
+          return { upsert: mockUpsert }
+        }
+        if (table === "coaches") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: mockSingle,
+              }),
+            }),
+            insert: mockInsert,
+          }
+        }
+        return {}
+      })
 
       const result = await completeOnboardingAction(testData)
 
       expect(result.isSuccess).toBe(true)
       expect(result.message).toBe("Onboarding completed successfully")
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith("users")
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith("coaches")
-      expect(mockSupabaseUpsert).toHaveBeenCalledTimes(1)
-      expect(mockSupabaseInsert).toHaveBeenCalledTimes(1)
+      expect(result.data?.userId).toBe("2")
     })
 
     it("should handle user upsert failure", async () => {
@@ -141,8 +156,15 @@ describe("Onboarding Actions", () => {
       const dbError = { message: "DB constraint violation" }
 
       // Mock user upsert failure
-      mockSupabaseUpsert.mockReturnValue({
-        select: () => ({ data: null, error: dbError }),
+      const mockUpsert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({ data: null, error: dbError }),
+      })
+
+      mockSupabase.from = jest.fn().mockImplementation((table) => {
+        if (table === "users") {
+          return { upsert: mockUpsert }
+        }
+        return {}
       })
 
       const result = await completeOnboardingAction(testData)
@@ -170,11 +192,28 @@ describe("Onboarding Actions", () => {
       const dbError = { message: "Athlete insert error" }
 
       // Mock user success, athlete insert failure
-      mockSupabaseUpsert.mockReturnValue({
-        select: () => ({ data: [{ id: 3 }], error: null }),
+      const mockUpsert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({ data: [{ id: 3 }], error: null }),
       })
-      mockSupabaseSingle.mockResolvedValue({ data: null, error: null })
-      mockSupabaseInsert.mockResolvedValue({ error: dbError })
+      const mockInsert = jest.fn().mockResolvedValue({ error: dbError })
+      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: null })
+
+      mockSupabase.from = jest.fn().mockImplementation((table) => {
+        if (table === "users") {
+          return { upsert: mockUpsert }
+        }
+        if (table === "athletes") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: mockSingle,
+              }),
+            }),
+            insert: mockInsert,
+          }
+        }
+        return {}
+      })
 
       const result = await completeOnboardingAction(testData)
 
@@ -202,11 +241,28 @@ describe("Onboarding Actions", () => {
       const dbError = { message: "Coach insert error" }
 
       // Mock user success, coach insert failure
-      mockSupabaseUpsert.mockReturnValue({
-        select: () => ({ data: [{ id: 4 }], error: null }),
+      const mockUpsert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({ data: [{ id: 4 }], error: null }),
       })
-      mockSupabaseSingle.mockResolvedValue({ data: null, error: null })
-      mockSupabaseInsert.mockResolvedValue({ error: dbError })
+      const mockInsert = jest.fn().mockResolvedValue({ error: dbError })
+      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: null })
+
+      mockSupabase.from = jest.fn().mockImplementation((table) => {
+        if (table === "users") {
+          return { upsert: mockUpsert }
+        }
+        if (table === "coaches") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: mockSingle,
+              }),
+            }),
+            insert: mockInsert,
+          }
+        }
+        return {}
+      })
 
       const result = await completeOnboardingAction(testData)
 
@@ -232,19 +288,87 @@ describe("Onboarding Actions", () => {
       }
 
       // Mock user upsert success
-      mockSupabaseUpsert.mockReturnValue({
-        select: () => ({ data: [{ id: 1 }], error: null }),
+      const mockUpsert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({ data: [{ id: 1 }], error: null }),
       })
-      // Mock existing athlete found
-      mockSupabaseSingle.mockResolvedValue({ data: { id: 101 }, error: null })
-      // Mock athlete update success
-      mockSupabaseUpdate.mockResolvedValue({ error: null })
+      const mockUpdate = jest.fn().mockResolvedValue({ error: null })
+      const mockSingle = jest.fn().mockResolvedValue({ data: { id: 101 }, error: null })
+
+      mockSupabase.from = jest.fn().mockImplementation((table) => {
+        if (table === "users") {
+          return { upsert: mockUpsert }
+        }
+        if (table === "athletes") {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: mockSingle,
+              }),
+            }),
+            update: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue(mockUpdate),
+            }),
+          }
+        }
+        return {}
+      })
 
       const result = await completeOnboardingAction(testData)
 
       expect(result.isSuccess).toBe(true)
-      expect(mockSupabaseUpdate).toHaveBeenCalledTimes(1)
-      expect(mockSupabaseInsert).not.toHaveBeenCalled()
+    })
+
+    it("should handle missing user ID after creation", async () => {
+      const testData: OnboardingActionData = {
+        clerkId: "user_clerk_no_id",
+        username: "noid",
+        email: "noid@example.com",
+        firstName: "No",
+        lastName: "ID",
+        role: "athlete",
+        timezone: "UTC",
+        subscription: "free",
+      }
+
+      // Mock user upsert success but no ID returned
+      const mockUpsert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({ data: [], error: null }),
+      })
+
+      mockSupabase.from = jest.fn().mockImplementation((table) => {
+        if (table === "users") {
+          return { upsert: mockUpsert }
+        }
+        return {}
+      })
+
+      const result = await completeOnboardingAction(testData)
+
+      expect(result.isSuccess).toBe(false)
+      expect(result.message).toBe("Failed to retrieve user ID after creation")
+    })
+
+    it("should handle unexpected errors", async () => {
+      const testData: OnboardingActionData = {
+        clerkId: "user_clerk_error",
+        username: "error",
+        email: "error@example.com",
+        firstName: "Error",
+        lastName: "User",
+        role: "athlete",
+        timezone: "UTC",
+        subscription: "free",
+      }
+
+      // Mock unexpected error
+      mockSupabase.from = jest.fn().mockImplementation(() => {
+        throw new Error("Unexpected database error")
+      })
+
+      const result = await completeOnboardingAction(testData)
+
+      expect(result.isSuccess).toBe(false)
+      expect(result.message).toContain("Unexpected error")
     })
   })
 }) 

@@ -977,6 +977,146 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_dashboard_data: {
+        Args: {
+          p_clerk_id: string
+        }
+        Returns: {
+          stats: {
+            totalSessions: number
+            completedSessions: number
+            upcomingSessions: number
+            activeAthletes: number
+          }
+          recent_sessions: {
+            id: number
+            title: string
+            status: string
+            date: string
+            notes: string | null
+            athlete?: {
+              id: number
+              name: string
+              avatar: string | null
+            }
+          }[]
+        }
+      }
+      get_individual_performance_data: {
+        Args: {
+          p_athlete_id: number
+        }
+        Returns: {
+          performanceMetrics: {
+            id: string
+            name: string
+            value: number
+            unit: string
+            trend: "up" | "down" | "stable"
+            trendPercentage: number
+            icon: string
+            color: string
+          }[]
+          exerciseProgress: {
+            exerciseId: string
+            exerciseName: string
+            category: string
+            personalRecord: {
+              weight: number
+              reps: number
+              date: string
+            }
+            trends: {
+              volume: "up" | "down" | "stable"
+              strength: "up" | "down" | "stable"
+              consistency: number
+            }
+            recentProgress: {
+              date: string
+              volume: number
+              weight: number
+              reps: number
+              sets: number
+              rpe: number
+            }[]
+          }[]
+          goals: any[]
+        }
+      }
+      get_comparative_performance_data: {
+        Args: { p_athlete_id: number }
+        Returns: {
+          peerComparisons: {
+            metric: string
+            userValue: number
+            peerAverage: number
+            percentile: number
+            unit: string
+            category: string
+            sampleSize: number
+            trend: "above" | "below" | "average"
+          }[]
+          benchmarks: {
+            id: string
+            name: string
+            category: string
+            userValue: number
+            benchmarks: {
+              beginner: number
+              intermediate: number
+              advanced: number
+              elite: number
+            }
+            userLevel: "beginner" | "intermediate" | "advanced" | "elite"
+            unit: string
+            icon: string
+          }[]
+          groupComparison: {
+            groupId: string
+            groupName: string
+            memberCount: number
+            userRank: number
+            metrics: {
+              totalVolume: {
+                user: number
+                groupAvg: number
+                percentile: number
+              }
+              avgIntensity: {
+                user: number
+                groupAvg: number
+                percentile: number
+              }
+              consistency: {
+                user: number
+                groupAvg: number
+                percentile: number
+              }
+              improvement: {
+                user: number
+                groupAvg: number
+                percentile: number
+              }
+            }
+            anonymized: boolean
+          } | null
+          percentiles: {
+            metric: string
+            value: number
+            percentile: number
+            unit: string
+            category: string
+            comparison:
+              | "age-group"
+              | "weight-class"
+              | "experience-level"
+              | "overall"
+            sampleSize: number
+            icon: string
+            color: string
+          }[]
+        }
+      }
       get_user_role_data: {
         Args: { _clerk_id: string }
         Returns: {

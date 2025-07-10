@@ -1,261 +1,162 @@
 "use server"
 
-import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
+import { NextRequest, NextResponse } from "next/server"
 import { Webhook } from "svix"
-import { ClerkWebhookEvent, UserCreatedWebhookData } from "@/types"
-import {
-  createSupabaseUserFromWebhookAction,
-  updateSupabaseUserFromWebhookAction,
-  getUserByClerkIdAction
-} from '@/actions/auth/user-actions'
+import supabase from "@/lib/supabase-server"
+
+// Define the webhook event types
+interface WebhookEvent {
+  type: string
+  data: {
+    id: string
+    email_addresses: Array<{ email_address: string }>
+    first_name?: string
+    last_name?: string
+    image_url?: string
+    created_at: number
+    updated_at: number
+  }
+}
 
 export async function POST(req: NextRequest) {
-  try {
-    // Get the webhook secret from environment variables
-    const webhookSecret = process.env.CLERK_WEBHOOK_SECRET
-    if (!webhookSecret) {
-      console.error("CLERK_WEBHOOK_SECRET is not configured")
-      return NextResponse.json(
-        { error: "Webhook not configured" },
-        { status: 500 }
-      )
-    }
+  // Get the headers
+  const headerPayload = await headers()
+  const svix_id = headerPayload.get("svix-id")
+  const svix_timestamp = headerPayload.get("svix-timestamp")
+  const svix_signature = headerPayload.get("svix-signature")
 
-    // Get headers
-    const headersList = await headers()
-    const svix_id = headersList.get("svix-id")
-    const svix_timestamp = headersList.get("svix-timestamp")
-    const svix_signature = headersList.get("svix-signature")
-
-    // Check if all required headers are present
-    if (!svix_id || !svix_timestamp || !svix_signature) {
-      console.error("Missing required svix headers")
-      return NextResponse.json(
-        { error: "Missing required webhook headers" },
-        { status: 400 }
-      )
-    }
-
-    // Get the raw body for signature verification
-    const rawBody = await req.text()
-
-    // Create a new Svix instance with the webhook secret
-    const wh = new Webhook(webhookSecret)
-
-    let evt: ClerkWebhookEvent
-
-    // Verify the webhook signature
-    try {
-      evt = wh.verify(rawBody, {
-        "svix-id": svix_id,
-        "svix-timestamp": svix_timestamp,
-        "svix-signature": svix_signature,
-      }) as ClerkWebhookEvent
-    } catch (err) {
-      console.error("Webhook signature verification failed:", err)
-      return NextResponse.json(
-        { error: "Invalid webhook signature" },
-        { status: 400 }
-      )
-    }
-
-    console.log("Verified webhook received:", {
-      type: evt.type,
-      id: svix_id,
-      timestamp: svix_timestamp,
+  // If there are no headers, error out
+  if (!svix_id || !svix_timestamp || !svix_signature) {
+    return new Response("Error occurred -- no svix headers", {
+      status: 400,
     })
+  }
 
-    // Process different event types
-    let result: any = null
+  // Get the body
+  const payload = await req.json()
+  const body = JSON.stringify(payload)
 
-    switch (evt.type) {
+  // Create a new Svix instance with your secret.
+  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET || "")
+
+  let evt: WebhookEvent
+
+  // Verify the payload with the headers
+  try {
+    evt = wh.verify(body, {
+      "svix-id": svix_id,
+      "svix-timestamp": svix_timestamp,
+      "svix-signature": svix_signature,
+    }) as WebhookEvent
+  } catch (err) {
+    console.error("Error verifying webhook:", err)
+    return new Response("Error occurred", {
+      status: 400,
+    })
+  }
+
+  // Handle the webhook
+  const { type, data } = evt
+  console.log(`Webhook received: ${type}`)
+
+  try {
+    switch (type) {
       case "user.created":
-        result = await handleUserCreated(evt.data as UserCreatedWebhookData)
+        await handleUserCreated(data)
         break
       case "user.updated":
-        result = await handleUserUpdated(evt.data as UserCreatedWebhookData)
+        await handleUserUpdated(data)
         break
       case "user.deleted":
-        result = await handleUserDeleted(evt.data as { id: string; deleted: boolean })
+        await handleUserDeleted(data)
         break
       default:
-        console.log(`Unhandled webhook event type: ${evt.type}`)
-        result = { message: `Event type ${evt.type} not processed` }
+        console.log(`Unhandled webhook type: ${type}`)
     }
-
-    // Prepare response
-    const response = NextResponse.json(
-      { 
-        success: true, 
-        message: "Webhook processed successfully",
-        eventType: evt.type,
-        result
-      },
-      { status: 200 }
-    )
-
-    // Add CORS headers for webhook handling
-    response.headers.set("Access-Control-Allow-Origin", "*")
-    response.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS")
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type, svix-id, svix-timestamp, svix-signature")
-
-    return response
-
   } catch (error) {
-    console.error("Webhook handler error:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    console.error(`Error handling webhook ${type}:`, error)
+    return new Response("Error processing webhook", {
+      status: 500,
+    })
   }
+
+  return new Response("", { status: 200 })
 }
 
-// Handle user creation events
-async function handleUserCreated(userData: UserCreatedWebhookData) {
-  try {
-    console.log("Processing user.created event:", {
-      userId: userData.id,
-      email: userData.email_addresses?.[0]?.email_address
-    })
+async function handleUserCreated(data: WebhookEvent["data"]) {
+  const primaryEmail = data.email_addresses[0]?.email_address
+  
+  if (!primaryEmail) {
+    console.error("No primary email found for user")
+    return
+  }
 
-    // Extract user information
-    const primaryEmail = userData.email_addresses?.[0]?.email_address
-    if (!primaryEmail) {
-      throw new Error("No primary email found for user")
-    }
+  // Generate a username from email (fallback if no first/last name)
+  const username = data.first_name && data.last_name 
+    ? `${data.first_name.toLowerCase()}.${data.last_name.toLowerCase()}`
+    : primaryEmail.split('@')[0]
 
-    // Check if user already exists (idempotent operation)
-    const existingUserResult = await getUserByClerkIdAction(userData.id)
-    const existingUser = existingUserResult.isSuccess ? existingUserResult.data : null
-
-    if (existingUser) {
-      console.log(`User ${userData.id} already exists in Supabase`)
-      return { 
-        message: "User already exists", 
-        userId: existingUser.id,
-        action: "skipped"
-      }
-    }
-
-    // Create user in Supabase using action
-    const result = await createSupabaseUserFromWebhookAction(
-      userData.id,
-      primaryEmail,
-      userData.first_name || undefined,
-      userData.last_name || undefined,
-      userData.image_url || undefined
-    )
-
-    if (!result.isSuccess) {
-      console.error("Error creating user in Supabase:", result.message)
-      throw new Error(result.message)
-    }
-
-    console.log("User created successfully in Supabase:", {
-      supabaseUserId: result.data.id,
-      clerkId: userData.id,
-      email: primaryEmail
-    })
-
-    return {
-      message: "User created successfully",
-      userId: result.data.id,
-      clerkId: userData.id,
+  const { error } = await supabase
+    .from("users")
+    .insert({
+      clerk_id: data.id,
       email: primaryEmail,
-      action: "created"
-    }
+      username: username,
+      first_name: data.first_name || null,
+      last_name: data.last_name || null,
+      avatar_url: data.image_url || null,
+      role: 'athlete', // Default role
+      timezone: 'UTC', // Default timezone
+      onboarding_completed: false,
+    })
 
-  } catch (error) {
-    console.error("Error handling user.created event:", error)
+  if (error) {
+    console.error("Error creating user in database:", error)
     throw error
   }
+
+  console.log(`User created in database: ${primaryEmail}`)
 }
 
-// Handle user update events
-async function handleUserUpdated(userData: UserCreatedWebhookData) {
-  try {
-    console.log("Processing user.updated event:", {
-      userId: userData.id,
-      email: userData.email_addresses?.[0]?.email_address
-    })
+async function handleUserUpdated(data: WebhookEvent["data"]) {
+  const primaryEmail = data.email_addresses[0]?.email_address
+  
+  if (!primaryEmail) {
+    console.error("No primary email found for user")
+    return
+  }
 
-    const primaryEmail = userData.email_addresses?.[0]?.email_address
-    if (!primaryEmail) {
-      throw new Error("No primary email found for user")
-    }
-
-    // Update user in Supabase using action
-    const result = await updateSupabaseUserFromWebhookAction(
-      userData.id,
-      primaryEmail,
-      userData.first_name || undefined,
-      userData.last_name || undefined,
-      userData.image_url || undefined
-    )
-
-    if (!result.isSuccess) {
-      console.error("Error updating user in Supabase:", result.message)
-      throw new Error(result.message)
-    }
-
-    console.log("User updated successfully in Supabase:", {
-      supabaseUserId: result.data.id,
-      clerkId: userData.id,
-      email: primaryEmail
-    })
-
-    return {
-      message: "User updated successfully",
-      userId: result.data.id,
-      clerkId: userData.id,
+  const { error } = await supabase
+    .from("users")
+    .update({
       email: primaryEmail,
-      action: "updated"
-    }
+      first_name: data.first_name || null,
+      last_name: data.last_name || null,
+      avatar_url: data.image_url || null,
+    })
+    .eq("clerk_id", data.id)
 
-  } catch (error) {
-    console.error("Error handling user.updated event:", error)
+  if (error) {
+    console.error("Error updating user in database:", error)
     throw error
   }
+
+  console.log(`User updated in database: ${primaryEmail}`)
 }
 
-// Handle user deletion events
-async function handleUserDeleted(userData: { id: string; deleted: boolean }) {
-  try {
-    console.log("Processing user.deleted event:", {
-      userId: userData.id
-    })
+async function handleUserDeleted(data: WebhookEvent["data"]) {
+  const { error } = await supabase
+    .from("users")
+    .delete()
+    .eq("clerk_id", data.id)
 
-    // For deletion, we still need direct Supabase access since we don't have a delete action yet
-    // TODO: Create a deleteUserAction for consistency
-    const { createServerSupabaseClient } = await import('@/lib/supabase')
-    const supabase = createServerSupabaseClient()
-
-    // Delete user from Supabase (cascading deletes will handle related records)
-    const { error: deleteError } = await supabase
-      .from('users')
-      .delete()
-      .eq('clerk_id', userData.id)
-
-    if (deleteError) {
-      console.error("Error deleting user from Supabase:", deleteError)
-      throw deleteError
-    }
-
-    console.log("User deleted successfully from Supabase:", {
-      clerkId: userData.id
-    })
-
-    return {
-      message: "User deleted successfully",
-      clerkId: userData.id,
-      action: "deleted"
-    }
-
-  } catch (error) {
-    console.error("Error handling user.deleted event:", error)
+  if (error) {
+    console.error("Error deleting user from database:", error)
     throw error
   }
+
+  console.log(`User deleted from database: ${data.id}`)
 }
 
 // Handle preflight OPTIONS requests for CORS

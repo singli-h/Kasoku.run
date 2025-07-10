@@ -3,153 +3,21 @@
 import supabase from "@/lib/supabase-server"
 import { auth } from "@clerk/nextjs/server"
 import type { ActionState } from "@/types/server-action-types"
-import type { DashboardData, Task, AIConversation, DashboardStats } from "@/components/features/dashboard/types/dashboard-types"
-import type { Tables } from "@/types/database"
+import type {
+  DashboardData,
+  RecentSession,
+  DashboardStats
+} from "@/components/features/dashboard/types/dashboard-types"
 
-async function getRecentTasksFromDB(userId: string): Promise<Task[]> {
-  const { data: athleteData, error: athleteError } = await supabase
-    .from("athletes")
-    .select("id")
-    .eq("user_id", parseInt(userId))
-    .single()
-
-  if (athleteError || !athleteData) {
-    console.error("Error fetching athlete ID:", athleteError)
-    return []
-  }
-
-  const athleteId = athleteData.id
-
-  const { data, error } = await supabase
-    .from("exercise_training_sessions")
-    .select(
-      `
-      id,
-      description,
-      status,
-      date_time,
-      athletes (
-        users (
-          id,
-          first_name,
-          last_name,
-          email,
-          avatar_url
-        )
-      )
-    `
-    )
-    .eq("athlete_id", athleteId)
-    .order("date_time", { ascending: false })
-    .limit(5)
-
-  if (error) {
-    console.error("Error fetching recent tasks:", error)
-    return []
-  }
-
-  return data.map((session: any) => ({
-    id: session.id.toString(),
-    title: session.description || 'Untitled Session',
-    status: session.status === 'completed' ? 'completed' : session.status === 'in_progress' ? 'in-progress' : 'todo',
-    dueDate: new Date(session.date_time),
-    assignee: session.athletes?.users ? {
-      id: session.athletes.users.id.toString(),
-      firstName: session.athletes.users.first_name || '',
-      lastName: session.athletes.users.last_name || '',
-      email: session.athletes.users.email,
-      avatar: session.athletes.users.avatar_url || '',
-      initials: `${session.athletes.users.first_name?.[0] || ''}${session.athletes.users.last_name?.[0] || ''}`
-    } : undefined,
-    createdAt: new Date(session.date_time),
-    updatedAt: new Date(session.date_time),
-  }))
-  }
-
-async function getAIActivityFromDB(userId: string): Promise<AIConversation[]> {
-  const { data, error } = await supabase
-    .from('conversations')
-    .select('*')
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false })
-    .limit(5)
-
-  if (error) {
-    console.error("Error fetching AI activity:", error)
-    return []
-  }
-
-  return data.map((convo: any) => ({
-    id: convo.id,
-    title: convo.title,
-    lastMessage: convo.last_message || '',
-    timestamp: new Date(convo.updated_at),
-    isUnread: false, // This needs a schema change to support
-    messageCount: convo.message_count,
-  }))
-}
-
-async function getDashboardStatsFromDB(userId: string): Promise<DashboardStats> {
-  const { data: athleteData, error: athleteError } = await supabase
-    .from("athletes")
-    .select("id")
-    .eq("user_id", parseInt(userId))
-    .single()
-
-  if (athleteError || !athleteData) {
-    console.error("Error fetching athlete ID for stats:", athleteError)
-    return {
-      totalTasks: 0,
-      completedTasks: 0,
-      inProgressTasks: 0,
-      activeConversations: 0
-    }
-  }
-
-  const athleteId = athleteData.id
-
-  const { count: totalTasks, error: totalTasksError } = await supabase
-    .from("exercise_training_sessions")
-    .select("id", { count: "exact", head: true })
-    .eq("athlete_id", athleteId)
-
-  const { count: completedTasks, error: completedTasksError } = await supabase
-    .from("exercise_training_sessions")
-    .select("id", { count: "exact", head: true })
-    .eq("athlete_id", athleteId)
-    .eq("status", "completed")
-
-  const { count: inProgressTasks, error: inProgressTasksError } =
-    await supabase
-      .from("exercise_training_sessions")
-      .select("id", { count: "exact", head: true })
-      .eq("athlete_id", athleteId)
-      .eq("status", "in-progress")
-
-  const { count: activeConversations, error: activeConversationsError } =
-    await supabase
-      .from("conversations")
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-    // .eq('is_unread', true) // is_unread doesn't exist
-
-  if (totalTasksError || completedTasksError || inProgressTasksError || activeConversationsError) {
-    console.error({ totalTasksError, completedTasksError, inProgressTasksError, activeConversationsError })
-  }
-
-  return {
-    totalTasks: totalTasks || 0,
-    completedTasks: completedTasks || 0,
-    inProgressTasks: inProgressTasks || 0,
-    activeConversations: activeConversations || 0,
-  }
-}
-
-
-export async function getDashboardDataAction(): Promise<ActionState<DashboardData>> {
+/**
+ * Get all dashboard data for the current user using an RPC call
+ */
+export async function getDashboardDataAction(): Promise<
+  ActionState<DashboardData>
+> {
   try {
     const { userId: clerkUserId } = await auth()
-    
+
     if (!clerkUserId) {
       return {
         isSuccess: false,
@@ -157,27 +25,29 @@ export async function getDashboardDataAction(): Promise<ActionState<DashboardDat
       }
     }
 
-    const { data: user } = await supabase.from('users').select('id').eq('clerk_id', clerkUserId).single()
+    const { data, error } = await supabase.rpc("get_dashboard_data", {
+      p_clerk_id: clerkUserId
+    })
 
-    if (!user) {
+    if (error) {
+      console.error("Error fetching dashboard data:", error)
+      throw error
+    }
+
+    if (!data) {
       return {
         isSuccess: false,
-        message: "User not found"
+        message: "No data returned from dashboard RPC call"
       }
     }
-    const userId = user.id.toString()
 
-
-    const [recentTasks, aiActivity, stats] = await Promise.all([
-      getRecentTasksFromDB(userId),
-      getAIActivityFromDB(userId),
-      getDashboardStatsFromDB(userId)
-    ])
-
+    // The data from RPC is a single object with stats and recentSessions properties
     const dashboardData: DashboardData = {
-      recentTasks,
-      aiActivity,
-      stats
+      stats: data.stats,
+      recentSessions: data.recent_sessions.map((s: any) => ({
+        ...s,
+        date: new Date(s.date)
+      }))
     }
 
     return {
@@ -186,7 +56,7 @@ export async function getDashboardDataAction(): Promise<ActionState<DashboardDat
       data: dashboardData
     }
   } catch (error) {
-    console.error("Error fetching dashboard data:", error)
+    console.error("Error in getDashboardDataAction:", error)
     return {
       isSuccess: false,
       message: "Failed to load dashboard data"
@@ -194,106 +64,56 @@ export async function getDashboardDataAction(): Promise<ActionState<DashboardDat
   }
 }
 
-export async function getRecentTasksAction(): Promise<ActionState<Task[]>> {
+/**
+ * Get recent training sessions for the current user
+ */
+export async function getRecentSessionsAction(): Promise<
+  ActionState<RecentSession[]>
+> {
   try {
-    const { userId: clerkUserId } = await auth()
-    
-    if (!clerkUserId) {
+    const result = await getDashboardDataAction()
+
+    if (!result.isSuccess) {
       return {
         isSuccess: false,
-        message: "Authentication required"
+        message: result.message
       }
     }
-    const { data: user } = await supabase.from('users').select('id').eq('clerk_id', clerkUserId).single()
-
-    if (!user) {
-      return {
-        isSuccess: false,
-        message: "User not found"
-      }
-    }
-    const userId = user.id.toString()
-
-    const tasks = await getRecentTasksFromDB(userId)
 
     return {
       isSuccess: true,
-      message: "Recent tasks retrieved successfully",
-      data: tasks
+      message: "Recent sessions retrieved successfully",
+      data: result.data.recentSessions
     }
   } catch (error) {
-    console.error("Error fetching recent tasks:", error)
+    console.error("Error fetching recent sessions:", error)
     return {
       isSuccess: false,
-      message: "Failed to load recent tasks"
+      message: "Failed to load recent sessions"
     }
   }
 }
 
-export async function getAICopilotActivityAction(): Promise<ActionState<AIConversation[]>> {
+/**
+ * Get dashboard statistics for the current user
+ */
+export async function getDashboardStatsAction(): Promise<
+  ActionState<DashboardStats>
+> {
   try {
-    const { userId: clerkUserId } = await auth()
-    
-    if (!clerkUserId) {
+    const result = await getDashboardDataAction()
+
+    if (!result.isSuccess) {
       return {
         isSuccess: false,
-        message: "Authentication required"
+        message: result.message
       }
     }
-
-    const { data: user } = await supabase.from('users').select('id').eq('clerk_id', clerkUserId).single()
-
-    if (!user) {
-      return {
-        isSuccess: false,
-        message: "User not found"
-      }
-    }
-    const userId = user.id.toString()
-
-    const activities = await getAIActivityFromDB(userId)
-
-    return {
-      isSuccess: true,
-      message: "AI activity retrieved successfully",
-      data: activities
-    }
-  } catch (error) {
-    console.error("Error fetching AI activity:", error)
-    return {
-      isSuccess: false,
-      message: "Failed to load AI activity"
-    }
-  }
-}
-
-export async function getDashboardStatsAction(): Promise<ActionState<DashboardStats>> {
-  try {
-    const { userId: clerkUserId } = await auth()
-    
-    if (!clerkUserId) {
-      return {
-        isSuccess: false,
-        message: "Authentication required"
-      }
-    }
-
-    const { data: user } = await supabase.from('users').select('id').eq('clerk_id', clerkUserId).single()
-
-    if (!user) {
-      return {
-        isSuccess: false,
-        message: "User not found"
-      }
-    }
-    const userId = user.id.toString()
-
-    const stats = await getDashboardStatsFromDB(userId)
 
     return {
       isSuccess: true,
       message: "Dashboard stats retrieved successfully",
-      data: stats
+      data: result.data.stats
     }
   } catch (error) {
     console.error("Error fetching dashboard stats:", error)

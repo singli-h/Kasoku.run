@@ -38,6 +38,20 @@ export async function getUserProfileAction(): Promise<ActionState<any>> {
       .eq('clerk_id', clerkId)
       .single()
 
+    // Handle "record not found" gracefully so the app can route the
+    // user to the onboarding flow instead of kicking them back to the
+    // marketing landing page.
+    // Supabase returns error code `PGRST116` when `.single()` finds no rows.
+    if (error?.code === "PGRST116") {
+      return {
+        isSuccess: true,
+        message: "User not found – needs onboarding",
+        // We return a minimal shape with `onboarding_completed` so that
+        // downstream layouts can make the correct routing decision.
+        data: { onboarding_completed: false }
+      }
+    }
+
     if (error) {
       console.error("Error fetching user profile:", error)
       return { isSuccess: false, message: "Failed to fetch user profile" }

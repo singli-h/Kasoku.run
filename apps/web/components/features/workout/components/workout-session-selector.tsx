@@ -58,119 +58,49 @@ export function WorkoutSessionSelector({
   const [isLoading, setIsLoading] = useState(true)
   const [startingSessionId, setStartingSessionId] = useState<number | null>(null)
 
+  const calculateEstimatedDuration = (
+    presetGroup: ExercisePresetGroupWithDetails
+  ): number => {
+    let totalSeconds = 0
+    if (presetGroup.exercise_presets) {
+      for (const preset of presetGroup.exercise_presets) {
+        if (preset.exercise_preset_details) {
+          for (const detail of preset.exercise_preset_details) {
+            const reps = detail.reps || 8
+            const sets = detail.set_index || 3
+            const rest = detail.rest_time || 60
+            // Simple estimation: 3 seconds per rep, plus rest time
+            totalSeconds += sets * (reps * 3 + rest)
+          }
+        }
+      }
+    }
+    return Math.round(totalSeconds / 60)
+  }
+
   // Load available workout options
   const loadWorkoutOptions = async () => {
     try {
       setIsLoading(true)
-      
-      // This is a simplified version - in a real app, you'd fetch from multiple microcycles
-      // For now, we'll create some sample data to demonstrate the interface
-      const sampleWorkouts: WorkoutOption[] = [
-        {
-          presetGroup: {
-            id: 1,
-            name: "Upper Body Strength",
-            description: "Focus on chest, back, and arms",
-            week: 1,
-            day: 1,
-            session_mode: "individual",
-            notes: "Moderate intensity session",
-            microcycle_id: 1,
-            athlete_group_id: null,
-            exercise_presets: [
-              {
-                id: 1,
-                exercise_id: 1,
-                exercise_preset_group_id: 1,
-                superset_id: null,
-                preset_order: 1,
-                notes: "Focus on form",
-                exercise: {
-                  id: 1,
-                  name: "Bench Press",
-                  description: "Barbell bench press",
-                  exercise_type_id: 1,
-                  demo_url: null,
-                  video_url: null,
-                  unit_id: null
-                },
-                exercise_preset_details: [
-                  { id: 1, exercise_preset_id: 1, set_index: 1, reps: 8, weight: 135 },
-                  { id: 2, exercise_preset_id: 1, set_index: 2, reps: 8, weight: 135 },
-                  { id: 3, exercise_preset_id: 1, set_index: 3, reps: 8, weight: 135 }
-                ]
-              },
-              {
-                id: 2,
-                exercise_id: 2,
-                exercise_preset_group_id: 1,
-                superset_id: null,
-                preset_order: 2,
-                notes: "Pull ups or lat pulldowns",
-                exercise: {
-                  id: 2,
-                  name: "Pull-ups",
-                  description: "Bodyweight pull-ups",
-                  exercise_type_id: 1,
-                  demo_url: null,
-                  video_url: null,
-                  unit_id: null
-                },
-                exercise_preset_details: [
-                  { id: 4, exercise_preset_id: 2, set_index: 1, reps: 10 },
-                  { id: 5, exercise_preset_id: 2, set_index: 2, reps: 10 },
-                  { id: 6, exercise_preset_id: 2, set_index: 3, reps: 10 }
-                ]
-              }
-            ]
-          },
-          exerciseCount: 2,
-          estimatedDuration: 45
-        },
-        {
-          presetGroup: {
-            id: 2,
-            name: "Lower Body Power",
-            description: "Squats, deadlifts, and explosive movements",
-            week: 1,
-            day: 3,
-            session_mode: "individual",
-            notes: "High intensity session",
-            microcycle_id: 1,
-            athlete_group_id: null,
-            exercise_presets: [
-              {
-                id: 3,
-                exercise_id: 3,
-                exercise_preset_group_id: 2,
-                superset_id: null,
-                preset_order: 1,
-                notes: "Focus on depth and control",
-                exercise: {
-                  id: 3,
-                  name: "Back Squat",
-                  description: "Barbell back squat",
-                  exercise_type_id: 2,
-                  demo_url: null,
-                  video_url: null,
-                  unit_id: null
-                },
-                exercise_preset_details: [
-                  { id: 7, exercise_preset_id: 3, set_index: 1, reps: 5, weight: 185 },
-                  { id: 8, exercise_preset_id: 3, set_index: 2, reps: 5, weight: 185 },
-                  { id: 9, exercise_preset_id: 3, set_index: 3, reps: 5, weight: 185 }
-                ]
-              }
-            ]
-          },
-          exerciseCount: 1,
-          estimatedDuration: 30
-        }
-      ]
-      
-      setWorkoutOptions(sampleWorkouts)
+      // In a real app, you would dynamically determine the microcycle ID
+      const microcycleId = 1
+      const result = await getExercisePresetGroupsByMicrocycleAction({
+        microcycleId
+      })
+
+      if (!result.isSuccess || !result.data) {
+        throw new Error(result.message || "Failed to fetch workout presets.")
+      }
+
+      const options: WorkoutOption[] = result.data.map(presetGroup => ({
+        presetGroup,
+        exerciseCount: presetGroup.exercise_presets?.length || 0,
+        estimatedDuration: calculateEstimatedDuration(presetGroup)
+      }))
+
+      setWorkoutOptions(options)
     } catch (error) {
-      console.error('Error loading workout options:', error)
+      console.error("Error loading workout options:", error)
       toast({
         title: "Error",
         description: "Failed to load available workouts",
@@ -183,6 +113,7 @@ export function WorkoutSessionSelector({
 
   useEffect(() => {
     loadWorkoutOptions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Handle starting a new session

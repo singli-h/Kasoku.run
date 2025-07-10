@@ -2,8 +2,7 @@
 
 import { Suspense } from "react"
 import { ActionCardsSection } from "./action-cards-section"
-import { RecentTasksSection } from "./recent-tasks-section"
-import { AICopilotActivitySection } from "./ai-copilot-activity-section"
+import { RecentSessionsSection } from "./recent-tasks-section"
 import { DashboardSkeleton } from "./dashboard-skeleton"
 import type { DashboardData } from "../types/dashboard-types"
 
@@ -21,7 +20,7 @@ export function DashboardLayout({ data, displayName }: DashboardLayoutProps) {
           Welcome back, {displayName}!
         </h1>
         <p className="text-muted-foreground mt-2">
-          Here's what's happening with your projects today.
+          Here's your training overview for today.
         </p>
       </div>
 
@@ -30,16 +29,11 @@ export function DashboardLayout({ data, displayName }: DashboardLayoutProps) {
         <ActionCardsSection />
       </Suspense>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Tasks */}
+      {/* Main Content */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Recent Sessions */}
         <Suspense fallback={<DashboardSkeleton section="tasks" />}>
-          <RecentTasksSection tasks={data.recentTasks} />
-        </Suspense>
-
-        {/* AI Copilot Activity */}
-        <Suspense fallback={<DashboardSkeleton section="activity" />}>
-          <AICopilotActivitySection activities={data.aiActivity} />
+          <RecentSessionsSection sessions={data.recentSessions} />
         </Suspense>
       </div>
     </div>

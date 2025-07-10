@@ -1,36 +1,36 @@
-import { Plus, MessageCircle, Puzzle } from "lucide-react"
+import { Dumbbell, Calendar, Users } from "lucide-react"
 import type { ActionCard } from "../types/dashboard-types"
 
 export const ACTION_CARDS: Omit<ActionCard, 'action'>[] = [
   {
-    id: 'create-task',
-    title: 'Create New Task',
-    subtitle: 'Use AI Interviewer',
-    icon: Plus,
+    id: 'start-workout',
+    title: 'Start Workout',
+    subtitle: 'Begin training session',
+    icon: Dumbbell,
     color: 'blue',
-    href: '/tasks/create'
+    href: '/workout'
   },
   {
-    id: 'ai-copilot',
-    title: 'Ask AI Copilot',
-    subtitle: 'Get instant help',
-    icon: MessageCircle,
+    id: 'view-sessions',
+    title: 'Training Sessions',
+    subtitle: 'View your schedule',
+    icon: Calendar,
     color: 'gray',
-    href: '/copilot'
+    href: '/sessions'
   },
   {
-    id: 'browser-extension',
-    title: 'Browser Extension',
-    subtitle: 'Install widget',
-    icon: Puzzle,
+    id: 'manage-athletes',
+    title: 'Athletes',
+    subtitle: 'Manage your team',
+    icon: Users,
     color: 'orange',
-    href: '/extension'
+    href: '/athletes'
   }
 ]
 
-export const TASK_STATUS_CONFIG = {
-  'todo': {
-    label: 'To Do',
+export const SESSION_STATUS_CONFIG = {
+  'pending': {
+    label: 'Pending',
     className: 'bg-gray-100 text-gray-800',
     variant: 'secondary' as const
   },
@@ -43,12 +43,16 @@ export const TASK_STATUS_CONFIG = {
     label: 'Completed',
     className: 'bg-green-100 text-green-800',
     variant: 'outline' as const
+  },
+  'cancelled': {
+    label: 'Cancelled',
+    className: 'bg-red-100 text-red-800',
+    variant: 'destructive' as const
   }
 } as const
 
 export const DASHBOARD_CONFIG = {
-  maxRecentTasks: 10,
-  maxAIActivities: 5,
+  maxRecentSessions: 10,
   refreshInterval: 5 * 60 * 1000, // 5 minutes
   skeletonCount: 3
 } as const

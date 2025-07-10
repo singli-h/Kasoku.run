@@ -218,6 +218,17 @@ export function SessionPlanning({
     }
   }, [currentWeek, plan.sessions, selectedSession])
 
+  // CRITICAL FIX: Update selectedSession when plan changes to ensure form inputs show current data
+  useEffect(() => {
+    if (selectedSession) {
+      // Find the updated session object in the plan state
+      const updatedSession = plan.sessions.find(s => s.id === selectedSession.id)
+      if (updatedSession) {
+        setSelectedSession(updatedSession)
+      }
+    }
+  }, [plan.sessions, selectedSession?.id])
+
   // Filter exercises based on search and filters
   const filteredExercises = exercises.filter(exercise => {
     const matchesSearch = exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
