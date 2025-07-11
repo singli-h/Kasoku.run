@@ -166,7 +166,10 @@ export default function RootLayout({
   // }
 
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/onboarding"
+    >
       <html lang="en" suppressHydrationWarning>
         <head>
           {/* PWA and Mobile Optimization */}
