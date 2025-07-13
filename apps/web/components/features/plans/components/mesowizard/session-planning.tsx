@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Plus, 
@@ -26,7 +26,8 @@ import {
   Dumbbell,
   MoreHorizontal,
   Copy,
-  Trash2
+  Trash2,
+  Star
 } from "lucide-react"
 
 // UI Components
@@ -42,7 +43,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
+
+// Components
+import { SetConfigurationModal } from "./set-configuration-modal"
+import { SessionTemplateLibrary } from "./session-template-library"
 
 // Types
 import type { PlanType } from "./plan-type-selection"
@@ -85,12 +91,36 @@ export interface ExerciseInSession {
 
 export interface SetData {
   setIndex: number
+  // Basic parameters
   reps?: number
   weight?: number
   rpe?: number
   restTime?: number
+  
+  // Advanced parameters from database
   distance?: number
-  duration?: number // seconds
+  duration?: number // seconds (renamed from performing_time)
+  power?: number
+  velocity?: number
+  effort?: number
+  height?: number
+  resistance?: number
+  resistance_unit_id?: number
+  tempo?: string
+  metadata?: any
+  notes?: string
+  
+  // UI-specific fields
+  completed?: boolean
+}
+
+export interface SupersetGroup {
+  id: string
+  label: string // A, B, C, etc.
+  exercises: ExerciseInSession[]
+  type: 'antagonist' | 'compound' | 'circuit' | 'standard'
+  restBetweenExercises?: number // seconds
+  restBetweenSets?: number // seconds
   notes?: string
 }
 
@@ -157,12 +187,22 @@ export function SessionPlanning({
   const [exercises, setExercises] = useState<ExerciseWithDetails[]>([])
   const [exerciseTypes, setExerciseTypes] = useState<ExerciseType[]>([])
   const [tags, setTags] = useState<Tag[]>([])
+  // Enhanced exercise library state
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedExerciseType, setSelectedExerciseType] = useState<number | null>(null)
   const [selectedTags, setSelectedTags] = useState<number[]>([])
+  const [favoriteExercises, setFavoriteExercises] = useState<number[]>([])
+  const [recentExercises, setRecentExercises] = useState<number[]>([])
   const [isExerciseLibraryOpen, setIsExerciseLibraryOpen] = useState(false)
   const [draggedExercise, setDraggedExercise] = useState<ExerciseInSession | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  
+  // Set Configuration Modal state
+  const [configModalOpen, setConfigModalOpen] = useState(false)
+  const [configExercise, setConfigExercise] = useState<ExerciseInSession | null>(null)
+  
+  // Session Template Library state
+  const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false)
 
   // Initialize session plan
   const [plan, setPlan] = useState<SessionPlan>(() => {
@@ -229,22 +269,71 @@ export function SessionPlanning({
     }
   }, [plan.sessions, selectedSession?.id])
 
-  // Filter exercises based on search and filters
-  const filteredExercises = exercises.filter(exercise => {
-    const matchesSearch = exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         exercise.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = !selectedExerciseType || exercise.exercise_type_id === selectedExerciseType
-    const matchesTags = selectedTags.length === 0 || 
-                       selectedTags.some(tagId => exercise.tags?.some(tag => tag.id === tagId))
-    
-    return matchesSearch && matchesType && matchesTags
-  })
+  // Enhanced exercise filtering
+  const filteredExercises = useMemo(() => {
+    let filtered = exercises
+
+    // Text search
+    if (searchTerm) {
+      filtered = filtered.filter(exercise => 
+        exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        exercise.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        exercise.exercise_type?.type.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Exercise type filter
+    if (selectedExerciseType) {
+      filtered = filtered.filter(exercise => exercise.exercise_type_id === selectedExerciseType)
+    }
+
+    // Tag filter
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter(exercise => 
+        exercise.tags?.some(tag => selectedTags.includes(tag.id))
+      )
+    }
+
+    // Sort by favorites first, then recent, then alphabetical
+    return filtered.sort((a, b) => {
+      const aFavorite = favoriteExercises.includes(a.id)
+      const bFavorite = favoriteExercises.includes(b.id)
+      const aRecent = recentExercises.includes(a.id)
+      const bRecent = recentExercises.includes(b.id)
+
+      if (aFavorite && !bFavorite) return -1
+      if (!aFavorite && bFavorite) return 1
+      if (aRecent && !bRecent) return -1
+      if (!aRecent && bRecent) return 1
+      
+      return a.name.localeCompare(b.name)
+    })
+  }, [exercises, searchTerm, selectedExerciseType, selectedTags, favoriteExercises, recentExercises])
 
   // Get sessions for current week
   const currentWeekSessions = plan.sessions.filter(s => s.week === currentWeek)
 
-  // Add exercise to session
+  // Toggle exercise favorite
+  const toggleExerciseFavorite = (exerciseId: number) => {
+    setFavoriteExercises(prev => 
+      prev.includes(exerciseId) 
+        ? prev.filter(id => id !== exerciseId)
+        : [...prev, exerciseId]
+    )
+  }
+
+  // Add to recent exercises
+  const addToRecentExercises = (exerciseId: number) => {
+    setRecentExercises(prev => {
+      const filtered = prev.filter(id => id !== exerciseId)
+      return [exerciseId, ...filtered].slice(0, 10) // Keep last 10
+    })
+  }
+
+  // Enhanced add exercise function
   const addExerciseToSession = (exercise: ExerciseWithDetails, sessionId: string) => {
+    addToRecentExercises(exercise.id)
+    
     setPlan(prev => ({
       ...prev,
       sessions: prev.sessions.map(session => {
@@ -255,9 +344,9 @@ export function SessionPlanning({
             exercise,
             order: session.exercises.length + 1,
             sets: [
-              { setIndex: 1, reps: 10, weight: 0, rpe: 6 },
-              { setIndex: 2, reps: 10, weight: 0, rpe: 7 },
-              { setIndex: 3, reps: 10, weight: 0, rpe: 8 }
+              { setIndex: 1, reps: 10, weight: 0, rpe: 6, restTime: 90 },
+              { setIndex: 2, reps: 10, weight: 0, rpe: 7, restTime: 90 },
+              { setIndex: 3, reps: 10, weight: 0, rpe: 8, restTime: 90 }
             ],
             notes: '',
             restTime: 90
@@ -293,8 +382,8 @@ export function SessionPlanning({
     }))
   }
 
-  // Create superset
-  const createSuperset = (sessionId: string, exerciseIds: string[]) => {
+  // Enhanced superset management functions
+  const createSuperset = (sessionId: string, exerciseIds: string[], supersetType: 'antagonist' | 'compound' | 'circuit' | 'standard' = 'standard') => {
     const supersetId = `superset-${Date.now()}`
     
     setPlan(prev => ({
@@ -315,7 +404,52 @@ export function SessionPlanning({
     }))
   }
 
-  // Remove superset
+  // Create a new empty superset
+  const createEmptySuperset = (sessionId: string, supersetType: 'antagonist' | 'compound' | 'circuit' | 'standard' = 'standard') => {
+    return `superset-${Date.now()}`
+  }
+
+  // Add exercise to existing superset
+  const addExerciseToSuperset = (sessionId: string, exerciseId: string, supersetId: string) => {
+    setPlan(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(session => {
+        if (session.id === sessionId) {
+          return {
+            ...session,
+            exercises: session.exercises.map(ex => 
+              ex.id === exerciseId 
+                ? { ...ex, supersetId }
+                : ex
+            )
+          }
+        }
+        return session
+      })
+    }))
+  }
+
+  // Remove exercise from superset (make it standalone)
+  const removeExerciseFromSuperset = (sessionId: string, exerciseId: string) => {
+    setPlan(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(session => {
+        if (session.id === sessionId) {
+          return {
+            ...session,
+            exercises: session.exercises.map(ex => 
+              ex.id === exerciseId 
+                ? { ...ex, supersetId: undefined }
+                : ex
+            )
+          }
+        }
+        return session
+      })
+    }))
+  }
+
+  // Remove entire superset
   const removeSuperset = (sessionId: string, supersetId: string) => {
     setPlan(prev => ({
       ...prev,
@@ -328,6 +462,187 @@ export function SessionPlanning({
                 ? { ...ex, supersetId: undefined }
                 : ex
             )
+          }
+        }
+        return session
+      })
+    }))
+  }
+
+  // Get organized superset groups for a session
+  const getSupersetGroups = (session: SessionData): { supersets: SupersetGroup[], standalone: ExerciseInSession[] } => {
+    const supersetMap = new Map<string, ExerciseInSession[]>()
+    const standalone: ExerciseInSession[] = []
+    
+    // Group exercises by superset
+    session.exercises.forEach(exercise => {
+      if (exercise.supersetId) {
+        if (!supersetMap.has(exercise.supersetId)) {
+          supersetMap.set(exercise.supersetId, [])
+        }
+        supersetMap.get(exercise.supersetId)!.push(exercise)
+      } else {
+        standalone.push(exercise)
+      }
+    })
+    
+    // Convert to SupersetGroup objects with labels
+    const supersets: SupersetGroup[] = Array.from(supersetMap.entries()).map(([id, exercises], index) => ({
+      id,
+      label: String.fromCharCode(65 + index), // A, B, C, etc.
+      exercises: exercises.sort((a, b) => a.order - b.order),
+      type: 'standard', // Default type, can be enhanced later
+      notes: ''
+    }))
+    
+    return { 
+      supersets: supersets.sort((a, b) => Math.min(...a.exercises.map(e => e.order)) - Math.min(...b.exercises.map(e => e.order))), 
+      standalone: standalone.sort((a, b) => a.order - b.order) 
+    }
+  }
+
+  // Bulk operations for exercises
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>([])
+  
+  const toggleExerciseSelection = (exerciseId: string) => {
+    setSelectedExerciseIds(prev => 
+      prev.includes(exerciseId) 
+        ? prev.filter(id => id !== exerciseId)
+        : [...prev, exerciseId]
+    )
+  }
+
+  const bulkUpdateExercises = (sessionId: string, updates: Partial<ExerciseInSession>) => {
+    if (selectedExerciseIds.length === 0) return
+
+    setPlan(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(session => {
+        if (session.id === sessionId) {
+          return {
+            ...session,
+            exercises: session.exercises.map(ex => 
+              selectedExerciseIds.includes(ex.id) 
+                ? { ...ex, ...updates }
+                : ex
+            )
+          }
+        }
+        return session
+      })
+    }))
+    
+    setSelectedExerciseIds([]) // Clear selection after bulk update
+  }
+
+  const bulkDeleteExercises = (sessionId: string) => {
+    if (selectedExerciseIds.length === 0) return
+
+    setPlan(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(session => {
+        if (session.id === sessionId) {
+          return {
+            ...session,
+            exercises: session.exercises
+              .filter(ex => !selectedExerciseIds.includes(ex.id))
+              .map((ex, index) => ({ ...ex, order: index + 1 }))
+          }
+        }
+        return session
+      })
+    }))
+    
+    setSelectedExerciseIds([]) // Clear selection after deletion
+  }
+
+  const bulkCreateSuperset = (sessionId: string) => {
+    if (selectedExerciseIds.length < 2) return
+
+    createSuperset(sessionId, selectedExerciseIds)
+    setSelectedExerciseIds([]) // Clear selection after creating superset
+  }
+
+  // Enhanced exercise parameter update
+  const updateExerciseParameters = (sessionId: string, exerciseId: string, setIndex: number, parameters: Partial<SetData>) => {
+    setPlan(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(session => {
+        if (session.id === sessionId) {
+          return {
+            ...session,
+            exercises: session.exercises.map(ex => {
+              if (ex.id === exerciseId) {
+                return {
+                  ...ex,
+                  sets: ex.sets.map(set => 
+                    set.setIndex === setIndex 
+                      ? { ...set, ...parameters }
+                      : set
+                  )
+                }
+              }
+              return ex
+            })
+          }
+        }
+        return session
+      })
+    }))
+  }
+
+  // Add new set to exercise
+  const addSetToExercise = (sessionId: string, exerciseId: string) => {
+    setPlan(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(session => {
+        if (session.id === sessionId) {
+          return {
+            ...session,
+            exercises: session.exercises.map(ex => {
+              if (ex.id === exerciseId) {
+                const newSetIndex = ex.sets.length + 1
+                const lastSet = ex.sets[ex.sets.length - 1]
+                
+                return {
+                  ...ex,
+                  sets: [...ex.sets, {
+                    setIndex: newSetIndex,
+                    reps: lastSet?.reps || 10,
+                    weight: lastSet?.weight || 0,
+                    rpe: lastSet?.rpe || 6,
+                    restTime: lastSet?.restTime || 90
+                  }]
+                }
+              }
+              return ex
+            })
+          }
+        }
+        return session
+      })
+    }))
+  }
+
+  // Remove set from exercise
+  const removeSetFromExercise = (sessionId: string, exerciseId: string, setIndex: number) => {
+    setPlan(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(session => {
+        if (session.id === sessionId) {
+          return {
+            ...session,
+            exercises: session.exercises.map(ex => {
+              if (ex.id === exerciseId && ex.sets.length > 1) {
+                return {
+                  ...ex,
+                  sets: ex.sets
+                    .filter(set => set.setIndex !== setIndex)
+                    .map((set, index) => ({ ...set, setIndex: index + 1 }))
+                }
+              }
+              return ex
+            })
           }
         }
         return session
@@ -410,23 +725,77 @@ export function SessionPlanning({
     }
   }
 
-  // Get superset groups for a session
-  const getSupersetGroups = (session: SessionData) => {
-    const supersets = new Map<string, ExerciseInSession[]>()
-    const standalone: ExerciseInSession[] = []
-    
-    session.exercises.forEach(exercise => {
-      if (exercise.supersetId) {
-        if (!supersets.has(exercise.supersetId)) {
-          supersets.set(exercise.supersetId, [])
+  // Set Configuration Modal handling
+  const openSetConfiguration = (exercise: ExerciseInSession) => {
+    setConfigExercise(exercise)
+    setConfigModalOpen(true)
+  }
+
+  const handleSetsUpdate = (updatedSets: SetData[]) => {
+    if (!configExercise || !selectedSession) return
+
+    setPlan(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(session => {
+        if (session.id === selectedSession.id) {
+          return {
+            ...session,
+            exercises: session.exercises.map(ex => 
+              ex.id === configExercise.id 
+                ? { ...ex, sets: updatedSets }
+                : ex
+            )
+          }
         }
-        supersets.get(exercise.supersetId)!.push(exercise)
-      } else {
-        standalone.push(exercise)
-      }
-    })
-    
-    return { supersets: Array.from(supersets.entries()), standalone }
+        return session
+      })
+    }))
+  }
+
+  // Handle template selection and application
+  const handleTemplateSelect = (template: any) => {
+    if (!selectedSession) return
+
+    // Convert template exercises to ExerciseInSession format
+    const templateExercises: ExerciseInSession[] = template.exercises.map((exercise: any, index: number) => ({
+      id: `exercise-${Date.now()}-${index}`,
+      exerciseId: 0, // Placeholder - would need to match with actual exercise DB
+      exercise: {
+        id: 0,
+        name: exercise.name,
+        description: exercise.notes || '',
+        exercise_type_id: 1,
+        unit_id: null,
+        video_url: null
+      },
+      order: index + 1,
+      sets: Array.from({ length: exercise.sets }, (_, setIndex) => ({
+        setIndex: setIndex + 1,
+        reps: parseInt(exercise.reps.split('-')[0]) || 10,
+        weight: exercise.weight ? 0 : undefined, // Placeholder for weight
+        restTime: exercise.rest || 90,
+        rpe: 7 // Default RPE
+      })),
+      notes: exercise.notes || '',
+      restTime: exercise.rest || 90
+    }))
+
+    // Update session with template
+    setPlan(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(session => 
+        session.id === selectedSession.id 
+          ? { 
+              ...session, 
+              name: template.name,
+              description: template.description,
+              exercises: templateExercises,
+              estimatedDuration: template.duration,
+              focus: template.focus
+            }
+          : session
+      )
+    }))
   }
 
   return (
@@ -495,7 +864,7 @@ export function SessionPlanning({
                 <Label>Sessions</Label>
                 <ScrollArea className="h-64">
                   <div className="space-y-2">
-                    {currentWeekSessions.map((session) => (
+                    {currentWeekSessions.map((session: SessionData) => (
                       <Card
                         key={session.id}
                         className={cn(
@@ -522,7 +891,7 @@ export function SessionPlanning({
                             </div>
                             {session.focus.length > 0 && (
                               <div className="flex flex-wrap gap-1">
-                                {session.focus.slice(0, 2).map((focus) => (
+                                {session.focus.slice(0, 2).map((focus: string) => (
                                   <Badge key={focus} variant="secondary" className="text-xs">
                                     {focus}
                                   </Badge>
@@ -565,13 +934,23 @@ export function SessionPlanning({
                       Week {selectedSession.week}, Day {selectedSession.day}
                     </CardDescription>
                   </div>
-                  <Dialog open={isExerciseLibraryOpen} onOpenChange={setIsExerciseLibraryOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        Add Exercise
-                      </Button>
-                    </DialogTrigger>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setTemplateLibraryOpen(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Star className="h-4 w-4" />
+                      Templates
+                    </Button>
+                    
+                    <Dialog open={isExerciseLibraryOpen} onOpenChange={setIsExerciseLibraryOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="flex items-center gap-2">
+                          <Plus className="h-4 w-4" />
+                          Add Exercise
+                        </Button>
+                      </DialogTrigger>
                     <DialogContent className="max-w-4xl max-h-[80vh]">
                       <DialogHeader>
                         <DialogTitle>Exercise Library</DialogTitle>
@@ -654,6 +1033,7 @@ export function SessionPlanning({
                       </div>
                     </DialogContent>
                   </Dialog>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -696,20 +1076,44 @@ export function SessionPlanning({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label>Exercises ({selectedSession.exercises.length})</Label>
-                    {selectedSession.exercises.length > 1 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // Create superset from selected exercises (simplified for demo)
-                          const exerciseIds = selectedSession.exercises.slice(0, 2).map(ex => ex.id)
-                          createSuperset(selectedSession.id, exerciseIds)
-                        }}
-                      >
-                        <Link className="h-4 w-4 mr-2" />
-                        Create Superset
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {selectedExerciseIds.length > 1 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => bulkCreateSuperset(selectedSession.id)}
+                        >
+                          <Link className="h-4 w-4 mr-2" />
+                          Create Superset ({selectedExerciseIds.length})
+                        </Button>
+                      )}
+                      
+                      {selectedExerciseIds.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => bulkDeleteExercises(selectedSession.id)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Selected ({selectedExerciseIds.length})
+                        </Button>
+                      )}
+                      
+                      {selectedSession.exercises.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedExerciseIds(
+                            selectedExerciseIds.length === selectedSession.exercises.length 
+                              ? [] 
+                              : selectedSession.exercises.map(ex => ex.id)
+                          )}
+                        >
+                          {selectedExerciseIds.length === selectedSession.exercises.length ? 'Deselect All' : 'Select All'}
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {selectedSession.exercises.length === 0 ? (
@@ -729,7 +1133,10 @@ export function SessionPlanning({
                             {standalone.map((exercise, index) => (
                               <Card
                                 key={exercise.id}
-                                className="transition-all duration-200 hover:shadow-sm"
+                                className={cn(
+                                  "transition-all duration-200 hover:shadow-sm",
+                                  selectedExerciseIds.includes(exercise.id) && "ring-2 ring-primary border-primary"
+                                )}
                                 draggable
                                 onDragStart={() => handleDragStart(exercise)}
                                 onDragOver={handleDragOver}
@@ -737,35 +1144,61 @@ export function SessionPlanning({
                               >
                                 <CardContent className="p-4">
                                   <div className="flex items-center gap-3">
+                                    <Checkbox
+                                      checked={selectedExerciseIds.includes(exercise.id)}
+                                      onCheckedChange={() => toggleExerciseSelection(exercise.id)}
+                                      className="mt-1"
+                                    />
                                     <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
                                     <div className="flex-1">
                                       <div className="flex items-center justify-between">
-                                        <div>
+                                        <div className="flex-1">
                                           <h4 className="font-medium">{exercise.exercise.name}</h4>
                                           <p className="text-sm text-muted-foreground">
-                                            {exercise.sets.length} sets × {exercise.sets[0]?.reps || 0} reps
+                                            {exercise.sets.length} sets × {exercise.sets[0]?.reps || 'varies'} reps
+                                            {exercise.sets[0]?.weight && ` @ ${exercise.sets[0].weight}kg`}
+                                            {exercise.sets[0]?.rpe && ` RPE ${exercise.sets[0].rpe}`}
                                           </p>
+                                          {exercise.notes && (
+                                            <p className="text-xs text-muted-foreground mt-1">{exercise.notes}</p>
+                                          )}
                                         </div>
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="sm">
-                                              <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent>
-                                            <DropdownMenuItem>
-                                              <Copy className="h-4 w-4 mr-2" />
-                                              Duplicate
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                              onClick={() => removeExerciseFromSession(selectedSession.id, exercise.id)}
-                                              className="text-red-600"
-                                            >
-                                              <Trash2 className="h-4 w-4 mr-2" />
-                                              Remove
-                                            </DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => openSetConfiguration(exercise)}
+                                            title="Configure sets & reps"
+                                          >
+                                            <Target className="h-4 w-4" />
+                                          </Button>
+                                          
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <Button variant="ghost" size="sm">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                              </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                              <DropdownMenuItem onClick={() => addSetToExercise(selectedSession.id, exercise.id)}>
+                                                <Plus className="h-4 w-4 mr-2" />
+                                                Add Set
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem>
+                                                <Copy className="h-4 w-4 mr-2" />
+                                                Duplicate
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem
+                                                onClick={() => removeExerciseFromSession(selectedSession.id, exercise.id)}
+                                                className="text-red-600"
+                                              >
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                Remove
+                                              </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
@@ -774,8 +1207,8 @@ export function SessionPlanning({
                             ))}
 
                             {/* Superset groups */}
-                            {supersets.map(([supersetId, exercises]) => (
-                              <Card key={supersetId} className="border-2 border-dashed border-primary/50">
+                            {supersets.map((superset) => (
+                              <Card key={superset.id} className="border-2 border-dashed border-primary/50">
                                 <CardContent className="p-4">
                                   <div className="space-y-3">
                                     <div className="flex items-center justify-between">
@@ -786,22 +1219,58 @@ export function SessionPlanning({
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => removeSuperset(selectedSession.id, supersetId)}
+                                        onClick={() => removeSuperset(selectedSession.id, superset.id)}
                                       >
                                         <Unlink className="h-4 w-4" />
                                       </Button>
                                     </div>
                                     
-                                    {exercises.map((exercise, index) => (
-                                      <div key={exercise.id} className="flex items-center gap-3 pl-6">
+                                    {superset.exercises.map((exercise: ExerciseInSession, index: number) => (
+                                      <div 
+                                        key={exercise.id} 
+                                        className={cn(
+                                          "flex items-center gap-3 pl-6 p-2 rounded",
+                                          selectedExerciseIds.includes(exercise.id) && "bg-primary/5 ring-1 ring-primary/20"
+                                        )}
+                                      >
+                                        <Checkbox
+                                          checked={selectedExerciseIds.includes(exercise.id)}
+                                          onCheckedChange={() => toggleExerciseSelection(exercise.id)}
+                                          className="mt-1"
+                                        />
                                         <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
                                           {String.fromCharCode(65 + index)}
                                         </div>
                                         <div className="flex-1">
                                           <h4 className="font-medium">{exercise.exercise.name}</h4>
                                           <p className="text-sm text-muted-foreground">
-                                            {exercise.sets.length} sets × {exercise.sets[0]?.reps || 0} reps
+                                            {exercise.sets.length} sets × {exercise.sets[0]?.reps || 'varies'} reps
+                                            {exercise.sets[0]?.weight && ` @ ${exercise.sets[0].weight}kg`}
+                                            {exercise.sets[0]?.rpe && ` RPE ${exercise.sets[0].rpe}`}
                                           </p>
+                                          {exercise.notes && (
+                                            <p className="text-xs text-muted-foreground mt-1">{exercise.notes}</p>
+                                          )}
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => openSetConfiguration(exercise)}
+                                            title="Configure sets & reps"
+                                          >
+                                            <Target className="h-4 w-4" />
+                                          </Button>
+                                          
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => removeExerciseFromSuperset(selectedSession.id, exercise.id)}
+                                            title="Remove from superset"
+                                          >
+                                            <Unlink className="h-4 w-4" />
+                                          </Button>
                                         </div>
                                       </div>
                                     ))}
@@ -841,6 +1310,23 @@ export function SessionPlanning({
           )}
         </motion.div>
       </div>
+
+      {/* Set Configuration Modal */}
+      {configExercise && (
+        <SetConfigurationModal
+          open={configModalOpen}
+          onOpenChange={setConfigModalOpen}
+          exercise={configExercise}
+          onSetsUpdate={handleSetsUpdate}
+        />
+      )}
+
+      {/* Session Template Library */}
+      <SessionTemplateLibrary
+        open={templateLibraryOpen}
+        onOpenChange={setTemplateLibraryOpen}
+        onTemplateSelect={handleTemplateSelect}
+      />
 
       {/* Validation Errors */}
       {Object.keys(errors).length > 0 && (
