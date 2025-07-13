@@ -9,7 +9,14 @@ const { RuleTester } = require('eslint')
 const rule = require('../eslint-rules/no-recreate-supabase')
 
 const ruleTester = new RuleTester({
-  parserOptions: { ecmaVersion: 2020, sourceType: 'module' }
+  parser: '@typescript-eslint/parser',
+  parserOptions: { 
+    ecmaVersion: 2020, 
+    sourceType: 'module',
+    ecmaFeatures: {
+      jsx: true
+    }
+  }
 })
 
 ruleTester.run('no-recreate-supabase', rule, {

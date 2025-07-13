@@ -21,7 +21,13 @@ import {
   BookOpen,
   ChevronRight,
   Info,
-  Sparkles
+  Sparkles,
+  List,
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
+  AlertTriangle
 } from "lucide-react"
 
 // UI Components
@@ -31,7 +37,11 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
+import { cn } from "@/lib/utils"
 
 // Step Components
 import { PlanTypeSelection, type PlanType } from "./plan-type-selection"
@@ -39,7 +49,19 @@ import { PlanConfiguration, type PlanConfiguration as PlanConfigurationType } fr
 import { SessionPlanning, type SessionPlan } from "./session-planning"
 import { PlanReview } from "./plan-review"
 
+// Actions
+import { 
+  getMacrocyclesAction, 
+  getMesocyclesByMacrocycleAction, 
+  getMicrocyclesByMesocycleAction,
+  deleteMacrocycleAction,
+  deleteMesocycleAction,
+  deleteMicrocycleAction
+} from "@/actions/training/training-plan-actions"
+
 // Types
+import { MacrocycleWithDetails, MesocycleWithDetails, MicrocycleWithDetails } from "@/types/training"
+
 interface WizardStep {
   id: string
   title: string
@@ -59,6 +81,14 @@ interface MesoWizardState {
   errors: Record<string, string[]>
   hasUnsavedChanges: boolean
   lastSaved?: Date
+}
+
+interface ExistingPlansState {
+  macrocycles: MacrocycleWithDetails[]
+  mesocycles: MesocycleWithDetails[]
+  microcycles: MicrocycleWithDetails[]
+  isLoading: boolean
+  error: string | null
 }
 
 const WIZARD_STEPS = [
@@ -104,9 +134,232 @@ const ANIMATION_VARIANTS = {
   }
 }
 
+// Error Boundary Component
+function PlanErrorBoundary({ children }: { children: React.ReactNode }) {
+  const [hasError, setHasError] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    const handleError = (error: Error) => {
+      setHasError(true)
+      setError(error)
+    }
+
+    window.addEventListener('error', (e) => handleError(e.error))
+    window.addEventListener('unhandledrejection', (e) => handleError(new Error(e.reason)))
+
+    return () => {
+      window.removeEventListener('error', (e) => handleError(e.error))
+      window.removeEventListener('unhandledrejection', (e) => handleError(new Error(e.reason)))
+    }
+  }, [])
+
+  if (hasError) {
+    return (
+      <div className="max-w-2xl mx-auto p-8">
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            An error occurred while loading the plan wizard. Please refresh the page and try again.
+            {error && (
+              <details className="mt-4 text-sm">
+                <summary>Error Details</summary>
+                <pre className="mt-2 whitespace-pre-wrap">{error.message}</pre>
+              </details>
+            )}
+          </AlertDescription>
+        </Alert>
+        <Button onClick={() => window.location.reload()} variant="outline" className="w-full">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh Page
+        </Button>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
+// Existing Plans Viewer Component
+function ExistingPlansViewer({ existingPlans, onRefresh, onDelete, onEdit }: {
+  existingPlans: ExistingPlansState
+  onRefresh: () => void
+  onDelete: (type: PlanType, id: number) => void
+  onEdit: (type: PlanType, plan: any) => void
+}) {
+  const { toast } = useToast()
+
+  const handleDelete = async (type: PlanType, id: number, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      let result
+      if (type === 'macrocycle') {
+        result = await deleteMacrocycleAction(id)
+      } else if (type === 'mesocycle') {
+        result = await deleteMesocycleAction(id)
+      } else if (type === 'microcycle') {
+        result = await deleteMicrocycleAction(id)
+      }
+
+      if (result?.isSuccess) {
+        toast({
+          title: "Plan Deleted",
+          description: `${name} has been deleted successfully.`,
+          variant: "default"
+        })
+        onRefresh()
+      } else {
+        throw new Error(result?.message || "Failed to delete plan")
+      }
+    } catch (error) {
+      toast({
+        title: "Delete Failed",
+        description: error instanceof Error ? error.message : "Failed to delete plan",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const PlanCard = ({ plan, type }: { plan: any, type: PlanType }) => (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${
+              type === 'macrocycle' ? 'bg-blue-100 text-blue-700' :
+              type === 'mesocycle' ? 'bg-green-100 text-green-700' :
+              'bg-purple-100 text-purple-700'
+            }`}>
+              {type === 'macrocycle' ? <Calendar className="h-4 w-4" /> :
+               type === 'mesocycle' ? <Target className="h-4 w-4" /> :
+               <Clock className="h-4 w-4" />}
+            </div>
+            <div>
+              <CardTitle className="text-lg">{plan.name}</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {new Date(plan.start_date).toLocaleDateString()} - {new Date(plan.end_date).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+          <Badge variant={type === 'macrocycle' ? 'default' : type === 'mesocycle' ? 'secondary' : 'outline'}>
+            {type}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {plan.description && (
+          <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
+        )}
+        <div className="flex justify-between items-center">
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => onEdit(type, plan)}>
+              <Edit className="h-3 w-3 mr-1" />
+              Edit
+            </Button>
+            <Button variant="outline" size="sm">
+              <Eye className="h-3 w-3 mr-1" />
+              View
+            </Button>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleDelete(type, plan.id, plan.name)}
+            className="text-red-600 hover:text-red-700"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  if (existingPlans.isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Your Training Plans</h3>
+          <Button variant="outline" size="sm" disabled>
+            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            Loading...
+          </Button>
+        </div>
+        <div className="grid gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-16 bg-gray-200 rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (existingPlans.error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Failed to load existing plans: {existingPlans.error}
+          <Button variant="outline" size="sm" onClick={onRefresh} className="ml-2">
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  const allPlans = [
+    ...existingPlans.macrocycles.map(p => ({ ...p, type: 'macrocycle' as const })),
+    ...existingPlans.mesocycles.map(p => ({ ...p, type: 'mesocycle' as const })),
+    ...existingPlans.microcycles.map(p => ({ ...p, type: 'microcycle' as const }))
+  ].sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Your Training Plans</h3>
+        <Button variant="outline" size="sm" onClick={onRefresh}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
+      
+      {allPlans.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <Calendar className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">No Training Plans Yet</h3>
+          <p className="text-muted-foreground mb-4">
+            Create your first training plan to get started with structured training.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {allPlans.map((plan) => (
+            <PlanCard key={`${plan.type}-${plan.id}`} plan={plan} type={plan.type} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function MesoWizard() {
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(0)
+  const [activeTab, setActiveTab] = useState<'create' | 'existing'>('create')
   const [wizardState, setWizardState] = useState<MesoWizardState>({
     planType: null,
     configuration: null,
@@ -115,6 +368,89 @@ export function MesoWizard() {
     errors: {},
     hasUnsavedChanges: false
   })
+
+  const [existingPlans, setExistingPlans] = useState<ExistingPlansState>({
+    macrocycles: [],
+    mesocycles: [],
+    microcycles: [],
+    isLoading: false,
+    error: null
+  })
+
+  // Load existing plans
+  const loadExistingPlans = useCallback(async () => {
+    setExistingPlans(prev => ({ ...prev, isLoading: true, error: null }))
+    
+    try {
+      const macrocyclesResult = await getMacrocyclesAction()
+      // For now, only load macrocycles (mesocycles and microcycles would need specific parent IDs)
+
+      setExistingPlans(prev => ({
+        ...prev,
+        macrocycles: macrocyclesResult.isSuccess ? macrocyclesResult.data : [],
+        mesocycles: [], // Would need to load these separately with parent IDs
+        microcycles: [], // Would need to load these separately with parent IDs
+        isLoading: false,
+        error: !macrocyclesResult.isSuccess ? macrocyclesResult.message : null
+      }))
+    } catch (error) {
+      setExistingPlans(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : "Failed to load plans"
+      }))
+    }
+  }, [])
+
+  // Load existing plans on mount
+  useEffect(() => {
+    loadExistingPlans()
+  }, [loadExistingPlans])
+
+  // Handle editing existing plan
+  const handleEditExistingPlan = useCallback((type: PlanType, plan: any) => {
+    setActiveTab('create')
+    setWizardState({
+      planType: type,
+      configuration: {
+        name: plan.name,
+        description: plan.description || '',
+        duration: {
+          weeks: Math.ceil((new Date(plan.end_date).getTime() - new Date(plan.start_date).getTime()) / (7 * 24 * 60 * 60 * 1000)),
+          startDate: plan.start_date,
+          endDate: plan.end_date
+        },
+        intensity: {
+          level: 5,
+          focusAreas: [],
+          primaryGoal: '',
+          secondaryGoals: []
+        },
+        assignment: {
+          type: 'individual',
+          athleteIds: [],
+          groupIds: plan.athlete_group_id ? [plan.athlete_group_id.toString()] : [],
+          isTemplate: false
+        },
+        advanced: {
+          autoProgression: true,
+          deloadWeeks: type === 'macrocycle',
+          customizations: plan.metadata || {}
+        }
+      },
+      sessionPlan: null,
+      isLoading: false,
+      errors: {},
+      hasUnsavedChanges: false
+    })
+    setCurrentStep(1) // Skip plan type selection
+  }, [])
+
+  // Handle deleting existing plan
+  const handleDeleteExistingPlan = useCallback((type: PlanType, id: number) => {
+    // This is handled in the ExistingPlansViewer component
+    loadExistingPlans()
+  }, [loadExistingPlans])
 
   // Auto-save functionality with debouncing
   useEffect(() => {
@@ -168,6 +504,10 @@ export function MesoWizard() {
       if (savedDraft) {
         const draft = JSON.parse(savedDraft)
         if (draft.planType || draft.configuration || draft.sessionPlan) {
+          // Convert lastSaved string back to Date object if it exists
+          if (draft.lastSaved && typeof draft.lastSaved === 'string') {
+            draft.lastSaved = new Date(draft.lastSaved)
+          }
           setWizardState(prev => ({ ...prev, ...draft }))
           toast({
             title: "Draft Restored",
@@ -186,7 +526,180 @@ export function MesoWizard() {
     }
   }, [toast])
 
-  // Enhanced validation for each step with comprehensive checks
+  // Handle final form submission to Supabase
+  const handleSubmit = useCallback(async () => {
+    if (!wizardState.planType || !wizardState.configuration || !wizardState.sessionPlan) {
+      toast({
+        title: "Incomplete Plan",
+        description: "Please complete all steps before submitting.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setWizardState(prev => ({ ...prev, isLoading: true }))
+
+    try {
+      // Import the training plan actions and session plan actions
+      const { 
+        createMacrocycleAction, 
+        createMesocycleAction, 
+        createMicrocycleAction 
+      } = await import("@/actions/training/training-plan-actions")
+      
+      const { 
+        saveSessionPlanAction 
+      } = await import("@/actions/training/session-plan-actions")
+
+      let result
+      const { planType, configuration, sessionPlan } = wizardState
+
+      // Create the appropriate plan type in Supabase using correct schema
+      if (planType === 'macrocycle') {
+        result = await createMacrocycleAction({
+          name: configuration.name,
+          description: configuration.description,
+          start_date: configuration.duration.startDate,
+          end_date: configuration.duration.endDate,
+          athlete_group_id: configuration.assignment.groupIds[0] ? parseInt(configuration.assignment.groupIds[0]) : undefined
+        })
+      } else if (planType === 'mesocycle') {
+        result = await createMesocycleAction({
+          name: configuration.name,
+          description: configuration.description,
+          start_date: configuration.duration.startDate,
+          end_date: configuration.duration.endDate,
+          macrocycle_id: undefined, // Would need parent macrocycle selection
+          metadata: {
+            intensity: configuration.intensity,
+            assignment: configuration.assignment
+          }
+        })
+      } else if (planType === 'microcycle') {
+        result = await createMicrocycleAction({
+          name: configuration.name,
+          description: configuration.description,
+          start_date: configuration.duration.startDate,
+          end_date: configuration.duration.endDate,
+          mesocycle_id: undefined // Would need parent mesocycle selection
+        })
+      }
+
+      if (result?.isSuccess) {
+        let sessionsMessage = ""
+        
+        // Save session plans if they exist
+        if (sessionPlan && sessionPlan.sessions.length > 0) {
+          try {
+            // Convert session plan data to the format expected by the action
+            const sessionPlanData = {
+              name: configuration.name,
+              description: configuration.description,
+              microcycleId: planType === 'microcycle' ? result.data.id : undefined,
+              athleteGroupId: configuration.assignment.groupIds[0] ? parseInt(configuration.assignment.groupIds[0]) : undefined,
+              sessions: sessionPlan.sessions.map(session => ({
+                id: session.id,
+                name: session.name,
+                description: session.description,
+                day: session.day,
+                week: session.week,
+                exercises: session.exercises.map(exercise => ({
+                  id: exercise.id,
+                  exerciseId: exercise.exerciseId,
+                  order: exercise.order,
+                  supersetId: exercise.supersetId,
+                  sets: exercise.sets.map(set => ({
+                    setIndex: set.setIndex,
+                    reps: set.reps,
+                    weight: set.weight,
+                    rpe: set.rpe,
+                    restTime: set.restTime,
+                    distance: set.distance,
+                    duration: set.duration,
+                    power: set.power,
+                    velocity: set.velocity,
+                    effort: set.effort,
+                    height: set.height,
+                    resistance: set.resistance,
+                    resistance_unit_id: set.resistance_unit_id,
+                    tempo: set.tempo,
+                    metadata: set.metadata,
+                    notes: set.notes,
+                    completed: set.completed
+                  })),
+                  notes: exercise.notes,
+                  restTime: exercise.restTime
+                })),
+                estimatedDuration: session.estimatedDuration,
+                focus: session.focus,
+                notes: session.notes
+              }))
+            }
+
+            const sessionResult = await saveSessionPlanAction(sessionPlanData)
+            
+            if (sessionResult.isSuccess) {
+              sessionsMessage = ` with ${sessionResult.data.length} training sessions`
+            } else {
+              console.error('Failed to save session plans:', sessionResult.message)
+              // Don't fail the whole operation, just warn
+              toast({
+                title: "Session Plans Warning",
+                description: "Plan created but some sessions may not have saved correctly.",
+                variant: "destructive"
+              })
+            }
+          } catch (sessionError) {
+            console.error('Error saving session plans:', sessionError)
+            // Don't fail the whole operation
+          }
+        }
+        
+        // Clear draft from localStorage
+        localStorage.removeItem('mesowizard_draft')
+        
+        toast({
+          title: "Plan Created Successfully",
+          description: `Your ${planType} has been created and saved to the database${sessionsMessage}.`,
+          variant: "default"
+        })
+
+        // Reset wizard state
+        setWizardState({
+          planType: null,
+          configuration: null,
+          sessionPlan: null,
+          isLoading: false,
+          errors: {},
+          hasUnsavedChanges: false
+        })
+        setCurrentStep(0)
+        
+        // Refresh existing plans to show the new one
+        await loadExistingPlans()
+      } else {
+        throw new Error(result?.message || "Failed to create plan")
+      }
+    } catch (error) {
+      console.error('Failed to create plan:', error)
+      toast({
+        title: "Plan Creation Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive"
+      })
+    } finally {
+      setWizardState(prev => ({ ...prev, isLoading: false }))
+    }
+  }, [wizardState, toast, loadExistingPlans])
+
+  // Handle editing a specific step
+  const handleEditStep = useCallback((stepIndex: number) => {
+    if (stepIndex >= 0 && stepIndex < WIZARD_STEPS.length) {
+      setCurrentStep(stepIndex)
+    }
+  }, [])
+
+  // Enhanced step validation
   const validateStep = useCallback((stepIndex: number): string[] => {
     const errors: string[] = []
     
@@ -216,6 +729,12 @@ export function MesoWizard() {
           if (!config.duration?.weeks || config.duration.weeks < 1) {
             errors.push('Valid duration is required')
           }
+          if (!config.duration?.startDate) {
+            errors.push('Start date is required')
+          }
+          if (!config.duration?.endDate) {
+            errors.push('End date is required')
+          }
         }
         break
       case 2: // Session Planning
@@ -224,16 +743,38 @@ export function MesoWizard() {
         } else {
           const plan = wizardState.sessionPlan
           const sessionsWithExercises = plan.sessions.filter(s => s.exercises.length > 0)
+          
+          // More lenient validation - at least 1 session required
           if (sessionsWithExercises.length === 0) {
             errors.push('At least one session with exercises is required')
           }
-          if (sessionsWithExercises.length < 2) {
-            errors.push('At least 2 sessions are recommended for an effective plan')
+          
+          // Optional recommendation instead of strict requirement
+          if (sessionsWithExercises.length === 1 && wizardState.configuration?.duration.weeks && wizardState.configuration.duration.weeks > 2) {
+            // Only show warning for longer plans, not error
+            // errors.push('Consider adding more sessions for better training coverage')
           }
+          
+          // Validate each session has proper exercise configuration - more lenient
+          plan.sessions.forEach((session, index) => {
+            if (session.exercises.length > 0) {
+              const invalidExercises = session.exercises.filter(ex => 
+                !ex.sets || ex.sets.length === 0 || 
+                ex.sets.every(set => !set.reps && !set.duration && !set.distance)
+              )
+              if (invalidExercises.length > 0) {
+                errors.push(`Session ${index + 1} has exercises with incomplete set configurations. Please add reps, duration, or distance to each set.`)
+              }
+            }
+          })
         }
         break
-      case 3: // Review
-        // Comprehensive validation happens in the review step
+      case 3: // Review - comprehensive validation
+        // Get all validation errors across all steps
+        for (let i = 0; i < WIZARD_STEPS.length - 1; i++) {
+          const stepErrors = validateStep(i)
+          errors.push(...stepErrors)
+        }
         break
     }
     
@@ -295,92 +836,28 @@ export function MesoWizard() {
     const errors = validateStep(currentStep)
     
     if (errors.length > 0) {
-      setWizardState(prev => ({
-        ...prev,
-        errors: { ...prev.errors, [currentStep]: errors }
+      setWizardState(prev => ({ 
+        ...prev, 
+        errors: { ...prev.errors, [currentStep]: errors } 
       }))
-      
-      toast({
-        title: "Validation Error",
-        description: errors[0],
-        variant: "destructive"
-      })
       return
     }
-
+    
     if (currentStep < WIZARD_STEPS.length - 1) {
       setCurrentStep(prev => prev + 1)
-      setWizardState(prev => ({
-        ...prev,
-        errors: { ...prev.errors, [currentStep]: [] }
+      setWizardState(prev => ({ 
+        ...prev, 
+        errors: { ...prev.errors, [currentStep]: [] } 
       }))
     }
-  }, [currentStep, validateStep, toast])
+  }, [currentStep, validateStep])
 
-  // Handle previous step
+  // Handle previous step navigation
   const handlePrevious = useCallback(() => {
     if (currentStep > 0) {
       setCurrentStep(prev => prev - 1)
     }
   }, [currentStep])
-
-  // Handle final submission with comprehensive validation
-  const handleSubmit = useCallback(async () => {
-    setWizardState(prev => ({ ...prev, isLoading: true }))
-    
-    try {
-      // Validate all steps before submission
-      const allErrors: string[] = []
-      for (let i = 0; i < WIZARD_STEPS.length - 1; i++) {
-        const stepErrors = validateStep(i)
-        allErrors.push(...stepErrors)
-      }
-      
-      if (allErrors.length > 0) {
-        throw new Error(`Validation failed: ${allErrors.join(', ')}`)
-      }
-
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000))
-
-      // Here you would implement the actual submission logic
-      // await submitPlanAction(wizardState)
-      
-      toast({
-        title: "Plan Created Successfully!",
-        description: "Your training plan has been created and saved.",
-        variant: "default"
-      })
-      
-      // Clear draft after successful submission
-      localStorage.removeItem('mesowizard_draft')
-      
-      // Reset wizard state
-      setWizardState({
-        planType: null,
-        configuration: null,
-        sessionPlan: null,
-        isLoading: false,
-        errors: {},
-        hasUnsavedChanges: false
-      })
-      
-    } catch (error) {
-      console.error('Submission failed:', error)
-      toast({
-        title: "Submission Failed",
-        description: error instanceof Error ? error.message : "Failed to create plan. Please try again.",
-        variant: "destructive"
-      })
-    } finally {
-      setWizardState(prev => ({ ...prev, isLoading: false }))
-    }
-  }, [validateStep, toast, wizardState])
-
-  // Handle step editing from review
-  const handleEditStep = useCallback((stepIndex: number) => {
-    setCurrentStep(stepIndex)
-  }, [])
 
   // Render current step content with enhanced error handling
   const renderStepContent = () => {
@@ -533,178 +1010,153 @@ export function MesoWizard() {
           />
         )
       default:
-        return (
-          <div className="text-center py-16 space-y-4">
-            <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-              <BookOpen className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl font-semibold">Coming Soon</h3>
-              <p className="text-muted-foreground max-w-md mx-auto">
-                This step will be implemented in future updates.
-              </p>
-            </div>
-            <Button variant="outline" onClick={handlePrevious} className="mt-4">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Previous
-            </Button>
-          </div>
-        )
+        return null
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Enhanced Header */}
-        <div className="text-center space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="space-y-4"
-          >
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="p-2 bg-primary/10 rounded-full">
-                <Sparkles className="h-6 w-6 text-primary" />
-              </div>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                MesoWizard
-              </h1>
-            </div>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Create comprehensive training plans with intelligent guidance and professional-grade structure
-            </p>
-          </motion.div>
+    <PlanErrorBoundary>
+      <div className="max-w-6xl mx-auto p-6 space-y-8">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'create' | 'existing')}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="create" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Create New Plan
+            </TabsTrigger>
+            <TabsTrigger value="existing" className="flex items-center gap-2">
+              <List className="h-4 w-4" />
+              Existing Plans
+            </TabsTrigger>
+          </TabsList>
           
-          {/* Enhanced status indicators */}
-          <div className="flex items-center justify-center gap-4 text-sm">
-            {wizardState.hasUnsavedChanges && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-800 rounded-full"
-              >
-                <RefreshCw className="h-3 w-3 animate-spin" />
-                <span>Auto-saving...</span>
-              </motion.div>
-            )}
-            {wizardState.lastSaved && (
-              <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full">
-                <Save className="h-3 w-3" />
-                <span>Last saved: {wizardState.lastSaved.toLocaleTimeString()}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Enhanced Progress Section */}
-        <Card className="border-2 border-dashed border-muted-foreground/20">
-          <CardHeader className="pb-4">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="space-y-2">
-                <CardTitle className="text-xl flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  Step {currentStep + 1} of {WIZARD_STEPS.length}
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {WIZARD_STEPS[currentStep].helpText}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="text-sm px-3 py-1">
-                  {Math.round(progressInfo.percentage)}% Complete
-                </Badge>
-                {wizardState.hasUnsavedChanges && (
-                  <Badge variant="secondary" className="text-sm px-3 py-1">
-                    <Save className="h-3 w-3 mr-1" />
-                    Unsaved Changes
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>{progressInfo.completed} completed</span>
-                <span>{progressInfo.remaining} remaining</span>
-              </div>
-              <Progress value={progressInfo.percentage} className="h-3" />
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Enhanced Step Navigation */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {WIZARD_STEPS.map((step, index) => {
-            const Icon = step.icon
-            const isCompleted = index < currentStep
-            const isActive = index === currentStep
-            const hasErrors = wizardState.errors[index]?.length > 0
-            const isAccessible = index <= currentStep
-
-            return (
-              <motion.div
-                key={step.id}
-                initial={{ opacity: 0, y: 10 }}
+          <TabsContent value="create" className="space-y-8">
+            {/* Enhanced Header with Status */}
+            <div className="text-center space-y-4">
+              <motion.h1 
+                className="text-4xl font-bold tracking-tight"
+                initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                className={`group cursor-pointer ${isAccessible ? 'hover:scale-105' : 'cursor-not-allowed'}`}
-                onClick={() => isAccessible && setCurrentStep(index)}
+                transition={{ duration: 0.6 }}
               >
-                <Card className={`transition-all duration-300 ${
-                  isActive 
-                    ? 'ring-2 ring-primary border-primary bg-primary/5 shadow-lg' 
-                    : isCompleted 
-                      ? 'border-green-200 bg-green-50 hover:bg-green-100' 
-                      : hasErrors
-                        ? 'border-red-200 bg-red-50 hover:bg-red-100'
-                        : 'border-muted bg-muted/20 hover:bg-muted/30'
-                }`}>
-                  <CardContent className="p-6 text-center">
-                    <div className="flex flex-col items-center space-y-3">
-                      <div className={`relative p-3 rounded-full transition-all duration-300 ${
-                        isCompleted 
-                          ? 'bg-green-100 text-green-600' 
-                          : isActive 
-                            ? 'bg-primary/15 text-primary' 
-                            : hasErrors
-                              ? 'bg-red-100 text-red-600'
-                              : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {isCompleted ? (
-                          <CheckCircle className="h-6 w-6" />
-                        ) : hasErrors ? (
-                          <AlertCircle className="h-6 w-6" />
-                        ) : (
-                          <Icon className="h-6 w-6" />
-                        )}
-                        {isActive && (
-                          <div className="absolute -inset-1 bg-primary/20 rounded-full animate-pulse" />
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="font-semibold text-sm">{step.title}</h3>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {step.description}
-                        </p>
-                        {isAccessible && (
-                          <div className="flex items-center justify-center text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                            <ChevronRight className="h-3 w-3 mr-1" />
-                            {index < currentStep ? 'Edit' : index === currentStep ? 'Current' : 'Next'}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )
-          })}
-        </div>
+                Create Training Plan
+              </motion.h1>
+              <motion.p 
+                className="text-xl text-muted-foreground max-w-3xl mx-auto"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
+                Design comprehensive training programs with AI-powered insights and evidence-based periodization.
+              </motion.p>
+            </div>
 
-        {/* Enhanced Step Content */}
-        <Card className="border-0 shadow-xl">
-          <CardContent className="p-8 md:p-12">
+            {/* Status and Progress Bar */}
+            <div className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold">Plan Creation</h2>
+                      <p className="text-sm text-muted-foreground">
+                        {progressInfo.completed} of {progressInfo.total} steps completed
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <AnimatePresence mode="wait">
+                    {wizardState.isLoading && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full"
+                      >
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                        <span>Processing...</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  {wizardState.lastSaved && (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full">
+                      <Save className="h-3 w-3" />
+                      <span>Last saved: {new Date(wizardState.lastSaved).toLocaleTimeString()}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Enhanced Progress Section */}
+              <Card className="border-2 border-dashed border-muted-foreground/20">
+                <CardHeader className="pb-4">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="space-y-2">
+                      <CardTitle className="text-xl flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-primary" />
+                        Step {currentStep + 1} of {WIZARD_STEPS.length}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        {WIZARD_STEPS[currentStep]?.helpText}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Progress value={progressInfo.percentage} className="w-32" />
+                      <span className="text-sm font-medium">{Math.round(progressInfo.percentage)}%</span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {WIZARD_STEPS.map((step, index) => (
+                      <div
+                        key={step.id}
+                        className={cn(
+                          "flex items-center gap-3 p-4 rounded-lg transition-all duration-200",
+                          index === currentStep && "bg-primary/5 border-2 border-primary/20",
+                          index < currentStep && "bg-green-50 border-2 border-green-200",
+                          index > currentStep && "bg-muted/50 border-2 border-muted-foreground/20"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                          index === currentStep && "bg-primary text-primary-foreground",
+                          index < currentStep && "bg-green-500 text-white",
+                          index > currentStep && "bg-muted text-muted-foreground"
+                        )}>
+                          {index < currentStep ? (
+                            <CheckCircle className="h-4 w-4" />
+                          ) : (
+                            <step.icon className="h-4 w-4" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn(
+                            "text-sm font-medium truncate",
+                            index === currentStep && "text-primary",
+                            index < currentStep && "text-green-700",
+                            index > currentStep && "text-muted-foreground"
+                          )}>
+                            {step.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {step.description}
+                          </p>
+                        </div>
+                        {index < WIZARD_STEPS.length - 1 && (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Step Content */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentStep}
@@ -712,56 +1164,42 @@ export function MesoWizard() {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                transition={{ duration: 0.4, ease: "easeInOut" }}
+                transition={{ duration: 0.3 }}
               >
                 {renderStepContent()}
               </motion.div>
             </AnimatePresence>
-          </CardContent>
-        </Card>
+          </TabsContent>
 
-        {/* Enhanced Plan Summary */}
-        {wizardState.planType && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="bg-gradient-to-r from-primary/10 via-primary/5 to-secondary/10 rounded-xl p-6 border border-primary/20"
-          >
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <MapPin className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1 space-y-2">
-                <h4 className="font-semibold text-lg">
-                  Current Plan: {wizardState.planType.charAt(0).toUpperCase() + wizardState.planType.slice(1)}
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  {wizardState.configuration && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Info className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Name:</span>
-                        <span>{wizardState.configuration.name || 'Unnamed Plan'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Duration:</span>
-                        <span>{wizardState.configuration.duration.weeks} weeks</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Goal:</span>
-                        <span>{wizardState.configuration.intensity.primaryGoal || 'Not set'}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
+          <TabsContent value="existing" className="space-y-8">
+            <div className="text-center space-y-4">
+              <motion.h1 
+                className="text-4xl font-bold tracking-tight"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+              >
+                Your Training Plans
+              </motion.h1>
+              <motion.p 
+                className="text-xl text-muted-foreground max-w-3xl mx-auto"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
+                Manage and review your existing training plans, or create new ones based on proven templates.
+              </motion.p>
             </div>
-          </motion.div>
-        )}
+
+            <ExistingPlansViewer 
+              existingPlans={existingPlans}
+              onRefresh={loadExistingPlans}
+              onDelete={handleDeleteExistingPlan}
+              onEdit={handleEditExistingPlan}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
-    </div>
+    </PlanErrorBoundary>
   )
 } 

@@ -128,46 +128,102 @@ const validatePlan = (
     details: `${configuration.duration.weeks} weeks (recommended minimum: ${expectedMinDuration})`
   })
 
-  // Session coverage validation
-  const expectedMinSessions = configuration.duration.weeks * 2 // Minimum 2 sessions per week
+  // Session coverage validation - Made more lenient and user-friendly
+  const recommendedMinSessions = configuration.duration.weeks * 1.5 // 1.5 sessions per week (more realistic)
+  const absoluteMinSessions = Math.max(1, Math.floor(configuration.duration.weeks * 0.8)) // At least 1 session, or 80% of weeks
+  
+  let sessionStatus: 'passed' | 'warning' | 'failed' = 'passed'
+  let sessionDetails = `${stats.activeSessions} sessions planned (${stats.avgSessionsPerWeek} per week average)`
+  
+  if (stats.activeSessions < absoluteMinSessions) {
+    sessionStatus = 'failed'
+    sessionDetails = `${stats.activeSessions} sessions planned. Consider adding more sessions for better results (recommended: at least ${Math.ceil(absoluteMinSessions)} sessions)`
+  } else if (stats.activeSessions < recommendedMinSessions) {
+    sessionStatus = 'warning'
+    sessionDetails = `${stats.activeSessions} sessions planned. This is adequate, but ${Math.ceil(recommendedMinSessions)} sessions would be optimal for a ${configuration.duration.weeks}-week plan`
+  } else {
+    sessionDetails = `${stats.activeSessions} sessions planned (${stats.avgSessionsPerWeek} per week average) - Great coverage!`
+  }
+  
   checks.push({
     id: 'session-coverage',
     title: 'Session Coverage',
-    description: 'Adequate number of training sessions',
-    status: stats.activeSessions >= expectedMinSessions ? 'passed' : 
-           stats.activeSessions >= Math.floor(expectedMinSessions * 0.7) ? 'warning' : 'failed',
-    details: `${stats.activeSessions} sessions planned (${stats.avgSessionsPerWeek} per week average)`
+    description: 'Training sessions planned for the duration',
+    status: sessionStatus,
+    details: sessionDetails
   })
 
-  // Exercise variety validation
+  // Exercise variety validation - Made more lenient
+  let varietyStatus: 'passed' | 'warning' | 'failed' = 'passed'
+  let varietyDetails = `${stats.exerciseTypes.length} different exercise types included`
+  
+  if (stats.exerciseTypes.length === 0) {
+    varietyStatus = 'failed'
+    varietyDetails = 'No exercises planned. Add exercises to your sessions'
+  } else if (stats.exerciseTypes.length === 1) {
+    varietyStatus = 'warning'
+    varietyDetails = `${stats.exerciseTypes.length} exercise type included. Consider adding variety for better results`
+  } else {
+    varietyDetails = `${stats.exerciseTypes.length} different exercise types included - Good variety!`
+  }
+  
   checks.push({
     id: 'exercise-variety',
     title: 'Exercise Variety',
     description: 'Diverse exercise selection',
-    status: stats.exerciseTypes.length >= 3 ? 'passed' : 
-           stats.exerciseTypes.length >= 2 ? 'warning' : 'failed',
-    details: `${stats.exerciseTypes.length} different exercise types included`
+    status: varietyStatus,
+    details: varietyDetails
   })
 
-  // Session duration validation
-  const idealMinDuration = 30
-  const idealMaxDuration = 120
+  // Session duration validation - Made more flexible
+  const idealMinDuration = 20 // Reduced from 30
+  const idealMaxDuration = 150 // Increased from 120
   const avgInRange = stats.averageDuration >= idealMinDuration && stats.averageDuration <= idealMaxDuration
+  
+  let durationStatus: 'passed' | 'warning' | 'failed' = 'passed'
+  let durationDetails = `Average session duration: ${stats.averageDuration} minutes`
+  
+  if (stats.averageDuration < idealMinDuration) {
+    durationStatus = 'warning'
+    durationDetails = `Average session duration: ${stats.averageDuration} minutes. Consider extending sessions for better results (recommended: ${idealMinDuration}-${idealMaxDuration}min)`
+  } else if (stats.averageDuration > idealMaxDuration) {
+    durationStatus = 'warning'
+    durationDetails = `Average session duration: ${stats.averageDuration} minutes. Consider shortening sessions to avoid fatigue (recommended: ${idealMinDuration}-${idealMaxDuration}min)`
+  } else {
+    durationDetails = `Average session duration: ${stats.averageDuration} minutes - Perfect timing!`
+  }
+  
   checks.push({
     id: 'session-duration',
     title: 'Session Duration',
     description: 'Sessions have appropriate duration',
-    status: avgInRange ? 'passed' : 'warning',
-    details: `Average session duration: ${stats.averageDuration} minutes (ideal: ${idealMinDuration}-${idealMaxDuration}min)`
+    status: durationStatus,
+    details: durationDetails
   })
 
-  // Goals alignment validation
+  // Goals alignment validation - Made more flexible
+  let goalsStatus: 'passed' | 'warning' | 'failed' = 'passed'
+  let goalsDetails = `Primary goal: ${configuration.intensity.primaryGoal || 'Not specified'}, Focus areas: ${configuration.intensity.focusAreas.length}`
+  
+  if (!configuration.intensity.primaryGoal && configuration.intensity.focusAreas.length === 0) {
+    goalsStatus = 'warning'
+    goalsDetails = 'No specific goals or focus areas set. Consider setting goals for better plan structure'
+  } else if (!configuration.intensity.primaryGoal) {
+    goalsStatus = 'warning'
+    goalsDetails = `${configuration.intensity.focusAreas.length} focus areas set, but no primary goal specified`
+  } else if (configuration.intensity.focusAreas.length === 0) {
+    goalsStatus = 'warning'
+    goalsDetails = `Primary goal: ${configuration.intensity.primaryGoal}, but no focus areas specified`
+  } else {
+    goalsDetails = `Primary goal: ${configuration.intensity.primaryGoal}, Focus areas: ${configuration.intensity.focusAreas.length} - Well defined!`
+  }
+  
   checks.push({
     id: 'goals-alignment',
     title: 'Goals Alignment',
     description: 'Plan aligns with stated goals',
-    status: configuration.intensity.primaryGoal && configuration.intensity.focusAreas.length > 0 ? 'passed' : 'warning',
-    details: `Primary goal: ${configuration.intensity.primaryGoal}, Focus areas: ${configuration.intensity.focusAreas.length}`
+    status: goalsStatus,
+    details: goalsDetails
   })
 
   return checks
@@ -508,7 +564,7 @@ export function PlanReview({
                                     <div className="flex-1">
                                       <div className="font-medium text-sm">{exercise.exercise.name}</div>
                                       <div className="text-xs text-muted-foreground">
-                                        {exercise.sets.length} sets × {exercise.sets[0]?.reps || 0} reps
+                                        {exercise.sets.length} sets × {exercise.sets[0]?.reps || 'varies'} reps
                                         {exercise.supersetId && (
                                           <Badge variant="outline" className="ml-2 text-xs">Superset</Badge>
                                         )}

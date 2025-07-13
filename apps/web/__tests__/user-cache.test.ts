@@ -4,9 +4,10 @@
  * Tests the LRU cache functionality for Clerk user ID → database user ID mapping
  */
 
-// Simple mock approach to avoid complex Jest typing issues
+// Mock the supabase-server module
 const mockSingle = jest.fn()
-const mockSupabaseQuery = {
+
+jest.mock('../lib/supabase-server', () => ({
   from: jest.fn(() => ({
     select: jest.fn(() => ({
       eq: jest.fn(() => ({
@@ -14,10 +15,7 @@ const mockSupabaseQuery = {
       }))
     }))
   }))
-}
-
-// Mock the supabase-server module
-jest.mock('../lib/supabase-server', () => mockSupabaseQuery)
+}))
 
 // Import after mocking
 import { 
@@ -26,6 +24,7 @@ import {
   getCacheStats, 
   clearUserCache 
 } from '../lib/user-cache'
+import supabase from '../lib/supabase-server'
 
 describe('user-cache', () => {
   beforeEach(() => {
@@ -48,7 +47,7 @@ describe('user-cache', () => {
       const result = await getDbUserId(clerkId)
 
       expect(result).toBe(dbUserId)
-      expect(mockSupabaseQuery.from).toHaveBeenCalledWith('users')
+      expect(supabase.from).toHaveBeenCalledWith('users')
       expect(mockSingle).toHaveBeenCalledTimes(1)
     })
 

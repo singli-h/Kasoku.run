@@ -26,8 +26,7 @@ import {
   Dumbbell,
   MoreHorizontal,
   Copy,
-  Trash2,
-  Star
+  Trash2
 } from "lucide-react"
 
 // UI Components
@@ -48,7 +47,6 @@ import { cn } from "@/lib/utils"
 
 // Components
 import { SetConfigurationModal } from "./set-configuration-modal"
-import { SessionTemplateLibrary } from "./session-template-library"
 
 // Types
 import type { PlanType } from "./plan-type-selection"
@@ -200,9 +198,6 @@ export function SessionPlanning({
   // Set Configuration Modal state
   const [configModalOpen, setConfigModalOpen] = useState(false)
   const [configExercise, setConfigExercise] = useState<ExerciseInSession | null>(null)
-  
-  // Session Template Library state
-  const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false)
 
   // Initialize session plan
   const [plan, setPlan] = useState<SessionPlan>(() => {
@@ -343,11 +338,11 @@ export function SessionPlanning({
             exerciseId: exercise.id,
             exercise,
             order: session.exercises.length + 1,
-            sets: [
-              { setIndex: 1, reps: 10, weight: 0, rpe: 6, restTime: 90 },
-              { setIndex: 2, reps: 10, weight: 0, rpe: 7, restTime: 90 },
-              { setIndex: 3, reps: 10, weight: 0, rpe: 8, restTime: 90 }
-            ],
+                  sets: [
+        { setIndex: 1, reps: 10, rpe: 6, restTime: 90 },
+        { setIndex: 2, reps: 10, rpe: 7, restTime: 90 },
+        { setIndex: 3, reps: 10, rpe: 8, restTime: 90 }
+      ],
             notes: '',
             restTime: 90
           }
@@ -609,7 +604,7 @@ export function SessionPlanning({
                   sets: [...ex.sets, {
                     setIndex: newSetIndex,
                     reps: lastSet?.reps || 10,
-                    weight: lastSet?.weight || 0,
+                    weight: lastSet?.weight || undefined, // Leave weight empty instead of defaulting to 0
                     rpe: lastSet?.rpe || 6,
                     restTime: lastSet?.restTime || 90
                   }]
@@ -752,51 +747,7 @@ export function SessionPlanning({
     }))
   }
 
-  // Handle template selection and application
-  const handleTemplateSelect = (template: any) => {
-    if (!selectedSession) return
 
-    // Convert template exercises to ExerciseInSession format
-    const templateExercises: ExerciseInSession[] = template.exercises.map((exercise: any, index: number) => ({
-      id: `exercise-${Date.now()}-${index}`,
-      exerciseId: 0, // Placeholder - would need to match with actual exercise DB
-      exercise: {
-        id: 0,
-        name: exercise.name,
-        description: exercise.notes || '',
-        exercise_type_id: 1,
-        unit_id: null,
-        video_url: null
-      },
-      order: index + 1,
-      sets: Array.from({ length: exercise.sets }, (_, setIndex) => ({
-        setIndex: setIndex + 1,
-        reps: parseInt(exercise.reps.split('-')[0]) || 10,
-        weight: exercise.weight ? 0 : undefined, // Placeholder for weight
-        restTime: exercise.rest || 90,
-        rpe: 7 // Default RPE
-      })),
-      notes: exercise.notes || '',
-      restTime: exercise.rest || 90
-    }))
-
-    // Update session with template
-    setPlan(prev => ({
-      ...prev,
-      sessions: prev.sessions.map(session => 
-        session.id === selectedSession.id 
-          ? { 
-              ...session, 
-              name: template.name,
-              description: template.description,
-              exercises: templateExercises,
-              estimatedDuration: template.duration,
-              focus: template.focus
-            }
-          : session
-      )
-    }))
-  }
 
   return (
     <div className={cn("space-y-8", className)}>
@@ -935,15 +886,6 @@ export function SessionPlanning({
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setTemplateLibraryOpen(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <Star className="h-4 w-4" />
-                      Templates
-                    </Button>
-                    
                     <Dialog open={isExerciseLibraryOpen} onOpenChange={setIsExerciseLibraryOpen}>
                       <DialogTrigger asChild>
                         <Button className="flex items-center gap-2">
@@ -1321,12 +1263,7 @@ export function SessionPlanning({
         />
       )}
 
-      {/* Session Template Library */}
-      <SessionTemplateLibrary
-        open={templateLibraryOpen}
-        onOpenChange={setTemplateLibraryOpen}
-        onTemplateSelect={handleTemplateSelect}
-      />
+
 
       {/* Validation Errors */}
       {Object.keys(errors).length > 0 && (

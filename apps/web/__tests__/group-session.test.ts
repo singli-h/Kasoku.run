@@ -3,7 +3,7 @@
  * Unit tests for group session logging functionality
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from '@jest/globals'
 
 describe('Session Utils', () => {
   describe('buildPerformancePayload', () => {

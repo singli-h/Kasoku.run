@@ -72,10 +72,10 @@ const TIME_UNITS = [
 
 // Preset templates for common exercise types
 const SET_TEMPLATES = {
-  strength: { reps: 5, weight: 0, rpe: 8, restTime: 180 },
-  hypertrophy: { reps: 10, weight: 0, rpe: 7, restTime: 90 },
-  endurance: { reps: 15, weight: 0, rpe: 6, restTime: 60 },
-  power: { reps: 3, weight: 0, rpe: 9, restTime: 240, power: 0 },
+  strength: { reps: 5, rpe: 8, restTime: 180 },
+  hypertrophy: { reps: 10, rpe: 7, restTime: 90 },
+  endurance: { reps: 15, rpe: 6, restTime: 60 },
+  power: { reps: 3, rpe: 9, restTime: 240 },
   cardio: { duration: 300, distance: 1000, effort: 70, restTime: 120 }
 }
 
@@ -95,7 +95,7 @@ export function SetConfigurationModal({
     const newSet: SetData = {
       setIndex: sets.length + 1,
       reps: sets[sets.length - 1]?.reps || 10,
-      weight: sets[sets.length - 1]?.weight || 0,
+      weight: sets[sets.length - 1]?.weight || undefined, // Leave weight empty instead of defaulting to 0
       rpe: sets[sets.length - 1]?.rpe || 7,
       restTime: sets[sets.length - 1]?.restTime || 90
     }
@@ -263,8 +263,9 @@ export function SetConfigurationModal({
                             <Input
                               type="number"
                               value={set.reps || ''}
-                              onChange={(e) => updateSetParameter(set.setIndex, 'reps', parseInt(e.target.value) || 0)}
+                              onChange={(e) => updateSetParameter(set.setIndex, 'reps', e.target.value ? parseInt(e.target.value) : undefined)}
                               className="h-8"
+                              placeholder="1-20"
                             />
                           </div>
                           
@@ -274,8 +275,9 @@ export function SetConfigurationModal({
                               type="number"
                               step="0.5"
                               value={set.weight || ''}
-                              onChange={(e) => updateSetParameter(set.setIndex, 'weight', parseFloat(e.target.value) || 0)}
+                              onChange={(e) => updateSetParameter(set.setIndex, 'weight', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"
+                              placeholder="kg/lbs"
                             />
                           </div>
                           
@@ -352,7 +354,7 @@ export function SetConfigurationModal({
                             <Input
                               type="number"
                               value={set.power || ''}
-                              onChange={(e) => updateSetParameter(set.setIndex, 'power', parseFloat(e.target.value) || 0)}
+                              onChange={(e) => updateSetParameter(set.setIndex, 'power', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="Watts"
                             />
@@ -367,7 +369,7 @@ export function SetConfigurationModal({
                               type="number"
                               step="0.1"
                               value={set.velocity || ''}
-                              onChange={(e) => updateSetParameter(set.setIndex, 'velocity', parseFloat(e.target.value) || 0)}
+                              onChange={(e) => updateSetParameter(set.setIndex, 'velocity', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="m/s"
                             />
@@ -394,7 +396,7 @@ export function SetConfigurationModal({
                             <Input
                               type="number"
                               value={set.resistance || ''}
-                              onChange={(e) => updateSetParameter(set.setIndex, 'resistance', parseFloat(e.target.value) || 0)}
+                              onChange={(e) => updateSetParameter(set.setIndex, 'resistance', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="Band/Cable"
                             />
@@ -405,7 +407,7 @@ export function SetConfigurationModal({
                             <Input
                               type="number"
                               value={set.height || ''}
-                              onChange={(e) => updateSetParameter(set.setIndex, 'height', parseFloat(e.target.value) || 0)}
+                              onChange={(e) => updateSetParameter(set.setIndex, 'height', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="cm/inches"
                             />
@@ -447,7 +449,7 @@ export function SetConfigurationModal({
                             <Input
                               type="number"
                               value={set.duration || ''}
-                              onChange={(e) => updateSetParameter(set.setIndex, 'duration', parseInt(e.target.value) || 0)}
+                              onChange={(e) => updateSetParameter(set.setIndex, 'duration', e.target.value ? parseInt(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="Seconds"
                             />
@@ -458,7 +460,7 @@ export function SetConfigurationModal({
                             <Input
                               type="number"
                               value={set.distance || ''}
-                              onChange={(e) => updateSetParameter(set.setIndex, 'distance', parseFloat(e.target.value) || 0)}
+                              onChange={(e) => updateSetParameter(set.setIndex, 'distance', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="Meters"
                             />

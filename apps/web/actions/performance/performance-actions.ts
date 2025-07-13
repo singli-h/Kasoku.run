@@ -44,7 +44,6 @@ const iconMap: { [key: string]: React.ElementType } = {
   Medal: Medal,
 }
 
-// TODO: Implement the actual logic for fetching data from Supabase in the RPC function
 export async function getComparativePerformanceDataAction(
   athleteId: string
 ): Promise<

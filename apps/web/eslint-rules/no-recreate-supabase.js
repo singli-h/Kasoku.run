@@ -8,7 +8,7 @@
  * for better performance and consistency.
  */
 
-export default {
+module.exports = {
   meta: {
     type: 'problem',
     docs: {
