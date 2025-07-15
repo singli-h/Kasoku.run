@@ -14,7 +14,9 @@ import {
   TrendingUp,
   Settings,
   Target,
-  BookOpen
+  BookOpen,
+  Trophy,
+  PlayCircle
 } from "lucide-react"
 import * as React from "react"
 import { usePathname } from "next/navigation"
@@ -27,6 +29,7 @@ import {
   SidebarRail
 } from "@/components/ui/sidebar"
 import { NavMain } from "./nav-main"
+import { NavProjects } from "./nav-projects"
 import { TeamSwitcher } from "./team-switcher"
 
 // Kasoku running/fitness navigation data
@@ -47,9 +50,9 @@ const navItems = [
     icon: BookOpen
   },
   {
-    title: "Training Plans",
-    url: "/plans",
-    icon: Calendar
+    title: "Performance",
+    url: "/performance",
+    icon: TrendingUp
   },
   {
     title: "Athletes",
@@ -57,14 +60,28 @@ const navItems = [
     icon: Users
   },
   {
-    title: "Performance",
-    url: "/performance",
-    icon: TrendingUp
-  },
-  {
     title: "Settings",
     url: "/settings",
     icon: Settings
+  }
+]
+
+// Training-specific navigation items
+const trainingItems = [
+  {
+    name: "Training Plans",
+    url: "/plans",
+    icon: Calendar
+  },
+  {
+    name: "Templates",
+    url: "/templates",
+    icon: Trophy
+  },
+  {
+    name: "Sessions",
+    url: "/sessions",
+    icon: PlayCircle
   }
 ]
 
@@ -92,6 +109,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navItemsWithActive} />
+        <NavProjects projects={trainingItems} />
       </SidebarContent>
       <SidebarFooter>
         {/* User controls in header for better UX */}

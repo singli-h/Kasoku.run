@@ -5,20 +5,22 @@ Organizes exports by functional area for clean imports throughout the app.
 </ai_context>
 */
 
-// Training Plan Actions (Macrocycles, Mesocycles, Microcycles)
-export * from './training-plan-actions'
-
-// Exercise Library and Preset Actions
-export * from './exercise-actions'
-
-// Athlete and Group Management Actions
-export * from './athlete-actions'
-
-// Coach Profile Management Actions
-export * from './coach-actions'
-
-// Training Session and Performance Tracking Actions
-export * from './training-session-actions'
+// Re-export all training actions for convenient imports
+export {
+  // Session plan actions
+  saveSessionPlanAction,
+  getSessionPlansByMicrocycleAction,
+  updateSessionPlanAction,
+  deleteSessionPlanAction,
+  copySessionPlanAction,
+  getTrainingPlansAction,
+  
+  // Template actions
+  saveAsTemplateAction,
+  getTemplatesAction,
+  createPlanFromTemplateAction,
+  deleteTemplateAction
+} from './session-plan-actions'
 
 // Re-export specific action groups for convenience
 export {
@@ -47,10 +49,10 @@ export {
   copyMacrocycleAsTemplateAction
 } from './training-plan-actions'
 
+// Re-export exercise actions
 export {
   // Exercise library actions
   getExercisesAction,
-  getExercisesByTagsAction,
   getExerciseByIdAction,
   createExerciseAction,
   updateExerciseAction,
@@ -58,82 +60,38 @@ export {
   
   // Exercise type actions
   getExerciseTypesAction,
-  createExerciseTypeAction,
   
-  // Tag management actions
+  // Tag actions
   getTagsAction,
-  createTagAction,
-  addTagsToExerciseAction,
-  removeTagsFromExerciseAction,
   
-  // Unit management actions
+  // Unit actions
   getUnitsAction,
-  createUnitAction,
   
-  // Import/export actions
-  exportExercisesAction,
-  importExercisesAction,
-  
-  // Exercise preset group actions
+  // Preset group actions
   createExercisePresetGroupAction,
   getExercisePresetGroupsByMicrocycleAction,
-  getExercisePresetGroupByIdAction,
-  addExerciseToPresetGroupAction,
   updateExercisePresetGroupAction,
   deleteExercisePresetGroupAction,
   
-  // Exercise preset detail actions
-  addExercisePresetDetailsAction,
-  updateExercisePresetDetailsAction,
-  removeExercisePresetDetailsAction,
-  
-  // Session progression and adaptation actions
-  applyProgressionToPresetAction,
-  copySessionWithAdaptationsAction,
-  
-  // Session analytics actions
-  getSessionCountAnalyticsAction
+  // Session copying with adaptations
+  copySessionWithAdaptationsAction
 } from './exercise-actions'
 
+// Re-export training session actions
 export {
-  // Athlete profile actions
-  getCurrentAthleteProfileAction,
-  createOrUpdateAthleteProfileAction,
-  getAthletesByGroupAction,
-  getAthleteByIdAction,
-  
-  // Athlete group actions
-  getCoachAthleteGroupsAction,
-  createAthleteGroupAction,
-  updateAthleteGroupAction,
-  assignAthleteToGroupAction,
-  removeAthleteFromGroupAction,
-  deleteAthleteGroupAction
-} from './athlete-actions'
-
-export {
-  // Coach profile actions
-  getCurrentCoachProfileAction,
-  createOrUpdateCoachProfileAction,
-  updateCoachProfileAction,
-  getCoachProfileAction,
-  getCoachProfileWithDetailsAction,
-  updateCoachSpecializationAction
-} from './coach-actions'
-
-export {
-  // Training session actions
   startTrainingSessionAction,
   getTrainingSessionsAction,
   getTrainingSessionByIdAction,
-  updateTrainingSessionAction,
-  completeTrainingSessionAction,
-  
-  // Exercise performance actions
-  addExercisePerformanceAction,
-  updateExercisePerformanceAction,
-  
-  // Analytics actions
-  getPerformanceMetricsAction,
-  getExerciseProgressAction
-} from './training-session-actions' 
+  updateTrainingSessionAction
+} from './training-session-actions'
+
+// Re-export coach actions
+export {
+  getCurrentCoachProfileAction
+} from './coach-actions'
+
+// Re-export group session actions
+export {
+  createLiveSessionAction,
+  logGroupPerformanceAction
+} from './group-session-actions' 

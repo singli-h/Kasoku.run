@@ -29,6 +29,8 @@ import {
   Trash2,
   type LucideIcon
 } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 export function NavProjects({
   projects
@@ -40,18 +42,19 @@ export function NavProjects({
   }[]
 }) {
   const { isMobile } = useSidebar()
+  const pathname = usePathname()
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Projects</SidebarGroupLabel>
+      <SidebarGroupLabel>Training</SidebarGroupLabel>
       <SidebarMenu>
         {projects.map(item => (
           <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton asChild>
-              <a href={item.url}>
+            <SidebarMenuButton asChild isActive={pathname === item.url || pathname.startsWith(item.url + '/')}>
+              <Link href={item.url}>
                 <item.icon />
                 <span>{item.name}</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -67,27 +70,21 @@ export function NavProjects({
               >
                 <DropdownMenuItem>
                   <Folder className="text-muted-foreground" />
-                  <span>View Project</span>
+                  <span>View {item.name}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Forward className="text-muted-foreground" />
-                  <span>Share Project</span>
+                  <span>Share {item.name}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <Trash2 className="text-muted-foreground" />
-                  <span>Delete Project</span>
+                  <span>Manage {item.name}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
         ))}
-        <SidebarMenuItem>
-          <SidebarMenuButton className="text-sidebar-foreground/70">
-            <MoreHorizontal className="text-sidebar-foreground/70" />
-            <span>More</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>
   )

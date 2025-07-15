@@ -1,13 +1,13 @@
 "use server"
 
 import { Suspense } from "react"
-import { MesoWizard } from "@/components/features/plans"
+import { TrainingPlansPage } from "@/components/features/plans/components/training-plans-page"
 
 export default async function PlansPage() {
   return (
     <div className="flex-1">
       <Suspense fallback={<PlansPageSkeleton />}>
-        <MesoWizard />
+        <TrainingPlansPage />
       </Suspense>
     </div>
   )
@@ -21,15 +21,13 @@ function PlansPageSkeleton() {
         <div className="h-6 bg-gray-200 rounded w-96 mx-auto animate-pulse" />
       </div>
       
-      <div className="h-24 bg-gray-200 rounded animate-pulse" />
+      <div className="h-12 bg-gray-200 rounded animate-pulse" />
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-32 bg-gray-200 rounded animate-pulse" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="h-48 bg-gray-200 rounded animate-pulse" />
         ))}
       </div>
-      
-      <div className="h-96 bg-gray-200 rounded animate-pulse" />
     </div>
   )
 } 

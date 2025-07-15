@@ -396,6 +396,7 @@ export type Database = {
           deleted: boolean | null
           description: string | null
           id: number
+          is_template: boolean | null
           microcycle_id: number | null
           name: string
           session_mode: string
@@ -411,6 +412,7 @@ export type Database = {
           deleted?: boolean | null
           description?: string | null
           id?: number
+          is_template?: boolean | null
           microcycle_id?: number | null
           name: string
           session_mode?: string
@@ -426,6 +428,7 @@ export type Database = {
           deleted?: boolean | null
           description?: string | null
           id?: number
+          is_template?: boolean | null
           microcycle_id?: number | null
           name?: string
           session_mode?: string

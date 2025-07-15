@@ -47,6 +47,7 @@ import { cn } from "@/lib/utils"
 import { PlanTypeSelection, type PlanType } from "./plan-type-selection"
 import { PlanConfiguration, type PlanConfiguration as PlanConfigurationType } from "./plan-configuration"
 import { SessionPlanning, type SessionPlan } from "./session-planning"
+import { PlanAssignment, type PlanAssignment as PlanAssignmentType } from "./plan-assignment"
 import { PlanReview } from "./plan-review"
 
 // Actions
@@ -77,6 +78,7 @@ interface MesoWizardState {
   planType: PlanType | null
   configuration: PlanConfigurationType | null
   sessionPlan: SessionPlan | null
+  assignment: PlanAssignmentType | null
   isLoading: boolean
   errors: Record<string, string[]>
   hasUnsavedChanges: boolean
@@ -112,6 +114,13 @@ const WIZARD_STEPS = [
     description: 'Design your training sessions',
     icon: Users,
     helpText: 'Create detailed training sessions with exercises and progressions.'
+  },
+  {
+    id: 'assignment',
+    title: 'Assignment',
+    description: 'Assign plan to athletes or groups',
+    icon: MapPin,
+    helpText: 'Choose which athletes or groups will receive this training plan.'
   },
   {
     id: 'review',
@@ -364,6 +373,7 @@ export function MesoWizard() {
     planType: null,
     configuration: null,
     sessionPlan: null,
+    assignment: null,
     isLoading: false,
     errors: {},
     hasUnsavedChanges: false
@@ -439,6 +449,7 @@ export function MesoWizard() {
         }
       },
       sessionPlan: null,
+      assignment: null,
       isLoading: false,
       errors: {},
       hasUnsavedChanges: false
@@ -528,7 +539,7 @@ export function MesoWizard() {
 
   // Handle final form submission to Supabase
   const handleSubmit = useCallback(async () => {
-    if (!wizardState.planType || !wizardState.configuration || !wizardState.sessionPlan) {
+    if (!wizardState.planType || !wizardState.configuration || !wizardState.sessionPlan || !wizardState.assignment) {
       toast({
         title: "Incomplete Plan",
         description: "Please complete all steps before submitting.",
@@ -552,7 +563,7 @@ export function MesoWizard() {
       } = await import("@/actions/training/session-plan-actions")
 
       let result
-      const { planType, configuration, sessionPlan } = wizardState
+      const { planType, configuration, sessionPlan, assignment } = wizardState
 
       // Create the appropriate plan type in Supabase using correct schema
       if (planType === 'macrocycle') {
@@ -596,7 +607,9 @@ export function MesoWizard() {
               name: configuration.name,
               description: configuration.description,
               microcycleId: planType === 'microcycle' ? result.data.id : undefined,
-              athleteGroupId: configuration.assignment.groupIds[0] ? parseInt(configuration.assignment.groupIds[0]) : undefined,
+              athleteGroupId: assignment.type === 'group' ? assignment.groupId : undefined,
+              athleteIds: assignment.type === 'individual' ? assignment.athleteIds : undefined,
+              isTemplate: assignment.isTemplate,
               sessions: sessionPlan.sessions.map(session => ({
                 id: session.id,
                 name: session.name,
@@ -669,6 +682,7 @@ export function MesoWizard() {
           planType: null,
           configuration: null,
           sessionPlan: null,
+          assignment: null,
           isLoading: false,
           errors: {},
           hasUnsavedChanges: false
@@ -769,7 +783,19 @@ export function MesoWizard() {
           })
         }
         break
-      case 3: // Review - comprehensive validation
+      case 3: // Assignment validation
+        if (!wizardState.assignment) {
+          errors.push('Please select an assignment option')
+        } else {
+          const assignment = wizardState.assignment
+          if (assignment.type === 'group' && !assignment.groupId) {
+            errors.push('Please select a group to assign the plan to')
+          } else if (assignment.type === 'individual' && assignment.athleteIds.length === 0) {
+            errors.push('Please select at least one athlete to assign the plan to')
+          }
+        }
+        break
+      case 4: // Review - comprehensive validation
         // Get all validation errors across all steps
         for (let i = 0; i < WIZARD_STEPS.length - 1; i++) {
           const stepErrors = validateStep(i)
@@ -828,6 +854,16 @@ export function MesoWizard() {
       sessionPlan, 
       hasUnsavedChanges: true,
       errors: { ...prev.errors, sessionPlan: [] }
+    }))
+  }, [])
+
+  // Handle assignment changes with validation
+  const handleAssignmentChange = useCallback((assignment: PlanAssignmentType) => {
+    setWizardState(prev => ({ 
+      ...prev, 
+      assignment, 
+      hasUnsavedChanges: true,
+      errors: { ...prev.errors, assignment: [] }
     }))
   }, [])
 
@@ -986,6 +1022,48 @@ export function MesoWizard() {
                 <AlertCircle className="h-8 w-8 text-muted-foreground" />
               </div>
               <div className="space-y-2">
+                <h3 className="text-xl font-semibold">Previous Steps Required</h3>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  Plan type, configuration, and session planning are required for assignment.
+                </p>
+              </div>
+              <Button variant="outline" onClick={handlePrevious} className="mt-4">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Go Back
+              </Button>
+            </div>
+          )
+        }
+        
+        return (
+          <div className="space-y-6">
+            {stepErrors.length > 0 && (
+              <Alert variant="destructive" className="animate-in slide-in-from-top-1">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <ul className="space-y-1">
+                    {stepErrors.map((error, index) => (
+                      <li key={index}>{error}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+            <PlanAssignment
+              assignment={wizardState.assignment}
+              onAssignmentChange={handleAssignmentChange}
+              {...commonProps}
+            />
+          </div>
+        )
+      case 4:
+        if (!wizardState.planType || !wizardState.configuration || !wizardState.sessionPlan || !wizardState.assignment) {
+          return (
+            <div className="text-center py-16 space-y-4">
+              <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                <AlertCircle className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="space-y-2">
                 <h3 className="text-xl font-semibold">Complete All Steps</h3>
                 <p className="text-muted-foreground max-w-md mx-auto">
                   All previous steps must be completed before reviewing your plan.
@@ -1002,6 +1080,7 @@ export function MesoWizard() {
           <PlanReview
             planType={wizardState.planType}
             configuration={wizardState.configuration}
+            assignment={wizardState.assignment}
             sessionPlan={wizardState.sessionPlan}
             onSubmit={handleSubmit}
             onPrevious={handlePrevious}

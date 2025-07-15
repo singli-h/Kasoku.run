@@ -71,6 +71,8 @@ export interface CreateSessionPlanForm {
   description?: string
   microcycleId?: number
   athleteGroupId?: number
+  athleteIds?: number[]
+  isTemplate?: boolean
   sessions: SessionPlanData[]
 }
 
@@ -107,10 +109,11 @@ export async function saveSessionPlanAction(
         date: new Date().toISOString().split('T')[0], // Current date, can be updated later
         day: session.day,
         week: session.week,
-        session_mode: planData.athleteGroupId ? 'group' : 'individual',
+        session_mode: planData.isTemplate ? 'template' : (planData.athleteGroupId ? 'group' : 'individual'),
         microcycle_id: planData.microcycleId || null,
-        athlete_group_id: planData.athleteGroupId || null,
-        user_id: dbUserId
+        athlete_group_id: planData.isTemplate ? null : (planData.athleteGroupId || null),
+        user_id: planData.isTemplate ? null : dbUserId,
+        is_template: planData.isTemplate || false
       }
 
       const { data: savedSession, error: sessionError } = await supabase
@@ -182,9 +185,33 @@ export async function saveSessionPlanAction(
       savedSessions.push(savedSession)
     }
 
+    // Create exercise_training_sessions for individual assignments
+    if (planData.athleteIds && planData.athleteIds.length > 0 && !planData.isTemplate) {
+      for (const athleteId of planData.athleteIds) {
+        for (const savedSession of savedSessions) {
+          const trainingSessionData = {
+            exercise_preset_group_id: savedSession.id,
+            athlete_id: athleteId,
+            date_time: new Date().toISOString(),
+            notes: null,
+            status: 'planned' as const
+          }
+
+          const { error: trainingSessionError } = await supabase
+            .from('exercise_training_sessions')
+            .insert(trainingSessionData)
+
+          if (trainingSessionError) {
+            console.error('Error creating training session:', trainingSessionError)
+            // Continue with other assignments instead of failing completely
+          }
+        }
+      }
+    }
+
     return {
       isSuccess: true,
-      message: `Successfully saved ${savedSessions.length} sessions`,
+      message: `Successfully saved ${savedSessions.length} sessions${planData.athleteIds ? ` and assigned to ${planData.athleteIds.length} athletes` : ''}`,
       data: savedSessions
     }
   } catch (error) {
@@ -212,6 +239,7 @@ export async function getSessionPlansByMicrocycleAction(
       }
     }
 
+    // Get database user ID once at the top
     const dbUserId = await getDbUserId(userId)
 
     const { data: presetGroups, error } = await supabase
@@ -226,6 +254,7 @@ export async function getSessionPlansByMicrocycleAction(
       `)
       .eq('microcycle_id', microcycleId)
       .eq('user_id', dbUserId)
+      .eq('deleted', false)
       .order('week', { ascending: true })
       .order('day', { ascending: true })
 
@@ -528,6 +557,489 @@ export async function copySessionPlanAction(
     }
   } catch (error) {
     console.error('Error in copySessionPlanAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+} 
+
+/**
+ * Get all training plans for the current user (coach)
+ * Returns plans created by the coach or belonging to their athlete groups
+ */
+export async function getTrainingPlansAction(): Promise<ActionState<ExercisePresetGroup[]>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID once at the top
+    const dbUserId = await getDbUserId(userId)
+
+    const { data: plans, error } = await supabase
+      .from('exercise_preset_groups')
+      .select(`
+        *,
+        athlete_groups(
+          id,
+          group_name,
+          coach_id
+        ),
+        microcycles(
+          id,
+          name,
+          start_date,
+          end_date,
+          mesocycles(
+            id,
+            name,
+            macrocycles(
+              id,
+              name
+            )
+          )
+        )
+      `)
+      .eq('user_id', dbUserId)
+      .eq('deleted', false)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching training plans:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch training plans: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Training plans fetched successfully",
+      data: plans || []
+    }
+  } catch (error) {
+    console.error('Error in getTrainingPlansAction:', error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "An unexpected error occurred"
+    }
+  }
+} 
+
+/**
+ * Assign an existing plan to individual athletes
+ * Creates exercise_training_sessions for each athlete
+ */
+export async function assignPlanToAthletesAction(
+  planId: number,
+  athleteIds: number[]
+): Promise<ActionState<any>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Get the plan sessions
+    const { data: sessions, error: sessionsError } = await supabase
+      .from('exercise_preset_groups')
+      .select('*')
+      .eq('id', planId)
+      .eq('user_id', dbUserId)
+
+    if (sessionsError || !sessions || sessions.length === 0) {
+      return {
+        isSuccess: false,
+        message: "Plan not found or access denied"
+      }
+    }
+
+    // Create exercise_training_sessions for each athlete
+    const trainingSessionsData = []
+    for (const athleteId of athleteIds) {
+      for (const session of sessions) {
+        trainingSessionsData.push({
+          exercise_preset_group_id: session.id,
+          athlete_id: athleteId,
+          date_time: new Date().toISOString(),
+          notes: null,
+          status: 'planned' as const
+        })
+      }
+    }
+
+    const { error: insertError } = await supabase
+      .from('exercise_training_sessions')
+      .insert(trainingSessionsData)
+
+    if (insertError) {
+      console.error('Error creating training sessions:', insertError)
+      return {
+        isSuccess: false,
+        message: `Failed to assign plan to athletes: ${insertError.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: `Successfully assigned plan to ${athleteIds.length} athletes`,
+      data: { assignedAthletes: athleteIds.length, sessions: sessions.length }
+    }
+  } catch (error) {
+    console.error('Error in assignPlanToAthletesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+} 
+
+/**
+ * Save a plan as a template (sets is_template = true, user_id = NULL, athlete_group_id = NULL)
+ */
+export async function saveAsTemplateAction(
+  planData: CreateSessionPlanForm,
+  templateName: string,
+  templateDescription?: string
+): Promise<ActionState<ExercisePresetGroup[]>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    const savedSessions: ExercisePresetGroup[] = []
+
+    // Save each session as a template (exercise_preset_group)
+    for (const session of planData.sessions) {
+      // Create the template session (exercise_preset_group)
+      const sessionData: ExercisePresetGroupInsert = {
+        name: session.name,
+        description: session.description,
+        date: new Date().toISOString().split('T')[0],
+        day: session.day,
+        week: session.week,
+        session_mode: 'template', // Special mode for templates
+        microcycle_id: null,
+        athlete_group_id: null, // Templates are global
+        user_id: null, // Templates are global
+        is_template: true // Mark as template
+      }
+
+      const { data: savedSession, error: sessionError } = await supabase
+        .from('exercise_preset_groups')
+        .insert(sessionData)
+        .select()
+        .single()
+
+      if (sessionError || !savedSession) {
+        console.error('Error saving template session:', sessionError)
+        return {
+          isSuccess: false,
+          message: `Failed to save template session "${session.name}": ${sessionError?.message}`
+        }
+      }
+
+      // Save exercises for this template session
+      for (const exercise of session.exercises) {
+        // Create the exercise preset
+        const exercisePresetData: ExercisePresetInsert = {
+          exercise_preset_group_id: savedSession.id,
+          exercise_id: exercise.exerciseId,
+          preset_order: exercise.order,
+          notes: exercise.notes,
+          superset_id: exercise.supersetId ? parseInt(exercise.supersetId.replace('superset-', '')) : null
+        }
+
+        const { data: savedExercisePreset, error: exerciseError } = await supabase
+          .from('exercise_presets')
+          .insert(exercisePresetData)
+          .select()
+          .single()
+
+        if (exerciseError || !savedExercisePreset) {
+          console.error('Error saving template exercise preset:', exerciseError)
+          continue
+        }
+
+        // Save exercise preset details (sets) for template
+        for (const set of exercise.sets) {
+          const setDetailData = {
+            exercise_preset_id: savedExercisePreset.id,
+            set_index: set.setIndex,
+            reps: set.reps || null,
+            weight: set.weight || null,
+            distance: set.distance || null,
+            performing_time: set.duration || null,
+            power: set.power || null,
+            velocity: set.velocity || null,
+            resistance: set.resistance || null,
+            resistance_unit_id: set.resistance_unit_id || null,
+            tempo: set.tempo || null,
+            effort: set.rpe || null,
+            height: set.height || null,
+            metadata: set.metadata ? JSON.stringify(set.metadata) : null
+          }
+
+          const { error: detailError } = await supabase
+            .from('exercise_preset_details')
+            .insert(setDetailData)
+
+          if (detailError) {
+            console.error('Error saving template exercise preset detail:', detailError)
+          }
+        }
+      }
+
+      savedSessions.push(savedSession)
+    }
+
+    return {
+      isSuccess: true,
+      message: `Successfully saved ${savedSessions.length} template sessions`,
+      data: savedSessions
+    }
+  } catch (error) {
+    console.error('Error in saveAsTemplateAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Get all templates (plans with is_template = true)
+ */
+export async function getTemplatesAction(): Promise<ActionState<ExercisePresetGroup[]>> {
+  try {
+    const { data: templates, error } = await supabase
+      .from('exercise_preset_groups')
+      .select(`
+        *,
+        exercise_presets(
+          *,
+          exercise:exercises(*),
+          exercise_preset_details(*)
+        )
+      `)
+      .eq('is_template', true)
+      .eq('deleted', false)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching templates:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch templates: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Templates retrieved successfully",
+      data: templates || []
+    }
+  } catch (error) {
+    console.error('Error in getTemplatesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Create a new plan from a template
+ */
+export async function createPlanFromTemplateAction(
+  templateId: number,
+  newPlanData: {
+    name: string
+    description?: string
+    athleteGroupId?: number
+    microcycleId?: number
+    startDate?: string
+  }
+): Promise<ActionState<ExercisePresetGroup[]>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Get the template with all its details
+    const { data: template, error: templateError } = await supabase
+      .from('exercise_preset_groups')
+      .select(`
+        *,
+        exercise_presets(
+          *,
+          exercise_preset_details(*)
+        )
+      `)
+      .eq('id', templateId)
+      .eq('is_template', true)
+      .single()
+
+    if (templateError || !template) {
+      return {
+        isSuccess: false,
+        message: "Template not found"
+      }
+    }
+
+    // Create new plan from template
+    const newPlanSessionData: ExercisePresetGroupInsert = {
+      name: newPlanData.name,
+      description: newPlanData.description || template.description,
+      date: newPlanData.startDate || new Date().toISOString().split('T')[0],
+      day: template.day,
+      week: template.week,
+      session_mode: newPlanData.athleteGroupId ? 'group' : 'individual',
+      microcycle_id: newPlanData.microcycleId || null,
+      athlete_group_id: newPlanData.athleteGroupId || null,
+      user_id: dbUserId,
+      is_template: false // This is a real plan, not a template
+    }
+
+    const { data: newPlan, error: planError } = await supabase
+      .from('exercise_preset_groups')
+      .insert(newPlanSessionData)
+      .select()
+      .single()
+
+    if (planError || !newPlan) {
+      return {
+        isSuccess: false,
+        message: `Failed to create plan from template: ${planError?.message}`
+      }
+    }
+
+    // Copy exercises from template to new plan
+    if (template.exercise_presets && template.exercise_presets.length > 0) {
+      for (const templatePreset of template.exercise_presets) {
+        const newPresetData: ExercisePresetInsert = {
+          exercise_preset_group_id: newPlan.id,
+          exercise_id: templatePreset.exercise_id,
+          preset_order: templatePreset.preset_order,
+          notes: templatePreset.notes,
+          superset_id: templatePreset.superset_id
+        }
+
+        const { data: newPreset, error: presetError } = await supabase
+          .from('exercise_presets')
+          .insert(newPresetData)
+          .select()
+          .single()
+
+        if (presetError || !newPreset) {
+          console.error('Error copying preset from template:', presetError)
+          continue
+        }
+
+        // Copy preset details from template
+        if (templatePreset.exercise_preset_details && templatePreset.exercise_preset_details.length > 0) {
+          const detailsData = templatePreset.exercise_preset_details.map(detail => ({
+            exercise_preset_id: newPreset.id,
+            set_index: detail.set_index,
+            reps: detail.reps,
+            weight: detail.weight,
+            distance: detail.distance,
+            performing_time: detail.performing_time,
+            power: detail.power,
+            velocity: detail.velocity,
+            resistance: detail.resistance,
+            resistance_unit_id: detail.resistance_unit_id,
+            tempo: detail.tempo,
+            effort: detail.effort,
+            height: detail.height,
+            metadata: detail.metadata
+          }))
+
+          const { error: detailsError } = await supabase
+            .from('exercise_preset_details')
+            .insert(detailsData)
+
+          if (detailsError) {
+            console.error('Error copying preset details from template:', detailsError)
+          }
+        }
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Plan created successfully from template",
+      data: [newPlan]
+    }
+  } catch (error) {
+    console.error('Error in createPlanFromTemplateAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Delete a template
+ */
+export async function deleteTemplateAction(templateId: number): Promise<ActionState<boolean>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Soft delete the template
+    const { error } = await supabase
+      .from('exercise_preset_groups')
+      .update({ deleted: true })
+      .eq('id', templateId)
+      .eq('is_template', true)
+
+    if (error) {
+      console.error('Error deleting template:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to delete template: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Template deleted successfully",
+      data: true
+    }
+  } catch (error) {
+    console.error('Error in deleteTemplateAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`

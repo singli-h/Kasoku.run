@@ -45,11 +45,13 @@ import { cn } from "@/lib/utils"
 import type { PlanType } from "./plan-type-selection"
 import type { PlanConfiguration } from "./plan-configuration"
 import type { SessionPlan } from "./session-planning"
+import type { PlanAssignment } from "./plan-assignment"
 
 interface PlanReviewProps {
   planType: PlanType
   configuration: PlanConfiguration
   sessionPlan: SessionPlan
+  assignment: PlanAssignment
   onSubmit: () => void
   onPrevious: () => void
   onEdit: (step: number) => void
@@ -233,6 +235,7 @@ export function PlanReview({
   planType, 
   configuration, 
   sessionPlan, 
+  assignment,
   onSubmit, 
   onPrevious, 
   onEdit,
@@ -480,6 +483,27 @@ export function PlanReview({
                       <div className="flex items-center gap-2">
                         <Zap className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm">{configuration.intensity.level}/10</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-medium text-sm">Assignment</div>
+                      <Button variant="ghost" size="sm" onClick={() => onEdit(3)}>
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {assignment.type === 'group' && <Users className="h-4 w-4 text-muted-foreground" />}
+                        {assignment.type === 'individual' && <User className="h-4 w-4 text-muted-foreground" />}
+                        {assignment.type === 'template' && <FileText className="h-4 w-4 text-muted-foreground" />}
+                        <span className="text-sm">
+                          {assignment.type === 'group' && 'Group Plan'}
+                          {assignment.type === 'individual' && `Individual Plan (${assignment.athleteIds.length} athlete${assignment.athleteIds.length !== 1 ? 's' : ''})`}
+                          {assignment.type === 'template' && 'Template Only'}
+                        </span>
                       </div>
                     </div>
                   </div>

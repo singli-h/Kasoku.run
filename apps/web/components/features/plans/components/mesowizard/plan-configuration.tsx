@@ -669,19 +669,121 @@ export function PlanConfiguration({
               <div className="space-y-1">
                 <div className="font-medium">Save as Template</div>
                 <div className="text-sm text-muted-foreground">
-                  Make this plan reusable for future athletes
+                  Make this plan reusable for future athletes and coaches
                 </div>
               </div>
               <Switch
                 checked={config.assignment.isTemplate}
-                onCheckedChange={(checked) => 
+                onCheckedChange={(checked) => {
                   setConfig(prev => ({
                     ...prev,
-                    assignment: { ...prev.assignment, isTemplate: checked }
+                    assignment: { 
+                      ...prev.assignment, 
+                      isTemplate: checked,
+                      // Clear assignment specific fields when saving as template
+                      ...(checked ? { 
+                        type: 'template',
+                        athleteIds: [],
+                        groupIds: []
+                      } : {})
+                    }
                   }))
-                }
+                }}
               />
             </div>
+
+            {/* Template Notice */}
+            {config.assignment.isTemplate && (
+              <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex-shrink-0 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center mt-0.5">
+                  <Check className="w-3 h-3 text-white" />
+                </div>
+                <div className="space-y-1">
+                  <div className="font-medium text-blue-900 dark:text-blue-100">
+                    Template Mode Enabled
+                  </div>
+                  <div className="text-sm text-blue-700 dark:text-blue-300">
+                    This plan will be saved as a global template that can be used by all coaches. 
+                    You can assign it to specific athletes or groups after creation.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Athlete/Group Assignment - Only show if not template */}
+            {!config.assignment.isTemplate && (
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">Who will follow this plan?</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <Button
+                      variant={config.assignment.type === 'individual' ? "default" : "outline"}
+                      className="h-auto p-4 flex flex-col items-center gap-2"
+                      onClick={() => 
+                        setConfig(prev => ({
+                          ...prev,
+                          assignment: { 
+                            ...prev.assignment, 
+                            type: 'individual',
+                            groupIds: [] // Clear group selection when switching to individual
+                          }
+                        }))
+                      }
+                    >
+                      <User className="h-6 w-6" />
+                      <div className="text-center">
+                        <div className="font-medium">Individual</div>
+                        <div className="text-xs text-muted-foreground">Specific athletes</div>
+                      </div>
+                    </Button>
+                    
+                    <Button
+                      variant={config.assignment.type === 'group' ? "default" : "outline"}
+                      className="h-auto p-4 flex flex-col items-center gap-2"
+                      onClick={() => 
+                        setConfig(prev => ({
+                          ...prev,
+                          assignment: { 
+                            ...prev.assignment, 
+                            type: 'group',
+                            athleteIds: [] // Clear athlete selection when switching to group
+                          }
+                        }))
+                      }
+                    >
+                      <Users className="h-6 w-6" />
+                      <div className="text-center">
+                        <div className="font-medium">Group</div>
+                        <div className="text-xs text-muted-foreground">Athlete groups</div>
+                      </div>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Assignment Selection */}
+                {config.assignment.type === 'individual' && (
+                  <div className="space-y-2">
+                    <Label>Select Athletes</Label>
+                    <div className="p-3 border rounded-lg bg-muted/30">
+                      <div className="text-sm text-muted-foreground">
+                        Individual athlete selection will be available in the next step
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {config.assignment.type === 'group' && (
+                  <div className="space-y-2">
+                    <Label>Select Athlete Group</Label>
+                    <div className="p-3 border rounded-lg bg-muted/30">
+                      <div className="text-sm text-muted-foreground">
+                        Group selection will be available in the next step
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>
