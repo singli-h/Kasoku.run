@@ -587,26 +587,58 @@ export function MesoWizard() {
           }
         })
       } else if (planType === 'microcycle') {
+        // For microcycles, pass the session data directly to create preset groups
+        const initialSessions = sessionPlan.sessions.map(session => ({
+          name: session.name,
+          description: session.description,
+          day: session.day,
+          week: session.week,
+          exercises: session.exercises.map(exercise => ({
+            exerciseId: exercise.exerciseId,
+            order: exercise.order,
+            supersetId: exercise.supersetId,
+            sets: exercise.sets.map(set => ({
+              setIndex: set.setIndex,
+              reps: set.reps,
+              weight: set.weight,
+              rpe: set.rpe,
+              restTime: set.restTime,
+              distance: set.distance,
+              duration: set.duration,
+              power: set.power,
+              velocity: set.velocity,
+              effort: set.effort,
+              height: set.height,
+              resistance: set.resistance,
+              resistance_unit_id: set.resistance_unit_id,
+              tempo: set.tempo,
+              metadata: set.metadata,
+              notes: set.notes
+            })),
+            notes: exercise.notes
+          }))
+        }))
+
         result = await createMicrocycleAction({
           name: configuration.name,
           description: configuration.description,
           start_date: configuration.duration.startDate,
           end_date: configuration.duration.endDate,
           mesocycle_id: undefined // Would need parent mesocycle selection
-        })
+        }, initialSessions)
       }
 
       if (result?.isSuccess) {
         let sessionsMessage = ""
         
-        // Save session plans if they exist
-        if (sessionPlan && sessionPlan.sessions.length > 0) {
+        // Save session plans if they exist (skip for microcycles as they're already created with sessions)
+        if (sessionPlan && sessionPlan.sessions.length > 0 && (planType === 'macrocycle' || planType === 'mesocycle')) {
           try {
             // Convert session plan data to the format expected by the action
             const sessionPlanData = {
               name: configuration.name,
               description: configuration.description,
-              microcycleId: planType === 'microcycle' ? result.data.id : undefined,
+              microcycleId: undefined, // This is only for non-microcycle plans
               athleteGroupId: assignment.type === 'group' ? assignment.groupId : undefined,
               athleteIds: assignment.type === 'individual' ? assignment.athleteIds : undefined,
               isTemplate: assignment.isTemplate,
@@ -666,6 +698,9 @@ export function MesoWizard() {
             console.error('Error saving session plans:', sessionError)
             // Don't fail the whole operation
           }
+        } else if (planType === 'microcycle') {
+          // For microcycles, sessions are already created, just set the message
+          sessionsMessage = ` with ${sessionPlan.sessions.length} training sessions`
         }
         
         // Clear draft from localStorage

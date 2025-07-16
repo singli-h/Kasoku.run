@@ -712,9 +712,40 @@ export async function deleteMesocycleAction(id: number): Promise<ActionState<boo
 
 /**
  * Create a new microcycle (weekly training plan)
+ * Optionally creates initial preset groups if provided
  */
 export async function createMicrocycleAction(
-  formData: CreateMicrocycleForm
+  formData: CreateMicrocycleForm,
+  initialSessions?: Array<{
+    name: string
+    description?: string
+    day: number
+    week: number
+    exercises?: Array<{
+      exerciseId: number
+      order: number
+      supersetId?: string
+      sets: Array<{
+        setIndex: number
+        reps?: number
+        weight?: number
+        rpe?: number
+        restTime?: number
+        distance?: number
+        duration?: number
+        power?: number
+        velocity?: number
+        effort?: number
+        height?: number
+        resistance?: number
+        resistance_unit_id?: number
+        tempo?: string
+        metadata?: any
+        notes?: string
+      }>
+      notes?: string
+    }>
+  }>
 ): Promise<ActionState<Microcycle>> {
   try {
     const { userId } = await auth()
@@ -762,6 +793,28 @@ export async function createMicrocycleAction(
       return {
         isSuccess: false,
         message: `Failed to create microcycle: ${error.message}`
+      }
+    }
+
+    // If initial sessions are provided, create them
+    if (initialSessions && initialSessions.length > 0) {
+      const sessionPlanData = {
+        name: formData.name,
+        description: formData.description || '',
+        microcycleId: microcycle.id,
+        athleteGroupId: undefined,
+        athleteIds: undefined,
+        isTemplate: false,
+        sessions: initialSessions
+      }
+
+      // Import the saveSessionPlanAction function
+      const { saveSessionPlanAction } = await import('./session-plan-actions')
+      const sessionResult = await saveSessionPlanAction(sessionPlanData)
+      
+      if (!sessionResult.isSuccess) {
+        console.error('Failed to create initial sessions:', sessionResult.message)
+        // Don't fail the microcycle creation, but log the issue
       }
     }
 

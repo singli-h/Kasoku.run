@@ -99,9 +99,16 @@ export async function saveSessionPlanAction(
     const dbUserId = await getDbUserId(userId)
 
     const savedSessions: ExercisePresetGroup[] = []
+    const errors: string[] = []
 
     // Save each session as an exercise_preset_group
     for (const session of planData.sessions) {
+      // Validate session data
+      if (!session.exercises || session.exercises.length === 0) {
+        errors.push(`Session "${session.name}" has no exercises`)
+        continue
+      }
+
       // Create the session (exercise_preset_group)
       const sessionData: ExercisePresetGroupInsert = {
         name: session.name,
@@ -124,21 +131,40 @@ export async function saveSessionPlanAction(
 
       if (sessionError || !savedSession) {
         console.error('Error saving session:', sessionError)
-        return {
-          isSuccess: false,
-          message: `Failed to save session "${session.name}": ${sessionError?.message}`
-        }
+        errors.push(`Failed to save session "${session.name}": ${sessionError?.message}`)
+        continue
       }
 
       // Save exercises for this session
       for (const exercise of session.exercises) {
+        // Validate exercise data
+        if (!exercise.exerciseId) {
+          errors.push(`Exercise in session "${session.name}" is missing exerciseId`)
+          continue
+        }
+
+        if (!exercise.sets || exercise.sets.length === 0) {
+          errors.push(`Exercise ${exercise.exerciseId} in session "${session.name}" has no sets`)
+          continue
+        }
+
+        // Parse superset_id correctly - handle the string format properly
+        let supersetId: number | null = null
+        if (exercise.supersetId && exercise.supersetId !== 'superset-0') {
+          const parsed = parseInt(exercise.supersetId.replace('superset-', ''))
+          // Only set if it's a valid positive integer
+          if (!isNaN(parsed) && parsed > 0) {
+            supersetId = parsed
+          }
+        }
+
         // Create the exercise preset
         const exercisePresetData: ExercisePresetInsert = {
           exercise_preset_group_id: savedSession.id,
           exercise_id: exercise.exerciseId,
           preset_order: exercise.order,
           notes: exercise.notes,
-          superset_id: exercise.supersetId ? parseInt(exercise.supersetId.replace('superset-', '')) : null
+          superset_id: supersetId
         }
 
         const { data: savedExercisePreset, error: exerciseError } = await supabase
@@ -149,27 +175,33 @@ export async function saveSessionPlanAction(
 
         if (exerciseError || !savedExercisePreset) {
           console.error('Error saving exercise preset:', exerciseError)
-          continue // Continue with other exercises
+          errors.push(`Failed to save exercise ${exercise.exerciseId} in session "${session.name}": ${exerciseError?.message}`)
+          continue
         }
 
-        // Save exercise preset details (sets)
-        for (const set of exercise.sets) {
-                     const setDetailData = {
-             exercise_preset_id: savedExercisePreset.id,
-             set_index: set.setIndex,
-             reps: set.reps || null,
-             weight: set.weight || null,
-             distance: set.distance || null,
-             performing_time: set.duration || null, // Use correct database field name
-             power: set.power || null,
-             velocity: set.velocity || null,
-             resistance: set.resistance || null,
-             resistance_unit_id: set.resistance_unit_id || null,
-             tempo: set.tempo || null,
-             effort: set.rpe || null, // Map RPE to effort field
-             height: set.height || null,
-             metadata: set.metadata ? JSON.stringify(set.metadata) : null
-           }
+        // Save exercise preset details (sets) - ensure set_index is properly set
+        for (let i = 0; i < exercise.sets.length; i++) {
+          const set = exercise.sets[i]
+          
+          // Ensure set_index is properly set (1-based indexing)
+          const setIndex = set.setIndex || (i + 1)
+          
+          const setDetailData = {
+            exercise_preset_id: savedExercisePreset.id,
+            set_index: setIndex,
+            reps: set.reps || null,
+            weight: set.weight || null,
+            distance: set.distance || null,
+            performing_time: set.duration || null, // Use correct database field name
+            power: set.power || null,
+            velocity: set.velocity || null,
+            resistance: set.resistance || null,
+            resistance_unit_id: set.resistance_unit_id || null,
+            tempo: set.tempo || null,
+            effort: set.rpe || null, // Map RPE to effort field
+            height: set.height || null,
+            metadata: set.metadata ? JSON.stringify(set.metadata) : null
+          }
 
           const { error: detailError } = await supabase
             .from('exercise_preset_details')
@@ -177,12 +209,21 @@ export async function saveSessionPlanAction(
 
           if (detailError) {
             console.error('Error saving exercise preset detail:', detailError)
-            // Continue with other sets
+            errors.push(`Failed to save set ${setIndex} for exercise ${exercise.exerciseId} in session "${session.name}": ${detailError.message}`)
+            // Continue with other sets but track the error
           }
         }
       }
 
       savedSessions.push(savedSession)
+    }
+
+    // If we have errors, return them
+    if (errors.length > 0) {
+      return {
+        isSuccess: false,
+        message: `Failed to save some data: ${errors.join('; ')}`
+      }
     }
 
     // Create exercise_training_sessions for individual assignments
