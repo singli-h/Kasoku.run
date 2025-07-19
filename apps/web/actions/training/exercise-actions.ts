@@ -895,21 +895,8 @@ export async function createExercisePresetGroupAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
 
     const presetGroupData: ExercisePresetGroupInsert = {
       name: sessionData.name,
@@ -920,7 +907,7 @@ export async function createExercisePresetGroupAction(
       day: sessionData.day,
       microcycle_id: microcycleId || null,
       athlete_group_id: athleteGroupId || null,
-      user_id: user.id
+      user_id: dbUserId
     }
 
     const { data: presetGroup, error } = await supabase
@@ -967,21 +954,8 @@ export async function getExercisePresetGroupsByMicrocycleAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
 
     const { data: presetGroups, error } = await supabase
       .from('exercise_preset_groups')
@@ -1000,7 +974,7 @@ export async function getExercisePresetGroupsByMicrocycleAction(
         )
       `)
       .eq('microcycle_id', microcycleId)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .order('day', { ascending: true })
 
     if (error) {
@@ -1041,21 +1015,8 @@ export async function getExercisePresetGroupByIdAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
 
     const { data: presetGroup, error } = await supabase
       .from('exercise_preset_groups')
@@ -1074,7 +1035,7 @@ export async function getExercisePresetGroupByIdAction(
         )
       `)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .single()
 
     if (error) {
@@ -1180,27 +1141,14 @@ export async function updateExercisePresetGroupAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
 
     const { data: presetGroup, error } = await supabase
       .from('exercise_preset_groups')
       .update(updates)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .select()
       .single()
 
@@ -1240,27 +1188,14 @@ export async function deleteExercisePresetGroupAction(id: number): Promise<Actio
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
 
     const { error } = await supabase
       .from('exercise_preset_groups')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
 
     if (error) {
       console.error('Error deleting exercise preset group:', error)
@@ -1593,21 +1528,8 @@ export async function copySessionWithAdaptationsAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
 
     // Get the original session with all its details
     const { data: originalSession, error: fetchError } = await supabase
@@ -1621,7 +1543,7 @@ export async function copySessionWithAdaptationsAction(
         )
       `)
       .eq('id', originalSessionId)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .single()
 
     if (fetchError || !originalSession) {
@@ -1641,7 +1563,7 @@ export async function copySessionWithAdaptationsAction(
       day: originalSession.day,
       microcycle_id: originalSession.microcycle_id,
       athlete_group_id: originalSession.athlete_group_id,
-      user_id: user.id
+      user_id: dbUserId
     }
 
     const { data: newSession, error: sessionError } = await supabase
@@ -1772,26 +1694,13 @@ export async function getSessionCountAnalyticsAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
 
     let query = supabase
       .from('exercise_preset_groups')
       .select('week, day, date')
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
 
     // Apply time range filter if provided
     if (timeRange) {

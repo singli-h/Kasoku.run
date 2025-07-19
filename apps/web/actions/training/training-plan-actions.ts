@@ -107,21 +107,8 @@ export async function getMacrocyclesAction(): Promise<ActionState<MacrocycleWith
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
 
     const { data: macrocycles, error } = await supabase
       .from('macrocycles')
@@ -133,7 +120,7 @@ export async function getMacrocyclesAction(): Promise<ActionState<MacrocycleWith
           microcycles(*)
         )
       `)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .order('start_date', { ascending: false })
 
     if (error) {

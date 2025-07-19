@@ -1,5 +1,5 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
+.cursor/mcp.json
 # dependencies
 node_modules
 .pnp
@@ -13,10 +13,6 @@ coverage
 apps/web/.next/
 out/
 build
-.cursor/
-.roo
-/scripts
-/tasks
 # misc
 .DS_Store
 *.pem
@@ -44,9 +40,6 @@ temp_edge_repo/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-.cursor/rules/new-request.mdc
-.cursor/rules/nextjs-rules.mdc
-.cursor/rules/persistent-issue.mdc
 
 # Turbo
 .turbo
@@ -68,7 +61,3 @@ node_modules/
 *.njsproj
 *.sln
 *.sw?
-# OS specific
-# Task files
-tasks.json
-tasks/ 

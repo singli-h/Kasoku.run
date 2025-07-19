@@ -69,14 +69,9 @@ const navItems = [
 // Training-specific navigation items
 const trainingItems = [
   {
-    name: "Training Plans",
+    name: "Plans",
     url: "/plans",
     icon: Calendar
-  },
-  {
-    name: "Templates",
-    url: "/templates",
-    icon: Trophy
   },
   {
     name: "Sessions",
