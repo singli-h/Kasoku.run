@@ -84,9 +84,7 @@ export function WorkoutSessionSelector({
       setIsLoading(true)
       // In a real app, you would dynamically determine the microcycle ID
       const microcycleId = 1
-      const result = await getExercisePresetGroupsByMicrocycleAction({
-        microcycleId
-      })
+      const result = await getExercisePresetGroupsByMicrocycleAction(microcycleId)
 
       if (!result.isSuccess || !result.data) {
         throw new Error(result.message || "Failed to fetch workout presets.")

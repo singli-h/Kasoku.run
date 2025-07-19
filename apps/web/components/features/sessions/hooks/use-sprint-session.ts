@@ -149,12 +149,12 @@ export function useSprintSession(options: UseSprintSessionOptions = {}): UseSpri
     setError(null)
 
     try {
-      const result = await createSprintSessionAction({
+      const result = await createLiveSprintSessionAction(
         name,
-        athleteGroupIds: athleteGroups.map(g => g.id),
+        athleteGroups.map(g => g.id),
         rounds,
-        sessionMode: 'group'
-      })
+        undefined // presetId is optional
+      )
 
       if (!result.isSuccess) {
         throw new Error(result.message)

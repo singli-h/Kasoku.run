@@ -2,6 +2,7 @@
 
 import supabase from "@/lib/supabase-server"
 import { auth } from "@clerk/nextjs/server"
+import { getDbUserId } from "@/lib/user-cache"
 import type { ActionState } from "@/types/server-action-types"
 import type {
   DashboardData,
@@ -24,6 +25,9 @@ export async function getDashboardDataAction(): Promise<
         message: "Authentication required"
       }
     }
+
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(clerkUserId)
 
     const { data, error } = await supabase.rpc("get_dashboard_data", {
       p_clerk_id: clerkUserId
