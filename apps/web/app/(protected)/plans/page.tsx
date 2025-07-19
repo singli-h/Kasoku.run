@@ -5,7 +5,16 @@ import { TrainingPlansPage } from "@/components/features/plans/components/traini
 
 export default async function PlansPage() {
   return (
-    <div className="flex-1">
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Training Plans</h1>
+        <p className="text-muted-foreground mt-2">
+          Manage your training plans, discover templates, and create new programs
+        </p>
+      </div>
+
+      {/* Main Content */}
       <Suspense fallback={<PlansPageSkeleton />}>
         <TrainingPlansPage />
       </Suspense>
@@ -15,10 +24,10 @@ export default async function PlansPage() {
 
 function PlansPageSkeleton() {
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div className="text-center space-y-4">
-        <div className="h-10 bg-gray-200 rounded w-64 mx-auto animate-pulse" />
-        <div className="h-6 bg-gray-200 rounded w-96 mx-auto animate-pulse" />
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <div className="h-10 bg-gray-200 rounded w-64 animate-pulse" />
+        <div className="h-6 bg-gray-200 rounded w-96 animate-pulse" />
       </div>
       
       <div className="h-12 bg-gray-200 rounded animate-pulse" />

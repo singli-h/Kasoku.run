@@ -14,16 +14,6 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ data, displayName }: DashboardLayoutProps) {
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground mt-3">
-          Welcome back, {displayName}!
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Here's your training overview for today.
-        </p>
-      </div>
-
       {/* Action Cards Section */}
       <Suspense fallback={<DashboardSkeleton section="actions" />}>
         <ActionCardsSection />

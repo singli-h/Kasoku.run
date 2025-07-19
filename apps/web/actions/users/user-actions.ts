@@ -1,6 +1,7 @@
 "use server"
 
 import supabase from "@/lib/supabase-server"
+import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { auth } from "@clerk/nextjs/server"
 
@@ -27,7 +28,8 @@ export async function getUserProfileAction(): Promise<ActionState<any>> {
       return { isSuccess: false, message: "Not authenticated" }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(clerkId)
     const { data: user, error } = await supabase
       .from('users')
       .select(`
@@ -35,7 +37,7 @@ export async function getUserProfileAction(): Promise<ActionState<any>> {
         athletes(*),
         coaches(*)
       `)
-      .eq('clerk_id', clerkId)
+      .eq('id', dbUserId)
       .single()
 
     // Handle "record not found" gracefully so the app can route the
@@ -81,7 +83,8 @@ export async function updateUserProfileAction(
       return { isSuccess: false, message: "Not authenticated" }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(clerkId)
     
     // Build update object with only provided fields
     const updateData: any = {
@@ -101,7 +104,7 @@ export async function updateUserProfileAction(
     const { data, error } = await supabase
       .from('users')
       .update(updateData)
-      .eq('clerk_id', clerkId)
+      .eq('id', dbUserId)
       .select()
       .single()
 
@@ -132,14 +135,15 @@ export async function completeOnboardingAction(): Promise<ActionState<any>> {
       return { isSuccess: false, message: "Not authenticated" }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(clerkId)
     const { data, error } = await supabase
       .from('users')
       .update({ 
         onboarding_completed: true,
         updated_at: new Date().toISOString()
       })
-      .eq('clerk_id', clerkId)
+      .eq('id', dbUserId)
       .select()
       .single()
 

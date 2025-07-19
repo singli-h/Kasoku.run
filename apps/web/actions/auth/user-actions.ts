@@ -2,6 +2,7 @@
 
 import { auth, currentUser } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
+import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { User, UserInsert, RoleName } from "@/types/database"
 
@@ -49,14 +50,15 @@ export async function getCurrentUserAction(): Promise<ActionState<User>> {
     }
 
     // Use the correct 2025 approach with createServerSupabaseClient
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
     console.log("🔍 Supabase client created successfully")
     
-    console.log("🔍 Querying users table with clerk_id:", userId)
+    const dbUserId = await getDbUserId(userId)
+    console.log("🔍 Querying users table with db user id:", dbUserId)
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
-      .eq('clerk_id', userId)
+      .eq('id', dbUserId)
       .single()
 
     console.log("🔍 Supabase query result:", { user, error })
@@ -121,12 +123,13 @@ export async function checkUserExistsAction(): Promise<ActionState<boolean>> {
       }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
     
     const { data: user, error } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', userId)
+      .eq('id', dbUserId)
       .single()
 
     if (error && error.code !== 'PGRST116') {
@@ -245,12 +248,13 @@ export async function updateSupabaseUserAction(
   updates: Partial<UserInsert>
 ): Promise<ActionState<User>> {
   try {
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(clerkUserId)
 
     const { data: user, error } = await supabase
       .from('users')
       .update(updates)
-      .eq('clerk_id', clerkUserId)
+      .eq('id', dbUserId)
       .select()
       .single()
 
@@ -281,12 +285,13 @@ export async function updateSupabaseUserAction(
  */
 export async function getUserByClerkIdAction(clerkId: string): Promise<ActionState<User | null>> {
   try {
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(clerkId)
     
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
-      .eq('clerk_id', clerkId)
+      .eq('id', dbUserId)
       .single()
 
     if (error && error.code !== 'PGRST116') {

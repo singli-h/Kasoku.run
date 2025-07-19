@@ -391,3 +391,47 @@ BEST PRACTICES:
     border-width: 0.5px;
   }
 }
+
+/* Layout Container System (Task 003) */
+@layer components {
+  .layout-container {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+  }
+
+  .content-container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  @media (max-width: 768px) {
+    .content-container {
+      padding: 1rem;
+    }
+  }
+
+  /* Alternative content container sizes */
+  .content-container-sm {
+    padding: 1.5rem;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .content-container-lg {
+    padding: 3rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  @media (max-width: 640px) {
+    .content-container-sm,
+    .content-container-lg {
+      padding: 1rem;
+    }
+  }
+}

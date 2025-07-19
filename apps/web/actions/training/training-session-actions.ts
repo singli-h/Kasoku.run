@@ -40,21 +40,8 @@ export async function startTrainingSessionAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     // Determine the athlete ID - either provided (for coaches) or current user's athlete profile
     let finalAthleteId = athleteId
@@ -63,7 +50,7 @@ export async function startTrainingSessionAction(
       const { data: athlete } = await supabase
         .from('athletes')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', dbUserId)
         .single()
       
       if (athlete) {
@@ -535,21 +522,8 @@ export async function getPerformanceMetricsAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     // Determine the athlete ID
     let finalAthleteId = athleteId
@@ -558,7 +532,7 @@ export async function getPerformanceMetricsAction(
       const { data: athlete } = await supabase
         .from('athletes')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', dbUserId)
         .single()
       
       if (athlete) {
@@ -669,21 +643,8 @@ export async function getExerciseProgressAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     // Determine the athlete ID
     let finalAthleteId = athleteId
@@ -692,7 +653,7 @@ export async function getExerciseProgressAction(
       const { data: athlete } = await supabase
         .from('athletes')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', dbUserId)
         .single()
       
       if (athlete) {

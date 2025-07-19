@@ -41,9 +41,20 @@ async function DashboardContent() {
     // For now, we can show a message or a simplified dashboard
     // This could be a more robust error component
     return (
-      <div>
-        <h1>Error loading dashboard data</h1>
-        <p>{dashboardDataResult.message}</p>
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground mt-2">
+            Your training overview and quick actions
+          </p>
+        </div>
+        
+        {/* Error Content */}
+        <div>
+          <h2>Error loading dashboard data</h2>
+          <p>{dashboardDataResult.message}</p>
+        </div>
       </div>
     )
   }
@@ -52,5 +63,20 @@ async function DashboardContent() {
   const displayName = user.first_name || user.email.split("@")[0]
   const dashboardData = dashboardDataResult.data
 
-  return <DashboardLayout data={dashboardData} displayName={displayName} />
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">
+          Welcome back, {displayName}!
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Here's your training overview for today.
+        </p>
+      </div>
+
+      {/* Main Content */}
+      <DashboardLayout data={dashboardData} displayName={displayName} />
+    </div>
+  )
 } 

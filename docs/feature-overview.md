@@ -83,25 +83,35 @@ For each page you will find:
 ## 3. Sessions (`/sessions`)
 
 ### User Story
-* **As a** coach **I want** to monitor and manage upcoming group sessions so that I can ensure every athlete knows their schedule and workload.
+* **As a** coach **I want** to manage sprint training sessions for multiple athlete groups in a single interface so that I can efficiently track and record sprint performance for all my athletes.
 
 ### Workflow
-1. `SessionsPage` streams `<GroupSessionDashboard />`.
-2. Dashboard fetches group session presets and associated attendance list.
-3. Coaches can start, cancel, or archive sessions.
+1. `SessionsPage` renders `<SprintSessionDashboard />` with table-like interface.
+2. Dashboard displays multiple athlete groups with their respective athletes in separate sections.
+3. Coaches can add/remove sprints, set distances, and record sprint times for each athlete.
+4. Real-time updates save performance data to training session records.
 
 ### Logic Highlights
-* Server components + Suspense pattern for data fetch.
-* Actions located in `actions/training/group-session-actions.ts`.
+* **Multi-Group Management**: Single page interface for managing multiple athlete groups simultaneously.
+* **Sprint-Focused**: Dedicated to sprint training sessions with distance and time tracking.
+* **Table-Like Design**: Athletes as rows, sprints as columns for easy data entry.
+* **Real-time Performance Tracking**: Live updates as coaches record sprint times.
+* **Preset Integration**: Sprint sessions reflect original training preset records.
 
 ### Design
-* Skeleton states while loading.
-* Table / list view for group sessions (component path `features/sessions/...`).
+* **Table Layout**: Athletes as rows, sprints as columns for intuitive data entry.
+* **Group Sections**: Each athlete group has its own section/table on the same page.
+* **Distance Management**: Add/remove sprints with customizable distances (100m, 200m, 400m, custom).
+* **Time Entry**: Easy-to-use time input cells for recording sprint performance.
+* **Real-time Updates**: Automatic saving of performance data to training session records.
+* **Mobile Responsive**: Optimized for tablet/phone use during training sessions.
 
 ### Implementation Gaps
-* **Athlete RSVP / attendance tracking** not surfaced in UI.
-* **Real-time updates** (Supabase Realtime) not wired – dashboard requires manual refresh.
-* **Filtering / search** for past sessions missing.
+* **Multi-group table interface** not implemented - currently single group focus.
+* **Sprint distance management** (add/remove sprints) missing from UI.
+* **Real-time performance tracking** not wired to training session records.
+* **Mobile-optimized table design** for easy coach use during sessions.
+* **Bulk operations** for managing multiple athletes' sprint sessions.
 
 ---
 

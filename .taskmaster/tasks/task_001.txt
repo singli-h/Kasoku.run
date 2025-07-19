@@ -1,0 +1,100 @@
+# Task 1: Refactor SprintSessionDashboard Component
+
+## Description
+Transform the current GroupSessionDashboard into a SprintSessionDashboard with a table-like interface for managing multiple athlete groups and their sprint training sessions. Focus on creating an intuitive, mobile-friendly interface for coaches to efficiently track sprint performance.
+
+## Details
+1. **Analyze Current Structure**: Review the existing GroupSessionDashboard component and identify components that can be reused or need replacement.
+
+2. **Create New Sprint-Focused Components**:
+   - `SprintSessionDashboard` (main container)
+   - `MultiGroupSprintTable` (table-like interface for multiple groups)
+   - `GroupSprintSection` (individual group section)
+   - `SprintDistanceManager` (add/remove sprints with distance settings)
+   - `AthleteSprintRow` (individual athlete row with sprint time inputs)
+   - `SprintTimeCell` (optimized time input for sprint recording)
+   - `SprintPerformanceTracker` (real-time performance tracking)
+
+3. **Implement Table-Like Design**:
+   - Athletes as rows, sprints as columns
+   - Easy-to-use time input cells
+   - Mobile-responsive design for tablet/phone use
+   - Real-time updates as coaches record times
+
+4. **Multi-Group Management**:
+   - Display multiple athlete groups on same page
+   - Each group has its own section/table
+   - Coaches can manage all groups simultaneously
+   - Bulk operations for multiple athletes
+
+5. **Sprint Distance Management**:
+   - Add/remove sprints dynamically
+   - Predefined distances (100m, 200m, 400m, etc.)
+   - Custom distance input
+   - Distance changes reflect in training session records
+
+6. **Real-time Performance Tracking**:
+   - Live updates as coaches record sprint times
+   - Automatic saving to training session records
+   - Performance data reflects in athlete training history
+   - Integration with existing preset system
+
+7. **Technical Implementation**:
+   - Use React.lazy() for code splitting
+   - Migrate to TanStack Query v5 for data management
+   - Implement error boundaries using existing patterns
+   - Use shadcn/ui Skeleton components for loading states
+   - Ensure proper TypeScript typing
+   - Use React.memo() for performance optimization
+   - Implement Supabase Realtime for live updates
+
+Example structure:
+```typescript
+// SprintSessionDashboard.tsx
+import React, { Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { ErrorBoundary } from 'react-error-boundary';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const MultiGroupSprintTable = React.lazy(() => import('./MultiGroupSprintTable'));
+const SprintDistanceManager = React.lazy(() => import('./SprintDistanceManager'));
+
+const SprintSessionDashboard: React.FC = () => {
+  const { data: athleteGroups, isLoading, error } = useQuery({
+    queryKey: ['athlete-groups'],
+    queryFn: getCoachAthleteGroupsAction
+  });
+
+  if (isLoading) return <Skeleton className="h-8 w-64" />;
+  if (error) return <ErrorFallback error={error} />;
+
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <Suspense fallback={<Skeleton className="h-8 w-64" />}>
+        <MultiGroupSprintTable athleteGroups={athleteGroups} />
+        <SprintDistanceManager />
+      </Suspense>
+    </ErrorBoundary>
+  );
+};
+```
+
+## Test Strategy
+1. **Unit Tests**: Test each new component using React Testing Library
+2. **Integration Tests**: Test multi-group management and real-time updates
+3. **Mobile Testing**: Test responsive design on tablet/phone simulators
+4. **Performance Tests**: Test with large numbers of athletes and sprints
+5. **Real-time Tests**: Test Supabase Realtime functionality
+6. **End-to-End Tests**: Test complete sprint session workflow with Cypress
+
+## Priority
+High
+
+## Dependencies
+None
+
+## Status
+Pending
+
+## Subtasks
+[] 

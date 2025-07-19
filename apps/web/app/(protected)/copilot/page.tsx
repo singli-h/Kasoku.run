@@ -18,7 +18,24 @@ async function CopilotContentFetcher() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">AI Copilot</h1>
+          <p className="text-muted-foreground mt-2">
+            Get personalized training advice and workout recommendations
+          </p>
+        </div>
+        <Link href="/copilot/new">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            New Chat
+          </Button>
+        </Link>
+      </div>
+
+      {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Conversation List */}
         <div className="lg:col-span-2">
@@ -29,12 +46,6 @@ async function CopilotContentFetcher() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Quick Start</h2>
-            <Link href="/copilot/new">
-              <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                New Chat
-              </Button>
-            </Link>
           </div>
           
           <TrainingPromptExamplesWrapper 
@@ -48,10 +59,22 @@ async function CopilotContentFetcher() {
 
 function CopilotSkeleton() {
   return (
-    <ListSkeleton 
-      count={6}
-      showFilters={true}
-    />
+    <div className="space-y-6">
+      {/* Header skeleton */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-8 bg-gray-200 rounded w-48 animate-pulse" />
+          <div className="h-4 bg-gray-200 rounded w-64 animate-pulse" />
+        </div>
+        <div className="h-10 bg-gray-200 rounded w-32 animate-pulse" />
+      </div>
+      
+      {/* Content skeleton */}
+      <ListSkeleton 
+        count={6}
+        showFilters={true}
+      />
+    </div>
   )
 }
 

@@ -370,7 +370,8 @@ export async function getCoachAthleteGroupsAction(): Promise<ActionState<Athlete
       }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     // Get current user's database ID and check if they're a coach
     const { data: user, error: userError } = await supabase
@@ -380,7 +381,7 @@ export async function getCoachAthleteGroupsAction(): Promise<ActionState<Athlete
         role,
         coach:coaches(id)
       `)
-      .eq('clerk_id', userId)
+      .eq('id', dbUserId)
       .single()
 
     if (userError || !user) {
@@ -458,7 +459,8 @@ export async function createAthleteGroupAction(
       }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     // Get current user's coach ID
     const { data: user, error: userError } = await supabase
@@ -468,7 +470,7 @@ export async function createAthleteGroupAction(
         role,
         coach:coaches(id)
       `)
-      .eq('clerk_id', userId)
+      .eq('id', dbUserId)
       .single()
 
     if (userError || !user) {
@@ -535,7 +537,8 @@ export async function updateAthleteGroupAction(
       }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     // Get current user's coach ID
     const { data: user, error: userError } = await supabase
@@ -545,7 +548,7 @@ export async function updateAthleteGroupAction(
         role,
         coach:coaches(id)
       `)
-      .eq('clerk_id', userId)
+      .eq('id', dbUserId)
       .single()
 
     if (userError || !user) {
@@ -609,7 +612,8 @@ export async function assignAthleteToGroupAction(
       }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     // Get current user's coach ID to verify permission
     const { data: user, error: userError } = await supabase
@@ -619,7 +623,7 @@ export async function assignAthleteToGroupAction(
         role,
         coach:coaches(id)
       `)
-      .eq('clerk_id', userId)
+      .eq('id', dbUserId)
       .single()
 
     if (userError || !user) {
@@ -743,7 +747,8 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
       }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     // Get current user's coach ID
     const { data: user, error: userError } = await supabase
@@ -753,7 +758,7 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
         role,
         coach:coaches(id)
       `)
-      .eq('clerk_id', userId)
+      .eq('id', dbUserId)
       .single()
 
     if (userError || !user) {

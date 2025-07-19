@@ -5,7 +5,16 @@ import { ProfileSettingsPage } from "@/components/features/settings"
 
 export default async function SettingsPage() {
   return (
-    <div className="flex-1">
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+        <p className="text-muted-foreground mt-2">
+          Manage your profile, preferences, and account settings
+        </p>
+      </div>
+
+      {/* Main Content */}
       <Suspense fallback={<SettingsPageSkeleton />}>
         <ProfileSettingsPage />
       </Suspense>
@@ -15,7 +24,7 @@ export default async function SettingsPage() {
 
 function SettingsPageSkeleton() {
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <div className="h-8 bg-gray-200 rounded w-48 animate-pulse" />

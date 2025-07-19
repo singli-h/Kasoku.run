@@ -10,34 +10,34 @@ import {
 
 export default async function PerformancePage() {
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex flex-col gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Performance Analytics</h1>
-          <p className="text-gray-600">
-            Track your progress and compare your performance with comprehensive analytics
-          </p>
-        </div>
-
-        <Tabs defaultValue="individual" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="individual">Individual Analytics</TabsTrigger>
-            <TabsTrigger value="comparative">Comparative Analytics</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="individual">
-            <Suspense fallback={<PerformanceAnalyticsSkeleton />}>
-              <IndividualPerformanceAnalyticsFetcher />
-            </Suspense>
-          </TabsContent>
-
-          <TabsContent value="comparative">
-            <Suspense fallback={<PerformanceAnalyticsSkeleton />}>
-              <ComparativePerformanceAnalyticsFetcher />
-            </Suspense>
-          </TabsContent>
-        </Tabs>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Performance Analytics</h1>
+        <p className="text-muted-foreground mt-2">
+          Track your progress and compare your performance with comprehensive analytics
+        </p>
       </div>
+
+      {/* Main Content */}
+      <Tabs defaultValue="individual" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="individual">Individual Analytics</TabsTrigger>
+          <TabsTrigger value="comparative">Comparative Analytics</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="individual">
+          <Suspense fallback={<PerformanceAnalyticsSkeleton />}>
+            <IndividualPerformanceAnalyticsFetcher />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="comparative">
+          <Suspense fallback={<PerformanceAnalyticsSkeleton />}>
+            <ComparativePerformanceAnalyticsFetcher />
+          </Suspense>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

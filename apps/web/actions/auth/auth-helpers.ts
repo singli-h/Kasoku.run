@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
+import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { RoleName } from "@/types/database"
 
@@ -46,13 +47,14 @@ export async function hasRoleAction(requiredRole: RoleName): Promise<ActionState
       }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
     
     // Get user's role from the users table
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('role')
-      .eq('clerk_id', userId)
+      .eq('id', dbUserId)
       .single()
 
     if (userError || !user) {
@@ -115,13 +117,14 @@ export async function getUserRoleAction(): Promise<ActionState<RoleName | null>>
       }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
     
     // Get user's role from the users table
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('role')
-      .eq('clerk_id', userId)
+      .eq('id', dbUserId)
       .single()
 
     if (userError || !user) {
@@ -192,13 +195,14 @@ export async function getUserProfileAction(): Promise<ActionState<{ role: RoleNa
       }
     }
 
-    // Using singleton supabase client
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
     
     // Get user's basic profile
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('clerk_id', userId)
+      .eq('id', dbUserId)
       .single()
 
     if (userError || !user) {

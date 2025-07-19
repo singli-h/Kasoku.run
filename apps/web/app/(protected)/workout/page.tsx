@@ -5,7 +5,16 @@ import { WorkoutPageContent } from "@/components/features/workout/components/wor
 
 export default async function WorkoutPage() {
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Workout Sessions</h1>
+        <p className="text-muted-foreground mt-2">
+          Track your strength training and conditioning workouts
+        </p>
+      </div>
+
+      {/* Main Content */}
       <Suspense fallback={<WorkoutPageSkeleton />}>
         <WorkoutPageContent />
       </Suspense>

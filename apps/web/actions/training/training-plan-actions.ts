@@ -40,21 +40,8 @@ export async function createMacrocycleAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const macrocycleData: MacrocycleInsert = {
       name: formData.name,
@@ -62,7 +49,7 @@ export async function createMacrocycleAction(
       start_date: formData.start_date,
       end_date: formData.end_date,
       athlete_group_id: formData.athlete_group_id || null,
-      user_id: user.id
+      user_id: dbUserId
     }
 
     const { data: macrocycle, error } = await supabase
@@ -159,21 +146,8 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const { data: macrocycle, error } = await supabase
       .from('macrocycles')
@@ -189,7 +163,7 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
         )
       `)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .single()
 
     if (error) {
@@ -237,27 +211,14 @@ export async function updateMacrocycleAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const { data: macrocycle, error } = await supabase
       .from('macrocycles')
       .update(updates)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .select()
       .single()
 
@@ -297,27 +258,14 @@ export async function deleteMacrocycleAction(id: number): Promise<ActionState<bo
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const { error } = await supabase
       .from('macrocycles')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
 
     if (error) {
       console.error('Error deleting macrocycle:', error)
@@ -361,21 +309,8 @@ export async function createMesocycleAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const mesocycleData: MesocycleInsert = {
       name: formData.name,
@@ -384,7 +319,7 @@ export async function createMesocycleAction(
       end_date: formData.end_date,
       macrocycle_id: formData.macrocycle_id || null,
       metadata: formData.metadata || null,
-      user_id: user.id
+      user_id: dbUserId
     }
 
     const { data: mesocycle, error } = await supabase
@@ -429,21 +364,8 @@ export async function getMesocyclesByMacrocycleAction(macrocycleId: number): Pro
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const { data: mesocycles, error } = await supabase
       .from('mesocycles')
@@ -453,7 +375,7 @@ export async function getMesocyclesByMacrocycleAction(macrocycleId: number): Pro
         microcycles(*)
       `)
       .eq('macrocycle_id', macrocycleId)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .order('start_date', { ascending: true })
 
     if (error) {
@@ -492,21 +414,8 @@ export async function getMesocycleByIdAction(id: number): Promise<ActionState<Me
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const { data: mesocycle, error } = await supabase
       .from('mesocycles')
@@ -519,7 +428,7 @@ export async function getMesocycleByIdAction(id: number): Promise<ActionState<Me
         )
       `)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .single()
 
     if (error) {
@@ -567,27 +476,14 @@ export async function updateMesocycleAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const { data: mesocycle, error } = await supabase
       .from('mesocycles')
       .update(updates)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .select()
       .single()
 
@@ -627,21 +523,8 @@ export async function deleteMesocycleAction(id: number): Promise<ActionState<boo
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     // Check if mesocycle has any microcycles
     const { data: microcycles, error: checkError } = await supabase
@@ -669,7 +552,7 @@ export async function deleteMesocycleAction(id: number): Promise<ActionState<boo
       .from('mesocycles')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
 
     if (error) {
       console.error('Error deleting mesocycle:', error)
@@ -744,21 +627,8 @@ export async function createMicrocycleAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const microcycleData: MicrocycleInsert = {
       name: formData.name,
@@ -766,7 +636,7 @@ export async function createMicrocycleAction(
       start_date: formData.start_date,
       end_date: formData.end_date,
       mesocycle_id: formData.mesocycle_id || null,
-      user_id: user.id
+      user_id: dbUserId
     }
 
     const { data: microcycle, error } = await supabase
@@ -833,21 +703,8 @@ export async function getMicrocyclesByMesocycleAction(mesocycleId: number): Prom
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const { data: microcycles, error } = await supabase
       .from('microcycles')
@@ -857,7 +714,7 @@ export async function getMicrocyclesByMesocycleAction(mesocycleId: number): Prom
         exercise_preset_groups(*)
       `)
       .eq('mesocycle_id', mesocycleId)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .order('start_date', { ascending: true })
 
     if (error) {
@@ -896,21 +753,8 @@ export async function getMicrocycleByIdAction(id: number): Promise<ActionState<M
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const { data: microcycle, error } = await supabase
       .from('microcycles')
@@ -926,7 +770,7 @@ export async function getMicrocycleByIdAction(id: number): Promise<ActionState<M
         )
       `)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .single()
 
     if (error) {
@@ -974,27 +818,14 @@ export async function updateMicrocycleAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     const { data: microcycle, error } = await supabase
       .from('microcycles')
       .update(updates)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .select()
       .single()
 
@@ -1034,21 +865,8 @@ export async function deleteMicrocycleAction(id: number): Promise<ActionState<bo
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     // Check if microcycle has any exercise preset groups
     const { data: presetGroups, error: checkError } = await supabase
@@ -1076,7 +894,7 @@ export async function deleteMicrocycleAction(id: number): Promise<ActionState<bo
       .from('microcycles')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
 
     if (error) {
       console.error('Error deleting microcycle:', error)
@@ -1124,21 +942,8 @@ export async function copyMacrocycleAsTemplateAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current user's database ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single()
-
-    if (userError || !user) {
-      return {
-        isSuccess: false,
-        message: "User not found in database"
-      }
-    }
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
 
     // Get the original macrocycle with all its nested data
     const { data: originalMacrocycle, error: fetchError } = await supabase
@@ -1160,7 +965,7 @@ export async function copyMacrocycleAsTemplateAction(
         )
       `)
       .eq('id', macrocycleId)
-      .eq('user_id', user.id)
+      .eq('user_id', dbUserId)
       .single()
 
     if (fetchError || !originalMacrocycle) {
@@ -1177,7 +982,7 @@ export async function copyMacrocycleAsTemplateAction(
       start_date: newStartDate,
       end_date: newEndDate,
       athlete_group_id: athleteGroupId || null,
-      user_id: user.id
+      user_id: dbUserId
     }
 
     const { data: newMacrocycle, error: macroError } = await supabase
@@ -1213,7 +1018,7 @@ export async function copyMacrocycleAsTemplateAction(
           start_date: mesoStartDate.toISOString().split('T')[0],
           end_date: mesoEndDate.toISOString().split('T')[0],
           macrocycle_id: newMacrocycle.id,
-          user_id: user.id,
+          user_id: dbUserId,
           metadata: mesocycle.metadata
         }
 
