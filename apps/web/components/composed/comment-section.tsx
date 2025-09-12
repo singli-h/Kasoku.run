@@ -52,9 +52,9 @@ export function CommentSection({
     if (emptyDescription) return emptyDescription
     switch (variant) {
       case 'task':
-        return "Start a conversation about this task"
+        return "Be the first to comment on this task"
       case 'article':
-        return "Start a conversation about this article"
+        return "Be the first to comment on this article"
       default:
         return "Be the first to leave a comment"
     }

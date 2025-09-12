@@ -24,29 +24,14 @@ export async function getCurrentUserAction(): Promise<ActionState<User>> {
       }
     }
 
-    // Test if we can get a Clerk token
-    try {
-      const token = await getToken()
-      console.log("🔍 Clerk token obtained:", token ? "✅ Yes" : "❌ No")
-      if (token) {
-        // Decode the token to see its structure (first part is header, second is payload)
-        const parts = token.split('.')
-        if (parts.length === 3) {
-          try {
-            const payload = JSON.parse(atob(parts[1]))
-            console.log("🔍 JWT payload:", {
-              sub: payload.sub,
-              role: payload.role,
-              iat: payload.iat,
-              exp: payload.exp
-            })
-          } catch (e) {
-            console.log("🔍 Could not decode JWT payload")
-          }
-        }
+    // Optional diagnostics during development only
+    if (process.env.NODE_ENV === "development") {
+      try {
+        const token = await getToken()
+        console.log("🔍 Clerk token obtained:", token ? "✅ Yes" : "❌ No")
+      } catch (tokenError) {
+        console.error("❌ Error getting Clerk token:", tokenError)
       }
-    } catch (tokenError) {
-      console.error("❌ Error getting Clerk token:", tokenError)
     }
 
     // Use the correct 2025 approach with createServerSupabaseClient

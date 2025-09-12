@@ -20,7 +20,8 @@ import type {
 import {
   createLiveSprintSessionAction,
   logSprintPerformanceAction,
-  getSprintPerformanceDataAction
+  getSprintPerformanceDataAction,
+  toggleAthletePresenceAction
 } from "@/actions/training/sprint-session-actions"
 
 interface UseSprintSessionOptions {
@@ -70,7 +71,7 @@ export function useSprintSession(options: UseSprintSessionOptions = {}): UseSpri
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   // Refs for managing auto-save
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingUpdatesRef = useRef<Map<string, SprintPerformanceEntry>>(new Map())
 
   // Load existing performance data if session ID is provided
@@ -93,17 +94,16 @@ export function useSprintSession(options: UseSprintSessionOptions = {}): UseSpri
 
   // Auto-save pending updates
   const flushPendingUpdates = useCallback(async () => {
+    if (!session) return
     if (pendingUpdatesRef.current.size === 0) return
 
     const updates = Array.from(pendingUpdatesRef.current.values())
     pendingUpdatesRef.current.clear()
 
     try {
-      for (const update of updates) {
-        const result = await logSprintPerformanceAction(update)
-        if (!result.isSuccess) {
-          throw new Error(result.message)
-        }
+      const result = await logSprintPerformanceAction(session.id, updates)
+      if (!result.isSuccess) {
+        throw new Error(result.message)
       }
       setHasUnsavedChanges(false)
     } catch (err) {
@@ -118,7 +118,7 @@ export function useSprintSession(options: UseSprintSessionOptions = {}): UseSpri
         pendingUpdatesRef.current.set(key, update)
       })
     }
-  }, [onError])
+  }, [onError, session])
 
   // Setup auto-save timer
   useEffect(() => {
@@ -164,6 +164,10 @@ export function useSprintSession(options: UseSprintSessionOptions = {}): UseSpri
       setPerformances([])
       setAbsentAthletes(new Set())
       setHasUnsavedChanges(false)
+      // Load any existing performance data for resumed sessions
+      if (result.data?.id) {
+        loadPerformanceData(result.data.id)
+      }
       
       onSessionUpdate?.(result.data)
       toast.success("Sprint session started successfully")
@@ -231,7 +235,6 @@ export function useSprintSession(options: UseSprintSessionOptions = {}): UseSpri
       if (!result.isSuccess) {
         throw new Error(result.message)
       }
-      
       toast.success(`Athlete marked as ${wasAbsent ? 'present' : 'absent'}`)
     } catch (err) {
       // Revert optimistic update

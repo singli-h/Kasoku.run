@@ -19,7 +19,6 @@ import {
   Calendar, 
   Trophy,
   MoreVertical,
-  MessageSquare,
   Settings
 } from "lucide-react"
 import {
@@ -54,7 +53,6 @@ interface Athlete {
 interface AthleteSummaryCardProps {
   athlete: Athlete
   onViewProfile?: (athleteId: string) => void
-  onStartChat?: (athleteId: string) => void
   onAssignProgram?: (athleteId: string) => void
   onViewProgress?: (athleteId: string) => void
   onManageSettings?: (athleteId: string) => void
@@ -66,7 +64,6 @@ interface AthleteSummaryCardProps {
 export function AthleteSummaryCard({
   athlete,
   onViewProfile,
-  onStartChat,
   onAssignProgram,
   onViewProgress,
   onManageSettings,
@@ -143,10 +140,6 @@ export function AthleteSummaryCard({
                       <TrendingUp className="w-4 h-4 mr-2" />
                       View Progress
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onStartChat?.(athlete.id)}>
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Start Chat
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -201,10 +194,6 @@ export function AthleteSummaryCard({
                 <DropdownMenuItem onClick={() => onViewProgress?.(athlete.id)}>
                   <TrendingUp className="w-4 h-4 mr-2" />
                   View Progress
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onStartChat?.(athlete.id)}>
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Start Chat
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onAssignProgram?.(athlete.id)}>
                   <Calendar className="w-4 h-4 mr-2" />
@@ -286,14 +275,6 @@ export function AthleteSummaryCard({
             >
               <TrendingUp className="w-4 h-4 mr-1" />
               Progress
-            </Button>
-            <Button 
-              size="sm" 
-              className="flex-1"
-              onClick={() => onStartChat?.(athlete.id)}
-            >
-              <MessageSquare className="w-4 h-4 mr-1" />
-              Chat
             </Button>
           </div>
         )}

@@ -701,7 +701,7 @@ export async function completeSprintSessionAction(
     // Calculate summary statistics
     const performanceData = sessionData.exercise_training_details || []
     const validTimes = performanceData
-      .filter(detail => detail.duration && detail.duration > 0)
+      .filter(detail => typeof detail.duration === 'number' && (detail.duration as number) > 0)
       .map(detail => detail.duration as number)
 
     const summary: SprintSessionSummary = {
@@ -727,6 +727,67 @@ export async function completeSprintSessionAction(
     }
   } catch (error) {
     console.error('Error in completeSprintSessionAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Toggle athlete presence for a sprint session. Presence is stored in session notes
+ * under the key `absentAthletes: number[]` to avoid schema changes.
+ */
+export async function toggleAthletePresenceAction(
+  sessionId: number,
+  athleteId: number,
+  isPresent: boolean
+): Promise<ActionState<boolean>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return { isSuccess: false, message: "User not authenticated" }
+    }
+
+    // Fetch session notes and status
+    const { data: session, error: fetchError } = await supabase
+      .from('exercise_training_sessions')
+      .select('notes, status')
+      .eq('id', sessionId)
+      .single()
+
+    if (fetchError || !session) {
+      return { isSuccess: false, message: "Session not found" }
+    }
+
+    if (session.status === 'completed') {
+      return { isSuccess: false, message: "Cannot modify a completed session" }
+    }
+
+    const notes = session.notes ? JSON.parse(session.notes) : {}
+    const absent: number[] = Array.isArray(notes.absentAthletes) ? notes.absentAthletes : []
+
+    let updatedAbsent: number[]
+    if (isPresent) {
+      // Ensure athlete is removed from absent list
+      updatedAbsent = absent.filter(id => id !== athleteId)
+    } else {
+      // Ensure athlete is added to absent list once
+      updatedAbsent = absent.includes(athleteId) ? absent : [...absent, athleteId]
+    }
+
+    const { error: updateError } = await supabase
+      .from('exercise_training_sessions')
+      .update({ notes: JSON.stringify({ ...notes, absentAthletes: updatedAbsent }) })
+      .eq('id', sessionId)
+
+    if (updateError) {
+      return { isSuccess: false, message: `Failed to update presence: ${updateError.message}` }
+    }
+
+    return { isSuccess: true, message: "Presence updated", data: true }
+  } catch (error) {
+    console.error('Error in toggleAthletePresenceAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`

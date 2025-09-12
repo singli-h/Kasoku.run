@@ -82,8 +82,29 @@ export {
   startTrainingSessionAction,
   getTrainingSessionsAction,
   getTrainingSessionByIdAction,
-  updateTrainingSessionAction
+  updateTrainingSessionAction,
+  completeTrainingSessionAction,
+  addExercisePerformanceAction,
+  updateExercisePerformanceAction,
+  getPerformanceMetricsAction,
+  getExerciseProgressAction
 } from './training-session-actions'
+
+// Re-export athlete actions
+export {
+  getCurrentAthleteProfileAction,
+  createOrUpdateAthleteProfileAction,
+  getAthletesByGroupAction,
+  getAthleteByIdAction,
+  updateAthleteProfileAction,
+  getAthleteProfileAction,
+  getCoachAthleteGroupsAction,
+  createAthleteGroupAction,
+  updateAthleteGroupAction,
+  assignAthleteToGroupAction,
+  removeAthleteFromGroupAction,
+  deleteAthleteGroupAction
+} from './athlete-actions'
 
 // Re-export coach actions
 export {

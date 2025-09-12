@@ -3,7 +3,8 @@
 import { headers } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
 import { Webhook } from "svix"
-import supabase from "@/lib/supabase-server"
+// Use service-role client for webhooks to bypass RLS securely
+import supabaseService from "@/lib/supabase-service"
 
 // Define the webhook event types
 interface WebhookEvent {
@@ -97,7 +98,7 @@ async function handleUserCreated(data: WebhookEvent["data"]) {
     ? `${data.first_name.toLowerCase()}.${data.last_name.toLowerCase()}`
     : primaryEmail.split('@')[0]
 
-  const { error } = await supabase
+  const { error } = await supabaseService
     .from("users")
     .insert({
       clerk_id: data.id,
@@ -127,7 +128,7 @@ async function handleUserUpdated(data: WebhookEvent["data"]) {
     return
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseService
     .from("users")
     .update({
       email: primaryEmail,
@@ -146,7 +147,7 @@ async function handleUserUpdated(data: WebhookEvent["data"]) {
 }
 
 async function handleUserDeleted(data: WebhookEvent["data"]) {
-  const { error } = await supabase
+  const { error } = await supabaseService
     .from("users")
     .delete()
     .eq("clerk_id", data.id)

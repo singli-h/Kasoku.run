@@ -11,7 +11,7 @@ import type {
 } from "@/components/features/dashboard/types/dashboard-types"
 
 /**
- * Get all dashboard data for the current user using an RPC call
+ * Get all dashboard data for the current user using direct queries
  */
 export async function getDashboardDataAction(): Promise<
   ActionState<DashboardData>
@@ -29,29 +29,88 @@ export async function getDashboardDataAction(): Promise<
     // Get database user ID using the cache utility
     const dbUserId = await getDbUserId(clerkUserId)
 
-    const { data, error } = await supabase.rpc("get_dashboard_data", {
-      p_clerk_id: clerkUserId
-    })
+    // Get athlete profile to determine if user is an athlete
+    const { data: athlete } = await supabase
+      .from('athletes')
+      .select('id')
+      .eq('user_id', dbUserId)
+      .single()
 
-    if (error) {
-      console.error("Error fetching dashboard data:", error)
-      throw error
-    }
-
-    if (!data) {
+    if (!athlete) {
       return {
         isSuccess: false,
-        message: "No data returned from dashboard RPC call"
+        message: "No athlete profile found"
       }
     }
 
-    // The data from RPC is a single object with stats and recentSessions properties
+    // Get recent training sessions
+    const { data: sessions, error: sessionsError } = await supabase
+      .from('exercise_training_sessions')
+      .select(`
+        id,
+        date_time,
+        status,
+        notes,
+        exercise_preset_group:exercise_preset_groups(
+          name
+        )
+      `)
+      .eq('athlete_id', athlete.id)
+      .order('date_time', { ascending: false })
+      .limit(5)
+
+    if (sessionsError) {
+      console.error("Error fetching recent sessions:", sessionsError)
+      return {
+        isSuccess: false,
+        message: "Failed to fetch recent sessions"
+      }
+    }
+
+    // Get dashboard stats
+    const { data: statsData, error: statsError } = await supabase
+      .from('exercise_training_sessions')
+      .select('status, date_time')
+      .eq('athlete_id', athlete.id)
+
+    if (statsError) {
+      console.error("Error fetching stats:", statsError)
+      return {
+        isSuccess: false,
+        message: "Failed to fetch dashboard stats"
+      }
+    }
+
+    // Calculate stats
+    const totalSessions = statsData?.length || 0
+    const completedSessions = statsData?.filter(s => s.status === 'completed').length || 0
+    const completionRate = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0
+
+    // Get this week's sessions
+    const oneWeekAgo = new Date()
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+    const thisWeekSessions = statsData?.filter(s => 
+      s.date_time && new Date(s.date_time) >= oneWeekAgo
+    ).length || 0
+
+    const stats: DashboardStats = {
+      totalSessions,
+      completedSessions,
+      upcomingSessions: statsData?.filter(s => s.status === 'planned').length || 0,
+      activeAthletes: 1 // For now, just the current user as athlete
+    }
+
+    const recentSessions: RecentSession[] = (sessions || []).map(session => ({
+      id: session.id,
+      title: session.exercise_preset_group?.name || 'Untitled Session', 
+      date: session.date_time ? new Date(session.date_time) : new Date(),
+      status: session.status as 'pending' | 'in-progress' | 'completed' | 'cancelled',
+      notes: session.notes || undefined
+    }))
+
     const dashboardData: DashboardData = {
-      stats: data.stats,
-      recentSessions: data.recent_sessions.map((s: any) => ({
-        ...s,
-        date: new Date(s.date)
-      }))
+      stats,
+      recentSessions
     }
 
     return {

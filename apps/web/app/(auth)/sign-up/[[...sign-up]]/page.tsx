@@ -22,12 +22,13 @@ export default function SignUpPage() {
 
   if (!mounted) {
     // Return a basic SignUp component during SSR to prevent hydration mismatch
-    return <SignUp forceRedirectUrl="/onboarding" />
+    return <SignUp forceRedirectUrl="/onboarding" signInUrl="/sign-in" />
   }
 
   return (
     <SignUp
       forceRedirectUrl="/onboarding"
+      signInUrl="/sign-in"
       appearance={{ baseTheme: theme === "dark" ? dark : undefined }}
     />
   )

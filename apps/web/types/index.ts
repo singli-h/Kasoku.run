@@ -17,8 +17,7 @@ export * from './server-action-types'
 // Export composed component types
 export * from './composed'
 
-// Export conversation types
-export * from './conversations'
+// Conversation types removed - no longer using chat features
 
 // Export training types
 export * from './training'

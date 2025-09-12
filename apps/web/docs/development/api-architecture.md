@@ -3,7 +3,7 @@
 ## Overview
 This document describes the current API structure and design conventions for the **Next.js** application within our Turborepo.
 
-All API routes live under `apps/web/src/app/api` and follow Next.js file-based routing (`route.ts`). Edge functions under `apps/edge-functions` are being migrated to Next.js API routes.
+All API routes live under `apps/web/app/api` and follow Next.js file-based routing (`route.ts`). Edge functions under `apps/edge-functions` are being migrated to Next.js API routes.
 
 ## Table of Contents
 - [Monorepo Structure](#monorepo-structure)
@@ -24,13 +24,13 @@ All API routes live under `apps/web/src/app/api` and follow Next.js file-based r
 
 ## Monorepo Structure
 - **Frontend App**: `apps/web` (Next.js, JavaScript/TypeScript)
-- **API Routes**: `apps/web/src/app/api`
-- **Shared Libraries**: `apps/web/src/lib` (contains `auth.ts`, `roles.ts`, `supabase.ts`)
+- **API Routes**: `apps/web/app/api`
+- **Shared Libraries**: `apps/web/lib` (contains `supabase-server.ts`, `supabase-client.ts`, `user-cache.ts`)
 - **Edge Functions**: `apps/edge-functions` (Deno; not in use and being gradually replaced by Next.js API)
 
 ## Authentication & Authorization
-- Use `requireAuth()` (in `lib/auth.ts`) at the top of each handler; it returns a `clerkId` or a `NextResponse` (redirect/forbidden).
-- Use `getUserRoleData(clerkId)` (in `lib/roles.ts`) to fetch `{ role, coachId?, athleteId?, userId }` directly from the `users` table (using `clerk_id` to find the `user_id`).
+- Use Clerk authentication via `auth()` from `@clerk/nextjs/server` in server actions
+- Use `getDbUserId()` (in `lib/user-cache.ts`) to fetch database user ID from Clerk ID with LRU caching
 - **RBAC**:
   - **Coach-only**: check `role === 'coach'`
   - **Athlete-only**: check `role === 'athlete'`
@@ -38,7 +38,9 @@ All API routes live under `apps/web/src/app/api` and follow Next.js file-based r
   - **Open**: verify `role` existence if specific roles aren't required but authentication is.
 
 ## Common Utilities
-- `createServerSupabaseClient()`: instantiates Supabase client in server context
+- `supabase` singleton: from `@/lib/supabase-server` (server-side)
+- `createClientSupabaseClient()`: from `@/lib/supabase-client` (client-side)
+- `getDbUserId()`: from `@/lib/user-cache` (cached user ID lookup)
 - `NextRequest` / `NextResponse`: Next.js types for handlers
 - Routes export HTTP methods as functions (e.g., `export async function GET(...)`)
 
