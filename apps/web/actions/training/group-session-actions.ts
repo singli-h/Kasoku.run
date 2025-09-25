@@ -4,14 +4,15 @@ import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
-import { 
-  ExerciseTrainingSession, 
-  ExerciseTrainingSessionInsert,
-  ExerciseTrainingDetail,
-  AthleteGroup,
-  ExercisePresetGroup,
-  Athlete
-} from "@/types/database"
+import type { Database } from "@/types/database"
+
+// Define types from database
+type ExerciseTrainingSession = Database['public']['Tables']['exercise_training_sessions']['Row']
+type ExerciseTrainingSessionInsert = Database['public']['Tables']['exercise_training_sessions']['Insert']
+type ExerciseTrainingDetail = Database['public']['Tables']['exercise_training_details']['Row']
+type AthleteGroup = Database['public']['Tables']['athlete_groups']['Row']
+type ExercisePresetGroup = Database['public']['Tables']['exercise_preset_groups']['Row']
+type Athlete = Database['public']['Tables']['athletes']['Row']
 
 // ============================================================================
 // GROUP SESSION TYPES
@@ -19,18 +20,18 @@ import {
 
 export interface GroupSessionPreset {
   id: number
-  name: string
+  name: string | null
   description?: string | null
   exercise_presets: {
     exercise: {
       id: number
-      name: string
+      name: string | null
       exercise_type: {
-        type: string
-      }
-    }
+        type: string | null
+      } | null
+    } | null
     exercise_preset_details: {
-      set_index: number
+      set_index: number | null
       distance?: number | null
       reps?: number | null
       performing_time?: number | null
@@ -195,7 +196,7 @@ export async function getSprintSessionPresetsAction(): Promise<ActionState<Group
     const sprintPresets = (presets || []).filter(preset => 
       preset.exercise_presets?.some(ep => 
         ep.exercise?.exercise_type?.type === 'sprint' || 
-        ep.exercise?.name.toLowerCase().includes('sprint')
+        (ep.exercise?.name && ep.exercise.name.toLowerCase().includes('sprint'))
       )
     )
 
@@ -325,7 +326,7 @@ export async function createLiveSessionAction(
       presetGroupId: presetGroupId,
       athleteGroupId: athleteGroupId,
       status: 'active',
-      startTime: session.date_time,
+      startTime: session.date_time || new Date().toISOString(),
       endTime: undefined,
       metadata: session.notes ? JSON.parse(session.notes) : null
     }
@@ -395,7 +396,7 @@ export async function logGroupPerformanceAction(
     // Get the first sprint exercise from the preset (for sprint sessions)
     const sprintExercise = session.exercise_preset_group?.exercise_presets?.find(ep => 
       ep.exercise?.exercise_type_id === 1 || // Assuming sprint exercise type ID is 1
-      ep.exercise?.name.toLowerCase().includes('sprint')
+      (ep.exercise?.name && ep.exercise.name.toLowerCase().includes('sprint'))
     )
 
     if (!sprintExercise) {
@@ -551,7 +552,7 @@ export async function getExistingSessionDataAction(
       const metadata = detail.metadata ? JSON.parse(detail.metadata as string) : {}
       return {
         athleteId: metadata.athlete_id,
-        roundNumber: detail.set_index,
+        roundNumber: detail.set_index || 1, // Default to 1 if null
         time: detail.duration as number,
         distance: detail.distance || 0,
         notes: metadata.notes

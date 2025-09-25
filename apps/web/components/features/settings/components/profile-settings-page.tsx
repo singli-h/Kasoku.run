@@ -324,9 +324,9 @@ export function ProfileSettingsPage() {
     }
   }, [clerkLoaded, clerkUser])
 
-  // Loading state
+  // Loading state - handled by PageLayout
   if (!clerkLoaded || isLoading) {
-    return <ProfileSettingsPageSkeleton />
+    return <div>Loading...</div>
   }
 
   // Error state - no user
@@ -773,38 +773,3 @@ export function ProfileSettingsPage() {
     </div>
   )
 }
-
-// Loading skeleton component
-function ProfileSettingsPageSkeleton() {
-  return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-64" />
-        </div>
-        <Skeleton className="h-10 w-32" />
-      </div>
-      
-      <div className="space-y-4">
-        <Skeleton className="h-12 w-full" />
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-4 w-48" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="space-y-2">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-} 

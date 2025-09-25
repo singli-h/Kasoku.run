@@ -22,6 +22,15 @@ export {
   deleteTemplateAction
 } from './session-plan-actions'
 
+// Re-export workout session actions
+export {
+  getTodayAndOngoingSessionsAction,
+  getPastSessionsAction,
+  updateTrainingSessionStatusAction,
+  startTrainingSessionAction,
+  completeTrainingSessionAction
+} from './workout-session-actions'
+
 // Re-export specific action groups for convenience
 export {
   // Macrocycle actions
@@ -79,11 +88,9 @@ export {
 
 // Re-export training session actions
 export {
-  startTrainingSessionAction,
   getTrainingSessionsAction,
   getTrainingSessionByIdAction,
   updateTrainingSessionAction,
-  completeTrainingSessionAction,
   addExercisePerformanceAction,
   updateExercisePerformanceAction,
   getPerformanceMetricsAction,

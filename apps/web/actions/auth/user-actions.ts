@@ -4,7 +4,11 @@ import { auth, currentUser } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
-import { User, UserInsert, RoleName } from "@/types/database"
+import type { Database } from "@/types/database"
+
+// Import user types from database
+type User = Database['public']['Tables']['users']['Row']
+type UserInsert = Database['public']['Tables']['users']['Insert']
 
 /**
  * Get the current authenticated user from Supabase using Clerk authentication
@@ -352,7 +356,7 @@ export async function checkUserNeedsOnboardingAction(providedUserId?: string): P
 export async function completeOnboardingAction(
   firstName: string,
   lastName: string,
-  role?: RoleName
+  role?: string
 ): Promise<ActionState<User>> {
   try {
     const { userId } = await auth()

@@ -127,7 +127,7 @@ const TestimonialCard = ({ testimonial, index }: TestimonialCardProps) => {
 
 export default function Testimonials() {
   return (
-    <section className="py-20 bg-gray-50 dark:bg-background/50">
+    <section className="py-20 bg-gray-50 dark:bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <motion.h2 

@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Search, 
@@ -64,6 +64,7 @@ import {
   PopoverTrigger
 } from "@/components/ui/popover"
 import { useToast } from "@/hooks/use-toast"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { cn } from "@/lib/utils"
 
 // Actions
@@ -98,14 +99,38 @@ interface ExerciseLibraryFilters extends ExerciseFilters {
 
 export function ExerciseLibraryPage() {
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   
   // State
-  const [exercises, setExercises] = useState<ExerciseWithDetails[]>([])
-  const [filteredExercises, setFilteredExercises] = useState<ExerciseWithDetails[]>([])
-  const [exerciseTypes, setExerciseTypes] = useState<ExerciseType[]>([])
-  const [tags, setTags] = useState<Tag[]>([])
-  const [units, setUnits] = useState<Unit[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { data, isError } = useQuery({
+    queryKey: ["exercise-library-initial-data"],
+    queryFn: async () => {
+      const [exercisesResult, typesResult, tagsResult, unitsResult] = await Promise.all([
+        getExercisesAction(),
+        getExerciseTypesAction(),
+        getTagsAction(),
+        getUnitsAction()
+      ])
+
+      if (!exercisesResult.isSuccess) throw new Error(exercisesResult.message)
+      if (!typesResult.isSuccess) throw new Error(typesResult.message)
+      if (!tagsResult.isSuccess) throw new Error(tagsResult.message)
+      if (!unitsResult.isSuccess) throw new Error(unitsResult.message)
+
+      return {
+        exercises: exercisesResult.data,
+        exerciseTypes: typesResult.data,
+        tags: tagsResult.data,
+        units: unitsResult.data
+      }
+    },
+    suspense: true
+  })
+
+  const exercises = data?.exercises ?? []
+  const exerciseTypes = data?.exerciseTypes ?? []
+  const tags = data?.tags ?? []
+  const units = data?.units ?? []
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [selectedExercise, setSelectedExercise] = useState<ExerciseWithDetails | null>(null)
   const [showFilters, setShowFilters] = useState(false)
@@ -122,44 +147,6 @@ export function ExerciseLibraryPage() {
   })
 
   // Load data
-  const loadData = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      
-      const [exercisesResult, typesResult, tagsResult, unitsResult] = await Promise.all([
-        getExercisesAction(),
-        getExerciseTypesAction(),
-        getTagsAction(),
-        getUnitsAction()
-      ])
-      
-      if (exercisesResult.isSuccess) {
-        setExercises(exercisesResult.data)
-      }
-      
-      if (typesResult.isSuccess) {
-        setExerciseTypes(typesResult.data)
-      }
-      
-      if (tagsResult.isSuccess) {
-        setTags(tagsResult.data)
-      }
-      
-      if (unitsResult.isSuccess) {
-        setUnits(unitsResult.data)
-      }
-    } catch (error) {
-      console.error('Error loading exercise library data:', error)
-      toast({
-        title: "Error",
-        description: "Failed to load exercise library data",
-        variant: "destructive"
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [toast])
-
   // Filter and sort exercises
   const processedExercises = useMemo(() => {
     let result = [...exercises]
@@ -212,30 +199,6 @@ export function ExerciseLibraryPage() {
     setFilters(prev => ({ ...prev, [key]: value }))
   }
 
-  // Handle exercise deletion
-  const handleDeleteExercise = async (exerciseId: number) => {
-    try {
-      const result = await deleteExerciseAction(exerciseId)
-      
-      if (result.isSuccess) {
-        setExercises(prev => prev.filter(ex => ex.id !== exerciseId))
-        toast({
-          title: "Exercise Deleted",
-          description: "Exercise was successfully deleted"
-        })
-      } else {
-        throw new Error(result.message)
-      }
-    } catch (error) {
-      console.error('Error deleting exercise:', error)
-      toast({
-        title: "Error",
-        description: "Failed to delete exercise",
-        variant: "destructive"
-      })
-    }
-  }
-
   // Clear all filters
   const clearFilters = () => {
     setFilters({
@@ -245,6 +208,31 @@ export function ExerciseLibraryPage() {
       sortField: 'name',
       sortOrder: 'asc'
     })
+  }
+
+  // Handle exercise deletion and refresh data
+  const handleDeleteExercise = async (exerciseId: number) => {
+    try {
+      const result = await deleteExerciseAction(exerciseId)
+
+      if (!result.isSuccess) {
+        throw new Error(result.message)
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["exercise-library-initial-data"] })
+
+      toast({
+        title: "Exercise Deleted",
+        description: "Exercise was successfully deleted"
+      })
+    } catch (error) {
+      console.error("Error deleting exercise:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete exercise",
+        variant: "destructive"
+      })
+    }
   }
 
   // Handle creating new exercise
@@ -259,77 +247,29 @@ export function ExerciseLibraryPage() {
     setShowExerciseForm(true)
   }
 
-  // Handle exercise form save
-  const handleExerciseFormSave = (exercise: any) => {
-    // Refresh exercises list
-    loadData()
-    setShowExerciseForm(false)
-    setEditingExercise(null)
-  }
-
   // Handle exercise form close
   const handleExerciseFormClose = () => {
     setShowExerciseForm(false)
     setEditingExercise(null)
   }
 
-  // Load data on mount
-  useEffect(() => {
-    loadData()
-  }, [loadData])
+  // Refresh list after creating or updating an exercise
+  const handleExerciseFormSave = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["exercise-library-initial-data"] })
+    setShowExerciseForm(false)
+    setEditingExercise(null)
+  }
 
-  // Loading state
-  if (isLoading) {
-    return <ExerciseLibraryPageSkeleton />
+  if (isError) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-destructive">
+        Failed to load exercises. Please refresh and try again.
+      </div>
+    )
   }
 
   return (
-    <div className="flex-1 space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Exercise Library</h1>
-          <p className="text-muted-foreground">
-            Browse and manage your exercise collection
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleCreateExercise}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Exercise
-          </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
-                Manage
-                <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Library Management</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Exercise Type
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Tag
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                Import Exercises
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                Export Library
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+    <div className="space-y-6">
 
       {/* Search and Filters Bar */}
       <Card>
@@ -726,52 +666,3 @@ function ExerciseCard({ exercise, viewMode, onView, onEdit, onDelete }: Exercise
     </Card>
   )
 }
-
-// Loading skeleton component
-function ExerciseLibraryPageSkeleton() {
-  return (
-    <div className="flex-1 space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-64" />
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-32" />
-          <Skeleton className="h-9 w-24" />
-        </div>
-      </div>
-      
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <Skeleton className="flex-1 h-10" />
-            <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-9 w-32" />
-            <Skeleton className="h-9 w-10" />
-          </div>
-        </CardContent>
-      </Card>
-      
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <Card key={i}>
-            <CardContent className="p-4">
-              <div className="space-y-2">
-                <Skeleton className="h-5 w-3/4" />
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-4 w-12" />
-                <Skeleton className="h-12 w-full" />
-                <div className="flex gap-1">
-                  <Skeleton className="h-4 w-12" />
-                  <Skeleton className="h-4 w-16" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-} 

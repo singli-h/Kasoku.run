@@ -8,15 +8,18 @@ and live MultiGroupSprintTable for recording athlete performances.
 
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useState, Suspense } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  getCoachAthleteGroupsWithAthletesAction,
-  getPredefinedSprintDistancesAction,
-  getSprintSessionPresetsAction,
   type AthleteGroupWithAthletes,
   type SprintSessionPreset,
   type SprintDistance,
   type SprintRound,
+} from "@/types/training"
+
+import {
+  getCoachAthleteGroupsWithAthletesAction,
+  getPredefinedSprintDistancesAction,
+  getSprintSessionPresetsAction,
 } from "@/actions/training/sprint-session-actions"
 
 import { useSprintSession } from "../hooks/use-sprint-session"
@@ -29,9 +32,13 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Loader2, CheckCircle2, AlertCircle, Pause, Play, Flag } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 // --------------------------------------------------------------------------------------------------------------------
 //  Types & Helpers
+// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
+//  Component
 // --------------------------------------------------------------------------------------------------------------------
 interface InitialDataState {
   athleteGroups: AthleteGroupWithAthletes[]
@@ -45,17 +52,10 @@ const INITIAL_DATA: InitialDataState = {
   predefinedDistances: [],
 }
 
-// --------------------------------------------------------------------------------------------------------------------
-//  Component
-// --------------------------------------------------------------------------------------------------------------------
 export function SprintSessionDashboard() {
-  // --------------------------------------------------
-  // Local State
-  // --------------------------------------------------
   const [initialData, setInitialData] = useState<InitialDataState>(INITIAL_DATA)
   const [loadingInitial, setLoadingInitial] = useState(true)
   const [initialError, setInitialError] = useState<string | null>(null)
-
   // --------------------------------------------------
   // Sprint Session Hook
   // --------------------------------------------------
@@ -71,10 +71,10 @@ export function SprintSessionDashboard() {
   } = useSprintSession({ onError: (e) => console.error(e) })
 
   // --------------------------------------------------
-  // Load initial data (athlete groups, presets, distances)
+  // Load initial data via React Query (supports Suspense)
   // --------------------------------------------------
   useEffect(() => {
-    async function load() {
+    const loadInitialData = async () => {
       try {
         setLoadingInitial(true)
         const [groupsRes, presetRes, distRes] = await Promise.all([
@@ -93,13 +93,15 @@ export function SprintSessionDashboard() {
           predefinedDistances: distRes.data || [],
         })
         setInitialError(null)
-      } catch (err) {
-        setInitialError(err instanceof Error ? err.message : "Failed to load data")
+      } catch (error) {
+        console.error("Failed to load sprint session data:", error)
+        setInitialError(error instanceof Error ? error.message : "Failed to load data")
       } finally {
         setLoadingInitial(false)
       }
     }
-    load()
+
+    loadInitialData()
   }, [])
 
   // --------------------------------------------------
@@ -132,8 +134,10 @@ export function SprintSessionDashboard() {
   // --------------------------------------------------
   if (loadingInitial) {
     return (
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading sprint session resources…
+      <div className="space-y-6">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-80 w-full" />
+        <Skeleton className="h-40 w-full" />
       </div>
     )
   }

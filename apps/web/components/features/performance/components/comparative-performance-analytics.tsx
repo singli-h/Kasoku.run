@@ -60,7 +60,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { getComparativePerformanceDataAction } from "@/actions/performance/performance-actions"
+// import { getComparativePerformanceDataAction } from "@/actions/performance/performance-actions" // Temporarily disabled
 import type { 
   PeerComparison, 
   BenchmarkData, 
@@ -101,7 +101,8 @@ export default function ComparativePerformanceAnalytics({
       }
       try {
         setLoading(true)
-        const result = await getComparativePerformanceDataAction(athleteId)
+        // const result = await getComparativePerformanceDataAction(athleteId) // Temporarily disabled
+        const result = { isSuccess: false, message: "Performance analytics temporarily disabled" }
         if (result.isSuccess) {
           setData(result.data)
         } else {

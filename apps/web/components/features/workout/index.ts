@@ -14,14 +14,27 @@ export {
 } from './utils/exercise-grouping'
 export type { ExerciseGroup, ExerciseGroupType } from './utils/exercise-grouping'
 
-export { ExerciseDashboard } from './components/exercise-dashboard'
-export { ExerciseTypeSection } from './components/exercise-type-section'
-export { ExerciseCard } from './components/exercise-card'
-export { SupersetContainer } from './components/superset-container'
-export { EnhancedExerciseOrganization } from './components/enhanced-exercise-organization'
-export { SetRow, SetTable, SetTableHeader, getDisplayColumns, DEFAULT_FIELD_CONFIG } from './components/set-row'
-export { VideoPlayer, CompactVideoPlayer, VideoDemoButton } from './components/video-player'
-export { WorkoutSessionDashboard } from './components/workout-session-dashboard'
-export { WorkoutSessionSelector } from './components/workout-session-selector'
-export { WorkoutPageContent } from './components/workout-page-content'
-export { useWorkoutApi } from './hooks/use-workout-api' 
+// Export page components
+export * from './components/pages'
+
+// Export session components
+export * from './components/session'
+
+// Export exercise components
+export * from './components/exercise'
+
+// Export UI components
+export * from './components/ui'
+
+// Export error and loading components
+export * from './components/error-loading'
+
+// Export hooks
+export { useWorkoutApi } from './hooks/use-workout-api'
+export { 
+  useSessionsToday, 
+  useSessionsHistory, 
+  useSessionMutations, 
+  useWorkoutPrefetch, 
+  useWorkoutCache 
+} from './hooks/use-workout-queries' 

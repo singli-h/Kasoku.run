@@ -4,22 +4,16 @@ import { Suspense } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   IndividualPerformanceAnalytics, 
-  ComparativePerformanceAnalytics, 
-  PerformanceAnalyticsSkeleton 
+  ComparativePerformanceAnalytics
 } from "@/components/features/performance"
+import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 
 export default async function PerformancePage() {
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Performance Analytics</h1>
-        <p className="text-muted-foreground mt-2">
-          Track your progress and compare your performance with comprehensive analytics
-        </p>
-      </div>
-
-      {/* Main Content */}
+    <PageLayout
+      title="Performance Analytics"
+      description="Track your progress and compare your performance with comprehensive analytics"
+    >
       <Tabs defaultValue="individual" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="individual">Individual Analytics</TabsTrigger>
@@ -27,18 +21,18 @@ export default async function PerformancePage() {
         </TabsList>
 
         <TabsContent value="individual">
-          <Suspense fallback={<PerformanceAnalyticsSkeleton />}>
+          <Suspense fallback={<UnifiedPageSkeleton title="Performance Analytics" variant="dashboard" />}>
             <IndividualPerformanceAnalyticsFetcher />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="comparative">
-          <Suspense fallback={<PerformanceAnalyticsSkeleton />}>
+          <Suspense fallback={<UnifiedPageSkeleton title="Performance Analytics" variant="dashboard" />}>
             <ComparativePerformanceAnalyticsFetcher />
           </Suspense>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageLayout>
   )
 }
 

@@ -11,7 +11,7 @@ export default function Hero() {
   const { isSignedIn } = useAuth()
 
   return (
-    <section className="relative overflow-hidden">
+    <section className="relative overflow-hidden bg-white dark:bg-background">
       {/* Animated background elements */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute w-[500px] h-[500px] bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/10 dark:to-purple-900/10 rounded-full blur-2xl opacity-30 dark:opacity-20 -top-32 -left-32 will-change-transform" />

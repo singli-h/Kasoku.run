@@ -12,14 +12,15 @@ import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
-import { 
-  ExerciseTrainingSession, 
-  ExerciseTrainingSessionInsert,
-  ExerciseTrainingDetail,
-  AthleteGroup,
-  ExercisePresetGroup,
-  Athlete
-} from "@/types/database"
+import type { Database } from "@/types/database"
+
+// Define types from database
+type ExerciseTrainingSession = Database['public']['Tables']['exercise_training_sessions']['Row']
+type ExerciseTrainingSessionInsert = Database['public']['Tables']['exercise_training_sessions']['Insert']
+type ExerciseTrainingDetail = Database['public']['Tables']['exercise_training_details']['Row']
+type AthleteGroup = Database['public']['Tables']['athlete_groups']['Row']
+type ExercisePresetGroup = Database['public']['Tables']['exercise_preset_groups']['Row']
+type Athlete = Database['public']['Tables']['athletes']['Row']
 
 // ============================================================================
 // SPRINT SESSION TYPES
@@ -27,20 +28,20 @@ import {
 
 export interface SprintSessionPreset {
   id: number
-  name: string
+  name: string | null
   description?: string | null
-  session_mode: string
+  session_mode: string | null
   exercise_presets: {
     id: number
     exercise: {
       id: number
-      name: string
+      name: string | null
       exercise_type: {
-        type: string
-      }
-    }
+        type: string | null
+      } | null
+    } | null
     exercise_preset_details: {
-      set_index: number
+      set_index: number | null
       distance?: number | null
       reps?: number | null
       performing_time?: number | null
@@ -272,7 +273,7 @@ export async function getSprintSessionPresetsAction(): Promise<ActionState<Sprin
     const sprintPresets = (presets || []).filter(preset => 
       preset.exercise_presets?.some(ep => 
         ep.exercise?.exercise_type?.type === 'sprint' || 
-        ep.exercise?.name.toLowerCase().includes('sprint')
+        (ep.exercise?.name && ep.exercise.name.toLowerCase().includes('sprint'))
       )
     ).map(preset => ({
       id: preset.id,
@@ -359,7 +360,7 @@ export async function createLiveSprintSessionAction(
       athleteGroups: athleteGroupIds,
       rounds: initialRounds,
       status: 'active',
-      startTime: sessions[0]?.date_time,
+      startTime: sessions[0]?.date_time || new Date().toISOString(),
       metadata: {
         sessionIds: sessions.map(s => s.id),
         presetId
@@ -400,7 +401,7 @@ export async function addSprintRoundAction(
     // Get the session and update its metadata
     const { data: session, error: fetchError } = await supabase
       .from('exercise_training_sessions')
-      .select('notes, status')
+      .select('notes, session_status')
       .eq('id', sessionId)
       .single()
 
@@ -411,7 +412,7 @@ export async function addSprintRoundAction(
       }
     }
 
-    if (session.status !== 'in_progress') {
+    if (session.session_status !== 'ongoing') {
       return {
         isSuccess: false,
         message: "Cannot modify completed session"
@@ -475,7 +476,7 @@ export async function removeSprintRoundAction(
     // Get the session and update its metadata
     const { data: session, error: fetchError } = await supabase
       .from('exercise_training_sessions')
-      .select('notes, status')
+      .select('notes, session_status')
       .eq('id', sessionId)
       .single()
 
@@ -486,7 +487,7 @@ export async function removeSprintRoundAction(
       }
     }
 
-    if (session.status !== 'in_progress') {
+    if (session.session_status !== 'ongoing') {
       return {
         isSuccess: false,
         message: "Cannot modify completed session"
@@ -752,7 +753,7 @@ export async function toggleAthletePresenceAction(
     // Fetch session notes and status
     const { data: session, error: fetchError } = await supabase
       .from('exercise_training_sessions')
-      .select('notes, status')
+      .select('notes, session_status')
       .eq('id', sessionId)
       .single()
 
@@ -760,7 +761,7 @@ export async function toggleAthletePresenceAction(
       return { isSuccess: false, message: "Session not found" }
     }
 
-    if (session.status === 'completed') {
+    if (session.session_status === 'completed') {
       return { isSuccess: false, message: "Cannot modify a completed session" }
     }
 
@@ -832,7 +833,7 @@ export async function getSprintPerformanceDataAction(
       return {
         athleteId: metadata.athlete_id,
         athleteGroupId: metadata.athlete_group_id,
-        roundNumber: detail.set_index,
+        roundNumber: detail.set_index || 1, // Default to 1 if null
         distance: detail.distance || 0,
         timeMs: detail.duration as number,
         notes: metadata.notes,

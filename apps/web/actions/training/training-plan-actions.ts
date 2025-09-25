@@ -104,7 +104,10 @@ export async function getMacrocyclesAction(): Promise<ActionState<MacrocycleWith
         athlete_group:athlete_groups(*),
         mesocycles(
           *,
-          microcycles(*)
+          microcycles(
+            *,
+            exercise_preset_groups(*)
+          )
         )
       `)
       .eq('user_id', dbUserId)
@@ -372,7 +375,18 @@ export async function getMesocyclesByMacrocycleAction(macrocycleId: number): Pro
       .select(`
         *,
         macrocycle:macrocycles(*),
-        microcycles(*)
+        microcycles(
+          *,
+          exercise_preset_groups(
+            *,
+            exercise_presets(
+              *,
+              exercises(*),
+              exercise_preset_details(*)
+            ),
+            athlete_group(*)
+          )
+        )
       `)
       .eq('macrocycle_id', macrocycleId)
       .eq('user_id', dbUserId)
@@ -424,7 +438,15 @@ export async function getMesocycleByIdAction(id: number): Promise<ActionState<Me
         macrocycle:macrocycles(*),
         microcycles(
           *,
-          exercise_preset_groups(*)
+          exercise_preset_groups(
+            *,
+            exercise_presets(
+              *,
+              exercises(*),
+              exercise_preset_details(*)
+            ),
+            athlete_group(*)
+          )
         )
       `)
       .eq('id', id)
@@ -662,7 +684,25 @@ export async function createMicrocycleAction(
         athleteGroupId: undefined,
         athleteIds: undefined,
         isTemplate: false,
-        sessions: initialSessions
+        sessions: initialSessions.map((session, index) => ({
+          id: `session-${microcycle.id}-${session.week}-${session.day}`,
+          name: session.name,
+          description: session.description || '',
+          day: session.day,
+          week: session.week,
+          exercises: (session.exercises || []).map((exercise, exerciseIndex) => ({
+            id: `exercise-${exerciseIndex}`,
+            exerciseId: exercise.exerciseId,
+            order: exercise.order,
+            supersetId: exercise.supersetId,
+            sets: exercise.sets,
+            notes: exercise.notes || '',
+            restTime: 60 // Default 60 seconds
+          })),
+          estimatedDuration: 60, // Default 60 minutes
+          focus: ['training'], // Default focus
+          notes: ''
+        }))
       }
 
       // Import the saveSessionPlanAction function
@@ -678,7 +718,7 @@ export async function createMicrocycleAction(
     return {
       isSuccess: true,
       message: "Microcycle created successfully",
-      data: microcycle
+      data: microcycle as MicrocycleWithDetails
     }
   } catch (error) {
     console.error('Error in createMicrocycleAction:', error)
@@ -711,7 +751,15 @@ export async function getMicrocyclesByMesocycleAction(mesocycleId: number): Prom
       .select(`
         *,
         mesocycle:mesocycles(*),
-        exercise_preset_groups(*)
+        exercise_preset_groups(
+          *,
+          exercise_presets(
+            *,
+            exercises(*),
+            exercise_preset_details(*)
+          ),
+          athlete_group(*)
+        )
       `)
       .eq('mesocycle_id', mesocycleId)
       .eq('user_id', dbUserId)
@@ -728,7 +776,7 @@ export async function getMicrocyclesByMesocycleAction(mesocycleId: number): Prom
     return {
       isSuccess: true,
       message: "Microcycles retrieved successfully",
-      data: microcycles || []
+      data: (microcycles || []) as MicrocycleWithDetails[]
     }
   } catch (error) {
     console.error('Error in getMicrocyclesByMesocycleAction:', error)
@@ -790,7 +838,7 @@ export async function getMicrocycleByIdAction(id: number): Promise<ActionState<M
     return {
       isSuccess: true,
       message: "Microcycle retrieved successfully",
-      data: microcycle
+      data: microcycle as MicrocycleWithDetails
     }
   } catch (error) {
     console.error('Error in getMicrocycleByIdAction:', error)
@@ -840,7 +888,7 @@ export async function updateMicrocycleAction(
     return {
       isSuccess: true,
       message: "Microcycle updated successfully",
-      data: microcycle
+      data: microcycle as MicrocycleWithDetails
     }
   } catch (error) {
     console.error('Error in updateMicrocycleAction:', error)
@@ -999,17 +1047,17 @@ export async function copyMacrocycleAsTemplateAction(
     }
 
     // Calculate date offset for adjusting nested cycles
-    const originalStart = new Date(originalMacrocycle.start_date)
+    const originalStart = new Date(originalMacrocycle.start_date || new Date())
     const newStart = new Date(newStartDate)
     const daysDiff = Math.floor((newStart.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24))
 
     // Copy mesocycles
     if (originalMacrocycle.mesocycles && originalMacrocycle.mesocycles.length > 0) {
       for (const mesocycle of originalMacrocycle.mesocycles) {
-        const mesoStartDate = new Date(mesocycle.start_date)
+        const mesoStartDate = new Date(mesocycle.start_date || new Date())
         mesoStartDate.setDate(mesoStartDate.getDate() + daysDiff)
-        
-        const mesoEndDate = new Date(mesocycle.end_date)
+
+        const mesoEndDate = new Date(mesocycle.end_date || new Date())
         mesoEndDate.setDate(mesoEndDate.getDate() + daysDiff)
 
         const newMesocycleData: MesocycleInsert = {
@@ -1036,10 +1084,10 @@ export async function copyMacrocycleAsTemplateAction(
         // Copy microcycles for this mesocycle
         if (mesocycle.microcycles && mesocycle.microcycles.length > 0) {
           for (const microcycle of mesocycle.microcycles) {
-            const microStartDate = new Date(microcycle.start_date)
+            const microStartDate = new Date(microcycle.start_date || new Date())
             microStartDate.setDate(microStartDate.getDate() + daysDiff)
             
-            const microEndDate = new Date(microcycle.end_date)
+            const microEndDate = new Date(microcycle.end_date || new Date())
             microEndDate.setDate(microEndDate.getDate() + daysDiff)
 
             const newMicrocycleData: MicrocycleInsert = {
@@ -1048,7 +1096,7 @@ export async function copyMacrocycleAsTemplateAction(
               start_date: microStartDate.toISOString().split('T')[0],
               end_date: microEndDate.toISOString().split('T')[0],
               mesocycle_id: newMesocycle.id,
-              user_id: user.id
+              user_id: dbUserId
             }
 
             const { data: newMicrocycle, error: microError } = await supabase
@@ -1065,7 +1113,7 @@ export async function copyMacrocycleAsTemplateAction(
             // Copy exercise preset groups for this microcycle
             if (microcycle.exercise_preset_groups && microcycle.exercise_preset_groups.length > 0) {
               for (const presetGroup of microcycle.exercise_preset_groups) {
-                const presetDate = new Date(presetGroup.date)
+                const presetDate = new Date(presetGroup.date || new Date())
                 presetDate.setDate(presetDate.getDate() + daysDiff)
 
                 const newPresetGroupData = {
@@ -1077,7 +1125,7 @@ export async function copyMacrocycleAsTemplateAction(
                   day: presetGroup.day,
                   microcycle_id: newMicrocycle.id,
                   athlete_group_id: athleteGroupId || null,
-                  user_id: user.id
+                  user_id: dbUserId
                 }
 
                 const { data: newPresetGroup, error: presetError } = await supabase

@@ -11,12 +11,15 @@ import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
-import { 
-  Coach, 
-  CoachInsert, 
-  CoachUpdate,
-  CoachWithDetails
-} from "@/types/database"
+import type { Database } from "@/types/database"
+
+// Define coach types from database
+type Coach = Database['public']['Tables']['coaches']['Row']
+type CoachInsert = Database['public']['Tables']['coaches']['Insert']
+type CoachUpdate = Database['public']['Tables']['coaches']['Update']
+type CoachWithDetails = Coach & {
+  user?: Database['public']['Tables']['users']['Row'] | null
+}
 
 // ============================================================================
 // COACH ACTIONS

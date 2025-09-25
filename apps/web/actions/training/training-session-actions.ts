@@ -70,7 +70,7 @@ export async function startTrainingSessionAction(
       athlete_id: finalAthleteId,
       date_time: new Date().toISOString(),
       notes: null,
-      status: 'planned'
+      session_status: 'assigned'
     }
 
     const { data: session, error } = await supabase
@@ -552,12 +552,12 @@ export async function getPerformanceMetricsAction(
       .from('exercise_training_sessions')
       .select(`
         id,
-        date,
-        completion_status,
+        date_time,
+        session_status,
         exercise_training_details(
           reps,
-          weight,
-          rpe
+          resistance_unit_id,
+          power
         )
       `)
       .eq('athlete_id', finalAthleteId)
@@ -588,16 +588,16 @@ export async function getPerformanceMetricsAction(
     let completedSessions = 0
 
     sessions?.forEach(session => {
-      if (session.completion_status === 'completed') {
+      if (session.session_status === 'completed') {
         completedSessions++
       }
       
       session.exercise_training_details?.forEach(detail => {
         totalSets++
         if (detail.reps) totalReps += detail.reps
-        if (detail.weight) totalWeight += detail.weight
-        if (detail.rpe) {
-          rpeSum += detail.rpe
+        if (detail.resistance_unit_id) totalWeight += detail.resistance_unit_id
+        if (detail.power) {
+          rpeSum += detail.power
           rpeCount++
         }
       })
@@ -672,25 +672,28 @@ export async function getExerciseProgressAction(
     let query = supabase
       .from('exercise_training_details')
       .select(`
-        exercise_id,
+        exercise_preset_id,
         reps,
-        weight,
-        rpe,
+        resistance_unit_id,
+        power,
         exercise_training_session:exercise_training_sessions!inner(
           athlete_id,
-          date,
-          completion_status
+          date_time,
+          session_status
         ),
-        exercise:exercises(
-          name
+        exercise_preset:exercise_presets(
+          exercise:exercises(
+            id,
+            name
+          )
         )
       `)
       .eq('exercise_training_session.athlete_id', finalAthleteId)
-      .eq('exercise_training_session.completion_status', 'completed')
-      .order('exercise_training_session.date', { ascending: false })
+      .eq('exercise_training_session.session_status', 'completed')
+      .order('exercise_training_session.date_time', { ascending: false })
 
     if (exerciseId) {
-      query = query.eq('exercise_id', exerciseId)
+      query = query.eq('exercise_preset.exercise_id', exerciseId)
     }
 
     const { data: details, error } = await query
@@ -707,10 +710,13 @@ export async function getExerciseProgressAction(
     const exerciseMap = new Map<number, any>()
     
     details?.forEach(detail => {
-      if (!exerciseMap.has(detail.exercise_id)) {
-        exerciseMap.set(detail.exercise_id, {
-          exercise_id: detail.exercise_id,
-          exercise_name: detail.exercise?.name || 'Unknown Exercise',
+      const exerciseId = detail.exercise_preset?.exercise?.id
+      if (!exerciseId) return // Skip if no exercise ID
+      
+      if (!exerciseMap.has(exerciseId)) {
+        exerciseMap.set(exerciseId, {
+          exercise_id: exerciseId,
+          exercise_name: detail.exercise_preset?.exercise?.name || 'Unknown Exercise',
           sessions_completed: 0,
           pr_weight: 0,
           pr_reps: 0,
@@ -721,25 +727,27 @@ export async function getExerciseProgressAction(
         })
       }
       
-      const exerciseData = exerciseMap.get(detail.exercise_id)
-      exerciseData.sessions_completed++
-      
-      if (detail.weight && detail.weight > exerciseData.pr_weight) {
-        exerciseData.pr_weight = detail.weight
-        exerciseData.pr_date = detail.exercise_training_session?.date
-      }
-      
-      if (detail.reps && detail.reps > exerciseData.pr_reps) {
-        exerciseData.pr_reps = detail.reps
-      }
-      
-      if (detail.rpe) {
-        exerciseData.rpe_sum += detail.rpe
-        exerciseData.rpe_count++
-      }
-      
-      if (detail.weight) {
-        exerciseData.weights.push(detail.weight)
+      const exerciseData = exerciseMap.get(exerciseId)
+      if (exerciseData) {
+        exerciseData.sessions_completed++
+        
+        if (detail.resistance_unit_id && detail.resistance_unit_id > exerciseData.pr_weight) {
+          exerciseData.pr_weight = detail.resistance_unit_id
+          exerciseData.pr_date = detail.exercise_training_session?.date_time || null
+        }
+        
+        if (detail.reps && detail.reps > exerciseData.pr_reps) {
+          exerciseData.pr_reps = detail.reps
+        }
+        
+        if (detail.power) {
+          exerciseData.rpe_sum += detail.power
+          exerciseData.rpe_count++
+        }
+        
+        if (detail.resistance_unit_id) {
+          exerciseData.weights.push(detail.resistance_unit_id)
+        }
       }
     })
 

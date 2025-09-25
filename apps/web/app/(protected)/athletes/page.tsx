@@ -2,19 +2,14 @@
 
 import { AthleteManagementDashboard, AthleteGroupManagement } from "@/components/features/athletes"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PageLayout } from "@/components/layout"
 
 export default async function AthletesPage() {
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Athletes</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage your athletes and organize them into training groups
-        </p>
-      </div>
-
-      {/* Main Content */}
+    <PageLayout
+      title="Athletes"
+      description="Manage your athletes and organize them into training groups"
+    >
       <Tabs defaultValue="athletes" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="athletes">Athlete Dashboard</TabsTrigger>
@@ -29,6 +24,6 @@ export default async function AthletesPage() {
           <AthleteGroupManagement />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageLayout>
   )
 } 

@@ -49,7 +49,7 @@ export async function getDashboardDataAction(): Promise<
       .select(`
         id,
         date_time,
-        status,
+        session_status,
         notes,
         exercise_preset_group:exercise_preset_groups(
           name
@@ -70,7 +70,7 @@ export async function getDashboardDataAction(): Promise<
     // Get dashboard stats
     const { data: statsData, error: statsError } = await supabase
       .from('exercise_training_sessions')
-      .select('status, date_time')
+      .select('session_status, date_time')
       .eq('athlete_id', athlete.id)
 
     if (statsError) {
@@ -83,7 +83,7 @@ export async function getDashboardDataAction(): Promise<
 
     // Calculate stats
     const totalSessions = statsData?.length || 0
-    const completedSessions = statsData?.filter(s => s.status === 'completed').length || 0
+    const completedSessions = statsData?.filter(s => s.session_status === 'completed').length || 0
     const completionRate = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0
 
     // Get this week's sessions
@@ -96,7 +96,7 @@ export async function getDashboardDataAction(): Promise<
     const stats: DashboardStats = {
       totalSessions,
       completedSessions,
-      upcomingSessions: statsData?.filter(s => s.status === 'planned').length || 0,
+      upcomingSessions: statsData?.filter(s => s.session_status === 'assigned').length || 0,
       activeAthletes: 1 // For now, just the current user as athlete
     }
 
@@ -104,7 +104,7 @@ export async function getDashboardDataAction(): Promise<
       id: session.id,
       title: session.exercise_preset_group?.name || 'Untitled Session', 
       date: session.date_time ? new Date(session.date_time) : new Date(),
-      status: session.status as 'pending' | 'in-progress' | 'completed' | 'cancelled',
+      status: session.session_status as 'pending' | 'in-progress' | 'completed' | 'cancelled',
       notes: session.notes || undefined
     }))
 

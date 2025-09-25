@@ -12,11 +12,15 @@ import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
-import { 
-  ExercisePresetGroup, ExercisePresetGroupInsert, ExercisePresetGroupUpdate,
-  ExercisePreset, ExercisePresetInsert,
-  ExercisePresetDetail
-} from "@/types/database"
+import type { Database } from "@/types/database"
+
+// Define types from database
+type ExercisePresetGroup = Database['public']['Tables']['exercise_preset_groups']['Row']
+type ExercisePresetGroupInsert = Database['public']['Tables']['exercise_preset_groups']['Insert']
+type ExercisePresetGroupUpdate = Database['public']['Tables']['exercise_preset_groups']['Update']
+type ExercisePreset = Database['public']['Tables']['exercise_presets']['Row']
+type ExercisePresetInsert = Database['public']['Tables']['exercise_presets']['Insert']
+type ExercisePresetDetail = Database['public']['Tables']['exercise_preset_details']['Row']
 
 // Types for MesoWizard session plans
 export interface SessionPlanData {
@@ -310,7 +314,7 @@ export async function getSessionPlansByMicrocycleAction(
     // Convert database format to MesoWizard format
     const sessionPlans: SessionPlanData[] = (presetGroups || []).map(group => ({
       id: `session-${group.week}-${group.day}`,
-      name: group.name,
+      name: group.name || `Session ${group.week}-${group.day}`,
       description: group.description || '',
       day: group.day || 1,
       week: group.week || 1,

@@ -8,11 +8,11 @@ import {
 import { getDashboardDataAction } from "@/actions/dashboard/dashboard-actions"
 import { redirect } from "next/navigation"
 import { DashboardLayout } from "@/components/features/dashboard/components"
-import { DashboardSkeleton } from "@/components/features/dashboard/components/dashboard-skeleton"
+import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 
 export default async function DashboardPage() {
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
+    <Suspense fallback={<UnifiedPageSkeleton title="Dashboard" variant="dashboard" />}>
       <DashboardContent />
     </Suspense>
   )
@@ -37,25 +37,14 @@ async function DashboardContent() {
   }
 
   if (!dashboardDataResult.isSuccess || !dashboardDataResult.data) {
-    // Handle case where dashboard data fails to load
-    // For now, we can show a message or a simplified dashboard
-    // This could be a more robust error component
+    // Use unified error handling
     return (
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-2">
-            Your training overview and quick actions
-          </p>
-        </div>
-        
-        {/* Error Content */}
-        <div>
-          <h2>Error loading dashboard data</h2>
-          <p>{dashboardDataResult.message}</p>
-        </div>
-      </div>
+      <PageLayout
+        title="Dashboard"
+        description="Your training overview and quick actions"
+        error={dashboardDataResult.message}
+        onRetry={() => window.location.reload()}
+      />
     )
   }
 
@@ -64,19 +53,11 @@ async function DashboardContent() {
   const dashboardData = dashboardDataResult.data
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">
-          Welcome back, {displayName}!
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Here's your training overview for today.
-        </p>
-      </div>
-
-      {/* Main Content */}
+    <PageLayout
+      title={`Welcome back, ${displayName}!`}
+      description="Here's your training overview for today."
+    >
       <DashboardLayout data={dashboardData} displayName={displayName} />
-    </div>
+    </PageLayout>
   )
 } 

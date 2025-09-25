@@ -1,6 +1,3 @@
-// Kasoku Running Website - Database Type Definitions
-// Generated from actual Supabase schema (Project: pcteaouusthwbgzczoae)
-
 export type Json =
   | string
   | number
@@ -10,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
       athlete_cycles: {
@@ -171,7 +173,7 @@ export type Database = {
           {
             foreignKeyName: "fk_athletes_user_id"
             columns: ["user_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -206,7 +208,7 @@ export type Database = {
           {
             foreignKeyName: "fk_coaches_user_id"
             columns: ["user_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -225,7 +227,7 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           id?: number
-          name: string | null
+          name?: string | null
           type?: string | null
           updated_at?: string | null
         }
@@ -337,14 +339,14 @@ export type Database = {
         Insert: {
           athlete_group_id?: number | null
           created_at?: string | null
-          date: string | null
+          date?: string | null
           day?: number | null
           deleted?: boolean | null
           description?: string | null
           id?: number
           is_template?: boolean | null
           microcycle_id?: number | null
-          name: string | null
+          name?: string | null
           session_mode?: string | null
           updated_at?: string | null
           user_id?: number | null
@@ -368,6 +370,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "exercise_preset_groups_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_epg_athlete_group"
             columns: ["athlete_group_id"]
             isOneToOne: false
@@ -379,13 +388,6 @@ export type Database = {
             columns: ["microcycle_id"]
             isOneToOne: false
             referencedRelation: "microcycles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "exercise_preset_groups_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -470,14 +472,13 @@ export type Database = {
           completed: boolean | null
           created_at: string | null
           distance: number | null
-          duration: string | null
+          duration: unknown | null
           exercise_preset_id: number | null
           exercise_training_session_id: number | null
           id: number
           metadata: Json | null
           power: number | null
           reps: number | null
-          resistance: number | null
           resistance_unit_id: number | null
           set_index: number | null
           tempo: string | null
@@ -487,14 +488,13 @@ export type Database = {
           completed?: boolean | null
           created_at?: string | null
           distance?: number | null
-          duration?: string | null
+          duration?: unknown | null
           exercise_preset_id?: number | null
           exercise_training_session_id?: number | null
           id?: number
           metadata?: Json | null
           power?: number | null
           reps?: number | null
-          resistance?: number | null
           resistance_unit_id?: number | null
           set_index?: number | null
           tempo?: string | null
@@ -504,14 +504,13 @@ export type Database = {
           completed?: boolean | null
           created_at?: string | null
           distance?: number | null
-          duration?: string | null
+          duration?: unknown | null
           exercise_preset_id?: number | null
           exercise_training_session_id?: number | null
           id?: number
           metadata?: Json | null
           power?: number | null
           reps?: number | null
-          resistance?: number | null
           resistance_unit_id?: number | null
           set_index?: number | null
           tempo?: string | null
@@ -553,19 +552,21 @@ export type Database = {
           notes: string | null
           session_mode: string | null
           status: string | null
+          session_status: Database["public"]["Enums"]["session_status"] | null
           updated_at: string | null
         }
         Insert: {
           athlete_group_id?: number | null
           athlete_id?: number | null
           created_at?: string | null
-          date_time: string | null
+          date_time?: string | null
           description?: string | null
           exercise_preset_group_id?: number | null
           id?: number
           notes?: string | null
           session_mode?: string | null
           status?: string | null
+          session_status?: Database["public"]["Enums"]["session_status"] | null
           updated_at?: string | null
         }
         Update: {
@@ -579,6 +580,7 @@ export type Database = {
           notes?: string | null
           session_mode?: string | null
           status?: string | null
+          session_status?: Database["public"]["Enums"]["session_status"] | null
           updated_at?: string | null
         }
         Relationships: [
@@ -614,7 +616,7 @@ export type Database = {
         Insert: {
           description?: string | null
           id?: number
-          type: string | null
+          type?: string | null
         }
         Update: {
           description?: string | null
@@ -626,29 +628,57 @@ export type Database = {
       exercises: {
         Row: {
           description: string | null
+          embedding: string | null
           exercise_type_id: number | null
           id: number
+          is_archived: boolean | null
           name: string | null
+          owner_user_id: number | null
+          search_tsv: unknown | null
           unit_id: number | null
           video_url: string | null
+          visibility:
+            | Database["public"]["Enums"]["exercise_visibility_type"]
+            | null
         }
         Insert: {
           description?: string | null
+          embedding?: string | null
           exercise_type_id?: number | null
           id?: number
-          name: string | null
+          is_archived?: boolean | null
+          name?: string | null
+          owner_user_id?: number | null
+          search_tsv?: unknown | null
           unit_id?: number | null
           video_url?: string | null
+          visibility?:
+            | Database["public"]["Enums"]["exercise_visibility_type"]
+            | null
         }
         Update: {
           description?: string | null
+          embedding?: string | null
           exercise_type_id?: number | null
           id?: number
+          is_archived?: boolean | null
           name?: string | null
+          owner_user_id?: number | null
+          search_tsv?: unknown | null
           unit_id?: number | null
           video_url?: string | null
+          visibility?:
+            | Database["public"]["Enums"]["exercise_visibility_type"]
+            | null
         }
         Relationships: [
+          {
+            foreignKeyName: "exercises_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_exercise_type"
             columns: ["exercise_type_id"]
@@ -680,10 +710,10 @@ export type Database = {
           athlete_group_id?: number | null
           created_at?: string | null
           description?: string | null
-          end_date: string | null
+          end_date?: string | null
           id?: number
-          name: string | null
-          start_date: string | null
+          name?: string | null
+          start_date?: string | null
           user_id?: number | null
         }
         Update: {
@@ -713,6 +743,73 @@ export type Database = {
           },
         ]
       }
+      memories: {
+        Row: {
+          athlete_id: number | null
+          coach_id: number | null
+          content: string
+          created_at: string
+          created_by: number
+          embedding: string | null
+          group_id: number | null
+          id: number
+          memory_type: Database["public"]["Enums"]["memory_type"]
+          metadata: Json | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          athlete_id?: number | null
+          coach_id?: number | null
+          content: string
+          created_at?: string
+          created_by: number
+          embedding?: string | null
+          group_id?: number | null
+          id?: number
+          memory_type: Database["public"]["Enums"]["memory_type"]
+          metadata?: Json | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: number | null
+          coach_id?: number | null
+          content?: string
+          created_at?: string
+          created_by?: number
+          embedding?: string | null
+          group_id?: number | null
+          id?: number
+          memory_type?: Database["public"]["Enums"]["memory_type"]
+          metadata?: Json | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_memories_athlete"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_memories_coach"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_memories_group"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "athlete_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mesocycles: {
         Row: {
           created_at: string | null
@@ -728,12 +825,12 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description?: string | null
-          end_date: string | null
+          end_date?: string | null
           id?: number
           macrocycle_id?: number | null
           metadata?: Json | null
-          name: string | null
-          start_date: string | null
+          name?: string | null
+          start_date?: string | null
           user_id?: number | null
         }
         Update: {
@@ -778,11 +875,11 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description?: string | null
-          end_date: string | null
+          end_date?: string | null
           id?: number
           mesocycle_id?: number | null
-          name: string | null
-          start_date: string | null
+          name?: string | null
+          start_date?: string | null
           user_id?: number | null
         }
         Update: {
@@ -814,14 +911,17 @@ export type Database = {
       }
       tags: {
         Row: {
+          category: string | null
           id: number
           name: string | null
         }
         Insert: {
+          category?: string | null
           id?: number
-          name: string | null
+          name?: string | null
         }
         Update: {
+          category?: string | null
           id?: number
           name?: string | null
         }
@@ -836,7 +936,7 @@ export type Database = {
         Insert: {
           description?: string | null
           id?: number
-          name: string | null
+          name?: string | null
         }
         Update: {
           description?: string | null
@@ -910,25 +1010,124 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
       get_user_role_data: {
-        Args: {
-          _clerk_id: string
-        }
+        Args: { _clerk_id: string }
         Returns: {
-          user_id: number
-          role: string
-          athlete_id: number
           athlete_group_id: number
+          athlete_id: number
           coach_id: number
+          role: string
+          user_id: number
         }[]
+      }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: string
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
       unuse: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
     }
     Enums: {
-      [_ in never]: never
+      exercise_visibility_type: "global" | "coach" | "group" | "user"
+      memory_subject_type: "coach" | "athlete" | "group"
+      memory_type:
+        | "preference"
+        | "philosophy"
+        | "injury"
+        | "profile"
+        | "note"
+        | "session_summary"
+      session_status: "assigned" | "ongoing" | "completed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -936,22 +1135,25 @@ export type Database = {
   }
 }
 
-// Utility types for easier access
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -969,14 +1171,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -992,14 +1196,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -1015,14 +1221,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -1030,138 +1238,34 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
-// Kasoku-specific type aliases for easier usage
-export type User = Tables<"users">
-export type Athlete = Tables<"athletes">
-export type Coach = Tables<"coaches">
-export type AthleteGroup = Tables<"athlete_groups">
-export type AthleteGroupHistory = Tables<"athlete_group_histories">
-export type AthleteCycle = Tables<"athlete_cycles">
-export type Exercise = Tables<"exercises">
-export type ExerciseType = Tables<"exercise_types">
-export type ExercisePreset = Tables<"exercise_presets">
-export type ExercisePresetGroup = Tables<"exercise_preset_groups">
-export type ExercisePresetDetail = Tables<"exercise_preset_details">
-export type ExerciseTrainingSession = Tables<"exercise_training_sessions">
-export type ExerciseTrainingDetail = Tables<"exercise_training_details">
-export type ExerciseTag = Tables<"exercise_tags">
-export type Macrocycle = Tables<"macrocycles">
-export type Mesocycle = Tables<"mesocycles">
-export type Microcycle = Tables<"microcycles">
-export type Unit = Tables<"units">
-export type Tag = Tables<"tags">
-export type Event = Tables<"events">
-
-// Insert types
-export type UserInsert = TablesInsert<"users">
-export type AthleteInsert = TablesInsert<"athletes">
-export type CoachInsert = TablesInsert<"coaches">
-export type AthleteGroupInsert = TablesInsert<"athlete_groups">
-export type AthleteGroupHistoryInsert = TablesInsert<"athlete_group_histories">
-export type AthleteCycleInsert = TablesInsert<"athlete_cycles">
-export type ExerciseInsert = TablesInsert<"exercises">
-export type ExercisePresetInsert = TablesInsert<"exercise_presets">
-export type ExercisePresetGroupInsert = TablesInsert<"exercise_preset_groups">
-export type ExerciseTrainingSessionInsert = TablesInsert<"exercise_training_sessions">
-export type MacrocycleInsert = TablesInsert<"macrocycles">
-export type MesocycleInsert = TablesInsert<"mesocycles">
-export type MicrocycleInsert = TablesInsert<"microcycles">
-export type EventInsert = TablesInsert<"events">
-
-// Update types
-export type UserUpdate = TablesUpdate<"users">
-export type AthleteUpdate = TablesUpdate<"athletes">
-export type CoachUpdate = TablesUpdate<"coaches">
-export type AthleteGroupUpdate = TablesUpdate<"athlete_groups">
-export type AthleteGroupHistoryUpdate = TablesUpdate<"athlete_group_histories">
-export type AthleteCycleUpdate = TablesUpdate<"athlete_cycles">
-export type ExerciseUpdate = TablesUpdate<"exercises">
-export type ExercisePresetUpdate = TablesUpdate<"exercise_presets">
-export type ExercisePresetGroupUpdate = TablesUpdate<"exercise_preset_groups">
-export type ExerciseTrainingSessionUpdate = TablesUpdate<"exercise_training_sessions">
-export type MacrocycleUpdate = TablesUpdate<"macrocycles">
-export type MesocycleUpdate = TablesUpdate<"mesocycles">
-export type MicrocycleUpdate = TablesUpdate<"microcycles">
-export type EventUpdate = TablesUpdate<"events">
-
-// Extended types with relationships
-export interface UserWithProfile extends User {
-  athlete?: Athlete | null
-  coach?: Coach | null
-}
-
-export interface AthleteWithDetails extends Athlete {
-  user?: User | null
-  athlete_group?: AthleteGroup | null
-}
-
-export interface CoachWithDetails extends Coach {
-  user?: User | null
-  athlete_groups?: AthleteGroup[]
-}
-
-export interface AthleteGroupWithDetails extends AthleteGroup {
-  coach?: Coach | null
-  athletes?: Athlete[]
-}
-
-export interface ExerciseWithDetails extends Exercise {
-  exercise_type?: ExerciseType | null
-  unit?: Unit | null
-  tags?: Tag[]
-}
-
-export interface ExercisePresetGroupWithDetails extends ExercisePresetGroup {
-  exercise_presets?: (ExercisePreset & {
-    exercise?: Exercise | null
-    exercise_preset_details?: ExercisePresetDetail[]
-  })[]
-  microcycle?: Microcycle | null
-  athlete_group?: AthleteGroup | null
-}
-
-export interface ExerciseTrainingSessionWithDetails extends ExerciseTrainingSession {
-  exercise_preset_group?: ExercisePresetGroup | null
-  athlete?: Athlete | null
-  athlete_group?: AthleteGroup | null
-  exercise_training_details?: ExerciseTrainingDetail[]
-}
-
-export interface MacrocycleWithDetails extends Macrocycle {
-  mesocycles?: Mesocycle[]
-  athlete_group?: AthleteGroup | null
-  user?: User | null
-}
-
-export interface MesocycleWithDetails extends Mesocycle {
-  macrocycle?: Macrocycle | null
-  microcycles?: Microcycle[]
-  user?: User | null
-}
-
-export interface MicrocycleWithDetails extends Microcycle {
-  mesocycle?: Mesocycle | null
-  exercise_preset_groups?: ExercisePresetGroup[]
-  user?: User | null
-}
-
-// Enums and constants
-export type UserRole = "athlete" | "coach" | "admin"
-export type RoleName = "athlete" | "coach" | "admin" // Alias for compatibility
-export type SessionMode = "individual" | "group"
-export type SessionStatus = "planned" | "in_progress" | "completed" | "cancelled"
-export type ExperienceLevel = "beginner" | "intermediate" | "advanced" | "elite"
-export type Gender = "male" | "female" | "other"
-export type SubscriptionStatus = "free" | "premium" | "pro" | "cancelled"
+export const Constants = {
+  public: {
+    Enums: {
+      exercise_visibility_type: ["global", "coach", "group", "user"],
+      memory_subject_type: ["coach", "athlete", "group"],
+      memory_type: [
+        "preference",
+        "philosophy",
+        "injury",
+        "profile",
+        "note",
+        "session_summary",
+      ],
+      session_status: ["assigned", "ongoing", "completed", "cancelled"],
+    },
+  },
+} as const

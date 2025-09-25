@@ -9,20 +9,13 @@ It includes navigation, authentication buttons, and marketing-focused features.
 
 import { Button } from "@/components/ui/button"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from "@/components/ui/dropdown-menu"
-import {
   SignedIn,
   SignedOut,
   SignInButton,
   SignUpButton,
   UserButton
 } from "@clerk/nextjs"
-import { BrainCircuit, LayoutDashboard, Menu, X, ChevronDown } from "lucide-react"
+import { BrainCircuit, LayoutDashboard, Menu, X } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ThemeSwitcher } from "../../utilities/theme-switcher"
@@ -32,13 +25,6 @@ const navLinks = [
   { href: "#pricing", label: "Pricing" },
   { href: "#about", label: "About" },
   { href: "#contact", label: "Contact" }
-]
-
-const featureLinks = [
-  { href: "#features", label: "AI Training Plans", description: "Personalized workout plans powered by AI" },
-  { href: "#features", label: "Performance Tracking", description: "Real-time analytics and insights" },
-  { href: "#features", label: "Smart Periodization", description: "Intelligent workout scheduling" },
-  { href: "#features", label: "Coach Integration", description: "Seamless collaboration with coaches" }
 ]
 
 export default function LandingHeader() {
@@ -77,33 +63,7 @@ export default function LandingHeader() {
         </div>
 
         <nav className="absolute left-1/2 hidden -translate-x-1/2 space-x-2 font-semibold md:flex items-center">
-          {/* Features Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="rounded-full px-3 py-1 hover:opacity-80 flex items-center gap-1"
-              >
-                Features <ChevronDown className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-64">
-              {featureLinks.map((link, index) => (
-                <DropdownMenuItem key={link.href} asChild>
-                  <Link href={link.href} className="flex flex-col items-start p-3 cursor-pointer">
-                    <div className="font-medium text-slate-800 dark:text-slate-100">
-                      {link.label}
-                    </div>
-                    <div className="text-sm text-slate-600 dark:text-slate-400">
-                      {link.description}
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Regular Navigation Links */}
+          {/* Navigation Links */}
           {navLinks.map(link => (
             <Link
               key={link.href}
@@ -166,24 +126,6 @@ export default function LandingHeader() {
               >
                 Home
               </Link>
-            </li>
-            
-            {/* Mobile Features Section */}
-            <li>
-              <div className="font-semibold text-slate-800 dark:text-slate-100 py-2">Features</div>
-              <ul className="ml-4 space-y-1">
-                {featureLinks.map(link => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="block text-sm hover:underline"
-                      onClick={toggleMenu}
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
             </li>
             
             {navLinks.map(link => (

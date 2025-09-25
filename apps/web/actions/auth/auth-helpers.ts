@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
-import { RoleName } from "@/types/database"
+// RoleName type is not exported from database types, using string instead
 
 /**
  * Authentication helper functions for Kasoku running website
@@ -35,7 +35,7 @@ export async function isAuthenticatedAction(): Promise<ActionState<boolean>> {
 /**
  * Check if the current user has a specific role (athlete, coach, admin)
  */
-export async function hasRoleAction(requiredRole: RoleName): Promise<ActionState<boolean>> {
+export async function hasRoleAction(requiredRole: string): Promise<ActionState<boolean>> {
   try {
     const { userId } = await auth()
     
@@ -105,7 +105,7 @@ export async function isAthleteAction(): Promise<ActionState<boolean>> {
 /**
  * Get the current user's role
  */
-export async function getUserRoleAction(): Promise<ActionState<RoleName | null>> {
+export async function getUserRoleAction(): Promise<ActionState<string | null>> {
   try {
     const { userId } = await auth()
     
@@ -138,7 +138,7 @@ export async function getUserRoleAction(): Promise<ActionState<RoleName | null>>
     return {
       isSuccess: true,
       message: `User role: ${user.role}`,
-      data: user.role as RoleName
+      data: user.role
     }
   } catch (error) {
     console.error('Error getting user role:', error)
@@ -183,7 +183,7 @@ export async function canAccessAthleteDataAction(): Promise<ActionState<boolean>
 /**
  * Get the current user's profile with role information
  */
-export async function getUserProfileAction(): Promise<ActionState<{ role: RoleName; profile: any } | null>> {
+export async function getUserProfileAction(): Promise<ActionState<{ role: string; profile: any } | null>> {
   try {
     const { userId } = await auth()
     
@@ -234,7 +234,7 @@ export async function getUserProfileAction(): Promise<ActionState<{ role: RoleNa
       isSuccess: true,
       message: "User profile retrieved successfully",
       data: {
-        role: user.role as RoleName,
+        role: user.role,
         profile: {
           ...user,
           roleSpecific: roleProfile
@@ -254,7 +254,7 @@ export async function getUserProfileAction(): Promise<ActionState<{ role: RoleNa
  * Validate user permissions for a specific action
  */
 export async function validatePermissionAction(
-  requiredRole: RoleName,
+  requiredRole: string,
   resourceType?: string,
   resourceId?: number
 ): Promise<ActionState<boolean>> {

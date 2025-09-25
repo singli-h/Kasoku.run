@@ -23,4 +23,12 @@ export { WizardContainer } from "./wizard-container"
 export { SectionManager } from "./section-manager"
 export { AthleteSummaryCard } from "./athlete-summary-card"
 export { TrainingSessionCard } from "./training-session-card"
+
+// Workout session components (reusable across workout and history pages)
+export { SessionCard as WorkoutSessionCard } from "./workout-session-card"
+export { SessionStatusBadge as WorkoutSessionStatusBadge } from "./workout-session-status-badge"
+export { SessionDateDisplay as WorkoutSessionDateDisplay } from "./workout-session-date-display"
+export { SessionDurationDisplay as WorkoutSessionDurationDisplay } from "./workout-session-duration-display"
+export { SessionExerciseCount as WorkoutSessionExerciseCount } from "./workout-session-exercise-count"
+
 export type { Comment, CommentSectionProps } from "./comment-section" 

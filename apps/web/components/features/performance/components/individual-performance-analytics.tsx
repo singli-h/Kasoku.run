@@ -64,7 +64,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { getIndividualPerformanceDataAction } from "@/actions/performance/performance-actions"
+// import { getIndividualPerformanceDataAction } from "@/actions/performance/performance-actions" // Temporarily disabled
 import type { 
   PerformanceMetric, 
   ExerciseProgress, 
@@ -103,7 +103,8 @@ export default function IndividualPerformanceAnalytics({
       }
       try {
         setLoading(true)
-        const result = await getIndividualPerformanceDataAction(athleteId)
+        // const result = await getIndividualPerformanceDataAction(athleteId) // Temporarily disabled
+        const result = { isSuccess: false, message: "Performance analytics temporarily disabled" }
         if (result.isSuccess) {
           setData(result.data)
         } else {

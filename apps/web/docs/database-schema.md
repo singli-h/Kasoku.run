@@ -4,7 +4,7 @@ This document provides a comprehensive overview of the Kasoku database schema as
 
 ## Overview
 
-The Kasoku database is designed to support a comprehensive training management system for athletes and coaches. The schema is built around the core concepts of users, athletes, coaches, training plans, and exercise tracking.
+The Kasoku database is designed to support a comprehensive training management system for athletes and coaches. The schema is built around the core concepts of users, athletes, coaches, training plans, and exercise tracking, with advanced AI/ML capabilities for intelligent exercise recommendations and memory management.
 
 ## Database Project Information
 
@@ -201,7 +201,7 @@ Categories of exercises (e.g., strength, cardio, flexibility).
 **RLS**: Disabled
 
 #### `exercises`
-Master list of exercises available in the system.
+Master list of exercises available in the system with AI/ML capabilities.
 
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
@@ -211,11 +211,17 @@ Master list of exercises available in the system.
 | `name` | `varchar` | Exercise name | NULLABLE |
 | `description` | `varchar` | Exercise description | NULLABLE |
 | `video_url` | `varchar` | Instructional video URL | NULLABLE |
+| `embedding` | `vector` | AI embedding for similarity search | NULLABLE |
+| `search_tsv` | `tsvector` | Full-text search vector | Generated column |
+| `owner_user_id` | `integer` | Foreign key to users (creator) | NULLABLE |
+| `visibility` | `exercise_visibility_type` | Visibility scope | NULLABLE, DEFAULT 'global' |
+| `is_archived` | `boolean` | Archive status | NULLABLE, DEFAULT false |
 
 **RLS**: Disabled
 **Relationships**: 
 - Many-to-one with `exercise_types` via `exercise_type_id`
 - Many-to-one with `units` via `unit_id`
+- Many-to-one with `users` via `owner_user_id`
 
 #### `units`
 Measurement units for exercises (kg, lbs, reps, etc.).
@@ -229,14 +235,16 @@ Measurement units for exercises (kg, lbs, reps, etc.).
 **RLS**: Disabled
 
 #### `tags`
-Categorization tags for exercises.
+Categorization tags for exercises with structured categories.
 
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
 | `name` | `varchar` | Tag name | NULLABLE |
+| `category` | `text` | Tag category | NULLABLE, CHECK constraint |
 
 **RLS**: Disabled
+**Valid Categories**: 'region', 'goal', 'modality', 'intensity', 'contraindication'
 
 #### `exercise_tags`
 Many-to-many relationship between exercises and tags.
@@ -391,6 +399,31 @@ Competition and event information.
 
 **RLS**: Enabled
 
+### AI/ML Memory System
+
+#### `memories`
+AI-powered memory system for storing contextual information about athletes, coaches, and groups.
+
+| Column | Type | Description | Constraints |
+|--------|------|-------------|-------------|
+| `id` | `bigint` | Primary key | Auto-increment, NOT NULL |
+| `coach_id` | `integer` | Foreign key to coaches table | NULLABLE, FK to coaches(id) |
+| `athlete_id` | `integer` | Foreign key to athletes table | NULLABLE, FK to athletes(id) |
+| `group_id` | `integer` | Foreign key to athlete_groups table | NULLABLE, FK to athlete_groups(id) |
+| `memory_type` | `memory_type` | Type of memory | NOT NULL |
+| `title` | `text` | Memory title | NULLABLE |
+| `content` | `text` | Memory content | NOT NULL |
+| `metadata` | `jsonb` | Additional metadata | NULLABLE |
+| `embedding` | `vector` | AI embedding for similarity search | NULLABLE |
+| `created_by` | `integer` | User who created the memory | NOT NULL |
+| `created_at` | `timestamptz` | Creation time | NOT NULL, DEFAULT now() |
+| `updated_at` | `timestamptz` | Last update time | NOT NULL, DEFAULT now() |
+
+**RLS**: Disabled
+**Memory Types**: 'preference', 'philosophy', 'injury', 'profile', 'note', 'session_summary'
+**Constraints**: Exactly one of coach_id, athlete_id, or group_id must be populated
+**Cascade Deletes**: Memories are automatically deleted when their subject is deleted
+
 ## Database Functions
 
 ### `get_user_role_data(_clerk_id text)`
@@ -425,6 +458,8 @@ The following tables have RLS enabled:
 - `exercise_training_sessions`
 - `users`
 
+**Note**: The `memories` table has RLS disabled as it requires complex cross-table access patterns for AI/ML operations.
+
 ## Data Types
 
 ### Custom Types
@@ -436,10 +471,42 @@ The following tables have RLS enabled:
 - `Gender`: Enum for gender options (male, female, other)
 - `SubscriptionStatus`: Enum for subscription levels (free, premium, pro, cancelled)
 
+### AI/ML Enums
+- `exercise_visibility_type`: Exercise visibility scope ('global', 'coach', 'group', 'user')
+- `memory_type`: Memory content types ('preference', 'philosophy', 'injury', 'profile', 'note', 'session_summary')
+
+## AI/ML Capabilities
+
+### Vector Search
+The database includes advanced vector search capabilities powered by pgvector:
+
+- **Exercise Embeddings**: The `exercises.embedding` column stores vector embeddings for semantic search
+- **Memory Embeddings**: The `memories.embedding` column enables contextual memory retrieval
+- **Full-Text Search**: The `exercises.search_tsv` column provides PostgreSQL full-text search capabilities
+
+### Vector Functions
+The database includes comprehensive vector operations:
+- Distance calculations (L2, cosine, inner product)
+- Vector normalization and aggregation
+- Similarity search and ranking
+- Vector indexing with HNSW and IVFFlat algorithms
+
+### Memory System
+The AI memory system enables:
+- Contextual information storage about athletes, coaches, and groups
+- Semantic search across memories using vector embeddings
+- Structured memory types for different use cases
+- Metadata storage for rich context
+
 ## Indexes and Performance
 
 ### Primary Keys
 All tables have auto-incrementing integer primary keys on the `id` column.
+
+### Vector Indexes
+- HNSW indexes on vector columns for fast similarity search
+- IVFFlat indexes for approximate nearest neighbor search
+- Full-text search indexes on `search_tsv` columns
 
 ### Foreign Key Constraints
 All foreign key relationships are properly constrained with appropriate cascade behaviors.

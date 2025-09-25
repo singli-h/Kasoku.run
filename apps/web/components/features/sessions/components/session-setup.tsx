@@ -424,14 +424,14 @@ export default function SessionSetup({
             </div>
             
             <Select 
-              value={selectedPresetId?.toString() || ""} 
-              onValueChange={(value) => setSelectedPresetId(value ? Number(value) : null)}
+              value={selectedPresetId ? selectedPresetId.toString() : "none"} 
+              onValueChange={(value) => setSelectedPresetId(value === "none" ? null : Number(value))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a session preset (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No preset</SelectItem>
+                <SelectItem value="none">No preset</SelectItem>
                 {sessionPresets.map((preset) => (
                   <SelectItem key={preset.id} value={preset.id.toString()}>
                     <div className="flex items-center gap-2">

@@ -51,7 +51,7 @@ export function ExistingPlansTab() {
   }
 
   if (loading) {
-    return <ExistingPlansTabSkeleton />
+    return <div>Loading plans...</div>
   }
 
   return (
@@ -163,20 +163,3 @@ function PlanCard({ plan }: { plan: ExercisePresetGroup & { athlete_groups?: any
     </Card>
   )
 }
-
-function ExistingPlansTabSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="h-7 bg-gray-200 rounded w-48 animate-pulse" />
-        <div className="h-9 bg-gray-200 rounded w-20 animate-pulse" />
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="h-48 bg-gray-200 rounded animate-pulse" />
-        ))}
-      </div>
-    </div>
-  )
-} 

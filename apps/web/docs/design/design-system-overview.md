@@ -1,6 +1,28 @@
-Kasoku Running Website - Complete Documentation
-Overview
-Kasoku is a comprehensive AI-powered fitness and running training platform built with Next.js 14, featuring a sophisticated training periodization system, real-time performance tracking, and personalized coaching capabilities. The application serves both athletes and coaches with role-based access control and comprehensive workout management.
+# Kasoku Design System Overview
+
+## Overview
+Kasoku is a comprehensive AI-powered fitness and running training platform built with Next.js 15, featuring a sophisticated training periodization system, real-time performance tracking, and personalized coaching capabilities. The application serves both athletes and coaches with role-based access control and comprehensive workout management.
+
+## Design Philosophy
+
+### Apple-Inspired Design Principles
+Kasoku follows Apple's design philosophy to create a clean, professional, and intuitive user experience:
+
+- **Minimalism**: Clean interfaces with ample white space
+- **Consistency**: Unified design language across all components
+- **Accessibility**: WCAG AA compliant with high contrast ratios
+- **Responsive-First**: Mobile-optimized with proper touch targets
+- **Performance**: Smooth animations and optimized rendering
+
+### Unified Layout System
+The application now features a centralized layout system that eliminates redundancy and ensures consistency:
+
+- **Single Source of Truth**: `PageLayout` component for all protected pages
+- **Standardized Loading States**: Unified skeleton system with multiple variants
+- **Consistent Error Handling**: Centralized error states with retry functionality
+- **Responsive Design**: Mobile-first approach with proper breakpoints
+
+For detailed information about the layout system, see [Unified Layout System Documentation](./unified-layout-system.md).
 Technology Stack
 Frontend
 Framework: Next.js 15.1+ with App Router

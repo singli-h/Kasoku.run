@@ -16,7 +16,10 @@ import {
   AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate,
   ExperienceLevel
 } from "@/types/training"
-import { User } from "@/types/database"
+import type { Database } from "@/types/database"
+
+// Define User type from database
+type User = Database['public']['Tables']['users']['Row']
 
 // ============================================================================
 // ATHLETE ACTIONS
@@ -419,7 +422,7 @@ export async function getCoachAthleteGroupsAction(): Promise<ActionState<Athlete
           )
         )
       `)
-      .eq('coach_id', user.coach.id)
+      .eq('coach_id', user.coach[0]?.id)
 
     if (error) {
       console.error('Error fetching coach athlete groups:', error)
@@ -489,7 +492,7 @@ export async function createAthleteGroupAction(
 
     const groupData: AthleteGroupInsert = {
       group_name: groupName,
-      coach_id: user.coach.id
+      coach_id: user.coach[0]?.id
     }
 
     const { data: group, error } = await supabase
@@ -569,7 +572,7 @@ export async function updateAthleteGroupAction(
       .from('athlete_groups')
       .update(updates)
       .eq('id', groupId)
-      .eq('coach_id', user.coach.id)
+      .eq('coach_id', user.coach[0]?.id)
       .select()
       .single()
 
@@ -645,7 +648,7 @@ export async function assignAthleteToGroupAction(
       .from('athlete_groups')
       .select('id')
       .eq('id', groupId)
-      .eq('coach_id', user.coach.id)
+      .eq('coach_id', user.coach[0]?.id)
       .single()
 
     if (groupError || !group) {
@@ -786,7 +789,7 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
       .from('athlete_groups')
       .delete()
       .eq('id', groupId)
-      .eq('coach_id', user.coach.id)
+      .eq('coach_id', user.coach[0]?.id)
 
     if (error) {
       console.error('Error deleting athlete group:', error)
