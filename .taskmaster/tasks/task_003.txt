@@ -1,0 +1,235 @@
+FE-Only PRD: Plans Page (Demo) — v1
+
+Source Requirements (from Notes)
+1) Build a demo/sample front end first. No backend connections. Review FE fast without bugs.
+2) Training Timeline for macrocycle (show mesocycle ribbons inside). Support multiple race-day anchors. Default time scales by mode: Macro→Month, Meso→Week, Micro→Day.
+3) One graph showing both volume and intensity, clean and easy to read over time.
+4) Assignment to group/athlete must have comprehensive user stories and guardrails to prevent mistakes; cover edge/error cases. 
+
+Design Principles
+- Apple-clean: lean, calm UI, obvious primary action, progressive disclosure, generous spacing, consistent typographic scale.
+- Linus-lean architecture: minimal primitives, composable views, predictable state, avoid magic; everything reversible (undo), observable (toasts), and testable.
+- FE-only demo: Mock data and pure UI state. No BE/RLS/schema. All integrations appear as non-functional stubs with safe copy.
+
+1. Vision & Scope
+Vision: Enable coaches to quickly create, understand, and adjust season plans that are race-anchored, phase-aware, and instantly reflect volume and intensity—without overwhelming them.
+In-Scope (Demo v1):
+- Plans Home (list) and Plan Workspace with sub-views: Overview · Build · Schedule · Assign · Review.
+- Modes: Macro / Meso / Micro with default time scales (Month / Week / Day).
+- Race anchors (multiple) and phase ribbons with “Respect Anchors” toggle.
+- Live (mocked) Volume + Intensity visuals that update with edits.
+- Rescheduling interactions (drag/shift) with preview-only behavior.
+- Assignment UI for athlete/group with rules and edge-case flows (no BE calls).
+- Autosave indicator, undo/redo, toasts (front-end only).
+Out-of-Scope (Demo v1):
+- Any backend I/O, persistence, or security/RLS.
+- Exercise-level authoring and deep data models.
+- Real analytics, AI generation/review logic (UI stubs only).
+
+2. Personas & Top User Stories
+Personas
+- Club Coach (time-pressed): race-anchored quick setup, minimal clicks, safe defaults.
+- Elite Coach (power user): precise control of phases/weeks/days, batch shifts, clear feedback.
+- Program Director: scans plans quickly, checks anchors/conflicts, assigns to groups.
+
+User Stories (FE-only behaviors)
+- As a coach, I can create a Macro/Meso/Micro plan anchored to race dates so that phases and schedules align to competition.
+- As a coach, I can drag/shift weeks and days and see volume/intensity change instantly so I can judge training load at a glance.
+- As a coach, I can assign a plan to an athlete or group with guardrails to avoid conflicts and misalignment.
+
+3. Features & Logical Dependency Chain
+Foundation → Workspaces → Interactions → Assignment → Review
+1) Foundation shell: Header, tabs (Overview/Build/Schedule/Assign/Review), mode switcher (Macro/Meso/Micro), scale switch (Month/Week/Day), toasts, undo/redo, autosave chip.
+2) Overview: Race anchors, phase ribbons (macro), charts rail (Vol/Int), inspect panel.
+3) Build: Macro (phase ribbons), Meso (weeks grid), Micro (day strip + session chips). Default scales per mode.
+4) Schedule: Calendar-like reschedule tools (drag/shift), “Respect Anchors” toggle.
+5) Charts: Unified Vol/Int visuals with mode-aware aggregation (Month/Week/Day) and spike warnings (mocked).
+6) Assign: Athlete/group UI, alignment options, conflict warnings (mocked rules). 
+7) Review: Checklist, warnings, change log, AI review stub.
+
+4. Success Metrics & Release Criteria & Timeline (Demo)
+Key Metrics
+- Time to first plan (demo flow) < 60 seconds.
+- 100% of primary interactions usable on mobile.
+- No dead ends: every destructive action has confirmation; every move has undo.
+
+Release Criteria
+- Smooth navigation across modes and sub-views with consistent selection/inspector patterns.
+- Charts update instantly on visible edits (front-end state only).
+- Race anchors visibly constrain movement when “Respect Anchors” is ON.
+- Assignment UI prevents obvious mistakes and surfaces warnings.
+
+Indicative Timeline (focused, lean)
+- Day 1: Shell + Home cards + Workspace nav, mode/scale controls.
+- Day 2: Overview (anchors, ribbons, charts rail) + Macro ribbons editor.
+- Day 3: Meso weeks grid + Micro day strip; drag/shift preview; undo/redo.
+- Day 4: Assign view + Review view; warnings + checklists; polish empty/loading/error.
+
+5. Frontend Architecture (Demo)
+- Single state tree per Plan Workspace (React state/contexts). 
+- Mock repositories (in-memory) for plans, anchors, weeks/days, athletes/groups.
+- Pure components: Header, Mode/Scale, ChartsRail, TimelineRibbon, WeeksGrid, DayStrip, Inspector, BatchOpsBar.
+- No external data clients; all write flows update local state + show toasts.
+
+6. Step-by-Step Development Guide (FE)
+6.1 Foundation
+- Build Plans Home list (cards, filter/search, empty state).
+- Workspace shell with sub-nav (Overview/Build/Schedule/Assign/Review), Mode/Scale segmented controls, Inspector drawer.
+- System toasts, autosave chip (mock timer), undo/redo stack.
+
+6.2 Overview (Macro-first)
+- Race anchors UI: add/remove anchors, set primary anchor, toggle “Respect Anchors”.
+- Phase ribbons timeline (macro): drag to resize, color-coded, labels (GPP/SPP/Comp/Taper/Off).
+- Charts rail (unified): toggle Volume | Intensity, month scale, mock data wired to ribbons.
+
+6.3 Build
+- Macro: ribbons editor + inspector (name, color, start/end, deload cadence, notes).
+- Meso: 4-up weeks grid with Vol/Int badges and deload dot; copy/paste, shift ±1w.
+- Micro: day strip (7-col), session chips, add buttons, drag between days (front-end only).
+
+6.4 Schedule
+- Calendar-like view with Month/Week/Day toggles; plan blocks & race flags.
+- Batch ops: Shift ±7d, Compress 1w, Extend 1w (preview modal, apply to local state).
+- Conflicts drawer: list mock warnings when spikes or overlaps.
+
+6.5 Assign
+- Switch: Individuals vs Groups; search & selection list; selected pills.
+- Start alignment options: Align to anchor / next Monday / custom date (UI only).
+- Guardrails: conflicting active plans, duplicated assignment, missing alignment → show inline banner.
+
+6.6 Review
+- Checklist (anchors set, deload present, spike warnings).
+- Change log (mock entries).
+- AI Review panel (collapsed; disabled button with tooltip “Coming soon”).
+
+7. Risks & Mitigations (Demo)
+- Risk: Interaction overload → Mitigation: progressive disclosure in Inspector; hide advanced by default.
+- Risk: Confusing duplication of views → Mitigation: one Inspector, consistent selection model across modes.
+- Risk: Unclear chart meaning → Mitigation: tooltips and mode-aware labels (Month/Week/Day).
+
+8. Error Handling & Best Practices (FE)
+- Empty: one-line explanation + single primary CTA.
+- Loading: lightweight skeletons (cards, ribbons, weeks).
+- Error: inline banners with retry. Destructive actions require confirm.
+- Undo/Redo available for move/resize/shift; autosave chip updates every 30s (mock).
+
+9. Analytics & Performance (Demo)
+- Track FE-only events: create_plan_clicked, anchor_added, phase_resized, week_shifted, assign_opened.
+- Target 60fps interactions; defer animations; virtualize long lists if needed.
+
+10. Documentation Processes
+- Keep this PRD in-sync; add “Decisions & Changes” log at bottom when flows change.
+- Screenshot each sub-view once implemented; paste lightweight captions.
+
+11. Mode Defaults & Unified Charts (Critical)
+- Default time scale by mode: Macro→Month, Meso→Week, Micro→Day.
+- Split-Panel Chart Design (NEW):
+  - Left Panel: Interactive timeline with clickable phase ribbons
+  - Right Panel: Volume/Intensity chart that updates based on selected phase
+  - Default view: Full macrocycle (14 weeks) with compressed weekly bars
+  - Mesocycle focus: Click any phase → zoom to that 3-6 week period
+  - Chart modes: Macro (weekly bars), Meso (daily granularity option)
+- Unified Volume + Intensity visuals
+  - Dual Y-axis: Volume (0-100%) left, Intensity (0-10) right
+  - Interactive tooltips: Week/day details on hover
+  - Phase highlighting: Visual connection between timeline and chart
+  - Smooth animations: 300ms transitions between macro/meso views
+- Chart interactions: hover/tap tooltip; click selects scope (month → weeks → days).
+
+12. Assignment Stories & Guardrails (Key Requirement)
+Stories
+- Assign to individuals: pick athletes; choose start alignment; confirm summary; preview conflicts.
+- Assign to group: pick group(s); same alignment options; confirm and preview.
+Rules (FE guardrails)
+- Prevent confirming when: 
+  - No anchor and no explicit start alignment.
+  - Mixed assignment types without explicit confirmation.
+  - Selected scope empty (no weeks/days).
+- Soft warnings (allow continue with confirmation):
+  - Overlap with existing active plan window (mock detection).
+  - Weekly load spike after alignment (mock spike check).
+Edge Cases & States
+- Athlete already has active plan → offer Replace / Keep both (label as overlapping) / Cancel.
+- Group membership changes (info tooltip: “Changes won’t auto-update in this demo”).
+- Race anchor after selected start alignment → show message: “Start shifts to preserve taper with Respect Anchors”.
+
+13. Lo‑Fi Responsive Layouts (ASCII)
+Plans Home (desktop) - Split-Panel Design
+┌──────────────────────── Header ─────────────────────────┐
+│ Plans                               [New Plan] [Filter] │
+└─────────────────────────────────────────────────────────┘
+Filters: [Type] [State] [Group] [Search]
+
+Macrocycle Card (Desktop ≥768px):
+┌─────────────────────────────────────────────────────────────┐
+│ [Macrocycle Header: Title, Meta, Actions]                   │
+├─────────────────────────────────┬───────────────────────────┤
+│ Timeline + Race Anchors         │ Volume/Intensity Chart    │
+│ [GPP][SPP][Comp][Taper]        │                           │
+│  🏆    🚩      🏆              │ [Interactive Chart]       │
+│                                 │ Shows selected mesocycle  │
+│ Click phase → updates chart →   │ or full macro overview    │
+└─────────────────────────────────┴───────────────────────────┘
+
+Macrocycle Card (Mobile ≤767px):
+┌─────────────────────────────────────┐
+│ [Macrocycle Header]                 │
+├─────────────────────────────────────┤
+│ Timeline + Anchors (stacked)        │
+│ [GPP][SPP][Comp][Taper]            │
+│  🏆    🚩      🏆                  │
+├─────────────────────────────────────┤
+│ Volume/Intensity Chart              │
+│ (Full width, collapsible)           │
+│ [Shows selected mesocycle]          │
+└─────────────────────────────────────┘
+
+Plan Workspace (desktop)
+Header: Name · State pill · Anchors · Respect Anchors [On]  [Assign]
+Tabs: Overview · Build · Schedule · Assign · Review    Mode: Macro|Meso|Micro
+Left Rail: Charts (toggle Volume|Intensity)
+Main: Timeline/Ribbons or Grid
+Right: Inspector (context fields, warnings, actions)
+
+Micro (day) mobile
+Week W2  [<] Oct 3 [>]   [ + Add Session ]
+• Thu — Speed Endurance (RPE 8)  (Vol/Int pills)  [Edit ▾]
+
+14. Subtasks per Feature (Demo Build)
+Foundation
+- Create Plans Home cards with filters and empty state.
+- Workspace shell: tabs, mode/scale controls, inspector drawer, toasts, autosave chip.
+- Undo/redo stack util (front-end only).
+
+Overview
+- Anchors UI (add/remove/select primary), Respect Anchors toggle.
+- Macro ribbons timeline with drag/resize; color-coded phases.
+- Charts rail (toggle Volume|Intensity), monthly scale, tooltips.
+
+Build
+- Meso weeks grid (4-up) with Vol/Int badges, deload dot, copy/paste.
+- Micro day strip (7-col), session chips, drag between days.
+- Inspector content for each mode (fields + warnings).
+
+Schedule
+- Calendar-like Month/Week/Day views; batch ops bar (Shift/Compress/Extend) with preview modals.
+- Conflicts drawer (mocked list) and spike flags.
+
+Assign
+- Individuals/Groups switch; search & select; alignment options; guardrail banners.
+- Confirmation modal with summary & warnings.
+
+Review
+- Checklist, change log, AI Review stub (collapsed, disabled button).
+
+15. Acceptance Criteria (Demo)
+- Mode/scale defaults enforced per view; switching modes adjusts scale.
+- Race anchors visible; toggling Respect Anchors constrains edits with clear messaging.
+- Charts refresh immediately on local edits and reflect aggregation per mode.
+- Drag/shift interactions show previews and apply instantly to local state; undo works.
+- Assignment UI blocks unsafe confirms and presents clear, minimal warnings.
+- All primary flows usable on mobile with inspector overlay.
+
+Decisions & Changes Log (keep updated)
+- 2025‑09‑27: Initial FE-only PRD created from requirements; AI features stubbed.
+- 2025‑01‑27: Updated with split-panel design for Plans Home. Left panel shows interactive timeline with clickable phases, right panel shows responsive Volume/Intensity chart. Added mesocycle focus mode and improved mobile responsiveness.

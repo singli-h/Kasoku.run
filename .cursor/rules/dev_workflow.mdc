@@ -100,30 +100,30 @@ Task Master offers two primary ways to interact:
 - **subtasks**: List of smaller, more specific tasks (Example: `[{"id": 1, "title": "Configure OAuth", ...}]`) 
 - Refer to task structure details (previously linked to `tasks.mdc`).
 
-## RLS Context Helper Pattern (MANDATORY)
+## Supabase RLS Pattern (MANDATORY)
 
-**CRITICAL**: All server actions that access organization-scoped data MUST use the RLS (Row-Level Security) context helper pattern. This ensures proper data isolation and security.
+**CRITICAL**: All server actions MUST use the singleton Supabase client with proper RLS policies for data isolation and security.
 
-### When to Use RLS Context Helper
+### When to Use RLS Policies
 
 **ALWAYS use for:**
-- Tasks, comments, conversations, messages
-- Any data that belongs to an organization
-- User-generated content with organization scope
+- User-scoped data (athletes, coaches, training sessions)
+- Role-based data access (coach-athlete relationships)
+- User-generated content and profiles
 - Dashboard data and analytics
 
 **DON'T use for:**
-- User profile operations (auth/user management)
-- Organization management operations (creating/updating orgs)
+- Public data (exercises, exercise types, units)
 - Webhook handlers (use service role)
-- Public data without organization scope
+- Administrative operations
 
 ### Standard Implementation Pattern
 
 ```typescript
-// ✅ CORRECT - Standard RLS pattern for organization-scoped data
-import { createServerSupabaseClient, setOrganizationContext } from "@/lib/supabase"
-import { getUserContextAction } from "@/actions/auth/auth-helpers"
+// ✅ CORRECT - Standard RLS pattern for user-scoped data
+import supabase from "@/lib/supabase-server"
+import { getDbUserId } from "@/lib/user-cache"
+import { auth } from "@clerk/nextjs/server"
 
 export async function getSomeDataAction(): Promise<ActionState<SomeData[]>> {
   try {
@@ -133,23 +133,14 @@ export async function getSomeDataAction(): Promise<ActionState<SomeData[]>> {
       return { isSuccess: false, message: "Authentication required" }
     }
 
-    // 2. Get user context (includes organizationId)
-    const userContext = await getUserContextAction()
-    if (!userContext.isSuccess) {
-      return { isSuccess: false, message: userContext.message }
-    }
+    // 2. Get database user ID
+    const dbUserId = await getDbUserId(userId)
 
-    // 3. Create Supabase client
-    const supabase = createServerSupabaseClient()
-    
-    // 4. MANDATORY: Set organization context for RLS enforcement
-    await setOrganizationContext(supabase, userContext.data.organizationId)
-
-    // 5. Query data (RLS automatically filters by organization)
+    // 3. Query data with RLS policies handling access control
     const { data, error } = await supabase
       .from('some_table')
       .select('*')
-      // NO MANUAL .eq('organization_id', ...) NEEDED!
+      .eq('user_id', dbUserId) // RLS policies validate this access
 
     if (error) throw error
     return { isSuccess: true, message: "Success", data }
@@ -162,112 +153,87 @@ export async function getSomeDataAction(): Promise<ActionState<SomeData[]>> {
 
 ### Migration Checklist
 
-When refactoring existing actions to use RLS context helper:
+When refactoring existing actions to use proper RLS pattern:
 
 1. **Update imports:**
    ```typescript
-   // Add setOrganizationContext import
-   import { createServerSupabaseClient, setOrganizationContext } from "@/lib/supabase"
-   import { getUserContextAction } from "@/actions/auth/auth-helpers"
+   // Use singleton client
+   import supabase from "@/lib/supabase-server"
+   import { getDbUserId } from "@/lib/user-cache"
    ```
 
-2. **Replace user context fetching:**
+2. **Replace client creation:**
    ```typescript
    // BEFORE
-   const userResult = await getCurrentUserIdAction()
+   const supabase = createServerSupabaseClient()
    
    // AFTER  
-   const userContext = await getUserContextAction()
+   // Use singleton client (no creation needed)
    ```
 
-3. **Add RLS context setting:**
+3. **Add user ID conversion:**
    ```typescript
-   const supabase = createServerSupabaseClient()
-   await setOrganizationContext(supabase, userContext.data.organizationId)
+   const { userId } = await auth()
+   const dbUserId = await getDbUserId(userId)
    ```
 
-4. **Remove manual organization filters:**
+4. **Use proper filtering:**
    ```typescript
-   // REMOVE these lines:
-   .eq('organization_id', organizationId)
-   
-   // REMOVE membership checks:
-   const { data: membership } = await supabase
-     .from('memberships')
-     .select('id')
-     .eq('organization_id', task.organization_id)
-     .eq('user_id', userResult.data)
-   ```
-
-5. **Update error handling:**
-   ```typescript
-   // Use userContext.message instead of custom messages
-   if (!userContext.isSuccess) {
-     return { isSuccess: false, message: userContext.message }
-   }
+   // Use database user ID for queries
+   .eq('user_id', dbUserId)
    ```
 
 ### Common Anti-Patterns to Avoid
 
 **❌ WRONG PATTERNS:**
 ```typescript
-// DON'T: Manual organization filters (bypasses RLS validation)
-const { data } = await supabase
-  .from('tasks')
-  .select('*')
-  .eq('organization_id', orgId)  // WRONG!
+// DON'T: Create new Supabase clients in server actions
+const supabase = createClient(...)  // WRONG!
 
-// DON'T: Querying without setting context
-const { data } = await supabase.from('tasks').select('*')  // WRONG!
+// DON'T: Use Clerk UUID directly in database queries
+.eq('user_id', userId)  // WRONG! userId is Clerk UUID
 
-// DON'T: Using service role for user operations
+// DON'T: Bypass RLS policies with service role for user data
 const supabase = createServiceSupabaseClient()  // WRONG FOR USER DATA!
 
-// DON'T: Manual membership validation after RLS context is set
-const { data: membership } = await supabase
-  .from('memberships')
-  .select('id')
-  .eq('organization_id', task.organization_id)  // REDUNDANT!
+// DON'T: Query without proper user context
+const { data } = await supabase.from('athletes').select('*')  // WRONG!
 ```
 
-### Files Using RLS Context Pattern
+### Files Using Correct RLS Pattern
 
 **✅ Correctly implemented:**
-- `actions/tasks/task-actions.ts`
-- `actions/tasks/comment-actions.ts`
-- `actions/tasks/task-summary-actions.ts`
-- `actions/tasks/task-progress-actions.ts`
-- `actions/chat/conversation-actions.ts`
-- `actions/chat/message-actions.ts`
-- `actions/dashboard/dashboard-actions.ts`
+- `actions/training/athlete-actions.ts`
+- `actions/training/coach-actions.ts`
+- `actions/training/training-session-actions.ts`
+- `actions/auth/user-actions.ts`
 
-**Files that DON'T need RLS context:**
-- `actions/auth/organization-webhook-actions.ts` (webhooks use service role)
-- `actions/auth/user-actions.ts` (user management operations)
+**Files that DON'T need user-scoped RLS:**
+- `actions/training/exercise-actions.ts` (public exercise data)
 - API routes in `app/api/` (external integrations)
 - Scripts in `scripts/` (administrative operations)
 
 ### Debugging RLS Issues
 
 **If queries return no data:**
-1. Verify `setOrganizationContext()` is called before queries
-2. Check that user has valid organization membership
+1. Verify user is authenticated with Clerk
+2. Check that `getDbUserId()` returns valid database user ID
 3. Confirm RLS policies exist in Supabase for the table
-4. Verify `organization_id` is correctly set in the database
+4. Verify user has proper role/permissions
 
-**If RLS context fails:**
-1. Check that `getUserContextAction()` returns valid organizationId
-2. Verify user is authenticated with Clerk
-3. Confirm organization membership exists in database
-4. Check Supabase RPC function `set_organization_context` exists
+**If RLS policies fail:**
+1. Check that Clerk JWT is properly configured in Supabase
+2. Verify RLS policies use `auth.jwt() ->> 'sub'` for user identification
+3. Confirm user role matches policy conditions
+4. Test policies with different user roles
 
 ### Security Benefits
 
-- **Automatic data isolation**: RLS policies enforce organization boundaries
+- **Automatic data isolation**: RLS policies enforce user boundaries
 - **Prevents data leaks**: No manual filter mistakes
-- **Centralized security**: All organization access goes through one helper
-- **Audit trail**: All database access is properly contextualized
-- **Future-proof**: New tables automatically inherit organization security
+- **Centralized security**: All user access goes through RLS policies
+- **Audit trail**: All database access is properly logged
+- **Future-proof**: New tables automatically inherit user security
 
 ## Configuration Management (Updated)
 

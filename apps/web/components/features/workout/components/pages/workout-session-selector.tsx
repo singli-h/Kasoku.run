@@ -138,19 +138,9 @@ export function WorkoutSessionSelector({
   }
 
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Header */}
-      <div className="text-center">
-        <h2 className="text-3xl font-bold tracking-tight mb-2">
-          Today's Workouts
-        </h2>
-        <p className="text-muted-foreground">
-          Continue ongoing sessions or start new workouts
-        </p>
-      </div>
-
-      {/* Workout Options */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className={cn("space-y-4", className)}>
+      {/* Workout Sessions - Clean grid layout */}
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {sessions?.map((session, index) => (
           <WorkoutSessionCard
             key={session.id}

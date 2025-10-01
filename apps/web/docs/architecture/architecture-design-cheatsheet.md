@@ -46,7 +46,7 @@
 
 ### Data Store
 - **Supabase Postgres** (row-level security)
-  - Pattern enforced by rules: `getSupabase()` factory + `setOrganizationContext()` → RLS isolation
+  - Pattern enforced by rules: Singleton `supabase` client + Clerk auth → RLS isolation
   - Repo still contains a few legacy `createClientSupabaseClient` usages in client pages (e.g. sprint dashboard) that bypass the new pattern → needs refactor
 
 ---
@@ -207,7 +207,7 @@ export function ErrorDisplay({
 
 1. **Icon Unification** – remove `@radix-ui/react-icons`, swap imports to lucide
 2. **Validation Pass** – adopt RHF + Zod across all remaining forms (onboarding, settings)
-3. **Supabase Client Audit** – search for `createClientSupabaseClient` and replace with action calls + RLS context
+3. **Supabase Client Audit** – search for `createClientSupabaseClient` and replace with action calls + RLS policies
 4. **Global Error Boundary & logging** – wrap `(protected)` layout; send to PostHog or Sentry
 5. **Cache Utilisation** – wrap expensive Supabase reads (library, performance charts) with `createCache`
 6. **Loading UX** – ensure every async page has Skeleton + Suspense fallback, follow `skeleton.tsx` pattern

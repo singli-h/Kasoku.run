@@ -13,13 +13,11 @@ import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { 
   Athlete, AthleteInsert, AthleteUpdate,
-  AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate,
-  ExperienceLevel
+  AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate
 } from "@/types/training"
-import type { Database } from "@/types/database"
+// (no direct Database type usage in this file)
 
-// Define User type from database
-type User = Database['public']['Tables']['users']['Row']
+// (removed unused User type alias)
 
 // ============================================================================
 // ATHLETE ACTIONS
@@ -574,13 +572,22 @@ export async function updateAthleteGroupAction(
       .eq('id', groupId)
       .eq('coach_id', user.coach[0]?.id)
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Error updating athlete group:', error)
       return {
         isSuccess: false,
         message: `Failed to update athlete group: ${error.message}`
+      }
+    }
+
+    // When no row matched (e.g., wrong id or not owned by coach), PostgREST returns 0 rows.
+    // maybeSingle() avoids throwing PGRST116; we handle the not-found case explicitly.
+    if (!group) {
+      return {
+        isSuccess: false,
+        message: "Athlete group not found or you don't have permission to modify it",
       }
     }
 
@@ -658,6 +665,21 @@ export async function assignAthleteToGroupAction(
       }
     }
 
+    // Get current athlete group before updating
+    const { data: currentAthlete, error: currentError } = await supabase
+      .from('athletes')
+      .select('athlete_group_id')
+      .eq('id', athleteId)
+      .single()
+
+    if (currentError) {
+      console.error('Error fetching current athlete group:', currentError)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch athlete information: ${currentError.message}`
+      }
+    }
+
     // Update the athlete's group assignment
     const { data: athlete, error } = await supabase
       .from('athletes')
@@ -672,6 +694,19 @@ export async function assignAthleteToGroupAction(
         isSuccess: false,
         message: `Failed to assign athlete to group: ${error.message}`
       }
+    }
+
+    // Log the group change in history
+    const historyResult = await createGroupHistoryEntryAction(
+      athleteId,
+      currentAthlete.athlete_group_id,
+      groupId,
+      `Assigned to group by coach`
+    )
+
+    if (!historyResult.isSuccess) {
+      console.warn('Failed to log group history:', historyResult.message)
+      // Don't fail the main operation if history logging fails
     }
 
     return {
@@ -706,6 +741,21 @@ export async function removeAthleteFromGroupAction(
 
     // Using singleton supabase client
 
+    // Get current athlete group before updating
+    const { data: currentAthlete, error: currentError } = await supabase
+      .from('athletes')
+      .select('athlete_group_id')
+      .eq('id', athleteId)
+      .single()
+
+    if (currentError) {
+      console.error('Error fetching current athlete group:', currentError)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch athlete information: ${currentError.message}`
+      }
+    }
+
     // Remove the athlete's group assignment
     const { data: athlete, error } = await supabase
       .from('athletes')
@@ -720,6 +770,19 @@ export async function removeAthleteFromGroupAction(
         isSuccess: false,
         message: `Failed to remove athlete from group: ${error.message}`
       }
+    }
+
+    // Log the group change in history
+    const historyResult = await createGroupHistoryEntryAction(
+      athleteId,
+      currentAthlete.athlete_group_id,
+      null,
+      `Removed from group by coach`
+    )
+
+    if (!historyResult.isSuccess) {
+      console.warn('Failed to log group history:', historyResult.message)
+      // Don't fail the main operation if history logging fails
     }
 
     return {
@@ -806,6 +869,1064 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
     }
   } catch (error) {
     console.error('Error in deleteAthleteGroupAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+// ============================================================================
+// COACH ATHLETE MANAGEMENT ACTIONS (LEAN MVP)
+// ============================================================================
+
+/**
+ * Invite or attach an athlete to a group by email
+ * Checks if user exists, creates athlete profile if needed, or invites via Clerk
+ */
+export async function inviteOrAttachAthleteAction(
+  email: string,
+  groupId: number
+): Promise<ActionState<{ type: 'attached' | 'invited', athlete?: Athlete }>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify current user is a coach and owns the group
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        role,
+        coach:coaches(id)
+      `)
+      .eq('id', dbUserId)
+      .single()
+
+    if (userError || !user) {
+      return {
+        isSuccess: false,
+        message: "User not found in database"
+      }
+    }
+
+    if (user.role !== 'coach' || !user.coach) {
+      return {
+        isSuccess: false,
+        message: "User is not a coach"
+      }
+    }
+
+    // Verify the group belongs to this coach
+    const { data: group, error: groupError } = await supabase
+      .from('athlete_groups')
+      .select('id')
+      .eq('id', groupId)
+      .eq('coach_id', user.coach[0]?.id)
+      .single()
+
+    if (groupError || !group) {
+      return {
+        isSuccess: false,
+        message: "Group not found or you don't have permission"
+      }
+    }
+
+    // Check if user exists by email
+    const { data: existingUser, error: lookupError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        clerk_id,
+        email,
+        athletes(*)
+      `)
+      .eq('email', email)
+      .single()
+
+    if (lookupError && lookupError.code !== 'PGRST116') {
+      console.error('Error looking up user:', lookupError)
+      return {
+        isSuccess: false,
+        message: "Failed to check if user exists"
+      }
+    }
+
+    if (existingUser) {
+      // User exists - ensure they have an athlete profile and assign to group
+      let athleteProfile = existingUser.athletes?.[0]
+
+      if (!athleteProfile) {
+        // Create athlete profile
+        const { data: newAthlete, error: athleteError } = await supabase
+          .from('athletes')
+          .insert({
+            user_id: existingUser.id,
+            athlete_group_id: groupId
+          })
+          .select()
+          .single()
+
+        if (athleteError) {
+          console.error('Error creating athlete profile:', athleteError)
+          return {
+            isSuccess: false,
+            message: "Failed to create athlete profile"
+          }
+        }
+
+        athleteProfile = newAthlete
+        
+        // Log the group assignment in history
+        const historyResult = await createGroupHistoryEntryAction(
+          newAthlete.id,
+          null, // No previous group for new athlete
+          groupId,
+          `Invited and assigned to group by coach`
+        )
+
+        if (!historyResult.isSuccess) {
+          console.warn('Failed to log group history for new athlete:', historyResult.message)
+          // Don't fail the main operation if history logging fails
+        }
+      } else {
+        // Get current group before updating
+        const currentGroupId = athleteProfile.athlete_group_id
+        
+        // Update existing athlete profile to assign to group
+        const { data: updatedAthlete, error: updateError } = await supabase
+          .from('athletes')
+          .update({ athlete_group_id: groupId })
+          .eq('id', athleteProfile.id)
+          .select()
+          .single()
+
+        if (updateError) {
+          console.error('Error assigning athlete to group:', updateError)
+          return {
+            isSuccess: false,
+            message: "Failed to assign athlete to group"
+          }
+        }
+
+        athleteProfile = updatedAthlete
+        
+        // Log the group change in history
+        const historyResult = await createGroupHistoryEntryAction(
+          athleteProfile.id,
+          currentGroupId,
+          groupId,
+          `Invited and assigned to group by coach`
+        )
+
+        if (!historyResult.isSuccess) {
+          console.warn('Failed to log group history for existing athlete:', historyResult.message)
+          // Don't fail the main operation if history logging fails
+        }
+      }
+
+      return {
+        isSuccess: true,
+        message: "Existing athlete assigned to group successfully",
+        data: { type: 'attached', athlete: athleteProfile }
+      }
+    } else {
+      // User doesn't exist - send Clerk invitation
+      try {
+        const { clerkClient } = await import('@clerk/nextjs/server')
+        
+        const invitation = await clerkClient.invitations.createInvitation({
+          emailAddress: email,
+          redirectUrl: `${process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL || '/onboarding'}?groupId=${groupId}`,
+          notify: true
+        })
+
+        // Create a pending athlete record linked to the invitation
+        const { data: pendingAthlete, error: pendingError } = await supabase
+          .from('athletes')
+          .insert({
+            user_id: null, // Will be filled when user completes signup
+            athlete_group_id: groupId,
+            // Store invitation ID in metadata for later linking
+            training_goals: `Invited via ${invitation.id}` 
+          })
+          .select()
+          .single()
+
+        if (pendingError) {
+          console.error('Error creating pending athlete record:', pendingError)
+          // Don't fail the whole operation if we can't create pending record
+        }
+
+        return {
+          isSuccess: true,
+          message: "Invitation sent successfully",
+          data: { type: 'invited', athlete: pendingAthlete }
+        }
+      } catch (clerkError) {
+        console.error('Error sending Clerk invitation:', clerkError)
+        return {
+          isSuccess: false,
+          message: `Failed to send invitation: ${clerkError instanceof Error ? clerkError.message : 'Unknown error'}`
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error in inviteOrAttachAthleteAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Bulk assign athletes to a group (only unassigned athletes)
+ */
+export async function bulkAssignAthletesAction(
+  athleteIds: number[],
+  groupId: number
+): Promise<ActionState<{ assigned: number[], skipped: number[], errors: string[] }>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    if (athleteIds.length === 0) {
+      return {
+        isSuccess: false,
+        message: "No athletes selected"
+      }
+    }
+
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify current user is a coach and owns the group
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        role,
+        coach:coaches(id)
+      `)
+      .eq('id', dbUserId)
+      .single()
+
+    if (userError || !user || user.role !== 'coach' || !user.coach) {
+      return {
+        isSuccess: false,
+        message: "User is not a coach"
+      }
+    }
+
+    // Verify the group belongs to this coach
+    const { data: group, error: groupError } = await supabase
+      .from('athlete_groups')
+      .select('id')
+      .eq('id', groupId)
+      .eq('coach_id', user.coach[0]?.id)
+      .single()
+
+    if (groupError || !group) {
+      return {
+        isSuccess: false,
+        message: "Group not found or you don't have permission"
+      }
+    }
+
+    // Get current status of all selected athletes
+    const { data: athletes, error: athletesError } = await supabase
+      .from('athletes')
+      .select('id, athlete_group_id')
+      .in('id', athleteIds)
+
+    if (athletesError) {
+      console.error('Error fetching athletes:', athletesError)
+      return {
+        isSuccess: false,
+        message: "Failed to fetch athlete information"
+      }
+    }
+
+    const assigned: number[] = []
+    const skipped: number[] = []
+    const errors: string[] = []
+
+    // Process each athlete
+    for (const athlete of athletes || []) {
+      if (athlete.athlete_group_id !== null) {
+        // Already assigned to a group, skip
+        skipped.push(athlete.id)
+        continue
+      }
+
+      try {
+        const { error: assignError } = await supabase
+          .from('athletes')
+          .update({ athlete_group_id: groupId })
+          .eq('id', athlete.id)
+
+        if (assignError) {
+          errors.push(`Failed to assign athlete ${athlete.id}: ${assignError.message}`)
+        } else {
+          assigned.push(athlete.id)
+          
+          // Log the group assignment in history
+          const historyResult = await createGroupHistoryEntryAction(
+            athlete.id,
+            athlete.athlete_group_id,
+            groupId,
+            `Assigned to group by coach (bulk operation)`
+          )
+
+          if (!historyResult.isSuccess) {
+            console.warn(`Failed to log group history for athlete ${athlete.id}:`, historyResult.message)
+            // Don't fail the main operation if history logging fails
+          }
+        }
+      } catch (error) {
+        errors.push(`Error processing athlete ${athlete.id}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    }
+
+    const success = assigned.length > 0
+    const message = success 
+      ? `${assigned.length} athletes assigned, ${skipped.length} skipped, ${errors.length} errors`
+      : skipped.length > 0 
+        ? "All selected athletes are already assigned to groups"
+        : "No athletes could be assigned"
+
+    return {
+      isSuccess: (success || skipped.length > 0) as true,
+      message,
+      data: { assigned, skipped, errors }
+    }
+  } catch (error) {
+    console.error('Error in bulkAssignAthletesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Bulk move athletes to a different group
+ */
+export async function bulkMoveAthletesAction(
+  athleteIds: number[],
+  targetGroupId: number
+): Promise<ActionState<{ moved: number[], skipped: number[], errors: string[] }>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    if (athleteIds.length === 0) {
+      return {
+        isSuccess: false,
+        message: "No athletes selected"
+      }
+    }
+
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify current user is a coach
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        role,
+        coach:coaches(id)
+      `)
+      .eq('id', dbUserId)
+      .single()
+
+    if (userError || !user || user.role !== 'coach' || !user.coach) {
+      return {
+        isSuccess: false,
+        message: "User is not a coach"
+      }
+    }
+
+    const coachId = user.coach[0]?.id
+
+    // Verify the target group belongs to this coach
+    const { data: targetGroup, error: groupError } = await supabase
+      .from('athlete_groups')
+      .select('id')
+      .eq('id', targetGroupId)
+      .eq('coach_id', coachId)
+      .single()
+
+    if (groupError || !targetGroup) {
+      return {
+        isSuccess: false,
+        message: "Target group not found or you don't have permission"
+      }
+    }
+
+    // Get current status of all selected athletes and verify they belong to coach's groups
+    const { data: athletes, error: athletesError } = await supabase
+      .from('athletes')
+      .select(`
+        id,
+        athlete_group_id,
+        athlete_group:athlete_groups(coach_id)
+      `)
+      .in('id', athleteIds)
+
+    if (athletesError) {
+      console.error('Error fetching athletes:', athletesError)
+      return {
+        isSuccess: false,
+        message: "Failed to fetch athlete information"
+      }
+    }
+
+    const moved: number[] = []
+    const skipped: number[] = []
+    const errors: string[] = []
+
+    // Process each athlete
+    for (const athlete of athletes || []) {
+      // Verify athlete belongs to coach's group (or has no group)
+      if (athlete.athlete_group?.coach_id && athlete.athlete_group.coach_id !== coachId) {
+        errors.push(`Athlete ${athlete.id} belongs to another coach`)
+        continue
+      }
+
+      if (athlete.athlete_group_id === targetGroupId) {
+        // Already in target group, skip
+        skipped.push(athlete.id)
+        continue
+      }
+
+      try {
+        const { error: moveError } = await supabase
+          .from('athletes')
+          .update({ athlete_group_id: targetGroupId })
+          .eq('id', athlete.id)
+
+        if (moveError) {
+          errors.push(`Failed to move athlete ${athlete.id}: ${moveError.message}`)
+        } else {
+          moved.push(athlete.id)
+          
+          // Log the group change in history
+          const historyResult = await createGroupHistoryEntryAction(
+            athlete.id,
+            athlete.athlete_group_id,
+            targetGroupId,
+            `Moved to group by coach (bulk operation)`
+          )
+
+          if (!historyResult.isSuccess) {
+            console.warn(`Failed to log group history for athlete ${athlete.id}:`, historyResult.message)
+            // Don't fail the main operation if history logging fails
+          }
+        }
+      } catch (error) {
+        errors.push(`Error processing athlete ${athlete.id}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    }
+
+    const success = moved.length > 0
+    const message = success 
+      ? `${moved.length} athletes moved, ${skipped.length} skipped, ${errors.length} errors`
+      : skipped.length > 0 
+        ? "All selected athletes are already in the target group"
+        : "No athletes could be moved"
+
+    return {
+      isSuccess: (success || skipped.length > 0) as true,
+      message,
+      data: { moved, skipped, errors }
+    }
+  } catch (error) {
+    console.error('Error in bulkMoveAthletesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Bulk remove athletes from their groups
+ */
+export async function bulkRemoveAthletesAction(
+  athleteIds: number[]
+): Promise<ActionState<{ removed: number[], skipped: number[], errors: string[] }>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    if (athleteIds.length === 0) {
+      return {
+        isSuccess: false,
+        message: "No athletes selected"
+      }
+    }
+
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify current user is a coach
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        role,
+        coach:coaches(id)
+      `)
+      .eq('id', dbUserId)
+      .single()
+
+    if (userError || !user || user.role !== 'coach' || !user.coach) {
+      return {
+        isSuccess: false,
+        message: "User is not a coach"
+      }
+    }
+
+    const coachId = user.coach[0]?.id
+
+    // Get athletes and verify they belong to coach's groups
+    const { data: athletes, error: athletesError } = await supabase
+      .from('athletes')
+      .select(`
+        id,
+        athlete_group_id,
+        athlete_group:athlete_groups(coach_id)
+      `)
+      .in('id', athleteIds)
+
+    if (athletesError) {
+      console.error('Error fetching athletes:', athletesError)
+      return {
+        isSuccess: false,
+        message: "Failed to fetch athlete information"
+      }
+    }
+
+    const removed: number[] = []
+    const skipped: number[] = []
+    const errors: string[] = []
+
+    // Process each athlete
+    for (const athlete of athletes || []) {
+      // Verify athlete belongs to coach's group
+      if (athlete.athlete_group?.coach_id && athlete.athlete_group.coach_id !== coachId) {
+        errors.push(`Athlete ${athlete.id} belongs to another coach`)
+        continue
+      }
+
+      if (athlete.athlete_group_id === null) {
+        // Already not in any group, skip
+        skipped.push(athlete.id)
+        continue
+      }
+
+      try {
+        const { error: removeError } = await supabase
+          .from('athletes')
+          .update({ athlete_group_id: null })
+          .eq('id', athlete.id)
+
+        if (removeError) {
+          errors.push(`Failed to remove athlete ${athlete.id} from group: ${removeError.message}`)
+        } else {
+          removed.push(athlete.id)
+          
+          // Log the group change in history
+          const historyResult = await createGroupHistoryEntryAction(
+            athlete.id,
+            athlete.athlete_group_id,
+            null,
+            `Removed from group by coach (bulk operation)`
+          )
+
+          if (!historyResult.isSuccess) {
+            console.warn(`Failed to log group history for athlete ${athlete.id}:`, historyResult.message)
+            // Don't fail the main operation if history logging fails
+          }
+        }
+      } catch (error) {
+        errors.push(`Error processing athlete ${athlete.id}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    }
+
+    const success = removed.length > 0
+    const message = success 
+      ? `${removed.length} athletes removed from groups, ${skipped.length} skipped, ${errors.length} errors`
+      : skipped.length > 0 
+        ? "All selected athletes are already not in any group"
+        : "No athletes could be removed"
+
+    return {
+      isSuccess: (success || skipped.length > 0) as true,
+      message,
+      data: { removed, skipped, errors }
+    }
+  } catch (error) {
+    console.error('Error in bulkRemoveAthletesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Get roster with group counts for efficient data loading
+ */
+export async function getRosterWithGroupCountsAction(): Promise<ActionState<{
+  athletes: Array<Athlete & {
+    user?: {
+      id: number
+      first_name: string | null
+      last_name: string | null
+      email: string
+      avatar_url: string | null
+      birthdate: string | null
+      sex: string | null
+    }
+    athlete_group?: AthleteGroup | null
+  }>
+  groups: Array<AthleteGroup & { athlete_count: number }>
+}>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Using singleton supabase client and cached user lookup
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify current user is a coach
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        role,
+        coach:coaches(id)
+      `)
+      .eq('id', dbUserId)
+      .single()
+
+    if (userError || !user) {
+      return {
+        isSuccess: false,
+        message: "User not found in database"
+      }
+    }
+
+    if (user.role !== 'coach' || !user.coach) {
+      return {
+        isSuccess: false,
+        message: "User is not a coach"
+      }
+    }
+
+    const coachId = user.coach[0]?.id
+
+    // Get coach's groups with athlete counts
+    const { data: groups, error: groupsError } = await supabase
+      .from('athlete_groups')
+      .select(`
+        *,
+        athletes(count)
+      `)
+      .eq('coach_id', coachId)
+
+    if (groupsError) {
+      console.error('Error fetching groups:', groupsError)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch groups: ${groupsError.message}`
+      }
+    }
+
+    // Get all athletes in coach's groups
+    const { data: athletes, error: athletesError } = await supabase
+      .from('athletes')
+      .select(`
+        *,
+        user:users(
+          id,
+          first_name,
+          last_name,
+          email,
+          avatar_url,
+          birthdate,
+          sex
+        ),
+        athlete_group:athlete_groups!inner(
+          *,
+          coach_id
+        )
+      `)
+      .eq('athlete_group.coach_id', coachId)
+
+    if (athletesError) {
+      console.error('Error fetching athletes:', athletesError)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch athletes: ${athletesError.message}`
+      }
+    }
+
+    // Transform groups data to include athlete_count
+    const groupsWithCounts = groups?.map(group => ({
+      ...group,
+      athlete_count: group.athletes?.[0]?.count || 0
+    })) || []
+
+    return {
+      isSuccess: true,
+      message: "Roster and groups retrieved successfully",
+      data: {
+        athletes: athletes || [],
+        groups: groupsWithCounts
+      }
+    }
+  } catch (error) {
+    console.error('Error in getRosterWithGroupCountsAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+// ============================================================================
+// ATHLETE GROUP HISTORY ACTIONS
+// ============================================================================
+
+/**
+ * Create a history entry for athlete group changes
+ * @param athleteId - The athlete being moved
+ * @param fromGroupId - The group they're leaving (null if unassigned)
+ * @param toGroupId - The group they're joining (null if being unassigned)
+ * @param notes - Optional notes about the change
+ */
+export async function createGroupHistoryEntryAction(
+  athleteId: number,
+  fromGroupId: number | null,
+  toGroupId: number | null,
+  notes?: string
+): Promise<ActionState<boolean>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID (the coach making the change)
+    const dbUserId = await getDbUserId(userId)
+
+    // Determine the group_id for the history entry
+    // If moving to a group, use that group_id
+    // If removing from group, use the fromGroupId
+    const groupId = toGroupId || fromGroupId
+
+    if (!groupId) {
+      return {
+        isSuccess: false,
+        message: "Cannot create history entry without a group reference"
+      }
+    }
+
+    // Create the history entry
+    const { error } = await supabase
+      .from('athlete_group_histories')
+      .insert({
+        athlete_id: athleteId,
+        group_id: groupId,
+        created_by: dbUserId,
+        notes: notes || null
+      })
+
+    if (error) {
+      console.error('Error creating group history entry:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to create history entry: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "History entry created successfully",
+      data: true
+    }
+  } catch (error) {
+    console.error('Error in createGroupHistoryEntryAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Get group history for a specific athlete
+ * @param athleteId - The athlete to get history for
+ */
+export async function getAthleteGroupHistoryAction(
+  athleteId: number
+): Promise<ActionState<Array<{
+  id: number
+  athlete_id: number | null
+  group_id: number | null
+  created_by: number | null
+  created_at: string | null
+  notes: string | null
+  group_name: string | null
+  coach_name: string | null
+}>>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify user is a coach and has access to this athlete
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        role,
+        coach:coaches(id)
+      `)
+      .eq('id', dbUserId)
+      .single()
+
+    if (userError || !user || user.role !== 'coach' || !user.coach) {
+      return {
+        isSuccess: false,
+        message: "User is not a coach"
+      }
+    }
+
+    // Get history with group and coach information
+    const { data: history, error } = await supabase
+      .from('athlete_group_histories')
+      .select(`
+        id,
+        athlete_id,
+        group_id,
+        created_by,
+        created_at,
+        notes,
+        athlete_groups!inner(
+          group_name,
+          coach_id,
+          coaches!inner(
+            user_id,
+            users!inner(
+              first_name,
+              last_name
+            )
+          )
+        )
+      `)
+      .eq('athlete_id', athleteId)
+      .eq('athlete_groups.coach_id', user.coach[0]?.id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching athlete group history:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch history: ${error.message}`
+      }
+    }
+
+    // Transform the data to include group and coach names
+    const transformedHistory = history?.map(entry => ({
+      id: entry.id,
+      athlete_id: entry.athlete_id,
+      group_id: entry.group_id,
+      created_by: entry.created_by,
+      created_at: entry.created_at,
+      notes: entry.notes,
+      group_name: entry.athlete_groups?.group_name || null,
+      coach_name: entry.athlete_groups?.coaches?.users 
+        ? `${entry.athlete_groups.coaches.users.first_name || ''} ${entry.athlete_groups.coaches.users.last_name || ''}`.trim()
+        : null
+    })) || []
+
+    return {
+      isSuccess: true,
+      message: "Athlete group history retrieved successfully",
+      data: transformedHistory
+    }
+  } catch (error) {
+    console.error('Error in getAthleteGroupHistoryAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Get group history for a specific group
+ * @param groupId - The group to get history for
+ */
+export async function getGroupHistoryAction(
+  groupId: number
+): Promise<ActionState<Array<{
+  id: number
+  athlete_id: number | null
+  group_id: number | null
+  created_by: number | null
+  created_at: string | null
+  notes: string | null
+  athlete_name: string | null
+  coach_name: string | null
+}>>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify user is a coach and owns this group
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        role,
+        coach:coaches(id)
+      `)
+      .eq('id', dbUserId)
+      .single()
+
+    if (userError || !user || user.role !== 'coach' || !user.coach) {
+      return {
+        isSuccess: false,
+        message: "User is not a coach"
+      }
+    }
+
+    // Verify the group belongs to this coach
+    const { data: group, error: groupError } = await supabase
+      .from('athlete_groups')
+      .select('id')
+      .eq('id', groupId)
+      .eq('coach_id', user.coach[0]?.id)
+      .single()
+
+    if (groupError || !group) {
+      return {
+        isSuccess: false,
+        message: "Group not found or you don't have permission"
+      }
+    }
+
+    // Get history with athlete information
+    const { data: history, error } = await supabase
+      .from('athlete_group_histories')
+      .select(`
+        id,
+        athlete_id,
+        group_id,
+        created_by,
+        created_at,
+        notes,
+        athletes!inner(
+          user_id,
+          users!inner(
+            first_name,
+            last_name
+          )
+        )
+      `)
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching group history:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch history: ${error.message}`
+      }
+    }
+
+    // Transform the data to include athlete names
+    const transformedHistory = history?.map(entry => ({
+      id: entry.id,
+      athlete_id: entry.athlete_id,
+      group_id: entry.group_id,
+      created_by: entry.created_by,
+      created_at: entry.created_at,
+      notes: entry.notes,
+      athlete_name: entry.athletes?.users 
+        ? `${entry.athletes.users.first_name || ''} ${entry.athletes.users.last_name || ''}`.trim()
+        : null,
+      coach_name: null // Coach name not available without additional join
+    })) || []
+
+    return {
+      isSuccess: true,
+      message: "Group history retrieved successfully",
+      data: transformedHistory
+    }
+  } catch (error) {
+    console.error('Error in getGroupHistoryAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`

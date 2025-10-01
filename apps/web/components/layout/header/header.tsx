@@ -90,7 +90,7 @@ export default function LandingHeader() {
 
           <SignedIn>
             <Link href="/dashboard">
-              <Button variant="outline" size="sm" className="hidden items-center gap-2 sm:flex">
+              <Button variant="outline" size="sm" className="hidden items-center gap-2 md:flex">
                 <LayoutDashboard className="size-4" />
                 Dashboard
               </Button>
@@ -140,6 +140,50 @@ export default function LandingHeader() {
               </li>
             ))}
           </ul>
+          
+          {/* Mobile Authentication Buttons */}
+          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <SignedOut>
+              <div className="space-y-2">
+                <SignInButton>
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                    onClick={toggleMenu}
+                  >
+                    Login
+                  </Button>
+                </SignInButton>
+                
+                <SignUpButton>
+                  <Button 
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={toggleMenu}
+                  >
+                    Sign Up
+                  </Button>
+                </SignUpButton>
+              </div>
+            </SignedOut>
+
+            <SignedIn>
+              <div className="space-y-2">
+                <Link href="/dashboard" onClick={toggleMenu}>
+                  <Button 
+                    variant="outline" 
+                    className="w-full items-center gap-2"
+                  >
+                    <LayoutDashboard className="size-4" />
+                    Dashboard
+                  </Button>
+                </Link>
+                
+                <div className="flex justify-center">
+                  <UserButton />
+                </div>
+              </div>
+            </SignedIn>
+          </div>
         </nav>
       )}
     </header>

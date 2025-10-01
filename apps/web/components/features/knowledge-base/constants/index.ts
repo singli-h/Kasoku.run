@@ -205,7 +205,7 @@ export const KNOWLEDGE_BASE_ROUTES = {
   BASE: '/knowledge-base',
   ARTICLE: (id: string) => `/knowledge-base/articles/${id}`,
   ARTICLE_CREATE: '/knowledge-base/articles/create',
-  ARTICLE_EDIT: (id: string) => `/knowledge-base/articles/${id}/edit`,
+  ARTICLE_EDIT: (id: string) => `/knowledge-base/${id}`,
   INTEGRATIONS: '/knowledge-base/integrations',
   INTEGRATION_CONFIG: (integrationId: string) => `/knowledge-base/integrations/${integrationId}`
 } as const;

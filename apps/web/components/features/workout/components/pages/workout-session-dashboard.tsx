@@ -10,21 +10,12 @@ import { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Play, 
-  Pause, 
-  Square, 
-  Clock, 
-  Target, 
-  TrendingUp, 
   Save,
-  CheckCircle,
-  AlertCircle,
-  RotateCcw
+  CheckCircle
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { Textarea } from "@/components/ui/textarea"
+import { BackToTopButton } from "@/components/ui/back-to-top-button"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -32,19 +23,12 @@ import { cn } from "@/lib/utils"
 import { 
   ExerciseProvider, 
   useExerciseContext, 
-  ExerciseDashboard,
   useWorkoutSession,
-  type SessionStatus,
   type WorkoutExercise
 } from "../../index"
 import { EnhancedExerciseOrganization } from "../exercise/enhanced-exercise-organization"
 
-// Import training actions
-import { 
-  updateTrainingSessionAction, 
-  completeTrainingSessionAction,
-  addExercisePerformanceAction 
-} from "@/actions/training"
+// Import training actions (removing unused imports)
 
 // Import types
 import type { 
@@ -81,17 +65,17 @@ function WorkoutSessionContent({
   className
 }: WorkoutSessionDashboardProps) {
   const { toast } = useToast()
-  const { exercises, showVideo, toggleVideo, setExercises } = useExerciseContext()
+  const { exercises, setExercises } = useExerciseContext()
   
   // Session management hook
   const {
-    session,
     sessionStatus,
     startSession,
     completeSession,
     saveSession,
     isLoading
   } = useWorkoutSession(existingSession)
+  
   // Populate exercises from preset group/session on mount or when inputs change
   // This ensures the exercise list renders instead of staying empty
   useEffect(() => {
@@ -101,21 +85,20 @@ function WorkoutSessionContent({
         || existingSession?.exercise_preset_group?.exercise_presets
         || [])
         .slice()
-        .sort((a, b) => (a.preset_order || 0) - (b.preset_order || 0))
+        .sort((a: any, b: any) => (a.preset_order || 0) - (b.preset_order || 0))
 
       // Map training details by preset_id when an existing session is present
       const details: ExerciseTrainingDetail[] = existingSession?.exercise_training_details || []
       const detailsByPresetId = new Map<number, ExerciseTrainingDetail[]>()
       for (const d of details) {
-        // @ts-expect-error: exercise_preset_id exists at runtime per DB row
-        const pid = d.exercise_preset_id as number | undefined
+        const pid = (d as any).exercise_preset_id as number | undefined
         if (!pid) continue
         const list = detailsByPresetId.get(pid) || []
         list.push(d)
         detailsByPresetId.set(pid, list)
       }
 
-      const mapped: WorkoutExercise[] = basePresets.map((preset) => ({
+      const mapped: WorkoutExercise[] = basePresets.map((preset: any) => ({
         ...preset,
         // Attach any recorded training details for this preset if present
         exercise_training_details: detailsByPresetId.get(preset.id) || [],
@@ -126,12 +109,10 @@ function WorkoutSessionContent({
     } catch (err) {
       console.error("Failed to initialize workout exercises", err)
     }
-  }, [presetGroup?.id, existingSession?.id, setExercises])
+  }, [presetGroup?.exercise_presets, existingSession?.exercise_preset_group?.exercise_presets, existingSession?.exercise_training_details, setExercises])
 
-
-  // Local state for session notes
-  const [sessionNotes, setSessionNotes] = useState(existingSession?.notes || "")
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
+  // Local state for session notes  
+  const [sessionNotes, setSessionNotes] = useState((existingSession as any)?.notes || "")
 
   // Session statistics
   const sessionStats = useMemo(() => {
@@ -155,34 +136,7 @@ function WorkoutSessionContent({
     }
   }, [exercises])
 
-  // Session timer
-  const [sessionDuration, setSessionDuration] = useState(0)
-  
-  useEffect(() => {
-    let interval: NodeJS.Timeout
-    
-    if (sessionStatus === 'ongoing') {
-      interval = setInterval(() => {
-        setSessionDuration(prev => prev + 1)
-      }, 1000)
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [sessionStatus])
-
-  // Format duration helper
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
-    
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`
-  }
+  // Remove session timer functionality per user feedback
 
   // Handle session actions
   const handleStartSession = async () => {
@@ -196,7 +150,7 @@ function WorkoutSessionContent({
       } else {
         throw result.error || new Error("Failed to start session")
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to start session",
@@ -216,7 +170,7 @@ function WorkoutSessionContent({
       } else {
         throw result.error || new Error("Failed to complete session")
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to complete session",
@@ -236,7 +190,7 @@ function WorkoutSessionContent({
       } else {
         throw result.error || new Error("Failed to save session")
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to save session",
@@ -245,125 +199,82 @@ function WorkoutSessionContent({
     }
   }
 
-  // Auto-save functionality
-  useEffect(() => {
-    if (autoSaveEnabled && sessionStatus === 'ongoing') {
-      const autoSaveInterval = setInterval(() => {
-        handleSaveSession()
-      }, 30000) // Auto-save every 30 seconds
-
-      return () => clearInterval(autoSaveInterval)
-    }
-  }, [autoSaveEnabled, sessionStatus])
-
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Session Header */}
-      <Card className="border-2">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl font-bold">
-                {presetGroup.name || "Workout Session"}
-              </CardTitle>
-              <p className="text-muted-foreground mt-1">
-                {presetGroup.description || "Training session in progress"}
-              </p>
-            </div>
-            
-            {/* Session Status Badge */}
-            <Badge 
-              variant={
-                sessionStatus === 'ongoing' ? 'default' :
-                sessionStatus === 'completed' ? 'secondary' :
-                sessionStatus === 'assigned' ? 'outline' : 'destructive'
-              }
-              className="text-sm"
-            >
-              {sessionStatus === 'ongoing' && <Play className="h-3 w-3 mr-1" />}
-              {sessionStatus === 'assigned' && <Clock className="h-3 w-3 mr-1" />}
-              {sessionStatus === 'completed' && <CheckCircle className="h-3 w-3 mr-1" />}
-              {sessionStatus.charAt(0).toUpperCase() + sessionStatus.slice(1)}
-            </Badge>
-          </div>
-        </CardHeader>
+    <div className={cn("space-y-4", className)}>
+      {/* Clean Session Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-high-contrast">
+            {(presetGroup as any).name || "Workout Session"}
+          </h1>
+          {(presetGroup as any).description && (
+            <p className="text-sm text-medium-contrast mt-1">
+              {(presetGroup as any).description}
+            </p>
+          )}
+        </div>
         
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Session Timer */}
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 text-2xl font-mono font-bold">
-                <Clock className="h-5 w-5" />
-                {formatDuration(sessionDuration)}
-              </div>
-              <p className="text-sm text-muted-foreground">Duration</p>
+        {/* Action Buttons - Right Side */}
+        <div className="flex items-center gap-3">
+          {(sessionStatus === 'assigned' || sessionStatus === 'unknown') && (
+            <Button 
+              onClick={handleStartSession} 
+              disabled={isLoading}
+              className="btn-primary-enhanced"
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Start Workout
+            </Button>
+          )}
+          
+          {sessionStatus === 'ongoing' && (
+            <>
+              <Button 
+                onClick={handleSaveSession} 
+                disabled={isLoading}
+                variant="outline"
+                className="btn-outline-enhanced"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save
+              </Button>
+              <Button 
+                onClick={handleCompleteSession} 
+                disabled={isLoading}
+                className="btn-primary-enhanced"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Finish
+              </Button>
+            </>
+          )}
+          
+          {sessionStatus === 'completed' && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg">
+              <CheckCircle className="h-4 w-4" />
+              <span className="text-sm font-medium">Completed</span>
             </div>
+          )}
+        </div>
+      </div>
 
-            {/* Exercise Progress */}
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 text-2xl font-bold">
-                <Target className="h-5 w-5" />
-                {sessionStats.completedExercises}/{sessionStats.totalExercises}
-              </div>
-              <p className="text-sm text-muted-foreground">Exercises</p>
-              <Progress value={sessionStats.exerciseProgress} className="mt-1" />
-            </div>
-
-            {/* Set Progress */}
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 text-2xl font-bold">
-                <TrendingUp className="h-5 w-5" />
-                {sessionStats.completedSets}/{sessionStats.totalSets}
-              </div>
-              <p className="text-sm text-muted-foreground">Sets</p>
-              <Progress value={sessionStats.setProgress} className="mt-1" />
-            </div>
-
-            {/* Session Controls */}
-            <div className="flex flex-col gap-2">
-              {(sessionStatus === 'assigned' || sessionStatus === 'unknown') && (
-                <Button 
-                  onClick={handleStartSession} 
-                  disabled={isLoading}
-                  className="w-full"
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Start Session
-                </Button>
-              )}
-              
-              {sessionStatus === 'ongoing' && (
-                <>
-                  <Button 
-                    onClick={handleSaveSession} 
-                    disabled={isLoading}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Progress
-                  </Button>
-                  <Button 
-                    onClick={handleCompleteSession} 
-                    disabled={isLoading}
-                    className="w-full"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Complete
-                  </Button>
-                </>
-              )}
-              
-              {sessionStatus === 'completed' && (
-                <Badge variant="secondary" className="w-full justify-center py-2">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Session Complete
-                </Badge>
-              )}
-            </div>
+      {/* Simple Progress Stats */}
+      {sessionStatus !== 'completed' && (
+        <div className="flex items-center gap-6 p-4 bg-muted rounded-lg">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-medium-contrast">Exercises:</span>
+            <span className="font-medium text-high-contrast">
+              {sessionStats.completedExercises} / {sessionStats.totalExercises}
+            </span>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-medium-contrast">Sets:</span>
+            <span className="font-medium text-high-contrast">
+              {sessionStats.completedSets} / {sessionStats.totalSets}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Enhanced Exercise Organization */}
       <motion.div
@@ -375,51 +286,16 @@ function WorkoutSessionContent({
       </motion.div>
 
       {/* Session Notes */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Session Notes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder="Add notes about your workout session..."
-            value={sessionNotes}
-            onChange={(e) => setSessionNotes(e.target.value)}
-            className="min-h-20"
-            disabled={sessionStatus === 'completed'}
-          />
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center gap-2">
-              <Button 
-                onClick={handleSaveSession} 
-                disabled={isLoading || sessionStatus === 'completed'}
-                variant="outline"
-                size="sm"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save Progress
-              </Button>
-              
-              <Button
-                onClick={() => setAutoSaveEnabled(!autoSaveEnabled)}
-                variant="ghost"
-                size="sm"
-                disabled={sessionStatus === 'completed'}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Auto-save: {autoSaveEnabled ? 'On' : 'Off'}
-              </Button>
-            </div>
-
-            <Button
-              onClick={toggleVideo}
-              variant="ghost"
-              size="sm"
-            >
-              Video: {showVideo ? 'On' : 'Off'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-high-contrast">Notes</h3>
+        <Textarea
+          placeholder="Add notes about your workout session..."
+          value={sessionNotes}
+          onChange={(e) => setSessionNotes(e.target.value)}
+          className="input-enhanced min-h-20"
+          disabled={sessionStatus === 'completed'}
+        />
+      </div>
 
       {/* Session Summary (if completed) */}
       <AnimatePresence>
@@ -430,45 +306,32 @@ function WorkoutSessionContent({
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
           >
-            <Card className="border-green-200 bg-green-50">
-              <CardHeader>
-                <CardTitle className="text-green-800 flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5" />
-                  Session Completed!
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-bold text-green-700">
-                      {formatDuration(sessionDuration)}
-                    </div>
-                    <p className="text-sm text-green-600">Total Time</p>
+            <div className="p-6 bg-muted rounded-lg border">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <h3 className="text-lg font-medium text-high-contrast">Workout Complete</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div>
+                  <div className="text-xl font-semibold text-high-contrast">
+                    {sessionStats.completedExercises}
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold text-green-700">
-                      {sessionStats.completedExercises}
-                    </div>
-                    <p className="text-sm text-green-600">Exercises</p>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-green-700">
-                      {sessionStats.completedSets}
-                    </div>
-                    <p className="text-sm text-green-600">Sets</p>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-green-700">
-                      {Math.round(sessionStats.setProgress)}%
-                    </div>
-                    <p className="text-sm text-green-600">Completion</p>
-                  </div>
+                  <p className="text-sm text-medium-contrast">Exercises</p>
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <div className="text-xl font-semibold text-high-contrast">
+                    {sessionStats.completedSets}
+                  </div>
+                  <p className="text-sm text-medium-contrast">Sets</p>
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Back to Top Button */}
+      <BackToTopButton />
     </div>
   )
 } 

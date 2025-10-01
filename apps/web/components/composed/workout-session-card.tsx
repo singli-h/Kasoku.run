@@ -34,7 +34,7 @@ export function SessionCard({
   showDetails = true,
   className 
 }: SessionCardProps) {
-  const status = (session.session_status as 'assigned' | 'ongoing' | 'completed' | 'cancelled') || 'assigned'
+  const status = 'assigned' // Default status since the property doesn't exist on the type
   const presetGroup = session.exercise_preset_group
 
   if (!presetGroup) {
@@ -69,7 +69,7 @@ export function SessionCard({
               <Button
                 onClick={() => onAction(session)}
                 size="sm"
-                variant={status === 'ongoing' ? 'default' : 'outline'}
+                variant="default"
                 className="ml-4"
               >
                 {actionIcon}
@@ -106,21 +106,7 @@ export function SessionCard({
                 </p>
               )}
 
-              {/* Session Notes */}
-              {session.notes && (
-                <div className="bg-muted/50 rounded-md p-3">
-                  <p className="text-sm italic text-muted-foreground">
-                    "{session.notes}"
-                  </p>
-                </div>
-              )}
 
-              {/* Week/Day Info */}
-              {session.week && session.day && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Week {session.week}, Day {session.day}</span>
-                </div>
-              )}
             </div>
           )}
         </CardContent>

@@ -53,7 +53,6 @@ const EXERCISE_FIELDS: ExerciseField[] = [
 
 export function ExerciseCard({ exercise, className, isSuperset = false }: ExerciseCardProps) {
   const { showVideo, updateExercise } = useExerciseContext()
-  const [localNotes, setLocalNotes] = useState(exercise.notes || "")
 
   // Determine which fields to show based on available data
   const availableFields = useMemo(() => {
@@ -132,12 +131,6 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
     updateSetData(setIndex, 'completed', !isCompleted)
   }
 
-  // Handle exercise notes update
-  const handleNotesUpdate = () => {
-    if (localNotes !== exercise.notes) {
-      updateExercise(exercise.id, { notes: localNotes })
-    }
-  }
 
   // Handle overall exercise completion
   const toggleExerciseCompletion = () => {
@@ -158,9 +151,9 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
 
   return (
     <Card className={cn(
-      "transition-all duration-200",
-      exercise.completed && "border-green-500 bg-green-50",
-      isSuperset && "border-l-4 border-l-pink-400",
+      "card-enhanced transition-all duration-200",
+      exercise.completed && "border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20",
+      isSuperset && "border-l-4 border-l-blue-400",
       className
     )}>
       <CardHeader className="pb-3">
@@ -169,7 +162,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
             {/* Exercise Name */}
             <h4 className={cn(
               "font-semibold text-lg",
-              exercise.completed && "text-green-700 line-through"
+              exercise.completed ? "text-green-700 line-through" : "text-high-contrast"
             )}>
               {exercise.exercise?.name || "Unknown Exercise"}
             </h4>
@@ -181,7 +174,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
 
             {/* Completion Badge */}
             {exercise.completed && (
-              <Badge variant="default" className="bg-green-500 text-white">
+              <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white dark:bg-green-600 dark:hover:bg-green-700">
                 <Check className="h-3 w-3 mr-1" />
                 Complete
               </Badge>
@@ -206,34 +199,21 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
               </Button>
             )}
 
-            {/* Complete Toggle */}
+            {/* Complete Toggle - Unified Style */}
             <Button
               variant={exercise.completed ? "outline" : "default"}
               size="sm"
               onClick={toggleExerciseCompletion}
-              className={cn(
-                "flex items-center gap-1",
-                exercise.completed && "border-green-500 text-green-700"
-              )}
+              className={exercise.completed ? "btn-outline-enhanced" : "btn-primary-enhanced"}
             >
-              {exercise.completed ? (
-                <>
-                  <Check className="h-3 w-3" />
-                  Done
-                </>
-              ) : (
-                <>
-                  <Clock className="h-3 w-3" />
-                  Mark Done
-                </>
-              )}
+              {exercise.completed ? "Done" : "Mark Done"}
             </Button>
           </div>
         </div>
 
         {/* Exercise Description */}
         {exercise.exercise?.description && (
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-sm text-medium-contrast mt-2">
             {exercise.exercise.description}
           </p>
         )}
@@ -248,7 +228,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
               transition={{ duration: 0.3 }}
             />
           </div>
-          <span className="text-xs text-gray-500 font-medium">
+          <span className="text-xs text-low-contrast font-medium">
             {completionStatus.completed}/{completionStatus.total} sets
           </span>
         </div>
@@ -259,12 +239,12 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
         {sets.length > 0 && (
           <div className="space-y-3">
             {/* Table Header */}
-            <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-600 border-b pb-2">
+            <div className="grid grid-cols-12 gap-2 text-xs font-medium text-medium-contrast border-b border-border pb-2">
               <div className="col-span-2">Set</div>
               {availableFields.map((field) => (
                 <div key={field.key} className="col-span-2 text-center">
                   {field.label}
-                  {field.unit && <span className="ml-1 text-gray-400">({field.unit})</span>}
+                  {field.unit && <span className="ml-1 text-low-contrast">({field.unit})</span>}
                 </div>
               ))}
               <div className="col-span-2 text-center">Done</div>
@@ -278,8 +258,8 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
                   className={cn(
                     "grid grid-cols-12 gap-2 p-2 rounded-md border transition-colors",
                     set.isCompleted 
-                      ? "bg-green-50 border-green-200" 
-                      : "bg-gray-50 border-gray-200 hover:border-gray-300"
+                      ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700" 
+                      : "bg-muted/50 border-border hover:border-border/80"
                   )}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -287,7 +267,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
                 >
                   {/* Set Number */}
                   <div className="col-span-2 flex items-center">
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-sm font-medium text-high-contrast">
                       {set.index + 1}
                     </span>
                   </div>
@@ -314,7 +294,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
                       onClick={() => toggleSetCompletion(set.index)}
                       className={cn(
                         "h-8 w-8 p-0",
-                        set.isCompleted && "bg-green-500 hover:bg-green-600"
+                        set.isCompleted && "bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
                       )}
                     >
                       {set.isCompleted ? (
@@ -330,23 +310,13 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
           </div>
         )}
 
-        {/* Exercise Notes */}
-        <div className="mt-4">
-          <Textarea
-            value={localNotes}
-            onChange={(e) => setLocalNotes(e.target.value)}
-            onBlur={handleNotesUpdate}
-            placeholder="Add exercise notes..."
-            className="min-h-[60px] text-sm"
-          />
-        </div>
 
         {/* Video Embed (if enabled and available) */}
         {showVideo && exercise.exercise?.video_url && (
           <div className="mt-4">
-            <div className="aspect-video rounded-lg overflow-hidden bg-gray-100">
+            <div className="aspect-video rounded-lg overflow-hidden bg-muted">
               {/* TODO: Implement proper video player component */}
-              <div className="w-full h-full flex items-center justify-center text-gray-500">
+              <div className="w-full h-full flex items-center justify-center text-low-contrast">
                 <div className="text-center">
                   <Video className="h-8 w-8 mx-auto mb-2" />
                   <p className="text-sm">Video Player Component</p>

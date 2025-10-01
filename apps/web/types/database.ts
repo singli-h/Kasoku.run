@@ -743,6 +743,89 @@ export type Database = {
           },
         ]
       }
+      knowledge_base_articles: {
+        Row: {
+          category_id: number | null
+          coach_id: number
+          content: Json
+          created_at: string
+          id: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: number | null
+          coach_id: number
+          content: Json
+          created_at?: string
+          id?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: number | null
+          coach_id?: number
+          content?: Json
+          created_at?: string
+          id?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_kb_articles_category_id"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_base_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_kb_articles_coach_id"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+  knowledge_base_categories: {
+    Row: {
+      article_count: number | null
+      coach_id: number
+      color: string
+      created_at: string
+      id: number
+      name: string
+      updated_at: string
+    }
+    Insert: {
+      article_count?: number | null
+      coach_id: number
+      color?: string
+      created_at?: string
+      id?: number
+      name: string
+      updated_at?: string
+    }
+    Update: {
+      article_count?: number | null
+      coach_id?: number
+      color?: string
+      created_at?: string
+      id?: number
+      name?: string
+      updated_at?: string
+    }
+        Relationships: [
+          {
+            foreignKeyName: "fk_kb_categories_coach_id"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memories: {
         Row: {
           athlete_id: number | null
@@ -1118,7 +1201,7 @@ export type Database = {
       }
     }
     Enums: {
-      exercise_visibility_type: "global" | "coach" | "group" | "user"
+      exercise_visibility_type: "global" | "private"
       memory_subject_type: "coach" | "athlete" | "group"
       memory_type:
         | "preference"
@@ -1255,7 +1338,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      exercise_visibility_type: ["global", "coach", "group", "user"],
+      exercise_visibility_type: ["global", "private"],
       memory_subject_type: ["coach", "athlete", "group"],
       memory_type: [
         "preference",

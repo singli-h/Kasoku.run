@@ -16,7 +16,6 @@ import {
   Calendar,
   Activity,
   BarChart3,
-  LineChart,
   PieChart,
   Zap,
   Timer,
@@ -106,7 +105,7 @@ export default function IndividualPerformanceAnalytics({
         // const result = await getIndividualPerformanceDataAction(athleteId) // Temporarily disabled
         const result = { isSuccess: false, message: "Performance analytics temporarily disabled" }
         if (result.isSuccess) {
-          setData(result.data)
+          setData(null)
         } else {
           setError(result.message)
           toast({

@@ -39,7 +39,9 @@ import {
   type PerformanceLogEntry
 } from "@/actions/training/group-session-actions"
 import { AthleteTimeCell } from "./athlete-time-cell"
-import type { AthleteGroup } from "@/types/database"
+import type { Tables } from "@/types/database"
+
+type AthleteGroup = Tables<"athlete_groups">
 
 interface Round {
   roundNumber: number

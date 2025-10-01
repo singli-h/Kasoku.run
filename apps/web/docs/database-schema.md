@@ -399,6 +399,47 @@ Competition and event information.
 
 **RLS**: Enabled
 
+### Knowledge Base System
+
+#### `knowledge_base_categories`
+Categories for organizing knowledge base articles by coaches.
+
+| Column | Type | Description | Constraints |
+|--------|------|-------------|-------------|
+| `id` | `integer` | Primary key | Auto-increment, NOT NULL |
+| `coach_id` | `integer` | Foreign key to coaches | NOT NULL |
+| `name` | `varchar(100)` | Category name | NOT NULL |
+| `color` | `varchar(7)` | Hex color code | NOT NULL, DEFAULT '#3B82F6' |
+| `created_at` | `timestamptz` | Creation time | NOT NULL, DEFAULT now() |
+| `updated_at` | `timestamptz` | Last update time | NOT NULL, DEFAULT now() |
+
+**RLS**: Enabled
+**Relationships**: 
+- Many-to-one with `coaches` via `coach_id`
+- One-to-many with `knowledge_base_articles` via `id`
+**Constraints**: Unique combination of `coach_id` and `name`
+**Auto-updates**: `article_count` automatically updated via triggers
+
+#### `knowledge_base_articles`
+Rich text articles stored in TipTap JSON format for the knowledge base.
+
+| Column | Type | Description | Constraints |
+|--------|------|-------------|-------------|
+| `id` | `integer` | Primary key | Auto-increment, NOT NULL |
+| `coach_id` | `integer` | Foreign key to coaches | NOT NULL |
+| `title` | `varchar(200)` | Article title | NOT NULL |
+| `content` | `jsonb` | TipTap JSON content | NOT NULL |
+| `category_id` | `integer` | Foreign key to knowledge_base_categories | NOT NULL |
+| `created_at` | `timestamptz` | Creation time | NOT NULL, DEFAULT now() |
+| `updated_at` | `timestamptz` | Last update time | NOT NULL, DEFAULT now() |
+
+**RLS**: Enabled
+**Relationships**: 
+- Many-to-one with `coaches` via `coach_id`
+- Many-to-one with `knowledge_base_categories` via `category_id`
+**Content Format**: TipTap JSON structure for rich text editing
+**AI Ready**: JSONB format enables AI context extraction and processing
+
 ### AI/ML Memory System
 
 #### `memories`
@@ -456,6 +497,8 @@ The following tables have RLS enabled:
 - `exercise_tags`
 - `exercise_training_details`
 - `exercise_training_sessions`
+- `knowledge_base_articles`
+- `knowledge_base_categories`
 - `users`
 
 **Note**: The `memories` table has RLS disabled as it requires complex cross-table access patterns for AI/ML operations.

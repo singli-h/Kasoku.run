@@ -50,11 +50,17 @@ import { SetConfigurationModal } from "./set-configuration-modal"
 
 // Types
 import type { PlanType } from "./plan-type-selection"
-import type { PlanConfiguration } from "./plan-configuration"
-import type { ExerciseWithDetails, ExerciseType, Tag } from "@/types/training"
+import type { ExerciseWithDetails, ExerciseType } from "@/types/training"
+
+// Define PlanConfiguration type locally since the file doesn't exist
+export interface PlanConfiguration {
+  duration: {
+    weeks: number
+  }
+}
 
 // Actions
-import { getExercisesAction, getExerciseTypesAction, getTagsAction } from "@/actions/training/exercise-actions"
+import { getExercisesAction, getExerciseTypesAction } from "@/actions/training/exercise-actions"
 
 export interface SessionPlan {
   sessions: SessionData[]
@@ -184,11 +190,9 @@ export function SessionPlanning({
   const [selectedSession, setSelectedSession] = useState<SessionData | null>(null)
   const [exercises, setExercises] = useState<ExerciseWithDetails[]>([])
   const [exerciseTypes, setExerciseTypes] = useState<ExerciseType[]>([])
-  const [tags, setTags] = useState<Tag[]>([])
   // Enhanced exercise library state
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedExerciseType, setSelectedExerciseType] = useState<number | null>(null)
-  const [selectedTags, setSelectedTags] = useState<number[]>([])
   const [favoriteExercises, setFavoriteExercises] = useState<number[]>([])
   const [recentExercises, setRecentExercises] = useState<number[]>([])
   const [isExerciseLibraryOpen, setIsExerciseLibraryOpen] = useState(false)
@@ -217,10 +221,9 @@ export function SessionPlanning({
   useEffect(() => {
     const loadExerciseData = async () => {
       try {
-        const [exercisesResult, typesResult, tagsResult] = await Promise.all([
+        const [exercisesResult, typesResult] = await Promise.all([
           getExercisesAction(),
-          getExerciseTypesAction(),
-          getTagsAction()
+          getExerciseTypesAction()
         ])
 
         if (exercisesResult.isSuccess) {
@@ -228,9 +231,6 @@ export function SessionPlanning({
         }
         if (typesResult.isSuccess) {
           setExerciseTypes(typesResult.data)
-        }
-        if (tagsResult.isSuccess) {
-          setTags(tagsResult.data)
         }
       } catch (error) {
         console.error('Error loading exercise data:', error)
@@ -271,7 +271,7 @@ export function SessionPlanning({
     // Text search
     if (searchTerm) {
       filtered = filtered.filter(exercise => 
-        exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        exercise.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         exercise.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         exercise.exercise_type?.type.toLowerCase().includes(searchTerm.toLowerCase())
       )
@@ -282,12 +282,6 @@ export function SessionPlanning({
       filtered = filtered.filter(exercise => exercise.exercise_type_id === selectedExerciseType)
     }
 
-    // Tag filter
-    if (selectedTags.length > 0) {
-      filtered = filtered.filter(exercise => 
-        exercise.tags?.some(tag => selectedTags.includes(tag.id))
-      )
-    }
 
     // Sort by favorites first, then recent, then alphabetical
     return filtered.sort((a, b) => {
@@ -301,9 +295,9 @@ export function SessionPlanning({
       if (aRecent && !bRecent) return -1
       if (!aRecent && bRecent) return 1
       
-      return a.name.localeCompare(b.name)
+      return (a.name || '').localeCompare(b.name || '')
     })
-  }, [exercises, searchTerm, selectedExerciseType, selectedTags, favoriteExercises, recentExercises])
+  }, [exercises, searchTerm, selectedExerciseType, favoriteExercises, recentExercises])
 
   // Get sessions for current week
   const currentWeekSessions = plan.sessions.filter(s => s.week === currentWeek)

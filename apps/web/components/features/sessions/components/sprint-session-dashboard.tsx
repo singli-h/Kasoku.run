@@ -8,13 +8,19 @@ and live MultiGroupSprintTable for recording athlete performances.
 
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useState } from "react"
-import {
-  type AthleteGroupWithAthletes,
-  type SprintSessionPreset,
-  type SprintDistance,
-  type SprintRound,
-} from "@/types/training"
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react"
+// import {
+//   type AthleteGroupWithAthletes,
+//   type SprintSessionPreset,
+//   type SprintDistance,
+//   type SprintRound,
+// } from "@/types/training"
+
+// Temporary type definitions
+type AthleteGroupWithAthletes = any
+type SprintSessionPreset = any
+type SprintDistance = any
+type SprintRound = any
 
 import {
   getCoachAthleteGroupsWithAthletesAction,

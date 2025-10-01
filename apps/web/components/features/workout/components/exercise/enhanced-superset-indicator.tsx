@@ -139,7 +139,7 @@ export function EnhancedSupersetIndicator({
     if (!showConnectivityLines || sortedExercises.length < 2) return null
 
     return (
-      <div className="absolute left-8 top-16 bottom-4 w-0.5 bg-gradient-to-b from-purple-300 via-blue-300 to-pink-300 opacity-60" />
+      <div className="absolute left-8 top-16 bottom-4 w-0.5 bg-gradient-to-b from-blue-300 to-blue-400 opacity-60" />
     )
   }
 
@@ -147,14 +147,14 @@ export function EnhancedSupersetIndicator({
   const renderSupersetHeader = () => (
     <div className="relative">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-r from-purple-100 via-blue-100 to-pink-100 rounded-t-lg" />
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-blue-100 rounded-t-lg" />
       
       <CardHeader className="relative pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Superset icon with animation */}
             <motion.div 
-              className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full shadow-lg"
+              className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full shadow-lg"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -339,7 +339,7 @@ export function EnhancedSupersetIndicator({
       transition={{ duration: 0.4 }}
       className={cn("relative", className)}
     >
-      <Card className="overflow-hidden border-2 border-purple-200 shadow-lg">
+      <Card className="overflow-hidden border-2 border-blue-200 shadow-lg dark:border-blue-600">
         {renderSupersetHeader()}
         
         <AnimatePresence>

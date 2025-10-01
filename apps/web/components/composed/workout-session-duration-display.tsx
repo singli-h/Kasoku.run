@@ -76,7 +76,7 @@ export function calculateSessionDuration(session: ExerciseTrainingSessionWithDet
   }
 
   // Calculate total duration from exercise presets
-  const totalDuration = session.exercise_preset_group.exercise_presets.reduce((total, preset) => {
+  const totalDuration = session.exercise_preset_group.exercise_presets.reduce((total: number, preset: any) => {
     return total + (preset.duration_minutes || 0)
   }, 0)
 
@@ -103,7 +103,7 @@ export function getSessionDurationMinutes(session: ExerciseTrainingSessionWithDe
     return 0
   }
 
-  const totalDuration = session.exercise_preset_group.exercise_presets.reduce((total, preset) => {
+  const totalDuration = session.exercise_preset_group.exercise_presets.reduce((total: number, preset: any) => {
     return total + (preset.duration_minutes || 0)
   }, 0)
 

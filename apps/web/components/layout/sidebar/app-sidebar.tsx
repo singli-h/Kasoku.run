@@ -15,8 +15,8 @@ import {
   Settings,
   Target,
   BookOpen,
-  Trophy,
-  PlayCircle
+  PlayCircle,
+  FileText
 } from "lucide-react"
 import * as React from "react"
 import { usePathname } from "next/navigation"
@@ -48,6 +48,11 @@ const navItems = [
     title: "Exercise Library",
     url: "/library",
     icon: BookOpen
+  },
+  {
+    title: "Knowledge Base",
+    url: "/knowledge-base",
+    icon: FileText
   },
   {
     title: "Performance",

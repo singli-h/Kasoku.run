@@ -12,7 +12,7 @@ import {
   Microcycle, MicrocycleInsert, MicrocycleUpdate,
   Exercise, ExerciseInsert, ExerciseUpdate,
   ExerciseType,
-  Tag, Unit,
+  Unit,
   ExercisePresetGroup, ExercisePresetGroupInsert, ExercisePresetGroupUpdate,
   ExercisePreset, ExercisePresetInsert, ExercisePresetUpdate,
   ExercisePresetDetail,
@@ -29,7 +29,7 @@ export type {
   Microcycle, MicrocycleInsert, MicrocycleUpdate,
   Exercise, ExerciseInsert, ExerciseUpdate,
   ExerciseType,
-  Tag, Unit,
+  Unit,
   ExercisePresetGroup, ExercisePresetGroupInsert, ExercisePresetGroupUpdate,
   ExercisePreset, ExercisePresetInsert, ExercisePresetUpdate,
   ExercisePresetDetail,
@@ -76,7 +76,15 @@ export interface ExercisePresetWithDetails extends ExercisePreset {
 export interface ExerciseWithDetails extends Exercise {
   exercise_type?: ExerciseType | null
   unit?: Unit | null
-  tags?: Tag[]
+  // Explicit core fields to align UI usage with DB schema
+  id: number
+  name: string | null
+  description?: string | null
+  exercise_type_id?: number | null
+  unit_id?: number | null
+  video_url?: string | null
+  visibility?: any
+  owner_user_id?: number | null
 }
 
 export interface ExerciseTrainingSessionWithDetails extends ExerciseTrainingSession {

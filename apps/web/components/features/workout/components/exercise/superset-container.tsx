@@ -127,9 +127,9 @@ export function SupersetContainer({
       className={cn("relative", className)}
     >
       {/* Beautiful Gradient Container */}
-      <Card className="relative overflow-hidden border-2 border-purple-200 shadow-lg">
+      <Card className="relative overflow-hidden border-2 border-blue-200 shadow-lg dark:border-blue-600">
         {/* Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20" />
         
         {/* Content */}
         <div className="relative">
@@ -137,22 +137,22 @@ export function SupersetContainer({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Superset Icon */}
-                <div className="flex items-center justify-center w-10 h-10 bg-purple-100 rounded-full border-2 border-purple-300">
-                  <Users className="h-5 w-5 text-purple-600" />
+                <div className="flex items-center justify-center w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-full border-2 border-blue-300 dark:border-blue-600">
+                  <Users className="h-5 w-5 text-blue-600" />
                 </div>
 
                 {/* Title and Info */}
                 <div className="space-y-1">
-                  <h3 className="text-xl font-bold text-purple-800">
+                  <h3 className="text-xl font-bold text-blue-800 dark:text-blue-300">
                     {supersetTitle}
                   </h3>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-purple-600 border-purple-300 bg-white/50">
+                    <Badge variant="outline" className="text-blue-600 dark:text-blue-300 border-blue-300 dark:border-blue-600 bg-background/50">
                       {sortedExercises.length} exercise{sortedExercises.length !== 1 ? 's' : ''}
                     </Badge>
                     
                     {/* Exercise Names Preview */}
-                    <Badge variant="outline" className="text-purple-600 border-purple-300 bg-white/50 max-w-xs truncate">
+                    <Badge variant="outline" className="text-blue-600 dark:text-blue-300 border-blue-300 dark:border-blue-600 bg-background/50 max-w-xs truncate">
                       {sortedExercises.map(ex => ex.exercise?.name || 'Unknown').join(' + ')}
                     </Badge>
                   </div>
@@ -166,9 +166,9 @@ export function SupersetContainer({
                   <Badge 
                     variant={completionStats.allCompleted ? "default" : "outline"}
                     className={cn("text-sm", {
-                      "bg-green-500 text-white border-green-500": completionStats.allCompleted,
-                      "bg-yellow-100 text-yellow-700 border-yellow-300": completionStats.completed > 0 && !completionStats.allCompleted,
-                      "bg-white/50 text-purple-600 border-purple-300": completionStats.noneCompleted
+                      "bg-green-500 text-white border-green-500 dark:bg-green-600": completionStats.allCompleted,
+                      "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-600": completionStats.completed > 0 && !completionStats.allCompleted,
+                      "bg-background/50 text-blue-600 dark:text-blue-300 border-blue-300 dark:border-blue-600": completionStats.noneCompleted
                     })}
                   >
                     {completionStats.allCompleted ? (
@@ -185,17 +185,12 @@ export function SupersetContainer({
                   </Badge>
                 )}
 
-                {/* Mark All Button */}
+                {/* Mark All Button - Unified Style */}
                 <Button
                   variant={completionStats.allCompleted ? "outline" : "default"}
                   size="sm"
                   onClick={handleMarkAllSuperset}
-                  className={cn(
-                    "bg-white/80 hover:bg-white border-purple-300",
-                    completionStats.allCompleted 
-                      ? "text-purple-600 hover:bg-purple-50" 
-                      : "text-purple-700 hover:bg-purple-50"
-                  )}
+                  className={completionStats.allCompleted ? "btn-outline-enhanced" : "btn-primary-enhanced"}
                 >
                   {completionStats.allCompleted ? "Unmark All" : "Mark All"}
                 </Button>
@@ -205,13 +200,13 @@ export function SupersetContainer({
             {/* Progress Bar */}
             {completionStats.total > 0 && (
               <div className="mt-3">
-                <div className="flex justify-between text-sm text-purple-700 mb-1">
+                <div className="flex justify-between text-sm text-blue-700 dark:text-blue-400 mb-1">
                   <span>Superset Progress</span>
                   <span className="font-medium">{completionStats.percentage}%</span>
                 </div>
-                <div className="w-full bg-white/60 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-muted/60 rounded-full h-2 overflow-hidden">
                   <motion.div 
-                    className="h-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
+                    className="h-2 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${completionStats.percentage}%` }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
@@ -233,7 +228,7 @@ export function SupersetContainer({
                   >
                     {/* Exercise Label */}
                     <div className="absolute -left-3 top-4 z-10">
-                      <div className="flex items-center justify-center w-6 h-6 bg-purple-500 text-white rounded-full text-xs font-bold shadow-sm">
+                      <div className="flex items-center justify-center w-6 h-6 bg-blue-500 text-white rounded-full text-xs font-bold shadow-sm">
                         {getExerciseLabel(index)}
                       </div>
                     </div>
@@ -243,7 +238,7 @@ export function SupersetContainer({
                       <ExerciseCard
                         exercise={exercise}
                         isSuperset={true}
-                        className="border-purple-200 bg-white/70 hover:bg-white/90 transition-colors"
+                        className="border-blue-200 bg-background/70 hover:bg-background/90 transition-colors"
                       />
                     </div>
                   </motion.div>
@@ -253,8 +248,8 @@ export function SupersetContainer({
 
             {/* Superset Instructions */}
             {sortedExercises.length > 1 && (
-              <div className="mt-4 p-3 bg-white/60 rounded-lg border border-purple-200">
-                <p className="text-sm text-purple-700">
+              <div className="mt-4 p-3 bg-muted/60 rounded-lg border border-blue-200 dark:border-blue-600">
+                <p className="text-sm text-blue-700 dark:text-blue-400">
                   <strong>Superset Instructions:</strong> Perform all exercises in sequence with minimal rest between exercises. 
                   Rest only after completing the full superset cycle.
                 </p>

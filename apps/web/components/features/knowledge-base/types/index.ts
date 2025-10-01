@@ -35,7 +35,6 @@ export interface ArticleCategory {
   name: string;
   description?: string;
   color?: string;
-  articleCount?: number;
 }
 
 // Article related types

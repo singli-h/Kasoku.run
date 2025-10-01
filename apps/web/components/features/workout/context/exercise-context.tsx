@@ -15,6 +15,10 @@ import type { ExercisePresetWithDetails, ExerciseTrainingDetail } from "@/types/
 export interface WorkoutExercise extends ExercisePresetWithDetails {
   exercise_training_details: ExerciseTrainingDetail[]
   completed?: boolean
+  // Explicit fields from exercise_presets table
+  id: number
+  preset_order?: number
+  superset_id?: number | null
 }
 
 // Context value interface

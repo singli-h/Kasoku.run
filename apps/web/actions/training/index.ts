@@ -70,8 +70,6 @@ export {
   // Exercise type actions
   getExerciseTypesAction,
   
-  // Tag actions
-  getTagsAction,
   
   // Unit actions
   getUnitsAction,

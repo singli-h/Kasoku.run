@@ -43,39 +43,39 @@ export async function secureServerAction(): Promise<ActionState<T>> {
     return { isSuccess: false, message: "Authentication required" }
   }
 
-  // Additional authorization checks
-  const userContext = await getUserContextAction()
-  if (!userContext.isSuccess) {
-    return { isSuccess: false, message: "Authorization failed" }
-  }
+  // Get database user ID for queries
+  const dbUserId = await getDbUserId(userId)
 
-  // Secure operation with RLS context
-  const supabase = getSupabase()
-  await setOrganizationContext(supabase, userContext.data.organizationId)
+  // Secure operation with RLS policies
+  const { data, error } = await supabase
+    .from('table_name')
+    .select('*')
+    .eq('user_id', dbUserId) // RLS policies handle access control
 
   // Perform secure operation
   // ...
 }
 ```
 
-### RLS Context Helper Pattern
+### RLS Policy Pattern
 ```typescript
-// Mandatory for organization-scoped data access
-import { getSupabase, setOrganizationContext } from "@/lib/supabase"
-import { getUserContextAction } from "@/actions/auth/auth-helpers"
+// Standard pattern for user-scoped data access
+import supabase from "@/lib/supabase-server"
+import { getDbUserId } from "@/lib/user-cache"
 
-export async function getOrganizationDataAction(): Promise<ActionState<T>> {
-  const supabase = getSupabase()
-  const userContext = await getUserContextAction()
+export async function getUserDataAction(): Promise<ActionState<T>> {
+  const { userId } = await auth()
+  if (!userId) {
+    return { isSuccess: false, message: "Authentication required" }
+  }
 
-  // CRITICAL: Set organization context for RLS enforcement
-  await setOrganizationContext(supabase, userContext.data.organizationId)
+  const dbUserId = await getDbUserId(userId)
 
-  // Query automatically filtered by organization
+  // RLS policies automatically filter data based on user
   const { data, error } = await supabase
-    .from('organization_table')
+    .from('user_table')
     .select('*')
-    // No manual .eq('organization_id', ...) needed!
+    .eq('user_id', dbUserId)
 }
 ```
 
@@ -170,7 +170,7 @@ export async function GET(req: NextRequest) {
 
 ### Implementing New Secure Features
 1. **Authentication First**: Always check authentication before authorization
-2. **RLS Context**: Use organization context helper for scoped data
+2. **RLS Policies**: Use RLS policies at database level for data isolation
 3. **Input Validation**: Validate and sanitize all user inputs
 4. **Error Handling**: Don't expose sensitive information in errors
 5. **Logging**: Log security-relevant events appropriately

@@ -1,17 +1,17 @@
 "use server"
 
 import { Suspense } from "react"
-import { TrainingPlansPage } from "@/components/features/plans/components/training-plans-page"
+import { PlansHome } from "@/components/features/plans"
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 
 export default async function PlansPage() {
   return (
     <PageLayout
       title="Training Plans"
-      description="Manage your training plans, discover templates, and create new programs"
+      description="View and manage your macrocycles with race-anchored timelines"
     >
       <Suspense fallback={<UnifiedPageSkeleton title="Training Plans" variant="grid" />}>
-        <TrainingPlansPage />
+        <PlansHome />
       </Suspense>
     </PageLayout>
   )

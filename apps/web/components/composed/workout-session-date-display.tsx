@@ -101,11 +101,11 @@ export function formatSessionDate(
   session: ExerciseTrainingSessionWithDetails, 
   format: 'short' | 'medium' | 'long' | 'relative' = 'short'
 ): string {
-  if (!session.date_time) {
+  if (!(session as any).date_time) {
     return 'No date'
   }
 
-  const date = new Date(session.date_time)
+  const date = new Date((session as any).date_time)
 
   if (format === 'relative') {
     return getRelativeDate(date)

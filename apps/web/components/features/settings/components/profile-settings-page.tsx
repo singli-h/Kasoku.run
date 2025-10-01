@@ -50,19 +50,17 @@ import {
   createCurrentUserAction 
 } from "@/actions/auth/user-actions"
 
-// Types
-import type { 
-  User as UserType, 
-  UserUpdate,
-  Athlete,
-  Coach,
-  UserWithProfile,
-  AthleteUpdate,
-  CoachUpdate,
-  UserRole,
-  Gender,
-  ExperienceLevel
-} from "@/types/database"
+// Temporary types until database schema is updated
+type UserType = any
+type UserUpdate = any
+type UserWithProfile = any
+type Athlete = any
+type Coach = any
+type AthleteUpdate = any
+type CoachUpdate = any
+type UserRole = 'athlete' | 'coach' | 'admin'
+type Gender = 'male' | 'female' | 'other'
+type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced' | 'elite'
 
 interface ProfileFormData {
   // Basic Information

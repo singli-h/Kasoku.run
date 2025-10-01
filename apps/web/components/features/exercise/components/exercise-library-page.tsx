@@ -5,73 +5,27 @@
 
 "use client"
 
-import { useState, useMemo } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  Grid3X3, 
-  List, 
-  Eye,
-  Edit,
-  Trash2,
-  Play,
-  BookOpen,
-  Target,
-  Clock,
-  Settings,
-  ChevronDown,
-  X,
-  Loader2,
-  SortAsc,
-  SortDesc
-} from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import { BookOpen, Edit, Eye, Filter, Grid3X3, List, Loader2, Play, Plus, Search, Settings, SortAsc, SortDesc, Target, Trash2, X } from "lucide-react"
 
 // UI Components
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select"
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel
-} from "@/components/ui/dropdown-menu"
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from "@/components/ui/dialog"
-import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from "@/components/ui/popover"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { cn } from "@/lib/utils"
 
 // Actions
 import { 
   getExercisesAction,
   getExerciseTypesAction,
-  getTagsAction,
   getUnitsAction,
   deleteExerciseAction
 } from "@/actions/training/exercise-actions"
@@ -80,7 +34,6 @@ import {
 import type { 
   ExerciseWithDetails,
   ExerciseType,
-  Tag,
   Unit,
   ExerciseFilters
 } from "@/types/training"
@@ -99,43 +52,47 @@ interface ExerciseLibraryFilters extends ExerciseFilters {
 
 export function ExerciseLibraryPage() {
   const { toast } = useToast()
-  const queryClient = useQueryClient()
-  
-  // State
-  const { data, isError } = useQuery({
-    queryKey: ["exercise-library-initial-data"],
-    queryFn: async () => {
-      const [exercisesResult, typesResult, tagsResult, unitsResult] = await Promise.all([
-        getExercisesAction(),
-        getExerciseTypesAction(),
-        getTagsAction(),
-        getUnitsAction()
-      ])
 
-      if (!exercisesResult.isSuccess) throw new Error(exercisesResult.message)
-      if (!typesResult.isSuccess) throw new Error(typesResult.message)
-      if (!tagsResult.isSuccess) throw new Error(tagsResult.message)
-      if (!unitsResult.isSuccess) throw new Error(unitsResult.message)
-
-      return {
-        exercises: exercisesResult.data,
-        exerciseTypes: typesResult.data,
-        tags: tagsResult.data,
-        units: unitsResult.data
-      }
-    },
-    suspense: true
-  })
-
-  const exercises = data?.exercises ?? []
-  const exerciseTypes = data?.exerciseTypes ?? []
-  const tags = data?.tags ?? []
-  const units = data?.units ?? []
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [exercises, setExercises] = useState<ExerciseWithDetails[]>([])
+  const [exerciseTypes, setExerciseTypes] = useState<ExerciseType[]>([])
+  const [units, setUnits] = useState<Unit[]>([])
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [selectedExercise, setSelectedExercise] = useState<ExerciseWithDetails | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [showExerciseForm, setShowExerciseForm] = useState(false)
   const [editingExercise, setEditingExercise] = useState<ExerciseWithDetails | null>(null)
+
+  const loadLibraryData = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const [exercisesResult, typesResult, unitsResult] = await Promise.all([
+        getExercisesAction(),
+        getExerciseTypesAction(),
+        getUnitsAction()
+      ])
+
+      if (!exercisesResult.isSuccess) throw new Error(exercisesResult.message)
+      if (!typesResult.isSuccess) throw new Error(typesResult.message)
+      if (!unitsResult.isSuccess) throw new Error(unitsResult.message)
+
+      setExercises(exercisesResult.data)
+      setExerciseTypes(typesResult.data)
+      setUnits(unitsResult.data)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load exercise library"
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadLibraryData()
+  }, [loadLibraryData])
   
   // Filters
   const [filters, setFilters] = useState<ExerciseLibraryFilters>({
@@ -155,10 +112,9 @@ export function ExerciseLibraryPage() {
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase()
       result = result.filter(exercise => 
-        exercise.name.toLowerCase().includes(searchTerm) ||
+        (exercise.name ?? '').toLowerCase().includes(searchTerm) ||
         exercise.description?.toLowerCase().includes(searchTerm) ||
-        exercise.exercise_type?.type.toLowerCase().includes(searchTerm) ||
-        exercise.tags?.some(tag => tag.name.toLowerCase().includes(searchTerm))
+        exercise.exercise_type?.type.toLowerCase().includes(searchTerm)
       )
     }
     
@@ -178,7 +134,7 @@ export function ExerciseLibraryPage() {
       
       switch (filters.sortField) {
         case 'name':
-          comparison = a.name.localeCompare(b.name)
+          comparison = (a.name ?? '').localeCompare(b.name ?? '')
           break
         case 'type':
           comparison = (a.exercise_type?.type || '').localeCompare(b.exercise_type?.type || '')
@@ -219,7 +175,7 @@ export function ExerciseLibraryPage() {
         throw new Error(result.message)
       }
 
-      await queryClient.invalidateQueries({ queryKey: ["exercise-library-initial-data"] })
+      await loadLibraryData()
 
       toast({
         title: "Exercise Deleted",
@@ -255,15 +211,53 @@ export function ExerciseLibraryPage() {
 
   // Refresh list after creating or updating an exercise
   const handleExerciseFormSave = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["exercise-library-initial-data"] })
+    await loadLibraryData()
     setShowExerciseForm(false)
     setEditingExercise(null)
   }
 
-  if (isError) {
+  if (isLoading) {
     return (
-      <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-destructive">
-        Failed to load exercises. Please refresh and try again.
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex gap-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-28" />
+              <Skeleton className="h-10 w-28" />
+              <Skeleton className="h-10 w-28" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Card key={index}>
+              <CardContent className="space-y-3 p-4">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-20 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-destructive">
+        <p>{error}</p>
+        <Button variant="outline" size="sm" onClick={() => void loadLibraryData()}>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Retry
+        </Button>
       </div>
     )
   }
@@ -402,44 +396,52 @@ export function ExerciseLibraryPage() {
       </Card>
 
       {/* Results Summary */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {processedExercises.length} of {exercises.length} exercises
-        </p>
-        
-        {/* Active Filters */}
-        {(filters.search || filters.exercise_type_id || filters.unit_id) && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
-            {filters.search && (
-              <Badge variant="secondary" className="gap-1">
-                Search: {filters.search}
-                <X 
-                  className="h-3 w-3 cursor-pointer" 
-                  onClick={() => updateFilter('search', '')}
-                />
-              </Badge>
-            )}
-            {filters.exercise_type_id && (
-              <Badge variant="secondary" className="gap-1">
-                Type: {exerciseTypes.find(t => t.id === filters.exercise_type_id)?.type}
-                <X 
-                  className="h-3 w-3 cursor-pointer" 
-                  onClick={() => updateFilter('exercise_type_id', undefined)}
-                />
-              </Badge>
-            )}
-            {filters.unit_id && (
-              <Badge variant="secondary" className="gap-1">
-                Unit: {units.find(u => u.id === filters.unit_id)?.name}
-                <X 
-                  className="h-3 w-3 cursor-pointer" 
-                  onClick={() => updateFilter('unit_id', undefined)}
-                />
-              </Badge>
-            )}
-          </div>
-        )}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-muted-foreground">
+            {processedExercises.length} of {exercises.length} exercises
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {(filters.search || filters.exercise_type_id || filters.unit_id) && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground">Active filters:</span>
+              {filters.search && (
+                <Badge variant="secondary" className="gap-1">
+                  Search: {filters.search}
+                  <X
+                    className="h-3 w-3 cursor-pointer"
+                    onClick={() => updateFilter('search', '')}
+                  />
+                </Badge>
+              )}
+              {filters.exercise_type_id && (
+                <Badge variant="secondary" className="gap-1">
+                  Type: {exerciseTypes.find(t => t.id === filters.exercise_type_id)?.type}
+                  <X
+                    className="h-3 w-3 cursor-pointer"
+                    onClick={() => updateFilter('exercise_type_id', undefined)}
+                  />
+                </Badge>
+              )}
+              {filters.unit_id && (
+                <Badge variant="secondary" className="gap-1">
+                  Unit: {units.find(u => u.id === filters.unit_id)?.name}
+                  <X
+                    className="h-3 w-3 cursor-pointer"
+                    onClick={() => updateFilter('unit_id', undefined)}
+                  />
+                </Badge>
+              )}
+            </div>
+          )}
+
+          <Button size="sm" onClick={handleCreateExercise} className="ml-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Exercise
+          </Button>
+        </div>
       </div>
 
       {/* Exercise Grid/List */}
@@ -463,8 +465,8 @@ export function ExerciseLibraryPage() {
       ) : (
         <div className={cn(
           "grid gap-4",
-          viewMode === 'grid' 
-            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
+          viewMode === 'grid'
+            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             : "grid-cols-1"
         )}>
           {processedExercises.map((exercise) => (
@@ -499,18 +501,6 @@ export function ExerciseLibraryPage() {
                 </div>
               )}
               
-              {selectedExercise.tags && selectedExercise.tags.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Tags</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedExercise.tags.map((tag) => (
-                      <Badge key={tag.id} variant="outline">
-                        {tag.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
               
               {selectedExercise.video_url && (
                 <div>
@@ -547,6 +537,7 @@ interface ExerciseCardProps {
 }
 
 function ExerciseCard({ exercise, viewMode, onView, onEdit, onDelete }: ExerciseCardProps) {
+  const isGlobal = exercise.visibility === 'global' || !exercise.owner_user_id
   if (viewMode === 'list') {
     return (
       <Card className="hover:shadow-md transition-shadow">
@@ -558,6 +549,9 @@ function ExerciseCard({ exercise, viewMode, onView, onEdit, onDelete }: Exercise
                 <Badge variant="outline">{exercise.exercise_type?.type}</Badge>
                 {exercise.unit && (
                   <Badge variant="secondary">{exercise.unit.name}</Badge>
+                )}
+                {isGlobal && (
+                  <Badge variant="secondary">Default</Badge>
                 )}
               </div>
               {exercise.description && (
@@ -571,12 +565,16 @@ function ExerciseCard({ exercise, viewMode, onView, onEdit, onDelete }: Exercise
               <Button variant="ghost" size="sm" onClick={onView}>
                 <Eye className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={onEdit}>
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={onDelete}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {!isGlobal && (
+                <>
+                  <Button variant="ghost" size="sm" onClick={onEdit}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={onDelete}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
@@ -608,24 +606,31 @@ function ExerciseCard({ exercise, viewMode, onView, onEdit, onDelete }: Exercise
                 <Eye className="h-4 w-4 mr-2" />
                 View Details
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                className="text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
+              {!isGlobal && (
+                <>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
         
         <div className="space-y-2">
           <Badge variant="outline">{exercise.exercise_type?.type}</Badge>
+          {isGlobal && (
+            <Badge variant="secondary">Default</Badge>
+          )}
           
           {exercise.unit && (
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -648,20 +653,6 @@ function ExerciseCard({ exercise, viewMode, onView, onEdit, onDelete }: Exercise
           </p>
         )}
         
-        {exercise.tags && exercise.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {exercise.tags.slice(0, 3).map((tag) => (
-              <Badge key={tag.id} variant="secondary" className="text-xs">
-                {tag.name}
-              </Badge>
-            ))}
-            {exercise.tags.length > 3 && (
-              <Badge variant="secondary" className="text-xs">
-                +{exercise.tags.length - 3}
-              </Badge>
-            )}
-          </div>
-        )}
       </CardContent>
     </Card>
   )

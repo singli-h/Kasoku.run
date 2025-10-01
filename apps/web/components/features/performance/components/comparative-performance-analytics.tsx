@@ -104,7 +104,7 @@ export default function ComparativePerformanceAnalytics({
         // const result = await getComparativePerformanceDataAction(athleteId) // Temporarily disabled
         const result = { isSuccess: false, message: "Performance analytics temporarily disabled" }
         if (result.isSuccess) {
-          setData(result.data)
+          setData(null)
         } else {
           setError(result.message)
           toast({

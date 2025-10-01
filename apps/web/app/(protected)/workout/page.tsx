@@ -6,13 +6,10 @@ import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 
 export default async function WorkoutPage() {
   return (
-    <PageLayout
-      title="Workout Sessions"
-      description="Track your strength training and conditioning workouts"
-    >
-      <Suspense fallback={<UnifiedPageSkeleton title="Workout Sessions" variant="grid" />}>
+    <div className="container mx-auto p-4">
+      <Suspense fallback={<UnifiedPageSkeleton title="" variant="grid" />}>
         <WorkoutPageContent />
       </Suspense>
-    </PageLayout>
+    </div>
   )
 } 

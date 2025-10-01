@@ -14,7 +14,7 @@ import { ActionState } from "@/types"
 import { 
   Exercise, ExerciseInsert, ExerciseUpdate,
   ExerciseType,
-  Tag, Unit,
+  Unit,
   ExercisePresetGroup, ExercisePresetGroupInsert, ExercisePresetGroupUpdate,
   ExercisePreset, ExercisePresetInsert, ExercisePresetUpdate,
   ExercisePresetDetail,
@@ -30,11 +30,23 @@ import {
 
 /**
  * Get all exercises with optional filtering
+ * Returns global exercises + user's private exercises
  */
 export async function getExercisesAction(filters?: ExerciseFilters): Promise<ActionState<ExerciseWithDetails[]>> {
   try {
-    // Using singleton supabase client
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
 
+    // Get database user ID from cache
+    const dbUserId = await getDbUserId(userId)
+
+    // Using singleton supabase client
     let query = supabase
       .from('exercises')
       .select(`
@@ -45,6 +57,7 @@ export async function getExercisesAction(filters?: ExerciseFilters): Promise<Act
           tag:tags(*)
         )
       `)
+      .or(`visibility.eq.global,and(visibility.eq.private,owner_user_id.eq.${dbUserId})`)
 
     // Apply filters
     if (filters?.search) {
@@ -233,11 +246,19 @@ export async function createExerciseAction(
       }
     }
 
-    // Using singleton supabase client
+    // Get database user ID from cache
+    const dbUserId = await getDbUserId(userId)
+
+    // Custom exercises should be private and owned by the creator
+    const completeExerciseData = {
+      ...exerciseData,
+      owner_user_id: dbUserId,
+      visibility: 'private' as const
+    }
 
     const { data: exercise, error } = await supabase
       .from('exercises')
-      .insert(exerciseData)
+      .insert(completeExerciseData)
       .select()
       .single()
 
@@ -280,12 +301,37 @@ export async function updateExerciseAction(
       }
     }
 
-    // Using singleton supabase client
+    // Get database user ID from cache
+    const dbUserId = await getDbUserId(userId)
+
+    // First, check if the exercise exists and if user owns it
+    const { data: existingExercise, error: fetchError } = await supabase
+      .from('exercises')
+      .select('id, owner_user_id, visibility')
+      .eq('id', id)
+      .single()
+
+    if (fetchError) {
+      console.error('Error fetching exercise:', fetchError)
+      return {
+        isSuccess: false,
+        message: "Exercise not found"
+      }
+    }
+
+    // Only allow updates to custom exercises (owned by user)
+    if (existingExercise.owner_user_id !== dbUserId) {
+      return {
+        isSuccess: false,
+        message: "You can only update exercises you created"
+      }
+    }
 
     const { data: exercise, error } = await supabase
       .from('exercises')
       .update(updates)
       .eq('id', id)
+      .eq('owner_user_id', dbUserId) // Double-check ownership
       .select()
       .single()
 
@@ -325,7 +371,31 @@ export async function deleteExerciseAction(id: number): Promise<ActionState<bool
       }
     }
 
-    // Using singleton supabase client
+    // Get database user ID from cache
+    const dbUserId = await getDbUserId(userId)
+
+    // First, check if the exercise exists and if user owns it
+    const { data: existingExercise, error: fetchError } = await supabase
+      .from('exercises')
+      .select('id, owner_user_id, visibility')
+      .eq('id', id)
+      .single()
+
+    if (fetchError) {
+      console.error('Error fetching exercise:', fetchError)
+      return {
+        isSuccess: false,
+        message: "Exercise not found"
+      }
+    }
+
+    // Only allow deletion of custom exercises (owned by user)
+    if (existingExercise.owner_user_id !== dbUserId) {
+      return {
+        isSuccess: false,
+        message: "You can only delete exercises you created"
+      }
+    }
 
     // First, remove any tag associations
     await supabase
@@ -338,6 +408,7 @@ export async function deleteExerciseAction(id: number): Promise<ActionState<bool
       .from('exercises')
       .delete()
       .eq('id', id)
+      .eq('owner_user_id', dbUserId) // Double-check ownership
 
     if (error) {
       console.error('Error deleting exercise:', error)
@@ -446,185 +517,6 @@ export async function createExerciseTypeAction(
   }
 }
 
-// ============================================================================
-// TAG MANAGEMENT ACTIONS
-// ============================================================================
-
-/**
- * Get all tags
- */
-export async function getTagsAction(): Promise<ActionState<Tag[]>> {
-  try {
-    // Using singleton supabase client
-
-    const { data: tags, error } = await supabase
-      .from('tags')
-      .select('*')
-      .order('name', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching tags:', error)
-      return {
-        isSuccess: false,
-        message: `Failed to fetch tags: ${error.message}`
-      }
-    }
-
-    return {
-      isSuccess: true,
-      message: "Tags retrieved successfully",
-      data: tags || []
-    }
-  } catch (error) {
-    console.error('Error in getTagsAction:', error)
-    return {
-      isSuccess: false,
-      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
-    }
-  }
-}
-
-/**
- * Create a new tag
- */
-export async function createTagAction(name: string): Promise<ActionState<Tag>> {
-  try {
-    const { userId } = await auth()
-    
-    if (!userId) {
-      return {
-        isSuccess: false,
-        message: "User not authenticated"
-      }
-    }
-
-    // Using singleton supabase client
-
-    const { data: tag, error } = await supabase
-      .from('tags')
-      .insert({ name })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error creating tag:', error)
-      return {
-        isSuccess: false,
-        message: `Failed to create tag: ${error.message}`
-      }
-    }
-
-    return {
-      isSuccess: true,
-      message: "Tag created successfully",
-      data: tag
-    }
-  } catch (error) {
-    console.error('Error in createTagAction:', error)
-    return {
-      isSuccess: false,
-      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
-    }
-  }
-}
-
-/**
- * Add tags to an exercise
- */
-export async function addTagsToExerciseAction(
-  exerciseId: number,
-  tagIds: number[]
-): Promise<ActionState<boolean>> {
-  try {
-    const { userId } = await auth()
-    
-    if (!userId) {
-      return {
-        isSuccess: false,
-        message: "User not authenticated"
-      }
-    }
-
-    // Using singleton supabase client
-
-    // Create the exercise-tag relationships
-    const exerciseTagData = tagIds.map(tagId => ({
-      exercise_id: exerciseId,
-      tag_id: tagId
-    }))
-
-    const { error } = await supabase
-      .from('exercise_tags')
-      .insert(exerciseTagData)
-
-    if (error) {
-      console.error('Error adding tags to exercise:', error)
-      return {
-        isSuccess: false,
-        message: `Failed to add tags to exercise: ${error.message}`
-      }
-    }
-
-    return {
-      isSuccess: true,
-      message: "Tags added to exercise successfully",
-      data: true
-    }
-  } catch (error) {
-    console.error('Error in addTagsToExerciseAction:', error)
-    return {
-      isSuccess: false,
-      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
-    }
-  }
-}
-
-/**
- * Remove tags from an exercise
- */
-export async function removeTagsFromExerciseAction(
-  exerciseId: number,
-  tagIds: number[]
-): Promise<ActionState<boolean>> {
-  try {
-    const { userId } = await auth()
-    
-    if (!userId) {
-      return {
-        isSuccess: false,
-        message: "User not authenticated"
-      }
-    }
-
-    // Using singleton supabase client
-
-    const { error } = await supabase
-      .from('exercise_tags')
-      .delete()
-      .eq('exercise_id', exerciseId)
-      .in('tag_id', tagIds)
-
-    if (error) {
-      console.error('Error removing tags from exercise:', error)
-      return {
-        isSuccess: false,
-        message: `Failed to remove tags from exercise: ${error.message}`
-      }
-    }
-
-    return {
-      isSuccess: true,
-      message: "Tags removed from exercise successfully",
-      data: true
-    }
-  } catch (error) {
-    console.error('Error in removeTagsFromExerciseAction:', error)
-    return {
-      isSuccess: false,
-      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
-    }
-  }
-}
 
 // ============================================================================
 // UNIT MANAGEMENT ACTIONS

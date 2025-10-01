@@ -267,6 +267,30 @@ BEST PRACTICES:
     display: none;
   }
 
+  /* Thin scrollbar for mobile snap scroll */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 4px;
+    width: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 2px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
   /* Mobile-Optimized Flexbox */
   .flex-mobile-stack {
     @apply flex flex-col sm:flex-row;
@@ -503,5 +527,131 @@ BEST PRACTICES:
     .content-container-lg {
       padding: 1rem;
     }
+  }
+
+  /* TipTap Editor Dark Theme Improvements */
+  .ProseMirror {
+    color: hsl(var(--foreground));
+    background: transparent;
+  }
+
+  .ProseMirror p.is-editor-empty:first-child::before {
+    color: hsl(var(--muted-foreground));
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .ProseMirror:focus {
+    outline: none;
+  }
+
+  /* Enhanced dark theme for editor content */
+  .ProseMirror h1,
+  .ProseMirror h2,
+  .ProseMirror h3,
+  .ProseMirror h4,
+  .ProseMirror h5,
+  .ProseMirror h6 {
+    color: hsl(var(--foreground));
+    font-weight: 600;
+  }
+
+  .ProseMirror p {
+    color: hsl(var(--foreground));
+    line-height: 1.7;
+  }
+
+  .ProseMirror strong {
+    color: hsl(var(--foreground));
+    font-weight: 600;
+  }
+
+  .ProseMirror em {
+    color: hsl(var(--foreground));
+  }
+
+  .ProseMirror ul,
+  .ProseMirror ol {
+    color: hsl(var(--foreground));
+  }
+
+  .ProseMirror li {
+    color: hsl(var(--foreground));
+  }
+
+  .ProseMirror blockquote {
+    color: hsl(var(--muted-foreground));
+    border-left: 4px solid hsl(var(--border));
+    background: hsl(var(--muted) / 0.3);
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 0 0.5rem 0.5rem 0;
+  }
+
+  .ProseMirror code {
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted));
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+  }
+
+  .ProseMirror pre {
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted));
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+  }
+
+  .ProseMirror pre code {
+    background: transparent;
+    padding: 0;
+  }
+
+  .ProseMirror a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+  }
+
+  .ProseMirror a:hover {
+    color: hsl(var(--primary) / 0.8);
+  }
+
+  .ProseMirror img {
+    border-radius: 0.5rem;
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* Task list styling */
+  .ProseMirror ul[data-type="taskList"] {
+    list-style: none;
+    padding: 0;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > label {
+    flex: 0 0 auto;
+    margin-right: 0.5rem;
+    user-select: none;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > div {
+    flex: 1 1 auto;
+  }
+
+  .ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
+    cursor: pointer;
+  }
+
+  /* Selection styling */
+  .ProseMirror ::selection {
+    background: hsl(var(--primary) / 0.2);
   }
 }

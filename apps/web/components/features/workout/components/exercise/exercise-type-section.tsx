@@ -62,82 +62,39 @@ const collapseVariants = {
 }
 
 // Section type configuration for styling and behavior
+// Section configuration - simplified to default colors
 const SECTION_CONFIG: Record<ExerciseGroupType, {
   label: string
-  bgColor: string
-  borderColor: string
-  textColor: string
-  badgeVariant: "default" | "secondary" | "outline"
 }> = {
   "warm up": {
-    label: "Warm Up",
-    bgColor: "bg-orange-50",
-    borderColor: "border-orange-200",
-    textColor: "text-orange-700",
-    badgeVariant: "secondary"
+    label: "Warm Up"
   },
   "gym": {
-    label: "Gym", 
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-200",
-    textColor: "text-blue-700",
-    badgeVariant: "default"
+    label: "Strength Training"
   },
   "gymMerged": {
-    label: "Gym",
-    bgColor: "bg-blue-50", 
-    borderColor: "border-blue-200",
-    textColor: "text-blue-700",
-    badgeVariant: "default"
+    label: "Strength Training"
   },
   "circuit": {
-    label: "Circuit",
-    bgColor: "bg-green-50",
-    borderColor: "border-green-200", 
-    textColor: "text-green-700",
-    badgeVariant: "secondary"
+    label: "Circuit Training"
   },
   "isometric": {
-    label: "Isometric",
-    bgColor: "bg-purple-50",
-    borderColor: "border-purple-200",
-    textColor: "text-purple-700", 
-    badgeVariant: "secondary"
+    label: "Isometric"
   },
   "plyometric": {
-    label: "Plyometric",
-    bgColor: "bg-red-50",
-    borderColor: "border-red-200",
-    textColor: "text-red-700",
-    badgeVariant: "secondary"
+    label: "Plyometric"
   },
   "sprint": {
-    label: "Sprint",
-    bgColor: "bg-yellow-50",
-    borderColor: "border-yellow-200",
-    textColor: "text-yellow-700",
-    badgeVariant: "secondary"
+    label: "Sprint"
   },
   "drill": {
-    label: "Drill",
-    bgColor: "bg-indigo-50",
-    borderColor: "border-indigo-200",
-    textColor: "text-indigo-700",
-    badgeVariant: "secondary"
+    label: "Skill Drills"
   },
   "superset": {
-    label: "Superset",
-    bgColor: "bg-pink-50",
-    borderColor: "border-pink-200",
-    textColor: "text-pink-700",
-    badgeVariant: "outline"
+    label: "Superset"
   },
   "other": {
-    label: "Other",
-    bgColor: "bg-gray-50",
-    borderColor: "border-gray-200",
-    textColor: "text-gray-700",
-    badgeVariant: "outline"
+    label: "Other"
   }
 }
 
@@ -199,12 +156,12 @@ export function ExerciseTypeSection({ group, className, defaultCollapsed = false
           {/* Supersets */}
           {supersets.map((superset) => (
             <div key={superset.id} className="space-y-2">
-              <div className="text-sm font-medium text-gray-600 flex items-center gap-2">
+              <div className="text-sm font-medium text-medium-contrast flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
                   Superset {superset.id}
                 </Badge>
               </div>
-              <div className="pl-4 space-y-2 border-l-2 border-gray-200">
+              <div className="pl-4 space-y-2 border-l-2 border-border">
                 {superset.exercises.map((exercise) => (
                   <ExerciseItem
                     key={exercise.id}
@@ -236,7 +193,7 @@ export function ExerciseTypeSection({ group, className, defaultCollapsed = false
   }
 
   return (
-    <Card className={cn("transition-colors", config.bgColor, config.borderColor, className)}>
+    <Card className={cn("card-enhanced transition-colors", className)}>
       <CardHeader 
         className="pb-3 cursor-pointer select-none" 
         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -248,16 +205,16 @@ export function ExerciseTypeSection({ group, className, defaultCollapsed = false
               animate={{ rotate: isCollapsed ? 0 : 90 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
             >
-              <ChevronRight className="h-5 w-5 text-gray-500" />
+              <ChevronRight className="h-5 w-5 text-low-contrast" />
             </motion.div>
 
             {/* Section Title */}
-            <h3 className={cn("text-lg font-semibold", config.textColor)}>
+            <h3 className="text-lg font-semibold text-high-contrast">
               {config.label}
             </h3>
 
             {/* Exercise Count Badge */}
-            <Badge variant={config.badgeVariant} className="text-xs">
+            <Badge variant="outline" className="text-xs">
               {group.exercises.length} exercise{group.exercises.length !== 1 ? 's' : ''}
             </Badge>
 
@@ -266,8 +223,8 @@ export function ExerciseTypeSection({ group, className, defaultCollapsed = false
               <Badge 
                 variant={completionStats.allCompleted ? "default" : "outline"}
                 className={cn("text-xs", {
-                  "bg-green-100 text-green-700 border-green-300": completionStats.allCompleted,
-                  "bg-yellow-100 text-yellow-700 border-yellow-300": completionStats.completed > 0 && !completionStats.allCompleted
+                  "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-600": completionStats.allCompleted,
+                  "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-600": completionStats.completed > 0 && !completionStats.allCompleted
                 })}
               >
                 {completionStats.completed}/{completionStats.total} complete
@@ -275,35 +232,25 @@ export function ExerciseTypeSection({ group, className, defaultCollapsed = false
             )}
           </div>
 
-          {/* Mark All Button */}
+          {/* Mark All Button - Unified Style */}
           <Button
-            variant="ghost"
+            variant={completionStats.allCompleted ? "outline" : "default"}
             size="sm"
             onClick={(e) => {
               e.stopPropagation()
               handleMarkAll()
             }}
-            className="flex items-center gap-2 hover:bg-white/50"
+            className={completionStats.allCompleted ? "btn-outline-enhanced" : "btn-primary-enhanced"}
           >
-            {completionStats.allCompleted ? (
-              <>
-                <CheckSquare className="h-4 w-4" />
-                Unmark All
-              </>
-            ) : (
-              <>
-                <Square className="h-4 w-4" />
-                Mark All
-              </>
-            )}
+            {completionStats.allCompleted ? "Unmark All" : "Mark All"}
           </Button>
         </div>
 
         {/* Progress Bar */}
         {completionStats.total > 0 && (
-          <div className="w-full bg-white/60 rounded-full h-1.5 mt-2">
-            <motion.div 
-              className="bg-blue-600 h-1.5 rounded-full"
+          <div className="w-full bg-muted/60 rounded-full h-1.5 mt-2">
+            <motion.div
+              className="bg-primary h-1.5 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${completionStats.percentage}%` }}
               transition={{ duration: 0.3, ease: "easeOut" }}
@@ -325,7 +272,7 @@ export function ExerciseTypeSection({ group, className, defaultCollapsed = false
           >
             <CardContent className="pt-0">
               {group.exercises.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
+                <div className="text-center py-4 text-low-contrast">
                   <AlertCircle className="h-6 w-6 mx-auto mb-2" />
                   <p className="text-sm">No exercises in this section.</p>
                 </div>
@@ -353,9 +300,9 @@ function ExerciseItem({ exercise, onToggle, isSuperset = false }: ExerciseItemPr
       className={cn(
         "flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer",
         exercise.completed 
-          ? "bg-green-50 border-green-200" 
-          : "bg-white border-gray-200 hover:border-gray-300",
-        isSuperset && "border-l-4 border-l-pink-400"
+          ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-400" 
+          : "card-enhanced",
+        isSuperset && "border-l-4 border-l-blue-400 dark:border-l-blue-500"
       )}
       onClick={() => onToggle(exercise.id)}
     >
@@ -364,8 +311,8 @@ function ExerciseItem({ exercise, onToggle, isSuperset = false }: ExerciseItemPr
         <div className={cn(
           "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
           exercise.completed 
-            ? "bg-green-500 border-green-500" 
-            : "border-gray-300 hover:border-gray-400"
+            ? "bg-green-500 dark:bg-green-600 border-green-500 dark:border-green-600" 
+            : "border-border hover:border-border/80"
         )}>
           {exercise.completed && (
             <motion.div
@@ -382,13 +329,10 @@ function ExerciseItem({ exercise, onToggle, isSuperset = false }: ExerciseItemPr
         <div>
           <p className={cn(
             "font-medium transition-colors",
-            exercise.completed ? "text-green-700 line-through" : "text-gray-900"
+            exercise.completed ? "text-green-700 line-through dark:text-green-400" : "text-high-contrast"
           )}>
             {exercise.exercise?.name || "Unknown Exercise"}
           </p>
-          {exercise.notes && (
-            <p className="text-sm text-gray-600 mt-1">{exercise.notes}</p>
-          )}
         </div>
       </div>
 

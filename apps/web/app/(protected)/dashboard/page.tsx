@@ -44,7 +44,9 @@ async function DashboardContent() {
         description="Your training overview and quick actions"
         error={dashboardDataResult.message}
         onRetry={() => window.location.reload()}
-      />
+      >
+        <div>Error loading dashboard data</div>
+      </PageLayout>
     )
   }
 
