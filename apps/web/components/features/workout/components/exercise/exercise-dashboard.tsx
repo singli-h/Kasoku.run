@@ -9,7 +9,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { AlertCircle, Clock, CheckCircle, Play, Save, Trophy, Eye, EyeOff } from "lucide-react"
+import { AlertCircle, Clock, CheckCircle, XCircle, Play, Save, Trophy, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -58,6 +58,14 @@ const SESSION_STATUS_CONFIG = {
     bgColor: "bg-green-50",
     textColor: "text-green-700",
     borderColor: "border-green-200"
+  },
+  cancelled: {
+    icon: XCircle,
+    label: "Cancelled",
+    variant: "destructive" as const,
+    bgColor: "bg-red-50",
+    textColor: "text-red-700",
+    borderColor: "border-red-200"
   },
   unknown: {
     icon: AlertCircle,
@@ -199,7 +207,7 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
                 {session.exercise_preset_group?.day && (
                   <span>Day {session.exercise_preset_group.day}</span>
                 )}
-                <span>{new Date(session.date_time).toLocaleDateString()}</span>
+                <span>{(session as any).date_time ? new Date((session as any).date_time).toLocaleDateString() : 'No date'}</span>
               </div>
             </div>
             
@@ -216,8 +224,8 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
           </div>
 
           {/* Session Description */}
-          {session.description && (
-            <p className="text-gray-700 mt-2">{session.description}</p>
+          {(session as any).description && (
+            <p className="text-gray-700 mt-2">{(session as any).description}</p>
           )}
 
           {/* Progress Bar */}

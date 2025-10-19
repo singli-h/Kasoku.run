@@ -45,7 +45,7 @@ import {
   updateExerciseAction,
   getExerciseTypesAction,
   getUnitsAction
-} from "@/actions/training/exercise-actions"
+} from "@/actions/library/exercise-actions"
 
 import type {
   ExerciseInsert,

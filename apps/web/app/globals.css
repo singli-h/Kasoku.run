@@ -425,7 +425,7 @@ BEST PRACTICES:
 
   /* Page header with consistent styling */
   .page-header {
-    @apply border-b border-border/50 pb-4;
+    @apply border-b border-border/50 pt-4 pb-4;
   }
 
   .page-header-content {

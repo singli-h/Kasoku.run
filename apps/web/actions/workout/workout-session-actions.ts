@@ -13,13 +13,12 @@ import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { 
-  ExerciseTrainingSession,
   ExerciseTrainingSessionWithDetails,
   ExercisePresetGroupWithDetails
 } from "@/types/training"
+import { Database } from "@/types/database"
 
-// Session status type
-type SessionStatus = 'assigned' | 'ongoing' | 'completed' | 'cancelled'
+type SessionStatus = Database["public"]["Enums"]["session_status"]
 
 // ============================================================================
 // SESSION DISCOVERY ACTIONS
@@ -235,7 +234,7 @@ export async function getPastSessionsAction(
 export async function updateTrainingSessionStatusAction(
   sessionId: number,
   status: SessionStatus
-): Promise<ActionState<ExerciseTrainingSession>> {
+): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
   try {
     // 1. Authentication check
     const { userId } = await auth()
@@ -278,7 +277,7 @@ export async function updateTrainingSessionStatusAction(
  */
 export async function startTrainingSessionAction(
   sessionId: number
-): Promise<ActionState<ExerciseTrainingSession>> {
+): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
   try {
     // 1. Authentication check
     const { userId } = await auth()
@@ -321,7 +320,7 @@ export async function startTrainingSessionAction(
  */
 export async function completeTrainingSessionAction(
   sessionId: number
-): Promise<ActionState<ExerciseTrainingSession>> {
+): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
   try {
     // 1. Authentication check
     const { userId } = await auth()

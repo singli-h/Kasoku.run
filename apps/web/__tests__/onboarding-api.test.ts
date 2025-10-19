@@ -8,13 +8,13 @@ global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder as any
 
 // Mock the onboarding action before importing anything else
-jest.mock("@/actions/users/onboarding-actions", () => ({
+jest.mock("@/actions/onboarding/onboarding-actions", () => ({
   completeOnboardingAction: jest.fn(),
 }))
 
 import { NextRequest } from "next/server"
 import { POST } from "@/app/api/users/onboard/route"
-import { completeOnboardingAction } from "@/actions/users/onboarding-actions"
+import { completeOnboardingAction } from "@/actions/onboarding/onboarding-actions"
 
 // Get the mocked function
 const mockCompleteOnboardingAction = completeOnboardingAction as jest.MockedFunction<typeof completeOnboardingAction>

@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { completeOnboardingAction } from "@/actions/users/onboarding-actions"
+import { completeOnboardingAction } from "@/actions/onboarding/onboarding-actions"
 
 // Zod schema for onboarding data validation
 const OnboardingSchema = z.object({

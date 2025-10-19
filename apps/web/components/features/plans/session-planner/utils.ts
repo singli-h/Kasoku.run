@@ -207,7 +207,7 @@ export function validateSession(exercises: SessionExercise[]): ValidationResult 
     // Validate each set
     ex.sets.forEach((set, index) => {
       if (set.reps === null && set.distance === null && set.performing_time === null) {
-        exErrors.push(`Set ${index + 1}: Must specify reps, distance, or duration`)
+        exErrors.push(`Set ${index + 1}: Must specify reps, distance, or time`)
       }
     })
 
@@ -270,6 +270,11 @@ export function addSet(exercise: SessionExercise): SessionExercise {
     distance: lastSet?.distance || null,
     performing_time: lastSet?.performing_time || null,
     resistance_unit_id: lastSet?.resistance_unit_id || null,
+    power: lastSet?.power || null,
+    velocity: lastSet?.velocity || null,
+    effort: lastSet?.effort || null,
+    height: lastSet?.height || null,
+    resistance: lastSet?.resistance || null,
   }
 
   return {

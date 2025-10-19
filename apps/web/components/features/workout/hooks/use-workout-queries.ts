@@ -16,13 +16,17 @@ import {
   INVALIDATION_PATTERNS,
   PERFORMANCE_METRICS
 } from '../config/query-config'
-import { 
-  getTodayAndOngoingSessionsAction, 
+import {
+  getTodayAndOngoingSessionsAction,
   getPastSessionsAction,
   startTrainingSessionAction,
   completeTrainingSessionAction,
   updateTrainingSessionStatusAction
-} from '@/actions/training'
+} from '@/actions/workout/workout-session-actions'
+import { ExerciseTrainingSessionWithDetails } from '@/types/training'
+import { Database } from '@/types/database'
+
+type SessionStatus = Database["public"]["Enums"]["session_status"]
 
 // Types
 interface SessionFilters {
@@ -52,10 +56,10 @@ export function useSessionsToday({ athleteId, enabled = true }: UseSessionsToday
     queryFn: async () => {
       const startTime = performance.now()
       
-      const result = await getTodayAndOngoingSessionsAction(athleteId)
+      const result = await getTodayAndOngoingSessionsAction(athleteId ? parseInt(athleteId, 10) : undefined)
       
       const duration = performance.now() - startTime
-      PERFORMANCE_METRICS.trackQueryPerformance(WORKOUT_QUERY_KEYS.SESSIONS_TODAY, duration)
+      PERFORMANCE_METRICS.trackQueryPerformance([...WORKOUT_QUERY_KEYS.SESSIONS_TODAY], duration)
       
       if (!result.isSuccess) {
         throw new Error(result.message)
@@ -92,13 +96,17 @@ export function useSessionsHistory({
 }: UseSessionsHistoryOptions) {
   const queryClient = useQueryClient()
   
-  const query = useQuery({
+  const query = useQuery<{
+    sessions: ExerciseTrainingSessionWithDetails[]
+    totalCount: number
+    hasMore: boolean
+  }>({
     queryKey: WORKOUT_QUERY_KEYS.SESSIONS_HISTORY(page, filters),
     queryFn: async () => {
       const startTime = performance.now()
       
       const result = await getPastSessionsAction(
-        athleteId,
+        athleteId ? parseInt(athleteId, 10) : undefined,
         page,
         filters.limit,
         filters.startDate,
@@ -107,7 +115,7 @@ export function useSessionsHistory({
       
       const duration = performance.now() - startTime
       PERFORMANCE_METRICS.trackQueryPerformance(
-        WORKOUT_QUERY_KEYS.SESSIONS_HISTORY(page, filters), 
+        [...WORKOUT_QUERY_KEYS.SESSIONS_HISTORY(page, filters)], 
         duration
       )
       
@@ -122,7 +130,7 @@ export function useSessionsHistory({
     retry: RETRY_CONFIG.NON_CRITICAL.retries,
     retryDelay: RETRY_CONFIG.NON_CRITICAL.retryDelay,
     enabled,
-    keepPreviousData: true, // Keep previous page data while loading next page
+    placeholderData: (previousData) => previousData, // Keep previous page data while loading next page
   })
 
   // Invalidate and refetch history
@@ -143,7 +151,7 @@ export function useSessionMutations() {
   // Start session mutation
   const startSessionMutation = useMutation({
     mutationFn: async (sessionId: string) => {
-      const result = await startTrainingSessionAction(sessionId)
+      const result = await startTrainingSessionAction(parseInt(sessionId, 10))
       if (!result.isSuccess) {
         throw new Error(result.message)
       }
@@ -175,7 +183,7 @@ export function useSessionMutations() {
   // Complete session mutation
   const completeSessionMutation = useMutation({
     mutationFn: async (sessionId: string) => {
-      const result = await completeTrainingSessionAction(sessionId)
+      const result = await completeTrainingSessionAction(parseInt(sessionId, 10))
       if (!result.isSuccess) {
         throw new Error(result.message)
       }
@@ -204,7 +212,7 @@ export function useSessionMutations() {
   // Update session status mutation
   const updateSessionStatusMutation = useMutation({
     mutationFn: async ({ sessionId, status }: { sessionId: string; status: string }) => {
-      const result = await updateTrainingSessionStatusAction(sessionId, status)
+      const result = await updateTrainingSessionStatusAction(parseInt(sessionId, 10), status as SessionStatus)
       if (!result.isSuccess) {
         throw new Error(result.message)
       }

@@ -25,11 +25,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { 
+import {
   bulkAssignAthletesAction,
   bulkMoveAthletesAction,
   bulkRemoveAthletesAction
-} from "@/actions/training/athlete-actions"
+} from "@/actions/athletes/athlete-actions"
 import type { BulkOperationState, GroupWithCount } from "../types"
 
 interface BulkOperationsDialogProps {

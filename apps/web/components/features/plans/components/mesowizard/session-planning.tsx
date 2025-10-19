@@ -60,7 +60,7 @@ export interface PlanConfiguration {
 }
 
 // Actions
-import { getExercisesAction, getExerciseTypesAction } from "@/actions/training/exercise-actions"
+import { getExercisesAction, getExerciseTypesAction } from "@/actions/library/exercise-actions"
 
 export interface SessionPlan {
   sessions: SessionData[]

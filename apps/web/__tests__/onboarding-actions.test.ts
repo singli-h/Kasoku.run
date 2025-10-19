@@ -33,7 +33,7 @@ jest.mock("@/lib/supabase-server", () => {
 import {
   completeOnboardingAction,
   OnboardingActionData,
-} from "@/actions/users/onboarding-actions"
+} from "@/actions/onboarding/onboarding-actions"
 import supabase from "@/lib/supabase-server"
 
 // Get the mocked supabase client

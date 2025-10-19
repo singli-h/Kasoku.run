@@ -1,5 +1,9 @@
 import { KnowledgeBasePage } from "@/components/features/knowledge-base/pages/knowledge-base-page"
+import { serverProtectRoute } from "@/components/auth/server-protect-route"
 
-export default function KnowledgeBasePageRoute() {
+export default async function KnowledgeBasePageRoute() {
+  // Protect this page - only coaches and admins can access
+  await serverProtectRoute({ allowedRoles: ['coach', 'admin'] })
+
   return <KnowledgeBasePage />
 }

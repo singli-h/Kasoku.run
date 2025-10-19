@@ -16,4 +16,4 @@ export {
 } from '@/components/composed'
 
 // Export types
-export type { SessionStatus } from '@/components/composed'
+export type { SessionStatus } from '@/components/features/workout/hooks/use-workout-session'

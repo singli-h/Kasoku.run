@@ -3,13 +3,13 @@
  * Comprehensive tests for workout session server actions
  */
 
-import { 
+import {
   getTodayAndOngoingSessionsAction,
   getPastSessionsAction,
   startTrainingSessionAction,
   completeTrainingSessionAction,
   updateTrainingSessionStatusAction
-} from '@/actions/training/workout-session-actions'
+} from '@/actions/workout/workout-session-actions'
 import { auth } from '@clerk/nextjs/server'
 import supabase from '@/lib/supabase-server'
 import { getDbUserId } from '@/lib/user-cache'

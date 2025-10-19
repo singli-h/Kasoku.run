@@ -31,9 +31,18 @@ import {
 import { NavMain } from "./nav-main"
 import { NavProjects } from "./nav-projects"
 import { TeamSwitcher } from "./team-switcher"
+import { useUserRole } from "@/contexts/user-role-context"
+
+// Navigation item type with optional role restriction
+interface NavItem {
+  title: string
+  url: string
+  icon: any
+  coachOnly?: boolean
+}
 
 // Kasoku running/fitness navigation data
-const navItems = [
+const navItems: NavItem[] = [
   {
     title: "Overview",
     url: "/dashboard",
@@ -52,7 +61,8 @@ const navItems = [
   {
     title: "Knowledge Base",
     url: "/knowledge-base",
-    icon: FileText
+    icon: FileText,
+    coachOnly: true
   },
   {
     title: "Performance",
@@ -62,7 +72,8 @@ const navItems = [
   {
     title: "Athletes",
     url: "/athletes",
-    icon: Users
+    icon: Users,
+    coachOnly: true
   },
   {
     title: "Settings",
@@ -72,16 +83,25 @@ const navItems = [
 ]
 
 // Training-specific navigation items
-const trainingItems = [
+interface TrainingItem {
+  name: string
+  url: string
+  icon: any
+  coachOnly?: boolean
+}
+
+const trainingItems: TrainingItem[] = [
   {
     name: "Plans",
     url: "/plans",
-    icon: Calendar
+    icon: Calendar,
+    coachOnly: true
   },
   {
     name: "Sessions",
     url: "/sessions",
-    icon: PlayCircle
+    icon: PlayCircle,
+    coachOnly: true
   }
 ]
 
@@ -95,9 +115,36 @@ const teams = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
-  
+  const { isCoach, isAdmin, isLoading } = useUserRole()
+
+  // Filter navigation items based on user role
+  const filteredNavItems = React.useMemo(() => {
+    if (isLoading) return []
+
+    return navItems.filter(item => {
+      // If item is coach-only, only show to coaches and admins
+      if (item.coachOnly) {
+        return isCoach || isAdmin
+      }
+      return true
+    })
+  }, [isCoach, isAdmin, isLoading])
+
+  // Filter training items based on user role
+  const filteredTrainingItems = React.useMemo(() => {
+    if (isLoading) return []
+
+    return trainingItems.filter(item => {
+      // If item is coach-only, only show to coaches and admins
+      if (item.coachOnly) {
+        return isCoach || isAdmin
+      }
+      return true
+    })
+  }, [isCoach, isAdmin, isLoading])
+
   // Add active state based on current pathname
-  const navItemsWithActive = navItems.map(item => ({
+  const navItemsWithActive = filteredNavItems.map(item => ({
     ...item,
     isActive: pathname === item.url || pathname.startsWith(item.url + '/')
   }))
@@ -109,7 +156,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navItemsWithActive} />
-        <NavProjects projects={trainingItems} />
+        {filteredTrainingItems.length > 0 && (
+          <NavProjects projects={filteredTrainingItems} />
+        )}
       </SidebarContent>
       <SidebarFooter>
         {/* User controls in header for better UX */}

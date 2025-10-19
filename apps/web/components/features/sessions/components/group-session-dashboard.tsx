@@ -26,7 +26,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { 
+import {
   getCoachAthleteGroupsForSessionAction,
   getSprintSessionPresetsAction,
   getGroupAthletesForSessionAction,
@@ -37,7 +37,7 @@ import {
   type GroupSessionAthlete,
   type LiveSession,
   type PerformanceLogEntry
-} from "@/actions/training/group-session-actions"
+} from "@/actions/sessions/group-session-actions"
 import { AthleteTimeCell } from "./athlete-time-cell"
 import type { Tables } from "@/types/database"
 

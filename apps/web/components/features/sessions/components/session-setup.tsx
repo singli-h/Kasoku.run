@@ -38,12 +38,12 @@ import {
 } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
-import type { 
+import type {
   AthleteGroupWithAthletes,
   SprintSessionPreset,
   SprintDistance,
   SprintRound
-} from "@/actions/training/sprint-session-actions"
+} from "@/actions/sessions/sprint-session-actions"
 
 interface SessionSetupProps {
   athleteGroups: AthleteGroupWithAthletes[]

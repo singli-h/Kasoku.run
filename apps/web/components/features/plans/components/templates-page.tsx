@@ -57,7 +57,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 
 // Actions
-import { getTemplatesAction, createPlanFromTemplateAction, deleteTemplateAction } from "@/actions/training"
+import { getTemplatesAction, createPlanFromTemplateAction, deleteTemplateAction } from "@/actions/plans/session-plan-actions"
 
 // Types
 import { ExercisePresetGroup } from "@/types/training"

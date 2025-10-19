@@ -1,9 +1,10 @@
-"use server"
-
 import { Suspense } from "react"
+import { notFound } from "next/navigation"
 import { TrainingPlanWorkspace } from "@/components/features/plans/workspace/TrainingPlanWorkspace"
 import { UnifiedPageSkeleton } from "@/components/layout"
-import { DEMO_PLANS } from "@/components/features/plans/workspace/data/sampleData"
+import { getMacrocycleByIdAction } from "@/actions/plans/plan-actions"
+import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
+import { serverProtectRoute } from "@/components/auth/server-protect-route"
 
 // Helper function to calculate average from sessions
 function calculateAverage(sessions: any[], field: 'volume' | 'intensity'): number {
@@ -13,34 +14,55 @@ function calculateAverage(sessions: any[], field: 'volume' | 'intensity'): numbe
 }
 
 export default async function PlanWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
+  // Protect this page - only coaches and admins can access
+  await serverProtectRoute({ allowedRoles: ['coach', 'admin'] })
+
   const resolvedParams = await params
   const planId = Number(resolvedParams.id)
 
-  // Get plan data (using sample data for now)
-  const rawPlanData = DEMO_PLANS[planId]
+  // Fetch plan data from Supabase
+  const [macrocycleResult, racesResult] = await Promise.all([
+    getMacrocycleByIdAction(planId),
+    getRacesByMacrocycleAction(planId)
+  ])
 
-  if (!rawPlanData) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-muted-foreground">Plan Not Found</h1>
-          <p className="text-muted-foreground">Plan ID {planId} does not exist</p>
-        </div>
-      </div>
-    )
+  // Handle errors
+  if (!macrocycleResult.isSuccess || !macrocycleResult.data) {
+    console.error('Failed to fetch macrocycle:', macrocycleResult.message)
+    notFound()
   }
+
+  const rawPlanData = macrocycleResult.data
+  const races = racesResult.isSuccess ? racesResult.data : []
 
   // Enrich data with computed metrics
   const planData = {
-    ...rawPlanData,
-    mesocycles: rawPlanData.mesocycles.map((meso: any) => {
-      const enrichedMicrocycles = meso.microcycles.map((micro: any) => ({
-        ...micro,
-        volume: calculateAverage(micro.sessions, 'volume'),
-        intensity: calculateAverage(micro.sessions, 'intensity'),
-        isDeload: micro.name?.toLowerCase().includes('deload') || meso.metadata?.deload,
-        weekNumber: parseInt(micro.name?.match(/\d+/)?.[0] || '0'),
-      }))
+    macrocycle: {
+      id: (rawPlanData as any).id,
+      name: (rawPlanData as any).name,
+      description: (rawPlanData as any).description,
+      start_date: (rawPlanData as any).start_date,
+      end_date: (rawPlanData as any).end_date
+    },
+    events: races.map(race => ({
+      id: race.id,
+      name: race.name,
+      category: null,
+      type: race.type,
+      date: race.date
+    })),
+    mesocycles: (rawPlanData.mesocycles || []).map((meso: any) => {
+      const enrichedMicrocycles = (meso.microcycles || []).map((micro: any) => {
+        const sessions = micro.exercise_preset_groups || []
+        return {
+          ...micro,
+          sessions, // Use exercise_preset_groups as sessions
+          volume: calculateAverage(sessions, 'volume'),
+          intensity: calculateAverage(sessions, 'intensity'),
+          isDeload: micro.name?.toLowerCase().includes('deload') || meso.metadata?.deload,
+          weekNumber: parseInt(micro.name?.match(/\d+/)?.[0] || '0'),
+        }
+      })
 
       const allSessions = enrichedMicrocycles.flatMap((m: any) => m.sessions)
 

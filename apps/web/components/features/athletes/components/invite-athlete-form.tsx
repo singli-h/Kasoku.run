@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { inviteOrAttachAthleteAction } from "@/actions/training/athlete-actions"
+import { inviteOrAttachAthleteAction } from "@/actions/athletes/athlete-actions"
 import type { GroupWithCount } from "../types"
 
 interface InviteAthleteFormProps {

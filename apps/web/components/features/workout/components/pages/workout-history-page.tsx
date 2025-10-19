@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
-import { getPastSessionsAction } from "@/actions/training"
+import { getPastSessionsAction } from "@/actions/workout/workout-session-actions"
 import { WorkoutSessionCard } from '@/components/composed'
 import { WorkoutErrorBoundary, WorkoutLoadingCard } from '../error-loading'
 import type { ExerciseTrainingSessionWithDetails } from "@/types/training"
@@ -67,7 +67,7 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
           <h3 className="text-lg font-semibold">Failed to load workout history</h3>
           <p className="text-sm text-muted-foreground">{error.message}</p>
         </div>
-        <Button onClick={() => refetch()} variant="outline">
+        <Button onClick={() => refetchHistory()} variant="outline">
           Try Again
         </Button>
       </div>
@@ -140,10 +140,14 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: filters.limit }).map((_, i) => (
-              <WorkoutLoadingCard key={i} />
+              <WorkoutLoadingCard 
+                key={i} 
+                title="Loading session..."
+                description="Please wait while we fetch your workout history"
+              />
             ))}
           </div>
-        ) : data?.sessions.length === 0 ? (
+        ) : (data as any)?.sessions?.length === 0 ? (
           <div className="text-center py-12">
             <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No completed sessions found</h3>
@@ -158,13 +162,13 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
           <>
             {/* Sessions Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {data?.sessions.map((session) => (
+              {(data as any)?.sessions?.map((session: any) => (
                 <WorkoutSessionCard
-                  key={session.id}
+                  key={(session as any).id}
                   session={session}
                   onAction={(session) => {
                     // Handle view details action
-                    console.log('View details for session:', session.id)
+                    console.log('View details for session:', (session as any).id)
                   }}
                   actionLabel="View Details"
                   actionIcon={<Eye className="h-4 w-4" />}
@@ -174,10 +178,10 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
             </div>
 
             {/* Pagination */}
-            {data && data.totalCount > filters.limit && (
+            {data && (data as any).totalCount > filters.limit && (
               <div className="flex items-center justify-between pt-4">
                 <div className="text-sm text-muted-foreground">
-                  Showing {((page - 1) * filters.limit) + 1} to {Math.min(page * filters.limit, data.totalCount)} of {data.totalCount} sessions
+                  Showing {((page - 1) * filters.limit) + 1} to {Math.min(page * filters.limit, (data as any).totalCount)} of {(data as any).totalCount} sessions
                 </div>
                 
                 <div className="flex items-center gap-2">
@@ -192,10 +196,10 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
                   </Button>
                   
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.ceil(data.totalCount / filters.limit) }, (_, i) => i + 1)
+                    {Array.from({ length: Math.ceil((data as any).totalCount / filters.limit) }, (_, i) => i + 1)
                       .filter(pageNum => 
                         pageNum === 1 || 
-                        pageNum === Math.ceil(data.totalCount / filters.limit) ||
+                        pageNum === Math.ceil((data as any).totalCount / filters.limit) ||
                         Math.abs(pageNum - page) <= 2
                       )
                       .map((pageNum, index, array) => (
@@ -220,7 +224,7 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => handlePageChange(page + 1)}
-                    disabled={!data.hasMore}
+                    disabled={!(data as any).hasMore}
                   >
                     Next
                     <ChevronRight className="h-4 w-4" />

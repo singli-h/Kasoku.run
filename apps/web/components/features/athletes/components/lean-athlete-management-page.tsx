@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 
 // Server Actions
-import { getRosterWithGroupCountsAction } from "@/actions/training/athlete-actions"
+import { getRosterWithGroupCountsAction } from "@/actions/athletes/athlete-actions"
 
 // Components
 import { InviteAthleteForm } from "./invite-athlete-form"

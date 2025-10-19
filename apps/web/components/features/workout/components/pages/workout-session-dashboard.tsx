@@ -216,7 +216,7 @@ function WorkoutSessionContent({
         
         {/* Action Buttons - Right Side */}
         <div className="flex items-center gap-3">
-          {(sessionStatus === 'assigned' || sessionStatus === 'unknown') && (
+          {sessionStatus === 'assigned' && (
             <Button 
               onClick={handleStartSession} 
               disabled={isLoading}

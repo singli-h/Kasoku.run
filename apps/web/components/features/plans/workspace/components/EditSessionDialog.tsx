@@ -6,6 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import type { Session } from "../TrainingPlanWorkspace"
 
 interface EditSessionDialogProps {
@@ -26,6 +36,7 @@ export function EditSessionDialog({ session, open, onOpenChange, onSave, onDelet
     intensity: 7,
     exercises: [],
   })
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   // Update form when session prop changes
   useEffect(() => {
@@ -69,16 +80,22 @@ export function EditSessionDialog({ session, open, onOpenChange, onSave, onDelet
 
   const handleDelete = () => {
     if (session && onDelete) {
-      if (confirm("Are you sure you want to delete this session?")) {
-        onDelete(session.id)
-        onOpenChange(false)
-      }
+      setDeleteConfirmOpen(true)
+    }
+  }
+
+  const confirmDelete = () => {
+    if (session && onDelete) {
+      onDelete(session.id)
+      setDeleteConfirmOpen(false)
+      onOpenChange(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{session ? "Edit Session" : "Add Session"}</DialogTitle>
         </DialogHeader>
@@ -95,15 +112,24 @@ export function EditSessionDialog({ session, open, onOpenChange, onSave, onDelet
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="day">Day</Label>
-              <Input
-                id="day"
-                type="number"
-                min="1"
-                max="7"
-                value={formData.day || 1}
-                onChange={(e) => setFormData({ ...formData, day: parseInt(e.target.value) || 1 })}
-              />
+              <Label htmlFor="day">Weekday</Label>
+              <Select
+                value={String(formData.day || 1)}
+                onValueChange={(value) => setFormData({ ...formData, day: parseInt(value) as number })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Monday</SelectItem>
+                  <SelectItem value="2">Tuesday</SelectItem>
+                  <SelectItem value="3">Wednesday</SelectItem>
+                  <SelectItem value="4">Thursday</SelectItem>
+                  <SelectItem value="5">Friday</SelectItem>
+                  <SelectItem value="6">Saturday</SelectItem>
+                  <SelectItem value="7">Sunday</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="duration">Duration (min)</Label>
@@ -153,7 +179,25 @@ export function EditSessionDialog({ session, open, onOpenChange, onSave, onDelet
             <Button onClick={handleSave}>Save</Button>
           </div>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this session? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

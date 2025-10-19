@@ -16,17 +16,28 @@ export type ExercisePresetGroup = Tables<"exercise_preset_groups">
  * Maps to exercise_preset_details table
  */
 export interface SetParameter {
-  id?: number // exercise_preset_detail id
+  id?: number // exercise_preset_detail id or exercise_training_detail id
   exercise_preset_id?: number
   set_index: number // Which set (1, 2, 3, etc.)
+  
+  // Core fields that exist in BOTH tables (exercise_preset_details & exercise_training_details)
   reps: number | null
   weight: number | null // In kg or lbs
+  distance: number | null // For running/cardio
+  performing_time: number | null // Duration in seconds (sprint time/results)
   rest_time: number | null // Rest in seconds
   tempo: string | null // e.g., "2-0-2-0" (eccentric-bottom-concentric-top)
   rpe: number | null // Rate of Perceived Exertion (1-10)
-  distance: number | null // For running/cardio
-  performing_time: number | null // Duration in seconds
   resistance_unit_id: number | null
+  power: number | null
+  velocity: number | null
+  effort: number | null
+  height: number | null
+  resistance: number | null
+  
+  // Training execution runtime flags (app-level)
+  completed?: boolean // Whether this set was completed (training-time only)
+  
   // UI-only fields (not in database)
   isEditing?: boolean
 }
@@ -160,6 +171,11 @@ export const DEFAULT_SET: Omit<SetParameter, "set_index"> = {
   distance: null,
   performing_time: null,
   resistance_unit_id: null,
+  power: null,
+  velocity: null,
+  effort: null,
+  height: null,
+  resistance: null,
 }
 
 /**
@@ -188,44 +204,57 @@ export const EXERCISE_TYPE_DEFAULTS: Record<ExerciseLibraryItem["type"], FieldCo
     { key: "rest_time", label: "Rest", unit: "s", type: "number", placeholder: "120" },
     { key: "rpe", label: "RPE", type: "number", placeholder: "7", min: 1, max: 10 },
     { key: "tempo", label: "Tempo", type: "text", placeholder: "2-0-2-0" },
+    { key: "power", label: "Power", unit: "W", type: "number", placeholder: "500" },
+    { key: "velocity", label: "Velocity", unit: "m/s", type: "number", placeholder: "1.0", step: 0.1 },
+    { key: "effort", label: "Effort", type: "number", placeholder: "80", min: 0, max: 100 },
   ],
   plyometric: [
     { key: "reps", label: "Reps", type: "number", placeholder: "5" },
     { key: "rest_time", label: "Rest", unit: "s", type: "number", placeholder: "90" },
     { key: "performing_time", label: "Time", unit: "s", type: "number", placeholder: "30" },
     { key: "rpe", label: "RPE", type: "number", placeholder: "8", min: 1, max: 10 },
+    { key: "height", label: "Height", unit: "m", type: "number", placeholder: "0.6", step: 0.01 },
+    { key: "resistance", label: "Resistance", unit: "kg", type: "number", placeholder: "0", step: 2.5 },
+    { key: "power", label: "Power", unit: "W", type: "number", placeholder: "500" },
   ],
   sprint: [
     { key: "reps", label: "Reps", type: "number", placeholder: "6" },
     { key: "distance", label: "Distance", unit: "m", type: "number", placeholder: "100" },
     { key: "rest_time", label: "Rest", unit: "s", type: "number", placeholder: "180" },
     { key: "performing_time", label: "Time", unit: "s", type: "number", placeholder: "12" },
+    { key: "velocity", label: "Velocity", unit: "m/s", type: "number", placeholder: "9.5", step: 0.1 },
+    { key: "power", label: "Power", unit: "W", type: "number", placeholder: "800" },
   ],
   circuit: [
     { key: "performing_time", label: "Duration", unit: "s", type: "number", placeholder: "30" },
     { key: "rest_time", label: "Rest", unit: "s", type: "number", placeholder: "15" },
     { key: "reps", label: "Reps", type: "number", placeholder: "15" },
     { key: "rpe", label: "RPE", type: "number", placeholder: "7", min: 1, max: 10 },
+    { key: "effort", label: "Effort", type: "number", placeholder: "70", min: 0, max: 100 },
   ],
   isometric: [
     { key: "performing_time", label: "Duration", unit: "s", type: "number", placeholder: "45" },
     { key: "rest_time", label: "Rest", unit: "s", type: "number", placeholder: "60" },
     { key: "rpe", label: "RPE", type: "number", placeholder: "7", min: 1, max: 10 },
+    { key: "effort", label: "Effort", type: "number", placeholder: "80", min: 0, max: 100 },
   ],
   warmup: [
     { key: "performing_time", label: "Duration", unit: "s", type: "number", placeholder: "30" },
     { key: "reps", label: "Reps", type: "number", placeholder: "10" },
     { key: "rest_time", label: "Rest", unit: "s", type: "number", placeholder: "30" },
+    { key: "effort", label: "Effort", type: "number", placeholder: "50", min: 0, max: 100 },
   ],
   drill: [
     { key: "reps", label: "Reps", type: "number", placeholder: "10" },
     { key: "distance", label: "Distance", unit: "m", type: "number", placeholder: "20" },
     { key: "rest_time", label: "Rest", unit: "s", type: "number", placeholder: "60" },
+    { key: "effort", label: "Effort", type: "number", placeholder: "80", min: 0, max: 100 },
   ],
   other: [
     { key: "reps", label: "Reps", type: "number", placeholder: "10" },
     { key: "performing_time", label: "Time", unit: "s", type: "number", placeholder: "60" },
     { key: "rest_time", label: "Rest", unit: "s", type: "number", placeholder: "60" },
+    { key: "effort", label: "Effort", type: "number", placeholder: "70", min: 0, max: 100 },
   ],
 }
 
@@ -240,5 +269,24 @@ export function getFieldsForExercise(exercise: SessionExercise | null, mode: "si
   const exerciseType = EXERCISE_TYPE_MAP[exercise.exercise.exercise_type_id] || "gym"
   const fields = EXERCISE_TYPE_DEFAULTS[exerciseType] || EXERCISE_TYPE_DEFAULTS.gym
 
-  return mode === "simple" ? fields.slice(0, 4) : fields
+  if (mode === "simple") {
+    return fields.slice(0, 4)
+  }
+
+  // Detail mode: Return ALL per-set fields we support in the app/UI
+  // We standardize per-set timing on performing_time (seconds). Session-level duration remains minutes.
+  return [
+    { key: "reps", label: "Reps", type: "number", placeholder: "10" },
+    { key: "weight", label: "Weight", unit: "kg", type: "number", placeholder: "50", step: 2.5 },
+    { key: "distance", label: "Distance", unit: "m", type: "number", placeholder: "100" },
+    { key: "performing_time", label: "Performing Time", unit: "s", type: "number", placeholder: "30" },
+    { key: "rest_time", label: "Rest Time", unit: "s", type: "number", placeholder: "60" },
+    { key: "tempo", label: "Tempo", type: "text", placeholder: "2-0-2-0" },
+    { key: "rpe", label: "RPE", type: "number", placeholder: "7", min: 1, max: 10 },
+    { key: "power", label: "Power", unit: "W", type: "number", placeholder: "500" },
+    { key: "velocity", label: "Velocity", unit: "m/s", type: "number", placeholder: "1.0", step: 0.1 },
+    { key: "effort", label: "Effort", type: "number", placeholder: "80", min: 0, max: 100 },
+    { key: "height", label: "Height", unit: "m", type: "number", placeholder: "0.6", step: 0.01 },
+    { key: "resistance", label: "Resistance", unit: "kg", type: "number", placeholder: "0", step: 2.5 },
+  ]
 }

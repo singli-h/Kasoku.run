@@ -30,11 +30,11 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
-import type { 
-  SprintRound, 
+import type {
+  SprintRound,
   SprintPerformanceEntry,
-  SprintSessionAthlete 
-} from "@/actions/training/sprint-session-actions"
+  SprintSessionAthlete
+} from "@/actions/sessions/sprint-session-actions"
 
 interface AthleteSprintRowProps {
   athlete: SprintSessionAthlete

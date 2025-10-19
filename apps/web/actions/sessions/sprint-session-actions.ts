@@ -328,7 +328,7 @@ export async function createLiveSprintSessionAction(
       athlete_group_id: groupId,
       date_time: new Date().toISOString(),
       session_mode: 'group',
-      status: 'in_progress',
+      session_status: 'ongoing',
       description: sessionName,
       notes: JSON.stringify({
         sessionType: 'sprint',
@@ -670,7 +670,7 @@ export async function completeSprintSessionAction(
     const { error: updateError } = await supabase
       .from('exercise_training_sessions')
       .update({
-        status: 'completed',
+        session_status: 'completed',
         updated_at: new Date().toISOString()
       })
       .eq('id', sessionId)
@@ -702,8 +702,8 @@ export async function completeSprintSessionAction(
     // Calculate summary statistics
     const performanceData = sessionData.exercise_training_details || []
     const validTimes = performanceData
-      .filter(detail => typeof detail.duration === 'number' && (detail.duration as number) > 0)
-      .map(detail => detail.duration as number)
+      .filter(detail => typeof detail.performing_time === 'number' && (detail.performing_time as number) > 0)
+      .map(detail => detail.performing_time as number)
 
     const summary: SprintSessionSummary = {
       sessionId: sessionId,
@@ -835,7 +835,7 @@ export async function getSprintPerformanceDataAction(
         athleteGroupId: metadata.athlete_group_id,
         roundNumber: detail.set_index || 1, // Default to 1 if null
         distance: detail.distance || 0,
-        timeMs: detail.duration as number,
+        timeMs: detail.performing_time as number,
         notes: metadata.notes,
         timestamp: metadata.timestamp || detail.created_at
       }

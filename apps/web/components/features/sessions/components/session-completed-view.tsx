@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { type LiveSprintSession } from '@/actions/training/sprint-session-actions'
+import { type LiveSprintSession } from '@/actions/sessions/sprint-session-actions'
 
 interface SessionCompletedViewProps {
   session: LiveSprintSession

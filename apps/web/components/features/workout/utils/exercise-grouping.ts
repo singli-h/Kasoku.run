@@ -134,16 +134,18 @@ export const mergeGymGroups = (groups: ExerciseGroup[]): ExerciseGroup[] => {
         (prevGroup && prevGroup.type === "gym") ||
         (nextGroup && nextGroup.type === "gym") ||
         (currentGymGroup &&
+          currentGymGroup.exercises.length > 0 &&
+          group.exercises.length > 0 &&
           Math.abs(
-            currentGymGroup.exercises[currentGymGroup.exercises.length - 1].preset_order - 
-            group.exercises[0].preset_order
+            (currentGymGroup.exercises[currentGymGroup.exercises.length - 1]?.preset_order ?? 0) -
+            (group.exercises[0]?.preset_order ?? 0)
           ) === 1)
 
       if (isAdjacentToGym) {
         // Merge entire superset with the adjacent gym group
         if (currentGymGroup) {
           const insertIndex = currentGymGroup.exercises.findIndex(
-            (ex) => ex.preset_order > group.exercises[0].preset_order
+            (ex) => (ex.preset_order ?? 0) > (group.exercises[0]?.preset_order ?? 0)
           )
           if (insertIndex === -1) {
             currentGymGroup.exercises.push(...group.exercises)
@@ -172,7 +174,7 @@ export const mergeGymGroups = (groups: ExerciseGroup[]): ExerciseGroup[] => {
 
   // Sort exercises within each group to maintain order
   finalGroups.forEach((group) => {
-    group.exercises.sort((a, b) => a.preset_order - b.preset_order)
+    group.exercises.sort((a, b) => (a.preset_order ?? 0) - (b.preset_order ?? 0))
   })
 
   return finalGroups
@@ -186,7 +188,7 @@ export const mergeGymGroups = (groups: ExerciseGroup[]): ExerciseGroup[] => {
  */
 export const groupExercises = (exercises: WorkoutExercise[]): ExerciseGroup[] => {
   // Step 1: Sort exercises by order
-  const sortedExercises = [...exercises].sort((a, b) => a.preset_order - b.preset_order)
+  const sortedExercises = [...exercises].sort((a, b) => (a.preset_order ?? 0) - (b.preset_order ?? 0))
 
   // Step 2: Group exercises and supersets while preserving order
   const initialGroups = groupExercisesByType(sortedExercises)
@@ -244,12 +246,12 @@ export const separateGymAndSupersets = (group: ExerciseGroup) => {
 
   const supersets = Array.from(supersetMap.entries()).map(([id, exercises]) => ({
     id,
-    exercises: exercises.sort((a, b) => a.preset_order - b.preset_order),
+    exercises: exercises.sort((a, b) => (a.preset_order ?? 0) - (b.preset_order ?? 0)),
     type: "superset" as const
   }))
 
   return {
-    gymExercises: gymExercises.sort((a, b) => a.preset_order - b.preset_order),
+    gymExercises: gymExercises.sort((a, b) => (a.preset_order ?? 0) - (b.preset_order ?? 0)),
     supersets
   }
 }
@@ -262,7 +264,7 @@ export const separateGymAndSupersets = (group: ExerciseGroup) => {
  */
 export const groupExercisesWithSeparateSupersets = (exercises: WorkoutExercise[]): ExerciseGroup[] => {
   // Step 1: Sort exercises by order
-  const sortedExercises = [...exercises].sort((a, b) => a.preset_order - b.preset_order)
+  const sortedExercises = [...exercises].sort((a, b) => (a.preset_order ?? 0) - (b.preset_order ?? 0))
 
   // Step 2: Group exercises and supersets
   const initialGroups = groupExercisesByType(sortedExercises)

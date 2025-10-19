@@ -12,7 +12,7 @@ import { CoachDetailsStep } from "./steps/coach-details-step"
 import { SubscriptionStep } from "./steps/subscription-step"
 import { DashboardTourStep } from "./steps/dashboard-tour-step"
 import { CompletionStep } from "./steps/completion-step"
-import { completeOnboardingAction } from "@/actions/users/onboarding-actions"
+import { completeOnboardingAction } from "@/actions/onboarding/onboarding-actions"
 
 export interface OnboardingData {
   firstName: string

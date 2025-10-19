@@ -37,11 +37,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { 
+import {
   createAthleteGroupAction,
   updateAthleteGroupAction,
   deleteAthleteGroupAction
-} from "@/actions/training/athlete-actions"
+} from "@/actions/athletes/athlete-actions"
 import type { GroupWithCount } from "../types"
 
 interface GroupDirectorySectionProps {

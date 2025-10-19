@@ -6,6 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface Event {
   id: number
@@ -30,6 +40,7 @@ export function EditRaceDialog({ event, open, onOpenChange, onSave, onDelete }: 
     type: "secondary",
     category: "race",
   })
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   // Update form when event prop changes
   useEffect(() => {
@@ -64,19 +75,25 @@ export function EditRaceDialog({ event, open, onOpenChange, onSave, onDelete }: 
 
   const handleDelete = () => {
     if (event && onDelete) {
-      if (confirm("Are you sure you want to delete this race?")) {
-        onDelete(event.id)
-        onOpenChange(false)
-      }
+      setDeleteConfirmOpen(true)
+    }
+  }
+
+  const confirmDelete = () => {
+    if (event && onDelete) {
+      onDelete(event.id)
+      setDeleteConfirmOpen(false)
+      onOpenChange(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{event ? "Edit Race" : "Add Race"}</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{event ? "Edit Race" : "Add Race"}</DialogTitle>
+          </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="name">Race Name</Label>
@@ -142,5 +159,23 @@ export function EditRaceDialog({ event, open, onOpenChange, onSave, onDelete }: 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete race?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete this race? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

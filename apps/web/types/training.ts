@@ -18,8 +18,8 @@ import {
   ExercisePresetDetail,
   Athlete, AthleteInsert, AthleteUpdate,
   AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate,
-  ExerciseTrainingSession, ExerciseTrainingSessionInsert, ExerciseTrainingSessionUpdate,
-  ExerciseTrainingDetail
+  ExerciseTrainingDetail,
+  Database
 } from './database'
 
 // Re-export database types for convenience
@@ -35,7 +35,6 @@ export type {
   ExercisePresetDetail,
   Athlete, AthleteInsert, AthleteUpdate,
   AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate,
-  ExerciseTrainingSession, ExerciseTrainingSessionInsert, ExerciseTrainingSessionUpdate,
   ExerciseTrainingDetail
 }
 
@@ -87,7 +86,7 @@ export interface ExerciseWithDetails extends Exercise {
   owner_user_id?: number | null
 }
 
-export interface ExerciseTrainingSessionWithDetails extends ExerciseTrainingSession {
+export interface ExerciseTrainingSessionWithDetails extends Database["public"]["Tables"]["exercise_training_sessions"]["Row"] {
   exercise?: ExerciseWithDetails | null
   athlete?: Athlete | null
   exercise_preset_group?: ExercisePresetGroup | null

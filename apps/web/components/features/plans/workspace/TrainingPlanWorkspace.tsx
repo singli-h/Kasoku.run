@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, ChevronLeft, ChevronRight, Plus, Settings, Edit, Trash2, Undo, Redo } from "lucide-react"
+import { Calendar, ChevronLeft, ChevronRight, Plus, Edit, Trash2 } from "lucide-react"
 import { EditMesocycleDialog, type MesocycleFormData } from "./components/EditMesocycleDialog"
 import { EditMicrocycleDialog, type MicrocycleFormData } from "./components/EditMicrocycleDialog"
 import { EditRaceDialog } from "./components/EditRaceDialog"
 import { EditSessionDialog } from "./components/EditSessionDialog"
+import { PlanPageHeader } from "../components/PlanPageHeader"
 
-// Using existing sample data structure
+// Training plan workspace component - interfaces for data structure
 export interface Session {
   id: number
   day: number
@@ -327,49 +328,43 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`lg:hidden flex-shrink-0 ${mobileView === "meso" ? "invisible" : "visible"}`}
-                onClick={mobileView === "micro" ? handleBackToMeso : handleBackToMicro}
-                disabled={mobileView === "meso"}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-xl font-semibold truncate">{plan.macrocycle.name}</h1>
-                <p className="text-sm text-muted-foreground truncate">
-                  {plan.macrocycle.start_date} - {plan.macrocycle.end_date}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button variant="outline" size="icon" onClick={handleUndo} disabled={historyIndex === 0} title="Undo">
-              <Undo className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleRedo}
-              disabled={historyIndex === history.length - 1}
-              title="Redo"
-            >
-              <Redo className="h-4 w-4" />
-            </Button>
-            <Badge variant={plan.status === "active" ? "default" : "secondary"}>{plan.status || "draft"}</Badge>
-            <Button variant="outline" size="sm" className="hidden md:flex bg-transparent">
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </Button>
-          </div>
+      {/* Mobile navigation helper (only visible on mobile) */}
+      <div className="lg:hidden border-b bg-card">
+        <div className="px-6 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`${mobileView === "meso" ? "invisible" : "visible"}`}
+            onClick={mobileView === "micro" ? handleBackToMeso : handleBackToMicro}
+            disabled={mobileView === "meso"}
+          >
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            {mobileView === "session" ? "Back to Week" : "Back to Phases"}
+          </Button>
         </div>
-      </header>
+      </div>
+
+      {/* Header */}
+      <PlanPageHeader
+        title={plan.macrocycle.name || "Training Plan"}
+        subtitle={`${plan.macrocycle.start_date} - ${plan.macrocycle.end_date}`}
+        backPath="/plans"
+        backLabel="Back to Plans"
+        status={plan.status}
+        showUndoRedo
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < history.length - 1}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        editable
+        onTitleChange={(newName) => {
+          setPlan((prev) => ({
+            ...prev,
+            macrocycle: { ...prev.macrocycle, name: newName },
+          }))
+          addToHistory(plan)
+        }}
+      />
 
       {/* Main Content */}
       <main className="p-6">
@@ -450,8 +445,16 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                 </Button>
               </div>
               <div className="space-y-2">
-                {plan.events.map((event) => (
-                  <div key={event.id} className="flex items-center gap-3 rounded-lg border p-3">
+                {[...plan.events]
+                  .sort((a, b) => {
+                    const da = a.date ? new Date(a.date).getTime() : Number.POSITIVE_INFINITY
+                    const db = b.date ? new Date(b.date).getTime() : Number.POSITIVE_INFINITY
+                    return da - db
+                  })
+                  .map((event) => {
+                    const isPast = event.date ? new Date(event.date).getTime() < Date.now() : false
+                    return (
+                  <div key={event.id} className={`flex items-center gap-3 rounded-lg border p-3 ${isPast ? "opacity-60" : ""}`}>
                     <Calendar
                       className={`h-5 w-5 flex-shrink-0 ${
                         event.type === "primary" ? "text-red-500" : "text-blue-500"
@@ -464,6 +467,11 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                     <Badge variant={event.type === "primary" ? "default" : "secondary"} className="flex-shrink-0">
                       {event.type}
                     </Badge>
+                    {isPast && (
+                      <Badge variant="secondary" className="flex-shrink-0">
+                        Completed
+                      </Badge>
+                    )}
                     <div className="flex gap-1 flex-shrink-0">
                       <Button
                         size="icon"
@@ -481,7 +489,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                       </Button>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           </Card>
@@ -609,55 +617,70 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                   </Button>
                 </div>
                 <div className="space-y-3">
-                  {selectedMicro.sessions.map((session) => (
+                  {selectedMicro.sessions.map((session) => {
+                    const dayMap = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                    const dayShortMap = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                    const idx = Math.max(1, Math.min(7, session.day || 1)) - 1
+                    return (
                     <div
                       key={session.id}
-                      className="w-full rounded-lg border p-4 transition-all hover:bg-accent bg-card cursor-pointer"
+                      className="w-full rounded-lg border overflow-hidden transition-all hover:bg-accent bg-card cursor-pointer"
                       onClick={() => {
-                        // TODO: Navigate to session editor
-                        alert(`Navigate to session ${session.id}`)
+                        router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
                       }}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold">{session.name}</h3>
-                          <div className="mt-2 flex gap-2 flex-wrap">
-                            <Badge
-                              variant="outline"
-                              className={`text-xs ${
-                                session.type === "speed"
-                                  ? "border-red-500 text-red-500"
-                                  : session.type === "strength"
-                                    ? "border-blue-500 text-blue-500"
-                                    : session.type === "endurance"
-                                      ? "border-green-500 text-green-500"
-                                      : "border-gray-500 text-gray-500"
-                              }`}
-                            >
-                              {session.type}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {session.duration}min
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {session.exercises.length} exercises
-                            </Badge>
+                      <div className="flex">
+                        {/* Weekday sidebar */}
+                        <div className="w-16 bg-primary/10 border-r border-primary/20 flex items-center justify-center flex-shrink-0">
+                          <div className="text-center">
+                            <div className="text-xs font-medium text-primary">{dayShortMap[idx]}</div>
                           </div>
                         </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 flex-shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+
+                        {/* Session content */}
+                        <div className="flex-1 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold">{session.name}</h3>
+                              <div className="mt-2 flex gap-2 flex-wrap">
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${
+                                    session.type === "speed"
+                                      ? "border-red-500 text-red-500"
+                                      : session.type === "strength"
+                                        ? "border-blue-500 text-blue-500"
+                                        : session.type === "endurance"
+                                          ? "border-green-500 text-green-500"
+                                          : "border-gray-500 text-gray-500"
+                                  }`}
+                                >
+                                  {session.type}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {session.duration}min
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {session.exercises.length} exercises
+                                </Badge>
+                              </div>
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </>
             ) : (
@@ -866,50 +889,65 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                       </Button>
                     </div>
                     <div className="space-y-3">
-                      {selectedMicro.sessions.map((session) => (
-                        <div key={session.id} className="w-full rounded-lg border p-4 transition-all hover:bg-accent">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold">{session.name}</h3>
-                              <div className="mt-2 flex gap-2 flex-wrap">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${
-                                    session.type === "speed"
-                                      ? "border-red-500 text-red-500"
-                                      : session.type === "strength"
-                                        ? "border-blue-500 text-blue-500"
-                                        : session.type === "endurance"
-                                          ? "border-green-500 text-green-500"
-                                          : session.type === "recovery"
-                                            ? "border-gray-500 text-gray-500"
-                                            : "border-purple-500 text-purple-500"
-                                  }`}
-                                >
-                                  {session.type}
-                                </Badge>
-                                <Badge variant="outline" className="text-xs">
-                                  {session.duration}min
-                                </Badge>
-                                <Badge variant="outline" className="text-xs">
-                                  {session.exercises.length} exercises
-                                </Badge>
+                      {selectedMicro.sessions.map((session) => {
+                        const dayShortMap = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                        const idx = Math.max(1, Math.min(7, session.day || 1)) - 1
+                        return (
+                        <div key={session.id} className="w-full rounded-lg border overflow-hidden transition-all hover:bg-accent">
+                          <div className="flex">
+                            {/* Weekday sidebar */}
+                            <div className="w-16 bg-primary/10 border-r border-primary/20 flex items-center justify-center flex-shrink-0">
+                              <div className="text-center">
+                                <div className="text-xs font-medium text-primary">{dayShortMap[idx]}</div>
                               </div>
                             </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 flex-shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
+
+                            {/* Session content */}
+                            <div className="flex-1 p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold">{session.name}</h3>
+                                  <div className="mt-2 flex gap-2 flex-wrap">
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-xs ${
+                                        session.type === "speed"
+                                          ? "border-red-500 text-red-500"
+                                          : session.type === "strength"
+                                            ? "border-blue-500 text-blue-500"
+                                            : session.type === "endurance"
+                                              ? "border-green-500 text-green-500"
+                                              : session.type === "recovery"
+                                                ? "border-gray-500 text-gray-500"
+                                                : "border-purple-500 text-purple-500"
+                                      }`}
+                                    >
+                                      {session.type}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs">
+                                      {session.duration}min
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs">
+                                      {session.exercises.length} exercises
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 flex-shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   </>
                 ) : (

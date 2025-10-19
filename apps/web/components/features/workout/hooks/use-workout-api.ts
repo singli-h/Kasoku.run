@@ -10,17 +10,19 @@
 
 import { useState, useCallback, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { 
+import {
   startTrainingSessionAction,
   getTrainingSessionByIdAction,
   updateTrainingSessionAction,
-  completeTrainingSessionAction,
   addExercisePerformanceAction,
   updateExercisePerformanceAction,
-  type ExerciseTrainingSession,
+  completeTrainingSessionAction
+} from "@/actions/sessions/training-session-actions"
+import { 
   type ExerciseTrainingSessionWithDetails,
   type ExerciseTrainingDetail
-} from "@/actions/training"
+} from "@/types/training"
+import { Database } from "@/types/database"
 
 // Hook configuration interface
 interface WorkoutApiConfig {
@@ -65,7 +67,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
   const startSession = useCallback(async (
     exercisePresetGroupId: number,
     athleteId?: number
-  ): Promise<ExerciseTrainingSession | null> => {
+  ): Promise<Database["public"]["Tables"]["exercise_training_sessions"]["Row"] | null> => {
     setIsLoading(true)
     setError(null)
 
@@ -135,7 +137,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
    */
   const updateSession = useCallback(async (
     sessionId: number,
-    updates: Partial<ExerciseTrainingSession>,
+    updates: Partial<Database["public"]["Tables"]["exercise_training_sessions"]["Update"]>,
     immediate = false
   ): Promise<boolean> => {
     const saveItem: AutoSaveItem = {

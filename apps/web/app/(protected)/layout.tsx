@@ -1,7 +1,7 @@
 "use server"
 
 import { redirect } from "next/navigation"
-import { getUserProfileAction } from "@/actions/users/user-actions"
+import { getCurrentUserAction } from "@/actions/auth/user-actions"
 import ProtectedLayout from "@/components/layout/protected-layout"
 
 interface ProtectedRoutesLayoutProps {
@@ -11,7 +11,7 @@ interface ProtectedRoutesLayoutProps {
 export default async function ProtectedRoutesLayout({
   children,
 }: ProtectedRoutesLayoutProps) {
-  const userAction = await getUserProfileAction()
+  const userAction = await getCurrentUserAction()
 
   if (!userAction.isSuccess || !userAction.data) {
     // This case should ideally be handled by middleware,

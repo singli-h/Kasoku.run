@@ -12,12 +12,12 @@ import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { 
-  ExerciseTrainingSession, ExerciseTrainingSessionInsert, ExerciseTrainingSessionUpdate,
   ExerciseTrainingDetail,
   ExerciseTrainingSessionWithDetails,
   PerformanceMetrics,
   ExerciseProgress
 } from "@/types/training"
+import { Database } from "@/types/database"
 
 // ============================================================================
 // TRAINING SESSION ACTIONS
@@ -29,7 +29,7 @@ import {
 export async function startTrainingSessionAction(
   exercisePresetGroupId: number,
   athleteId?: number
-): Promise<ActionState<ExerciseTrainingSession>> {
+): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
   try {
     const { userId } = await auth()
     
@@ -65,7 +65,7 @@ export async function startTrainingSessionAction(
       }
     }
 
-    const sessionData: ExerciseTrainingSessionInsert = {
+    const sessionData: Database["public"]["Tables"]["exercise_training_sessions"]["Insert"] = {
       exercise_preset_group_id: exercisePresetGroupId,
       athlete_id: finalAthleteId,
       date_time: new Date().toISOString(),
@@ -278,8 +278,8 @@ export async function getTrainingSessionByIdAction(
  */
 export async function updateTrainingSessionAction(
   sessionId: number,
-  updates: Partial<ExerciseTrainingSessionUpdate>
-): Promise<ActionState<ExerciseTrainingSession>> {
+  updates: Partial<Database["public"]["Tables"]["exercise_training_sessions"]["Update"]>
+): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
   try {
     const { userId } = await auth()
     
@@ -327,7 +327,7 @@ export async function updateTrainingSessionAction(
 export async function completeTrainingSessionAction(
   sessionId: number,
   notes?: string
-): Promise<ActionState<ExerciseTrainingSession>> {
+): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
   try {
     const { userId } = await auth()
     
@@ -340,8 +340,8 @@ export async function completeTrainingSessionAction(
 
     // Using singleton supabase client
 
-    const updates: Partial<ExerciseTrainingSessionUpdate> = {
-      status: 'completed',
+    const updates: Partial<Database["public"]["Tables"]["exercise_training_sessions"]["Update"]> = {
+      session_status: 'completed',
       notes: notes || null
     }
 

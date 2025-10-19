@@ -23,12 +23,12 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
 // Actions
-import { 
+import {
   getExercisesAction,
   getExerciseTypesAction,
   getUnitsAction,
   deleteExerciseAction
-} from "@/actions/training/exercise-actions"
+} from "@/actions/library/exercise-actions"
 
 // Types
 import type { 

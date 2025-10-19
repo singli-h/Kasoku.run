@@ -10,15 +10,15 @@ import {
   useSessionsHistory, 
   useSessionMutations 
 } from '@/components/features/workout/hooks/use-workout-queries'
-import { 
+import {
   getTodayAndOngoingSessionsAction,
   getPastSessionsAction,
   startTrainingSessionAction,
   completeTrainingSessionAction
-} from '@/actions/training/workout-session-actions'
+} from '@/actions/workout/workout-session-actions'
 
 // Mock the actions
-jest.mock('@/actions/training/workout-session-actions', () => ({
+jest.mock('@/actions/workout/workout-session-actions', () => ({
   getTodayAndOngoingSessionsAction: jest.fn(),
   getPastSessionsAction: jest.fn(),
   startTrainingSessionAction: jest.fn(),

@@ -36,17 +36,25 @@ const cacheOptions = {
 const userIdCache = new LRUCache<string, number>(cacheOptions)
 
 /**
+ * LRU cache instance for Clerk ID → User role mapping
+ * Automatically cleared in non-production environments
+ */
+const userRoleCache = new LRUCache<string, string>(cacheOptions)
+
+/**
  * Clear cache in test environments to prevent cross-test contamination
  * This runs once when the module is first imported
  */
 if (process.env.NODE_ENV !== "production") {
   userIdCache.clear()
+  userRoleCache.clear()
   
   // Also clear cache on hot reload in development
   if (typeof window === 'undefined' && process.env.NODE_ENV === 'development') {
     // In development, clear cache periodically to ensure fresh data
     setInterval(() => {
       userIdCache.clear()
+      userRoleCache.clear()
     }, 1000 * 60 * 5) // Clear every 5 minutes in dev
   }
 }
@@ -110,6 +118,106 @@ export async function getDbUserId(clerkId: string): Promise<number> {
 }
 
 /**
+ * Get user role from Clerk user ID with LRU caching
+ * 
+ * This function:
+ * 1. Checks the LRU cache first
+ * 2. If cache miss, queries the database
+ * 3. Stores the result in cache for future requests
+ * 4. Handles edge cases like deleted users
+ * 
+ * @param clerkId - The Clerk user ID (from auth().userId)
+ * @returns Promise<string> - The user role ('athlete', 'coach', 'admin')
+ * @throws Error if user not found or database error
+ * 
+ * @example
+ * ```typescript
+ * import { getUserRole } from "@/lib/user-cache"
+ * 
+ * export async function someAction() {
+ *   const { userId } = await auth()
+ *   if (!userId) throw new Error("Not authenticated")
+ *   
+ *   const userRole = await getUserRole(userId)
+ *   // Use userRole for role-based logic...
+ * }
+ * ```
+ */
+export async function getUserRole(clerkId: string): Promise<string> {
+  // Check cache first
+  const cached = userRoleCache.get(clerkId)
+  if (cached !== undefined) {
+    return cached
+  }
+
+  // Cache miss - query database
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('role')
+    .eq('clerk_id', clerkId)
+    .single()
+
+  if (error) {
+    // If user not found, don't cache the miss to allow for eventual consistency
+    if (error.code === 'PGRST116') {
+      throw new Error(`User with Clerk ID ${clerkId} not found in database`)
+    }
+    throw new Error(`Database error fetching user role: ${error.message}`)
+  }
+
+  if (!user) {
+    throw new Error(`User with Clerk ID ${clerkId} not found in database`)
+  }
+
+  // Store in cache for future requests
+  userRoleCache.set(clerkId, user.role)
+  
+  return user.role
+}
+
+/**
+ * Get both user ID and role in a single database query for efficiency
+ * 
+ * @param clerkId - The Clerk user ID (from auth().userId)
+ * @returns Promise<{id: number, role: string}> - The database user ID and role
+ * @throws Error if user not found or database error
+ */
+export async function getUserInfo(clerkId: string): Promise<{id: number, role: string}> {
+  // Check both caches first
+  const cachedId = userIdCache.get(clerkId)
+  const cachedRole = userRoleCache.get(clerkId)
+  
+  if (cachedId !== undefined && cachedRole !== undefined) {
+    return { id: cachedId, role: cachedRole }
+  }
+
+  // Cache miss - query database
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('id, role')
+    .eq('clerk_id', clerkId)
+    .single()
+
+  if (error) {
+    // If user not found, don't cache the miss to allow for eventual consistency
+    if (error.code === 'PGRST116') {
+      throw new Error(`User with Clerk ID ${clerkId} not found in database`)
+    }
+    throw new Error(`Database error fetching user info: ${error.message}`)
+  }
+
+  if (!user) {
+    throw new Error(`User with Clerk ID ${clerkId} not found in database`)
+  }
+
+  // Store in both caches for future requests
+  userIdCache.set(clerkId, user.id)
+  userRoleCache.set(clerkId, user.role)
+  
+  return { id: user.id, role: user.role }
+}
+
+/**
  * Manually invalidate a user from the cache
  * Useful when user data changes or for cleanup
  * 
@@ -117,6 +225,7 @@ export async function getDbUserId(clerkId: string): Promise<number> {
  */
 export function invalidateUserCache(clerkId: string): void {
   userIdCache.delete(clerkId)
+  userRoleCache.delete(clerkId)
 }
 
 /**
@@ -126,10 +235,18 @@ export function invalidateUserCache(clerkId: string): void {
  */
 export function getCacheStats() {
   return {
-    size: userIdCache.size,
-    max: userIdCache.max,
-    ttl: userIdCache.ttl,
-    calculatedSize: userIdCache.calculatedSize,
+    userIdCache: {
+      size: userIdCache.size,
+      max: userIdCache.max,
+      ttl: userIdCache.ttl,
+      calculatedSize: userIdCache.calculatedSize,
+    },
+    userRoleCache: {
+      size: userRoleCache.size,
+      max: userRoleCache.max,
+      ttl: userRoleCache.ttl,
+      calculatedSize: userRoleCache.calculatedSize,
+    }
   }
 }
 

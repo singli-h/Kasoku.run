@@ -302,7 +302,7 @@ export async function createLiveSessionAction(
       athlete_group_id: athleteGroupId,
       date_time: new Date().toISOString(),
       session_mode: 'group',
-      status: 'active',
+      session_status: 'ongoing',
       description: sessionName || 'Live Group Sprint Session',
       notes: null
     }
@@ -479,7 +479,7 @@ export async function finalizeGroupSessionAction(
     const { error } = await supabase
       .from('exercise_training_sessions')
       .update({
-        status: 'completed',
+        session_status: 'completed',
         updated_at: new Date().toISOString()
       })
       .eq('id', sessionId)
@@ -553,7 +553,7 @@ export async function getExistingSessionDataAction(
       return {
         athleteId: metadata.athlete_id,
         roundNumber: detail.set_index || 1, // Default to 1 if null
-        time: detail.duration as number,
+        time: detail.performing_time as number,
         distance: detail.distance || 0,
         notes: metadata.notes
       }

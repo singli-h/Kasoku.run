@@ -11,37 +11,23 @@ import { AlertTriangle, Users, User, Calendar } from "lucide-react"
 type AssignmentType = "individuals" | "groups"
 type StartAlignment = "anchor" | "monday" | "custom"
 
-interface DemoAthlete {
+interface Athlete {
   id: string
   name: string
   group: string
   hasActivePlan: boolean
 }
 
-interface DemoGroup {
+interface Group {
   id: string
   name: string
   athleteCount: number
   hasActivePlan: boolean
 }
 
-const DEMO_ATHLETES: DemoAthlete[] = [
-  { id: "a1", name: "John Smith", group: "Varsity", hasActivePlan: false },
-  { id: "a2", name: "Sarah Johnson", group: "Varsity", hasActivePlan: true },
-  { id: "a3", name: "Mike Davis", group: "JV", hasActivePlan: false },
-  { id: "a4", name: "Emma Wilson", group: "Varsity", hasActivePlan: false },
-  { id: "a5", name: "Alex Chen", group: "JV", hasActivePlan: true },
-  { id: "a6", name: "Maria Rodriguez", group: "Varsity", hasActivePlan: false },
-  { id: "a7", name: "James Park", group: "JV", hasActivePlan: false },
-  { id: "a8", name: "Lisa Wong", group: "Varsity", hasActivePlan: true }
-]
-
-const DEMO_GROUPS: DemoGroup[] = [
-  { id: "g1", name: "Varsity Sprint Group", athleteCount: 12, hasActivePlan: false },
-  { id: "g2", name: "JV Distance Squad", athleteCount: 8, hasActivePlan: true },
-  { id: "g3", name: "Masters Training", athleteCount: 5, hasActivePlan: false },
-  { id: "g4", name: "Club Throws Team", athleteCount: 6, hasActivePlan: false }
-]
+// TODO: Replace with actual data fetching from Supabase
+const DEMO_ATHLETES: Athlete[] = []
+const DEMO_GROUPS: Group[] = []
 
 export function AssignmentView() {
   const [assignmentType, setAssignmentType] = useState<AssignmentType>("individuals")

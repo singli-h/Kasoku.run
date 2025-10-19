@@ -350,7 +350,7 @@ export function EnhancedExerciseOrganization({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: index * 0.02 }}
         >
-          <ExerciseCard exercise={exercise} compact={false} />
+          <ExerciseCard exercise={exercise} />
         </motion.div>
       ))}
     </div>

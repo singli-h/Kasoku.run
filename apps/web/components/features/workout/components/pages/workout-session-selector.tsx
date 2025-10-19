@@ -26,10 +26,10 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
 // Import training actions
-import { 
+import {
   getTodayAndOngoingSessionsAction,
-  startTrainingSessionAction 
-} from "@/actions/training"
+  startTrainingSessionAction
+} from "@/actions/workout/workout-session-actions"
 import { WorkoutSessionCard } from '@/components/composed'
 
 // Import types
@@ -65,7 +65,7 @@ export function WorkoutSessionSelector({
       const presetGroup = session.exercise_preset_group!
       setStartingSessionId(presetGroup.id)
       
-      if (session.session_status === 'ongoing') {
+      if ((session as any).session_status === 'ongoing') {
         // Continue existing session
         onSessionSelected(presetGroup, session)
         toast({
@@ -74,7 +74,7 @@ export function WorkoutSessionSelector({
         })
       } else {
         // Start a new training session using mutation
-        await startSession.mutateAsync(session.id)
+        await startSession.mutateAsync((session as any).id)
         
         // Call the parent callback with the selected workout
         onSessionSelected(presetGroup, session)
@@ -104,7 +104,7 @@ export function WorkoutSessionSelector({
           <AlertCircle className="h-12 w-12 mx-auto text-red-500 mb-4" />
           <h3 className="text-lg font-semibold mb-2">Failed to load workouts</h3>
           <p className="text-muted-foreground mb-4">{error.message}</p>
-          <Button onClick={() => refetch()} variant="outline">
+          <Button onClick={() => refetchSessions()} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Try Again
           </Button>
@@ -143,14 +143,14 @@ export function WorkoutSessionSelector({
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {sessions?.map((session, index) => (
           <WorkoutSessionCard
-            key={session.id}
+            key={(session as any).id}
             session={session}
             onAction={handleStartSession}
             actionLabel={
               startingSessionId === session.exercise_preset_group?.id ? 'Starting...' :
-              session.session_status === 'ongoing' ? 'Continue Workout' :
-              session.session_status === 'assigned' ? 'Start Workout' :
-              session.session_status === 'completed' ? 'Completed' :
+              (session as any).session_status === 'ongoing' ? 'Continue Workout' :
+              (session as any).session_status === 'assigned' ? 'Start Workout' :
+              (session as any).session_status === 'completed' ? 'Completed' :
               'View Details'
             }
             actionIcon={
@@ -172,7 +172,7 @@ export function WorkoutSessionSelector({
               You don't have any workout sessions assigned for today.
             </p>
             <div className="flex gap-2 justify-center">
-              <Button variant="outline" onClick={() => refetch()}>
+              <Button variant="outline" onClick={() => refetchSessions()}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>

@@ -10,8 +10,6 @@ import {
   Edit,
   CheckSquare,
   Square,
-  Undo2,
-  Redo2,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
@@ -20,8 +18,6 @@ interface ToolbarProps {
   totalCount: number
   canCreateSuperset: boolean
   canUngroup: boolean
-  canUndo: boolean
-  canRedo: boolean
   onAddExercise: () => void
   onCreateSuperset: () => void
   onUngroup: () => void
@@ -30,8 +26,6 @@ interface ToolbarProps {
   onBatchEdit: () => void
   onSelectAll: () => void
   onDeselectAll: () => void
-  onUndo: () => void
-  onRedo: () => void
 }
 
 export function Toolbar({
@@ -39,8 +33,6 @@ export function Toolbar({
   totalCount,
   canCreateSuperset,
   canUngroup,
-  canUndo,
-  canRedo,
   onAddExercise,
   onCreateSuperset,
   onUngroup,
@@ -49,8 +41,6 @@ export function Toolbar({
   onBatchEdit,
   onSelectAll,
   onDeselectAll,
-  onUndo,
-  onRedo,
 }: ToolbarProps) {
   const hasSelection = selectionCount > 0
 
@@ -63,18 +53,6 @@ export function Toolbar({
             <Plus className="h-4 w-4 mr-2" />
             Add Exercise
           </Button>
-
-          <div className="h-6 w-px bg-border hidden sm:block" />
-
-          {/* Undo/Redo */}
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" onClick={onUndo} disabled={!canUndo}>
-              <Undo2 className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={onRedo} disabled={!canRedo}>
-              <Redo2 className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
 
         {/* Right Section - Selection Actions */}

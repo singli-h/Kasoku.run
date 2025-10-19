@@ -70,7 +70,7 @@ export function EnhancedSupersetIndicator({
 
   // Sort exercises by their position in superset
   const sortedExercises = useMemo(() => {
-    return [...exercises].sort((a, b) => a.preset_order - b.preset_order)
+    return [...exercises].sort((a, b) => (a.preset_order ?? 0) - (b.preset_order ?? 0))
   }, [exercises])
 
   // Calculate superset statistics
@@ -290,10 +290,9 @@ export function EnhancedSupersetIndicator({
               activeExercise === exercise.id && "ring-2 ring-blue-500 ring-offset-2",
               exercise.completed && "opacity-75"
             )}>
-              <ExerciseCard 
+              <ExerciseCard
                 exercise={exercise}
-                compact={false}
-                showSuperset={false}
+                isSuperset={false}
               />
             </div>
 

@@ -439,7 +439,7 @@ export function SessionTemplateLibrary({
                       <Separator />
                       
                       <div className="space-y-2">
-                        <div className="text-sm font-medium">Sample Exercises:</div>
+                        <div className="text-sm font-medium">Exercises:</div>
                         <div className="space-y-1">
                           {template.exercises.slice(0, 3).map((exercise, index) => (
                             <div key={index} className="flex justify-between text-sm">

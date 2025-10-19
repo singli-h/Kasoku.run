@@ -12,6 +12,14 @@ This section contains comprehensive documentation about development workflows, A
   - Error handling and response formats
   - Common utilities and helpers
 
+### UI Patterns & Standards
+- **[Loading Patterns](./loading-patterns.md)**
+  - Standardized loading states and skeletons
+  - Page and component loading patterns
+  - Loading state management hooks
+  - Best practices and accessibility
+  - Animation utilities
+
 ### Performance & Optimization
 - **[Performance Optimization](./performance-optimization.md)**
   - Performance best practices and optimization techniques

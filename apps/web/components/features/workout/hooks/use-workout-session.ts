@@ -10,14 +10,15 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useWorkoutApi } from "./use-workout-api"
 import type { 
-  ExerciseTrainingSession, 
   ExerciseTrainingSessionWithDetails,
   ExerciseTrainingDetail 
 } from "@/types/training"
 import type { WorkoutExercise } from "../context/exercise-context"
 
 // Session status types
-export type SessionStatus = 'assigned' | 'ongoing' | 'completed' | 'cancelled' | 'unknown'
+import { Database } from '@/types/database'
+
+export type SessionStatus = Database["public"]["Enums"]["session_status"]
 
 // Hook state interface
 interface WorkoutSessionState {
@@ -57,7 +58,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
     isLoading: !!initialSession, // Only loading if we have an initial session to process
     error: null,
     session: initialSession || null,
-    sessionStatus: initialSession?.session_status as SessionStatus || 'unknown'
+    sessionStatus: (initialSession as any)?.session_status as SessionStatus || 'assigned'
   })
 
   // Update the refs whenever state changes
@@ -79,7 +80,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
           setState(prev => ({
             ...prev,
             session: initialSession,
-            sessionStatus: (initialSession.session_status as SessionStatus) || 'unknown',
+            sessionStatus: ((initialSession as any).session_status as SessionStatus) || 'assigned',
             isLoading: false
           }))
         } catch (err) {
@@ -98,11 +99,11 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
 
   // Refresh session data from API
   const refreshSessionData = useCallback(async () => {
-    if (!state.session?.id) return
+    if (!(state.session as any)?.id) return
 
     try {
       // Use workout API to get session data
-      const sessionData = await workoutApi.getSession(state.session.id)
+      const sessionData = await workoutApi.getSession((state.session as any).id)
       
       if (!sessionData) {
         throw new Error('Failed to refresh session data')
@@ -116,7 +117,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
       setState(prev => ({
         ...prev,
         session: sessionData,
-        sessionStatus: (sessionData.session_status as SessionStatus) || 'unknown'
+        sessionStatus: ((sessionData as any).session_status as SessionStatus) || 'assigned'
       }))
     } catch (error) {
       console.error('Error refreshing session data:', error)
@@ -125,7 +126,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
         error: error instanceof Error ? error : new Error('Failed to refresh session data')
       }))
     }
-  }, [state.session?.id, workoutApi])
+  }, [(state.session as any)?.id, workoutApi])
 
   // Start a training session
   const startSession = useCallback(async () => {
@@ -166,13 +167,13 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
 
   // Save session progress
   const saveSession = useCallback(async () => {
-    if (!state.session?.id) {
+    if (!(state.session as any)?.id) {
       return { success: false, error: new Error('No session available') }
     }
 
     try {
       // Use the workout API to update session status
-      const success = await workoutApi.updateSession(state.session.id, {
+      const success = await workoutApi.updateSession((state.session as any).id, {
         session_status: 'ongoing'
       }, true) // immediate save
       
@@ -186,7 +187,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
       const err = error instanceof Error ? error : new Error('Failed to save session')
       return { success: false, error: err }
     }
-  }, [state.session?.id, workoutApi])
+  }, [(state.session as any)?.id, workoutApi])
 
   // Complete session
   const completeSession = useCallback(async () => {
@@ -197,12 +198,12 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
         return saveResult
       }
 
-      if (!state.session?.id) {
+      if (!(state.session as any)?.id) {
         return { success: false, error: new Error('No session available') }
       }
 
       // Use the workout API to complete the session
-      const success = await workoutApi.completeSession(state.session.id)
+      const success = await workoutApi.completeSession((state.session as any).id)
       
       if (!success) {
         throw new Error('Failed to complete session')
@@ -220,7 +221,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
       }))
       return { success: false, error: err }
     }
-  }, [saveSession, state.session?.id, workoutApi, refreshSessionData])
+  }, [saveSession, (state.session as any)?.id, workoutApi, refreshSessionData])
 
   // Update a single training detail
   const updateTrainingDetail = useCallback((detailId: number, updates: Partial<ExerciseTrainingDetail>) => {

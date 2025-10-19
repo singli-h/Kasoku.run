@@ -44,7 +44,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-import type { SprintRound } from "@/actions/training/sprint-session-actions"
+import type { SprintRound } from "@/actions/sessions/sprint-session-actions"
 
 interface SprintDistanceManagerProps {
   rounds: SprintRound[]

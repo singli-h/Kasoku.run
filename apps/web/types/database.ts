@@ -14,6 +14,73 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_memories: {
+        Row: {
+          athlete_id: number | null
+          coach_id: number | null
+          content: string
+          created_at: string
+          created_by: number
+          embedding: string | null
+          group_id: number | null
+          id: number
+          memory_type: Database["public"]["Enums"]["memory_type"]
+          metadata: Json | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          athlete_id?: number | null
+          coach_id?: number | null
+          content: string
+          created_at?: string
+          created_by: number
+          embedding?: string | null
+          group_id?: number | null
+          id?: number
+          memory_type: Database["public"]["Enums"]["memory_type"]
+          metadata?: Json | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: number | null
+          coach_id?: number | null
+          content?: string
+          created_at?: string
+          created_by?: number
+          embedding?: string | null
+          group_id?: number | null
+          id?: number
+          memory_type?: Database["public"]["Enums"]["memory_type"]
+          metadata?: Json | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_memories_athlete"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_memories_coach"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_memories_group"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "athlete_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athlete_cycles: {
         Row: {
           athlete_id: number | null
@@ -472,49 +539,67 @@ export type Database = {
           completed: boolean | null
           created_at: string | null
           distance: number | null
-          duration: unknown | null
+          effort: number | null
           exercise_preset_id: number | null
           exercise_training_session_id: number | null
+          height: number | null
           id: number
           metadata: Json | null
+          performing_time: number | null
           power: number | null
           reps: number | null
+          resistance: number | null
           resistance_unit_id: number | null
+          rest_time: number | null
+          rpe: number | null
           set_index: number | null
           tempo: string | null
           velocity: number | null
+          weight: number | null
         }
         Insert: {
           completed?: boolean | null
           created_at?: string | null
           distance?: number | null
-          duration?: unknown | null
+          effort?: number | null
           exercise_preset_id?: number | null
           exercise_training_session_id?: number | null
+          height?: number | null
           id?: number
           metadata?: Json | null
+          performing_time?: number | null
           power?: number | null
           reps?: number | null
+          resistance?: number | null
           resistance_unit_id?: number | null
+          rest_time?: number | null
+          rpe?: number | null
           set_index?: number | null
           tempo?: string | null
           velocity?: number | null
+          weight?: number | null
         }
         Update: {
           completed?: boolean | null
           created_at?: string | null
           distance?: number | null
-          duration?: unknown | null
+          effort?: number | null
           exercise_preset_id?: number | null
           exercise_training_session_id?: number | null
+          height?: number | null
           id?: number
           metadata?: Json | null
+          performing_time?: number | null
           power?: number | null
           reps?: number | null
+          resistance?: number | null
           resistance_unit_id?: number | null
+          rest_time?: number | null
+          rpe?: number | null
           set_index?: number | null
           tempo?: string | null
           velocity?: number | null
+          weight?: number | null
         }
         Relationships: [
           {
@@ -551,8 +636,7 @@ export type Database = {
           id: number
           notes: string | null
           session_mode: string | null
-          status: string | null
-          session_status: Database["public"]["Enums"]["session_status"] | null
+          session_status: Database["public"]["Enums"]["session_status"]
           updated_at: string | null
         }
         Insert: {
@@ -565,8 +649,7 @@ export type Database = {
           id?: number
           notes?: string | null
           session_mode?: string | null
-          status?: string | null
-          session_status?: Database["public"]["Enums"]["session_status"] | null
+          session_status: Database["public"]["Enums"]["session_status"]
           updated_at?: string | null
         }
         Update: {
@@ -579,8 +662,7 @@ export type Database = {
           id?: number
           notes?: string | null
           session_mode?: string | null
-          status?: string | null
-          session_status?: Database["public"]["Enums"]["session_status"] | null
+          session_status?: Database["public"]["Enums"]["session_status"]
           updated_at?: string | null
         }
         Relationships: [
@@ -695,54 +777,6 @@ export type Database = {
           },
         ]
       }
-      macrocycles: {
-        Row: {
-          athlete_group_id: number | null
-          created_at: string | null
-          description: string | null
-          end_date: string | null
-          id: number
-          name: string | null
-          start_date: string | null
-          user_id: number | null
-        }
-        Insert: {
-          athlete_group_id?: number | null
-          created_at?: string | null
-          description?: string | null
-          end_date?: string | null
-          id?: number
-          name?: string | null
-          start_date?: string | null
-          user_id?: number | null
-        }
-        Update: {
-          athlete_group_id?: number | null
-          created_at?: string | null
-          description?: string | null
-          end_date?: string | null
-          id?: number
-          name?: string | null
-          start_date?: string | null
-          user_id?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_macrocycles_group"
-            columns: ["athlete_group_id"]
-            isOneToOne: false
-            referencedRelation: "athlete_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "macrocycles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       knowledge_base_articles: {
         Row: {
           category_id: number | null
@@ -788,34 +822,34 @@ export type Database = {
           },
         ]
       }
-  knowledge_base_categories: {
-    Row: {
-      article_count: number | null
-      coach_id: number
-      color: string
-      created_at: string
-      id: number
-      name: string
-      updated_at: string
-    }
-    Insert: {
-      article_count?: number | null
-      coach_id: number
-      color?: string
-      created_at?: string
-      id?: number
-      name: string
-      updated_at?: string
-    }
-    Update: {
-      article_count?: number | null
-      coach_id?: number
-      color?: string
-      created_at?: string
-      id?: number
-      name?: string
-      updated_at?: string
-    }
+      knowledge_base_categories: {
+        Row: {
+          article_count: number | null
+          coach_id: number
+          color: string
+          created_at: string
+          id: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          article_count?: number | null
+          coach_id: number
+          color: string
+          created_at?: string
+          id?: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          article_count?: number | null
+          coach_id?: number
+          color?: string
+          created_at?: string
+          id?: number
+          name?: string
+          updated_at?: string
+        }
         Relationships: [
           {
             foreignKeyName: "fk_kb_categories_coach_id"
@@ -826,69 +860,50 @@ export type Database = {
           },
         ]
       }
-      memories: {
+      macrocycles: {
         Row: {
-          athlete_id: number | null
-          coach_id: number | null
-          content: string
-          created_at: string
-          created_by: number
-          embedding: string | null
-          group_id: number | null
+          athlete_group_id: number | null
+          created_at: string | null
+          description: string | null
+          end_date: string | null
           id: number
-          memory_type: Database["public"]["Enums"]["memory_type"]
-          metadata: Json | null
-          title: string | null
-          updated_at: string
+          name: string | null
+          start_date: string | null
+          user_id: number | null
         }
         Insert: {
-          athlete_id?: number | null
-          coach_id?: number | null
-          content: string
-          created_at?: string
-          created_by: number
-          embedding?: string | null
-          group_id?: number | null
+          athlete_group_id?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
           id?: number
-          memory_type: Database["public"]["Enums"]["memory_type"]
-          metadata?: Json | null
-          title?: string | null
-          updated_at?: string
+          name?: string | null
+          start_date?: string | null
+          user_id?: number | null
         }
         Update: {
-          athlete_id?: number | null
-          coach_id?: number | null
-          content?: string
-          created_at?: string
-          created_by?: number
-          embedding?: string | null
-          group_id?: number | null
+          athlete_group_id?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
           id?: number
-          memory_type?: Database["public"]["Enums"]["memory_type"]
-          metadata?: Json | null
-          title?: string | null
-          updated_at?: string
+          name?: string | null
+          start_date?: string | null
+          user_id?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "fk_memories_athlete"
-            columns: ["athlete_id"]
-            isOneToOne: false
-            referencedRelation: "athletes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_memories_coach"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_memories_group"
-            columns: ["group_id"]
+            foreignKeyName: "fk_macrocycles_group"
+            columns: ["athlete_group_id"]
             isOneToOne: false
             referencedRelation: "athlete_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "macrocycles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -985,6 +1000,60 @@ export type Database = {
           },
           {
             foreignKeyName: "microcycles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      races: {
+        Row: {
+          created_at: string | null
+          date: string
+          id: number
+          location: string | null
+          macrocycle_id: number | null
+          name: string
+          notes: string | null
+          type: string
+          updated_at: string | null
+          user_id: number
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          id?: number
+          location?: string | null
+          macrocycle_id?: number | null
+          name: string
+          notes?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id: number
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          id?: number
+          location?: string | null
+          macrocycle_id?: number | null
+          name?: string
+          notes?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "races_macrocycle_id_fkey"
+            columns: ["macrocycle_id"]
+            isOneToOne: false
+            referencedRelation: "macrocycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "races_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"

@@ -4,6 +4,14 @@ This section contains comprehensive documentation about security practices, auth
 
 ## 📁 Security Documentation Index
 
+### Access Control & Authorization
+- **[RBAC Implementation](./rbac-implementation.md)**
+  - Role-based access control system
+  - User role management (athlete, coach, admin)
+  - Server and client-side protection patterns
+  - Navigation and route protection
+  - Implementation best practices
+
 ### Database Security
 - **[Row Level Security Analysis](./row-level-security-analysis.md)**
   - Database-level access control implementation

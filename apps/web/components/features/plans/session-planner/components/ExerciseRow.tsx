@@ -100,38 +100,46 @@ export function ExerciseRow({
         </div>
 
         {/* Checkbox */}
-        <Checkbox checked={isSelected} onCheckedChange={() => onToggleSelect(exercise.id)} className="shrink-0" />
+        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+          <Checkbox checked={isSelected} onCheckedChange={() => onToggleSelect(exercise.id)} />
+        </div>
 
-        {/* Expand/Collapse */}
-        <Button variant="ghost" size="sm" onClick={() => onToggleExpand(exercise.id)} className="shrink-0">
-          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </Button>
-
-        {/* Exercise Name */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-base truncate">{exercise.exercise?.name || "Unknown Exercise"}</span>
-            {exercise.superset_id && (
-              <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
-                <Link2 className="h-3 w-3" />
-                Superset
-              </Badge>
-            )}
-            {hasErrors && (
-              <div className="flex items-center gap-1 text-destructive shrink-0" title={validationErrors.join(", ")}>
-                <AlertCircle className="h-4 w-4" />
-              </div>
-            )}
+        {/* Clickable header area for expand/collapse */}
+        <div
+          className="flex-1 flex items-center gap-2 cursor-pointer hover:bg-muted/50 -mx-2 px-2 py-1 rounded transition-colors min-w-0"
+          onClick={() => onToggleExpand(exercise.id)}
+        >
+          {/* Expand/Collapse Icon */}
+          <div className="shrink-0">
+            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </div>
-          <div className="text-sm text-muted-foreground">
-            {exercise.sets.length} set{exercise.sets.length !== 1 ? "s" : ""}
-            {exercise.sets[0]?.reps && ` × ${exercise.sets[0].reps} reps`}
-            {exercise.sets[0]?.weight && ` @ ${exercise.sets[0].weight}kg`}
+
+          {/* Exercise Name */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-base truncate">{exercise.exercise?.name || "Unknown Exercise"}</span>
+              {exercise.superset_id && (
+                <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
+                  <Link2 className="h-3 w-3" />
+                  Superset
+                </Badge>
+              )}
+              {hasErrors && (
+                <div className="flex items-center gap-1 text-destructive shrink-0" title={validationErrors.join(", ")}>
+                  <AlertCircle className="h-4 w-4" />
+                </div>
+              )}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {exercise.sets.length} set{exercise.sets.length !== 1 ? "s" : ""}
+              {exercise.sets[0]?.reps && ` × ${exercise.sets[0].reps} reps`}
+              {exercise.sets[0]?.weight && ` @ ${exercise.sets[0].weight}kg`}
+            </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           <Button variant="ghost" size="sm" onClick={() => onDuplicateExercise(exercise.id)}>
             <Copy className="h-4 w-4" />
           </Button>

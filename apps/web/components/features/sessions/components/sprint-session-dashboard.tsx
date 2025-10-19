@@ -26,7 +26,7 @@ import {
   getCoachAthleteGroupsWithAthletesAction,
   getPredefinedSprintDistancesAction,
   getSprintSessionPresetsAction,
-} from "@/actions/training/sprint-session-actions"
+} from "@/actions/sessions/sprint-session-actions"
 
 import { useSprintSession } from "../hooks/use-sprint-session"
 import SessionSetup from "./session-setup"

@@ -383,7 +383,7 @@ Actual performance data for each exercise in a training session.
 - Many-to-one with `exercise_presets` via `exercise_preset_id`
 - Many-to-one with `units` via `resistance_unit_id`
 
-### Events
+### Events & Races
 
 #### `events`
 Competition and event information.
@@ -398,6 +398,28 @@ Competition and event information.
 | `updated_at` | `timestamptz` | Last update time | NULLABLE |
 
 **RLS**: Enabled
+
+#### `races`
+Tracks races and competitions associated with training macrocycles.
+
+| Column | Type | Description | Constraints |
+|--------|------|-------------|-------------|
+| `id` | `bigint` | Primary key | Auto-increment, NOT NULL |
+| `macrocycle_id` | `bigint` | Foreign key to macrocycles | NULLABLE |
+| `user_id` | `bigint` | Foreign key to users | NOT NULL |
+| `name` | `text` | Race name | NOT NULL |
+| `date` | `date` | Race date | NOT NULL |
+| `type` | `text` | Race type (primary/secondary) | NOT NULL, DEFAULT 'secondary' |
+| `location` | `text` | Race location | NULLABLE |
+| `notes` | `text` | Additional notes | NULLABLE |
+| `created_at` | `timestamptz` | Creation time | NULLABLE, DEFAULT now() |
+| `updated_at` | `timestamptz` | Last update time | NULLABLE, DEFAULT now() |
+
+**RLS**: Enabled
+**Relationships**: 
+- Many-to-one with `macrocycles` via `macrocycle_id`
+- Many-to-one with `users` via `user_id`
+**Valid Types**: 'primary', 'secondary'
 
 ### Knowledge Base System
 
@@ -499,6 +521,7 @@ The following tables have RLS enabled:
 - `exercise_training_sessions`
 - `knowledge_base_articles`
 - `knowledge_base_categories`
+- `races`
 - `users`
 
 **Note**: The `memories` table has RLS disabled as it requires complex cross-table access patterns for AI/ML operations.

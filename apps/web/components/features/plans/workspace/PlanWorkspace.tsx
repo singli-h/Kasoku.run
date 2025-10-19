@@ -11,42 +11,18 @@ import { ExercisePlanningPanel } from "./components/ExercisePlanningPanel"
 import { RaceDayManager } from "./components/RaceDayManager"
 import { AssignmentPanel } from "./components/AssignmentPanel"
 import { PlanContextProvider } from "./context/PlanContext"
-import { DEMO_PLANS } from "./data/sampleData"
-
 export function PlanWorkspace({ planId }: { planId?: number }) {
   const [activeMesocycleId, setActiveMesocycleId] = useState<number | null>(null)
   const [activeMicrocycleId, setActiveMicrocycleId] = useState<number | null>(null)
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'meso' | 'micro' | 'macro'>('meso')
 
+  // TODO: Replace with actual data fetching from Supabase
   const plan = useMemo(() => {
     if (!planId) return null
-    return DEMO_PLANS[planId] || null
+    // This will be replaced with actual data fetching
+    return null
   }, [planId])
-
-  // Find current active mesocycle and microcycle
-  const currentDate = new Date()
-  const activeMesocycle = plan?.mesocycles.find((meso: any) => {
-    const start = new Date(meso.start_date!)
-    const end = new Date(meso.end_date!)
-    return currentDate >= start && currentDate <= end
-  }) || plan?.mesocycles[0]
-
-  const activeMicrocycle = activeMesocycle?.microcycles.find((micro: any) => {
-    const start = new Date(micro.start_date!)
-    const end = new Date(micro.end_date!)
-    return currentDate >= start && currentDate <= end
-  }) || activeMesocycle?.microcycles[0]
-
-  // Set default selections to active cycles
-  useEffect(() => {
-    if (activeMesocycle && !activeMesocycleId) {
-      setActiveMesocycleId(activeMesocycle.id)
-    }
-    if (activeMicrocycle && !activeMicrocycleId) {
-      setActiveMicrocycleId(activeMicrocycle.id)
-    }
-  }, [activeMesocycle, activeMicrocycle, activeMesocycleId, activeMicrocycleId])
 
   if (!plan) {
     return (
@@ -54,12 +30,18 @@ export function PlanWorkspace({ planId }: { planId?: number }) {
         <div className="text-center">
           <h3 className="text-lg font-semibold text-muted-foreground">Plan not found</h3>
           <p className="text-sm text-muted-foreground">Plan ID: {planId}</p>
+          <p className="text-xs text-muted-foreground mt-2">This component needs to be connected to actual data fetching</p>
         </div>
       </div>
     )
   }
 
-  const { macrocycle, mesocycles, events } = plan
+  // TODO: These will be replaced with actual data structure
+  const macrocycle: { name?: string } | null = null
+  const mesocycles: any[] = []
+  const events: any[] = []
+  const activeMesocycle: { name?: string; metadata?: { color?: string } } | null = null
+  const activeMicrocycle: { name?: string } | null = null
 
   return (
     <PlanContextProvider
@@ -79,24 +61,24 @@ export function PlanWorkspace({ planId }: { planId?: number }) {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>Plans</span>
               <ChevronRight className="h-3 w-3" />
-              <span className="font-medium text-foreground">{macrocycle.name}</span>
+              <span className="font-medium text-foreground">{(macrocycle as any)?.name || 'Untitled Plan'}</span>
             </div>
             
             {/* Current Phase Indicator */}
             {activeMesocycle && (
               <div className="flex items-center gap-2">
-                <Badge 
-                  variant="outline" 
-                  style={{ backgroundColor: activeMesocycle.metadata?.color + '20' }}
+                <Badge
+                  variant="outline"
+                  style={{ backgroundColor: (activeMesocycle as any).metadata?.color + '20' }}
                   className="text-xs"
                 >
-                  {activeMesocycle.name}
+                  {(activeMesocycle as any).name}
                 </Badge>
                 {activeMicrocycle && (
                   <>
                     <ChevronRight className="h-3 w-3 text-muted-foreground" />
                     <Badge variant="secondary" className="text-xs">
-                      {activeMicrocycle.name}
+                      {(activeMicrocycle as any).name}
                     </Badge>
                   </>
                 )}

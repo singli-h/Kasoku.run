@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 
-import { getTrainingPlansAction } from '@/actions/training'
+import { getTrainingPlansAction } from '@/actions/plans/session-plan-actions'
 
 // Mock the auth function
 jest.mock('@clerk/nextjs/server', () => ({

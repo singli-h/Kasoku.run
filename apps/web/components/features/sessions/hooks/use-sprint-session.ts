@@ -10,19 +10,19 @@ for the enhanced SprintSessionDashboard.
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { toast } from "sonner"
-import type { 
-  SprintRound, 
+import type {
+  SprintRound,
   SprintPerformanceEntry,
   SprintSessionAthlete,
   AthleteGroupWithAthletes,
   LiveSprintSession
-} from "@/actions/training/sprint-session-actions"
+} from "@/actions/sessions/sprint-session-actions"
 import {
   createLiveSprintSessionAction,
   logSprintPerformanceAction,
   getSprintPerformanceDataAction,
   toggleAthletePresenceAction
-} from "@/actions/training/sprint-session-actions"
+} from "@/actions/sessions/sprint-session-actions"
 
 interface UseSprintSessionOptions {
   autoSaveDelay?: number // Delay in ms before auto-saving

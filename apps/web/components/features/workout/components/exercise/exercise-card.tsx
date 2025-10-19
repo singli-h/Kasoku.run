@@ -77,16 +77,16 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
   // Calculate completion status
   const completionStatus = useMemo(() => {
     const details = exercise.exercise_training_details || []
-    const totalSets = exercise.sets || details.length || 1
+    const totalSets = (exercise as any).sets || details.length || 1
     const completedSets = details.filter(detail => detail.completed).length
-    
+
     return {
       total: totalSets,
       completed: completedSets,
       percentage: totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0,
       isComplete: completedSets >= totalSets && totalSets > 0
     }
-  }, [exercise.exercise_training_details, exercise.sets])
+  }, [exercise.exercise_training_details, (exercise as any).sets])
 
   // Handle set data updates
   const updateSetData = (setIndex: number, field: keyof ExerciseTrainingDetail, value: any) => {
@@ -139,15 +139,15 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
 
   // Generate sets for display
   const sets = useMemo(() => {
-    const targetSets = exercise.sets || 3
+    const targetSets = (exercise as any).sets || 3
     const details = exercise.exercise_training_details || []
-    
+
     return Array.from({ length: Math.max(targetSets, details.length) }, (_, index) => ({
       index,
       detail: details[index] || null,
       isCompleted: details[index]?.completed || false
     }))
-  }, [exercise.sets, exercise.exercise_training_details])
+  }, [(exercise as any).sets, exercise.exercise_training_details])
 
   return (
     <Card className={cn(
@@ -184,13 +184,13 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             {/* Video Button */}
-            {showVideo && (exercise.exercise?.demo_url || exercise.exercise?.video_url) && (
+            {showVideo && ((exercise.exercise as any)?.demo_url || exercise.exercise?.video_url) && (
               <Button 
                 variant="outline" 
                 size="sm"
                 className="flex items-center gap-1"
                 onClick={() => {
-                  const url = exercise.exercise?.video_url || exercise.exercise?.demo_url
+                  const url = exercise.exercise?.video_url || (exercise.exercise as any)?.demo_url
                   if (url) window.open(url, '_blank')
                 }}
               >
@@ -242,7 +242,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
             <div className="grid grid-cols-12 gap-2 text-xs font-medium text-medium-contrast border-b border-border pb-2">
               <div className="col-span-2">Set</div>
               {availableFields.map((field) => (
-                <div key={field.key} className="col-span-2 text-center">
+                <div key={String(field.key)} className="col-span-2 text-center">
                   {field.label}
                   {field.unit && <span className="ml-1 text-low-contrast">({field.unit})</span>}
                 </div>
@@ -274,7 +274,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
 
                   {/* Dynamic Fields */}
                   {availableFields.map((field) => (
-                    <div key={field.key} className="col-span-2">
+                    <div key={String(field.key)} className="col-span-2">
                       <Input
                         type={field.type === 'time' ? 'number' : field.type}
                         value={set.detail?.[field.key] || ''}
@@ -323,7 +323,10 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
                   <Button
                     variant="link"
                     size="sm"
-                    onClick={() => window.open(exercise.exercise?.video_url, '_blank')}
+                    onClick={() => {
+                      const videoUrl = exercise.exercise?.video_url
+                      if (videoUrl) window.open(videoUrl, '_blank')
+                    }}
                     className="text-blue-600"
                   >
                     <ExternalLink className="h-3 w-3 mr-1" />

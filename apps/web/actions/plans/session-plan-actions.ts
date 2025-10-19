@@ -239,7 +239,7 @@ export async function saveSessionPlanAction(
             athlete_id: athleteId,
             date_time: new Date().toISOString(),
             notes: null,
-            status: 'planned' as const
+            session_status: 'assigned' as const
           }
 
           const { error: trainingSessionError } = await supabase
@@ -720,7 +720,7 @@ export async function assignPlanToAthletesAction(
           athlete_id: athleteId,
           date_time: new Date().toISOString(),
           notes: null,
-          status: 'planned' as const
+          session_status: 'assigned' as const
         })
       }
     }

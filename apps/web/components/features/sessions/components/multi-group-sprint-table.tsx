@@ -16,10 +16,10 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { AthleteTimeCell } from "./athlete-time-cell"
-import type { 
-  AthleteGroupWithAthletes, 
-  SprintRound 
-} from "@/actions/training/sprint-session-actions"
+import type {
+  AthleteGroupWithAthletes,
+  SprintRound
+} from "@/actions/sessions/sprint-session-actions"
 
 interface MultiGroupSprintTableProps {
   athleteGroups: AthleteGroupWithAthletes[]
