@@ -17,10 +17,10 @@ export function PlanWorkspace({ planId }: { planId?: number }) {
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'meso' | 'micro' | 'macro'>('meso')
 
-  // TODO: Replace with actual data fetching from Supabase
+  // TODO: Implement actual data fetching from Supabase
   const plan = useMemo(() => {
     if (!planId) return null
-    // This will be replaced with actual data fetching
+    // This will be replaced with actual data fetching using getMacrocycleByIdAction
     return null
   }, [planId])
 
@@ -36,7 +36,7 @@ export function PlanWorkspace({ planId }: { planId?: number }) {
     )
   }
 
-  // TODO: These will be replaced with actual data structure
+  // TODO: These will be replaced with actual data structure from the plan
   const macrocycle: { name?: string } | null = null
   const mesocycles: any[] = []
   const events: any[] = []

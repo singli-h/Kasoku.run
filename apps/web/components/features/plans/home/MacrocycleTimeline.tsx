@@ -52,40 +52,89 @@ export function MacrocycleTimeline({
       <div className="relative">
         {/* Timeline Bar */}
         <div className="relative h-8 rounded-lg overflow-hidden">
-          {phases.map((phase) => {
-            const startPercent = ((phase.startWeek - 1) / totalWeeks) * 100
-            const endPercent = (phase.endWeek / totalWeeks) * 100
-            const width = endPercent - startPercent
+          <TooltipProvider>
+            {phases.map((phase) => {
+              const startPercent = ((phase.startWeek - 1) / totalWeeks) * 100
+              const endPercent = (phase.endWeek / totalWeeks) * 100
+              const width = endPercent - startPercent
+              const duration = phase.endWeek - phase.startWeek + 1
 
-            return (
-              <button
-                key={phase.id}
-                onClick={() => onPhaseClick(selectedPhaseId === phase.id ? undefined : phase.id)}
-                className={cn(
-                  "absolute top-0 h-full transition-all duration-200",
-                  "focus:outline-none",
-                  selectedPhaseId === phase.id
-                    ? "brightness-110 saturate-150 shadow-md z-10"
-                    : "hover:brightness-105"
-                )}
-                style={{
-                  left: `${startPercent}%`,
-                  width: `${width}%`,
-                  backgroundColor: phase.color,
-                  zIndex: selectedPhaseId === phase.id ? 10 : 1
-                }}
-                aria-label={`${phase.name} phase (weeks ${phase.startWeek}-${phase.endWeek})`}
-              >
-                <span className="sr-only">{phase.name}</span>
-              </button>
-            )
-          })}
+              // Calculate text to display based on width
+              // Estimate: 1% width ≈ 10px on a typical screen
+              const estimatedPxWidth = (width / 100) * 1000 // Rough estimate
+              let displayText = ""
+
+              if (estimatedPxWidth > 120) {
+                // Wide: show full name
+                displayText = phase.name
+              } else if (estimatedPxWidth > 60) {
+                // Medium: show abbreviated (first word or first 12 chars)
+                const firstWord = phase.name.split(/[\s-]/)[0]
+                displayText = firstWord.length > 12 ? phase.name.substring(0, 12) : firstWord
+              } else if (estimatedPxWidth > 35) {
+                // Narrow: show first 6 chars
+                displayText = phase.name.substring(0, 6)
+              } else {
+                // Very narrow: show first 2-3 chars
+                displayText = phase.name.substring(0, 3)
+              }
+
+              // Calculate text color for contrast (simple heuristic)
+              const getTextColor = (bgColor: string) => {
+                // For HSL colors, extract lightness
+                const hslMatch = bgColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/)
+                if (hslMatch) {
+                  const lightness = parseInt(hslMatch[3])
+                  return lightness > 60 ? "text-gray-900" : "text-white"
+                }
+                // Default to white for other color formats
+                return "text-white"
+              }
+
+              return (
+                <Tooltip key={phase.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => onPhaseClick(selectedPhaseId === phase.id ? undefined : phase.id)}
+                      className={cn(
+                        "absolute top-0 h-full transition-all duration-200",
+                        "focus:outline-none flex items-center justify-center",
+                        "text-xs font-medium px-1 overflow-hidden",
+                        getTextColor(phase.color),
+                        selectedPhaseId === phase.id
+                          ? "brightness-110 saturate-150 shadow-md z-10"
+                          : "hover:brightness-105"
+                      )}
+                      style={{
+                        left: `${startPercent}%`,
+                        width: `${width}%`,
+                        backgroundColor: phase.color,
+                        zIndex: selectedPhaseId === phase.id ? 10 : 1,
+                        fontSize: estimatedPxWidth < 60 ? '0.65rem' : '0.75rem'
+                      }}
+                      aria-label={`${phase.name} phase (weeks ${phase.startWeek}-${phase.endWeek})`}
+                    >
+                      <span className="truncate px-1">{displayText}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="bg-gray-900 text-white text-xs p-2">
+                    <div className="space-y-1">
+                      <div className="font-medium">{phase.name}</div>
+                      <div className="text-gray-300">
+                        {duration} week{duration !== 1 ? 's' : ''} (W{phase.startWeek}-{phase.endWeek})
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              )
+            })}
+          </TooltipProvider>
 
           {/* Race Anchors */}
           <TooltipProvider>
             {raceAnchors.map((anchor) => {
               const position = ((anchor.week - 1) / totalWeeks) * 100
-              
+
               return (
                 <Tooltip key={anchor.id}>
                   <TooltipTrigger asChild>
@@ -120,25 +169,6 @@ export function MacrocycleTimeline({
               )
             })}
           </TooltipProvider>
-        </div>
-
-        {/* Phase Labels */}
-        <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-          {phases.map((phase) => {
-            const startPercent = ((phase.startWeek - 1) / totalWeeks) * 100
-            const endPercent = ((phase.endWeek - 1) / totalWeeks) * 100
-            const centerPercent = (startPercent + endPercent) / 2
-
-            return (
-              <span
-                key={phase.id}
-                className="font-medium"
-                style={{ left: `${centerPercent}%`, transform: 'translateX(-50%)' }}
-              >
-                {phase.name}
-              </span>
-            )
-          })}
         </div>
       </div>
     </div>

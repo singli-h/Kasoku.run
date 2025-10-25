@@ -39,14 +39,9 @@ export function ExercisePlanningPanel({ sessionId }: ExercisePlanningPanelProps)
     }
   }
 
+  // TODO: Replace with actual exercise library data from Supabase
   const exerciseLibrary = [
-    { name: "4x100m", category: "speed", sets: 4, reps: "100m", notes: "95% effort" },
-    { name: "3x200m", category: "speed", sets: 3, reps: "200m", notes: "90% effort" },
-    { name: "Squats", category: "strength", sets: 4, reps: "8-10", weight: 135 },
-    { name: "Deadlifts", category: "strength", sets: 3, reps: "5", weight: 185 },
-    { name: "Power Cleans", category: "strength", sets: 5, reps: "3", weight: 95 },
-    { name: "Jump Squats", category: "strength", sets: 4, reps: "8", weight: 45 },
-    { name: "Easy Run", category: "endurance", sets: 1, reps: "30min", notes: "Conversational pace" },
+    // This will be populated from getExercisesAction()
   ]
 
   return (

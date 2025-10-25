@@ -1,15 +1,16 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Users, Target, Plus, Search } from "lucide-react"
+import { Calendar, Users, Target, Plus, Search, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { MacrocycleTimeline, MacrocyclePhase, RaceAnchor } from "./MacrocycleTimeline"
 import { VolumeIntensityChart, ChartDataPoint } from "./VolumeIntensityChart"
+import { getMacrocyclesAction } from "@/actions/plans/plan-actions"
 
 type Macrocycle = {
   id: string
@@ -24,24 +25,98 @@ type Macrocycle = {
   avgIntensity: number
 }
 
-// TODO: Replace with actual data fetching from Supabase
-const DEMO_MACROCYCLES: Macrocycle[] = []
-
 export function PlansHome() {
   const [searchTerm, setSearchTerm] = useState("")
   const [stateFilter, setStateFilter] = useState<string>("all")
   const [groupFilter, setGroupFilter] = useState<string>("all")
+  const [macrocycles, setMacrocycles] = useState<Macrocycle[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   // Track selected phase per plan id to avoid leaking selection across cards
   const [selectedPhaseByPlanId, setSelectedPhaseByPlanId] = useState<Record<string, string | undefined>>({})
 
+  // Fetch macrocycles on component mount
+  useEffect(() => {
+    const fetchMacrocycles = async () => {
+      try {
+        setLoading(true)
+        const result = await getMacrocyclesAction()
+        
+        if (result.isSuccess && result.data) {
+          // Transform the data to match the expected format
+          const transformedMacrocycles: Macrocycle[] = result.data.map((macro: any) => {
+            // Calculate weeks from start date
+            const startDate = new Date(macro.start_date)
+            const endDate = new Date(macro.end_date)
+            const totalWeeks = Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000))
+            
+            // Transform mesocycles with proper calculations
+            const phases = macro.mesocycles?.map((meso: any, index: number) => {
+              const mesoStartDate = new Date(meso.start_date)
+              const mesoEndDate = new Date(meso.end_date)
+              const startWeek = Math.ceil((mesoStartDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1
+              const endWeek = Math.ceil((mesoEndDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000))
+              const mesoWeeks = endWeek - startWeek + 1
+              
+              // Use volume and intensity from microcycles
+              const microcycles = meso.microcycles || []
+              const volume = microcycles.map((micro: any) => micro.volume || 0)
+              const intensity = microcycles.map((micro: any) => micro.intensity || 5)
+              
+              return {
+                id: meso.id.toString(),
+                name: meso.name,
+                startWeek: Math.max(1, startWeek),
+                endWeek: Math.min(totalWeeks, endWeek),
+                volume: volume.length > 0 ? volume : [5, 6, 7, 5], // Default if no data
+                intensity: intensity.length > 0 ? intensity : [5, 6, 7, 5], // Default if no data
+                color: meso.metadata?.color || `hsl(${(index * 60) % 360}, 70%, 50%)`
+              }
+            }) || []
+            
+            // Calculate total volume and average intensity
+            const allVolumes = phases.flatMap(p => p.volume)
+            const allIntensities = phases.flatMap(p => p.intensity)
+            const totalVolume = allVolumes.reduce((sum, vol) => sum + vol, 0)
+            const avgIntensity = allIntensities.length > 0 ? allIntensities.reduce((sum, int) => sum + int, 0) / allIntensities.length : 5
+            
+            return {
+              id: macro.id.toString(),
+              name: macro.name,
+              state: "Active" as const, // Default state - you can add a state field to your database
+              group: macro.athlete_group?.group_name,
+              start: macro.start_date,
+              end: macro.end_date,
+              raceAnchors: [], // TODO: Populate from races data
+              phases,
+              totalVolume,
+              avgIntensity: Math.round(avgIntensity * 10) / 10
+            }
+          })
+          
+          setMacrocycles(transformedMacrocycles)
+        } else {
+          setError(result.message || "Failed to fetch macrocycles")
+        }
+      } catch (err) {
+        setError("An unexpected error occurred")
+        console.error("Error fetching macrocycles:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchMacrocycles()
+  }, [])
+
   const filteredMacrocycles = useMemo(() => {
-    return DEMO_MACROCYCLES.filter(mc => {
+    return macrocycles.filter(mc => {
       const matchesSearch = mc.name.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesState = stateFilter === "all" || mc.state === stateFilter
       const matchesGroup = groupFilter === "all" || mc.group === groupFilter
       return matchesSearch && matchesState && matchesGroup
     })
-  }, [searchTerm, stateFilter, groupFilter])
+  }, [macrocycles, searchTerm, stateFilter, groupFilter])
 
   const renderMacrocycleRow = (mc: Macrocycle) => {
     const selectedPhaseId = selectedPhaseByPlanId[mc.id]
@@ -142,13 +217,75 @@ export function PlansHome() {
     )
   }
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Training Plans</h1>
+            <p className="text-muted-foreground">
+              Manage your macrocycles with race-anchored timelines
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading training plans...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Training Plans</h1>
+            <p className="text-muted-foreground">
+              Manage your macrocycles with race-anchored timelines
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-destructive">Error Loading Plans</h3>
+            <p className="text-sm text-muted-foreground mt-2">{error}</p>
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="mt-4"
+              variant="outline"
+            >
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Get unique groups from actual data
+  const availableGroups = Array.from(new Set(macrocycles.map(mc => mc.group).filter(Boolean)))
+
   return (
     <div className="space-y-6">
-      {/* New Plan Button */}
-      <div className="flex justify-end">
-        <Button className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          New Plan
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Training Plans</h1>
+          <p className="text-muted-foreground">
+            Manage your macrocycles with race-anchored timelines
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/plans/new">
+            <Plus className="h-4 w-4 mr-2" />
+            New Plan
+          </Link>
         </Button>
       </div>
 
@@ -180,8 +317,9 @@ export function PlansHome() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Groups</SelectItem>
-            <SelectItem value="Varsity Sprint Team">Varsity Sprint Team</SelectItem>
-            <SelectItem value="Distance Squad">Distance Squad</SelectItem>
+            {availableGroups.map(group => (
+              <SelectItem key={group} value={group}>{group}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

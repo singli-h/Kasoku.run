@@ -161,7 +161,13 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
           *,
           microcycles(
             *,
-            exercise_preset_groups(*)
+            exercise_preset_groups(
+              *,
+              exercise_presets(
+                *,
+                exercise:exercises(*)
+              )
+            )
           )
         )
       `)

@@ -25,9 +25,7 @@ interface Group {
   hasActivePlan: boolean
 }
 
-// TODO: Replace with actual data fetching from Supabase
-const DEMO_ATHLETES: Athlete[] = []
-const DEMO_GROUPS: Group[] = []
+// These will be populated from actual data fetching
 
 export function AssignmentView() {
   const [assignmentType, setAssignmentType] = useState<AssignmentType>("individuals")
@@ -52,17 +50,14 @@ export function AssignmentView() {
     )
   }
 
-  // Guardrail checks
-  const hasNoAnchor = false // Demo: assume we have anchors
+  // Guardrail checks - these will be implemented with actual data
+  const hasNoAnchor = false // TODO: Check if plan has race anchors
   const hasEmptySelection = assignmentType === "individuals"
     ? selectedAthletes.length === 0
     : selectedGroups.length === 0
 
-  const conflictingPlans = assignmentType === "individuals"
-    ? DEMO_ATHLETES.filter(a => selectedAthletes.includes(a.id) && a.hasActivePlan).length
-    : DEMO_GROUPS.filter(g => selectedGroups.includes(g.id) && g.hasActivePlan).length
-
-  const hasLoadSpike = selectedAthletes.length > 3 // Demo: simulate spike warning
+  const conflictingPlans = 0 // TODO: Check for conflicting plans with actual data
+  const hasLoadSpike = selectedAthletes.length > 3 // TODO: Implement proper load spike detection
   const canProceed = !hasNoAnchor && !hasEmptySelection
 
   // Edge case: Mixed assignment types

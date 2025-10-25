@@ -14,11 +14,9 @@ interface AssignmentPanelProps {
 export function AssignmentPanel({ planId }: AssignmentPanelProps) {
   const [assignmentMode, setAssignmentMode] = useState<'view' | 'assign'>('view')
 
-  // Mock group data - in real app this would come from props or context
+  // TODO: Replace with actual group data from Supabase
   const groups = [
-    { id: 1, name: "Elite Sprinters", athleteCount: 12, status: "assigned", hasConflict: false },
-    { id: 2, name: "Sprint Development", athleteCount: 8, status: "conflict", hasConflict: true },
-    { id: 3, name: "Distance Runners", athleteCount: 15, status: "unassigned", hasConflict: false },
+    // This will be populated from getAthleteGroupsAction() or similar
   ]
 
   const getStatusIcon = (status: string) => {

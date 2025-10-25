@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef } from "react"
+import { useState, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -119,21 +119,31 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
   const touchEndX = useRef<number>(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const addToHistory = (newPlan: TrainingPlan) => {
-    const newHistory = history.slice(0, historyIndex + 1)
-    newHistory.push({ plan: newPlan, timestamp: Date.now() })
-    // Keep only last 50 states
-    if (newHistory.length > 50) {
-      newHistory.shift()
-    } else {
-      setHistoryIndex(historyIndex + 1)
-    }
-    setHistory(newHistory)
+  const addToHistory = useCallback((newPlan: TrainingPlan) => {
+    setHistory(prevHistory => {
+      const newHistory = prevHistory.slice(0, historyIndex + 1)
+      newHistory.push({ plan: newPlan, timestamp: Date.now() })
+      // Keep only last 50 states
+      if (newHistory.length > 50) {
+        newHistory.shift()
+        return newHistory
+      }
+      return newHistory
+    })
+
+    setHistoryIndex(prevIndex => {
+      const newHistory = history.slice(0, prevIndex + 1)
+      if (newHistory.length <= 50) {
+        return prevIndex + 1
+      }
+      return prevIndex
+    })
+
     setPlan(newPlan)
     onPlanUpdate?.(newPlan)
-  }
+  }, [historyIndex, history, onPlanUpdate])
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1
       setHistoryIndex(newIndex)
@@ -141,9 +151,9 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
       setPlan(newPlan)
       onPlanUpdate?.(newPlan)
     }
-  }
+  }, [historyIndex, history, onPlanUpdate])
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const newIndex = historyIndex + 1
       setHistoryIndex(newIndex)
@@ -151,9 +161,9 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
       setPlan(newPlan)
       onPlanUpdate?.(newPlan)
     }
-  }
+  }, [historyIndex, history, onPlanUpdate])
 
-  const handleSaveMesocycle = (mesocycle: MesocycleFormData) => {
+  const handleSaveMesocycle = useCallback((mesocycle: MesocycleFormData) => {
     const newPlan = {
       ...plan,
       mesocycles: mesocycle.id
@@ -161,9 +171,9 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
         : [...plan.mesocycles, { ...mesocycle, microcycles: [] } as Mesocycle],
     }
     addToHistory(newPlan)
-  }
+  }, [plan, addToHistory])
 
-  const handleDeleteMesocycle = (id: number) => {
+  const handleDeleteMesocycle = useCallback((id: number) => {
     const newPlan = {
       ...plan,
       mesocycles: plan.mesocycles.filter((m) => m.id !== id),
@@ -172,7 +182,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
     if (selectedMeso?.id === id) {
       setSelectedMeso(null)
     }
-  }
+  }, [plan, addToHistory, selectedMeso])
 
   const handleSaveMicrocycle = (microcycle: MicrocycleFormData) => {
     if (!selectedMeso) return
@@ -661,7 +671,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                                   {session.duration}min
                                 </Badge>
                                 <Badge variant="outline" className="text-xs">
-                                  {session.exercises.length} exercises
+                                  {session.exercises?.length || 0} exercises
                                 </Badge>
                               </div>
                             </div>
