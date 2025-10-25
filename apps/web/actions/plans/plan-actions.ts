@@ -764,7 +764,7 @@ export async function getMicrocyclesByMesocycleAction(mesocycleId: number): Prom
             exercises(*),
             exercise_preset_details(*)
           ),
-          athlete_group(*)
+          athlete_groups(*)
         )
       `)
       .eq('mesocycle_id', mesocycleId)

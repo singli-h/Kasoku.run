@@ -903,7 +903,13 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                         const dayShortMap = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
                         const idx = Math.max(1, Math.min(7, session.day || 1)) - 1
                         return (
-                        <div key={session.id} className="w-full rounded-lg border overflow-hidden transition-all hover:bg-accent">
+                        <div
+                          key={session.id}
+                          className="w-full rounded-lg border overflow-hidden transition-all hover:bg-accent bg-card cursor-pointer"
+                          onClick={() => {
+                            router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
+                          }}
+                        >
                           <div className="flex">
                             {/* Weekday sidebar */}
                             <div className="w-16 bg-primary/10 border-r border-primary/20 flex items-center justify-center flex-shrink-0">

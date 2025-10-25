@@ -20,13 +20,14 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
 // Import workout feature components
-import { 
-  ExerciseProvider, 
-  useExerciseContext, 
+import {
+  ExerciseProvider,
+  useExerciseContext,
   useWorkoutSession,
   type WorkoutExercise
 } from "../../index"
 import { EnhancedExerciseOrganization } from "../exercise/enhanced-exercise-organization"
+import { SaveStatusIndicator } from "../SaveStatusIndicator"
 
 // Import training actions (removing unused imports)
 
@@ -43,14 +44,14 @@ interface WorkoutSessionDashboardProps {
   className?: string
 }
 
-export function WorkoutSessionDashboard({ 
-  presetGroup, 
+export function WorkoutSessionDashboard({
+  presetGroup,
   existingSession,
-  className 
+  className
 }: WorkoutSessionDashboardProps) {
   return (
-    <ExerciseProvider>
-      <WorkoutSessionContent 
+    <ExerciseProvider sessionId={existingSession?.id}>
+      <WorkoutSessionContent
         presetGroup={presetGroup}
         existingSession={existingSession}
         className={className}
@@ -65,7 +66,7 @@ function WorkoutSessionContent({
   className
 }: WorkoutSessionDashboardProps) {
   const { toast } = useToast()
-  const { exercises, setExercises } = useExerciseContext()
+  const { exercises, setExercises, saveStatus } = useExerciseContext()
   
   // Session management hook
   const {
@@ -160,6 +161,32 @@ function WorkoutSessionContent({
   }
 
   const handleCompleteSession = async () => {
+    // Check if auto-save is still in progress
+    if (saveStatus === 'saving') {
+      toast({
+        title: "Saving in progress",
+        description: "Please wait for auto-save to complete before finishing the session",
+        variant: "default"
+      })
+      return
+    }
+
+    // Validate that all exercises have at least some sets completed
+    const incompleteExercises = exercises.filter(ex => {
+      const details = ex.exercise_training_details || []
+      const completedSets = details.filter(d => d.completed).length
+      return completedSets === 0 && details.length > 0
+    })
+
+    if (incompleteExercises.length > 0) {
+      toast({
+        title: "Incomplete Exercises",
+        description: `Please complete at least one set for ${incompleteExercises.length} exercise(s) before finishing.`,
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       const result = await completeSession()
       if (result.success) {
@@ -329,6 +356,9 @@ function WorkoutSessionContent({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Save Status Indicator */}
+      <SaveStatusIndicator />
 
       {/* Back to Top Button */}
       <BackToTopButton />

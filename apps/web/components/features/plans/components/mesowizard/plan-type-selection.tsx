@@ -113,26 +113,22 @@ const planTypeOptions: PlanTypeOption[] = [
 ]
 
 interface PlanTypeSelectionProps {
-  selectedPlanType: PlanType | null
-  onPlanTypeSelect: (planType: PlanType) => void
-  onNext: () => void
-  onPrevious?: () => void
-  isLoading?: boolean
+  onSelect: (planType: PlanType) => void
+  onCancel?: () => void
   className?: string
 }
 
-export function PlanTypeSelection({ 
-  selectedPlanType, 
-  onPlanTypeSelect, 
-  onNext,
-  onPrevious,
-  isLoading = false,
-  className 
+export function PlanTypeSelection({
+  onSelect,
+  onCancel,
+  className
 }: PlanTypeSelectionProps) {
+  const [selectedPlanType, setSelectedPlanType] = useState<PlanType | null>(null)
   const [hoveredType, setHoveredType] = useState<PlanType | null>(null)
 
   const handleCardClick = (planType: PlanType) => {
-    onPlanTypeSelect(planType)
+    setSelectedPlanType(planType)
+    onSelect(planType)
   }
 
   const getComplexityColor = (complexity: string) => {

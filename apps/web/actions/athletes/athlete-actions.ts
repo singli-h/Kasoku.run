@@ -1070,7 +1070,7 @@ export async function inviteOrAttachAthleteAction(
         return {
           isSuccess: true,
           message: "Invitation sent successfully",
-          data: { type: 'invited', athlete: pendingAthlete }
+          data: { type: 'invited', athlete: pendingAthlete ?? undefined }
         }
       } catch (clerkError) {
         console.error('Error sending Clerk invitation:', clerkError)
@@ -1615,11 +1615,18 @@ export async function getRosterWithGroupCountsAction(): Promise<ActionState<{
       athlete_count: group.athletes?.[0]?.count || 0
     })) || []
 
+    // Transform athletes to convert null to undefined for TypeScript compatibility
+    const transformedAthletes = (athletes || []).map(athlete => ({
+      ...athlete,
+      user: athlete.user ?? undefined,
+      athlete_group: athlete.athlete_group ?? undefined
+    }))
+
     return {
       isSuccess: true,
       message: "Roster and groups retrieved successfully",
       data: {
-        athletes: athletes || [],
+        athletes: transformedAthletes,
         groups: groupsWithCounts
       }
     }

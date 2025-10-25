@@ -52,7 +52,7 @@ const EXERCISE_FIELDS: ExerciseField[] = [
 ]
 
 export function ExerciseCard({ exercise, className, isSuperset = false }: ExerciseCardProps) {
-  const { showVideo, updateExercise } = useExerciseContext()
+  const { showVideo, updateExercise, toggleSetComplete } = useExerciseContext()
 
   // Determine which fields to show based on available data
   const availableFields = useMemo(() => {
@@ -127,8 +127,9 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
   // Handle set completion toggle
   const toggleSetCompletion = (setIndex: number) => {
     const detail = exercise.exercise_training_details?.[setIndex]
-    const isCompleted = detail?.completed || false
-    updateSetData(setIndex, 'completed', !isCompleted)
+    if (!detail?.id) return // Need a valid detail ID
+
+    toggleSetComplete(exercise.id, detail.id)
   }
 
 

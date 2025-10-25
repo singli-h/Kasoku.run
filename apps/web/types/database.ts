@@ -965,30 +965,36 @@ export type Database = {
           description: string | null
           end_date: string | null
           id: number
+          intensity: number | null
           mesocycle_id: number | null
           name: string | null
           start_date: string | null
           user_id: number | null
+          volume: number | null
         }
         Insert: {
           created_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: number
+          intensity?: number | null
           mesocycle_id?: number | null
           name?: string | null
           start_date?: string | null
           user_id?: number | null
+          volume?: number | null
         }
         Update: {
           created_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: number
+          intensity?: number | null
           mesocycle_id?: number | null
           name?: string | null
           start_date?: string | null
           user_id?: number | null
+          volume?: number | null
         }
         Relationships: [
           {
@@ -1421,3 +1427,43 @@ export const Constants = {
     },
   },
 } as const
+// Convenience type aliases for tables (manually maintained)
+export type Macrocycle = Tables<"macrocycles">
+export type MacrocycleInsert = TablesInsert<"macrocycles">
+export type MacrocycleUpdate = TablesUpdate<"macrocycles">
+
+export type Mesocycle = Tables<"mesocycles">
+export type MesocycleInsert = TablesInsert<"mesocycles">
+export type MesocycleUpdate = TablesUpdate<"mesocycles">
+
+export type Microcycle = Tables<"microcycles">
+export type MicrocycleInsert = TablesInsert<"microcycles">
+export type MicrocycleUpdate = TablesUpdate<"microcycles">
+
+export type Exercise = Tables<"exercises">
+export type ExerciseInsert = TablesInsert<"exercises">
+export type ExerciseUpdate = TablesUpdate<"exercises">
+
+export type ExerciseType = Tables<"exercise_types">
+
+export type Unit = Tables<"units">
+
+export type ExercisePresetGroup = Tables<"exercise_preset_groups">
+export type ExercisePresetGroupInsert = TablesInsert<"exercise_preset_groups">
+export type ExercisePresetGroupUpdate = TablesUpdate<"exercise_preset_groups">
+
+export type ExercisePreset = Tables<"exercise_presets">
+export type ExercisePresetInsert = TablesInsert<"exercise_presets">
+export type ExercisePresetUpdate = TablesUpdate<"exercise_presets">
+
+export type ExercisePresetDetail = Tables<"exercise_preset_details">
+
+export type Athlete = Tables<"athletes">
+export type AthleteInsert = TablesInsert<"athletes">
+export type AthleteUpdate = TablesUpdate<"athletes">
+
+export type AthleteGroup = Tables<"athlete_groups">
+export type AthleteGroupInsert = TablesInsert<"athlete_groups">
+export type AthleteGroupUpdate = TablesUpdate<"athlete_groups">
+
+export type ExerciseTrainingDetail = Tables<"exercise_training_details">

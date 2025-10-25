@@ -45,6 +45,7 @@ interface SetRowProps {
   index: number
   columns: FieldConfig[]
   onInputChange: (detailId: string, field: string, value: number | string | null) => void
+  onToggleComplete?: (detailId: string) => void
   className?: string
   isCompleted?: boolean
 }
@@ -154,6 +155,7 @@ export function SetRow({
   index,
   columns,
   onInputChange,
+  onToggleComplete,
   className,
   isCompleted = false
 }: SetRowProps) {
@@ -199,18 +201,36 @@ export function SetRow({
       isCompleted && "bg-green-50/50",
       className
     )}>
-      {/* Set number column - always first */}
+      {/* Completion checkbox - always first */}
+      <td className="px-2 py-2 w-10 text-center">
+        {onToggleComplete ? (
+          <input
+            type="checkbox"
+            checked={isCompleted}
+            onChange={() => onToggleComplete(detail.id)}
+            className="w-4 h-4 text-green-600 rounded focus:ring-2 focus:ring-green-500 cursor-pointer"
+            aria-label={`Mark set ${index + 1} as complete`}
+          />
+        ) : (
+          <div className={cn(
+            "w-4 h-4 rounded flex items-center justify-center",
+            isCompleted && "bg-green-500"
+          )} />
+        )}
+      </td>
+
+      {/* Set number column */}
       <td className="px-2 py-2 font-medium text-gray-900 w-10 text-center">
         <div className={cn(
           "w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold",
-          isCompleted 
-            ? "bg-green-500 text-white" 
+          isCompleted
+            ? "bg-green-500 text-white"
             : "bg-gray-100 text-gray-700"
         )}>
           {index + 1}
         </div>
       </td>
-      
+
       {/* Dynamic metric columns */}
       {columns.map(cfg => {
         const value = detail[cfg.key as keyof TrainingDetail]
@@ -247,10 +267,15 @@ export function SetRow({
 /**
  * SetTableHeader Component - Dynamic table header for set inputs
  */
-export function SetTableHeader({ columns }: { columns: FieldConfig[] }) {
+export function SetTableHeader({ columns, showCheckbox = false }: { columns: FieldConfig[], showCheckbox?: boolean }) {
   return (
     <thead>
       <tr className="bg-gray-50 border-b border-gray-200">
+        {showCheckbox && (
+          <th className="px-2 py-2 text-center font-medium text-gray-500 w-10">
+            <span className="text-xs">✓</span>
+          </th>
+        )}
         <th className="px-2 py-2 text-left font-medium text-gray-500 w-10 text-center">
           Set
         </th>
@@ -282,28 +307,30 @@ interface SetTableProps {
   details: TrainingDetail[]
   columns?: FieldConfig[]
   onInputChange: (detailId: string, field: string, value: number | string | null) => void
+  onToggleComplete?: (detailId: string) => void
   completedSets?: Set<string>
   className?: string
 }
 
-export function SetTable({ 
-  details, 
-  columns, 
-  onInputChange, 
+export function SetTable({
+  details,
+  columns,
+  onInputChange,
+  onToggleComplete,
   completedSets = new Set(),
-  className 
+  className
 }: SetTableProps) {
-  
+
   // Use provided columns or auto-detect
   const displayColumns = columns || getDisplayColumns(details)
-  
+
   // Determine table layout based on column count
   const tableClass = displayColumns.length <= 4 ? 'table-fixed' : 'table-auto'
-  
+
   return (
     <div className={cn("overflow-x-auto", className)}>
       <table className={cn("w-full text-sm", tableClass)}>
-        <SetTableHeader columns={displayColumns} />
+        <SetTableHeader columns={displayColumns} showCheckbox={!!onToggleComplete} />
         <tbody>
           {details.map((detail, index) => (
             <SetRow
@@ -312,6 +339,7 @@ export function SetTable({
               index={index}
               columns={displayColumns}
               onInputChange={onInputChange}
+              onToggleComplete={onToggleComplete}
               isCompleted={completedSets.has(detail.id)}
             />
           ))}

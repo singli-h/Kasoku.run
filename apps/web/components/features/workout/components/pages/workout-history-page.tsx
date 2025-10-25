@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 import { getPastSessionsAction } from "@/actions/workout/workout-session-actions"
 import { WorkoutSessionCard } from '@/components/composed'
 import { WorkoutErrorBoundary, WorkoutLoadingCard } from '../error-loading'
+import { SessionDetailsDialog } from './SessionDetailsDialog'
 import type { ExerciseTrainingSessionWithDetails } from "@/types/training"
 
 interface WorkoutHistoryPageProps {
@@ -33,6 +34,8 @@ interface SessionFilters {
 
 export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
   const [page, setPage] = useState(1)
+  const [selectedSession, setSelectedSession] = useState<ExerciseTrainingSessionWithDetails | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const [filters, setFilters] = useState<SessionFilters>({
     startDate: "",
     endDate: "",
@@ -167,8 +170,8 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
                   key={(session as any).id}
                   session={session}
                   onAction={(session) => {
-                    // Handle view details action
-                    console.log('View details for session:', (session as any).id)
+                    setSelectedSession(session as ExerciseTrainingSessionWithDetails)
+                    setDetailsOpen(true)
                   }}
                   actionLabel="View Details"
                   actionIcon={<Eye className="h-4 w-4" />}
@@ -235,6 +238,13 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
           </>
         )}
       </div>
+
+      {/* Session Details Dialog */}
+      <SessionDetailsDialog
+        session={selectedSession}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+      />
       </div>
     </WorkoutErrorBoundary>
   )

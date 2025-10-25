@@ -1,0 +1,746 @@
+npm warn Unknown project config "public-hoist-pattern". This will stop working in the next major version of npm.
+npm warn Unknown project config "shamefully-hoist". This will stop working in the next major version of npm.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm.
+
+> build
+> turbo run build --filter=@kasoku/web
+
+turbo 2.5.8
+
+• Packages in scope: @kasoku/web
+• Running build in 1 packages
+• Remote caching disabled
+@kasoku/web:build: cache miss, executing 9ec74961a2acbf52
+@kasoku/web:build: npm warn config ignoring workspace config at /Users/sing/Documents/GitHub/guidelayer/Kasoku.run/apps/web/.npmrc
+@kasoku/web:build: npm warn Unknown project config "public-hoist-pattern". This will stop working in the next major version of npm.
+@kasoku/web:build: npm warn Unknown project config "shamefully-hoist". This will stop working in the next major version of npm.
+@kasoku/web:build: npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm.
+@kasoku/web:build: 
+@kasoku/web:build: > @kasoku/web@0.1.0 build
+@kasoku/web:build: > next build
+@kasoku/web:build: 
+@kasoku/web:build:    ▲ Next.js 15.5.6
+@kasoku/web:build:    - Environments: .env.local
+@kasoku/web:build: 
+@kasoku/web:build:    Creating an optimized production build ...
+@kasoku/web:build:  ✓ Compiled successfully in 5.0s
+@kasoku/web:build:    Linting and checking validity of types ...
+@kasoku/web:build: 
+@kasoku/web:build: ./app/(protected)/plans/[id]/page.tsx
+@kasoku/web:build: 14:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 22:22  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 23:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 30:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 41:13  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 43:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./app/(protected)/plans/[id]/session/[sessionId]/SessionPlannerClient.tsx
+@kasoku/web:build: 9:10  Warning: 'Button' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 10:10  Warning: 'Badge' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 11:10  Warning: 'Plus' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 11:16  Warning: 'X' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 11:19  Warning: 'Save' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 50:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 59:3  Warning: 'exerciseTypes' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 85:10  Warning: 'deleteConfirmOpen' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 85:29  Warning: 'setDeleteConfirmOpen' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 101:9  Warning: 'handleUndo' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 113:9  Warning: 'handleRedo' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 126:9  Warning: 'handlePageModeChange' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 130:9  Warning: 'handleSave' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 169:9  Warning: 'handleDiscard' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 353:9  Warning: 'handleUpdateSet' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 372:9  Warning: 'handleAddSet' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 408:9  Warning: 'handleRemoveSet' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 483:9  Warning: 'estimatedDuration' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 487:9  Warning: 'canUndo' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 488:9  Warning: 'canRedo' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 489:9  Warning: 'hasSelection' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./app/(protected)/plans/[id]/session/[sessionId]/page.tsx
+@kasoku/web:build: 18:44  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 19:12  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 39:90  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 53:63  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 84:48  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./app/(protected)/workout/page.tsx
+@kasoku/web:build: 5:10  Warning: 'PageLayout' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./app/api/auth/webhook/route.ts
+@kasoku/web:build: 164:31  Warning: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./app/api/debug/training-data/route.ts
+@kasoku/web:build: 24:20  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 153:36  Warning: 'error' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 165:14  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 176:15  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./app/api/stripe/webhooks/route.ts
+@kasoku/web:build: 33:17  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./app/global-error.tsx
+@kasoku/web:build: 4:3  Warning: 'error' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/composed/athlete-summary-card.tsx
+@kasoku/web:build: 20:3  Warning: 'Trophy' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/composed/data-table.tsx
+@kasoku/web:build: 22:3  Warning: 'DropdownMenu' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 23:3  Warning: 'DropdownMenuContent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 24:3  Warning: 'DropdownMenuItem' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 25:3  Warning: 'DropdownMenuTrigger' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 33:20  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 51:52  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/composed/section-manager.tsx
+@kasoku/web:build: 71:3  Warning: 'onSectionReorder' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 74:3  Warning: 'onItemMove' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 75:3  Warning: 'onItemReorder' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/composed/training-session-card.tsx
+@kasoku/web:build: 307:59  Warning: 'index' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/composed/workout-session-card.tsx
+@kasoku/web:build: 10:16  Warning: 'Eye' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/composed/workout-session-date-display.tsx
+@kasoku/web:build: 104:20  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 108:37  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/composed/workout-session-duration-display.tsx
+@kasoku/web:build: 79:103  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 106:103  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/composed/workout-session-exercise-count.tsx
+@kasoku/web:build: 102:67  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/dashboard/components/dashboard-layout.tsx
+@kasoku/web:build: 14:41  Warning: 'displayName' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/dashboard/components/recent-tasks-section.tsx
+@kasoku/web:build: 5:58  Warning: 'CardTitle' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/exercise/components/exercise-library-page.tsx
+@kasoku/web:build: 154:67  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/knowledge-base/components/keyboard-shortcuts.tsx
+@kasoku/web:build: 4:22  Warning: 'X' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 6:10  Warning: 'Card' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 6:16  Warning: 'CardContent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 6:29  Warning: 'CardHeader' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 6:41  Warning: 'CardTitle' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/knowledge-base/constants/index.ts
+@kasoku/web:build: 1:40  Warning: 'ArticleStatus' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 1:55  Warning: 'IntegrationStatus' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/knowledge-base/editor/editor-toolbar.tsx
+@kasoku/web:build: 172:11  Warning: Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/knowledge-base/hooks/use-knowledge-base-queries.ts
+@kasoku/web:build: 35:6  Warning: 'ArticleWithCategory' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/knowledge-base/types/index.ts
+@kasoku/web:build: 87:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/landing/testimonials.tsx
+@kasoku/web:build: 5:8  Warning: 'Image' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/onboarding/legacy-enhanced-onboarding-wizard.tsx
+@kasoku/web:build: 14:10  Warning: 'Button' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 25:3  Warning: 'Target' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 26:3  Warning: 'Calendar' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 27:3  Warning: 'TrendingUp' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 184:14  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/onboarding/legacy-onboarding-form.tsx
+@kasoku/web:build: 50:14  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/performance/components/comparative-performance-analytics.tsx
+@kasoku/web:build: 10:10  Warning: 'motion' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 10:18  Warning: 'AnimatePresence' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 15:3  Warning: 'Target' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 16:3  Warning: 'Award' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 17:3  Warning: 'BarChart3' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 18:3  Warning: 'LineChart' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 19:3  Warning: 'PieChart' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 20:3  Warning: 'Zap' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 21:3  Warning: 'Timer' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 22:3  Warning: 'Weight' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 23:3  Warning: 'Trophy' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 24:3  Warning: 'Star' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 25:3  Warning: 'ArrowUp' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 26:3  Warning: 'ArrowDown' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 27:3  Warning: 'Filter' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 28:3  Warning: 'Download' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 29:3  Warning: 'Share2' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 30:3  Warning: 'RefreshCw' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 31:3  Warning: 'ChevronDown' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 32:3  Warning: 'ChevronUp' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 33:3  Warning: 'Info' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 37:3  Warning: 'Percent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 38:3  Warning: 'Medal' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 40:3  Warning: 'Calendar' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 50:10  Warning: 'Separator' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 52:3  Warning: 'DropdownMenu' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 53:3  Warning: 'DropdownMenuContent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 54:3  Warning: 'DropdownMenuItem' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 55:3  Warning: 'DropdownMenuTrigger' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 56:3  Warning: 'DropdownMenuSeparator' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 57:3  Warning: 'DropdownMenuLabel' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 82:9  Warning: 'isMobile' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 151:9  Warning: 'getPercentileColor' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 159:9  Warning: 'getPercentileBadgeColor' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/performance/components/individual-performance-analytics.tsx
+@kasoku/web:build: 10:10  Warning: 'motion' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 10:18  Warning: 'AnimatePresence' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 12:3  Warning: 'TrendingUp' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 13:3  Warning: 'TrendingDown' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 14:3  Warning: 'Target' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 15:3  Warning: 'Award' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 16:3  Warning: 'Calendar' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 17:3  Warning: 'Activity' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 18:3  Warning: 'BarChart3' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 19:3  Warning: 'PieChart' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 20:3  Warning: 'Zap' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 21:3  Warning: 'Timer' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 22:3  Warning: 'Weight' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 23:3  Warning: 'Repeat' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 25:3  Warning: 'Star' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 28:3  Warning: 'Filter' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 30:3  Warning: 'Share2' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 31:3  Warning: 'Settings' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 33:3  Warning: 'ChevronDown' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 34:3  Warning: 'ChevronUp' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 35:3  Warning: 'Info' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 38:3  Warning: 'CartesianGrid' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 39:3  Warning: 'Line' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 40:3  Warning: 'LineChart' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 41:3  Warning: 'ResponsiveContainer' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 42:3  Warning: 'Tooltip' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 43:3  Warning: 'XAxis' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 44:3  Warning: 'YAxis' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 54:10  Warning: 'Separator' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 56:3  Warning: 'DropdownMenu' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 57:3  Warning: 'DropdownMenuContent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 58:3  Warning: 'DropdownMenuItem' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 59:3  Warning: 'DropdownMenuTrigger' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 60:3  Warning: 'DropdownMenuSeparator' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 61:3  Warning: 'DropdownMenuLabel' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 87:10  Warning: 'selectedMetric' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 87:26  Warning: 'setSelectedMetric' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 89:10  Warning: 'showAdvanced' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 89:24  Warning: 'setShowAdvanced' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 152:9  Warning: 'totalPRs' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 152:50  Warning: 'exercise' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 153:9  Warning: 'averageConsistency' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/components/mesowizard/MesoWizard.tsx
+@kasoku/web:build: 40:45  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/components/mesowizard/PlanConfiguration.tsx
+@kasoku/web:build: 66:50  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 67:48  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 68:54  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 103:16  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 126:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/components/mesowizard/plan-type-selection.tsx
+@kasoku/web:build: 35:29  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 123:3  Warning: 'onCancel' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/components/mesowizard/session-planning.tsx
+@kasoku/web:build: 9:18  Warning: 'AnimatePresence' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 13:3  Warning: 'Filter' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 17:3  Warning: 'X' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 22:3  Warning: 'Users' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 25:3  Warning: 'CheckCircle2' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 114:14  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 185:3  Warning: 'isLoading' is assigned a value but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 265:6  Warning: React Hook useEffect has a missing dependency: 'selectedSession'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 306:9  Warning: 'toggleExerciseFavorite' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 375:69  Warning: 'supersetType' is assigned a value but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 397:9  Warning: 'createEmptySuperset' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 397:51  Warning: 'supersetType' is assigned a value but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 402:9  Warning: 'addExerciseToSuperset' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 504:9  Warning: 'bulkUpdateExercises' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 556:9  Warning: 'updateExerciseParameters' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 617:9  Warning: 'removeSetFromExercise' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/components/mesowizard/session-template-library.tsx
+@kasoku/web:build: 19:3  Warning: 'Copy' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 20:3  Warning: 'Play' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 25:3  Warning: 'ArrowRight' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 26:3  Warning: 'Timer' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 38:16  Warning: 'TabsContent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 44:15  Warning: 'SessionData' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 44:28  Warning: 'ExerciseInSession' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/components/mesowizard/set-configuration-modal.tsx
+@kasoku/web:build: 9:10  Warning: 'motion' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 12:3  Warning: 'Minus' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 15:3  Warning: 'Calculator' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 22:3  Warning: 'ArrowDown' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 32:10  Warning: 'Select' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 32:18  Warning: 'SelectContent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 32:33  Warning: 'SelectItem' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 32:45  Warning: 'SelectTrigger' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 32:60  Warning: 'SelectValue' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 36:10  Warning: 'Separator' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 37:10  Warning: 'Switch' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 38:10  Warning: 'Slider' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 43:15  Warning: 'ExerciseWithDetails' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 54:7  Warning: 'WEIGHT_UNITS' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 60:7  Warning: 'DISTANCE_UNITS' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 67:7  Warning: 'TIME_UNITS' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 116:78  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 182:59  Warning: 'template' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/components/mesowizard/types.ts
+@kasoku/web:build: 21:14  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/components/templates-page.tsx
+@kasoku/web:build: 7:3  Warning: 'Filter' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 31:10  Warning: 'Label' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 49:3  Warning: 'Dialog' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 50:3  Warning: 'DialogContent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 51:3  Warning: 'DialogDescription' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 52:3  Warning: 'DialogHeader' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 53:3  Warning: 'DialogTitle' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 54:3  Warning: 'DialogTrigger' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 100:14  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 113:6  Warning: React Hook useEffect has a missing dependency: 'loadTemplates'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 118:42  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 134:48  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 134:98  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 166:14  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 194:14  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 327:37  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 329:63  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 330:69  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 364:62  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 364:88  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 366:33  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 385:102  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 430:106  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/home/PlansHome.tsx
+@kasoku/web:build: 13:16  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 75:34  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/home/VolumeIntensityChart.tsx
+@kasoku/web:build: 4:95  Warning: 'Legend' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 30:29  Warning: 'index' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 37:6  Warning: React Hook useMemo has an unnecessary dependency: 'mode'. Either exclude it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 39:45  Warning: 'label' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 39:54  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/session-planner/components/ExerciseLibraryPanel.tsx
+@kasoku/web:build: 19:10  Warning: 'EXERCISE_TYPE_MAP' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/session-planner/components/ExerciseList.tsx
+@kasoku/web:build: 59:3  Warning: 'supersetIndex' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/session-planner/components/ExerciseRow.tsx
+@kasoku/web:build: 20:46  Warning: 'FieldConfig' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 35:21  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/session-planner/utils.ts
+@kasoku/web:build: 6:64  Warning: 'DEFAULT_SET' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/workspace/AssignmentView.tsx
+@kasoku/web:build: 6:10  Warning: 'Badge' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 9:38  Warning: 'Calendar' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/workspace/PlanWorkspace.tsx
+@kasoku/web:build: 3:29  Warning: 'useEffect' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 41:21  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 42:17  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 64:77  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 72:65  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 75:40  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 81:45  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 120:42  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/workspace/TrainingPlanWorkspace.tsx
+@kasoku/web:build: 4:41  Warning: 'useMemo' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 25:14  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 103:10  Warning: 'slideDirection' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 631:27  Warning: 'dayMap' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/workspace/components/AssignmentPanel.tsx
+@kasoku/web:build: 14:35  Warning: 'planId' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/workspace/components/EditEventDialog.tsx
+@kasoku/web:build: 10:3  Warning: 'AlertDialog' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 11:3  Warning: 'AlertDialogAction' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 12:3  Warning: 'AlertDialogCancel' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 13:3  Warning: 'AlertDialogContent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 14:3  Warning: 'AlertDialogDescription' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 15:3  Warning: 'AlertDialogFooter' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 16:3  Warning: 'AlertDialogHeader' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 17:3  Warning: 'AlertDialogTitle' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/workspace/components/ExercisePlanningPanel.tsx
+@kasoku/web:build: 4:10  Warning: 'Badge' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 10:10  Warning: 'Select' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 10:18  Warning: 'SelectContent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 10:33  Warning: 'SelectItem' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 10:45  Warning: 'SelectTrigger' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 10:60  Warning: 'SelectValue' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/workspace/components/RaceDayManager.tsx
+@kasoku/web:build: 4:10  Warning: 'Badge' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/plans/workspace/components/TimelineScrubber.tsx
+@kasoku/web:build: 6:37  Warning: 'Flag' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/sessions/components/athlete-sprint-row.tsx
+@kasoku/web:build: 14:3  Warning: 'User' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 19:3  Warning: 'Target' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 20:3  Warning: 'Timer' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 21:3  Warning: 'Zap' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 30:10  Warning: 'Badge' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/sessions/components/group-session-dashboard.tsx
+@kasoku/web:build: 8:10  Warning: 'motion' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 9:24  Warning: 'Edit' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 9:30  Warning: 'Save' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 87:6  Warning: React Hook useEffect has a missing dependency: 'loadInitialData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 103:6  Warning: React Hook useEffect has a missing dependency: 'loadGroupAthletes'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 118:6  Warning: React Hook useEffect has missing dependencies: 'buildPerformancePayload' and 'savePerformanceData'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 475:63  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 599:37  Warning: 'i' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/sessions/components/group-sprint-section.tsx
+@kasoku/web:build: 23:3  Warning: 'Timer' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 24:3  Warning: 'Zap' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 25:3  Warning: 'Award' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 46:33  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 47:20  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 48:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 75:61  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 113:58  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 299:48  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/sessions/components/multi-group-sprint-table.tsx
+@kasoku/web:build: 16:10  Warning: 'ScrollArea' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/sessions/components/session-completed-view.tsx
+@kasoku/web:build: 13:23  Warning: 'Clock' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 13:30  Warning: 'Users' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/sessions/components/session-setup.tsx
+@kasoku/web:build: 116:3  Warning: 'predefinedDistances' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/sessions/components/sprint-session-dashboard.tsx
+@kasoku/web:build: 20:33  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 21:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 22:23  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 23:20  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/sessions/hooks/use-sprint-session.ts
+@kasoku/web:build: 16:3  Warning: 'SprintSessionAthlete' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 60:5  Warning: 'enableRealTimeUpdates' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 85:14  Warning: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 109:14  Warning: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 174:14  Warning: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 182:6  Warning: React Hook useCallback has a missing dependency: 'loadPerformanceData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 239:14  Warning: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 307:29  Warning: The ref value 'pendingUpdatesRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'pendingUpdatesRef.current' to a variable inside the effect, and use that variable in the cleanup function.  react-hooks/exhaustive-deps
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/settings/components/notification-settings-page.tsx
+@kasoku/web:build: 11:37  Warning: 'Check' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/settings/components/profile-settings-page.tsx
+@kasoku/web:build: 11:18  Warning: 'AnimatePresence' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 15:3  Warning: 'MapPin' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 16:3  Warning: 'Camera' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 20:3  Warning: 'CheckCircle' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 24:3  Warning: 'Clock' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 25:3  Warning: 'Heart' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 42:10  Warning: 'Skeleton' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 54:6  Warning: 'UserType' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 54:17  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 55:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 56:24  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 57:6  Warning: 'Athlete' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 57:16  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 58:6  Warning: 'Coach' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 58:14  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 59:6  Warning: 'AthleteUpdate' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 59:22  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 60:6  Warning: 'CoachUpdate' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 60:20  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 82:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 90:11  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 226:44  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 246:69  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 251:69  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 256:65  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 323:6  Warning: React Hook useEffect has a missing dependency: 'loadUserData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/settings/components/theme-settings-page.tsx
+@kasoku/web:build: 16:28  Warning: 'resolvedTheme' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/SaveStatusIndicator.tsx
+@kasoku/web:build: 8:10  Warning: 'Cloud' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 9:35  Warning: 'SaveStatus' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/error-loading/workout-loading-states.tsx
+@kasoku/web:build: 11:19  Warning: 'Clock' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 233:1  Warning: Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/exercise/enhanced-exercise-organization.tsx
+@kasoku/web:build: 16:3  Warning: 'Filter' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 17:3  Warning: 'Eye' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 18:3  Warning: 'EyeOff' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 25:3  Warning: 'CheckCircle2' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 26:3  Warning: 'Circle' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 29:3  Warning: 'Layers' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 30:3  Warning: 'Link' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 31:3  Warning: 'Unlink' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 35:10  Warning: 'Card' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 35:16  Warning: 'CardContent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 35:29  Warning: 'CardHeader' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 35:41  Warning: 'CardTitle' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 37:10  Warning: 'Badge' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 38:10  Warning: 'Separator' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 39:10  Warning: 'Tabs' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 39:16  Warning: 'TabsContent' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 39:29  Warning: 'TabsList' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 39:39  Warning: 'TabsTrigger' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 45:3  Warning: 'DropdownMenuItem' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 47:3  Warning: 'DropdownMenuSeparator' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 48:3  Warning: 'DropdownMenuLabel' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 57:8  Warning: 'ExerciseGroup' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 71:6  Warning: 'SortMode' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 152:45  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 152:78  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/exercise/enhanced-superset-indicator.tsx
+@kasoku/web:build: 12:3  Warning: 'Link' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 13:3  Warning: 'Unlink' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 22:3  Warning: 'Target' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 23:3  Warning: 'Zap' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 65:3  Warning: 'allowReordering' is assigned a value but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 121:9  Warning: 'handleNextExercise' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/exercise/exercise-card.tsx
+@kasoku/web:build: 11:10  Warning: 'useState' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 11:29  Warning: 'useEffect' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 13:10  Warning: 'Play' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 13:23  Warning: 'Clock' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 13:30  Warning: 'AlertCircle' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 18:10  Warning: 'Textarea' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 23:10  Warning: 'SetTable' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 23:20  Warning: 'getDisplayColumns' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 23:39  Warning: 'DEFAULT_FIELD_CONFIG' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 80:36  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 89:6  Warning: React Hook useMemo has a missing dependency: 'exercise'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 89:43  Warning: React Hook useMemo has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+@kasoku/web:build: 89:56  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 92:88  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 143:37  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 151:6  Warning: React Hook useMemo has a missing dependency: 'exercise'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 151:7  Warning: React Hook useMemo has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+@kasoku/web:build: 151:20  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 188:50  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 194:85  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/exercise/exercise-dashboard.tsx
+@kasoku/web:build: 11:10  Warning: 'useState' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 11:20  Warning: 'useEffect' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 16:10  Warning: 'Separator' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 22:8  Warning: 'SessionStatus' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 210:36  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 210:74  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 227:24  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 228:60  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/exercise/exercise-type-section.tsx
+@kasoku/web:build: 13:10  Warning: 'ChevronDown' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 13:50  Warning: 'Square' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/exercise/superset-container.tsx
+@kasoku/web:build: 13:17  Warning: 'ChevronRight' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 70:3  Warning: 'defaultCollapsed' is assigned a value but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/pages/SessionDetailsDialog.tsx
+@kasoku/web:build: 11:10  Warning: 'Calendar' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 26:33  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 29:56  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 33:60  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 35:37  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 39:58  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 41:52  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 108:40  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 118:47  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 138:53  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/pages/workout-history-page.tsx
+@kasoku/web:build: 10:10  Warning: 'Calendar' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 10:20  Warning: 'Clock' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 10:35  Warning: 'TrendingUp' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 13:10  Warning: 'Badge' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 17:10  Warning: 'Skeleton' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 19:10  Warning: 'getPastSessionsAction' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 153:22  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 168:25  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 168:55  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 170:36  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 184:31  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 187:106  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 187:137  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 202:62  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 205:56  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 230:41  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/pages/workout-page-content.tsx
+@kasoku/web:build: 13:32  Warning: 'WorkoutPageLoading' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/pages/workout-session-dashboard.tsx
+@kasoku/web:build: 89:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 89:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 95:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 102:66  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 116:72  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 235:30  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 237:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 239:32  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/pages/workout-session-selector.tsx
+@kasoku/web:build: 8:20  Warning: 'useEffect' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 10:10  Warning: 'motion' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 12:3  Warning: 'Play' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 14:3  Warning: 'Clock' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 16:3  Warning: 'Plus' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 18:3  Warning: 'CheckCircle' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 21:41  Warning: 'CardTitle' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 23:10  Warning: 'Badge' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 30:3  Warning: 'getTodayAndOngoingSessionsAction' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 31:3  Warning: 'startTrainingSessionAction' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 60:25  Warning: 'updateSessionStatus' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 68:23  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 77:52  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 144:34  Warning: 'index' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 146:30  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 151:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 152:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 153:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/components/ui/video-player.tsx
+@kasoku/web:build: 168:3  Warning: 'title' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/config/query-config.ts
+@kasoku/web:build: 13:45  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 149:53  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 191:1  Warning: Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/context/exercise-context.tsx
+@kasoku/web:build: 80:43  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 98:17  Warning: 'key' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/hooks/use-workout-api.ts
+@kasoku/web:build: 38:9  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 158:6  Warning: React Hook useCallback has missing dependencies: 'performSessionUpdate' and 'scheduleAutoSave'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 239:6  Warning: React Hook useCallback has missing dependencies: 'performExerciseUpdate' and 'scheduleAutoSave'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 281:6  Warning: React Hook useCallback has a missing dependency: 'processAutoSaveQueue'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 339:6  Warning: React Hook useCallback has missing dependencies: 'performExerciseUpdate' and 'performSessionUpdate'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/hooks/use-workout-queries.ts
+@kasoku/web:build: 16:3  Warning: 'INVALIDATION_PATTERNS' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 168:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 170:40  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 201:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 203:43  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 230:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 232:40  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 313:1  Warning: Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+@kasoku/web:build: 
+@kasoku/web:build: ./components/features/workout/hooks/use-workout-session.ts
+@kasoku/web:build: 16:15  Warning: 'WorkoutExercise' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 61:39  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 83:48  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 102:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 106:73  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 120:41  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 129:6  Warning: React Hook useCallback has a missing dependency: 'state.session'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 129:7  Warning: React Hook useCallback has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+@kasoku/web:build: 129:25  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 170:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 176:72  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 190:6  Warning: React Hook useCallback has a missing dependency: 'state.session'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 190:7  Warning: React Hook useCallback has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+@kasoku/web:build: 190:25  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 201:30  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 206:74  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 224:6  Warning: React Hook useCallback has a missing dependency: 'state.session'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+@kasoku/web:build: 224:20  Warning: React Hook useCallback has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+@kasoku/web:build: 224:38  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/layout/page-skeleton.tsx
+@kasoku/web:build: 31:3  Warning: 'title' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/layout/sidebar/app-sidebar.tsx
+@kasoku/web:build: 40:9  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 89:9  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/ui/calendar.tsx
+@kasoku/web:build: 4:23  Warning: 'ChevronRight' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/ui/use-toast.ts
+@kasoku/web:build: 18:7  Warning: 'actionTypes' is assigned a value but only used as a type.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/utilities/posthog/posthog-provider.tsx
+@kasoku/web:build: 14:10  Warning: 'isInitialized' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./components/utilities/text.tsx
+@kasoku/web:build: 73:24  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./components/utilities/theme-switcher.tsx
+@kasoku/web:build: 18:33  Warning: 'children' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: ./lib/supabase-client.ts
+@kasoku/web:build: 64:40  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./lib/supabase-server.ts
+@kasoku/web:build: 76:40  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+@kasoku/web:build: 
+@kasoku/web:build: ./lib/validation/__tests__/training-schemas.test.ts
+@kasoku/web:build: 15:3  Warning: 'MesocycleSchema' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 16:3  Warning: 'MicrocycleSchema' is defined but never used.  @typescript-eslint/no-unused-vars
+@kasoku/web:build: 
+@kasoku/web:build: info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+@kasoku/web:build: Failed to compile.
+@kasoku/web:build: 
+@kasoku/web:build: ./actions/athletes/athlete-actions.ts:1073:36
+@kasoku/web:build: Type error: Type '{ athlete_group_id: number | null; events: Json; experience: string | null; height: number | null; id: number; training_goals: string | null; user_id: number | null; weight: number | null; } | null' is not assignable to type '{ athlete_group_id: number | null; events: Json; experience: string | null; height: number | null; id: number; training_goals: string | null; user_id: number | null; weight: number | null; } | undefined'.
+@kasoku/web:build:   Type 'null' is not assignable to type '{ athlete_group_id: number | null; events: Json; experience: string | null; height: number | null; id: number; training_goals: string | null; user_id: number | null; weight: number | null; } | undefined'.
+@kasoku/web:build: 
+@kasoku/web:build: [0m [90m 1071 |[39m           isSuccess[33m:[39m [36mtrue[39m[33m,[39m
+@kasoku/web:build:  [90m 1072 |[39m           message[33m:[39m [32m"Invitation sent successfully"[39m[33m,[39m
+@kasoku/web:build: [31m[1m>[22m[39m[90m 1073 |[39m           data[33m:[39m { type[33m:[39m [32m'invited'[39m[33m,[39m athlete[33m:[39m pendingAthlete }
+@kasoku/web:build:  [90m      |[39m                                    [31m[1m^[22m[39m
+@kasoku/web:build:  [90m 1074 |[39m         }
+@kasoku/web:build:  [90m 1075 |[39m       } [36mcatch[39m (clerkError) {
+@kasoku/web:build:  [90m 1076 |[39m         console[33m.[39merror([32m'Error sending Clerk invitation:'[39m[33m,[39m clerkError)[0m
+@kasoku/web:build: Next.js build worker exited with code: 1 and signal: null
+@kasoku/web:build: npm error Lifecycle script `build` failed with error:
+@kasoku/web:build: npm error code 1
+@kasoku/web:build: npm error path /Users/sing/Documents/GitHub/guidelayer/Kasoku.run/apps/web
+@kasoku/web:build: npm error workspace @kasoku/web@0.1.0
+@kasoku/web:build: npm error location /Users/sing/Documents/GitHub/guidelayer/Kasoku.run/apps/web
+@kasoku/web:build: npm error command failed
+@kasoku/web:build: npm error command sh -c next build
+@kasoku/web:build: ERROR: command finished with error: command (/Users/sing/Documents/GitHub/guidelayer/Kasoku.run/apps/web) /opt/homebrew/bin/npm run build exited (1)
+@kasoku/web#build: command (/Users/sing/Documents/GitHub/guidelayer/Kasoku.run/apps/web) /opt/homebrew/bin/npm run build exited (1)
+
+ Tasks:    0 successful, 1 total
+Cached:    0 cached, 1 total
+  Time:    11.678s 
+Failed:    @kasoku/web#build
+
+ ERROR  run failed: command  exited (1)
