@@ -19,8 +19,8 @@ export interface WorkoutExercise extends ExercisePresetWithDetails {
   completed?: boolean
   // Explicit fields from exercise_presets table
   id: number
-  preset_order?: number
-  superset_id?: number | null
+  preset_order: number | null
+  superset_id: number | null
 }
 
 // Save status for auto-save indicator

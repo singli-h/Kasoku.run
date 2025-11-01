@@ -39,15 +39,15 @@ interface ExerciseField {
 }
 
 // Dynamic field detection based on exercise data
+// Only include fields that actually exist in the database schema
 const EXERCISE_FIELDS: ExerciseField[] = [
   { key: 'reps', label: 'Reps', type: 'number', placeholder: '12' },
   { key: 'weight', label: 'Weight', type: 'number', unit: 'lbs', placeholder: '135' },
-  { key: 'duration', label: 'Duration', type: 'time', unit: 'sec', placeholder: '30' },
+  { key: 'performing_time', label: 'Duration', type: 'time', unit: 'sec', placeholder: '30' },
   { key: 'distance', label: 'Distance', type: 'number', unit: 'yards', placeholder: '100' },
-  { key: 'rest_period', label: 'Rest', type: 'time', unit: 'sec', placeholder: '60' },
-  { key: 'pace', label: 'Pace', type: 'text', placeholder: '7:30/mi' },
-  { key: 'heart_rate', label: 'HR', type: 'number', unit: 'bpm', placeholder: '150' },
-  { key: 'rir', label: 'RIR', type: 'number', placeholder: '2' },
+  { key: 'power', label: 'Power', type: 'number', unit: 'W', placeholder: '200' },
+  { key: 'resistance', label: 'Resistance', type: 'number', placeholder: '5' },
+  { key: 'effort', label: 'Effort', type: 'number', placeholder: '7' },
   { key: 'rpe', label: 'RPE', type: 'number', placeholder: '7' }
 ]
 
@@ -65,7 +65,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
     const fieldsWithData = EXERCISE_FIELDS.filter(hasData)
     
     // Always show basic fields even if no data exists yet
-    const basicFields = ['reps', 'weight', 'duration'].map(key => 
+    const basicFields = ['reps', 'weight', 'performing_time'].map(key => 
       EXERCISE_FIELDS.find(f => f.key === key)
     ).filter(Boolean) as ExerciseField[]
 
@@ -97,18 +97,24 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
       updatedDetails.push({
         id: 0, // Will be set by backend
         exercise_training_session_id: 0, // Will be set by backend
-        set_number: updatedDetails.length + 1,
+        exercise_preset_id: null,
+        set_index: updatedDetails.length + 1,
         completed: false,
         reps: null,
         weight: null,
-        duration: null,
+        performing_time: null,
         distance: null,
-        rest_period: null,
-        pace: null,
-        heart_rate: null,
-        rir: null,
+        power: null,
+        velocity: null,
+        effort: null,
+        height: null,
+        resistance: null,
+        resistance_unit_id: null,
+        tempo: null,
+        metadata: null,
         rpe: null,
-        notes: null
+        rest_time: null,
+        created_at: null
       })
     }
 
@@ -278,7 +284,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
                     <div key={String(field.key)} className="col-span-2">
                       <Input
                         type={field.type === 'time' ? 'number' : field.type}
-                        value={set.detail?.[field.key] || ''}
+                        value={String(set.detail?.[field.key] ?? '')}
                         onChange={(e) => updateSetData(set.index, field.key, e.target.value)}
                         placeholder={field.placeholder}
                         className="h-8 text-sm text-center"

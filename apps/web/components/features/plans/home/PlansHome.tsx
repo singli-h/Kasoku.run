@@ -1,4 +1,5 @@
 import { getMacrocyclesAction } from "@/actions/plans/plan-actions"
+import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
 import { PlansHomeClient } from "./PlansHomeClient"
 import { MacrocyclePhase } from "./MacrocycleTimeline"
 import type { MacrocycleWithDetails } from "@/types/training"
@@ -42,6 +43,20 @@ export async function PlansHome() {
     )
   }
 
+  // Fetch races for all macrocycles in parallel
+  const racesPromises = result.data.map((macro: MacrocycleWithDetails) => 
+    getRacesByMacrocycleAction(macro.id!)
+  )
+  const racesResults = await Promise.all(racesPromises)
+  
+  // Create a map of macrocycle ID to races
+  const racesByMacrocycleId = new Map<number, Array<{ id: number; name: string | null; date: string | null; type: string | null }>>()
+  racesResults.forEach((racesResult, index) => {
+    if (racesResult.isSuccess && racesResult.data) {
+      racesByMacrocycleId.set(result.data[index].id!, racesResult.data)
+    }
+  })
+
   // Transform the data to match the expected format
   const transformedMacrocycles: TransformedMacrocycle[] = result.data.map((macro: MacrocycleWithDetails) => {
     // Calculate weeks from start date
@@ -84,6 +99,29 @@ export async function PlansHome() {
       ? allIntensities.reduce((sum, int) => sum + int, 0) / allIntensities.length
       : 0
 
+    // Populate race anchors from races data
+    // Calculate exact position based on date ratio, not week approximation
+    const races = racesByMacrocycleId.get(macro.id!) || []
+    const raceAnchors = races.map(race => {
+      if (!race.date) return null
+      const raceDate = new Date(race.date)
+      const totalDays = endDate.getTime() - startDate.getTime()
+      const daysFromStart = raceDate.getTime() - startDate.getTime()
+      
+      // Calculate exact week position (0-based for percentage, then convert to week number)
+      const exactPosition = daysFromStart / totalDays
+      const week = Math.max(1, Math.min(totalWeeks, Math.ceil(exactPosition * totalWeeks)))
+      
+      return {
+        id: race.id.toString(),
+        name: race.name || 'Race',
+        date: race.date,
+        week, // Store week for backward compatibility, but position will use exact date ratio
+        exactPosition, // Store exact position ratio (0-1)
+        isPrimary: race.type === 'primary'
+      }
+    }).filter((anchor): anchor is { id: string; name: string; date: string; week: number; exactPosition: number; isPrimary: boolean } => anchor !== null)
+
     return {
       id: macro.id!.toString(),
       name: macro.name || "Untitled Plan",
@@ -91,7 +129,7 @@ export async function PlansHome() {
       group: macro.athlete_group?.group_name || undefined,
       start: macro.start_date!,
       end: macro.end_date!,
-      raceAnchors: [], // TODO: Populate from races data
+      raceAnchors,
       phases,
       totalVolume,
       avgIntensity: Math.round(avgIntensity * 10) / 10

@@ -259,23 +259,10 @@ export const EXERCISE_TYPE_DEFAULTS: Record<ExerciseLibraryItem["type"], FieldCo
 }
 
 /**
- * Get field configuration for an exercise type
+ * Fixed standard order for all fields in detail mode
+ * Always shows all 12 available fields with reps always first
  */
-export function getFieldsForExercise(exercise: SessionExercise | null, mode: "simple" | "detail"): FieldConfig[] {
-  if (!exercise?.exercise?.exercise_type_id) {
-    return EXERCISE_TYPE_DEFAULTS.gym.slice(0, mode === "simple" ? 4 : undefined)
-  }
-
-  const exerciseType = EXERCISE_TYPE_MAP[exercise.exercise.exercise_type_id] || "gym"
-  const fields = EXERCISE_TYPE_DEFAULTS[exerciseType] || EXERCISE_TYPE_DEFAULTS.gym
-
-  if (mode === "simple") {
-    return fields.slice(0, 4)
-  }
-
-  // Detail mode: Return ALL per-set fields we support in the app/UI
-  // We standardize per-set timing on performing_time (seconds). Session-level duration remains minutes.
-  return [
+const DETAIL_MODE_FIELDS: FieldConfig[] = [
     { key: "reps", label: "Reps", type: "number", placeholder: "10" },
     { key: "weight", label: "Weight", unit: "kg", type: "number", placeholder: "50", step: 2.5 },
     { key: "distance", label: "Distance", unit: "m", type: "number", placeholder: "100" },
@@ -289,4 +276,39 @@ export function getFieldsForExercise(exercise: SessionExercise | null, mode: "si
     { key: "height", label: "Height", unit: "m", type: "number", placeholder: "0.6", step: 0.01 },
     { key: "resistance", label: "Resistance", unit: "kg", type: "number", placeholder: "0", step: 2.5 },
   ]
+
+/**
+ * Get field configuration for an exercise type
+ * Simple mode: Shows first 4 fields from exercise type defaults, always includes reps if missing
+ * Detail mode: Shows ALL 12 fields in fixed standard order with reps always first
+ */
+export function getFieldsForExercise(exercise: SessionExercise | null, mode: "simple" | "detail"): FieldConfig[] {
+  // Detail mode: Always return fixed order with all 12 fields
+  if (mode === "detail") {
+    return DETAIL_MODE_FIELDS
+  }
+
+  // Simple mode: use exercise type defaults, but ensure reps is included
+  if (!exercise?.exercise?.exercise_type_id) {
+    const gymFields = EXERCISE_TYPE_DEFAULTS.gym.slice(0, 4)
+    // Ensure reps is included
+    const hasReps = gymFields.some(f => f.key === "reps")
+    if (!hasReps && gymFields.length > 0) {
+      const repsField: FieldConfig = { key: "reps", label: "Reps", type: "number", placeholder: "10" }
+      return [repsField, ...gymFields].slice(0, 4)
+    }
+    return gymFields
+  }
+
+  const exerciseType = EXERCISE_TYPE_MAP[exercise.exercise.exercise_type_id] || "gym"
+  let fields = EXERCISE_TYPE_DEFAULTS[exerciseType] || EXERCISE_TYPE_DEFAULTS.gym
+
+  // Ensure reps is included in simple mode (prepend if missing)
+  const hasReps = fields.some(f => f.key === "reps")
+  if (!hasReps && fields.length > 0) {
+    const repsField: FieldConfig = { key: "reps", label: "Reps", type: "number", placeholder: "10" }
+    fields = [repsField, ...fields]
+  }
+
+  return fields.slice(0, 4)
 }

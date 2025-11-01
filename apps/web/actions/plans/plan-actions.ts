@@ -157,9 +157,9 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
       .select(`
         *,
         athlete_group:athlete_groups(*),
-        mesocycles(
+        mesocycles!inner(
           *,
-          microcycles(
+          microcycles!inner(
             *,
             exercise_preset_groups(
               *,
@@ -173,6 +173,8 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
       `)
       .eq('id', id)
       .eq('user_id', dbUserId)
+      .order('start_date', { referencedTable: 'mesocycles', ascending: true })
+      .order('start_date', { referencedTable: 'mesocycles.microcycles', ascending: true })
       .single()
 
     if (error) {
@@ -389,8 +391,7 @@ export async function getMesocyclesByMacrocycleAction(macrocycleId: number): Pro
               *,
               exercises(*),
               exercise_preset_details(*)
-            ),
-            athlete_group(*)
+            )
           )
         )
       `)
@@ -409,7 +410,7 @@ export async function getMesocyclesByMacrocycleAction(macrocycleId: number): Pro
     return {
       isSuccess: true,
       message: "Mesocycles retrieved successfully",
-      data: mesocycles || []
+      data: (mesocycles || []) as unknown as MesocycleWithDetails[]
     }
   } catch (error) {
     console.error('Error in getMesocyclesByMacrocycleAction:', error)
@@ -450,8 +451,7 @@ export async function getMesocycleByIdAction(id: number): Promise<ActionState<Me
               *,
               exercises(*),
               exercise_preset_details(*)
-            ),
-            athlete_group(*)
+            )
           )
         )
       `)

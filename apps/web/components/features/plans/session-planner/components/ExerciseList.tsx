@@ -83,7 +83,7 @@ function SortableExerciseRow({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={cn(inSuperset && "")}>
+    <div ref={setNodeRef} style={style} className={cn("w-full", inSuperset && "")}>
       <ExerciseRow
         exercise={exercise}
         isSelected={isSelected}
@@ -168,7 +168,7 @@ export function ExerciseList({
                 <div
                   key={item.id}
                   className={cn(
-                    "relative rounded-lg border-2 border-blue-500/30 bg-card overflow-hidden",
+                    "relative rounded-lg border-2 border-blue-500/30 bg-card overflow-hidden w-full max-w-full min-w-0",
                     "shadow-sm hover:shadow-md transition-shadow",
                   )}
                 >
@@ -195,9 +195,9 @@ export function ExerciseList({
 
                   {/* Superset Exercises */}
                   {!isCollapsed && (
-                    <div className="space-y-0 divide-y divide-border/50">
+                    <div className="space-y-0 divide-y divide-border/50 w-full">
                       {item.exercises.map((ex, index) => (
-                        <div key={ex.id} className="p-2 bg-muted/10">
+                        <div key={ex.id} className="p-2 bg-muted/10 w-full">
                           <SortableExerciseRow
                             exercise={ex}
                             isSelected={selection.has(ex.id)}

@@ -89,7 +89,7 @@ export interface ExerciseWithDetails extends Exercise {
 export interface ExerciseTrainingSessionWithDetails extends Database["public"]["Tables"]["exercise_training_sessions"]["Row"] {
   exercise?: ExerciseWithDetails | null
   athlete?: Athlete | null
-  exercise_preset_group?: ExercisePresetGroup | null
+  exercise_preset_group?: ExercisePresetGroupWithDetails | null
   exercise_training_details?: ExerciseTrainingDetail[]
 }
 

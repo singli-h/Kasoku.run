@@ -432,7 +432,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                     </Button>
                   </div>
                   <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
-                    <span>Vol: {meso.avgVolume || 0}%</span>
+                    <span>Vol: {meso.avgVolume || 0}/10</span>
                     <span>Int: {meso.avgIntensity || 0}/10</span>
                   </div>
                 </div>
@@ -573,9 +573,9 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                       <div className="mt-3 flex gap-4">
                         <div className="flex items-center gap-1">
                           <div className="h-2 w-16 overflow-hidden rounded-full bg-secondary">
-                            <div className="h-full bg-blue-500" style={{ width: `${micro.volume || 0}%` }} />
+                            <div className="h-full bg-blue-500" style={{ width: `${((micro.volume || 0) / 10) * 100}%` }} />
                           </div>
-                          <span className="text-xs text-muted-foreground">{micro.volume || 0}%</span>
+                          <span className="text-xs text-muted-foreground">{micro.volume || 0}/10</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <div className="h-2 w-16 overflow-hidden rounded-full bg-secondary">
@@ -840,9 +840,9 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                               <div className="mt-3 flex gap-4">
                                 <div className="flex items-center gap-1">
                                   <div className="h-2 w-16 overflow-hidden rounded-full bg-secondary">
-                                    <div className="h-full bg-blue-500" style={{ width: `${micro.volume || 0}%` }} />
+                                    <div className="h-full bg-blue-500" style={{ width: `${((micro.volume || 0) / 10) * 100}%` }} />
                                   </div>
-                                  <span className="text-xs text-muted-foreground">{micro.volume || 0}%</span>
+                                  <span className="text-xs text-muted-foreground">{micro.volume || 0}/10</span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <div className="h-2 w-16 overflow-hidden rounded-full bg-secondary">

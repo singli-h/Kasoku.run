@@ -316,19 +316,6 @@ export function PlanTypeSelection({
           </div>
         </motion.div>
       )}
-
-      {/* Next Button */}
-      <div className="flex justify-end">
-        <Button 
-          onClick={onNext}
-          disabled={!selectedPlanType}
-          size="lg"
-          className="min-w-[120px]"
-        >
-          Next Step
-          <ArrowRight className="h-4 w-4 ml-2" />
-        </Button>
-      </div>
     </div>
   )
 } 

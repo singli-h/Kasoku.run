@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Calendar, Users, Target, Plus, Search } from "lucide-react"
 import Link from "next/link"
 import { MacrocycleTimeline, MacrocyclePhase, RaceAnchor } from "./MacrocycleTimeline"
 import { VolumeIntensityChart, ChartDataPoint } from "./VolumeIntensityChart"
+import { AssignmentView } from "../workspace/AssignmentView"
 
 type TransformedMacrocycle = {
   id: string
@@ -34,6 +36,8 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
   const [groupFilter, setGroupFilter] = useState<string>("all")
   // Track selected phase per plan id to avoid leaking selection across cards
   const [selectedPhaseByPlanId, setSelectedPhaseByPlanId] = useState<Record<string, string | undefined>>({})
+  // Track which plan is selected for assignment
+  const [selectedPlanForAssignment, setSelectedPlanForAssignment] = useState<string | null>(null)
 
   const filteredMacrocycles = useMemo(() => {
     return initialMacrocycles.filter(mc => {
@@ -90,7 +94,12 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
               <Badge variant={mc.state === "Active" ? "default" : mc.state === "Draft" ? "secondary" : "outline"}>
                 {mc.state}
               </Badge>
-              <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 sm:flex-none"
+                onClick={() => setSelectedPlanForAssignment(mc.id)}
+              >
                 Assign
               </Button>
               <Link href={`/plans/${mc.id}`} className="flex-1 sm:flex-none">
@@ -148,14 +157,9 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Action Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Training Plans</h1>
-          <p className="text-muted-foreground">
-            Manage your macrocycles with race-anchored timelines
-          </p>
-        </div>
+        <div className="flex-1" />
         <Button asChild>
           <Link href="/plans/new">
             <Plus className="h-4 w-4 mr-2" />
@@ -224,6 +228,28 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
           filteredMacrocycles.map(renderMacrocycleRow)
         )}
       </div>
+
+      {/* Assignment Dialog */}
+      <Dialog open={selectedPlanForAssignment !== null} onOpenChange={(open) => !open && setSelectedPlanForAssignment(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Assign Training Plan</DialogTitle>
+            <DialogDescription>
+              Select athletes or groups to assign this training plan to.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPlanForAssignment && (
+            <AssignmentView 
+              macrocycleId={Number(selectedPlanForAssignment)} 
+              onAssignmentComplete={() => {
+                setSelectedPlanForAssignment(null)
+                // Optionally refresh the page or revalidate data
+                window.location.reload()
+              }} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

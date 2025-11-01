@@ -1,9 +1,9 @@
 "use server"
 
 import { Suspense } from "react"
-import { SprintSessionDashboard } from "@/components/features/sessions"
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
+import { SessionsListView } from "@/components/features/sessions"
 
 export default async function SessionsPage() {
   // Protect this page - only coaches and admins can access
@@ -15,7 +15,7 @@ export default async function SessionsPage() {
       description="Manage sprint training sessions across multiple athlete groups"
     >
       <Suspense fallback={<UnifiedPageSkeleton title="Sprint Sessions" variant="dashboard" />}>
-        <SprintSessionDashboard />
+        <SessionsListView />
       </Suspense>
     </PageLayout>
   )

@@ -45,7 +45,7 @@ export function Toolbar({
   const hasSelection = selectionCount > 0
 
   return (
-    <div className="border rounded-lg p-3 bg-background sticky top-[140px] sm:top-[120px] z-[9]">
+    <div className="border rounded-lg p-3 bg-background mb-4">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         {/* Left Section - Primary Actions */}
         <div className="flex items-center gap-2 flex-wrap">

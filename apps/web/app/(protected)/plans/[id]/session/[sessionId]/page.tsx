@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
-import { PlanPageHeader } from "@/components/features/plans/components/PlanPageHeader"
 import { UnifiedPageSkeleton } from "@/components/layout"
-import { SessionPlannerClient } from "./SessionPlannerClient"
+import { SessionPlannerPageClient } from "./SessionPlannerPageClient"
 import { getExercisePresetGroupByIdAction } from "@/actions/library/exercise-actions"
 import { getExercisesAction } from "@/actions/library/exercise-actions"
 import { getExerciseTypesAction } from "@/actions/library/exercise-actions"
@@ -140,26 +139,15 @@ export default async function SessionPlannerPage({ params }: PageProps) {
   const { session, exercises } = transformSessionData(sessionResult.data)
 
   return (
-    <div className="flex h-screen flex-col">
-      <PlanPageHeader
-        title={session.name || "Session Planner"}
-        subtitle={`Plan: ${planId} • Session: ${sessionId}`}
-        showUndoRedo={true}
-        backPath={`/plans/${planId}`}
-      />
-      
-      <div className="flex-1 overflow-hidden">
         <Suspense fallback={<UnifiedPageSkeleton title="Session Planner" />}>
-          <SessionPlannerClient
+      <SessionPlannerPageClient
             planId={planId}
             sessionId={sessionId}
-            initialSession={session}
+        session={session}
             initialExercises={exercises}
             exerciseLibrary={exerciseLibrary}
             exerciseTypes={exerciseTypes}
           />
         </Suspense>
-      </div>
-    </div>
   )
 }

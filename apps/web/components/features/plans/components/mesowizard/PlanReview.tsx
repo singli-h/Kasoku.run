@@ -47,7 +47,7 @@ export function PlanReview({ planData, onBack, onComplete }: PlanReviewProps) {
           description: planData.description || '',
           start_date: format(planData.startDate, 'yyyy-MM-dd'),
           end_date: format(planData.endDate, 'yyyy-MM-dd'),
-          athlete_group_id: planData.athleteGroupId || null,
+          athlete_group_id: planData.athleteGroupId || undefined,
         })
       } else if (planData.type === 'mesocycle') {
         if (!planData.macrocycleId) {
@@ -72,7 +72,6 @@ export function PlanReview({ planData, onBack, onComplete }: PlanReviewProps) {
           description: planData.description || '',
           start_date: format(planData.startDate, 'yyyy-MM-dd'),
           end_date: format(planData.endDate, 'yyyy-MM-dd'),
-          initialSessions: planData.sessions || [],
         })
 
         // If sessions exist, save them in parallel
@@ -85,7 +84,7 @@ export function PlanReview({ planData, onBack, onComplete }: PlanReviewProps) {
               saveSessionPlanAction({
                 ...session,
                 microcycle_id: microcycleId,
-                athlete_group_id: planData.athleteGroupId || null,
+                athlete_group_id: planData.athleteGroupId || undefined,
               })
             )
           )

@@ -1,22 +1,13 @@
 /*
 <ai_context>
-Sessions feature components index - exports all sprint session components
-for the enhanced SprintSessionDashboard with mobile-responsive design.
+Sessions feature components index - Phase 2 implementation complete.
+All old "live session" components archived on 2025-10-27.
+See ./components/archived/ for reference implementations.
 </ai_context>
 */
 
-// Main dashboard component
-export { SprintSessionDashboard } from './components/sprint-session-dashboard'
-
-// Core session components
-export { default as MultiGroupSprintTable } from './components/multi-group-sprint-table'
-export { GroupSprintSection } from './components/group-sprint-section'
-export { AthleteSprintRow } from './components/athlete-sprint-row'
-
-// Management components
-export { default as SprintDistanceManager } from './components/sprint-distance-manager'
-export { default as SessionSetup } from './components/session-setup'
-
-// Legacy components (for backwards compatibility)
-export { GroupSessionDashboard } from './components/group-session-dashboard'
-export { AthleteTimeCell } from './components/athlete-time-cell' 
+// Phase 2 components (current architecture)
+export { SessionsListView } from './components/sessions-list-view'
+export { SprintSessionSpreadsheet } from './components/sprint-session-spreadsheet'
+export { TimeInputCell } from './components/time-input-cell'
+export { PBIndicator } from './components/pb-indicator'

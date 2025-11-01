@@ -53,7 +53,7 @@ interface MacrocycleData {
 }
 
 // Helper function to calculate average from sessions
-function calculateAverage(sessions: SessionData[], field: 'volume' | 'intensity'): number {
+function calculateAverage(sessions: Array<{ volume: number; intensity: number }>, field: 'volume' | 'intensity'): number {
   if (!sessions.length) return 0
   const sum = sessions.reduce((acc, session) => acc + (session[field] || 0), 0)
   return Math.round(sum / sessions.length)
@@ -97,49 +97,70 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
     },
     events: races.map(race => ({
       id: race.id,
-      name: race.name,
-      category: null,
-      type: race.type,
+      name: race.name as string | null,
+      category: null as string | null,
+      type: race.type as string | null,
       date: race.date
     })),
     mesocycles: (rawPlanData.mesocycles || []).map((meso: MesocycleData) => {
       const enrichedMicrocycles = (meso.microcycles || []).map((micro: MicrocycleData) => {
         // Transform exercise_preset_groups into sessions with proper structure
-        const sessions = (micro.exercise_preset_groups || []).map((group: ExercisePresetGroup): SessionData => {
+        const sessions = (micro.exercise_preset_groups || []).map((group: ExercisePresetGroup) => {
           // Extract only needed fields to avoid property conflicts
-          const session: SessionData = {
+          return {
             id: group.id,
             day: group.day ?? 0,
             name: group.name ?? 'Unnamed Session',
-            type: group.session_mode ?? 'endurance',
+            type: (group.session_mode ?? 'endurance') as 'speed' | 'strength' | 'recovery' | 'endurance' | 'power',
             duration: 60, // Default duration
             volume: 0, // Default volume
             intensity: 0, // Default intensity
             exercises: group.exercise_presets ?? [], // Include the nested exercise_presets
           }
-          return session
         })
 
         return {
-          ...micro,
+          id: micro.id,
+          mesocycle_id: meso.id,
+          name: micro.name,
+          description: null,
+          start_date: null,
+          end_date: null,
           sessions,
-          volume: calculateAverage(sessions, 'volume'),
-          intensity: calculateAverage(sessions, 'intensity'),
+          // Use microcycle volume/intensity directly from database instead of calculating from sessions
+          volume: micro.volume ?? 0,
+          intensity: micro.intensity ?? 0,
           isDeload: micro.name?.toLowerCase().includes('deload') || meso.metadata?.deload,
           weekNumber: parseInt(micro.name?.match(/\d+/)?.[0] || '0') || 0,
         }
       })
 
       const allSessions = enrichedMicrocycles.flatMap(m => m.sessions)
+      
+      // Calculate mesocycle avgVolume/avgIntensity from microcycle values, not from sessions
+      const microcycleVolumes = enrichedMicrocycles
+        .map(m => m.volume)
+        .filter((v): v is number => v !== null && v !== undefined && v > 0)
+      const microcycleIntensities = enrichedMicrocycles
+        .map(m => m.intensity)
+        .filter((i): i is number => i !== null && i !== undefined && i > 0)
+      
+      const avgVolume = microcycleVolumes.length > 0
+        ? Math.round(microcycleVolumes.reduce((sum, v) => sum + v, 0) / microcycleVolumes.length)
+        : 0
+      const avgIntensity = microcycleIntensities.length > 0
+        ? Math.round((microcycleIntensities.reduce((sum, i) => sum + i, 0) / microcycleIntensities.length) * 10) / 10
+        : 0
 
       return {
         ...meso,
         macrocycle_id: meso.macrocycle_id ?? rawPlanData.id,
         user_id: meso.user_id ?? null,
+        metadata: meso.metadata || null, // Ensure metadata is preserved (includes color)
         microcycles: enrichedMicrocycles,
         totalSessions: allSessions.length,
-        avgVolume: calculateAverage(allSessions, 'volume'),
-        avgIntensity: calculateAverage(allSessions, 'intensity'),
+        avgVolume,
+        avgIntensity,
       }
     }),
   }

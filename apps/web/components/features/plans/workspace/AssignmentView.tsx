@@ -18,17 +18,25 @@ type StartAlignment = "anchor" | "monday" | "custom"
 
 interface Athlete {
   id: number
-  user_id: number
-  first_name: string
-  last_name: string
-  athlete_group_id?: number
-  group_name?: string
+  user_id: number | null
+  first_name?: string
+  last_name?: string
+  athlete_group_id?: number | null
+  group_name?: string | null
+  // Additional fields from database
+  events?: unknown
+  experience?: string | null
+  height?: number | null
+  training_goals?: string | null
+  weight?: number | null
 }
 
 interface Group {
   id: number
-  group_name: string
-  athlete_count: number
+  group_name: string | null
+  athlete_count?: number
+  coach_id?: number | null
+  created_at?: string | null
 }
 
 interface AssignmentViewProps {
@@ -64,7 +72,7 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
         // Load athletes with roster data
         const athletesResult = await getRosterWithGroupCountsAction()
         if (athletesResult.isSuccess && athletesResult.data) {
-          setAthletes(athletesResult.data)
+          setAthletes(athletesResult.data.athletes)
         }
       } catch (error) {
         console.error('[AssignmentView] Failed to load data:', error)

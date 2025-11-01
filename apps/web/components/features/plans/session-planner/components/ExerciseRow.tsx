@@ -88,7 +88,7 @@ export function ExerciseRow({
 
   return (
     <div
-      className={`border rounded-lg ${
+      className={`border rounded-lg w-full max-w-full min-w-0 ${
         isSelected ? "ring-2 ring-primary bg-primary/5" : "bg-card"
       } ${hasErrors ? "border-destructive" : ""}`}
     >
@@ -156,7 +156,7 @@ export function ExerciseRow({
 
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="border-t p-3 space-y-3 bg-muted/30">
+          <div className="border-t p-3 space-y-3 bg-muted/30 w-full min-w-0">
           {/* Validation Errors */}
           {hasErrors && (
             <div className="bg-destructive/10 border border-destructive rounded p-2 text-sm text-destructive">
@@ -169,7 +169,7 @@ export function ExerciseRow({
           )}
 
           {/* Sets Section */}
-          <div className="space-y-2">
+          <div className="space-y-2 w-full min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Sets</span>
               <Button size="sm" variant="outline" onClick={handleAddSet} className="h-7 text-xs">
@@ -178,13 +178,13 @@ export function ExerciseRow({
               </Button>
             </div>
 
-            {/* Mobile: Card Layout with Snap Scroll */}
-            <div className="md:hidden">
-              <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-2 -mx-2 px-2 scrollbar-thin">
+            {/* Mobile: Simplified Horizontal Scroll (Proven Pattern) */}
+            <div className="md:hidden relative w-full overflow-x-auto">
+              <div className="flex gap-2 pb-2">
                 {exercise.sets.map((set, setIndex) => (
                   <div
                     key={setIndex}
-                    className="snap-start shrink-0 w-[85vw] max-w-[320px] border rounded-lg bg-card p-3 space-y-2"
+                    className="shrink-0 w-[280px] border rounded-lg bg-card p-3 space-y-2"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <Badge variant="secondary" className="text-xs font-bold">
@@ -262,36 +262,45 @@ export function ExerciseRow({
               )}
             </div>
 
-            {/* Desktop: Table Layout */}
-            <div className="hidden md:block border rounded-lg overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="p-2 text-left w-12 sticky left-0 bg-muted z-10">Set</th>
+            {/* Desktop: Simplified Scrollable Table (Shadcn/MUI Pattern) */}
+            <div className="hidden md:block relative overflow-auto border rounded-lg">
+              <table className="caption-bottom text-xs">
+                <thead>
+                  <tr className="border-b bg-muted">
+                    <th className="h-10 px-2 text-left align-middle font-medium">
+                      Set
+                    </th>
                     {displayFields.map((field) => (
-                      <th key={field.key} className="p-2 text-center whitespace-nowrap">
+                      <th
+                        key={field.key}
+                        className="h-10 px-2 text-left align-middle font-medium whitespace-nowrap"
+                      >
                         {field.label}
-                        {field.unit && <span className="text-muted-foreground ml-1">({field.unit})</span>}
+                        {field.unit && <span className="text-muted-foreground text-[10px] ml-1">({field.unit})</span>}
                       </th>
                     ))}
-                    <th className="p-2 w-12 sticky right-0 bg-muted z-10"></th>
+                    <th className="h-10 px-2 text-left align-middle font-medium w-12">
+
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {exercise.sets.map((set, setIndex) => (
-                    <tr key={setIndex} className="border-t">
-                      <td className="p-2 font-medium sticky left-0 bg-card z-10">{setIndex + 1}</td>
+                    <tr key={setIndex} className="border-b">
+                      <td className="p-2 align-middle font-medium">
+                        {setIndex + 1}
+                      </td>
                       {displayFields.map((field) => {
                         const value = set[field.key]
                         const displayValue = value === null || value === undefined ? "" : String(value)
                         return (
-                          <td key={field.key} className="p-2">
+                          <td key={field.key} className="p-2 align-middle">
                             <Input
                               type={field.type}
                               value={displayValue}
                               onChange={(e) => handleSetFieldChange(setIndex, field.key, e.target.value)}
                               placeholder={field.placeholder}
-                              className="h-8 w-20 text-xs text-center"
+                              className="h-8 w-20 text-xs"
                               min={field.min}
                               max={field.max}
                               step={field.step}
@@ -299,7 +308,7 @@ export function ExerciseRow({
                           </td>
                         )
                       })}
-                      <td className="p-2 sticky right-0 bg-card z-10">
+                      <td className="p-2 align-middle">
                         <Button
                           variant="ghost"
                           size="sm"

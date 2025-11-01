@@ -40,7 +40,7 @@ export function ExercisePlanningPanel({ sessionId }: ExercisePlanningPanelProps)
   }
 
   // TODO: Replace with actual exercise library data from Supabase
-  const exerciseLibrary = [
+  const exerciseLibrary: Array<{ id: number; name: string; description?: string; sets?: number; reps?: number; weight?: number }> = [
     // This will be populated from getExercisesAction()
   ]
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -93,6 +93,12 @@ export function EditRaceDialog({ event, open, onOpenChange, onSave, onDelete }: 
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{event ? "Edit Race" : "Add Race"}</DialogTitle>
+            <DialogDescription>
+              {event
+                ? "Update the race or competition details."
+                : "Add a new race or competition to track in your training plan."
+              }
+            </DialogDescription>
           </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">

@@ -50,7 +50,7 @@ export function WorkoutSessionDashboard({
   className
 }: WorkoutSessionDashboardProps) {
   return (
-    <ExerciseProvider sessionId={existingSession?.id}>
+    <ExerciseProvider sessionId={(existingSession as any)?.id}>
       <WorkoutSessionContent
         presetGroup={presetGroup}
         existingSession={existingSession}

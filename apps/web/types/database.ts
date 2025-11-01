@@ -198,6 +198,90 @@ export type Database = {
           },
         ]
       }
+      athlete_personal_bests: {
+        Row: {
+          id: number
+          athlete_id: number
+          exercise_id: number | null
+          event_id: number | null
+          value: number
+          unit_id: number
+          metadata: Json | null
+          achieved_date: string
+          session_id: number | null
+          verified: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          athlete_id: number
+          exercise_id?: number | null
+          event_id?: number | null
+          value: number
+          unit_id: number
+          metadata?: Json | null
+          achieved_date?: string
+          session_id?: number | null
+          verified?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          athlete_id?: number
+          exercise_id?: number | null
+          event_id?: number | null
+          value?: number
+          unit_id?: number
+          metadata?: Json | null
+          achieved_date?: string
+          session_id?: number | null
+          verified?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athlete_personal_bests_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athlete_personal_bests_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athlete_personal_bests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athlete_personal_bests_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_training_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athlete_personal_bests_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athletes: {
         Row: {
           athlete_group_id: number | null
@@ -345,6 +429,7 @@ export type Database = {
           rest_time?: number | null
           rpe?: number | null
           set_index?: number | null
+          target_intensity?: number | null
           tempo?: string | null
           velocity?: number | null
           weight?: number | null
@@ -365,6 +450,7 @@ export type Database = {
           rest_time?: number | null
           rpe?: number | null
           set_index?: number | null
+          target_intensity?: number | null
           tempo?: string | null
           velocity?: number | null
           weight?: number | null

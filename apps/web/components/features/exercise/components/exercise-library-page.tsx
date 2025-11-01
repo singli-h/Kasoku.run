@@ -111,10 +111,10 @@ export function ExerciseLibraryPage() {
     // Apply search filter
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase()
-      result = result.filter(exercise => 
+      result = result.filter(exercise =>
         (exercise.name ?? '').toLowerCase().includes(searchTerm) ||
         exercise.description?.toLowerCase().includes(searchTerm) ||
-        exercise.exercise_type?.type.toLowerCase().includes(searchTerm)
+        exercise.exercise_type?.type?.toLowerCase().includes(searchTerm)
       )
     }
     

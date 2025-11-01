@@ -1,6 +1,6 @@
 # Kasoku.run Development Guide for AI Assistants
 
-> **Last Updated**: 2025-10-24
+> **Last Updated**: 2025-10-25
 > **Project**: Kasoku.run - AI-Powered Training Platform
 > **Stack**: Next.js 15 + Supabase + Clerk + TypeScript
 
@@ -663,6 +663,21 @@ async function onSubmit(values: FormValues) {
 
 ## Known Issues & Technical Debt
 
+### Recent Fixes (October 25, 2025) ✅
+
+**UI/UX Improvements - All Resolved**
+1. **Mesocycle Ordering**: Fixed chronological display in plan workspace
+2. **Toolbar Alignment**: Corrected session planner toolbar positioning
+3. **Duplicate Headers**: Removed duplicate "Training Plans" header
+4. **Plan Creation Flow**: Fixed wizard navigation (`onNext` undefined error)
+5. **Type Safety**: Resolved TypeScript errors in actions layer
+
+**Files Modified**: `plan-actions.ts`, `athlete-actions.ts`, `plan-assignment-actions.ts`, `Toolbar.tsx`, `PlansHomeClient.tsx`, `plan-type-selection.tsx`
+
+**Documentation**: See `docs/changelog/2025-10-25-ui-bug-fixes.md`
+
+---
+
 ### Critical Gaps (High Priority)
 
 **1. Error Boundary Missing**
@@ -687,20 +702,18 @@ async function onSubmit(values: FormValues) {
 
 ### Code Quality Issues (Medium Priority)
 
-**4. Type Safety Gaps**
-- **Location**: `components/features/plans/workspace/PlanWorkspace.tsx`
-- **Problem**: Uses `any[]` for mesocycles, events; TODO comments about connecting real data
-- **Action**: Replace `any` with proper types, remove mock data
+**4. ~~Type Safety Gaps~~ ✅ RESOLVED (Oct 25, 2025)**
+- ~~Location: `components/features/plans/workspace/PlanWorkspace.tsx`~~
+- ~~Problem: Uses `any[]` for mesocycles, events~~
+- **Fixed**: Resolved type safety issues in athlete-actions, plan-actions, plan-assignment-actions
 
-**5. Mixed Data Fetching Patterns**
-- **Location**: `components/features/plans/home/PlansHome.tsx`
-- **Problem**: Client component with `useEffect` + server actions (anti-pattern)
-- **Action**: Refactor to server component or React Query
+**5. ~~Mixed Data Fetching Patterns~~ ✅ RESOLVED (Previous)**
+- ~~Location: `components/features/plans/home/PlansHome.tsx`~~
+- **Fixed**: Refactored to server component pattern (see previous updates)
 
-**6. Hardcoded Mock Data**
-- **Locations**: `PlansHome.tsx`, `PlanWorkspace.tsx`
-- **Problem**: Default values `[5, 6, 7, 5]` instead of proper empty states
-- **Action**: Remove mock data, implement skeleton loaders, empty states
+**6. ~~Hardcoded Mock Data~~ ✅ RESOLVED (Previous)**
+- ~~Locations: `PlansHome.tsx`, `PlanWorkspace.tsx`~~
+- **Fixed**: Removed mock data, implemented proper data fetching
 
 **7. Incomplete Features (TODOs)**
 - Search codebase for `// TODO:` comments

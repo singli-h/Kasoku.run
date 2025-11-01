@@ -20,6 +20,7 @@ export interface RaceAnchor {
   name: string
   date: string
   week: number
+  exactPosition?: number // Exact position ratio (0-1) based on date
   isPrimary: boolean
 }
 
@@ -49,7 +50,7 @@ export function MacrocycleTimeline({
       </div>
 
       {/* Timeline Container */}
-      <div className="relative">
+      <div className="relative pb-10">
         {/* Timeline Bar */}
         <div className="relative h-8 rounded-lg overflow-hidden">
           <TooltipProvider>
@@ -129,47 +130,50 @@ export function MacrocycleTimeline({
               )
             })}
           </TooltipProvider>
+        </div>
 
-          {/* Race Anchors */}
-          <TooltipProvider>
-            {raceAnchors.map((anchor) => {
-              const position = ((anchor.week - 1) / totalWeeks) * 100
+        {/* Race Anchors - Positioned below the timeline bar, outside overflow-hidden */}
+        <TooltipProvider>
+          {raceAnchors.map((anchor) => {
+            // Use exact position if available, otherwise fall back to week-based calculation
+            const position = anchor.exactPosition !== undefined 
+              ? anchor.exactPosition * 100 
+              : ((anchor.week - 1) / totalWeeks) * 100
 
-              return (
-                <Tooltip key={anchor.id}>
-                  <TooltipTrigger asChild>
-                    <div
-                      className="absolute top-1/2 transform -translate-y-1/2 cursor-pointer z-20 hover:scale-110 transition-transform"
-                      style={{ left: `${position}%` }}
-                    >
-                      <div className="relative">
-                        {/* Filled circle background */}
-                        <div className="absolute inset-0 bg-white rounded-full shadow-md"></div>
-                        {/* Icon */}
-                        <div className="relative flex items-center justify-center w-6 h-6">
-                          {anchor.isPrimary ? (
-                            <Trophy className="h-4 w-4 text-yellow-600" />
-                          ) : (
-                            <Flag className="h-3 w-3 text-blue-600" />
-                          )}
-                        </div>
+            return (
+              <Tooltip key={anchor.id}>
+                <TooltipTrigger asChild>
+                  <div
+                    className="absolute top-10 cursor-pointer z-20 hover:scale-110 transition-transform"
+                    style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
+                  >
+                    <div className="relative">
+                      {/* Filled circle background */}
+                      <div className="absolute inset-0 bg-white rounded-full shadow-md"></div>
+                      {/* Icon */}
+                      <div className="relative flex items-center justify-center w-6 h-6">
+                        {anchor.isPrimary ? (
+                          <Trophy className="h-4 w-4 text-yellow-600" />
+                        ) : (
+                          <Flag className="h-3 w-3 text-blue-600" />
+                        )}
                       </div>
                     </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="bg-gray-900 text-white text-xs p-2">
-                    <div className="space-y-1">
-                      <div className="font-medium">{anchor.name}</div>
-                      <div className="text-gray-300">{anchor.date}</div>
-                      {anchor.isPrimary && (
-                        <div className="text-yellow-300 text-xs">Primary Race</div>
-                      )}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              )
-            })}
-          </TooltipProvider>
-        </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-gray-900 text-white text-xs p-2">
+                  <div className="space-y-1">
+                    <div className="font-medium">{anchor.name}</div>
+                    <div className="text-gray-300">{anchor.date}</div>
+                    {anchor.isPrimary && (
+                      <div className="text-yellow-300 text-xs">Primary Race</div>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            )
+          })}
+        </TooltipProvider>
       </div>
     </div>
   )

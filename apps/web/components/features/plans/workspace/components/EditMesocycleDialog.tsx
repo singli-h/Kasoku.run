@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -98,6 +98,12 @@ export function EditMesocycleDialog({ mesocycle, open, onOpenChange, onSave, onD
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{mesocycle ? "Edit Mesocycle" : "Add Mesocycle"}</DialogTitle>
+            <DialogDescription>
+              {mesocycle 
+                ? "Update the mesocycle details for this training phase."
+                : "Create a new mesocycle to organize your training phases."
+              }
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">

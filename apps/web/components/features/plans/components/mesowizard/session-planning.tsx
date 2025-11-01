@@ -52,12 +52,8 @@ import { SetConfigurationModal } from "./set-configuration-modal"
 import type { PlanType } from "./plan-type-selection"
 import type { ExerciseWithDetails, ExerciseType } from "@/types/training"
 
-// Define PlanConfiguration type locally since the file doesn't exist
-export interface PlanConfiguration {
-  duration: {
-    weeks: number
-  }
-}
+// Types
+import type { PlanData } from "./types"
 
 // Actions
 import { getExercisesAction, getExerciseTypesAction } from "@/actions/library/exercise-actions"
@@ -100,7 +96,7 @@ export interface SetData {
   weight?: number
   rpe?: number
   restTime?: number
-  
+
   // Advanced parameters from database
   distance?: number
   duration?: number // seconds (renamed from performing_time)
@@ -111,9 +107,9 @@ export interface SetData {
   resistance?: number
   resistance_unit_id?: number
   tempo?: string
-  metadata?: any
+  metadata?: Record<string, unknown>
   notes?: string
-  
+
   // UI-specific fields
   completed?: boolean
 }
@@ -130,22 +126,24 @@ export interface SupersetGroup {
 
 interface SessionPlanningProps {
   planType: PlanType
-  configuration: PlanConfiguration
-  sessionPlan: SessionPlan | null
-  onSessionPlanChange: (plan: SessionPlan) => void
-  onNext: () => void
-  onPrevious: () => void
+  planData: PlanData
+  onComplete: (sessions: SessionData[]) => void
+  onBack: () => void
   isLoading?: boolean
   className?: string
 }
 
+// Helper function to calculate weeks from PlanData dates
+const calculateWeeksFromDates = (startDate: Date, endDate: Date): number => {
+  const diffTime = Math.abs(endDate.getTime() - startDate.getTime())
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return Math.ceil(diffDays / 7)
+}
+
 // Helper function to generate default sessions based on plan type
-const generateDefaultSessions = (planType: PlanType, configuration: PlanConfiguration): SessionData[] => {
+const generateDefaultSessions = (planType: PlanType, planData: PlanData): SessionData[] => {
   const sessions: SessionData[] = []
-  if (!configuration?.duration) {
-    return sessions;
-  }
-  const weeks = configuration.duration.weeks
+  const weeks = calculateWeeksFromDates(planData.startDate, planData.endDate)
   
   // Default session structure based on plan type
   const sessionStructures = {
@@ -175,15 +173,13 @@ const generateDefaultSessions = (planType: PlanType, configuration: PlanConfigur
   return sessions
 }
 
-export function SessionPlanning({ 
-  planType, 
-  configuration, 
-  sessionPlan, 
-  onSessionPlanChange, 
-  onNext, 
-  onPrevious,
+export function SessionPlanning({
+  planType,
+  planData,
+  onComplete,
+  onBack,
   isLoading = false,
-  className 
+  className
 }: SessionPlanningProps) {
   // State management
   const [currentWeek, setCurrentWeek] = useState(1)
@@ -198,16 +194,30 @@ export function SessionPlanning({
   const [isExerciseLibraryOpen, setIsExerciseLibraryOpen] = useState(false)
   const [draggedExercise, setDraggedExercise] = useState<ExerciseInSession | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  
+
   // Set Configuration Modal state
   const [configModalOpen, setConfigModalOpen] = useState(false)
   const [configExercise, setConfigExercise] = useState<ExerciseInSession | null>(null)
 
+  // Calculate weeks from planData
+  const totalWeeks = useMemo(() => {
+    return calculateWeeksFromDates(planData.startDate, planData.endDate)
+  }, [planData.startDate, planData.endDate])
+
   // Initialize session plan
   const [plan, setPlan] = useState<SessionPlan>(() => {
-    if (sessionPlan) return sessionPlan
-    
-    const sessions = generateDefaultSessions(planType, configuration)
+    // Check if planData has existing sessions
+    if (planData.sessions && planData.sessions.length > 0) {
+      return {
+        sessions: planData.sessions as SessionData[],
+        weekStructure: {
+          daysPerWeek: planType === 'macrocycle' ? 5 : planType === 'mesocycle' ? 4 : 3,
+          sessionsPerDay: 1
+        }
+      }
+    }
+
+    const sessions = generateDefaultSessions(planType, planData)
     return {
       sessions,
       weekStructure: {
@@ -240,11 +250,6 @@ export function SessionPlanning({
     loadExerciseData()
   }, [])
 
-  // Update parent when plan changes
-  useEffect(() => {
-    onSessionPlanChange(plan)
-  }, [plan, onSessionPlanChange])
-
   // Set first session as selected when week changes
   useEffect(() => {
     const weekSessions = plan.sessions.filter(s => s.week === currentWeek)
@@ -270,10 +275,10 @@ export function SessionPlanning({
 
     // Text search
     if (searchTerm) {
-      filtered = filtered.filter(exercise => 
+      filtered = filtered.filter(exercise =>
         exercise.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         exercise.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exercise.exercise_type?.type.toLowerCase().includes(searchTerm.toLowerCase())
+        exercise.exercise_type?.type?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -691,18 +696,18 @@ export function SessionPlanning({
   // Validation
   const validatePlan = () => {
     const newErrors: Record<string, string> = {}
-    
+
     const sessionsWithExercises = plan.sessions.filter(s => s.exercises.length > 0)
     if (sessionsWithExercises.length === 0) {
       newErrors.sessions = 'At least one session must have exercises'
     }
-    
+
     // Check for sessions without names
     const unnamedSessions = plan.sessions.filter(s => s.exercises.length > 0 && !s.name.trim())
     if (unnamedSessions.length > 0) {
       newErrors.sessionNames = 'All sessions with exercises must have names'
     }
-    
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -710,7 +715,7 @@ export function SessionPlanning({
   // Handle next step
   const handleNext = () => {
     if (validatePlan()) {
-      onNext()
+      onComplete(plan.sessions)
     }
   }
 
@@ -780,7 +785,7 @@ export function SessionPlanning({
                 Training Schedule
               </CardTitle>
               <CardDescription>
-                {configuration.duration.weeks} week {planType}
+                {totalWeeks} week {planType}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -795,7 +800,7 @@ export function SessionPlanning({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: configuration.duration.weeks }, (_, i) => (
+                    {Array.from({ length: totalWeeks }, (_, i) => (
                       <SelectItem key={i + 1} value={(i + 1).toString()}>
                         Week {i + 1}
                       </SelectItem>
@@ -1271,15 +1276,15 @@ export function SessionPlanning({
 
       {/* Navigation */}
       <div className="flex items-center justify-between pt-6">
-        <Button variant="outline" onClick={onPrevious} className="flex items-center gap-2">
+        <Button variant="outline" onClick={onBack} className="flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
           Previous Step
         </Button>
-        
+
         <div className="text-center">
           <Badge variant="outline">Step 3 of 4</Badge>
         </div>
-        
+
         <Button onClick={handleNext} className="flex items-center gap-2">
           Next Step
           <ArrowRight className="h-4 w-4" />

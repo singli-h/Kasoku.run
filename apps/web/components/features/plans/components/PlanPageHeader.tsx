@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChevronLeft, Undo, Redo, Edit2, Check, X, Calendar } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -26,6 +27,9 @@ interface PlanPageHeaderProps {
   date?: string
   onDateChange?: (newDate: string) => void
   metadata?: string // e.g., "~45 min • 6 exercises"
+  // Detail mode toggle props
+  pageMode?: "simple" | "detail"
+  onPageModeChange?: (mode: "simple" | "detail") => void
 }
 
 export function PlanPageHeader({
@@ -45,6 +49,8 @@ export function PlanPageHeader({
   date,
   onDateChange,
   metadata,
+  pageMode,
+  onPageModeChange,
 }: PlanPageHeaderProps) {
   const router = useRouter()
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -64,7 +70,8 @@ export function PlanPageHeader({
 
   return (
     <header className="border-b bg-card">
-      <div className="flex items-center justify-between px-6 py-4">
+      {/* Row 1: Navigation and Title */}
+      <div className="flex items-center justify-between px-6 pt-4 pb-3">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <Button
             variant="ghost"
@@ -137,28 +144,6 @@ export function PlanPageHeader({
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          {showUndoRedo && (
-            <>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={onUndo}
-                disabled={!canUndo}
-                title="Undo"
-              >
-                <Undo className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={onRedo}
-                disabled={!canRedo}
-                title="Redo"
-              >
-                <Redo className="h-4 w-4" />
-              </Button>
-            </>
-          )}
           {status && (
             <Badge variant={status === "active" ? "default" : "secondary"}>
               {status}
@@ -167,6 +152,60 @@ export function PlanPageHeader({
           {rightActions}
         </div>
       </div>
+
+      {/* Row 2: Mode Toggle, Undo/Redo, and Actions */}
+      {(pageMode !== undefined || showUndoRedo) && (
+        <div className="flex items-center justify-between px-6 pb-3 border-t bg-muted/30">
+          <div className="flex items-center gap-3 flex-1">
+            {/* Mode Toggle (Segmented Control) */}
+            {pageMode !== undefined && onPageModeChange && (
+              <Tabs
+                value={pageMode}
+                onValueChange={(value) => onPageModeChange(value as "simple" | "detail")}
+                className="flex-shrink-0"
+              >
+                <TabsList className="h-9">
+                  <TabsTrigger value="simple" className="px-4 text-sm">
+                    Simple
+                  </TabsTrigger>
+                  <TabsTrigger value="detail" className="px-4 text-sm">
+                    Detail
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {showUndoRedo && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onUndo}
+                  disabled={!canUndo}
+                  title="Undo"
+                  className="h-9"
+                >
+                  <Undo className="h-4 w-4 mr-1.5 sm:mr-0" />
+                  <span className="sr-only sm:not-sr-only sm:ml-1">Undo</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRedo}
+                  disabled={!canRedo}
+                  title="Redo"
+                  className="h-9"
+                >
+                  <Redo className="h-4 w-4 mr-1.5 sm:mr-0" />
+                  <span className="sr-only sm:not-sr-only sm:ml-1">Redo</span>
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   )
 }

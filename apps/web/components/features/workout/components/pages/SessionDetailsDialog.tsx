@@ -22,8 +22,9 @@ interface SessionDetailsDialogProps {
 export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDetailsDialogProps) {
   if (!session) return null
 
-  const sessionDate = session.date_time ? new Date(session.date_time) : new Date()
-  const exercises = (session as any).exercise_preset_group?.exercise_presets || []
+  const sessionData = session as any
+  const sessionDate = sessionData.date_time ? new Date(sessionData.date_time) : new Date()
+  const exercises = sessionData.exercise_preset_group?.exercise_presets || []
 
   // Calculate session stats
   const totalSets = exercises.reduce((sum: number, ex: any) => {
@@ -35,7 +36,7 @@ export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDet
     return sum + details.filter((d: any) => d.completed).length
   }, 0)
 
-  const sessionDuration = session.duration || 0 // in minutes
+  const sessionDuration = sessionData.duration || 0 // in minutes
   const totalVolume = exercises.reduce((sum: number, ex: any) => {
     const details = ex.exercise_preset_details || []
     return sum + details.reduce((exSum: number, d: any) => {
@@ -171,14 +172,14 @@ export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDet
           </div>
 
           {/* Session Notes */}
-          {session.notes && (
+          {sessionData.notes && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Session Notes</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {session.notes}
+                  {sessionData.notes}
                 </p>
               </CardContent>
             </Card>

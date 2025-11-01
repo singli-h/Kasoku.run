@@ -15,7 +15,7 @@ export function AssignmentPanel({ planId }: AssignmentPanelProps) {
   const [assignmentMode, setAssignmentMode] = useState<'view' | 'assign'>('view')
 
   // TODO: Replace with actual group data from Supabase
-  const groups = [
+  const groups: Array<{ id: number; name: string; status: string; hasConflict?: boolean; athleteCount?: number }> = [
     // This will be populated from getAthleteGroupsAction() or similar
   ]
 
@@ -125,18 +125,18 @@ export function AssignmentPanel({ planId }: AssignmentPanelProps) {
             <div className="space-y-1 text-xs">
               <div className="flex justify-between">
                 <span>Total Athletes:</span>
-                <span>{groups.reduce((acc, group) => acc + group.athleteCount, 0)}</span>
+                <span>{groups.reduce((acc, group) => acc + (group.athleteCount || 0), 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Assigned:</span>
                 <span className="text-green-600">
-                  {groups.filter(g => g.status === 'assigned').reduce((acc, group) => acc + group.athleteCount, 0)}
+                  {groups.filter(g => g.status === 'assigned').reduce((acc, group) => acc + (group.athleteCount || 0), 0)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Conflicts:</span>
                 <span className="text-red-600">
-                  {groups.filter(g => g.hasConflict).reduce((acc, group) => acc + group.athleteCount, 0)}
+                  {groups.filter(g => g.hasConflict).reduce((acc, group) => acc + (group.athleteCount || 0), 0)}
                 </span>
               </div>
             </div>

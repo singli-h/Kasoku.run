@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -38,7 +38,7 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
     start_date: "",
     end_date: "",
     weekNumber: 1,
-    volume: 70,
+    volume: 5,
     intensity: 6,
     isDeload: false
   })
@@ -53,7 +53,7 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
         start_date: "",
         end_date: "",
         weekNumber: 1,
-        volume: 70,
+        volume: 5,
         intensity: 6,
         isDeload: false
       })
@@ -77,6 +77,12 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{microcycle ? "Edit Microcycle" : "Add Microcycle"}</DialogTitle>
+          <DialogDescription>
+            {microcycle
+              ? "Update the microcycle details for this training week."
+              : "Create a new microcycle to organize your training weeks."
+            }
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="grid grid-cols-2 gap-4">
@@ -134,15 +140,16 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="volume">Volume (%)</Label>
+              <Label htmlFor="volume">Volume (0-10)</Label>
               <Input
                 id="volume"
                 type="number"
                 min="0"
-                max="100"
-                value={formData.volume || 70}
-                onChange={(e) => setFormData({ ...formData, volume: Number.parseInt(e.target.value) })}
+                max="10"
+                value={formData.volume ?? 5}
+                onChange={(e) => setFormData({ ...formData, volume: Number.parseInt(e.target.value) || 0 })}
               />
+              <p className="text-xs text-muted-foreground">Weekly training volume on a 0-10 scale</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="intensity">Intensity (1-10)</Label>

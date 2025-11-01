@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Toolbar } from "@/components/features/plans/session-planner/components/Toolbar"
 import { ExerciseList } from "@/components/features/plans/session-planner/components/ExerciseList"
@@ -48,6 +48,11 @@ interface SessionPlannerClientProps {
   initialExercises: SessionExercise[]
   exerciseLibrary: ExerciseLibraryItem[]
   exerciseTypes: any[]
+  pageMode: "simple" | "detail"
+  onPageModeChange: (mode: "simple" | "detail") => void
+  onUndoRedoStateChange?: (canUndo: boolean, canRedo: boolean) => void
+  undoHandlerRef?: React.MutableRefObject<(() => void) | null>
+  redoHandlerRef?: React.MutableRefObject<(() => void) | null>
 }
 
 export function SessionPlannerClient({
@@ -57,6 +62,11 @@ export function SessionPlannerClient({
   initialExercises,
   exerciseLibrary,
   exerciseTypes,
+  pageMode,
+  onPageModeChange,
+  onUndoRedoStateChange,
+  undoHandlerRef,
+  redoHandlerRef,
 }: SessionPlannerClientProps) {
   const router = useRouter()
 
@@ -68,13 +78,25 @@ export function SessionPlannerClient({
     expandedRows: new Set(),
     libraryOpen: false,
     batchEditOpen: false,
-    pageMode: "simple",
+    pageMode: pageMode,
   })
 
   // Undo/Redo history
   const [history, setHistory] = useState<SessionExercise[][]>([initialExercises])
   const [historyIndex, setHistoryIndex] = useState(0)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+  // Sync pageMode prop changes to state
+  useEffect(() => {
+    setState((prev) => ({ ...prev, pageMode }))
+  }, [pageMode])
+
+  // Update undo/redo state in parent
+  useEffect(() => {
+    if (onUndoRedoStateChange) {
+      onUndoRedoStateChange(historyIndex > 0, historyIndex < history.length - 1)
+    }
+  }, [historyIndex, history.length, onUndoRedoStateChange])
 
   // Toast states
   const [validationErrors, setValidationErrors] = useState<string[]>([])
@@ -122,10 +144,15 @@ export function SessionPlannerClient({
     }
   }, [historyIndex, history])
 
-  // Page mode handlers
-  const handlePageModeChange = useCallback((mode: "simple" | "detail") => {
-    setState((prev) => ({ ...prev, pageMode: mode }))
-  }, [])
+  // Expose handlers to parent via refs
+  useEffect(() => {
+    if (undoHandlerRef) {
+      undoHandlerRef.current = handleUndo
+    }
+    if (redoHandlerRef) {
+      redoHandlerRef.current = handleRedo
+    }
+  }, [handleUndo, handleRedo, undoHandlerRef, redoHandlerRef])
 
   const handleSave = useCallback(async () => {
     const validation = validateSession(state.exercises)
@@ -484,8 +511,6 @@ export function SessionPlannerClient({
     return estimateDuration(state.exercises)
   }, [state.exercises])
 
-  const canUndo = historyIndex > 0
-  const canRedo = historyIndex < history.length - 1
   const hasSelection = state.selection.size > 0
   const canCreateSupersetFromSelection = canCreateSuperset(state.exercises, state.selection)
   const canUngroupFromSelection = canUngroupSuperset(state.exercises, state.selection)
@@ -494,7 +519,7 @@ export function SessionPlannerClient({
   const validationErrorMap = new Map<string, string[]>()
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col w-full">
       {/* Toolbar */}
       <Toolbar
         selectionCount={state.selection.size}
@@ -511,10 +536,11 @@ export function SessionPlannerClient({
         onDeselectAll={handleDeselectAll}
       />
 
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Exercise List */}
-        <div className="flex-1 overflow-auto">
+      {/* Main Content - Flex container with full width */}
+      <div className="flex flex-1 w-full">
+        {/* Exercise List - Scrollable region (allow horizontal scroll from children) */}
+        <div className="flex-1 overflow-y-auto overflow-x-visible min-w-0">
+          <div className="p-4">
           <ExerciseList
             exercises={state.exercises}
             selection={state.selection}
@@ -528,6 +554,7 @@ export function SessionPlannerClient({
             onReorder={handleReorderExercises}
             validationErrors={validationErrorMap}
           />
+          </div>
         </div>
 
         {/* Exercise Library Panel */}
