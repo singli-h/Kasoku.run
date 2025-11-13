@@ -266,7 +266,7 @@ const DETAIL_MODE_FIELDS: FieldConfig[] = [
     { key: "reps", label: "Reps", type: "number", placeholder: "10" },
     { key: "weight", label: "Weight", unit: "kg", type: "number", placeholder: "50", step: 2.5 },
     { key: "distance", label: "Distance", unit: "m", type: "number", placeholder: "100" },
-    { key: "performing_time", label: "Performing Time", unit: "s", type: "number", placeholder: "30" },
+    { key: "performing_time", label: "Time(s)", unit: "s", type: "number", placeholder: "30" },
     { key: "rest_time", label: "Rest Time", unit: "s", type: "number", placeholder: "60" },
     { key: "tempo", label: "Tempo", type: "text", placeholder: "2-0-2-0" },
     { key: "rpe", label: "RPE", type: "number", placeholder: "7", min: 1, max: 10 },

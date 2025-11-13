@@ -56,7 +56,7 @@ function SortableExerciseRow({
   onUpdateExercise,
   onDuplicateExercise,
   onRemoveExercise,
-  supersetIndex,
+  _supersetIndex,
   inSuperset,
 }: {
   exercise: SessionExercise
@@ -69,7 +69,7 @@ function SortableExerciseRow({
   onUpdateExercise: (id: string, updates: Partial<SessionExercise>) => void
   onDuplicateExercise: (id: string) => void
   onRemoveExercise: (id: string) => void
-  supersetIndex?: number
+  _supersetIndex?: number
   inSuperset?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -83,7 +83,7 @@ function SortableExerciseRow({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={cn("w-full", inSuperset && "")}>
+    <div ref={setNodeRef} style={style} className={cn(inSuperset && "")}>
       <ExerciseRow
         exercise={exercise}
         isSelected={isSelected}
@@ -159,7 +159,7 @@ export function ExerciseList({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={exercises.map((ex) => ex.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0">
           {grouped.map((item) => {
             if (isSupersetGroup(item)) {
               // Render superset group
@@ -168,7 +168,7 @@ export function ExerciseList({
                 <div
                   key={item.id}
                   className={cn(
-                    "relative rounded-lg border-2 border-blue-500/30 bg-card overflow-hidden w-full max-w-full min-w-0",
+                    "relative rounded-lg border-2 border-blue-500/30 bg-card",
                     "shadow-sm hover:shadow-md transition-shadow",
                   )}
                 >
@@ -195,9 +195,9 @@ export function ExerciseList({
 
                   {/* Superset Exercises */}
                   {!isCollapsed && (
-                    <div className="space-y-0 divide-y divide-border/50 w-full">
+                    <div className="space-y-0 divide-y divide-border/50 overflow-visible">
                       {item.exercises.map((ex, index) => (
-                        <div key={ex.id} className="p-2 bg-muted/10 w-full">
+                        <div key={ex.id} className="p-2 bg-muted/10">
                           <SortableExerciseRow
                             exercise={ex}
                             isSelected={selection.has(ex.id)}
@@ -208,9 +208,9 @@ export function ExerciseList({
                             onToggleExpand={onToggleExpand}
                             onUpdateExercise={onUpdateExercise}
                             onDuplicateExercise={onDuplicateExercise}
-                            onRemoveExercise={onRemoveExercise}
-                            supersetIndex={index + 1}
-                            inSuperset={true}
+                  onRemoveExercise={onRemoveExercise}
+                  _supersetIndex={index + 1}
+                  inSuperset
                           />
                         </div>
                       ))}

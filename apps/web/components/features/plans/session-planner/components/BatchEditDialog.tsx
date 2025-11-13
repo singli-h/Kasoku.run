@@ -72,7 +72,7 @@ export function BatchEditDialog({ isOpen, onClose, onApply, selectionCount }: Ba
       case "distance":
         return { placeholder: "100", type: "number", label: "Distance (meters)" }
       case "performing_time":
-        return { placeholder: "30", type: "number", label: "Time (seconds)" }
+        return { placeholder: "30", type: "number", label: "Time(s)" }
       default:
         return { placeholder: "", type: "text", label: field }
     }

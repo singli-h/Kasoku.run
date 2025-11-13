@@ -10,16 +10,16 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "turbo run dev --filter=@kasoku/web",
-    "build": "turbo run build --filter=@kasoku/web",
-    "lint": "turbo run lint",
+    "dev": "npm run dev --workspace=@kasoku/web",
+    "build": "npm run build --workspace=@kasoku/web",
+    "lint": "npm run lint --workspace=@kasoku/web",
     "test": "jest",
     "dev:all": "turbo run dev",
     "build:all": "turbo run build",
-    "dev:web": "turbo run dev --filter=@kasoku/web",
-    "build:web": "turbo run build --filter=@kasoku/web",
-    "lint:web": "turbo run lint --filter=@kasoku/web",
-    "clean": "turbo run clean",
+    "dev:web": "npm run dev --workspace=@kasoku/web",
+    "build:web": "npm run build --workspace=@kasoku/web",
+    "lint:web": "npm run lint --workspace=@kasoku/web",
+    "clean": "npm run clean --workspace=@kasoku/web",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {

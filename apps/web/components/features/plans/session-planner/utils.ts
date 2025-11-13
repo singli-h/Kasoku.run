@@ -233,7 +233,7 @@ export function estimateDuration(exercises: SessionExercise[]): number {
 
   exercises.forEach((ex) => {
     ex.sets.forEach((set) => {
-      // Performing time
+      // Time
       if (set.performing_time) {
         totalMinutes += set.performing_time / 60
       } else if (set.reps) {

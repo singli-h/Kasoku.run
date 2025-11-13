@@ -4,9 +4,9 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChevronLeft, Undo, Redo, Edit2, Check, X, Calendar } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 interface PlanPageHeaderProps {
   title: string
@@ -69,18 +69,20 @@ export function PlanPageHeader({
   }
 
   return (
-    <header className="border-b bg-card">
-      {/* Row 1: Navigation and Title */}
-      <div className="flex items-center justify-between px-6 pt-4 pb-3">
+    <header className="border-b border-border/40">
+      <div className="flex items-center justify-between px-6 py-4 gap-6">
+        {/* Left: Back + Title + Subtitle */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <Button
             variant="ghost"
-            className="flex items-center gap-2 flex-shrink-0"
+            size="sm"
+            className="flex-shrink-0 -ml-2"
             onClick={() => router.push(backPath)}
           >
-            <ChevronLeft className="h-4 w-4" />
-            {backLabel}
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">{backLabel}</span>
           </Button>
+
           <div className="min-w-0 flex-1">
             {/* Title with inline editing */}
             {isEditingTitle ? (
@@ -88,7 +90,7 @@ export function PlanPageHeader({
                 <Input
                   value={editedTitle}
                   onChange={(e) => setEditedTitle(e.target.value)}
-                  className="text-xl font-semibold h-auto py-1"
+                  className="text-lg font-semibold h-auto py-1"
                   placeholder="Enter name..."
                   autoFocus
                   onKeyDown={(e) => {
@@ -105,7 +107,7 @@ export function PlanPageHeader({
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-semibold truncate">{title}</h1>
+                <h1 className="text-lg font-semibold truncate">{title}</h1>
                 {editable && onTitleChange && (
                   <Button
                     size="sm"
@@ -122,7 +124,7 @@ export function PlanPageHeader({
             )}
 
             {/* Subtitle / Date / Metadata */}
-            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+            <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
               {date && (
                 <div className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
@@ -131,7 +133,7 @@ export function PlanPageHeader({
                       type="date"
                       value={date}
                       onChange={(e) => onDateChange(e.target.value)}
-                      className="h-6 px-2 text-sm border-none bg-transparent hover:bg-muted/50 focus:bg-muted cursor-pointer"
+                      className="h-6 px-2 text-xs border-none bg-transparent hover:bg-muted/50 focus:bg-muted cursor-pointer"
                     />
                   ) : (
                     <span>{new Date(date).toLocaleDateString()}</span>
@@ -143,69 +145,73 @@ export function PlanPageHeader({
             </div>
           </div>
         </div>
+
+        {/* Right: Mode Toggle + Undo/Redo (all inline) */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {status && (
-            <Badge variant={status === "active" ? "default" : "secondary"}>
+            <Badge variant={status === "active" ? "default" : "secondary"} className="hidden sm:flex">
               {status}
             </Badge>
           )}
           {rightActions}
-        </div>
-      </div>
 
-      {/* Row 2: Mode Toggle, Undo/Redo, and Actions */}
-      {(pageMode !== undefined || showUndoRedo) && (
-        <div className="flex items-center justify-between px-6 pb-3 border-t bg-muted/30">
-          <div className="flex items-center gap-3 flex-1">
-            {/* Mode Toggle (Segmented Control) */}
+          {/* Segmented Control (iOS-style) */}
             {pageMode !== undefined && onPageModeChange && (
-              <Tabs
-                value={pageMode}
-                onValueChange={(value) => onPageModeChange(value as "simple" | "detail")}
-                className="flex-shrink-0"
+            <div className="flex items-center rounded-lg bg-muted p-0.5">
+              <button
+                onClick={() => onPageModeChange("simple")}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                  pageMode === "simple"
+                    ? "bg-background shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                <TabsList className="h-9">
-                  <TabsTrigger value="simple" className="px-4 text-sm">
                     Simple
-                  </TabsTrigger>
-                  <TabsTrigger value="detail" className="px-4 text-sm">
+              </button>
+              <button
+                onClick={() => onPageModeChange("detail")}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                  pageMode === "detail"
+                    ? "bg-background shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
                     Detail
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+              </button>
+            </div>
             )}
-          </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Undo/Redo - Icon buttons only */}
             {showUndoRedo && (
               <>
                 <Button
-                  variant="outline"
-                  size="sm"
+                variant="ghost"
+                size="icon"
                   onClick={onUndo}
                   disabled={!canUndo}
                   title="Undo"
-                  className="h-9"
+                className="h-8 w-8"
                 >
-                  <Undo className="h-4 w-4 mr-1.5 sm:mr-0" />
-                  <span className="sr-only sm:not-sr-only sm:ml-1">Undo</span>
+                <Undo className="h-4 w-4" />
+                <span className="sr-only">Undo</span>
                 </Button>
                 <Button
-                  variant="outline"
-                  size="sm"
+                variant="ghost"
+                size="icon"
                   onClick={onRedo}
                   disabled={!canRedo}
                   title="Redo"
-                  className="h-9"
+                className="h-8 w-8"
                 >
-                  <Redo className="h-4 w-4 mr-1.5 sm:mr-0" />
-                  <span className="sr-only sm:not-sr-only sm:ml-1">Redo</span>
+                <Redo className="h-4 w-4" />
+                <span className="sr-only">Redo</span>
                 </Button>
               </>
             )}
           </div>
         </div>
-      )}
     </header>
   )
 }

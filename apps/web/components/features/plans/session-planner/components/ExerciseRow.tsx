@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import {
   ChevronDown,
   ChevronRight,
@@ -17,7 +18,7 @@ import {
   Link2,
   AlertCircle,
 } from "lucide-react"
-import type { SessionExercise, SetParameter, FieldConfig } from "../types"
+import type { SessionExercise, SetParameter } from "../types"
 import { getFieldsForExercise } from "../types"
 import { addSet, removeSet, updateSet } from "../utils"
 
@@ -32,7 +33,7 @@ interface ExerciseRowProps {
   onUpdateExercise: (id: string, updates: Partial<SessionExercise>) => void
   onDuplicateExercise: (id: string) => void
   onRemoveExercise: (id: string) => void
-  dragHandleProps?: any
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>
 }
 
 export function ExerciseRow({
@@ -88,7 +89,7 @@ export function ExerciseRow({
 
   return (
     <div
-      className={`border rounded-lg w-full max-w-full min-w-0 ${
+      className={`border rounded-lg ${
         isSelected ? "ring-2 ring-primary bg-primary/5" : "bg-card"
       } ${hasErrors ? "border-destructive" : ""}`}
     >
@@ -156,7 +157,7 @@ export function ExerciseRow({
 
       {/* Expanded Content */}
       {isExpanded && (
-          <div className="border-t p-3 space-y-3 bg-muted/30 w-full min-w-0">
+        <div className="border-t p-3 space-y-3 bg-muted/30">
           {/* Validation Errors */}
           {hasErrors && (
             <div className="bg-destructive/10 border border-destructive rounded p-2 text-sm text-destructive">
@@ -169,7 +170,7 @@ export function ExerciseRow({
           )}
 
           {/* Sets Section */}
-          <div className="space-y-2 w-full min-w-0">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Sets</span>
               <Button size="sm" variant="outline" onClick={handleAddSet} className="h-7 text-xs">
@@ -178,13 +179,13 @@ export function ExerciseRow({
               </Button>
             </div>
 
-            {/* Mobile: Simplified Horizontal Scroll (Proven Pattern) */}
-            <div className="md:hidden relative w-full overflow-x-auto">
-              <div className="flex gap-2 pb-2">
+            {/* Mobile: Card Layout with Snap Scroll */}
+            <div className="md:hidden">
+              <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-2 -mx-2 px-2 scrollbar-thin">
                 {exercise.sets.map((set, setIndex) => (
                   <div
                     key={setIndex}
-                    className="shrink-0 w-[280px] border rounded-lg bg-card p-3 space-y-2"
+                    className="snap-start shrink-0 w-[85vw] max-w-[320px] border rounded-lg bg-card p-3 space-y-2"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <Badge variant="secondary" className="text-xs font-bold">
@@ -262,67 +263,67 @@ export function ExerciseRow({
               )}
             </div>
 
-            {/* Desktop: Simplified Scrollable Table (Shadcn/MUI Pattern) */}
-            <div className="hidden md:block relative overflow-auto border rounded-lg">
-              <table className="caption-bottom text-xs">
-                <thead>
-                  <tr className="border-b bg-muted">
-                    <th className="h-10 px-2 text-left align-middle font-medium">
-                      Set
-                    </th>
-                    {displayFields.map((field) => (
-                      <th
-                        key={field.key}
-                        className="h-10 px-2 text-left align-middle font-medium whitespace-nowrap"
-                      >
-                        {field.label}
-                        {field.unit && <span className="text-muted-foreground text-[10px] ml-1">({field.unit})</span>}
-                      </th>
-                    ))}
-                    <th className="h-10 px-2 text-left align-middle font-medium w-12">
-
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {exercise.sets.map((set, setIndex) => (
-                    <tr key={setIndex} className="border-b">
-                      <td className="p-2 align-middle font-medium">
-                        {setIndex + 1}
-                      </td>
-                      {displayFields.map((field) => {
-                        const value = set[field.key]
-                        const displayValue = value === null || value === undefined ? "" : String(value)
-                        return (
-                          <td key={field.key} className="p-2 align-middle">
-                            <Input
-                              type={field.type}
-                              value={displayValue}
-                              onChange={(e) => handleSetFieldChange(setIndex, field.key, e.target.value)}
-                              placeholder={field.placeholder}
-                              className="h-8 w-20 text-xs"
-                              min={field.min}
-                              max={field.max}
-                              step={field.step}
-                            />
+            {/* Desktop: Scrollable Table with ScrollArea */}
+            <div className="hidden md:block -mx-3">
+              <ScrollArea className="w-full border rounded-lg">
+                <div className="min-w-full inline-block">
+                  <table className="text-xs border-collapse" style={{ minWidth: 'max-content' }}>
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="p-2 text-left w-12 sticky left-0 bg-muted z-10 border-r">
+                          Set
+                        </th>
+                        {displayFields.map((field) => (
+                          <th key={field.key} className="p-2 text-center whitespace-nowrap min-w-[80px]">
+                            {field.label}
+                            {field.unit && <span className="text-muted-foreground ml-1">({field.unit})</span>}
+                          </th>
+                        ))}
+                        <th className="p-2 w-12"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {exercise.sets.map((set, setIndex) => (
+                        <tr key={setIndex} className="border-t">
+                          <td className="p-2 font-medium sticky left-0 bg-card z-10 border-r">
+                            {setIndex + 1}
                           </td>
-                        )
-                      })}
-                      <td className="p-2 align-middle">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveSet(setIndex)}
-                          disabled={exercise.sets.length <= 1}
-                          className="text-destructive hover:text-destructive h-7 w-7 p-0"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          {displayFields.map((field) => {
+                            const value = set[field.key]
+                            const displayValue = value === null || value === undefined ? "" : String(value)
+                            return (
+                              <td key={field.key} className="p-2 whitespace-nowrap">
+                                <Input
+                                  type={field.type}
+                                  value={displayValue}
+                                  onChange={(e) => handleSetFieldChange(setIndex, field.key, e.target.value)}
+                                  placeholder={field.placeholder}
+                                  className="h-7 text-xs text-center w-[70px]"
+                                  min={field.min}
+                                  max={field.max}
+                                  step={field.step}
+                                />
+                              </td>
+                            )
+                          })}
+                          <td className="p-2 align-middle">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveSet(setIndex)}
+                              disabled={exercise.sets.length <= 1}
+                              className="text-destructive hover:text-destructive h-7 w-7 p-0"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
             </div>
           </div>
 

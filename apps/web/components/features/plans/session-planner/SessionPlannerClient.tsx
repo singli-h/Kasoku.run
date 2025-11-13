@@ -2,13 +2,11 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { PlanPageHeader } from "@/components/features/plans/components/PlanPageHeader"
 import { Toolbar } from "@/components/features/plans/session-planner/components/Toolbar"
 import { ExerciseList } from "@/components/features/plans/session-planner/components/ExerciseList"
 import { ExerciseLibraryPanel } from "@/components/features/plans/session-planner/components/ExerciseLibraryPanel"
 import { BatchEditDialog } from "@/components/features/plans/session-planner/components/BatchEditDialog"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Plus, X, Save } from "lucide-react"
 import {
   createExerciseInSession,
   estimateDuration,
@@ -37,7 +35,6 @@ import type {
   SessionExercise,
   ExerciseLibraryItem,
   SetParameter,
-  BatchEditOperation,
 } from "@/components/features/plans/session-planner/types"
 import { saveSessionWithExercisesAction } from "@/actions/plans/session-planner-actions"
 
@@ -48,11 +45,6 @@ interface SessionPlannerClientProps {
   initialExercises: SessionExercise[]
   exerciseLibrary: ExerciseLibraryItem[]
   exerciseTypes: any[]
-  pageMode: "simple" | "detail"
-  onPageModeChange: (mode: "simple" | "detail") => void
-  onUndoRedoStateChange?: (canUndo: boolean, canRedo: boolean) => void
-  undoHandlerRef?: React.MutableRefObject<(() => void) | null>
-  redoHandlerRef?: React.MutableRefObject<(() => void) | null>
 }
 
 export function SessionPlannerClient({
@@ -62,13 +54,11 @@ export function SessionPlannerClient({
   initialExercises,
   exerciseLibrary,
   exerciseTypes,
-  pageMode,
-  onPageModeChange,
-  onUndoRedoStateChange,
-  undoHandlerRef,
-  redoHandlerRef,
 }: SessionPlannerClientProps) {
   const router = useRouter()
+
+  // Page mode state (simple vs detail view)
+  const [pageMode, setPageMode] = useState<"simple" | "detail">("simple")
 
   // Initialize session state with server data
   const [state, setState] = useState<SessionState>({
@@ -86,25 +76,17 @@ export function SessionPlannerClient({
   const [historyIndex, setHistoryIndex] = useState(0)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
-  // Sync pageMode prop changes to state
-  useEffect(() => {
-    setState((prev) => ({ ...prev, pageMode }))
-  }, [pageMode])
-
-  // Update undo/redo state in parent
-  useEffect(() => {
-    if (onUndoRedoStateChange) {
-      onUndoRedoStateChange(historyIndex > 0, historyIndex < history.length - 1)
-    }
-  }, [historyIndex, history.length, onUndoRedoStateChange])
-
   // Toast states
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [successMessage, setSuccessMessage] = useState<string>("")
 
   // Confirm dialog states
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+
+  // Sync pageMode state changes to session state
+  useEffect(() => {
+    setState((prev) => ({ ...prev, pageMode }))
+  }, [pageMode])
 
   // Save state to history
   const saveToHistory = useCallback(
@@ -144,16 +126,6 @@ export function SessionPlannerClient({
     }
   }, [historyIndex, history])
 
-  // Expose handlers to parent via refs
-  useEffect(() => {
-    if (undoHandlerRef) {
-      undoHandlerRef.current = handleUndo
-    }
-    if (redoHandlerRef) {
-      redoHandlerRef.current = handleRedo
-    }
-  }, [handleUndo, handleRedo, undoHandlerRef, redoHandlerRef])
-
   const handleSave = useCallback(async () => {
     const validation = validateSession(state.exercises)
     if (!validation.valid) {
@@ -191,7 +163,7 @@ export function SessionPlannerClient({
       console.error("Error saving session:", error)
       setValidationErrors([error instanceof Error ? error.message : "Failed to save session"])
     }
-  }, [sessionId, state, setHistory, setHistoryIndex])
+  }, [sessionId, state])
 
   const handleDiscard = useCallback(() => {
     if (hasUnsavedChanges) {
@@ -253,12 +225,103 @@ export function SessionPlannerClient({
     })
   }, [])
 
-  const handleDeleteSelected = useCallback(() => {
-    if (state.selection.size === 0) return
+  const handleUpdateExercise = useCallback(
+    (id: string, updates: Partial<SessionExercise>) => {
+      setState((prev) => {
+        const updated = prev.exercises.map((ex) => (ex.id === id ? { ...ex, ...updates } : ex))
+        saveToHistory(updated)
+        return {
+          ...prev,
+          exercises: updated,
+        }
+      })
+      setHasUnsavedChanges(true)
+    },
+    [saveToHistory],
+  )
 
+  const handleDuplicateExercise = useCallback(
+    (id: string) => {
+      setState((prev) => {
+        const exercise = prev.exercises.find((ex) => ex.id === id)
+        if (!exercise) return prev
+
+        const insertIndex = prev.exercises.findIndex((ex) => ex.id === id) + 1
+        const duplicate = {
+          ...exercise,
+          id: `${Date.now()}_${Math.random()}`, // Generate unique ID
+          superset_id: null, // Remove superset association for duplicates
+        }
+
+        const newExercises = [...prev.exercises]
+        newExercises.splice(insertIndex, 0, duplicate)
+        const reordered = reorderExercises(newExercises)
+
+        saveToHistory(reordered)
+        return {
+          ...prev,
+          exercises: reordered,
+        }
+      })
+      setHasUnsavedChanges(true)
+    },
+    [saveToHistory],
+  )
+
+  const handleRemoveExercise = useCallback(
+    (id: string) => {
+      setState((prev) => {
+        const filtered = prev.exercises.filter((ex) => ex.id !== id)
+        const reordered = reorderExercises(filtered)
+
+        saveToHistory(reordered)
+        return {
+          ...prev,
+          exercises: reordered,
+          selection: new Set([...prev.selection].filter((selId) => selId !== id)),
+          expandedRows: new Set([...prev.expandedRows].filter((expId) => expId !== id)),
+        }
+      })
+      setHasUnsavedChanges(true)
+    },
+    [saveToHistory],
+  )
+
+  const handleReorderExercises = useCallback(
+    (exercises: SessionExercise[]) => {
+      saveToHistory(exercises)
+      setState((prev) => ({
+        ...prev,
+        exercises,
+      }))
+      setHasUnsavedChanges(true)
+    },
+    [saveToHistory],
+  )
+
+  const handleCreateSuperset = useCallback(() => {
     setState((prev) => {
-      const updated = prev.exercises.filter((ex) => !prev.selection.has(ex.id))
+      const updatedExercises = createSuperset(prev.exercises, prev.selection)
+      saveToHistory(updatedExercises)
+
+      return {
+        ...prev,
+        exercises: updatedExercises,
+        selection: new Set(),
+      }
+    })
+    setHasUnsavedChanges(true)
+  }, [saveToHistory])
+
+  const handleUngroupSuperset = useCallback(() => {
+    setState((prev) => {
+      const selectedExercises = prev.exercises.filter((ex) => prev.selection.has(ex.id))
+      const supersetId = selectedExercises[0]?.superset_id
+      if (!supersetId) return prev
+
+      const updated = ungroupSuperset(prev.exercises, supersetId)
       saveToHistory(updated)
+
       return {
         ...prev,
         exercises: updated,
@@ -266,42 +329,81 @@ export function SessionPlannerClient({
       }
     })
     setHasUnsavedChanges(true)
+  }, [saveToHistory])
+
+  const handleDuplicateSelected = useCallback(() => {
+    setState((prev) => {
+      const selectedExercises = prev.exercises.filter((ex) => prev.selection.has(ex.id))
+
+      const duplicates = selectedExercises.map((ex) => ({
+        ...ex,
+        id: `${Date.now()}_${Math.random()}`,
+        superset_id: null, // Remove superset association
+      }))
+
+      const newExercises = [...prev.exercises, ...duplicates]
+      const reordered = reorderExercises(newExercises)
+
+      saveToHistory(reordered)
+      return {
+        ...prev,
+        exercises: reordered,
+        selection: new Set(),
+      }
+    })
+    setHasUnsavedChanges(true)
+  }, [saveToHistory])
+
+  const handleDeleteSelected = useCallback(() => {
+    if (!confirm(`Delete ${state.selection.size} exercise(s)?`)) return
+
+    setState((prev) => {
+      const filtered = prev.exercises.filter((ex) => !prev.selection.has(ex.id))
+      const reordered = reorderExercises(filtered)
+
+      saveToHistory(reordered)
+      return {
+        ...prev,
+        exercises: reordered,
+        selection: new Set(),
+        expandedRows: new Set([...prev.expandedRows].filter((id) => !prev.selection.has(id))),
+      }
+    })
+    setHasUnsavedChanges(true)
   }, [state.selection, saveToHistory])
 
-  const handleRemoveExercise = useCallback((exerciseId: string) => {
-    setState((prev) => {
-      const updated = prev.exercises.filter((ex) => ex.id !== exerciseId)
-      saveToHistory(updated)
-      return {
-        ...prev,
-        exercises: updated,
-        selection: new Set(Array.from(prev.selection).filter(id => id !== exerciseId)),
-      }
-    })
-    setHasUnsavedChanges(true)
-  }, [saveToHistory])
+  const handleBatchEdit = useCallback(
+    (params: { field: keyof SetParameter; operation: "set" | "add" | "multiply"; value: number | string }) => {
+      setState((prev) => {
+        const { field, operation, value } = params
 
-  const handleDuplicateExercise = useCallback((exerciseId: string) => {
-    setState((prev) => {
-      const exerciseToDuplicate = prev.exercises.find((ex) => ex.id === exerciseId)
-      if (!exerciseToDuplicate) return prev
+        const updated = prev.exercises.map((ex) => {
+          if (!prev.selection.has(ex.id)) return ex
 
-      const newExercise: SessionExercise = {
-        ...exerciseToDuplicate,
-        id: `ex_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-        preset_order: prev.exercises.length + 1,
-        superset_id: null, // Don't copy superset grouping
-      }
+          const updatedSets = ex.sets.map((set) => {
+            const currentValue = set[field]
+            let newValue: any = value
 
-      const updated = [...prev.exercises, newExercise]
-      saveToHistory(updated)
-      return {
-        ...prev,
-        exercises: updated,
-      }
-    })
-    setHasUnsavedChanges(true)
-  }, [saveToHistory])
+            if (operation === "add" && typeof currentValue === "number") {
+              newValue = currentValue + Number(value)
+            } else if (operation === "multiply" && typeof currentValue === "number") {
+              newValue = currentValue * Number(value)
+            }
+
+            return { ...set, [field]: newValue }
+          })
+
+          return { ...ex, sets: updatedSets }
+        })
+
+        saveToHistory(updated)
+        return { ...prev, exercises: updated, batchEditOpen: false }
+      })
+      setHasUnsavedChanges(true)
+      setSuccessMessage(`Batch edit applied to ${state.selection.size} exercise(s)`)
+    },
+    [saveToHistory, state.selection.size],
+  )
 
   const handleSelectAll = useCallback(() => {
     setState((prev) => ({
@@ -317,195 +419,6 @@ export function SessionPlannerClient({
     }))
   }, [])
 
-  const handleCreateSuperset = useCallback(() => {
-    if (!canCreateSuperset(state.exercises, state.selection)) return
-
-    setState((prev) => {
-      const updated = createSuperset(prev.exercises, prev.selection)
-      saveToHistory(updated)
-      return {
-        ...prev,
-        exercises: updated,
-        selection: new Set(),
-      }
-    })
-    setHasUnsavedChanges(true)
-  }, [state.selection, state.exercises, saveToHistory])
-
-  const handleUngroupSuperset = useCallback(() => {
-    if (!canUngroupSuperset(state.exercises, state.selection)) return
-
-    setState((prev) => {
-      // Find the superset_id from the first selected exercise
-      const selectedExercise = prev.exercises.find((ex) => prev.selection.has(ex.id))
-      if (!selectedExercise?.superset_id) return prev
-
-      const updated = ungroupSuperset(prev.exercises, selectedExercise.superset_id)
-      saveToHistory(updated)
-      return {
-        ...prev,
-        exercises: updated,
-        selection: new Set(),
-      }
-    })
-    setHasUnsavedChanges(true)
-  }, [state.selection, state.exercises, saveToHistory])
-
-  const handleReorderExercises = useCallback(
-    (exercises: SessionExercise[]) => {
-      setState((prev) => {
-        const updated = reorderExercises(exercises)
-        saveToHistory(updated)
-        return { ...prev, exercises: updated }
-      })
-      setHasUnsavedChanges(true)
-    },
-    [saveToHistory],
-  )
-
-  const handleUpdateExercise = useCallback(
-    (exerciseId: string, updates: Partial<SessionExercise>) => {
-      setState((prev) => {
-        const updated = prev.exercises.map((ex) =>
-          ex.id === exerciseId ? { ...ex, ...updates } : ex,
-        )
-        saveToHistory(updated)
-        return { ...prev, exercises: updated }
-      })
-      setHasUnsavedChanges(true)
-    },
-    [saveToHistory],
-  )
-
-  const handleUpdateSet = useCallback(
-    (exerciseId: string, setIndex: number, updates: Partial<SetParameter>) => {
-      setState((prev) => {
-        const updated = prev.exercises.map((ex) => {
-          if (ex.id !== exerciseId) return ex
-
-          const updatedSets = ex.sets.map((set) =>
-            set.set_index === setIndex ? { ...set, ...updates } : set,
-          )
-          return { ...ex, sets: updatedSets }
-        })
-        saveToHistory(updated)
-        return { ...prev, exercises: updated }
-      })
-      setHasUnsavedChanges(true)
-    },
-    [saveToHistory],
-  )
-
-  const handleAddSet = useCallback(
-    (exerciseId: string) => {
-      setState((prev) => {
-        const updated = prev.exercises.map((ex) => {
-          if (ex.id !== exerciseId) return ex
-
-          const maxSetIndex = ex.sets.length > 0 ? Math.max(...ex.sets.map((s) => s.set_index)) : 0
-          const newSet: SetParameter = {
-            set_index: maxSetIndex + 1,
-            reps: 10,
-            weight: null,
-            rest_time: 90,
-            tempo: "2-0-2-0",
-            rpe: 7,
-            distance: null,
-            performing_time: null,
-            resistance_unit_id: null,
-            power: null,
-            velocity: null,
-            effort: null,
-            height: null,
-            resistance: null,
-            completed: false,
-            isEditing: false,
-          }
-
-          return { ...ex, sets: [...ex.sets, newSet] }
-        })
-        saveToHistory(updated)
-        return { ...prev, exercises: updated }
-      })
-      setHasUnsavedChanges(true)
-    },
-    [saveToHistory],
-  )
-
-  const handleRemoveSet = useCallback(
-    (exerciseId: string, setIndex: number) => {
-      setState((prev) => {
-        const updated = prev.exercises.map((ex) => {
-          if (ex.id !== exerciseId) return ex
-
-          const updatedSets = ex.sets.filter((set) => set.set_index !== setIndex)
-          return { ...ex, sets: updatedSets }
-        })
-        saveToHistory(updated)
-        return { ...prev, exercises: updated }
-      })
-      setHasUnsavedChanges(true)
-    },
-    [saveToHistory],
-  )
-
-  const handleBatchEdit = useCallback(
-    (operation: BatchEditOperation) => {
-      setState((prev) => {
-        const updated = prev.exercises.map((ex) => {
-          // Only apply to selected exercises
-          if (!prev.selection.has(ex.id)) return ex
-
-          // Apply operation to all sets in the exercise
-          const updatedSets = ex.sets.map((set) => {
-            const field = operation.field
-            const currentValue = set[field]
-
-            // Handle different operation types
-            let newValue: number | string | null = null
-
-            switch (operation.operation) {
-              case "set":
-                // Set to specific value
-                newValue = operation.value
-                break
-
-              case "add":
-                // Add to existing value (only for numeric fields)
-                if (typeof currentValue === "number" && typeof operation.value === "number") {
-                  newValue = currentValue + operation.value
-                } else if (currentValue === null && typeof operation.value === "number") {
-                  newValue = operation.value
-                }
-                break
-
-              case "multiply":
-                // Multiply existing value (only for numeric fields)
-                if (typeof currentValue === "number" && typeof operation.value === "number") {
-                  newValue = Math.round(currentValue * operation.value * 100) / 100 // Round to 2 decimals
-                }
-                break
-            }
-
-            // Only update if we have a valid new value
-            if (newValue !== null) {
-              return { ...set, [field]: newValue }
-            }
-            return set
-          })
-
-          return { ...ex, sets: updatedSets }
-        })
-
-        saveToHistory(updated)
-        return { ...prev, exercises: updated, batchEditOpen: false }
-      })
-      setHasUnsavedChanges(true)
-      setSuccessMessage(`Batch edit applied to ${state.selection.size} exercise(s)`)
-    },
-    [saveToHistory, state.selection.size],
-  )
-
   // Computed values
   const estimatedDuration = useMemo(() => {
     return estimateDuration(state.exercises)
@@ -519,8 +432,22 @@ export function SessionPlannerClient({
   const validationErrorMap = new Map<string, string[]>()
 
   return (
-    <div className="flex h-full flex-col w-full">
-      {/* Toolbar */}
+    <div className="min-w-0">
+      {/* Page Header with Undo/Redo */}
+      <PlanPageHeader
+        title={state.session.name || "Session Planner"}
+        subtitle={`Plan: ${planId} • Session: ${sessionId}`}
+        showUndoRedo={true}
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < history.length - 1}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        backPath={`/plans/${planId}`}
+        pageMode={pageMode}
+        onPageModeChange={setPageMode}
+      />
+
+      {/* Toolbar - Apple Minimalist Style */}
       <Toolbar
         selectionCount={state.selection.size}
         totalCount={state.exercises.length}
@@ -529,18 +456,21 @@ export function SessionPlannerClient({
         onAddExercise={() => setState((prev) => ({ ...prev, libraryOpen: true }))}
         onCreateSuperset={handleCreateSuperset}
         onUngroup={handleUngroupSuperset}
-        onDuplicate={() => {}}
+        onDuplicate={handleDuplicateSelected}
         onDelete={handleDeleteSelected}
         onBatchEdit={() => setState((prev) => ({ ...prev, batchEditOpen: true }))}
         onSelectAll={handleSelectAll}
         onDeselectAll={handleDeselectAll}
       />
 
-      {/* Main Content - Flex container with full width */}
-      <div className="flex flex-1 w-full">
-        {/* Exercise List - Scrollable region (allow horizontal scroll from children) */}
-        <div className="flex-1 overflow-y-auto overflow-x-visible min-w-0">
-          <div className="p-4">
+      {/* Exercise List - Simple container, allow horizontal overflow */}
+      <div className="space-y-2 sm:space-y-3 min-w-0">
+        {state.exercises.length === 0 ? (
+          <div className="border rounded-lg p-8 text-center text-muted-foreground">
+            <p className="text-lg mb-2">No exercises yet</p>
+            <p className="text-sm">Click "Add Exercise" to get started</p>
+          </div>
+        ) : (
           <ExerciseList
             exercises={state.exercises}
             selection={state.selection}
@@ -554,17 +484,16 @@ export function SessionPlannerClient({
             onReorder={handleReorderExercises}
             validationErrors={validationErrorMap}
           />
-          </div>
-        </div>
-
-        {/* Exercise Library Panel */}
-        <ExerciseLibraryPanel
-          isOpen={state.libraryOpen}
-          exercises={exerciseLibrary}
-          onAddExercises={handleAddExercises}
-          onClose={() => setState((prev) => ({ ...prev, libraryOpen: false }))}
-        />
+        )}
       </div>
+
+      {/* Exercise Library Panel - Overlay */}
+      <ExerciseLibraryPanel
+        isOpen={state.libraryOpen}
+        exercises={exerciseLibrary}
+        onAddExercises={handleAddExercises}
+        onClose={() => setState((prev) => ({ ...prev, libraryOpen: false }))}
+      />
 
       {/* Batch Edit Dialog */}
       {state.batchEditOpen && (

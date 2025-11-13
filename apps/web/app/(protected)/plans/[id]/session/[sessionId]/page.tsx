@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { UnifiedPageSkeleton } from "@/components/layout"
-import { SessionPlannerPageClient } from "./SessionPlannerPageClient"
+import { SessionPlannerClient } from "@/components/features/plans/session-planner/SessionPlannerClient"
 import { getExercisePresetGroupByIdAction } from "@/actions/library/exercise-actions"
 import { getExercisesAction } from "@/actions/library/exercise-actions"
 import { getExerciseTypesAction } from "@/actions/library/exercise-actions"
@@ -98,7 +98,7 @@ function transformExerciseLibrary(backendData: any[]): ExerciseLibraryItem[] {
 function getExerciseTypeFromId(typeId: number | null): ExerciseLibraryItem["type"] {
   const typeMap: Record<number, ExerciseLibraryItem["type"]> = {
     1: "warmup",
-    2: "gym", 
+    2: "gym",
     3: "circuit",
     4: "isometric",
     5: "plyometric",
@@ -108,7 +108,7 @@ function getExerciseTypeFromId(typeId: number | null): ExerciseLibraryItem["type
   return typeMap[typeId || 0] || "other"
 }
 
-export default async function SessionPlannerPage({ params }: PageProps) {
+export default async function SessionPlannerRoute({ params }: PageProps) {
   const resolvedParams = await params
   const planId = resolvedParams.id
   const sessionId = Number(resolvedParams.sessionId)
@@ -127,7 +127,7 @@ export default async function SessionPlannerPage({ params }: PageProps) {
   }
 
   // Handle exercise library errors gracefully
-  const exerciseLibrary = exercisesResult.isSuccess 
+  const exerciseLibrary = exercisesResult.isSuccess
     ? transformExerciseLibrary(exercisesResult.data)
     : []
 
@@ -139,15 +139,15 @@ export default async function SessionPlannerPage({ params }: PageProps) {
   const { session, exercises } = transformSessionData(sessionResult.data)
 
   return (
-        <Suspense fallback={<UnifiedPageSkeleton title="Session Planner" />}>
-      <SessionPlannerPageClient
-            planId={planId}
-            sessionId={sessionId}
-        session={session}
-            initialExercises={exercises}
-            exerciseLibrary={exerciseLibrary}
-            exerciseTypes={exerciseTypes}
-          />
-        </Suspense>
+    <Suspense fallback={<UnifiedPageSkeleton title="Session Planner" />}>
+      <SessionPlannerClient
+        planId={planId}
+        sessionId={sessionId}
+        initialSession={session}
+        initialExercises={exercises}
+        exerciseLibrary={exerciseLibrary}
+        exerciseTypes={exerciseTypes}
+      />
+    </Suspense>
   )
 }
