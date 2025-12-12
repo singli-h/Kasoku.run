@@ -75,7 +75,7 @@ export function ArticleEditor({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[600px] p-6 prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-li:text-foreground prose-blockquote:text-muted-foreground prose-code:text-foreground prose-pre:text-foreground prose-pre:bg-muted',
+        class: 'prose prose-sm max-w-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[600px] p-6 prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-li:text-foreground prose-blockquote:text-muted-foreground prose-code:text-foreground prose-pre:text-foreground prose-pre:bg-muted',
         placeholder: placeholder,
       },
       handleKeyDown: (view, event) => {

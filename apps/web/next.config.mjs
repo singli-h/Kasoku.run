@@ -15,6 +15,7 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   serverExternalPackages: ['@supabase/supabase-js'],
+  transpilePackages: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
   images: {
     remotePatterns: [
       {

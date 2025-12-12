@@ -66,4 +66,8 @@ node_modules/
 
 # Task files
 # tasks.json
-# tasks/ 
+# tasks/
+
+# Spec-Kit
+.claude/settings.local.json
+.specify/memory/ 

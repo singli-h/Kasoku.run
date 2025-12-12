@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
 import { cn } from "@/lib/utils"
 
@@ -20,12 +20,34 @@ interface VolumeIntensityChartProps {
   className?: string
 }
 
+// Responsive chart margins hook
+const useResponsiveChartMargins = () => {
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  );
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return {
+    top: 20,
+    right: windowWidth < 640 ? 10 : windowWidth < 1024 ? 20 : 30,
+    left: windowWidth < 640 ? 10 : 20,
+    bottom: 5,
+  };
+};
+
 export function VolumeIntensityChart({
   data,
   selectedPhaseId,
   mode,
   className
 }: VolumeIntensityChartProps) {
+  const margins = useResponsiveChartMargins();
+
   const chartData = useMemo(() => {
     return data.map((point, index) => ({
       ...point,
@@ -81,16 +103,11 @@ export function VolumeIntensityChart({
       </div>
 
       {/* Chart Container */}
-      <div className="h-64 w-full">
+      <div className="h-48 sm:h-56 md:h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={chartData}
-            margin={{
-              top: 20,
-              right: 30,
-              left: 20,
-              bottom: 5,
-            }}
+            margin={margins}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             

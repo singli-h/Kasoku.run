@@ -147,40 +147,158 @@ BEST PRACTICES:
     @apply text-muted-foreground dark:text-muted-foreground;
   }
 
-  /* Enhanced button visibility - global button improvements */
-  .btn-primary-enhanced {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90 
-           dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/80
-           transition-colors duration-200 font-medium;
+  /* ============================================
+     CUBE CSS COMPOSITION LAYER
+     High-level layout primitives for consistent structure
+     See: https://cube.fyi/composition.html
+     ============================================ */
+
+  /* Stack - Vertical flow with consistent spacing */
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--stack-gap, 1rem);
   }
 
-  .btn-secondary-enhanced {
-    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80
-           dark:bg-secondary dark:text-secondary-foreground dark:hover:bg-secondary/70
-           border border-border dark:border-border/50
-           transition-colors duration-200;
+  .stack-sm { --stack-gap: 0.5rem; }
+  .stack-md { --stack-gap: 1rem; }
+  .stack-lg { --stack-gap: 1.5rem; }
+  .stack-xl { --stack-gap: 2rem; }
+
+  /* Cluster - Horizontal wrapping flow */
+  .cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cluster-gap, 1rem);
+    align-items: var(--cluster-align, center);
   }
 
-  .btn-outline-enhanced {
-    @apply border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground
-           dark:border-primary dark:text-primary dark:hover:bg-primary dark:hover:text-primary-foreground
-           transition-colors duration-200 font-medium;
+  .cluster-sm { --cluster-gap: 0.5rem; }
+  .cluster-md { --cluster-gap: 1rem; }
+  .cluster-lg { --cluster-gap: 1.5rem; }
+
+  /* Sidebar Layout - Content with fixed-width sidebar */
+  .with-sidebar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sidebar-gap, 1rem);
   }
 
-  /* Enhanced card visibility */
-  .card-enhanced {
-    @apply bg-card text-card-foreground border border-border/50
-           dark:bg-card dark:text-card-foreground dark:border-border
-           shadow-sm dark:shadow-lg;
+  .with-sidebar > :first-child {
+    flex-basis: var(--sidebar-width, 16rem);
+    flex-grow: 1;
   }
 
-  /* Enhanced input visibility */
-  .input-enhanced {
-    @apply bg-input border border-border text-foreground placeholder:text-muted-foreground
-           dark:bg-input dark:border-border dark:text-foreground dark:placeholder:text-muted-foreground
-           focus:ring-2 focus:ring-ring focus:border-transparent
-           transition-colors duration-200;
+  .with-sidebar > :last-child {
+    flex-basis: 0;
+    flex-grow: 999;
+    min-inline-size: var(--sidebar-content-min, 50%);
   }
+
+  /* Switcher - Responsive horizontal/vertical layout */
+  .switcher {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--switcher-gap, 1rem);
+  }
+
+  .switcher > * {
+    flex-grow: 1;
+    flex-basis: calc((var(--switcher-threshold, 30rem) - 100%) * 999);
+  }
+
+  /* Center - Horizontally centered with max-width */
+  .center {
+    box-sizing: content-box;
+    margin-inline: auto;
+    max-inline-size: var(--center-max, 60ch);
+    padding-inline: var(--center-padding, 1rem);
+  }
+
+  /* Cover - Full viewport height with centered content */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    min-block-size: var(--cover-min, 100vh);
+    padding: var(--cover-padding, 1rem);
+  }
+
+  .cover > * {
+    margin-block: var(--cover-space, 1rem);
+  }
+
+  .cover > :first-child:not(.cover-center) {
+    margin-block-start: 0;
+  }
+
+  .cover > :last-child:not(.cover-center) {
+    margin-block-end: 0;
+  }
+
+  .cover > .cover-center {
+    margin-block: auto;
+  }
+
+  /* Grid - Auto-fit responsive grid */
+  .auto-grid {
+    display: grid;
+    gap: var(--grid-gap, 1rem);
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(var(--grid-min, 16rem), 100%), 1fr)
+    );
+  }
+
+  /* Frame - Aspect ratio container */
+  .frame {
+    aspect-ratio: var(--frame-ratio, 16/9);
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .frame > img,
+  .frame > video {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+
+  /* ============================================
+     CONTAINER QUERIES (2025 Best Practice)
+     Component-level responsive design
+     ============================================ */
+
+  .container-query {
+    container-type: inline-size;
+  }
+
+  .container-query-block {
+    container-type: size;
+  }
+
+  /* Container query breakpoints */
+  @container (min-width: 20rem) {
+    .cq\:flex-row { flex-direction: row; }
+    .cq\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @container (min-width: 30rem) {
+    .cq-md\:flex-row { flex-direction: row; }
+    .cq-md\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .cq-md\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @container (min-width: 40rem) {
+    .cq-lg\:flex-row { flex-direction: row; }
+    .cq-lg\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .cq-lg\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  /* ============================================
+     MOBILE-FIRST TOUCH TARGET UTILITIES
+     ============================================ */
 
   /* Mobile-First Touch Target Utilities */
   .touch-target {

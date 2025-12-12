@@ -141,14 +141,14 @@ export function ExerciseRow({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <Button variant="ghost" size="sm" onClick={() => onDuplicateExercise(exercise.id)}>
+          <Button variant="ghost" size="sm" onClick={() => onDuplicateExercise(exercise.id)} className="touch-target sm:min-h-0 sm:min-w-0">
             <Copy className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onRemoveExercise(exercise.id)}
-            className="text-destructive hover:text-destructive"
+            className="text-destructive hover:text-destructive touch-target sm:min-h-0 sm:min-w-0"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -185,7 +185,7 @@ export function ExerciseRow({
                 {exercise.sets.map((set, setIndex) => (
                   <div
                     key={setIndex}
-                    className="snap-start shrink-0 w-[85vw] max-w-[320px] border rounded-lg bg-card p-3 space-y-2"
+                    className="snap-start shrink-0 w-[calc(100vw-2rem)] max-w-[360px] border rounded-lg bg-card p-3 space-y-2"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <Badge variant="secondary" className="text-xs font-bold">
@@ -196,9 +196,9 @@ export function ExerciseRow({
                         size="sm"
                         onClick={() => handleRemoveSet(setIndex)}
                         disabled={exercise.sets.length <= 1}
-                        className="text-destructive hover:text-destructive h-6 w-6 p-0"
+                        className="text-destructive hover:text-destructive h-11 w-11 p-0 touch-target sm:h-7 sm:w-7 sm:min-h-0 sm:min-w-0"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-5 w-5 sm:h-3.5 sm:w-3.5" />
                       </Button>
                     </div>
 

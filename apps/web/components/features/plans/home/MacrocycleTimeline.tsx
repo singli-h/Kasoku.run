@@ -99,7 +99,7 @@ export function MacrocycleTimeline({
                       onClick={() => onPhaseClick(selectedPhaseId === phase.id ? undefined : phase.id)}
                       className={cn(
                         "absolute top-0 h-full transition-all duration-200",
-                        "focus:outline-none flex items-center justify-center",
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex items-center justify-center",
                         "text-xs font-medium px-1 overflow-hidden",
                         getTextColor(phase.color),
                         selectedPhaseId === phase.id

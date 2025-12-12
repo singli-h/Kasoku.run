@@ -102,6 +102,14 @@ const config = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         gradient: "gradient 8s linear infinite"
+      },
+      zIndex: {
+        sidebar: '10',
+        header: '20',
+        dropdown: '30',
+        tooltip: '40',
+        modal: '50',
+        toast: '60',
       }
     }
   },
