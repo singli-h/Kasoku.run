@@ -1,7 +1,30 @@
 /*
 <ai_context>
-Contains middleware for protecting routes, checking user authentication, and redirecting as needed.
-Includes onboarding flow management and basic RBAC.
+Next.js 16 Proxy Pattern (formerly middleware.ts)
+
+This file contains lightweight authentication checks and route redirection for the Kasoku.run platform.
+Following Next.js 16 best practices, this proxy is NOT used for authorization - all security
+decisions are made at multiple layers for defense in depth.
+
+Security Model (Defense in Depth):
+1. Proxy Layer (THIS FILE): Initial auth check + redirect unauthenticated users to sign-in
+2. Server Actions: Verify userId and ownership before mutations via await auth()
+3. Database Layer: RLS policies auto-filter queries by user_id
+
+Key Next.js 16 Changes:
+- Renamed from middleware.ts to proxy.ts (required in Next.js 16)
+- Proxy is intended for lightweight, real-time adjustments (redirects, header modifications)
+- NOT a security boundary - always verify auth at data access layer
+- Follows defense-in-depth principle per Next.js 16 security model
+
+Migration Date: 2025-12-12
+Next.js Version: 16.0.10
+Clerk Version: 6.34.1
+
+References:
+- Next.js 16 Proxy Docs: https://nextjs.org/docs/app/getting-started/proxy
+- Security Best Practices: apps/web/docs/security/rbac-implementation.md
+- Middleware→Proxy Migration: https://nextjs.org/docs/messages/middleware-to-proxy
 </ai_context>
 */
 
@@ -68,8 +91,8 @@ export default clerkMiddleware(async (auth, req) => {
     // Continue with the request
     return NextResponse.next()
   } catch (error) {
-    console.error('Middleware error:', error)
-    // Continue with request even if middleware fails
+    console.error('[Proxy Error]:', error)
+    // Continue with request even if proxy fails (fail-open for availability)
     return NextResponse.next()
   }
 })
