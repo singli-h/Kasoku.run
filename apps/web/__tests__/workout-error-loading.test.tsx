@@ -4,7 +4,7 @@
  */
 
 import { render, screen, fireEvent } from '@testing-library/react'
-import { WorkoutErrorBoundary, useWorkoutErrorHandler } from '@/components/features/workout/components/error-loading/workout-error-boundary'
+import { FeatureErrorBoundary } from '@/components/error-boundary'
 import { 
   LoadingSpinner, 
   WorkoutLoadingCard, 
@@ -23,7 +23,7 @@ afterAll(() => {
   console.error = originalConsoleError
 })
 
-describe('Workout Error Boundary', () => {
+describe('Feature Error Boundary', () => {
   const ThrowError = ({ shouldThrow }: { shouldThrow: boolean }) => {
     if (shouldThrow) {
       throw new Error('Test error')
@@ -33,9 +33,9 @@ describe('Workout Error Boundary', () => {
 
   it('should render children when there is no error', () => {
     render(
-      <WorkoutErrorBoundary>
+      <FeatureErrorBoundary featureName="Workout">
         <ThrowError shouldThrow={false} />
-      </WorkoutErrorBoundary>
+      </FeatureErrorBoundary>
     )
 
     expect(screen.getByText('No error')).toBeInTheDocument()
@@ -43,23 +43,21 @@ describe('Workout Error Boundary', () => {
 
   it('should render error UI when there is an error', () => {
     render(
-      <WorkoutErrorBoundary>
+      <FeatureErrorBoundary featureName="Workout" customMessage="Something went wrong while loading your workout.">
         <ThrowError shouldThrow={true} />
-      </WorkoutErrorBoundary>
+      </FeatureErrorBoundary>
     )
 
     expect(screen.getByText('Workout Error')).toBeInTheDocument()
-    expect(screen.getByText('Something went wrong while loading your workout. This might be due to a network issue or a temporary problem.')).toBeInTheDocument()
+    expect(screen.getByText('Something went wrong while loading your workout.')).toBeInTheDocument()
     expect(screen.getByText('Try Again')).toBeInTheDocument()
-    expect(screen.getByText('Go Back')).toBeInTheDocument()
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
   })
 
   it('should retry when Try Again is clicked', () => {
     const { rerender } = render(
-      <WorkoutErrorBoundary>
+      <FeatureErrorBoundary featureName="Workout">
         <ThrowError shouldThrow={true} />
-      </WorkoutErrorBoundary>
+      </FeatureErrorBoundary>
     )
 
     expect(screen.getByText('Workout Error')).toBeInTheDocument()
@@ -69,9 +67,9 @@ describe('Workout Error Boundary', () => {
 
     // Rerender with no error
     rerender(
-      <WorkoutErrorBoundary>
+      <FeatureErrorBoundary featureName="Workout">
         <ThrowError shouldThrow={false} />
-      </WorkoutErrorBoundary>
+      </FeatureErrorBoundary>
     )
 
     expect(screen.getByText('No error')).toBeInTheDocument()
@@ -82,50 +80,14 @@ describe('Workout Error Boundary', () => {
     process.env.NODE_ENV = 'development'
 
     render(
-      <WorkoutErrorBoundary>
+      <FeatureErrorBoundary featureName="Workout">
         <ThrowError shouldThrow={true} />
-      </WorkoutErrorBoundary>
+      </FeatureErrorBoundary>
     )
 
-    expect(screen.getByText('Error Details (Development)')).toBeInTheDocument()
+    expect(screen.getByText('Error Details')).toBeInTheDocument()
 
     process.env.NODE_ENV = originalEnv
-  })
-
-  it('should use custom fallback when provided', () => {
-    const customFallback = <div>Custom error message</div>
-
-    render(
-      <WorkoutErrorBoundary fallback={customFallback}>
-        <ThrowError shouldThrow={true} />
-      </WorkoutErrorBoundary>
-    )
-
-    expect(screen.getByText('Custom error message')).toBeInTheDocument()
-  })
-})
-
-describe('useWorkoutErrorHandler Hook', () => {
-  it('should provide error handling functions', () => {
-    const TestComponent = () => {
-      const { handleError, handleAsyncError } = useWorkoutErrorHandler()
-      
-      return (
-        <div>
-          <button onClick={() => handleError(new Error('Test error'), 'test context')}>
-            Handle Error
-          </button>
-          <button onClick={() => handleAsyncError('Async error', 'async context')}>
-            Handle Async Error
-          </button>
-        </div>
-      )
-    }
-
-    render(<TestComponent />)
-
-    expect(screen.getByText('Handle Error')).toBeInTheDocument()
-    expect(screen.getByText('Handle Async Error')).toBeInTheDocument()
   })
 })
 

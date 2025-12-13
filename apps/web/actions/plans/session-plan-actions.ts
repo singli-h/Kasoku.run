@@ -700,7 +700,7 @@ export async function assignPlanToAthletesAction(
     // Get the plan sessions
     const { data: sessions, error: sessionsError } = await supabase
       .from('exercise_preset_groups')
-      .select('*')
+      .select('id, athlete_group_id, user_id, microcycle_id, name, description, session_mode, week, day, date, updated_at, created_at, deleted, is_template')
       .eq('id', planId)
       .eq('user_id', dbUserId)
 

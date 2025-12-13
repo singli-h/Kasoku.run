@@ -1553,3 +1553,14 @@ export type AthleteGroupInsert = TablesInsert<"athlete_groups">
 export type AthleteGroupUpdate = TablesUpdate<"athlete_groups">
 
 export type ExerciseTrainingDetail = Tables<"exercise_training_details">
+
+export type ExerciseTrainingSession = Tables<"exercise_training_sessions">
+export type ExerciseTrainingSessionInsert = TablesInsert<"exercise_training_sessions">
+export type ExerciseTrainingSessionUpdate = TablesUpdate<"exercise_training_sessions">
+
+export type User = Tables<"users">
+export type UserInsert = TablesInsert<"users">
+export type UserUpdate = TablesUpdate<"users">
+
+// UserRole is a string type, not an enum in the database
+export type UserRole = "athlete" | "coach" | "admin"

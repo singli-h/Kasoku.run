@@ -375,7 +375,7 @@ export type CompleteSessionFormData = z.infer<typeof CompleteSessionSchema>
 export function getValidationErrors(error: z.ZodError): Record<string, string> {
   const errors: Record<string, string> = {}
 
-  error.errors.forEach((err) => {
+  error.issues.forEach((err) => {
     const path = err.path.join('.')
     errors[path] = err.message
   })
@@ -387,5 +387,5 @@ export function getValidationErrors(error: z.ZodError): Record<string, string> {
  * Format validation error for display in toast/alert
  */
 export function formatValidationError(error: z.ZodError): string {
-  return error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ')
+  return error.issues.map(err => `${err.path.join('.')}: ${err.message}`).join(', ')
 }

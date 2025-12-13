@@ -18,7 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { getPastSessionsAction } from "@/actions/workout/workout-session-actions"
 import { WorkoutSessionCard } from '@/components/composed'
-import { WorkoutErrorBoundary, WorkoutLoadingCard } from '../error-loading'
+import { FeatureErrorBoundary } from '@/components/error-boundary'
+import { WorkoutLoadingCard } from '../error-loading'
 import { SessionDetailsDialog } from './SessionDetailsDialog'
 import type { ExerciseTrainingSessionWithDetails } from "@/types/training"
 
@@ -78,7 +79,7 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
   }
 
   return (
-    <WorkoutErrorBoundary>
+    <FeatureErrorBoundary featureName="Workout History" customMessage="Something went wrong while loading your workout history. Please try again.">
       <div className={cn("space-y-6", className)}>
       {/* Filters */}
       <Card>
@@ -246,6 +247,6 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
         onOpenChange={setDetailsOpen}
       />
       </div>
-    </WorkoutErrorBoundary>
+    </FeatureErrorBoundary>
   )
 }

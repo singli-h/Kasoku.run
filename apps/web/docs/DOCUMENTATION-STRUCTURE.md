@@ -17,8 +17,10 @@ apps/web/docs/
 ├── 📁 integrations/          # External service integrations
 ├── 📁 development/           # Development workflows and patterns
 ├── 📁 deployment/            # Build, deployment, and production
+├── 📁 _archive/              # Historical/archived documentation
 ├── 📄 README.md              # Main documentation hub
-└── 📄 DOCUMENTATION-STRUCTURE.md  # This file
+├── 📄 DOCUMENTATION-STRUCTURE.md  # This file
+└── 📄 database-schema.md     # Database schema documentation
 ```
 
 ## 📋 Complete File Structure
@@ -45,6 +47,7 @@ design/
 features/
 ├── 📄 README.md                      # Feature overview and navigation
 ├── 📄 feature-overview.md            # Complete feature breakdown
+├── 📄 mvp-next-steps.md              # Development priorities and roadmap
 ├── 📄 product-requirements-document.txt  # Original PRD
 ├── 📄 kasoku-rebuild-product-requirements.md  # Updated requirements
 ├── 📁 onboarding/                    # User onboarding feature
@@ -81,13 +84,15 @@ development/
 ├── 📄 README.md                    # Development overview and navigation
 ├── 📄 api-architecture.md          # Complete API documentation
 ├── 📄 performance-optimization.md  # Performance best practices
+├── 📄 package-status.md            # Current package versions and update policy
 └── 📄 taskmaster-development-workflow.md  # Development workflow guide
 ```
 
 ### 🚀 Deployment (`/deployment/`)
 ```
 deployment/
-└── 📄 README.md                    # Deployment overview and navigation
+├── 📄 README.md                    # Deployment overview and navigation
+└── 📄 nextjs16-migration-summary.md  # Next.js 16 migration documentation
 ```
 
 ## 📖 Documentation Standards

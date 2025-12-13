@@ -85,16 +85,12 @@ export type {
   ExerciseInsert,
   ExerciseUpdate,
   ExerciseType,
-  ExerciseTypeInsert,
-  ExerciseTypeUpdate,
-  
+
   // Training Sessions
   ExerciseTrainingSession,
   ExerciseTrainingSessionInsert,
   ExerciseTrainingSessionUpdate,
   ExerciseTrainingDetail,
-  ExerciseTrainingDetailInsert,
-  ExerciseTrainingDetailUpdate,
   
   // Extended types
   MacrocycleWithDetails,

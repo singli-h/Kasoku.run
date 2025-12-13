@@ -6,7 +6,7 @@ hierarchical training periodization (macrocycles → mesocycles → microcycles)
 </ai_context>
 */
 
-import { 
+import {
   Macrocycle, MacrocycleInsert, MacrocycleUpdate,
   Mesocycle, MesocycleInsert, MesocycleUpdate,
   Microcycle, MicrocycleInsert, MicrocycleUpdate,
@@ -19,6 +19,7 @@ import {
   Athlete, AthleteInsert, AthleteUpdate,
   AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate,
   ExerciseTrainingDetail,
+  ExerciseTrainingSession, ExerciseTrainingSessionInsert, ExerciseTrainingSessionUpdate,
   Database
 } from './database'
 
@@ -35,7 +36,8 @@ export type {
   ExercisePresetDetail,
   Athlete, AthleteInsert, AthleteUpdate,
   AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate,
-  ExerciseTrainingDetail
+  ExerciseTrainingDetail,
+  ExerciseTrainingSession, ExerciseTrainingSessionInsert, ExerciseTrainingSessionUpdate
 }
 
 // ============================================================================
@@ -75,18 +77,10 @@ export interface ExercisePresetWithDetails extends ExercisePreset {
 export interface ExerciseWithDetails extends Exercise {
   exercise_type?: ExerciseType | null
   unit?: Unit | null
-  // Explicit core fields to align UI usage with DB schema
-  id: number
-  name: string | null
-  description?: string | null
-  exercise_type_id?: number | null
-  unit_id?: number | null
-  video_url?: string | null
-  visibility?: any
-  owner_user_id?: number | null
+  // Additional fields for UI - all from Exercise are already included
 }
 
-export interface ExerciseTrainingSessionWithDetails extends Database["public"]["Tables"]["exercise_training_sessions"]["Row"] {
+export interface ExerciseTrainingSessionWithDetails extends ExerciseTrainingSession {
   exercise?: ExerciseWithDetails | null
   athlete?: Athlete | null
   exercise_preset_group?: ExercisePresetGroupWithDetails | null

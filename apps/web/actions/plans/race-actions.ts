@@ -71,7 +71,7 @@ export async function getRacesByMacrocycleAction(
 
     const { data: races, error } = await supabase
       .from('races')
-      .select('*')
+      .select('id, macrocycle_id, user_id, name, date, type, location, notes, created_at, updated_at')
       .eq('macrocycle_id', macrocycleId)
       .eq('user_id', dbUserId)
       .order('date', { ascending: true })
@@ -123,9 +123,10 @@ export async function getRacesAction(): Promise<ActionState<Race[]>> {
 
     const { data: races, error } = await supabase
       .from('races')
-      .select('*')
+      .select('id, macrocycle_id, user_id, name, date, type, location, notes, created_at, updated_at')
       .eq('user_id', dbUserId)
       .order('date', { ascending: true })
+      .limit(100) // Add pagination limit
 
     const queryTime = Date.now() - startTime
     if (queryTime > 500) {
@@ -174,7 +175,7 @@ export async function getRaceByIdAction(
 
     const { data: race, error } = await supabase
       .from('races')
-      .select('*')
+      .select('id, macrocycle_id, user_id, name, date, type, location, notes, created_at, updated_at')
       .eq('id', id)
       .eq('user_id', dbUserId)
       .single()
@@ -232,7 +233,7 @@ export async function createRaceAction(
     // Validate input with Zod schema
     const validationResult = RaceSchema.safeParse(formData)
     if (!validationResult.success) {
-      const firstError = validationResult.error.errors[0]
+      const firstError = validationResult.error.issues[0]
       return {
         isSuccess: false,
         message: firstError.message
@@ -308,7 +309,7 @@ export async function updateRaceAction(
     // Validate partial update data (all fields optional)
     const validationResult = RaceSchema.partial().safeParse(formData)
     if (!validationResult.success) {
-      const firstError = validationResult.error.errors[0]
+      const firstError = validationResult.error.issues[0]
       return {
         isSuccess: false,
         message: firstError.message
@@ -452,10 +453,11 @@ export async function getUpcomingRacesAction(): Promise<ActionState<Race[]>> {
 
     const { data: races, error } = await supabase
       .from('races')
-      .select('*')
+      .select('id, macrocycle_id, user_id, name, date, type, location, notes, created_at, updated_at')
       .eq('user_id', dbUserId)
       .gte('date', today)
       .order('date', { ascending: true })
+      .limit(10) // Limit upcoming races to 10
 
     if (error) {
       console.error('Error fetching upcoming races:', error)

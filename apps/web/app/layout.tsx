@@ -13,6 +13,7 @@ import { PostHogPageview } from "@/components/utilities/posthog/posthog-pageview
 import { PostHogUserIdentify } from "@/components/utilities/posthog/posthog-user-identity"
 import { Providers } from "@/components/utilities/providers"
 import { TailwindIndicator } from "@/components/utilities/tailwind-indicator"
+import { GlobalErrorBoundary } from "@/components/error-boundary"
 import { cn } from "@/lib/utils"
 import { ClerkProvider } from "@clerk/nextjs"
 import type { Metadata, Viewport } from "next"
@@ -216,21 +217,23 @@ export default function RootLayout({
           )}
           suppressHydrationWarning
         >
-          <Providers
-            attribute="class"
-            defaultTheme="system"
-            enableSystem={true}
-            disableTransitionOnChange
-          >
-            <PostHogUserIdentify />
-            <PostHogPageview />
+          <GlobalErrorBoundary>
+            <Providers
+              attribute="class"
+              defaultTheme="system"
+              enableSystem={true}
+              disableTransitionOnChange
+            >
+              <PostHogUserIdentify />
+              <PostHogPageview />
 
-            {children}
+              {children}
 
-            <TailwindIndicator />
+              <TailwindIndicator />
 
-            <Toaster />
-          </Providers>
+              <Toaster />
+            </Providers>
+          </GlobalErrorBoundary>
         </body>
       </html>
     </ClerkProvider>

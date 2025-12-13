@@ -43,8 +43,8 @@ import { getCoachAthleteGroupsAction } from "@/actions/athletes/athlete-actions"
 const configSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   description: z.string().optional(),
-  startDate: z.date({ required_error: "Start date is required" }),
-  endDate: z.date({ required_error: "End date is required" }),
+  startDate: z.date({ message: "Start date is required" }),
+  endDate: z.date({ message: "End date is required" }),
   macrocycleId: z.number().optional(),
   mesocycleId: z.number().optional(),
   athleteGroupId: z.number().optional(),

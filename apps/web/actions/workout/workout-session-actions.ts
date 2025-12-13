@@ -63,24 +63,62 @@ export async function getTodayAndOngoingSessionsAction(
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
 
     // 5. Query sessions with proper prioritization
+    // Optimized: Select only required fields instead of *
     const { data: sessions, error } = await supabase
       .from('exercise_training_sessions')
       .select(`
-        *,
+        id,
+        date_time,
+        session_status,
+        notes,
+        athlete_id,
+        exercise_preset_group_id,
         exercise_preset_group:exercise_preset_groups(
-          *,
+          id,
+          name,
+          description,
+          date,
           exercise_presets(
-            *,
+            id,
+            preset_order,
+            notes,
+            exercise_id,
+            superset_id,
             exercise:exercises(
-              *,
-              exercise_type:exercise_types(*),
-              unit:units(*)
+              id,
+              name,
+              description,
+              video_url,
+              exercise_type:exercise_types(id, type),
+              unit:units(id, name)
             ),
-            exercise_preset_details(*)
+            exercise_preset_details(
+              id,
+              set_index,
+              reps,
+              weight,
+              distance,
+              performing_time,
+              rest_time,
+              rpe
+            )
           )
         ),
-        athlete:athletes(*),
-        exercise_training_details(*)
+        athlete:athletes(
+          id,
+          user_id,
+          athlete_group_id
+        ),
+        exercise_training_details(
+          id,
+          set_index,
+          reps,
+          weight,
+          distance,
+          performing_time,
+          completed,
+          exercise_preset_id
+        )
       `)
       .eq('athlete_id', targetAthleteId)
       .or(`session_status.eq.ongoing,and(date_time.gte.${startOfDay.toISOString()},date_time.lt.${endOfDay.toISOString()},session_status.eq.assigned)`)
@@ -151,24 +189,62 @@ export async function getPastSessionsAction(
     }
 
     // 4. Build date filter
+    // Optimized: Select only required fields instead of *
     let dateFilter = supabase
       .from('exercise_training_sessions')
       .select(`
-        *,
+        id,
+        date_time,
+        session_status,
+        notes,
+        athlete_id,
+        exercise_preset_group_id,
         exercise_preset_group:exercise_preset_groups(
-          *,
+          id,
+          name,
+          description,
+          date,
           exercise_presets(
-            *,
+            id,
+            preset_order,
+            notes,
+            exercise_id,
+            superset_id,
             exercise:exercises(
-              *,
-              exercise_type:exercise_types(*),
-              unit:units(*)
+              id,
+              name,
+              description,
+              video_url,
+              exercise_type:exercise_types(id, type),
+              unit:units(id, name)
             ),
-            exercise_preset_details(*)
+            exercise_preset_details(
+              id,
+              set_index,
+              reps,
+              weight,
+              distance,
+              performing_time,
+              rest_time,
+              rpe
+            )
           )
         ),
-        athlete:athletes(*),
-        exercise_training_details(*)
+        athlete:athletes(
+          id,
+          user_id,
+          athlete_group_id
+        ),
+        exercise_training_details(
+          id,
+          set_index,
+          reps,
+          weight,
+          distance,
+          performing_time,
+          completed,
+          exercise_preset_id
+        )
       `)
       .eq('athlete_id', targetAthleteId)
       .eq('session_status', 'completed')

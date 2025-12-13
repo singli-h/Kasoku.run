@@ -18,6 +18,7 @@ UI/UX patterns, design system, styling guidelines, and visual design principles.
 ### ✨ [Features](./features/)
 Feature-specific documentation with detailed implementation guides for each major application feature.
 - **[Feature Overview](./features/feature-overview.md)** - Complete feature breakdown and implementation status
+- **[MVP Next Steps](./features/mvp-next-steps.md)** - Development priorities and roadmap
 - **[Product Requirements Document](./features/product-requirements-document.txt)** - Original PRD specifications
 - **[Kasoku Rebuild Product Requirements](./features/kasoku-rebuild-product-requirements.md)** - Updated requirements
 
@@ -45,10 +46,12 @@ External service integrations, APIs, and third-party service documentation.
 Development workflows, API documentation, performance optimization, and coding standards.
 - **[API Architecture](./development/api-architecture.md)** - Complete API documentation and patterns
 - **[Performance Optimization](./development/performance-optimization.md)** - Performance best practices and optimization
+- **[Package Status](./development/package-status.md)** - Current package versions and update policy
 - **[Taskmaster Development Workflow](./development/taskmaster-development-workflow.md)** - Development process and tooling
 
 ### 🚀 [Deployment](./deployment/)
 Build configurations, deployment processes, environment setup, and production considerations.
+- **[Next.js 16 Migration Summary](./deployment/nextjs16-migration-summary.md)** - Complete migration documentation and current status
 
 ## 📖 How to Use This Documentation
 
@@ -71,11 +74,11 @@ Build configurations, deployment processes, environment setup, and production co
 ## 🔍 Key Topics
 
 ### Technology Stack
-- **Frontend**: Next.js 15.2+, React 19.0+, TypeScript 5.8+
-- **UI**: Radix UI, Tailwind CSS 3.4+, Framer Motion 11.11+, shadcn/ui
-- **Backend**: Supabase (PostgreSQL), Clerk Authentication 6.22+
+- **Frontend**: Next.js 16.0.10, React 19.2.1, TypeScript 5.x
+- **UI**: Radix UI, Tailwind CSS 4.1.0, Framer Motion 12.0.0, shadcn/ui
+- **Backend**: Supabase (PostgreSQL), Clerk Authentication 6.36.2
 - **Development**: Turborepo, ESLint, Prettier
-- **Additional**: TanStack Query 5.80+, React Hook Form 7.54+, Zod 3.24+
+- **Additional**: TanStack Query 5.90.12, React Hook Form 7.68.0, Zod 4.1.13, AI SDK 5.0.112
 
 ### Core Concepts
 - **Component Architecture**: Hybrid structure with ui/, composed/, features/ layers

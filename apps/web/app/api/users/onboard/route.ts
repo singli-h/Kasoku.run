@@ -12,7 +12,7 @@ const OnboardingSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   role: z.enum(["athlete", "coach"], {
-    required_error: "Role must be either 'athlete' or 'coach'",
+    message: "Role must be either 'athlete' or 'coach'",
   }),
   birthdate: z.string().optional(),
   timezone: z.string().default("UTC"),
@@ -45,12 +45,12 @@ export async function POST(request: NextRequest) {
     const validationResult = OnboardingSchema.safeParse(body)
     
     if (!validationResult.success) {
-      console.error('Validation errors:', validationResult.error.errors)
+      console.error('Validation errors:', validationResult.error.issues)
       return NextResponse.json(
-        { 
-          isSuccess: false, 
+        {
+          isSuccess: false,
           message: "Validation failed",
-          errors: validationResult.error.errors 
+          errors: validationResult.error.issues
         },
         { status: 400 }
       )

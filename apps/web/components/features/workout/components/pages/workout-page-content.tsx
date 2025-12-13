@@ -10,7 +10,8 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { WorkoutSessionSelector } from "./workout-session-selector"
 import { WorkoutSessionDashboard } from "./workout-session-dashboard"
-import { WorkoutErrorBoundary, WorkoutPageLoading } from "../error-loading"
+import { FeatureErrorBoundary } from '@/components/error-boundary'
+import { WorkoutPageLoading } from "../error-loading"
 
 // Import types
 import type { 
@@ -52,7 +53,7 @@ export function WorkoutPageContent() {
 
   // Render based on current state
   return (
-    <WorkoutErrorBoundary>
+    <FeatureErrorBoundary featureName="Workout" customMessage="Something went wrong with your workout. Please try again.">
       <div className="max-w-6xl mx-auto">
         {isLoading ? (
           <div>Loading workout...</div>
@@ -84,6 +85,6 @@ export function WorkoutPageContent() {
           </div>
         )}
       </div>
-    </WorkoutErrorBoundary>
+    </FeatureErrorBoundary>
   )
 } 

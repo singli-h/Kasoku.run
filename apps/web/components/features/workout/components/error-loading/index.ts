@@ -3,7 +3,8 @@
  * Components for handling errors and loading states in workout features
  */
 
-export { WorkoutErrorBoundary, useWorkoutErrorHandler } from './workout-error-boundary'
+// WorkoutErrorBoundary removed - use FeatureErrorBoundary from @/components/error-boundary instead
+// useWorkoutErrorHandler removed - use react-error-boundary hooks directly if needed
 export { 
   LoadingSpinner, 
   WorkoutLoadingCard, 

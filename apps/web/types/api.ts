@@ -1,10 +1,13 @@
 // API response types for Kasoku running website
 // Simplified for athlete/coach management system
 
-import type { 
-  User, 
+import type {
+  User,
   UserRole
 } from './database'
+
+// Re-export database types for convenience
+export type { User, UserRole }
 
 // Base API response structure
 export interface ApiResponse<T> {

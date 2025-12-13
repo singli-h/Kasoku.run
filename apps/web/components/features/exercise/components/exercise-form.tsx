@@ -59,8 +59,8 @@ import type {
 const exerciseFormSchema = z.object({
   name: z.string().min(1, "Exercise name is required").max(100, "Name must be less than 100 characters"),
   description: z.string().optional(),
-  exercise_type_id: z.number({ required_error: "Exercise type is required" }),
-  unit_id: z.number({ required_error: "Unit is required" }),
+  exercise_type_id: z.number({ message: "Exercise type is required" }),
+  unit_id: z.number({ message: "Unit is required" }),
   video_url: z.string().url("Must be a valid URL").optional().or(z.literal(""))
 })
 

@@ -5,7 +5,7 @@ import { UnifiedPageSkeleton } from "@/components/layout"
 import { getMacrocycleByIdAction } from "@/actions/plans/plan-actions"
 import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
-import { PlanErrorBoundary } from "@/components/error-boundary/PlanErrorBoundary"
+import { FeatureErrorBoundary } from "@/components/error-boundary"
 
 // Type definitions for better type safety
 interface SessionData {
@@ -166,10 +166,10 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
   }
 
   return (
-    <PlanErrorBoundary>
+    <FeatureErrorBoundary featureName="Training Plan" customMessage="Something went wrong while loading your training plan. Please try again.">
       <Suspense fallback={<UnifiedPageSkeleton title="Training Plan" variant="grid" />}>
         <TrainingPlanWorkspace initialPlan={planData} />
       </Suspense>
-    </PlanErrorBoundary>
+    </FeatureErrorBoundary>
   )
 }

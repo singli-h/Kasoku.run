@@ -445,7 +445,7 @@ export async function getExerciseTypesAction(): Promise<ActionState<ExerciseType
 
     const { data: exerciseTypes, error } = await supabase
       .from('exercise_types')
-      .select('*')
+      .select('id, type, description')
       .order('type', { ascending: true })
 
     if (error) {
@@ -531,7 +531,7 @@ export async function getUnitsAction(): Promise<ActionState<Unit[]>> {
 
     const { data: units, error } = await supabase
       .from('units')
-      .select('*')
+      .select('id, name, description')
       .order('name', { ascending: true })
 
     if (error) {
@@ -1302,7 +1302,7 @@ export async function applyProgressionToPresetAction(
     // Get existing preset details
     const { data: details, error: fetchError } = await supabase
       .from('exercise_preset_details')
-      .select('*')
+      .select('id, exercise_preset_id, resistance_unit_id, set_index, reps, weight, distance, performing_time, rest_time, rpe, effort, power, velocity, resistance, height, tempo, metadata, created_at')
       .eq('exercise_preset_id', presetId)
       .order('set_index', { ascending: true })
 

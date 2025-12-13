@@ -38,7 +38,7 @@ const collapseVariants = {
     transition: {
       height: {
         duration: 0.3,
-        ease: [0.04, 0.62, 0.23, 0.98]
+        ease: [0.04, 0.62, 0.23, 0.98] as [number, number, number, number]
       },
       opacity: {
         duration: 0.25,
@@ -52,7 +52,7 @@ const collapseVariants = {
     transition: {
       height: {
         duration: 0.3,
-        ease: [0.04, 0.62, 0.23, 0.98]
+        ease: [0.04, 0.62, 0.23, 0.98] as [number, number, number, number]
       },
       opacity: {
         duration: 0.15

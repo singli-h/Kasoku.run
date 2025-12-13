@@ -41,7 +41,7 @@ const containerVariants = {
     scale: 1,
     transition: {
       duration: 0.4,
-      ease: [0.16, 1, 0.3, 1],
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
       staggerChildren: 0.1
     }
   },
@@ -58,7 +58,7 @@ const exerciseVariants = {
   visible: {
     opacity: 1,
     x: 0,
-    transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] }
+    transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }
   }
 }
 
