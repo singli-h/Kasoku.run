@@ -912,7 +912,7 @@ export async function getGroupSessionsAction(): Promise<ActionState<{
         exercise_preset_groups (
           name
         ),
-        athlete_groups!exercise_training_sessions_athlete_group_id_fkey (
+        athlete_groups!fk_ets_group (
           id,
           group_name,
           athletes (count)
@@ -1040,7 +1040,7 @@ export async function getGroupSessionDataAction(sessionId: number): Promise<Acti
           name,
           exercise_presets (
             id,
-            order_index,
+            preset_order,
             exercise:exercises (
               id,
               name
@@ -1057,7 +1057,7 @@ export async function getGroupSessionDataAction(sessionId: number): Promise<Acti
             )
           )
         ),
-        athlete_groups!exercise_training_sessions_athlete_group_id_fkey (
+        athlete_groups!fk_ets_group (
           id,
           group_name,
           coach_id,
@@ -1071,6 +1071,7 @@ export async function getGroupSessionDataAction(sessionId: number): Promise<Acti
           )
         )
       `)
+      // preset_order is the real ordering column on exercise_presets; order_index is not in the schema
       .eq('id', sessionId)
       .single()
 
@@ -1289,7 +1290,7 @@ export async function updateSessionDetailAction(
         id,
         athlete_group_id,
         exercise_preset_group_id,
-        athlete_groups!exercise_training_sessions_athlete_group_id_fkey(coach_id)
+        athlete_groups!fk_ets_group(coach_id)
       `)
       .eq('id', sessionId)
       .single()
