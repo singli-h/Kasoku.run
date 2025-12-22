@@ -1,5 +1,3 @@
-"use server"
-
 /*
  * Clerk Webhook Handler for Supabase User & Organization Sync
  * 
@@ -172,22 +170,52 @@ export async function POST(req: NextRequest) {
 
 async function handleUserCreated(data: UserWebhookEvent["data"]) {
   const primaryEmail = data.email_addresses[0]?.email_address
-  
+
   if (!primaryEmail) {
     console.error(`[handleUserCreated] No primary email found for user ${data.id}`)
     return
   }
 
   // Generate a username from email (fallback if no first/last name)
-  const username = data.first_name && data.last_name 
+  const username = data.first_name && data.last_name
     ? `${data.first_name.toLowerCase()}.${data.last_name.toLowerCase()}`
     : primaryEmail.split('@')[0]
 
-  // Use upsert for idempotency (handles webhook retries)
-  // This ensures we don't fail if the webhook is called multiple times
+  // Check if user already exists (handles webhook retries)
+  const { data: existingUser } = await supabaseService
+    .from("users")
+    .select("id")
+    .eq("clerk_id", data.id)
+    .maybeSingle()
+
+  if (existingUser) {
+    // User already exists, update instead
+    console.log(`[handleUserCreated] User already exists, updating: ${data.id}`)
+    const { data: user, error } = await supabaseService
+      .from("users")
+      .update({
+        email: primaryEmail,
+        first_name: data.first_name || null,
+        last_name: data.last_name || null,
+        avatar_url: data.image_url || null,
+      })
+      .eq("clerk_id", data.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error(`[handleUserCreated] Error updating existing user ${data.id}:`, error)
+      throw error
+    }
+
+    console.log(`[handleUserCreated] User updated in database: ${primaryEmail} (ID: ${user?.id})`)
+    return
+  }
+
+  // Insert new user
   const { data: user, error } = await supabaseService
     .from("users")
-    .upsert({
+    .insert({
       clerk_id: data.id,
       email: primaryEmail,
       username: username,
@@ -197,18 +225,16 @@ async function handleUserCreated(data: UserWebhookEvent["data"]) {
       role: 'athlete', // Default role
       timezone: 'UTC', // Default timezone
       onboarding_completed: false,
-    }, {
-      onConflict: 'clerk_id'
     })
     .select()
     .single()
 
   if (error) {
-    console.error(`[handleUserCreated] Error upserting user ${data.id}:`, error)
+    console.error(`[handleUserCreated] Error inserting user ${data.id}:`, error)
     throw error
   }
 
-  console.log(`[handleUserCreated] User synced in database: ${primaryEmail} (ID: ${user?.id})`)
+  console.log(`[handleUserCreated] User created in database: ${primaryEmail} (ID: ${user?.id})`)
 }
 
 async function handleUserUpdated(data: UserWebhookEvent["data"]) {

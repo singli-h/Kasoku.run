@@ -1,5 +1,3 @@
-"use server"
-
 import { Suspense } from "react"
 import {
   getCurrentUserAction,
@@ -37,13 +35,12 @@ async function DashboardContent() {
   }
 
   if (!dashboardDataResult.isSuccess || !dashboardDataResult.data) {
-    // Use unified error handling
+    // Use unified error handling (no onRetry - can't pass functions from Server to Client)
     return (
       <PageLayout
         title="Dashboard"
         description="Your training overview and quick actions"
         error={dashboardDataResult.message}
-        onRetry={() => window.location.reload()}
       >
         <div>Error loading dashboard data</div>
       </PageLayout>
