@@ -22,11 +22,11 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset>
+        <SidebarInset className="overflow-x-hidden">
           <ProtectedHeader />
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
             {children}
-          </div>
+          </main>
         </SidebarInset>
       </SidebarProvider>
     </ErrorBoundary>
