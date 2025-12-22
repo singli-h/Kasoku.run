@@ -104,17 +104,19 @@ export function ChangePreview({
       </div>
 
       {/* Swap indicator */}
-      {displayType === 'swap' && proposedData?.exerciseName && (
-        <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-          <span className="line-through">
-            {String(currentData?.exerciseName || '')}
-          </span>
-          <span>→</span>
-          <span className={classes.text}>
-            {String(proposedData.exerciseName)}
-          </span>
-        </div>
-      )}
+      {displayType === 'swap' &&
+        proposedData?.exerciseName !== undefined &&
+        proposedData?.exerciseName !== null && (
+          <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+            <span className="line-through">
+              {String(currentData?.exerciseName ?? '')}
+            </span>
+            <span>→</span>
+            <span className={classes.text}>
+              {String(proposedData.exerciseName)}
+            </span>
+          </div>
+        )}
 
       {/* Changed fields for updates */}
       {showDetails && displayType === 'update' && changedFields.length > 0 && (
@@ -181,7 +183,10 @@ interface ChangeListProps {
   onChangeClick?: (change: ChangeRequest) => void
 }
 
-export function ChangeList({ changes, onChangeClick }: ChangeListProps) {
+export function ChangeList({
+  changes,
+  onChangeClick,
+}: ChangeListProps): React.JSX.Element {
   if (changes.length === 0) {
     return (
       <div className="py-4 text-center text-gray-500">
