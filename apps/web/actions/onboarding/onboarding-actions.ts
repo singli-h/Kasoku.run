@@ -171,6 +171,25 @@ export async function completeOnboardingAction(
       }
 
       console.log('Coach profile created/updated successfully')
+
+      // Check if athlete record already exists (Coaches also need an athlete profile)
+      const { data: existingAthlete } = await supabase
+        .from('athletes')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (!existingAthlete) {
+        console.log(`Creating default athlete record for coach ${userId}`)
+        const { error: athleteError } = await supabase
+          .from('athletes')
+          .insert({ user_id: userId })
+
+        if (athleteError) {
+          console.error('Error creating default athlete profile for coach:', athleteError)
+          // Don't fail the whole onboarding if this fails, but log it
+        }
+      }
     }
 
     return {

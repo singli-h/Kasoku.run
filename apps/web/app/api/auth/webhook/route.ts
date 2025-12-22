@@ -48,12 +48,19 @@ interface UserWebhookEvent {
   type: "user.created" | "user.updated" | "user.deleted"
   data: {
     id: string
+    username?: string
     email_addresses: Array<{ email_address: string }>
     first_name?: string
     last_name?: string
     image_url?: string
     created_at: number
     updated_at: number
+    public_metadata?: {
+      role?: string
+    }
+    unsafe_metadata?: {
+      role?: string
+    }
   }
 }
 
@@ -177,9 +184,12 @@ async function handleUserCreated(data: UserWebhookEvent["data"]) {
   }
 
   // Generate a username from email (fallback if no first/last name)
-  const username = data.first_name && data.last_name
+  const username = data.username || (data.first_name && data.last_name
     ? `${data.first_name.toLowerCase()}.${data.last_name.toLowerCase()}`
-    : primaryEmail.split('@')[0]
+    : primaryEmail.split('@')[0])
+
+  // Determine role from metadata or default to 'athlete'
+  const role = data.public_metadata?.role || data.unsafe_metadata?.role || 'athlete'
 
   // Check if user already exists (handles webhook retries)
   const { data: existingUser } = await supabaseService
@@ -198,6 +208,7 @@ async function handleUserCreated(data: UserWebhookEvent["data"]) {
         first_name: data.first_name || null,
         last_name: data.last_name || null,
         avatar_url: data.image_url || null,
+        role: role,
       })
       .eq("clerk_id", data.id)
       .select()
@@ -209,6 +220,11 @@ async function handleUserCreated(data: UserWebhookEvent["data"]) {
     }
 
     console.log(`[handleUserCreated] User updated in database: ${primaryEmail} (ID: ${user?.id})`)
+    
+    // Ensure profile records exist
+    if (user) {
+      await ensureUserProfile(user.id, role)
+    }
     return
   }
 
@@ -222,7 +238,7 @@ async function handleUserCreated(data: UserWebhookEvent["data"]) {
       first_name: data.first_name || null,
       last_name: data.last_name || null,
       avatar_url: data.image_url || null,
-      role: 'athlete', // Default role
+      role: role, 
       timezone: 'UTC', // Default timezone
       onboarding_completed: false,
     })
@@ -235,6 +251,11 @@ async function handleUserCreated(data: UserWebhookEvent["data"]) {
   }
 
   console.log(`[handleUserCreated] User created in database: ${primaryEmail} (ID: ${user?.id})`)
+
+  // Ensure profile records exist
+  if (user) {
+    await ensureUserProfile(user.id, role)
+  }
 }
 
 async function handleUserUpdated(data: UserWebhookEvent["data"]) {
@@ -244,6 +265,9 @@ async function handleUserUpdated(data: UserWebhookEvent["data"]) {
     console.error(`[handleUserUpdated] No primary email found for user ${data.id}`)
     return
   }
+
+  // Determine role from metadata
+  const role = data.public_metadata?.role || data.unsafe_metadata?.role
 
   // Try using the RPC function if available, fallback to direct update
   const { data: rpcResult, error: rpcError } = await supabaseService.rpc(
@@ -274,6 +298,25 @@ async function handleUserUpdated(data: UserWebhookEvent["data"]) {
       console.error(`[handleUserUpdated] Error updating user ${data.id}:`, error)
       throw error
     }
+  }
+
+  // Get user to check role and ensure profiles
+  const { data: user } = await supabaseService
+      .from("users")
+      .select("id, role")
+      .eq("clerk_id", data.id)
+      .maybeSingle()
+
+  if (user) {
+      // If role provided in metadata and different, update it
+      if (role && role !== user.role) {
+          console.log(`[handleUserUpdated] Updating role for user ${user.id} to ${role}`)
+          await supabaseService.from("users").update({ role: role }).eq("id", user.id)
+          await ensureUserProfile(user.id, role)
+      } else {
+          // Ensure profiles exist for current role
+          await ensureUserProfile(user.id, role || user.role)
+      }
   }
 
   console.log(`[handleUserUpdated] User updated in database: ${primaryEmail}`)
@@ -436,4 +479,36 @@ export async function OPTIONS(req: NextRequest) {
       },
     }
   )
+}
+
+async function ensureUserProfile(userId: number, role: string) {
+  // Ensure athlete record exists for both athletes and coaches
+  if (role === 'athlete' || role === 'coach') {
+    const { data: existingAthlete } = await supabaseService
+      .from('athletes')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle()
+    
+    if (!existingAthlete) {
+      console.log(`[ensureUserProfile] Creating athlete record for user ${userId}`)
+      const { error } = await supabaseService.from('athletes').insert({ user_id: userId })
+      if (error) console.error(`[ensureUserProfile] Error creating athlete record:`, error)
+    }
+  }
+
+  // Ensure coach record exists only for coaches
+  if (role === 'coach') {
+    const { data: existingCoach } = await supabaseService
+      .from('coaches')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle()
+    
+    if (!existingCoach) {
+      console.log(`[ensureUserProfile] Creating coach record for user ${userId}`)
+      const { error } = await supabaseService.from('coaches').insert({ user_id: userId })
+      if (error) console.error(`[ensureUserProfile] Error creating coach record:`, error)
+    }
+  }
 } 

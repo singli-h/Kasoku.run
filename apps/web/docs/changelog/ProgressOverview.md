@@ -1,8 +1,8 @@
 # 📊 Kasoku MVP Project Tracker
 
 > **Project Status**: MVP Development - Core features 88% complete, AI integration pending
-> **Last Updated**: October 25, 2025
-> **Next Review**: November 1, 2025
+> **Last Updated**: December 22, 2025
+> **Next Review**: January 1, 2026
 
 ---
 
@@ -243,6 +243,7 @@
 - [x] Row Level Security (RLS) policies
 - [x] JWT token management
 - [x] Session handling
+- [x] Webhook user/profile sync updated (Coach gets athlete profile)
 - **Issues**: None
 
 #### Database Schema  
