@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Progress } from "@/components/ui/progress"
 import { useRouter } from "next/navigation"
 import { useAuth, useUser } from "@clerk/nextjs"
+import { useToast } from "@/hooks/use-toast"
 import { WelcomeStep } from "./steps/welcome-step"
 import { RoleSelectionStep } from "./steps/role-selection-step"
 import { AthleteDetailsStep } from "./steps/athlete-details-step"
@@ -44,6 +45,7 @@ export default function OnboardingWizard() {
   const router = useRouter()
   const { userId } = useAuth()
   const { user, isLoaded: isUserLoaded } = useUser()
+  const { toast } = useToast()
   
   const [userData, setUserData] = useState<OnboardingData>({
     firstName: "",
@@ -166,15 +168,26 @@ export default function OnboardingWizard() {
       })
 
       if (result.isSuccess) {
-        console.log('Onboarding completed successfully')
+        toast({
+          title: "Welcome to Kasoku!",
+          description: "Your profile has been set up successfully.",
+        })
         router.push('/dashboard')
       } else {
         console.error('Onboarding failed:', result.message)
-        // TODO: Show error message to user
+        toast({
+          title: "Error",
+          description: result.message || "Failed to complete onboarding. Please try again.",
+          variant: "destructive",
+        })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error completing onboarding:', error)
-      // TODO: Show error message to user
+      toast({
+        title: "Error",
+        description: error?.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsSubmitting(false)
     }

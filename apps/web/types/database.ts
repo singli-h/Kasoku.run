@@ -1258,6 +1258,16 @@ export type Database = {
         Args: { "": string } | { "": unknown }
         Returns: unknown
       }
+      update_user_from_webhook: {
+        Args: {
+          p_clerk_id: string
+          p_email: string
+          p_first_name: string | null
+          p_last_name: string | null
+          p_avatar_url: string | null
+        }
+        Returns: void
+      }
       get_user_role_data: {
         Args: { _clerk_id: string }
         Returns: {

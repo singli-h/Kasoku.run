@@ -6,10 +6,6 @@ Configures Next.js for the app.
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    // Enable ESLint during builds - ignoring errors is bad practice
-    ignoreDuringBuilds: false,
-  },
   typescript: {
     // Enable TypeScript checks during builds - ignoring errors is bad practice
     ignoreBuildErrors: false,

@@ -147,15 +147,16 @@ export async function POST(req: NextRequest) {
       case "user.deleted":
         await handleUserDeleted(data as UserWebhookEvent["data"])
         break
-      case "organizationMembership.created":
-        await handleOrganizationMembershipCreated(data as OrganizationMembershipWebhookEvent["data"])
-        break
-      case "organizationMembership.updated":
-        await handleOrganizationMembershipUpdated(data as OrganizationMembershipWebhookEvent["data"])
-        break
-      case "organizationMembership.deleted":
-        await handleOrganizationMembershipDeleted(data as OrganizationMembershipWebhookEvent["data"])
-        break
+      // TEMPORARILY DISABLED: Organization tables do not exist yet
+      // case "organizationMembership.created":
+      //   await handleOrganizationMembershipCreated(data as OrganizationMembershipWebhookEvent["data"])
+      //   break
+      // case "organizationMembership.updated":
+      //   await handleOrganizationMembershipUpdated(data as OrganizationMembershipWebhookEvent["data"])
+      //   break
+      // case "organizationMembership.deleted":
+      //   await handleOrganizationMembershipDeleted(data as OrganizationMembershipWebhookEvent["data"])
+      //   break
       default:
         console.log(`[webhook:${eventId}] Unhandled webhook type: ${type}`)
     }
@@ -266,6 +267,8 @@ async function handleUserDeleted(data: UserWebhookEvent["data"]) {
   console.log(`[handleUserDeleted] User deleted from database: ${data.id}`)
 }
 
+// TEMPORARILY DISABLED: Organization tables do not exist yet
+/*
 async function handleOrganizationMembershipCreated(data: OrganizationMembershipWebhookEvent["data"]) {
   const clerkUserId = data.public_user_data?.user_id
   const orgId = data.organization?.id
@@ -392,6 +395,7 @@ async function handleOrganizationMembershipDeleted(data: OrganizationMembershipW
 
   console.log(`[handleOrganizationMembershipDeleted] Membership deleted: ${membershipId}`)
 }
+*/
 
 // Handle preflight OPTIONS requests for CORS
 export async function OPTIONS(req: NextRequest) {
