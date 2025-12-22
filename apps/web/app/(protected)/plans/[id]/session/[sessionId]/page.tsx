@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { UnifiedPageSkeleton } from "@/components/layout"
 import { SessionPlannerClient } from "@/components/features/plans/session-planner/SessionPlannerClient"
+import { SessionAssistantWrapper } from "./SessionAssistantWrapper"
 import { getExercisePresetGroupByIdAction } from "@/actions/library/exercise-actions"
 import { getExercisesAction } from "@/actions/library/exercise-actions"
 import { getExerciseTypesAction } from "@/actions/library/exercise-actions"
@@ -139,15 +140,25 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
   const { session, exercises } = transformSessionData(sessionResult.data)
 
   return (
-    <Suspense fallback={<UnifiedPageSkeleton title="Session Planner" />}>
-      <SessionPlannerClient
-        planId={planId}
+    <>
+      <Suspense fallback={<UnifiedPageSkeleton title="Session Planner" />}>
+        <SessionPlannerClient
+          planId={planId}
+          sessionId={sessionId}
+          initialSession={session}
+          initialExercises={exercises}
+          exerciseLibrary={exerciseLibrary}
+          exerciseTypes={exerciseTypes}
+        />
+      </Suspense>
+
+      {/* AI Session Assistant - provides chat drawer and approval banner */}
+      <SessionAssistantWrapper
         sessionId={sessionId}
-        initialSession={session}
-        initialExercises={exercises}
+        planId={planId}
+        exercises={exercises}
         exerciseLibrary={exerciseLibrary}
-        exerciseTypes={exerciseTypes}
       />
-    </Suspense>
+    </>
   )
 }
