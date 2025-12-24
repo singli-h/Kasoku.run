@@ -75,10 +75,10 @@ export async function POST(req: Request) {
 
     // Debug: Log the messages structure to see if tool results are included
     console.log('[session-assistant] Messages count:', modelMessages.length)
-    console.log('[session-assistant] Raw messages:', JSON.stringify(messages.map((m: { role: string; parts?: unknown[] }) => ({
+    console.log('[session-assistant] Raw messages:', JSON.stringify(messages.map((m: { role: string; parts?: Array<{ type?: string }> }) => ({
       role: m.role,
       partsCount: m.parts?.length,
-      partTypes: m.parts?.map((p: { type?: string }) => p.type)
+      partTypes: m.parts?.map((p) => p.type)
     }))))
     console.log('[session-assistant] Model messages:', JSON.stringify(modelMessages.map((m: { role: string; content?: unknown }) => ({
       role: m.role,
@@ -88,13 +88,11 @@ export async function POST(req: Request) {
     console.log('[session-assistant] Tools available:', Object.keys(coachDomainTools))
 
     // Stream response with tool support
-    // maxSteps allows multi-turn tool calling when tools are executed client-side
     const result = streamText({
       model: openai('gpt-4o'),
       system: systemPrompt,
       messages: modelMessages,
       tools: coachDomainTools,
-      maxSteps: 10, // Allow up to 10 tool call rounds
       onFinish: ({ text, toolCalls, usage }) => {
         console.log('[session-assistant] Response text:', text?.substring(0, 200))
         console.log('[session-assistant] Tool calls:', toolCalls?.map(t => t.toolName))
