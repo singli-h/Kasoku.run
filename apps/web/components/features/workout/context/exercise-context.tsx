@@ -10,14 +10,14 @@
 "use client"
 
 import { createContext, useContext, useState, ReactNode, useCallback, useRef, useEffect } from "react"
-import type { ExercisePresetWithDetails, WorkoutLogSet } from "@/types/training"
+import type { SessionPlanExerciseWithDetails, WorkoutLogSet } from "@/types/training"
 import { useWorkoutApi } from "@/components/features/workout/hooks/use-workout-api"
 
 // Extended exercise type with training details for workout execution
-export interface WorkoutExercise extends ExercisePresetWithDetails {
+export interface WorkoutExercise extends SessionPlanExerciseWithDetails {
   workout_log_sets: WorkoutLogSet[]
   completed?: boolean
-  // Explicit fields from exercise_presets table
+  // Explicit fields from session_plan_exercises table
   id: number
   exercise_order: number | null
   superset_id: number | null

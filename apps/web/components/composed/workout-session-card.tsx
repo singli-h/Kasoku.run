@@ -11,15 +11,15 @@ import { Play, Eye } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { ExerciseTrainingSessionWithDetails } from "@/types/training"
+import type { WorkoutLogWithDetails } from "@/types/training"
 import { SessionStatusBadge } from './workout-session-status-badge'
 import { SessionDateDisplay } from './workout-session-date-display'
 import { SessionDurationDisplay } from './workout-session-duration-display'
 import { SessionExerciseCount } from './workout-session-exercise-count'
 
 interface SessionCardProps {
-  session: ExerciseTrainingSessionWithDetails
-  onAction?: (session: ExerciseTrainingSessionWithDetails) => void
+  session: WorkoutLogWithDetails
+  onAction?: (session: WorkoutLogWithDetails) => void
   actionLabel?: string
   actionIcon?: React.ReactNode
   showDetails?: boolean

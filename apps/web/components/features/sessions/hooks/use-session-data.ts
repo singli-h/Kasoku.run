@@ -169,7 +169,7 @@ export function useSessionData(options: UseSessionDataOptions) {
         //     event: '*',
         //     schema: 'public',
         //     table: 'workout_log_sets',
-        //     filter: `exercise_training_session_id=eq.${sessionId}`
+        //     filter: `workout_log_id=eq.${sessionId}`
         //   }, (payload) => {
         //     console.log('[useSessionData] Real-time update:', payload)
         //     refresh()

@@ -21,14 +21,14 @@ import Link from "next/link"
 // Import types
 import type { 
   SessionPlanWithDetails,
-  ExerciseTrainingSessionWithDetails 
+  WorkoutLogWithDetails 
 } from "@/types/training"
 
 type WorkoutPageState = 'selection' | 'active-session'
 
 interface ActiveSession {
   presetGroup: SessionPlanWithDetails
-  session?: ExerciseTrainingSessionWithDetails
+  session?: WorkoutLogWithDetails
 }
 
 export function WorkoutPageContent() {
@@ -50,7 +50,7 @@ export function WorkoutPageContent() {
   // Handle session selection
   const handleSessionSelected = async (
     presetGroup: SessionPlanWithDetails, 
-    session?: ExerciseTrainingSessionWithDetails
+    session?: WorkoutLogWithDetails
   ) => {
     setIsLoading(true)
     try {

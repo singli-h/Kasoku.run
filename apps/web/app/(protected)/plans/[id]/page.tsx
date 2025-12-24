@@ -19,7 +19,7 @@ interface SessionPlan {
   day: number | null
   name: string | null
   session_mode: string | null
-  exercise_presets?: any[]
+  session_plan_exercises?: any[]
   [key: string]: any
 }
 
@@ -115,7 +115,7 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
             duration: 60, // Default duration
             volume: 0, // Default volume
             intensity: 0, // Default intensity
-            exercises: group.session_plan_exercises ?? [], // Include the nested exercise_presets
+            exercises: group.session_plan_exercises ?? [],
           }
         })
 

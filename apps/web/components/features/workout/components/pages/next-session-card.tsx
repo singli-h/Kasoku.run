@@ -10,11 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
-import type { SessionPlanWithDetails, ExerciseTrainingSessionWithDetails } from "@/types/training"
+import type { SessionPlanWithDetails, WorkoutLogWithDetails } from "@/types/training"
 
 interface NextSessionCardProps {
-  session: ExerciseTrainingSessionWithDetails
-  onStart: (session: ExerciseTrainingSessionWithDetails) => void
+  session: WorkoutLogWithDetails
+  onStart: (session: WorkoutLogWithDetails) => void
 }
 
 export function NextSessionCard({ session, onStart }: NextSessionCardProps) {

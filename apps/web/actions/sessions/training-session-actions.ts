@@ -14,7 +14,7 @@ import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import {
   ExerciseTrainingDetail,
-  ExerciseTrainingSessionWithDetails,
+  WorkoutLogWithDetails,
   PerformanceMetrics,
   ExerciseProgress
 } from "@/types/training"
@@ -156,7 +156,7 @@ export async function startTrainingSessionAction(
 export async function getTrainingSessionsAction(
   athleteId?: number,
   limit?: number
-): Promise<ActionState<ExerciseTrainingSessionWithDetails[]>> {
+): Promise<ActionState<WorkoutLogWithDetails[]>> {
   try {
     const { userId } = await auth()
 
@@ -261,7 +261,7 @@ export async function getTrainingSessionsAction(
  */
 export async function getTrainingSessionByIdAction(
   sessionId: number
-): Promise<ActionState<ExerciseTrainingSessionWithDetails>> {
+): Promise<ActionState<WorkoutLogWithDetails>> {
   try {
     const { userId } = await auth()
 

@@ -8,10 +8,10 @@
 import React from 'react'
 import { Target, Dumbbell, Activity } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ExerciseTrainingSessionWithDetails } from '@/types/training'
+import type { WorkoutLogWithDetails } from '@/types/training'
 
 interface SessionExerciseCountProps {
-  session: ExerciseTrainingSessionWithDetails
+  session: WorkoutLogWithDetails
   showIcon?: boolean
   showLabel?: boolean
   size?: 'sm' | 'md' | 'lg'
@@ -79,7 +79,7 @@ export function SessionExerciseCount({
 }
 
 // Utility function to get session exercise count
-export function getSessionExerciseCount(session: ExerciseTrainingSessionWithDetails): number {
+export function getSessionExerciseCount(session: WorkoutLogWithDetails): number {
   if (!session.session_plan?.session_plan_exercises) {
     return 0
   }
@@ -88,7 +88,7 @@ export function getSessionExerciseCount(session: ExerciseTrainingSessionWithDeta
 }
 
 // Utility function to get exercise count by type
-export function getExerciseCountByType(session: ExerciseTrainingSessionWithDetails) {
+export function getExerciseCountByType(session: WorkoutLogWithDetails) {
   if (!session.session_plan?.session_plan_exercises) {
     return {
       total: 0,
@@ -111,7 +111,7 @@ export function getExerciseCountByType(session: ExerciseTrainingSessionWithDetai
 }
 
 // Utility function to get exercise count summary
-export function getExerciseCountSummary(session: ExerciseTrainingSessionWithDetails): string {
+export function getExerciseCountSummary(session: WorkoutLogWithDetails): string {
   const { total, byType } = getExerciseCountByType(session)
   
   if (total === 0) {
@@ -128,7 +128,7 @@ export function getExerciseCountSummary(session: ExerciseTrainingSessionWithDeta
 }
 
 // Utility function to get exercise type breakdown
-export function getExerciseTypeBreakdown(session: ExerciseTrainingSessionWithDetails): Array<{type: string, count: number}> {
+export function getExerciseTypeBreakdown(session: WorkoutLogWithDetails): Array<{type: string, count: number}> {
   const { byType } = getExerciseCountByType(session)
   
   return Object.entries(byType)

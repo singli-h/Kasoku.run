@@ -23,7 +23,7 @@ import {
   completeTrainingSessionAction,
   updateTrainingSessionStatusAction
 } from '@/actions/workout/workout-session-actions'
-import { ExerciseTrainingSessionWithDetails } from '@/types/training'
+import { WorkoutLogWithDetails } from '@/types/training'
 import { Database } from '@/types/database'
 
 type SessionStatus = Database["public"]["Enums"]["session_status"]
@@ -97,7 +97,7 @@ export function useSessionsHistory({
   const queryClient = useQueryClient()
   
   const query = useQuery<{
-    sessions: ExerciseTrainingSessionWithDetails[]
+    sessions: WorkoutLogWithDetails[]
     totalCount: number
     hasMore: boolean
   }>({

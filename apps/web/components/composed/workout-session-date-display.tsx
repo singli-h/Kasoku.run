@@ -8,10 +8,10 @@
 import React from 'react'
 import { Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ExerciseTrainingSessionWithDetails } from '@/types/training'
+import type { WorkoutLogWithDetails } from '@/types/training'
 
 interface SessionDateDisplayProps {
-  session: ExerciseTrainingSessionWithDetails
+  session: WorkoutLogWithDetails
   showIcon?: boolean
   showLabel?: boolean
   size?: 'sm' | 'md' | 'lg'
@@ -98,7 +98,7 @@ export function SessionDateDisplay({
 
 // Utility function to format session date
 export function formatSessionDate(
-  session: ExerciseTrainingSessionWithDetails, 
+  session: WorkoutLogWithDetails, 
   format: 'short' | 'medium' | 'long' | 'relative' = 'short'
 ): string {
   if (!(session as any).date_time) {

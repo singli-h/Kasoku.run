@@ -21,7 +21,7 @@ import { WorkoutSessionCard } from '@/components/composed'
 import { FeatureErrorBoundary } from '@/components/error-boundary'
 import { WorkoutLoadingCard } from '../error-loading'
 import { SessionDetailsDialog } from './SessionDetailsDialog'
-import type { ExerciseTrainingSessionWithDetails } from "@/types/training"
+import type { WorkoutLogWithDetails } from "@/types/training"
 
 interface WorkoutHistoryPageProps {
   className?: string
@@ -35,7 +35,7 @@ interface SessionFilters {
 
 export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
   const [page, setPage] = useState(1)
-  const [selectedSession, setSelectedSession] = useState<ExerciseTrainingSessionWithDetails | null>(null)
+  const [selectedSession, setSelectedSession] = useState<WorkoutLogWithDetails | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [filters, setFilters] = useState<SessionFilters>({
     startDate: "",
@@ -171,7 +171,7 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
                   key={(session as any).id}
                   session={session}
                   onAction={(session) => {
-                    setSelectedSession(session as ExerciseTrainingSessionWithDetails)
+                    setSelectedSession(session as WorkoutLogWithDetails)
                     setDetailsOpen(true)
                   }}
                   actionLabel="View Details"

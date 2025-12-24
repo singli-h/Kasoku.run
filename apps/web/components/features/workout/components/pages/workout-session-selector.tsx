@@ -35,13 +35,13 @@ import { WorkoutSessionCard } from '@/components/composed'
 // Import types
 import type { 
   SessionPlanWithDetails,
-  ExerciseTrainingSessionWithDetails 
+  WorkoutLogWithDetails 
 } from "@/types/training"
 
 interface WorkoutSessionSelectorProps {
   onSessionSelected: (
     presetGroup: SessionPlanWithDetails, 
-    session?: ExerciseTrainingSessionWithDetails
+    session?: WorkoutLogWithDetails
   ) => void
   className?: string
   hideOngoing?: boolean
@@ -62,7 +62,7 @@ export function WorkoutSessionSelector({
   const { startSession, updateSessionStatus } = useSessionMutations()
 
   // Handle starting or continuing a session
-  const handleStartSession = async (session: ExerciseTrainingSessionWithDetails) => {
+  const handleStartSession = async (session: WorkoutLogWithDetails) => {
     try {
       const presetGroup = session.session_plan!
       setStartingSessionId(presetGroup.id)

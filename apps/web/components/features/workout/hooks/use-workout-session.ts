@@ -10,7 +10,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useWorkoutApi } from "./use-workout-api"
 import type { 
-  ExerciseTrainingSessionWithDetails,
+  WorkoutLogWithDetails,
   WorkoutLogSet 
 } from "@/types/training"
 import type { WorkoutExercise } from "../context/exercise-context"
@@ -24,7 +24,7 @@ export type SessionStatus = Database["public"]["Enums"]["session_status"]
 interface WorkoutSessionState {
   isLoading: boolean
   error: Error | null
-  session: ExerciseTrainingSessionWithDetails | null
+  session: WorkoutLogWithDetails | null
   sessionStatus: SessionStatus
 }
 
@@ -38,7 +38,7 @@ interface UseWorkoutSessionReturn extends WorkoutSessionState {
   refreshSessionData: () => Promise<void>
 }
 
-export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDetails): UseWorkoutSessionReturn => {
+export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWorkoutSessionReturn => {
   // Add a ref to keep track of the latest state
   const stateRef = useRef<WorkoutSessionState | null>(null)
   

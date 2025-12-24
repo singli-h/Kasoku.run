@@ -10,11 +10,11 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, Clock, Target, CheckCircle, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { ExerciseTrainingSessionWithDetails } from "@/types/training"
+import type { WorkoutLogWithDetails } from "@/types/training"
 import { format } from "date-fns"
 
 interface SessionDetailsDialogProps {
-  session: ExerciseTrainingSessionWithDetails | null
+  session: WorkoutLogWithDetails | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }

@@ -8,10 +8,10 @@
 import React from 'react'
 import { Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ExerciseTrainingSessionWithDetails } from '@/types/training'
+import type { WorkoutLogWithDetails } from '@/types/training'
 
 interface SessionDurationDisplayProps {
-  session: ExerciseTrainingSessionWithDetails
+  session: WorkoutLogWithDetails
   showIcon?: boolean
   showLabel?: boolean
   size?: 'sm' | 'md' | 'lg'
@@ -70,7 +70,7 @@ export function SessionDurationDisplay({
 }
 
 // Utility function to calculate session duration
-export function calculateSessionDuration(session: ExerciseTrainingSessionWithDetails): string {
+export function calculateSessionDuration(session: WorkoutLogWithDetails): string {
   if (!session.session_plan?.session_plan_exercises) {
     return '0 min'
   }
@@ -98,7 +98,7 @@ export function calculateSessionDuration(session: ExerciseTrainingSessionWithDet
 }
 
 // Utility function to get duration in minutes
-export function getSessionDurationMinutes(session: ExerciseTrainingSessionWithDetails): number {
+export function getSessionDurationMinutes(session: WorkoutLogWithDetails): number {
   if (!session.session_plan?.session_plan_exercises) {
     return 0
   }

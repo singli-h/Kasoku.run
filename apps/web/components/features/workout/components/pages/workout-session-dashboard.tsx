@@ -33,14 +33,14 @@ import { SaveStatusIndicator } from "../SaveStatusIndicator"
 
 // Import types
 import type { 
-  ExerciseTrainingSessionWithDetails,
-  ExercisePresetGroupWithDetails,
+  WorkoutLogWithDetails,
+  SessionPlanWithDetails,
   WorkoutLogSet 
 } from "@/types/training"
 
 interface WorkoutSessionDashboardProps {
-  presetGroup: ExercisePresetGroupWithDetails
-  existingSession?: ExerciseTrainingSessionWithDetails
+  presetGroup: SessionPlanWithDetails
+  existingSession?: WorkoutLogWithDetails
   className?: string
 }
 

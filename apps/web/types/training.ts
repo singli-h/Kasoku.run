@@ -75,8 +75,6 @@ export interface MesocycleWithDetails extends Mesocycle {
 export interface MicrocycleWithDetails extends Microcycle {
   mesocycle?: Mesocycle | null
   session_plans?: SessionPlanWithDetails[]
-  /** @deprecated Use session_plans instead */
-  exercise_preset_groups?: SessionPlanWithDetails[]
   user?: any
 }
 
@@ -108,40 +106,9 @@ export interface WorkoutLogWithDetails extends WorkoutLog {
   workout_log_sets?: WorkoutLogSet[]
 }
 
-// Legacy aliases (deprecated)
-/** @deprecated Use SessionPlanWithDetails instead */
-export interface ExercisePresetGroupWithDetails extends SessionPlan {
-  microcycle?: Microcycle | null
-  exercise_presets?: SessionPlanExerciseWithDetails[]
-  session_plan_exercises?: SessionPlanExerciseWithDetails[]
-  athlete_group?: AthleteGroup | null
-}
-
-/** @deprecated Use SessionPlanExerciseWithDetails instead */
-export interface ExercisePresetWithDetails extends SessionPlanExercise {
-  exercise?: ExerciseWithDetails | null
-  exercise_preset_group?: SessionPlan | null
-  session_plan?: SessionPlan | null
-  exercise_preset_details?: SessionPlanSet[]
-  session_plan_sets?: SessionPlanSet[]
-}
-
 export interface ExerciseWithDetails extends Exercise {
   exercise_type?: ExerciseType | null
   unit?: Unit | null
-  // Additional fields for UI - all from Exercise are already included
-}
-
-/** @deprecated Use WorkoutLogWithDetails instead */
-export interface ExerciseTrainingSessionWithDetails extends WorkoutLog {
-  athlete?: Athlete | null
-  exercise_preset_group?: SessionPlanWithDetails | null
-  session_plan?: SessionPlanWithDetails | null
-  workout_log_exercises?: WorkoutLogExerciseWithDetails[]
-  /** @deprecated Use workout_log_exercises instead */
-  exercise_training_details?: WorkoutLogSet[]
-  /** @deprecated Use workout_log_exercises instead */
-  workout_log_sets?: WorkoutLogSet[]
 }
 
 // ============================================================================

@@ -25,10 +25,10 @@ import {
 import { groupExercisesWithSeparateSupersets } from "../../utils/exercise-grouping"
 import { SupersetContainer } from "./superset-container"
 import { ExerciseTypeSection } from "./exercise-type-section"
-import type { ExerciseTrainingSessionWithDetails } from "@/types/training"
+import type { WorkoutLogWithDetails } from "@/types/training"
 
 interface ExerciseDashboardProps {
-  session: ExerciseTrainingSessionWithDetails
+  session: WorkoutLogWithDetails
   exercises: WorkoutExercise[]
   className?: string
 }

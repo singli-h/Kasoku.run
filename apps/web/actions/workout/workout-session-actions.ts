@@ -13,7 +13,7 @@ import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { 
-  ExerciseTrainingSessionWithDetails,
+  WorkoutLogWithDetails,
   SessionPlanWithDetails
 } from "@/types/training"
 import { Database } from "@/types/database"
@@ -30,7 +30,7 @@ type SessionStatus = Database["public"]["Enums"]["session_status"]
  */
 export async function getTodayAndOngoingSessionsAction(
   athleteId?: number
-): Promise<ActionState<ExerciseTrainingSessionWithDetails[]>> {
+): Promise<ActionState<WorkoutLogWithDetails[]>> {
   try {
     // 1. Authentication check
     const { userId } = await auth()
@@ -159,7 +159,7 @@ export async function getTodayAndOngoingSessionsAction(
     }
 
     // 6. Transform and return data
-    const transformedSessions: ExerciseTrainingSessionWithDetails[] = (sessions || []).map((session: any) => ({
+    const transformedSessions: WorkoutLogWithDetails[] = (sessions || []).map((session: any) => ({
       ...session,
       session_plan: session.session_plan as SessionPlanWithDetails,
       athlete: session.athlete,
@@ -188,7 +188,7 @@ export async function getPastSessionsAction(
   startDate?: string,
   endDate?: string
 ): Promise<ActionState<{
-  sessions: ExerciseTrainingSessionWithDetails[]
+  sessions: WorkoutLogWithDetails[]
   totalCount: number
   hasMore: boolean
 }>> {
@@ -336,7 +336,7 @@ export async function getPastSessionsAction(
     }
 
     // 7. Transform and return data
-    const transformedSessions: ExerciseTrainingSessionWithDetails[] = (sessions || []).map((session: any) => ({
+    const transformedSessions: WorkoutLogWithDetails[] = (sessions || []).map((session: any) => ({
       ...session,
       session_plan: session.session_plan as SessionPlanWithDetails,
       athlete: session.athlete,

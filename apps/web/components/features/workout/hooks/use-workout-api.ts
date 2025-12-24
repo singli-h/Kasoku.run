@@ -19,7 +19,7 @@ import {
   completeTrainingSessionAction
 } from "@/actions/sessions/training-session-actions"
 import { 
-  type ExerciseTrainingSessionWithDetails,
+  type WorkoutLogWithDetails,
   type ExerciseTrainingDetail
 } from "@/types/training"
 import { Database } from "@/types/database"
@@ -110,7 +110,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
    */
   const getSession = useCallback(async (
     sessionId: number
-  ): Promise<ExerciseTrainingSessionWithDetails | null> => {
+  ): Promise<WorkoutLogWithDetails | null> => {
     setIsLoading(true)
     setError(null)
 

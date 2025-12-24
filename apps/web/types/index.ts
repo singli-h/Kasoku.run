@@ -108,26 +108,15 @@ export type {
   WorkoutLogSetInsert,
   WorkoutLogSetUpdate,
 
-  // Legacy Training Sessions (deprecated)
-  ExerciseTrainingSession,
-  ExerciseTrainingSessionInsert,
-  ExerciseTrainingSessionUpdate,
-  ExerciseTrainingDetail,
-
-  // Extended types (new names)
+  // Extended types
   SessionPlanWithDetails,
   SessionPlanExerciseWithDetails,
   WorkoutLogExerciseWithDetails,
   WorkoutLogWithDetails,
-
-  // Extended types (legacy)
   MacrocycleWithDetails,
   MesocycleWithDetails,
   MicrocycleWithDetails,
   ExerciseWithDetails,
-  ExerciseTrainingSessionWithDetails,
-  ExercisePresetGroupWithDetails,
-  ExercisePresetWithDetails,
 
   // Form types
   CreateMacrocycleForm,
