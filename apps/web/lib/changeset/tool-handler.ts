@@ -119,25 +119,41 @@ function handleProposalTool(
 
   const { operation, entitySnakeCase } = parsed
 
+  // Log proposal tool call
+  console.log(`[ProposalTool] ${toolName}`)
+  console.log(`[ProposalTool] Operation: ${operation}, Entity: ${entitySnakeCase}`)
+  console.log(`[ProposalTool] Args:`, JSON.stringify(args, null, 2))
+
   try {
+    // Get or create changeset ID for consistency
+    const changesetId = context.changeSet.getOrCreateChangesetId()
+
     // Transform tool input to ChangeRequest
     const changeRequest = transformToolInput(
       entitySnakeCase,
       operation,
       { ...args, reasoning: args.reasoning as string },
-      { sessionId: context.sessionId }
+      { sessionId: context.sessionId, changesetId }
     )
+
+    // Log the resulting ChangeRequest
+    console.log(`[ProposalTool] ChangeRequest:`, JSON.stringify(changeRequest, null, 2))
 
     // Upsert to buffer
     context.changeSet.upsert(changeRequest)
 
+    console.log(`[ProposalTool] ✅ Added to changeset: ${changeRequest.id}, entityId: ${changeRequest.entityId}`)
+
+    // Return entityId so AI can reference this entity in subsequent tool calls
+    // (e.g., when creating sets for a newly created exercise)
     return {
       success: true,
+      entityId: changeRequest.entityId ?? undefined, // temp_001, temp_002, etc. for creates
       changeId: changeRequest.id,
       message: `${operation} ${entitySnakeCase} added to changeset`,
     }
   } catch (error) {
-    console.error(`[handleProposalTool] Error:`, error)
+    console.error(`[ProposalTool] ❌ Error:`, error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

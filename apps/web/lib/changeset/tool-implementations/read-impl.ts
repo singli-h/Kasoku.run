@@ -169,19 +169,10 @@ export async function executeSearchExercises(
 ): Promise<ExerciseSearchResult[]> {
   const { query, muscleGroups, equipment, limit = 5 } = input
 
-  // Start building query
+  // Start building query - simple select without complex joins
   let queryBuilder = supabase
     .from('exercises')
-    .select(
-      `
-      id,
-      name,
-      description,
-      exercise_types (
-        name
-      )
-    `
-    )
+    .select('id, name, description, exercise_type_id')
     .eq('is_archived', false)
     .limit(limit)
 
@@ -201,16 +192,12 @@ export async function executeSearchExercises(
 
   // Format results
   return (
-    data?.map((exercise) => {
-      const exerciseType = exercise.exercise_types as unknown as { name: string } | null
-
-      return {
-        id: String(exercise.id),
-        name: exercise.name,
-        description: exercise.description,
-        exerciseTypeName: exerciseType?.name ?? null,
-      }
-    }) ?? []
+    data?.map((exercise) => ({
+      id: String(exercise.id),
+      name: exercise.name ?? 'Unknown Exercise',
+      description: exercise.description,
+      exerciseTypeName: null, // Simplified - skip type lookup for now
+    })) ?? []
   )
 }
 

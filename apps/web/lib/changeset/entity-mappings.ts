@@ -41,6 +41,27 @@ export const ENTITY_PARENT_FIELDS: Record<SessionEntityType, string | null> = {
 }
 
 /**
+ * Maps entity types to fields that contain entity references (foreign keys).
+ * These fields may contain temporary IDs that need resolution during execution.
+ * Keys are in snake_case (database column names).
+ */
+export const ENTITY_REFERENCE_FIELDS: Record<SessionEntityType, string[]> = {
+  preset_session: ['microcycle_id'],
+  preset_exercise: ['exercise_preset_group_id'],
+  preset_set: ['exercise_preset_id'],
+}
+
+/**
+ * Maps tool input field names (camelCase) to their corresponding
+ * entity reference fields (snake_case) for parent FK resolution.
+ */
+export const PARENT_FK_FROM_TOOL_INPUT: Record<SessionEntityType, { inputField: string; dbField: string } | null> = {
+  preset_session: null, // Session's parent (microcycle) comes from context
+  preset_exercise: null, // Exercise's parent (session) comes from sessionId context
+  preset_set: { inputField: 'exercisePresetId', dbField: 'exercise_preset_id' },
+}
+
+/**
  * Maps camelCase tool input field names to snake_case database column names.
  * Only includes fields that need conversion (same-case fields omitted).
  */
@@ -66,6 +87,7 @@ export const CAMEL_TO_SNAKE_MAP: Record<string, string> = {
   presetDetailId: 'id',
   sessionPlanExerciseId: 'session_plan_exercise_id',
   setIndex: 'set_index',
+  setCount: 'set_count',
   performingTime: 'performing_time',
   restTime: 'rest_time',
   resistanceUnitId: 'resistance_unit_id',
@@ -86,6 +108,9 @@ export const SNAKE_TO_CAMEL_MAP: Record<string, string> = Object.fromEntries(
 export const METADATA_FIELDS = new Set([
   'reasoning', // AI reasoning - stored separately
   'aiReasoning', // Alternative casing
+  'exerciseName', // UI display only, not a DB column
+  'insertAfterExerciseId', // Ordering helper, not a DB column
+  // Note: setCount is NOT excluded - it's needed in proposedData for execution
 ])
 
 /**
