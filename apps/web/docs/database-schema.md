@@ -1,5 +1,9 @@
 # Database Schema Documentation
 
+> **Last Updated**: 2025-12-24  
+> **Verified Against**: Sprint (Dev) Project (`pcteaouusthwbgzczoae`)  
+> **Schema Status**: Current as of 2025-12-24
+
 This document provides a comprehensive overview of the Kasoku database schema as implemented in Supabase.
 
 ## Overview
@@ -24,14 +28,14 @@ Primary user table storing all user information and authentication data.
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
-| `username` | `varchar` | Unique username | NOT NULL |
-| `email` | `varchar` | User email address | NOT NULL |
+| `username` | `text` | Unique username | NOT NULL, UNIQUE |
+| `email` | `text` | User email address | NOT NULL, UNIQUE |
 | `first_name` | `text` | User's first name | NULLABLE |
 | `last_name` | `text` | User's last name | NULLABLE |
-| `sex` | `varchar` | User's gender | NULLABLE |
-| `subscription_status` | `varchar` | Subscription level | NOT NULL, DEFAULT 'free' |
+| `sex` | `character varying` | User's gender | NULLABLE |
+| `subscription_status` | `character varying` | Subscription level | NOT NULL, DEFAULT 'free' |
 | `timezone` | `text` | User's timezone | NOT NULL |
-| `clerk_id` | `text` | Clerk authentication ID | NULLABLE |
+| `clerk_id` | `text` | Clerk authentication ID | NOT NULL, UNIQUE |
 | `avatar_url` | `text` | Profile picture URL | NULLABLE |
 | `role` | `text` | User role (athlete/coach/admin) | NOT NULL |
 | `metadata` | `jsonb` | Additional user data | NULLABLE |
@@ -50,7 +54,7 @@ Athlete-specific profile information linked to users.
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
-| `user_id` | `integer` | Foreign key to users | NULLABLE, UNIQUE |
+| `user_id` | `integer` | Foreign key to users | NOT NULL |
 | `athlete_group_id` | `bigint` | Foreign key to athlete_groups | NULLABLE |
 | `weight` | `real` | Athlete's weight | NULLABLE |
 | `height` | `real` | Athlete's height | NULLABLE |
@@ -58,7 +62,8 @@ Athlete-specific profile information linked to users.
 | `training_goals` | `text` | Athlete's training objectives | NULLABLE |
 | `events` | `jsonb` | Event participation data | NULLABLE |
 
-**RLS**: Enabled
+**RLS**: Enabled  
+**Note**: Missing `created_at` and `updated_at` columns (to be added per schema optimization spec)
 **Relationships**: 
 - One-to-one with `users` via `user_id`
 - Many-to-one with `athlete_groups` via `athlete_group_id`
@@ -75,7 +80,8 @@ Coach-specific profile information linked to users.
 | `philosophy` | `text` | Coaching philosophy | NULLABLE |
 | `experience` | `text` | Coaching experience | NULLABLE |
 
-**RLS**: Enabled
+**RLS**: Enabled  
+**Note**: Missing `created_at` and `updated_at` columns (to be added per schema optimization spec)  
 **Relationships**: One-to-one with `users` via `user_id`
 
 ### Training Organization
@@ -90,7 +96,8 @@ Groups of athletes managed by coaches.
 | `group_name` | `text` | Name of the group | NULLABLE |
 | `created_at` | `timestamptz` | Group creation time | NULLABLE, DEFAULT now() |
 
-**RLS**: Enabled
+**RLS**: Enabled  
+**Note**: Missing `updated_at` column (to be added per schema optimization spec)  
 **Relationships**: Many-to-one with `coaches` via `coach_id`
 
 #### `athlete_group_histories`
@@ -105,7 +112,7 @@ Historical tracking of athlete group memberships.
 | `created_at` | `timestamptz` | Record creation time | NULLABLE, DEFAULT now() |
 | `notes` | `text` | Additional notes | NULLABLE |
 
-**RLS**: Disabled
+**RLS**: Enabled
 **Relationships**: 
 - Many-to-one with `athletes` via `athlete_id`
 - Many-to-one with `athlete_groups` via `group_id`
@@ -120,13 +127,14 @@ Long-term training cycles (typically 3-12 months).
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
 | `athlete_group_id` | `integer` | Foreign key to athlete_groups | NULLABLE |
 | `user_id` | `integer` | Foreign key to users | NULLABLE |
-| `name` | `varchar` | Cycle name | NULLABLE |
+| `name` | `character varying` | Cycle name | NULLABLE |
 | `description` | `text` | Cycle description | NULLABLE |
 | `start_date` | `date` | Cycle start date | NULLABLE |
 | `end_date` | `date` | Cycle end date | NULLABLE |
 | `created_at` | `timestamptz` | Creation time | NULLABLE |
 
-**RLS**: Disabled
+**RLS**: Enabled  
+**Note**: Missing `updated_at` column (to be added per schema optimization spec)  
 **Relationships**: 
 - Many-to-one with `athlete_groups` via `athlete_group_id`
 - Many-to-one with `users` via `user_id`
@@ -139,14 +147,15 @@ Medium-term training cycles (typically 3-6 weeks).
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
 | `macrocycle_id` | `integer` | Foreign key to macrocycles | NULLABLE |
 | `user_id` | `integer` | Foreign key to users | NULLABLE |
-| `name` | `varchar` | Cycle name | NULLABLE |
+| `name` | `character varying` | Cycle name | NULLABLE |
 | `description` | `text` | Cycle description | NULLABLE |
 | `start_date` | `date` | Cycle start date | NULLABLE |
 | `end_date` | `date` | Cycle end date | NULLABLE |
 | `metadata` | `jsonb` | Additional cycle data | NULLABLE |
 | `created_at` | `timestamptz` | Creation time | NULLABLE |
 
-**RLS**: Disabled
+**RLS**: Enabled  
+**Note**: Missing `updated_at` column (to be added per schema optimization spec)
 **Relationships**: 
 - Many-to-one with `macrocycles` via `macrocycle_id`
 - Many-to-one with `users` via `user_id`
@@ -159,13 +168,16 @@ Short-term training cycles (typically 1 week).
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
 | `mesocycle_id` | `integer` | Foreign key to mesocycles | NULLABLE |
 | `user_id` | `integer` | Foreign key to users | NULLABLE |
-| `name` | `varchar` | Cycle name | NULLABLE |
+| `name` | `character varying` | Cycle name | NULLABLE |
 | `description` | `text` | Cycle description | NULLABLE |
 | `start_date` | `date` | Cycle start date | NULLABLE |
 | `end_date` | `date` | Cycle end date | NULLABLE |
 | `created_at` | `timestamptz` | Creation time | NULLABLE |
+| `volume` | `integer` | Weekly training volume (1-10 scale) | NULLABLE, DEFAULT 0, CHECK (volume >= 1 AND volume <= 10) |
+| `intensity` | `integer` | Weekly training intensity (1-10 RPE scale) | NULLABLE, DEFAULT 5, CHECK (intensity >= 1 AND intensity <= 10) |
 
-**RLS**: Disabled
+**RLS**: Enabled  
+**Note**: Missing `updated_at` column (to be added per schema optimization spec)  
 **Relationships**: 
 - Many-to-one with `mesocycles` via `mesocycle_id`
 - Many-to-one with `users` via `user_id`
@@ -181,7 +193,8 @@ Links athletes to specific training cycles.
 | `mesocycle_id` | `integer` | Foreign key to mesocycles | NULLABLE |
 | `created_at` | `timestamptz` | Link creation time | NULLABLE |
 
-**RLS**: Disabled
+**RLS**: Enabled  
+**Note**: Missing `updated_at` column and `created_at` default (to be added per schema optimization spec)
 **Relationships**: 
 - Many-to-one with `athletes` via `athlete_id`
 - Many-to-one with `macrocycles` via `macrocycle_id`
@@ -195,10 +208,10 @@ Categories of exercises (e.g., strength, cardio, flexibility).
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
-| `type` | `varchar` | Exercise type name | NULLABLE |
+| `type` | `character varying` | Exercise type name | NULLABLE |
 | `description` | `text` | Type description | NULLABLE |
 
-**RLS**: Disabled
+**RLS**: Enabled
 
 #### `exercises`
 Master list of exercises available in the system with AI/ML capabilities.
@@ -208,16 +221,18 @@ Master list of exercises available in the system with AI/ML capabilities.
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
 | `exercise_type_id` | `integer` | Foreign key to exercise_types | NULLABLE |
 | `unit_id` | `integer` | Foreign key to units | NULLABLE |
-| `name` | `varchar` | Exercise name | NULLABLE |
-| `description` | `varchar` | Exercise description | NULLABLE |
-| `video_url` | `varchar` | Instructional video URL | NULLABLE |
+| `name` | `character varying` | Exercise name | NULLABLE |
+| `description` | `character varying` | Exercise description | NULLABLE |
+| `video_url` | `character varying` | Instructional video URL | NULLABLE |
 | `embedding` | `vector` | AI embedding for similarity search | NULLABLE |
 | `search_tsv` | `tsvector` | Full-text search vector | Generated column |
 | `owner_user_id` | `integer` | Foreign key to users (creator) | NULLABLE |
 | `visibility` | `exercise_visibility_type` | Visibility scope | NULLABLE, DEFAULT 'global' |
 | `is_archived` | `boolean` | Archive status | NULLABLE, DEFAULT false |
 
-**RLS**: Disabled
+**RLS**: Enabled  
+**Note**: Missing `created_at` and `updated_at` columns (to be added per schema optimization spec)  
+**Security Issue**: Current RLS policy allows public read access - needs update to filter by visibility
 **Relationships**: 
 - Many-to-one with `exercise_types` via `exercise_type_id`
 - Many-to-one with `units` via `unit_id`
@@ -229,10 +244,10 @@ Measurement units for exercises (kg, lbs, reps, etc.).
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
-| `name` | `varchar` | Unit name | NULLABLE |
+| `name` | `character varying` | Unit name | NULLABLE |
 | `description` | `text` | Unit description | NULLABLE |
 
-**RLS**: Disabled
+**RLS**: Enabled
 
 #### `tags`
 Categorization tags for exercises with structured categories.
@@ -240,10 +255,10 @@ Categorization tags for exercises with structured categories.
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
-| `name` | `varchar` | Tag name | NULLABLE |
+| `name` | `character varying` | Tag name | NULLABLE |
 | `category` | `text` | Tag category | NULLABLE, CHECK constraint |
 
-**RLS**: Disabled
+**RLS**: Enabled
 **Valid Categories**: 'region', 'goal', 'modality', 'intensity', 'contraindication'
 
 #### `exercise_tags`
@@ -283,7 +298,8 @@ Groups of exercise presets for training sessions.
 | `is_template` | `boolean` | Template flag | NULLABLE, DEFAULT false |
 
 **RLS**: Enabled
-**Relationships**: 
+**Planned Rename**: `exercise_preset_groups` → `session_plans` (Coach Planning domain)
+**Relationships**:
 - Many-to-one with `athlete_groups` via `athlete_group_id`
 - Many-to-one with `users` via `user_id`
 - Many-to-one with `microcycles` via `microcycle_id`
@@ -300,9 +316,11 @@ Individual exercises within a preset group.
 | `superset_id` | `bigint` | Superset grouping | NULLABLE |
 | `notes` | `text` | Exercise notes | NULLABLE |
 
-**RLS**: Disabled
-**Relationships**: 
-- Many-to-one with `exercise_preset_groups` via `exercise_preset_group_id`
+**RLS**: Enabled
+**Note**: Missing `created_at` and `updated_at` columns (to be added per schema optimization spec)
+**Planned Rename**: `exercise_presets` → `session_plan_exercises` (Coach Planning domain)
+**Relationships**:
+- Many-to-one with `exercise_preset_groups` (→ `session_plans`) via `exercise_preset_group_id` (→ `session_plan_id`)
 - Many-to-one with `exercises` via `exercise_id`
 
 #### `exercise_preset_details`
@@ -329,9 +347,12 @@ Detailed parameters for each exercise preset.
 | `metadata` | `jsonb` | Additional parameters | NULLABLE |
 | `created_at` | `timestamptz` | Creation time | NULLABLE |
 
-**RLS**: Disabled
-**Relationships**: 
-- Many-to-one with `exercise_presets` via `exercise_preset_id`
+**RLS**: Enabled
+**Note**: Missing `updated_at` column and `created_at` default (to be added per schema optimization spec)
+**Schema Optimization**: Columns `height`, `effort`, `tempo`, `resistance` will be KEPT as explicit columns for direct SQL analytics (e.g., `AVG(height)`, `WHERE resistance > X`). PostgreSQL NULL handling is efficient (1 bit per NULL in bitmap). See table rename below.
+**Planned Rename**: `exercise_preset_details` → `session_plan_sets` (Coach Planning domain)
+**Relationships**:
+- Many-to-one with `exercise_presets` (→ `session_plan_exercises`) via `exercise_preset_id` (→ `session_plan_exercise_id`)
 - Many-to-one with `units` via `resistance_unit_id`
 
 #### `exercise_training_sessions`
@@ -345,17 +366,20 @@ Actual training sessions performed by athletes.
 | `exercise_preset_group_id` | `integer` | Foreign key to exercise_preset_groups | NULLABLE |
 | `date_time` | `timestamptz` | Session date and time | NULLABLE |
 | `session_mode` | `text` | Session type | NULLABLE |
-| `notes` | `varchar` | Session notes | NULLABLE |
+| `notes` | `character varying` | Session notes | NULLABLE |
 | `description` | `text` | Session description | NULLABLE |
-| `status` | `text` | Session status | NULLABLE |
+| `session_status` | `session_status` | Session status enum | NOT NULL |
 | `created_at` | `timestamptz` | Creation time | NULLABLE |
-| `updated_at` | `timestamp` | Last update time | NULLABLE |
+| `updated_at` | `timestamp without time zone` | Last update time | NULLABLE |
 
 **RLS**: Enabled
-**Relationships**: 
+**Note**: `updated_at` should be `timestamptz` (type mismatch), missing `created_at` default (to be fixed per schema optimization spec)
+**Valid Status Values**: 'assigned', 'ongoing', 'completed', 'cancelled'
+**Planned Rename**: `exercise_training_sessions` → `workout_logs` (Athlete Recording domain)
+**Relationships**:
 - Many-to-one with `athlete_groups` via `athlete_group_id`
 - Many-to-one with `athletes` via `athlete_id`
-- Many-to-one with `exercise_preset_groups` via `exercise_preset_group_id`
+- Many-to-one with `exercise_preset_groups` (→ `session_plans`) via `exercise_preset_group_id` (→ `session_plan_id`)
 
 #### `exercise_training_details`
 Actual performance data for each exercise in a training session.
@@ -367,21 +391,59 @@ Actual performance data for each exercise in a training session.
 | `exercise_preset_id` | `integer` | Foreign key to exercise_presets | NULLABLE |
 | `resistance_unit_id` | `integer` | Foreign key to units | NULLABLE |
 | `reps` | `integer` | Actual repetitions performed | NULLABLE |
-| `distance` | `real` | Distance covered | NULLABLE |
-| `duration` | `interval` | Time duration | NULLABLE |
+| `weight` | `real` | Weight amount (kg) | NULLABLE |
+| `distance` | `real` | Distance covered (meters) | NULLABLE |
 | `completed` | `boolean` | Completion status | NULLABLE |
-| `power` | `real` | Power output achieved | NULLABLE |
-| `velocity` | `real` | Velocity achieved | NULLABLE |
+| `power` | `real` | Power output achieved (watts) - VBT metric | NULLABLE |
+| `velocity` | `real` | Velocity achieved (m/s) - VBT metric | NULLABLE |
+| `effort` | `real` | Effort level | NULLABLE |
+| `performing_time` | `real` | Time to perform (seconds) | NULLABLE |
+| `rest_time` | `integer` | Rest between sets (seconds) | NULLABLE |
 | `tempo` | `text` | Actual tempo | NULLABLE |
+| `height` | `real` | Height measurement (cm) | NULLABLE |
+| `resistance` | `real` | Resistance amount (kg) | NULLABLE |
+| `rpe` | `integer` | Rate of Perceived Exertion (1-10) | NULLABLE |
 | `metadata` | `jsonb` | Additional performance data | NULLABLE |
 | `created_at` | `timestamptz` | Creation time | NULLABLE |
 | `set_index` | `integer` | Set number | NULLABLE |
 
 **RLS**: Enabled
-**Relationships**: 
-- Many-to-one with `exercise_training_sessions` via `exercise_training_session_id`
-- Many-to-one with `exercise_presets` via `exercise_preset_id`
+**Note**: Missing `updated_at` column and `created_at` default (to be added per schema optimization spec)
+**Schema Optimization**: Columns `height`, `effort`, `tempo`, `resistance` will be KEPT as explicit columns for direct SQL analytics (e.g., `AVG(height)`, `WHERE resistance > X`). PostgreSQL NULL handling is efficient (1 bit per NULL in bitmap). See table rename below.
+**Planned Rename**: `exercise_training_details` → `workout_log_sets` (Athlete Recording domain)
+**Relationships**:
+- Many-to-one with `exercise_training_sessions` (→ `workout_logs`) via `exercise_training_session_id` (→ `workout_log_id`)
+- Many-to-one with `exercise_presets` (→ `session_plan_exercises`) via `exercise_preset_id`
 - Many-to-one with `units` via `resistance_unit_id`
+
+### Performance Tracking
+
+#### `athlete_personal_bests`
+Tracks personal best performance records for all exercise types (sprints, jumps, throws, combined events) and competition events.
+
+| Column | Type | Description | Constraints |
+|--------|------|-------------|-------------|
+| `id` | `integer` | Primary key | Auto-increment, NOT NULL |
+| `athlete_id` | `integer` | Foreign key to athletes | NOT NULL |
+| `exercise_id` | `integer` | Foreign key to exercises (training PBs) | NULLABLE, Mutually exclusive with event_id |
+| `event_id` | `integer` | Foreign key to events (competition PBs) | NULLABLE, Mutually exclusive with exercise_id |
+| `value` | `numeric` | Performance value in unit_id | NOT NULL |
+| `unit_id` | `integer` | Foreign key to units | NOT NULL |
+| `metadata` | `jsonb` | Additional context (wind, location, weather, equipment, verified_by) | NULLABLE |
+| `achieved_date` | `date` | Date PB was achieved | NOT NULL, DEFAULT CURRENT_DATE |
+| `session_id` | `integer` | Foreign key to exercise_training_sessions | NULLABLE |
+| `verified` | `boolean` | Whether PB verified by coach | NULLABLE, DEFAULT false |
+| `notes` | `text` | Additional notes | NULLABLE |
+| `created_at` | `timestamptz` | Creation time | NULLABLE, DEFAULT now() |
+| `updated_at` | `timestamptz` | Last update time | NULLABLE, DEFAULT now() |
+
+**RLS**: Enabled  
+**Relationships**: 
+- Many-to-one with `athletes` via `athlete_id`
+- Many-to-one with `exercises` via `exercise_id` (for training PBs)
+- Many-to-one with `events` via `event_id` (for competition PBs)
+- Many-to-one with `units` via `unit_id`
+- Many-to-one with `exercise_training_sessions` via `session_id`
 
 ### Events & Races
 
@@ -397,7 +459,9 @@ Competition and event information.
 | `created_at` | `timestamptz` | Creation time | NULLABLE |
 | `updated_at` | `timestamptz` | Last update time | NULLABLE |
 
-**RLS**: Enabled
+**RLS**: Enabled  
+**Note**: Missing defaults on `created_at` and `updated_at` (to be added per schema optimization spec)  
+**Note**: Missing defaults on `created_at` and `updated_at` (to be added per schema optimization spec)
 
 #### `races`
 Tracks races and competitions associated with training macrocycles.
@@ -406,7 +470,7 @@ Tracks races and competitions associated with training macrocycles.
 |--------|------|-------------|-------------|
 | `id` | `bigint` | Primary key | Auto-increment, NOT NULL |
 | `macrocycle_id` | `bigint` | Foreign key to macrocycles | NULLABLE |
-| `user_id` | `bigint` | Foreign key to users | NOT NULL |
+| `user_id` | `integer` | Foreign key to users | NOT NULL |
 | `name` | `text` | Race name | NOT NULL |
 | `date` | `date` | Race date | NOT NULL |
 | `type` | `text` | Race type (primary/secondary) | NOT NULL, DEFAULT 'secondary' |
@@ -430,10 +494,11 @@ Categories for organizing knowledge base articles by coaches.
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
 | `coach_id` | `integer` | Foreign key to coaches | NOT NULL |
-| `name` | `varchar(100)` | Category name | NOT NULL |
-| `color` | `varchar(7)` | Hex color code | NOT NULL, DEFAULT '#3B82F6' |
+| `name` | `text` | Category name | NOT NULL |
+| `color` | `text` | Hex color code | NOT NULL |
 | `created_at` | `timestamptz` | Creation time | NOT NULL, DEFAULT now() |
 | `updated_at` | `timestamptz` | Last update time | NOT NULL, DEFAULT now() |
+| `article_count` | `integer` | Number of articles in category | NULLABLE, DEFAULT 0 |
 
 **RLS**: Enabled
 **Relationships**: 
@@ -449,9 +514,9 @@ Rich text articles stored in TipTap JSON format for the knowledge base.
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
 | `coach_id` | `integer` | Foreign key to coaches | NOT NULL |
-| `title` | `varchar(200)` | Article title | NOT NULL |
+| `title` | `text` | Article title | NOT NULL |
 | `content` | `jsonb` | TipTap JSON content | NOT NULL |
-| `category_id` | `integer` | Foreign key to knowledge_base_categories | NOT NULL |
+| `category_id` | `integer` | Foreign key to knowledge_base_categories | NULLABLE |
 | `created_at` | `timestamptz` | Creation time | NOT NULL, DEFAULT now() |
 | `updated_at` | `timestamptz` | Last update time | NOT NULL, DEFAULT now() |
 
@@ -464,7 +529,7 @@ Rich text articles stored in TipTap JSON format for the knowledge base.
 
 ### AI/ML Memory System
 
-#### `memories`
+#### `ai_memories`
 AI-powered memory system for storing contextual information about athletes, coaches, and groups.
 
 | Column | Type | Description | Constraints |
@@ -482,10 +547,11 @@ AI-powered memory system for storing contextual information about athletes, coac
 | `created_at` | `timestamptz` | Creation time | NOT NULL, DEFAULT now() |
 | `updated_at` | `timestamptz` | Last update time | NOT NULL, DEFAULT now() |
 
-**RLS**: Disabled
-**Memory Types**: 'preference', 'philosophy', 'injury', 'profile', 'note', 'session_summary'
-**Constraints**: Exactly one of coach_id, athlete_id, or group_id must be populated
-**Cascade Deletes**: Memories are automatically deleted when their subject is deleted
+**RLS**: Enabled  
+**Note**: RLS enabled but policies need verification (may need explicit policies or service-role only access)  
+**Memory Types**: 'preference', 'philosophy', 'injury', 'profile', 'note', 'session_summary'  
+**Constraints**: Exactly one of coach_id, athlete_id, or group_id must be populated (CHECK constraint to be added per optimization spec)  
+**Cascade Deletes**: Memories are automatically deleted when their subject is deleted (CASCADE on delete)
 
 ## Database Functions
 
@@ -510,21 +576,70 @@ Utility function that returns the current JWT subject.
 
 ## Row Level Security (RLS)
 
-The following tables have RLS enabled:
-- `athlete_groups`
-- `athletes`
-- `coaches`
-- `events`
-- `exercise_preset_groups`
-- `exercise_tags`
-- `exercise_training_details`
-- `exercise_training_sessions`
-- `knowledge_base_articles`
-- `knowledge_base_categories`
-- `races`
-- `users`
+### RLS Status Summary
 
-**Note**: The `memories` table has RLS disabled as it requires complex cross-table access patterns for AI/ML operations.
+**Last Verified**: 2025-12-24 (via Supabase MCP)  
+**Total Tables**: 25  
+**RLS Enabled**: 25 (100%)  
+**RLS Disabled**: 0
+
+All tables in the database have Row Level Security enabled. This provides comprehensive data isolation and access control across the entire schema.
+
+### Complete RLS Status by Table
+
+| Table Name | RLS Status | Notes |
+|------------|-----------|-------|
+| `users` | ✅ Enabled | User profile access control |
+| `athletes` | ✅ Enabled | Athlete data isolation |
+| `coaches` | ✅ Enabled | Coach data isolation |
+| `athlete_groups` | ✅ Enabled | Group membership access |
+| `athlete_group_histories` | ✅ Enabled | Historical tracking |
+| `athlete_cycles` | ✅ Enabled | Cycle assignment access |
+| `athlete_personal_bests` | ✅ Enabled | Performance data access |
+| `macrocycles` | ✅ Enabled | Long-term cycle access |
+| `mesocycles` | ✅ Enabled | Medium-term cycle access |
+| `microcycles` | ✅ Enabled | Short-term cycle access |
+| `exercise_types` | ✅ Enabled | Public read, authenticated write |
+| `exercises` | ✅ Enabled | Exercise library access (RLS policy needs update - currently public read) |
+| `units` | ✅ Enabled | Public read, authenticated write |
+| `tags` | ✅ Enabled | Public read, authenticated write |
+| `exercise_tags` | ✅ Enabled | Tag relationship access |
+| `exercise_preset_groups` | ✅ Enabled | Preset group access |
+| `exercise_presets` | ✅ Enabled | Preset access |
+| `exercise_preset_details` | ✅ Enabled | Preset detail access |
+| `exercise_training_sessions` | ✅ Enabled | Training session access |
+| `exercise_training_details` | ✅ Enabled | Training detail access |
+| `events` | ✅ Enabled | Event data access |
+| `races` | ✅ Enabled | Race data access |
+| `knowledge_base_categories` | ✅ Enabled | Coach-specific categories |
+| `knowledge_base_articles` | ✅ Enabled | Coach-specific articles |
+| `ai_memories` | ✅ Enabled | AI memory system (policies need verification) |
+
+### RLS Policy Patterns
+
+**User-Scoped Tables**: Access based on `user_id` matching authenticated user
+- `users`, `athletes`, `coaches`, `macrocycles`, `mesocycles`, `microcycles`, `races`
+
+**Group-Scoped Tables**: Access based on `athlete_group_id` membership
+- `athlete_groups`, `exercise_preset_groups`, `exercise_training_sessions`
+
+**Coach-Scoped Tables**: Access based on `coach_id` ownership
+- `knowledge_base_categories`, `knowledge_base_articles`
+
+**Public Read Tables**: Authenticated users can read, owners can write
+- `exercises`, `exercise_types`, `units`, `tags`, `events`
+
+**Relationship Tables**: Access based on related entity permissions
+- `exercise_tags`, `exercise_presets`, `exercise_preset_details`, `exercise_training_details`
+
+### Security Notes
+
+- **All tables verified**: RLS status confirmed via Supabase MCP tools (December 2025)
+- **Policy optimization**: 50+ RLS policies identified by Supabase advisors for potential optimization
+- **Access patterns**: Policies follow coach-athlete relationship model with proper data isolation
+- **AI Memory System**: `ai_memories` table has RLS enabled but policies need verification
+- **Exercises Table**: Current RLS policy allows public read access - needs update to filter by `visibility` and `owner_user_id`
+- **Macrocycles Table**: RLS policy needs update to include coach access via `athlete_group_id`
 
 ## Data Types
 
@@ -580,6 +695,39 @@ All foreign key relationships are properly constrained with appropriate cascade 
 ### RLS Policies
 Row Level Security policies are implemented to ensure data isolation and proper access control based on user roles and relationships.
 
+## Known Schema Issues & Planned Optimizations
+
+### Timestamp Columns
+Several tables are missing `created_at` and/or `updated_at` columns or have inconsistent defaults:
+- **Missing both**: `athletes`, `coaches`, `exercises`, `exercise_presets`
+- **Missing `updated_at`**: `athlete_groups`, `exercise_preset_details`, `exercise_training_details`, `macrocycles`, `mesocycles`, `microcycles`
+- **Missing defaults**: `athlete_cycles`, `exercise_preset_details`, `exercise_training_details`, `exercise_training_sessions`, `macrocycles`, `mesocycles`, `microcycles`, `events`
+- **Type mismatch**: `exercise_training_sessions.updated_at` is `timestamp` instead of `timestamptz`
+
+### Schema Optimization
+Per `specs/005-database-schema-optimization/spec.md`:
+
+#### Table Renaming (Planned)
+Current table names (`exercise_preset_*`, `exercise_training_*`) don't clearly distinguish between coach-created plans and athlete-recorded workouts. New naming creates two clear domains:
+
+| Domain | Current Name | New Name | Purpose |
+|--------|--------------|----------|---------|
+| **Coach Planning** | `exercise_preset_groups` | `session_plans` | Training session templates |
+| **Coach Planning** | `exercise_presets` | `session_plan_exercises` | Exercises within a plan |
+| **Coach Planning** | `exercise_preset_details` | `session_plan_sets` | Set prescriptions |
+| **Athlete Recording** | `exercise_training_sessions` | `workout_logs` | Actual workout sessions |
+| **Athlete Recording** | `exercise_training_details` | `workout_log_sets` | Actual sets performed |
+
+#### Column Decisions
+- **KEEP explicit columns**: `height`, `effort`, `tempo`, `resistance` will remain as explicit columns for direct SQL analytics (e.g., `AVG(height)`, `WHERE resistance > X`). PostgreSQL efficiently handles NULL values via the null bitmap (1 bit per NULL column).
+- **VARCHAR to TEXT**: All `character varying` columns should be converted to `text` (PostgreSQL best practice - no performance difference)
+- **Cascade deletes**: Several foreign keys missing `ON DELETE CASCADE` (see spec for details)
+
+### RLS Policy Updates Needed
+- `exercises` table: Update policy to filter by `visibility` and `owner_user_id`
+- `macrocycles` table: Add coach access via `athlete_group_id`
+- `ai_memories` table: Verify policies or document service-role only access
+
 ## Migration Notes
 
 This schema represents the current state of the database as of the latest migration. When making changes:
@@ -588,6 +736,7 @@ This schema represents the current state of the database as of the latest migrat
 2. Ensure RLS policies are updated to match schema changes
 3. Update TypeScript types in `apps/web/types/database.ts` to match schema changes
 4. Update this documentation to reflect any modifications
+5. Reference `specs/005-database-schema-optimization/spec.md` for planned optimizations
 
 ## Related Documentation
 

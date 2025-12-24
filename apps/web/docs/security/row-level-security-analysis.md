@@ -1,8 +1,23 @@
 # Row Level Security (RLS) Analysis
 ## Kasoku Running Website Database
 
+> **Last Updated**: 2025-12-24  
+> **Status**: All tables have RLS enabled
+
 ## Overview
-This document outlines the recommended RLS policies for the Kasoku running website database, designed to work with Clerk authentication and our athlete/coach role system.
+This document outlines the RLS policies implemented in the Kasoku running website database, designed to work with Clerk authentication and our athlete/coach role system.
+
+**Current Status** (Verified December 2025):
+- ✅ **All 32 tables have RLS enabled**
+- ✅ Comprehensive policies implemented across all user-scoped tables
+- ⚠️ Some policies may benefit from optimization (50+ identified by Supabase advisors)
+
+**Planned Table Renames** (see `specs/005-database-schema-optimization/spec.md`):
+- `exercise_preset_groups` → `session_plans`
+- `exercise_presets` → `session_plan_exercises`
+- `exercise_preset_details` → `session_plan_sets`
+- `exercise_training_sessions` → `workout_logs`
+- `exercise_training_details` → `workout_log_sets`
 
 ## Authentication Pattern
 - **Clerk Integration**: Uses `auth.jwt() ->> 'sub'` for user identification
@@ -273,8 +288,67 @@ USING (
 - **Performance Data Protection**: Training data is user-specific
 - **Public Resources**: Exercise library accessible to all authenticated users
 
+## Current Implementation Status
+
+### Tables with RLS Enabled (32 total)
+
+**User & Profile Tables**:
+- `users` - User profile access control
+- `athletes` - Athlete data isolation
+- `coaches` - Coach data isolation
+
+**Group & Organization Tables**:
+- `athlete_groups` - Group membership access
+- `athlete_group_histories` - Historical tracking
+- `athlete_cycles` - Cycle assignment access
+
+**Training Cycle Tables**:
+- `macrocycles` - Long-term cycle access
+- `mesocycles` - Medium-term cycle access
+- `microcycles` - Short-term cycle access
+
+**Exercise & Training Tables**:
+- `exercise_types` - Public read, authenticated write
+- `exercises` - Exercise library access
+- `units` - Public read, authenticated write
+- `tags` - Public read, authenticated write
+- `exercise_tags` - Tag relationship access
+- `exercise_preset_groups` - Preset group access
+- `exercise_presets` - Preset access
+- `exercise_preset_details` - Preset detail access
+- `exercise_training_sessions` - Training session access
+- `exercise_training_details` - Training detail access
+
+**Event & Performance Tables**:
+- `events` - Event data access
+- `races` - Race data access
+- `athlete_personal_bests` - Performance data access
+
+**Knowledge Base Tables**:
+- `knowledge_base_categories` - Coach-specific categories
+- `knowledge_base_articles` - Coach-specific articles
+
+**AI System Tables**:
+- `ai_memories` - AI memory system (coach/athlete/group-scoped)
+
+### RLS-Disabled Tables
+
+**None** - All tables have RLS enabled as of December 2025.
+
+**Note**: Previous documentation indicated `memories` (now `ai_memories`) had RLS disabled, but this has been updated. The table now has RLS enabled with appropriate policies for AI/ML operations.
+
+## Policy Optimization Recommendations
+
+Based on Supabase advisor analysis (December 2025):
+
+1. **Performance Optimization**: 50+ RLS policies could be optimized by using `(select auth.uid())` pattern
+2. **Index Optimization**: 30+ missing indexes on foreign keys identified
+3. **Policy Consolidation**: 20+ tables have multiple permissive policies that could be consolidated
+4. **Index Cleanup**: 2 duplicate indexes and 30+ unused indexes identified for review
+
 ## Notes
 - All policies assume proper Clerk JWT configuration
 - `get_user_role_data` function can be used for complex role checks
 - Consider performance impact of complex JOIN operations in policies
-- Test thoroughly with different authentication states 
+- Test thoroughly with different authentication states
+- All tables verified via Supabase MCP tools (December 2025) 

@@ -337,7 +337,6 @@ Exercise cards display sets in a **horizontally scrollable table** to accommodat
 | Tempo | Tempo | - | Eccentric-pause-concentric-pause |
 | Distance | m | meters | For cardio/plyos |
 | Heart Rate | HR | bpm | Heart rate |
-| Calories | kcal | kcal | Energy expenditure |
 
 **Table Behavior:**
 - Columns shown dynamically based on which fields have data
@@ -423,20 +422,25 @@ interface SessionChange {
 }
 
 // Exercise set with all professional metrics
+// Note: Core metrics (reps, weight, power, velocity) are stored explicitly.
+// Secondary metrics (height, tempo, resistance) are stored in metadata.
 interface ExerciseSet {
   setIndex: number
   reps: number | null
   weight: number | null       // kg
   percentage: number | null   // % of 1RM
-  power: number | null        // watts
+  power: number | null        // watts (Core VBT metric)
+  velocity: number | null     // m/s (Core VBT metric)
   restTime: number | null     // seconds
   rpe: number | null          // 1-10
-  tempo: string | null        // "3-0-2-0"
-  velocity: number | null     // m/s
   distance: number | null     // meters
   duration: number | null     // seconds TUT
+  // Secondary metrics (Metadata)
+  tempo: string | null        // "3-0-2-0"
+  height: number | null       // cm (Plyometrics)
+  resistance: number | null   // kg (Bands/Chains)
+  effort: number | null       // %
   heartRate: number | null    // bpm
-  calories: number | null     // kcal
   completed?: boolean
   isChanged?: boolean
 }

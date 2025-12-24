@@ -1,6 +1,8 @@
 ---
 # Kasoku Running Website – Feature-by-Feature Overview
 
+> **Last Updated**: 2025-12-24
+
 This document provides a concise yet comprehensive overview of the **nine core application pages / features** currently implemented in the `apps/web` Next.js application.  
 For each page you will find:
 
@@ -11,8 +13,9 @@ For each page you will find:
 * **Implementation Gaps** – shortcomings or TODO items observed from the current code-base that prevent the feature from fully meeting the PRD requirements.
 
 > NOTE
-> All gap assessments are based on the current repository state (branch `Repo-rebuild`, commit as of July 2025).  
+> Gap assessments based on codebase as of December 2025 (staging branch).
 > References use the simplified path notation `apps/web/...`.
+> For database schema optimization plans, see `specs/005-database-schema-optimization/spec.md`.
 
 ---
 
