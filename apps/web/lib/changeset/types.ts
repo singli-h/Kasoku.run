@@ -177,7 +177,7 @@ export type BufferKey = `${string}:${string}`
  * 'PAUSE' signals that the AI stream should be paused (for confirmChangeSet).
  */
 export type ToolHandlerResult =
-  | { success: true; changeId?: string; message?: string }
+  | { success: true; entityId?: string; changeId?: string; message?: string }
   | { success: false; error: string }
   | 'PAUSE'
 
@@ -254,6 +254,9 @@ export interface ChangeSetContextValue {
 
   /** Get changes filtered by entity type */
   getChangesByEntity: (entityType: string) => ChangeRequest[]
+
+  /** Get or create the current changeset ID */
+  getOrCreateChangesetId: () => string
 
   /** Check if there are any pending changes */
   hasPendingChanges: () => boolean

@@ -180,6 +180,19 @@ export function ChangeSetProvider({ children }: ChangeSetProviderProps) {
   }, [buffer])
 
   /**
+   * Get or create the current changeset ID.
+   * This ensures a consistent ID is used across all changes in a session.
+   */
+  const getOrCreateChangesetId = useCallback((): string => {
+    if (changesetId) {
+      return changesetId
+    }
+    const newId = generateChangeSetId()
+    setChangesetId(newId)
+    return newId
+  }, [changesetId])
+
+  /**
    * Build the current ChangeSet object from state.
    */
   const changeset = useMemo((): ChangeSet | null => {
@@ -212,6 +225,7 @@ export function ChangeSetProvider({ children }: ChangeSetProviderProps) {
       getPendingCount,
       getChangesByEntity,
       hasPendingChanges,
+      getOrCreateChangesetId,
     }),
     [
       changeset,
@@ -225,6 +239,7 @@ export function ChangeSetProvider({ children }: ChangeSetProviderProps) {
       getPendingCount,
       getChangesByEntity,
       hasPendingChanges,
+      getOrCreateChangesetId,
     ]
   )
 

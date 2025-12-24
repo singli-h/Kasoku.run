@@ -18,6 +18,7 @@ import {
   ID_FIELDS,
   isValidEntityType,
   METADATA_FIELDS,
+  PARENT_FK_FROM_TOOL_INPUT,
 } from './entity-mappings'
 
 /**
@@ -40,6 +41,8 @@ export interface TransformOptions {
   executionOrder?: number
   /** Current data for update/delete operations */
   currentData?: Record<string, unknown> | null
+  /** Changeset ID (optional, will be set by context if not provided) */
+  changesetId?: string
 }
 
 /** Counter for auto-incrementing execution order */
@@ -115,7 +118,7 @@ export function transformToolInput(
 
   return {
     id: generateChangeRequestId(),
-    changesetId: '', // Will be set by the context when upserting
+    changesetId: options.changesetId ?? '', // Set by context if not provided
     operationType,
     entityType,
     entityId,
@@ -197,6 +200,17 @@ export function buildProposedData(
     sessionId
   ) {
     data['exercisePresetGroupId'] = sessionId
+  }
+
+  // Add parent foreign key from tool input for entities that specify it
+  // (e.g., sets specify their parent exercise via presetExerciseId)
+  const parentFkMapping = PARENT_FK_FROM_TOOL_INPUT[entityType]
+  if (parentFkMapping) {
+    const parentRef = toolInput[parentFkMapping.inputField]
+    if (parentRef !== undefined && parentRef !== null) {
+      // Store the reference (may be temp ID, will be resolved during execution)
+      data[parentFkMapping.inputField] = parentRef
+    }
   }
 
   // Convert to snake_case for database

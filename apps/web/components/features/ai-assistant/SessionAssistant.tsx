@@ -12,9 +12,9 @@
  * @see specs/002-ai-session-assistant/reference/20251221-changeset-architecture.md section 5
  */
 
-import { useCallback, useState, useEffect, useMemo } from 'react'
-import { useChat, type UIMessage } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
+import { useCallback, useState, useMemo, useRef } from 'react'
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from 'ai'
 import { useAuth } from '@clerk/nextjs'
 import { ChangeSetProvider } from '@/lib/changeset/ChangeSetContext'
 import { useChangeSet } from '@/lib/changeset/useChangeSet'
@@ -72,10 +72,7 @@ function SessionAssistantContent({
   const [executionError, setExecutionError] = useState<ExecutionError | undefined>()
   const [input, setInput] = useState('')
 
-  // Track processed tool call IDs to avoid double-processing
-  const [processedToolCalls] = useState(() => new Set<string>())
-
-  // Pending tool call info for pause/resume
+  // Pending tool call info for pause/resume (confirmChangeSet)
   const [pendingToolCall, setPendingToolCall] = useState<{
     toolCallId: string
     toolName: string
@@ -86,13 +83,19 @@ function SessionAssistantContent({
   // Get Clerk auth for Supabase client
   const { getToken } = useAuth()
 
+  // Refs for stable access in callbacks (to avoid dependency issues with onToolCall)
+  const changeSetRef = useRef(changeSet)
+  changeSetRef.current = changeSet
+  const getTokenRef = useRef(getToken)
+  getTokenRef.current = getToken
+
   // Create transport with API endpoint and session ID in body
   const transport = useMemo(() => new DefaultChatTransport({
     api: '/api/ai/session-assistant',
     body: { sessionId },
   }), [sessionId])
 
-  // Vercel AI SDK useChat hook (v5 API)
+  // Vercel AI SDK useChat hook with onToolCall for client-side tools
   const {
     messages,
     sendMessage,
@@ -101,73 +104,72 @@ function SessionAssistantContent({
     addToolOutput,
   } = useChat({
     transport,
+    // Automatically send when all tool calls have results
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    // Handle tool calls from the AI
+    async onToolCall({ toolCall }) {
+      console.log('[SessionAssistant] onToolCall received:', toolCall.toolName)
+
+      // Create Supabase client for read operations
+      const supabase = createClientSupabaseClient(getTokenRef.current)
+
+      try {
+        // toolCall may have 'args' or 'input' depending on the SDK version
+        const toolArgs = (toolCall as unknown as { args?: unknown; input?: unknown }).args
+          ?? (toolCall as unknown as { input?: unknown }).input
+          ?? {}
+
+        const result = await handleToolCall(
+          toolCall.toolName,
+          toolArgs as Record<string, unknown>,
+          {
+            changeSet: changeSetRef.current,
+            sessionId,
+            showApprovalWidget: () => {
+              // Save the tool call info for later (for confirmChangeSet pause/resume)
+              setPendingToolCall({ toolCallId: toolCall.toolCallId, toolName: toolCall.toolName })
+              // Show the approval banner
+              setShowBanner(true)
+              setExecutionError(undefined)
+            },
+            executeReadTool: (name, args) => executeReadTool(name, args, supabase),
+          }
+        )
+
+        // If PAUSE, don't return a result yet - wait for user decision
+        if (result === 'PAUSE') {
+          console.log('[SessionAssistant] Tool paused for user approval:', toolCall.toolName)
+          // Don't call addToolOutput - the UI will handle the pending state
+          return
+        }
+
+        // For other results, add the tool output (NO await to avoid deadlocks)
+        const output = typeof result === 'string' ? result : JSON.stringify(result)
+        console.log('[SessionAssistant] Adding tool output for:', toolCall.toolName, 'output:', output.substring(0, 100))
+
+        // Call without await - this is critical for the AI SDK pattern
+        addToolOutput({
+          tool: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          output,
+        })
+      } catch (error) {
+        console.error('[SessionAssistant] Tool execution error:', error)
+
+        // Report error back to AI
+        addToolOutput({
+          tool: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          output: JSON.stringify({
+            error: error instanceof Error ? error.message : 'Tool execution failed',
+          }),
+        })
+      }
+    },
   })
 
   // Derived state
   const isLoading = status === 'submitted' || status === 'streaming'
-
-  // Handle tool calls from messages
-  useEffect(() => {
-    const processToolCalls = async () => {
-      const lastMessage = messages[messages.length - 1]
-      if (!lastMessage || lastMessage.role !== 'assistant') return
-
-      // Check for tool parts that need client-side handling
-      for (const part of lastMessage.parts) {
-        // Check for dynamic tool parts (tools without execute functions)
-        if (part.type === 'dynamic-tool' && part.state === 'input-available') {
-          const toolCallId = part.toolCallId
-          if (processedToolCalls.has(toolCallId)) continue
-          processedToolCalls.add(toolCallId)
-
-          await handleToolInvocation(part.toolName, toolCallId, part.input)
-        }
-      }
-    }
-
-    processToolCalls()
-  }, [messages])
-
-  /**
-   * Handle a tool invocation from the AI.
-   */
-  const handleToolInvocation = useCallback(async (
-    toolName: string,
-    toolCallId: string,
-    toolInput: unknown
-  ) => {
-    // Create Supabase client for read operations
-    const supabase = createClientSupabaseClient(getToken)
-
-    const result = await handleToolCall(
-      toolName,
-      toolInput as Record<string, unknown>,
-      {
-        changeSet,
-        sessionId,
-        showApprovalWidget: () => {
-          // Save the tool call info for later
-          setPendingToolCall({ toolCallId, toolName })
-          // Show the approval banner
-          setShowBanner(true)
-          setExecutionError(undefined)
-        },
-        executeReadTool: (name, args) => executeReadTool(name, args, supabase),
-      }
-    )
-
-    // If PAUSE, don't return a result yet - wait for user decision
-    if (result === 'PAUSE') {
-      return
-    }
-
-    // For other results, add the tool output
-    await addToolOutput({
-      tool: toolName,
-      toolCallId,
-      output: result,
-    })
-  }, [changeSet, sessionId, getToken, addToolOutput])
 
   /**
    * Handle form submission.
@@ -200,11 +202,11 @@ function SessionAssistantContent({
         // Success - notify parent to refresh data
         onExercisesChange?.(exercises)
 
-        // Return result to AI
-        await addToolOutput({
+        // Return result to AI (no await to avoid deadlocks)
+        addToolOutput({
           tool: pendingToolCall.toolName,
           toolCallId: pendingToolCall.toolCallId,
-          output: createApprovalResult(true, changeSet.changeset.changeRequests),
+          output: JSON.stringify(createApprovalResult(true, changeSet.changeset.changeRequests)),
         })
 
         // Clear changeset
@@ -215,10 +217,10 @@ function SessionAssistantContent({
         setExecutionError(result.error)
 
         // Return error to AI
-        await addToolOutput({
+        addToolOutput({
           tool: pendingToolCall.toolName,
           toolCallId: pendingToolCall.toolCallId,
-          output: createExecutionFailureResult(result.error),
+          output: JSON.stringify(createExecutionFailureResult(result.error)),
         })
 
         // Add follow-up message for AI
@@ -244,14 +246,14 @@ function SessionAssistantContent({
    * Handle user regeneration request.
    */
   const handleRegenerate = useCallback(
-    async (feedback?: string) => {
+    (feedback?: string) => {
       if (!pendingToolCall) return
 
-      // Return rejection result to AI
-      await addToolOutput({
+      // Return rejection result to AI (no await)
+      addToolOutput({
         tool: pendingToolCall.toolName,
         toolCallId: pendingToolCall.toolCallId,
-        output: createApprovalResult(false, undefined, feedback),
+        output: JSON.stringify(createApprovalResult(false, undefined, feedback)),
       })
 
       // Add follow-up message
@@ -272,14 +274,14 @@ function SessionAssistantContent({
   /**
    * Handle user dismissal of changes.
    */
-  const handleDismiss = useCallback(async () => {
+  const handleDismiss = useCallback(() => {
     if (!pendingToolCall) return
 
-    // Return rejection result to AI
-    await addToolOutput({
+    // Return rejection result to AI (no await)
+    addToolOutput({
       tool: pendingToolCall.toolName,
       toolCallId: pendingToolCall.toolCallId,
-      output: createApprovalResult(false),
+      output: JSON.stringify(createApprovalResult(false)),
     })
 
     // Clear everything

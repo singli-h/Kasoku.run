@@ -13,10 +13,43 @@ import type {
   Session,
   SetParameter,
 } from '@/components/features/plans/session-planner/types'
-import type { ChangeRequest, ChangeSet, ExecutionResult, ExecutionError } from './types'
+import type { ChangeRequest, ChangeSet, ExecutionResult } from './types'
 import { classifyError } from './errors'
 import { isTempId } from './buffer-utils'
-import { convertKeysToCamelCase } from './entity-mappings'
+import { convertKeysToCamelCase, ENTITY_REFERENCE_FIELDS } from './entity-mappings'
+import type { SessionEntityType } from './types'
+
+/**
+ * Resolves temporary IDs in proposedData to their actual values.
+ * During execution, parent entities are processed first (by executionOrder),
+ * so their temp IDs can be mapped to real IDs for child entities.
+ *
+ * For in-memory building (current approach), temp IDs are used directly
+ * since the matching happens in-memory before DB operations.
+ */
+function resolveTemporaryIds(
+  data: Record<string, unknown>,
+  entityType: SessionEntityType,
+  idMap: Map<string, string | number>
+): Record<string, unknown> {
+  const refFields = ENTITY_REFERENCE_FIELDS[entityType]
+  if (!refFields || refFields.length === 0) return data
+
+  const resolved = { ...data }
+
+  for (const field of refFields) {
+    const value = resolved[field]
+    if (typeof value === 'string' && isTempId(value)) {
+      const realId = idMap.get(value)
+      if (realId !== undefined) {
+        console.log(`[resolveTemporaryIds] Resolved ${field}: ${value} → ${realId}`)
+        resolved[field] = realId
+      }
+    }
+  }
+
+  return resolved
+}
 
 /**
  * Executes an approved ChangeSet by calling the existing server action.
@@ -38,14 +71,23 @@ export async function executeChangeSet(
   sessionId: number
 ): Promise<ExecutionResult> {
   try {
+    console.log('[executeChangeSet] Starting execution')
+    console.log('[executeChangeSet] ChangeRequests:', JSON.stringify(changeset.changeRequests, null, 2))
+    console.log('[executeChangeSet] Current exercises count:', currentExercises.length)
+
     // Build updated exercises list by applying changes
     const updatedExercises = applyChangesToExercises(
       changeset.changeRequests,
       currentExercises
     )
 
+    console.log('[executeChangeSet] Updated exercises:', JSON.stringify(updatedExercises, null, 2))
+
     // Extract session updates if any
     const sessionUpdates = extractSessionUpdates(changeset.changeRequests)
+
+    console.log('[executeChangeSet] Session updates:', sessionUpdates)
+    console.log('[executeChangeSet] Calling saveSessionWithExercisesAction...')
 
     // Call existing server action
     const result = await saveSessionWithExercisesAction(
@@ -84,6 +126,9 @@ export async function executeChangeSet(
 /**
  * Applies ChangeRequests to the current exercises list.
  * Returns a new list with all changes applied.
+ *
+ * Uses an ID map to track temp ID → exercise ID mappings for
+ * resolving parent references (e.g., sets referencing new exercises).
  */
 function applyChangesToExercises(
   changeRequests: ChangeRequest[],
@@ -92,19 +137,30 @@ function applyChangesToExercises(
   // Create a mutable copy
   let exercises = [...currentExercises]
 
-  // Sort by execution order
+  // Map to track temp IDs → exercise IDs (for parent FK resolution)
+  // In the in-memory model, we use temp IDs directly, so this maps temp → temp
+  const idMap = new Map<string, string>()
+
+  // Sort by execution order (parents before children)
   const sortedRequests = [...changeRequests].sort(
     (a, b) => a.executionOrder - b.executionOrder
   )
 
   for (const request of sortedRequests) {
+    console.log(`[applyChangesToExercises] Processing: ${request.operationType} ${request.entityType} (entityId: ${request.entityId})`)
+
     switch (request.entityType) {
       case 'preset_exercise':
         exercises = applyExerciseChange(request, exercises)
+        // Track the temp ID for this exercise so sets can reference it
+        if (request.operationType === 'create' && request.entityId) {
+          idMap.set(request.entityId, request.entityId)
+          console.log(`[applyChangesToExercises] Registered exercise ID: ${request.entityId}`)
+        }
         break
 
       case 'preset_set':
-        exercises = applySetChange(request, exercises)
+        exercises = applySetChange(request, exercises, idMap)
         break
 
       // preset_session changes are handled separately
@@ -132,8 +188,8 @@ function applyExerciseChange(
         id: request.entityId ?? `temp_${Date.now()}`,
         exercise_id: Number(proposedData?.exerciseId ?? 0),
         exercise_order: Number(proposedData?.presetOrder ?? exercises.length),
-        superset_id: proposedData?.supersetId as number | null ?? null,
-        notes: (proposedData?.notes as string) ?? null,
+        superset_id: (proposedData?.supersetId as number | null) ?? null,
+        notes: (proposedData?.notes as string | null) ?? null,
         exercise: proposedData?.exerciseName
           ? {
               id: Number(proposedData?.exerciseId ?? 0),
@@ -199,17 +255,32 @@ function applyExerciseChange(
 
 /**
  * Applies a single set change to the exercises list.
+ *
+ * @param request - The change request
+ * @param exercises - Current exercises list
+ * @param idMap - Map of temp IDs to resolved IDs (for parent FK resolution)
  */
 function applySetChange(
   request: ChangeRequest,
-  exercises: SessionExercise[]
+  exercises: SessionExercise[],
+  idMap: Map<string, string>
 ): SessionExercise[] {
   const proposedData = request.proposedData
     ? convertKeysToCamelCase(request.proposedData)
     : null
 
   // Set changes need the parent exercise ID
-  const parentExerciseId = proposedData?.exercisePresetId as string | undefined
+  // This may be a temp ID that needs to be resolved
+  let parentExerciseId = proposedData?.exercisePresetId as string | undefined
+
+  // Try to resolve temp ID if we have a mapping
+  if (parentExerciseId && idMap.has(parentExerciseId)) {
+    const resolved = idMap.get(parentExerciseId)!
+    console.log(`[applySetChange] Resolved parent exercise ID: ${parentExerciseId} → ${resolved}`)
+    parentExerciseId = resolved
+  }
+
+  console.log(`[applySetChange] Looking for parent exercise: ${parentExerciseId}`)
 
   switch (request.operationType) {
     case 'create': {

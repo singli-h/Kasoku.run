@@ -146,7 +146,35 @@ function ChatMessage({ message }: { message: UIMessage }) {
     .map((part) => part.text)
     .join('')
 
-  // Skip if no text content (e.g., tool-only messages)
+  // Count tool calls in progress (not yet completed)
+  // Tool parts have states: 'input-streaming', 'input-available', 'output-streaming', 'output-available'
+  // Only show "Processing..." for tools that haven't received output yet
+  const toolCalls = message.parts.filter((part) => {
+    if (!part.type.startsWith('tool-') || part.type.startsWith('tool-result')) {
+      return false
+    }
+    const toolPart = part as { state?: string }
+    // Tool is still in progress if state is not 'output-available'
+    return toolPart.state !== 'output-available'
+  })
+  const hasToolCalls = toolCalls.length > 0
+
+  // If assistant message with no text but has tool calls, show tool activity
+  if (!isUser && !textContent && hasToolCalls) {
+    return (
+      <div className="flex gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100">
+          <Bot className="h-4 w-4 text-blue-600" />
+        </div>
+        <div className="flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-600">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Processing {toolCalls.length} action{toolCalls.length > 1 ? 's' : ''}...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Skip if no text content and no tool calls
   if (!textContent) {
     return null
   }
