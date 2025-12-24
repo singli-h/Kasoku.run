@@ -130,16 +130,30 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
 
   // Start a training session
   const startSession = useCallback(async () => {
-    if (!state.session?.session_plan?.id) {
-      console.error('No preset group ID available')
+    // Logic:
+    // 1. If we have an existing session ID (e.g. Assigned/Ongoing), use startSession (update status)
+    // 2. If we only have a plan ID (New session), use createSession
+    
+    const existingSessionId = (state.session as any)?.id
+    const planId = state.session?.session_plan?.id
+
+    if (!existingSessionId && !planId) {
+      console.error('No session or plan available')
       return { success: false, error: new Error('No session available') }
     }
 
     try {
       setState(prev => ({ ...prev, isLoading: true }))
 
-      // Use the workout API to start session
-      const sessionData = await workoutApi.startSession(state.session.session_plan.id)
+      let sessionData
+      
+      if (existingSessionId) {
+        // Start/Resume existing session
+        sessionData = await workoutApi.startSession(existingSessionId)
+      } else if (planId) {
+        // Create new session from plan
+        sessionData = await workoutApi.createSession(planId)
+      }
       
       if (!sessionData) {
         throw new Error('Failed to start training session')
@@ -148,6 +162,7 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
       // Update session status
       setState(prev => ({
         ...prev,
+        session: { ...prev.session, ...sessionData } as WorkoutLogWithDetails,
         sessionStatus: 'ongoing',
         isLoading: false
       }))
@@ -163,7 +178,7 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
       }))
       return { success: false, error: err }
     }
-  }, [state.session?.session_plan?.id, workoutApi])
+  }, [(state.session as any)?.id, state.session?.session_plan?.id, workoutApi])
 
   // Save session progress
   const saveSession = useCallback(async () => {
@@ -256,4 +271,4 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
     updateWorkoutLogSets,
     refreshSessionData
   }
-} 
+}

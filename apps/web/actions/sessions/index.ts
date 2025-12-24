@@ -12,7 +12,7 @@
 
 // Training session actions (current architecture)
 export {
-  startTrainingSessionAction,
+  createTrainingSessionAction,
   getTrainingSessionsAction,
   getTrainingSessionByIdAction,
   updateTrainingSessionAction,

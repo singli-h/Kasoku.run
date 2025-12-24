@@ -26,10 +26,11 @@ import { autoDetectPBAction } from "@/actions/athletes/personal-best-actions"
 // ============================================================================
 
 /**
- * Start a new training session
+ * Create a new training session
  * Creates workout_log and workout_log_exercises for each exercise in the session plan
+ * Sets status to 'ongoing' immediately as this is an explicit start action
  */
-export async function startTrainingSessionAction(
+export async function createTrainingSessionAction(
   sessionPlanId: number,
   athleteId?: number
 ): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
@@ -74,7 +75,7 @@ export async function startTrainingSessionAction(
       athlete_id: finalAthleteId,
       date_time: new Date().toISOString(),
       notes: null,
-      session_status: 'assigned'
+      session_status: 'ongoing' // Changed from 'assigned' to 'ongoing'
     }
 
     const { data: session, error } = await supabase
@@ -84,7 +85,7 @@ export async function startTrainingSessionAction(
       .single()
 
     if (error) {
-      console.error('[startTrainingSessionAction] Error creating workout_log:', error)
+      console.error('[createTrainingSessionAction] Error creating workout_log:', error)
       return {
         isSuccess: false,
         message: `Failed to start training session: ${error.message}`
@@ -99,7 +100,7 @@ export async function startTrainingSessionAction(
       .order('exercise_order', { ascending: true })
 
     if (fetchError) {
-      console.error('[startTrainingSessionAction] Error fetching session_plan_exercises:', fetchError)
+      console.error('[createTrainingSessionAction] Error fetching session_plan_exercises:', fetchError)
       // Don't fail the whole operation - workout_log was created successfully
       // The exercises can be added later
       return {
@@ -129,7 +130,7 @@ export async function startTrainingSessionAction(
           .insert(workoutLogExercises)
 
         if (insertError) {
-          console.error('[startTrainingSessionAction] Error creating workout_log_exercises:', insertError)
+          console.error('[createTrainingSessionAction] Error creating workout_log_exercises:', insertError)
           // Don't fail - the workout_log was created successfully
         }
       }
@@ -141,7 +142,7 @@ export async function startTrainingSessionAction(
       data: session
     }
   } catch (error) {
-    console.error('[startTrainingSessionAction]:', error)
+    console.error('[createTrainingSessionAction]:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -641,6 +642,29 @@ export async function addExercisePerformanceByExerciseIdAction(
 
     // If not found, create it (for backwards compatibility)
     if (!workoutLogExercise) {
+      // Look up session_plan_id from workout_log to help find the correct session_plan_exercise
+      const { data: workoutLog } = await supabase
+        .from('workout_logs')
+        .select('session_plan_id')
+        .eq('id', sessionId)
+        .single()
+      
+      let sessionPlanExerciseId: number | null = null
+      
+      if (workoutLog?.session_plan_id) {
+        // Try to find matching session_plan_exercise
+        const { data: spe } = await supabase
+          .from('session_plan_exercises')
+          .select('id')
+          .eq('session_plan_id', workoutLog.session_plan_id)
+          .eq('exercise_id', exerciseId)
+          .maybeSingle()
+          
+        if (spe) {
+          sessionPlanExerciseId = spe.id
+        }
+      }
+
       // Get the max exercise_order for this workout
       const { data: maxOrder } = await supabase
         .from('workout_log_exercises')
@@ -657,9 +681,10 @@ export async function addExercisePerformanceByExerciseIdAction(
         .insert({
           workout_log_id: sessionId,
           exercise_id: exerciseId,
+          session_plan_exercise_id: sessionPlanExerciseId, // Linked correctly
           exercise_order: nextOrder
         })
-        .select('id')
+        .select('id, session_plan_exercise_id')
         .single()
 
       if (createError || !newExercise) {
@@ -1571,12 +1596,43 @@ export async function updateSessionDetailAction(
         }
       }
     } else {
-      // Create new - use session_plan_exercise_id to link to the planned exercise
+      // Ensure workout_log_exercise exists
+      let workoutLogExerciseId: number | null = null
+      
+      const { data: wle } = await supabase
+        .from('workout_log_exercises')
+        .select('id')
+        .eq('workout_log_id', athleteSessionId)
+        .eq('session_plan_exercise_id', presetData.id)
+        .maybeSingle()
+        
+      if (wle) {
+        workoutLogExerciseId = wle.id
+      } else {
+        // Create it if missing
+        const { data: newWle, error: wleError } = await supabase
+          .from('workout_log_exercises')
+          .insert({
+            workout_log_id: athleteSessionId,
+            exercise_id: exerciseId,
+            session_plan_exercise_id: presetData.id,
+            exercise_order: 999 // fallback order
+          })
+          .select('id')
+          .single()
+          
+        if (!wleError && newWle) {
+          workoutLogExerciseId = newWle.id
+        }
+      }
+
+      // Create new - use session_plan_exercise_id AND workout_log_exercise_id
       const { error: insertError } = await supabase
         .from('workout_log_sets')
         .insert({
           workout_log_id: athleteSessionId,
           session_plan_exercise_id: presetData.id,
+          workout_log_exercise_id: workoutLogExerciseId, // Linked correctly
           set_index: setIndex,
           performing_time: performingTime,
           completed: performingTime !== null

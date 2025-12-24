@@ -11,13 +11,14 @@
 import { useState, useCallback, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
 import {
-  startTrainingSessionAction,
+  createTrainingSessionAction,
   getTrainingSessionByIdAction,
   updateTrainingSessionAction,
   addExercisePerformanceByExerciseIdAction,
   updateExercisePerformanceAction,
   completeTrainingSessionAction
 } from "@/actions/sessions/training-session-actions"
+import { startTrainingSessionAction as startExistingSessionAction } from "@/actions/workout/workout-session-actions"
 import { 
   type WorkoutLogWithDetails,
   type ExerciseTrainingDetail
@@ -62,17 +63,60 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
   const [error, setError] = useState<string | null>(null)
 
   /**
-   * Start a new training session
+   * Create a new training session from a plan
    */
-  const startSession = useCallback(async (
-    exercisePresetGroupId: number,
+  const createSession = useCallback(async (
+    sessionPlanId: number,
     athleteId?: number
   ): Promise<Database["public"]["Tables"]["workout_logs"]["Row"] | null> => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const result = await startTrainingSessionAction(exercisePresetGroupId, athleteId)
+      const result = await createTrainingSessionAction(sessionPlanId, athleteId)
+      
+      if (!result.isSuccess) {
+        setError(result.message)
+        toast({
+          title: "Failed to create session",
+          description: result.message,
+          variant: "destructive"
+        })
+        return null
+      }
+
+      toast({
+        title: "Session created",
+        description: "Your workout session has been created successfully.",
+        variant: "default"
+      })
+      
+      return result.data
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error"
+      setError(errorMessage)
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      })
+      return null
+    } finally {
+      setIsLoading(false)
+    }
+  }, [toast])
+
+  /**
+   * Start an existing assigned session
+   */
+  const startSession = useCallback(async (
+    sessionId: number
+  ): Promise<Database["public"]["Tables"]["workout_logs"]["Row"] | null> => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const result = await startExistingSessionAction(sessionId)
       
       if (!result.isSuccess) {
         setError(result.message)
@@ -419,6 +463,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
 
   return {
     // Session management
+    createSession,
     startSession,
     getSession,
     updateSession,
@@ -444,4 +489,4 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
     retryAttempts,
     enableOptimisticUpdates
   }
-} 
+}

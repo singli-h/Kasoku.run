@@ -57,7 +57,13 @@ const supabase = createClient<Database>(
   {
     // Fresh JWT token for each request - NEVER cache this
     async accessToken() {
-      return (await auth()).getToken()
+      try {
+        return (await auth()).getToken()
+      } catch {
+        // Not in a request context (e.g., module initialization, Realtime setup)
+        // Return null to proceed without auth - actual requests will have context
+        return null
+      }
     },
   }
 )
