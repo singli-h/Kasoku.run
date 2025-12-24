@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import { UnifiedPageSkeleton } from "@/components/layout"
 import { SessionPlannerClient } from "@/components/features/plans/session-planner/SessionPlannerClient"
 import { SessionAssistantWrapper } from "./SessionAssistantWrapper"
-import { getExercisePresetGroupByIdAction } from "@/actions/library/exercise-actions"
+import { getSessionPlanByIdAction } from "@/actions/library/exercise-actions"
 import { getExercisesAction } from "@/actions/library/exercise-actions"
 import { getExerciseTypesAction } from "@/actions/library/exercise-actions"
 import type { SessionExercise, ExerciseLibraryItem } from "@/components/features/plans/session-planner/types"
@@ -36,11 +36,11 @@ function transformSessionData(backendData: any): {
   }
 
   // Transform exercise presets to SessionExercise format
-  const exercises: SessionExercise[] = (backendData.exercise_presets || []).map((preset: any) => ({
+  const exercises: SessionExercise[] = (backendData.session_plan_exercises || []).map((preset: any) => ({
     id: `preset_${preset.id}`, // Use string ID for client-side
-    exercise_preset_group_id: preset.exercise_preset_group_id,
+    session_plan_id: preset.session_plan_id,
     exercise_id: preset.exercise_id,
-    preset_order: preset.preset_order,
+    exercise_order: preset.exercise_order,
     superset_id: preset.superset_id,
     notes: preset.notes,
     exercise: preset.exercise ? {
@@ -50,9 +50,9 @@ function transformSessionData(backendData: any): {
       exercise_type_id: preset.exercise.exercise_type_id,
       video_url: preset.exercise.video_url,
     } : null,
-    sets: (preset.exercise_preset_details || []).map((detail: any) => ({
+    sets: (preset.session_plan_sets || []).map((detail: any) => ({
       id: detail.id,
-      exercise_preset_id: detail.exercise_preset_id,
+      session_plan_exercise_id: detail.session_plan_exercise_id,
       set_index: detail.set_index,
       reps: detail.reps,
       weight: detail.weight,
@@ -116,7 +116,7 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
 
   // Load session data, exercise library, and exercise types in parallel
   const [sessionResult, exercisesResult, exerciseTypesResult] = await Promise.all([
-    getExercisePresetGroupByIdAction(sessionId),
+    getSessionPlanByIdAction(sessionId),
     getExercisesAction(),
     getExerciseTypesAction(),
   ])

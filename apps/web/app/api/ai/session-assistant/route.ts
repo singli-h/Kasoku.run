@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
     // Verify session ownership
     const { data: session, error: sessionError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select('id, user_id, name')
       .eq('id', sessionId)
       .single()

@@ -27,14 +27,15 @@ import { autoDetectPBAction } from "@/actions/athletes/personal-best-actions"
 
 /**
  * Start a new training session
+ * Creates workout_log and workout_log_exercises for each exercise in the session plan
  */
 export async function startTrainingSessionAction(
-  exercisePresetGroupId: number,
+  sessionPlanId: number,
   athleteId?: number
-): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
+): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -47,14 +48,14 @@ export async function startTrainingSessionAction(
 
     // Determine the athlete ID - either provided (for coaches) or current user's athlete profile
     let finalAthleteId = athleteId
-    
+
     if (!finalAthleteId) {
       const { data: athlete } = await supabase
         .from('athletes')
         .select('id')
         .eq('user_id', dbUserId)
         .single()
-      
+
       if (athlete) {
         finalAthleteId = athlete.id
       }
@@ -67,8 +68,9 @@ export async function startTrainingSessionAction(
       }
     }
 
-    const sessionData: Database["public"]["Tables"]["exercise_training_sessions"]["Insert"] = {
-      exercise_preset_group_id: exercisePresetGroupId,
+    // Step 1: Create the workout_log
+    const sessionData: Database["public"]["Tables"]["workout_logs"]["Insert"] = {
+      session_plan_id: sessionPlanId,
       athlete_id: finalAthleteId,
       date_time: new Date().toISOString(),
       notes: null,
@@ -76,16 +78,60 @@ export async function startTrainingSessionAction(
     }
 
     const { data: session, error } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .insert(sessionData)
       .select()
       .single()
 
     if (error) {
-      console.error('Error starting training session:', error)
+      console.error('[startTrainingSessionAction] Error creating workout_log:', error)
       return {
         isSuccess: false,
         message: `Failed to start training session: ${error.message}`
+      }
+    }
+
+    // Step 2: Fetch session_plan_exercises from the session plan
+    const { data: sessionPlanExercises, error: fetchError } = await supabase
+      .from('session_plan_exercises')
+      .select('id, exercise_id, exercise_order, superset_id, notes')
+      .eq('session_plan_id', sessionPlanId)
+      .order('exercise_order', { ascending: true })
+
+    if (fetchError) {
+      console.error('[startTrainingSessionAction] Error fetching session_plan_exercises:', fetchError)
+      // Don't fail the whole operation - workout_log was created successfully
+      // The exercises can be added later
+      return {
+        isSuccess: true,
+        message: "Training session started (exercises will be loaded from plan)",
+        data: session
+      }
+    }
+
+    // Step 3: Create workout_log_exercises for each session_plan_exercise
+    if (sessionPlanExercises && sessionPlanExercises.length > 0) {
+      // Filter out exercises with null exercise_id and map to required format
+      const workoutLogExercises = sessionPlanExercises
+        .filter((spe) => spe.exercise_id !== null && spe.exercise_order !== null)
+        .map((spe) => ({
+          workout_log_id: session.id,
+          exercise_id: spe.exercise_id as number,
+          session_plan_exercise_id: spe.id,
+          exercise_order: spe.exercise_order as number,
+          superset_id: spe.superset_id,
+          notes: spe.notes
+        }))
+
+      if (workoutLogExercises.length > 0) {
+        const { error: insertError } = await supabase
+          .from('workout_log_exercises')
+          .insert(workoutLogExercises)
+
+        if (insertError) {
+          console.error('[startTrainingSessionAction] Error creating workout_log_exercises:', insertError)
+          // Don't fail - the workout_log was created successfully
+        }
       }
     }
 
@@ -95,7 +141,7 @@ export async function startTrainingSessionAction(
       data: session
     }
   } catch (error) {
-    console.error('Error in startTrainingSessionAction:', error)
+    console.error('[startTrainingSessionAction]:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -105,6 +151,7 @@ export async function startTrainingSessionAction(
 
 /**
  * Get training sessions for an athlete
+ * Now includes workout_log_exercises with nested data
  */
 export async function getTrainingSessionsAction(
   athleteId?: number,
@@ -112,7 +159,7 @@ export async function getTrainingSessionsAction(
 ): Promise<ActionState<ExerciseTrainingSessionWithDetails[]>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -125,14 +172,14 @@ export async function getTrainingSessionsAction(
 
     // Determine the athlete ID - either provided (for coaches) or current user's athlete profile
     let finalAthleteId = athleteId
-    
+
     if (!finalAthleteId) {
       const { data: athlete } = await supabase
         .from('athletes')
         .select('id')
         .eq('user_id', dbUserId)
         .single()
-      
+
       if (athlete) {
         finalAthleteId = athlete.id
       }
@@ -146,7 +193,7 @@ export async function getTrainingSessionsAction(
     }
 
     let query = supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select(`
         *,
         athlete:athletes(
@@ -157,9 +204,9 @@ export async function getTrainingSessionsAction(
             email
           )
         ),
-        exercise_preset_group:exercise_preset_groups(
+        session_plan:session_plans(
           *,
-          exercise_presets(
+          session_plan_exercises(
             *,
             exercise:exercises(
               *,
@@ -167,7 +214,15 @@ export async function getTrainingSessionsAction(
             )
           )
         ),
-        exercise_training_details(*)
+        workout_log_exercises(
+          *,
+          exercise:exercises(
+            *,
+            exercise_type:exercise_types(*)
+          ),
+          workout_log_sets(*)
+        ),
+        workout_log_sets(*)
       `)
       .eq('athlete_id', finalAthleteId)
       .order('date_time', { ascending: false })
@@ -179,7 +234,7 @@ export async function getTrainingSessionsAction(
     const { data: sessions, error } = await query
 
     if (error) {
-      console.error('Error fetching training sessions:', error)
+      console.error('[getTrainingSessionsAction] Error:', error)
       return {
         isSuccess: false,
         message: `Failed to fetch training sessions: ${error.message}`
@@ -192,7 +247,7 @@ export async function getTrainingSessionsAction(
       data: sessions || []
     }
   } catch (error) {
-    console.error('Error in getTrainingSessionsAction:', error)
+    console.error('[getTrainingSessionsAction]:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -202,13 +257,14 @@ export async function getTrainingSessionsAction(
 
 /**
  * Get a specific training session by ID
+ * Now includes workout_log_exercises with nested workout_log_sets
  */
 export async function getTrainingSessionByIdAction(
   sessionId: number
 ): Promise<ActionState<ExerciseTrainingSessionWithDetails>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -216,10 +272,8 @@ export async function getTrainingSessionByIdAction(
       }
     }
 
-    // Using singleton supabase client
-
     const { data: session, error } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select(`
         *,
         athlete:athletes(
@@ -230,25 +284,38 @@ export async function getTrainingSessionByIdAction(
             email
           )
         ),
-        exercise_preset_group:exercise_preset_groups(
+        session_plan:session_plans(
           *,
-          exercise_presets(
+          session_plan_exercises(
             *,
             exercise:exercises(
               *,
               exercise_type:exercise_types(*),
               unit:units(*)
             ),
-            exercise_preset_details(*)
+            session_plan_sets(*)
           )
         ),
-        exercise_training_details(*)
+        workout_log_exercises(
+          *,
+          exercise:exercises(
+            *,
+            exercise_type:exercise_types(*),
+            unit:units(*)
+          ),
+          session_plan_exercise:session_plan_exercises(
+            *,
+            session_plan_sets(*)
+          ),
+          workout_log_sets(*)
+        ),
+        workout_log_sets(*)
       `)
       .eq('id', sessionId)
       .single()
 
     if (error) {
-      console.error('Error fetching training session:', error)
+      console.error('[getTrainingSessionByIdAction] Error:', error)
       if (error.code === 'PGRST116') {
         return {
           isSuccess: false,
@@ -267,7 +334,7 @@ export async function getTrainingSessionByIdAction(
       data: session
     }
   } catch (error) {
-    console.error('Error in getTrainingSessionByIdAction:', error)
+    console.error('[getTrainingSessionByIdAction]:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -280,8 +347,8 @@ export async function getTrainingSessionByIdAction(
  */
 export async function updateTrainingSessionAction(
   sessionId: number,
-  updates: Partial<Database["public"]["Tables"]["exercise_training_sessions"]["Update"]>
-): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
+  updates: Partial<Database["public"]["Tables"]["workout_logs"]["Update"]>
+): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
     const { userId } = await auth()
     
@@ -295,7 +362,7 @@ export async function updateTrainingSessionAction(
     // Using singleton supabase client
 
     const { data: session, error } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .update(updates)
       .eq('id', sessionId)
       .select()
@@ -325,11 +392,12 @@ export async function updateTrainingSessionAction(
 
 /**
  * Complete a training session with auto-PB detection for sprint exercises
+ * Now uses workout_log_exercises to access exercise data
  */
 export async function completeTrainingSessionAction(
   sessionId: number,
   notes?: string
-): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
+): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
     const { userId } = await auth()
 
@@ -340,22 +408,21 @@ export async function completeTrainingSessionAction(
       }
     }
 
-    // Using singleton supabase client
-
     // First, get the session with athlete_id and exercise details for PB detection
-    // Note: exercise_training_details links to exercise via exercise_preset -> exercise
+    // Now using workout_log_exercises which has the exercise_id directly
     const { data: sessionData, error: fetchError } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select(`
         id,
         athlete_id,
-        exercise_training_details(
+        workout_log_exercises(
           id,
-          distance,
-          performing_time,
-          completed,
-          exercise_preset:exercise_presets(
-            exercise_id
+          exercise_id,
+          workout_log_sets(
+            id,
+            distance,
+            performing_time,
+            completed
           )
         )
       `)
@@ -363,7 +430,7 @@ export async function completeTrainingSessionAction(
       .single()
 
     if (fetchError) {
-      console.error('Error fetching session for completion:', fetchError)
+      console.error('[completeTrainingSessionAction] Error fetching session:', fetchError)
       return {
         isSuccess: false,
         message: `Failed to fetch session: ${fetchError.message}`
@@ -374,26 +441,31 @@ export async function completeTrainingSessionAction(
     // Only check exercises with distance and performing_time (sprint exercises)
     const pbDetectionPromises: Promise<any>[] = []
 
-    if (sessionData.athlete_id && sessionData.exercise_training_details && Array.isArray(sessionData.exercise_training_details)) {
-      const athleteId = sessionData.athlete_id // Extract to const for type narrowing
-      sessionData.exercise_training_details.forEach((detail: any) => {
-        // Get exercise_id from the joined exercise_preset
-        const exerciseId = detail.exercise_preset?.exercise_id
-        // Only process completed sets with time (sprint exercises - distance is implicit in exercise_id)
-        if (detail.completed && detail.distance && detail.performing_time && exerciseId) {
-          pbDetectionPromises.push(
-            autoDetectPBAction(
-              sessionId,
-              athleteId,
-              exerciseId,
-              detail.performing_time
-            ).catch(err => {
-              // Log but don't fail session completion if PB detection fails
-              console.error('[completeTrainingSessionAction] PB detection failed:', err)
-              return null
-            })
-          )
-        }
+    if (sessionData.athlete_id && sessionData.workout_log_exercises && Array.isArray(sessionData.workout_log_exercises)) {
+      const athleteId = sessionData.athlete_id
+
+      sessionData.workout_log_exercises.forEach((wle: any) => {
+        const exerciseId = wle.exercise_id
+        if (!exerciseId) return
+
+        // Check each set for PB candidates
+        wle.workout_log_sets?.forEach((set: any) => {
+          // Only process completed sets with time (sprint exercises)
+          if (set.completed && set.distance && set.performing_time) {
+            pbDetectionPromises.push(
+              autoDetectPBAction(
+                sessionId,
+                athleteId,
+                exerciseId,
+                set.performing_time
+              ).catch(err => {
+                // Log but don't fail session completion if PB detection fails
+                console.error('[completeTrainingSessionAction] PB detection failed:', err)
+                return null
+              })
+            )
+          }
+        })
       })
     }
 
@@ -403,20 +475,20 @@ export async function completeTrainingSessionAction(
     }
 
     // Now complete the session
-    const updates: Partial<Database["public"]["Tables"]["exercise_training_sessions"]["Update"]> = {
+    const updates: Partial<Database["public"]["Tables"]["workout_logs"]["Update"]> = {
       session_status: 'completed',
       notes: notes || null
     }
 
     const { data: session, error } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .update(updates)
       .eq('id', sessionId)
       .select()
       .single()
 
     if (error) {
-      console.error('Error completing training session:', error)
+      console.error('[completeTrainingSessionAction] Error completing session:', error)
       return {
         isSuccess: false,
         message: `Failed to complete training session: ${error.message}`
@@ -429,7 +501,7 @@ export async function completeTrainingSessionAction(
       data: session
     }
   } catch (error) {
-    console.error('Error in completeTrainingSessionAction:', error)
+    console.error('[completeTrainingSessionAction]:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -443,8 +515,97 @@ export async function completeTrainingSessionAction(
 
 /**
  * Add performance data for a specific exercise in a training session
+ * Now uses workout_log_exercise_id to properly link sets to exercises in the workout
  */
 export async function addExercisePerformanceAction(
+  workoutLogExerciseId: number,
+  setData: {
+    set_index: number
+    reps?: number
+    weight?: number
+    rest_time?: number
+    rpe?: number
+    tempo?: string
+    resistance?: number
+    distance?: number
+    performing_time?: number
+    notes?: string
+  }
+): Promise<ActionState<ExerciseTrainingDetail>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // First, get the workout_log_exercise to verify it exists and get workout_log_id
+    const { data: workoutLogExercise, error: fetchError } = await supabase
+      .from('workout_log_exercises')
+      .select('id, workout_log_id, session_plan_exercise_id')
+      .eq('id', workoutLogExerciseId)
+      .single()
+
+    if (fetchError || !workoutLogExercise) {
+      console.error('[addExercisePerformanceAction] Workout log exercise not found:', fetchError)
+      return {
+        isSuccess: false,
+        message: "Workout exercise not found"
+      }
+    }
+
+    const detailData = {
+      workout_log_id: workoutLogExercise.workout_log_id,
+      workout_log_exercise_id: workoutLogExerciseId,
+      session_plan_exercise_id: workoutLogExercise.session_plan_exercise_id,
+      set_index: setData.set_index,
+      reps: setData.reps || null,
+      weight: setData.weight || null,
+      rest_time: setData.rest_time || null,
+      rpe: setData.rpe || null,
+      tempo: setData.tempo || null,
+      resistance: setData.resistance || null,
+      distance: setData.distance || null,
+      performing_time: setData.performing_time || null
+    }
+
+    const { data: detail, error } = await supabase
+      .from('workout_log_sets')
+      .insert(detailData)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[addExercisePerformanceAction] Error inserting workout_log_set:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to add exercise performance: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercise performance added successfully",
+      data: detail
+    }
+  } catch (error) {
+    console.error('[addExercisePerformanceAction]:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Legacy: Add performance data by session ID and exercise ID
+ * This will find or create the workout_log_exercise first
+ * @deprecated Use addExercisePerformanceAction with workoutLogExerciseId instead
+ */
+export async function addExercisePerformanceByExerciseIdAction(
   sessionId: number,
   exerciseId: number,
   setData: {
@@ -462,7 +623,7 @@ export async function addExercisePerformanceAction(
 ): Promise<ActionState<ExerciseTrainingDetail>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -470,44 +631,52 @@ export async function addExercisePerformanceAction(
       }
     }
 
-    // Using singleton supabase client
+    // Find the workout_log_exercise for this session and exercise
+    let { data: workoutLogExercise, error: fetchError } = await supabase
+      .from('workout_log_exercises')
+      .select('id')
+      .eq('workout_log_id', sessionId)
+      .eq('exercise_id', exerciseId)
+      .maybeSingle()
 
-    const detailData = {
-      exercise_training_session_id: sessionId,
-      exercise_id: exerciseId,
-      set_index: setData.set_index,
-      reps: setData.reps || null,
-      weight: setData.weight || null,
-      rest_time: setData.rest_time || null,
-      rpe: setData.rpe || null,
-      tempo: setData.tempo || null,
-      resistance: setData.resistance || null,
-      distance: setData.distance || null,
-      performing_time: setData.performing_time || null,
-      notes: setData.notes || null
-    }
+    // If not found, create it (for backwards compatibility)
+    if (!workoutLogExercise) {
+      // Get the max exercise_order for this workout
+      const { data: maxOrder } = await supabase
+        .from('workout_log_exercises')
+        .select('exercise_order')
+        .eq('workout_log_id', sessionId)
+        .order('exercise_order', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-    const { data: detail, error } = await supabase
-      .from('exercise_training_details')
-      .insert(detailData)
-      .select()
-      .single()
+      const nextOrder = (maxOrder?.exercise_order || 0) + 1
 
-    if (error) {
-      console.error('Error adding exercise performance:', error)
-      return {
-        isSuccess: false,
-        message: `Failed to add exercise performance: ${error.message}`
+      const { data: newExercise, error: createError } = await supabase
+        .from('workout_log_exercises')
+        .insert({
+          workout_log_id: sessionId,
+          exercise_id: exerciseId,
+          exercise_order: nextOrder
+        })
+        .select('id')
+        .single()
+
+      if (createError || !newExercise) {
+        console.error('[addExercisePerformanceByExerciseIdAction] Error creating workout_log_exercise:', createError)
+        return {
+          isSuccess: false,
+          message: "Failed to create workout exercise entry"
+        }
       }
+
+      workoutLogExercise = newExercise
     }
 
-    return {
-      isSuccess: true,
-      message: "Exercise performance added successfully",
-      data: detail
-    }
+    // Now call the main function
+    return addExercisePerformanceAction(workoutLogExercise.id, setData)
   } catch (error) {
-    console.error('Error in addExercisePerformanceAction:', error)
+    console.error('[addExercisePerformanceByExerciseIdAction]:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -535,7 +704,7 @@ export async function updateExercisePerformanceAction(
     // Using singleton supabase client
 
     const { data: detail, error } = await supabase
-      .from('exercise_training_details')
+      .from('workout_log_sets')
       .update(updates)
       .eq('id', detailId)
       .select()
@@ -612,12 +781,12 @@ export async function getPerformanceMetricsAction(
 
     // Build query for training sessions in date range
     let sessionQuery = supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select(`
         id,
         date_time,
         session_status,
-        exercise_training_details(
+        workout_log_sets(
           reps,
           resistance_unit_id,
           power
@@ -655,7 +824,7 @@ export async function getPerformanceMetricsAction(
         completedSessions++
       }
       
-      session.exercise_training_details?.forEach(detail => {
+      session.workout_log_sets?.forEach(detail => {
         totalSets++
         if (detail.reps) totalReps += detail.reps
         if (detail.resistance_unit_id) totalWeight += detail.resistance_unit_id
@@ -731,38 +900,40 @@ export async function getExerciseProgressAction(
       }
     }
 
-    // Query exercise training details with exercise information
+    // Query exercise progress using workout_log_exercises structure
+    // This gives us direct access to exercise data through workout_log_exercises
     let query = supabase
-      .from('exercise_training_details')
+      .from('workout_log_exercises')
       .select(`
-        exercise_preset_id,
-        reps,
-        resistance_unit_id,
-        power,
-        exercise_training_session:exercise_training_sessions!inner(
+        id,
+        exercise_id,
+        exercise:exercises(
+          id,
+          name
+        ),
+        workout_log:workout_logs!inner(
           athlete_id,
           date_time,
           session_status
         ),
-        exercise_preset:exercise_presets(
-          exercise:exercises(
-            id,
-            name
-          )
+        workout_log_sets(
+          reps,
+          weight,
+          rpe
         )
       `)
-      .eq('exercise_training_session.athlete_id', finalAthleteId)
-      .eq('exercise_training_session.session_status', 'completed')
-      .order('exercise_training_session.date_time', { ascending: false })
+      .eq('workout_log.athlete_id', finalAthleteId)
+      .eq('workout_log.session_status', 'completed')
+      .order('workout_log.date_time', { ascending: false })
 
     if (exerciseId) {
-      query = query.eq('exercise_preset.exercise_id', exerciseId)
+      query = query.eq('exercise_id', exerciseId)
     }
 
     const { data: details, error } = await query
 
     if (error) {
-      console.error('Error fetching exercise progress:', error)
+      console.error('[getExerciseProgressAction] Error:', error)
       return {
         isSuccess: false,
         message: `Failed to fetch exercise progress: ${error.message}`
@@ -771,15 +942,15 @@ export async function getExerciseProgressAction(
 
     // Group by exercise and calculate progress
     const exerciseMap = new Map<number, any>()
-    
-    details?.forEach(detail => {
-      const exerciseId = detail.exercise_preset?.exercise?.id
-      if (!exerciseId) return // Skip if no exercise ID
-      
-      if (!exerciseMap.has(exerciseId)) {
-        exerciseMap.set(exerciseId, {
-          exercise_id: exerciseId,
-          exercise_name: detail.exercise_preset?.exercise?.name || 'Unknown Exercise',
+
+    details?.forEach((wle: any) => {
+      const exId = wle.exercise_id
+      if (!exId) return // Skip if no exercise ID
+
+      if (!exerciseMap.has(exId)) {
+        exerciseMap.set(exId, {
+          exercise_id: exId,
+          exercise_name: wle.exercise?.name || 'Unknown Exercise',
           sessions_completed: 0,
           pr_weight: 0,
           pr_reps: 0,
@@ -789,28 +960,31 @@ export async function getExerciseProgressAction(
           weights: []
         })
       }
-      
-      const exerciseData = exerciseMap.get(exerciseId)
+
+      const exerciseData = exerciseMap.get(exId)
       if (exerciseData) {
         exerciseData.sessions_completed++
-        
-        if (detail.resistance_unit_id && detail.resistance_unit_id > exerciseData.pr_weight) {
-          exerciseData.pr_weight = detail.resistance_unit_id
-          exerciseData.pr_date = detail.exercise_training_session?.date_time || null
-        }
-        
-        if (detail.reps && detail.reps > exerciseData.pr_reps) {
-          exerciseData.pr_reps = detail.reps
-        }
-        
-        if (detail.power) {
-          exerciseData.rpe_sum += detail.power
-          exerciseData.rpe_count++
-        }
-        
-        if (detail.resistance_unit_id) {
-          exerciseData.weights.push(detail.resistance_unit_id)
-        }
+
+        // Process each set for this exercise
+        wle.workout_log_sets?.forEach((set: any) => {
+          if (set.weight && set.weight > exerciseData.pr_weight) {
+            exerciseData.pr_weight = set.weight
+            exerciseData.pr_date = wle.workout_log?.date_time || null
+          }
+
+          if (set.reps && set.reps > exerciseData.pr_reps) {
+            exerciseData.pr_reps = set.reps
+          }
+
+          if (set.rpe) {
+            exerciseData.rpe_sum += set.rpe
+            exerciseData.rpe_count++
+          }
+
+          if (set.weight) {
+            exerciseData.weights.push(set.weight)
+          }
+        })
       }
     })
 
@@ -900,16 +1074,16 @@ export async function getGroupSessionsAction(): Promise<ActionState<{
 
     const groupIds = athleteGroups.map(g => g.id)
 
-    // Get all exercise_training_sessions linked to coach's athlete groups
+    // Get all workout_logs linked to coach's athlete groups
     const { data: sessions, error } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select(`
         id,
         date_time,
         session_status,
         athlete_group_id,
-        exercise_preset_group_id,
-        exercise_preset_groups (
+        session_plan_id,
+        session_plans (
           name
         ),
         athlete_groups!fk_ets_group (
@@ -934,7 +1108,7 @@ export async function getGroupSessionsAction(): Promise<ActionState<{
     // Transform to response format
     const formattedSessions = sessions.map((session: any) => ({
       id: session.id,
-      name: session.exercise_preset_groups?.name || 'Untitled Session',
+      name: session.session_plans?.name || 'Untitled Session',
       date: session.date_time || new Date().toISOString(),
       athleteGroupName: session.athlete_groups?.group_name || 'Unknown Group',
       athleteCount: session.athlete_groups?.athletes?.[0]?.count || 0,
@@ -1028,24 +1202,24 @@ export async function getGroupSessionDataAction(sessionId: number): Promise<Acti
 
     // Get session with related data
     const { data: session, error: sessionError } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select(`
         id,
         date_time,
         session_status,
         athlete_group_id,
-        exercise_preset_group_id,
-        exercise_preset_groups (
+        session_plan_id,
+        session_plans (
           id,
           name,
-          exercise_presets (
+          session_plan_exercises (
             id,
-            preset_order,
+            exercise_order,
             exercise:exercises (
               id,
               name
             ),
-            exercise_preset_details (
+            session_plan_sets (
               id,
               set_index,
               reps,
@@ -1071,7 +1245,7 @@ export async function getGroupSessionDataAction(sessionId: number): Promise<Acti
           )
         )
       `)
-      // preset_order is the real ordering column on exercise_presets; order_index is not in the schema
+      // exercise_order is the real ordering column on session_plan_exercises; order_index is not in the schema
       .eq('id', sessionId)
       .single()
 
@@ -1102,13 +1276,13 @@ export async function getGroupSessionDataAction(sessionId: number): Promise<Acti
     const athleteIds = athletes.map((a: { id: number }) => a.id)
 
     // Get exercises from preset group
-    const presetGroup: any = session.exercise_preset_groups
-    const exercises = presetGroup?.exercise_presets?.map((preset: any) => {
-      const firstDetail = preset.exercise_preset_details?.[0]
+    const presetGroup: any = session.session_plans
+    const exercises = presetGroup?.session_plan_exercises?.map((preset: any) => {
+      const firstDetail = preset.session_plan_sets?.[0]
       return {
         id: preset.exercise.id,
         name: preset.exercise.name,
-        sets: preset.exercise_preset_details?.length || 0,
+        sets: preset.session_plan_sets?.length || 0,
         reps: firstDetail?.reps || 0,
         distance: firstDetail?.distance || null,
         unit: firstDetail?.unit?.name || 'reps'
@@ -1117,26 +1291,26 @@ export async function getGroupSessionDataAction(sessionId: number): Promise<Acti
 
     const exerciseIds = exercises.map((e: any) => e.id)
 
-    // Get existing performance data (exercise_training_details)
-    // Note: exercise_training_details joins to exercise via exercise_preset
+    // Get existing performance data (workout_log_sets)
+    // Note: workout_log_sets joins to exercise via session_plan_exercise_id
     // For group sessions, we need to track which athlete performed each exercise
     const { data: existingPerformance } = await supabase
-      .from('exercise_training_details')
+      .from('workout_log_sets')
       .select(`
         id,
-        exercise_training_session_id,
-        exercise_preset_id,
+        workout_log_id,
+        session_plan_exercise_id,
         set_index,
         performing_time,
         completed,
-        exercise_preset:exercise_presets(
+        session_plan_exercise:session_plan_exercises(
           exercise_id
         )
       `)
-      .eq('exercise_training_session_id', sessionId)
+      .eq('workout_log_id', sessionId)
 
     // Build performance data map
-    // Note: For group sessions, each athlete has their own exercise_training_session
+    // Note: For group sessions, each athlete has their own workout_log
     // This function retrieves data for a single group session (parent session)
     // The actual athlete performance is stored in individual sessions
     const performanceData: any = {}
@@ -1149,26 +1323,26 @@ export async function getGroupSessionDataAction(sessionId: number): Promise<Acti
 
     // For group sessions, performance data needs to be fetched from individual athlete sessions
     // Get individual sessions for this group session's preset group
-    const presetGroupId = session.exercise_preset_group_id
+    const presetGroupId = session.session_plan_id
     let athleteSessions: any[] | null = null
 
     if (presetGroupId) {
       const { data } = await supabase
-        .from('exercise_training_sessions')
+        .from('workout_logs')
         .select(`
           id,
           athlete_id,
-          exercise_training_details(
+          workout_log_sets(
             id,
             set_index,
             performing_time,
             completed,
-            exercise_preset:exercise_presets(
+            session_plan_exercise:session_plan_exercises(
               exercise_id
             )
           )
         `)
-        .eq('exercise_preset_group_id', presetGroupId)
+        .eq('session_plan_id', presetGroupId)
         .in('athlete_id', athleteIds)
       athleteSessions = data
     }
@@ -1179,8 +1353,8 @@ export async function getGroupSessionDataAction(sessionId: number): Promise<Acti
         performanceData[athleteId] = {}
       }
 
-      athleteSession.exercise_training_details?.forEach((detail: any) => {
-        const exerciseId = detail.exercise_preset?.exercise_id
+      athleteSession.workout_log_sets?.forEach((detail: any) => {
+        const exerciseId = detail.session_plan_exercise?.exercise_id
         const setIndex = detail.set_index || 1
 
         if (exerciseId) {
@@ -1285,11 +1459,11 @@ export async function updateSessionDetailAction(
 
     // Verify coach owns the session's athlete group
     const { data: session, error: sessionError } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select(`
         id,
         athlete_group_id,
-        exercise_preset_group_id,
+        session_plan_id,
         athlete_groups!fk_ets_group(coach_id)
       `)
       .eq('id', sessionId)
@@ -1311,8 +1485,8 @@ export async function updateSessionDetailAction(
       }
     }
 
-    // Ensure we have a valid exercise_preset_group_id
-    const sessionPresetGroupId = session.exercise_preset_group_id
+    // Ensure we have a valid session_plan_id
+    const sessionPresetGroupId = session.session_plan_id
     if (!sessionPresetGroupId) {
       return {
         isSuccess: false,
@@ -1321,11 +1495,11 @@ export async function updateSessionDetailAction(
     }
 
     // First, find or create the athlete's training session for this preset group
-    // For group sessions, each athlete has their own exercise_training_session
+    // For group sessions, each athlete has their own workout_log
     const { data: athleteSession } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select('id')
-      .eq('exercise_preset_group_id', sessionPresetGroupId)
+      .eq('session_plan_id', sessionPresetGroupId)
       .eq('athlete_id', athleteId)
       .maybeSingle()
 
@@ -1334,9 +1508,9 @@ export async function updateSessionDetailAction(
     // If no session exists for this athlete, we need to create one
     if (!athleteSessionId) {
       const { data: newSession, error: createSessionError } = await supabase
-        .from('exercise_training_sessions')
+        .from('workout_logs')
         .insert({
-          exercise_preset_group_id: sessionPresetGroupId,
+          session_plan_id: sessionPresetGroupId,
           athlete_id: athleteId,
           athlete_group_id: session.athlete_group_id,
           session_status: 'ongoing',
@@ -1355,11 +1529,11 @@ export async function updateSessionDetailAction(
       athleteSessionId = newSession.id
     }
 
-    // Find the exercise_preset_id for this exercise
+    // Find the session_plan_exercise_id for this exercise
     const { data: presetData } = await supabase
-      .from('exercise_presets')
+      .from('session_plan_exercises')
       .select('id')
-      .eq('exercise_preset_group_id', sessionPresetGroupId)
+      .eq('session_plan_id', sessionPresetGroupId)
       .eq('exercise_id', exerciseId)
       .maybeSingle()
 
@@ -1370,19 +1544,19 @@ export async function updateSessionDetailAction(
       }
     }
 
-    // Check if detail already exists using exercise_preset_id
+    // Check if detail already exists using session_plan_exercise_id
     const { data: existing } = await supabase
-      .from('exercise_training_details')
+      .from('workout_log_sets')
       .select('id')
-      .eq('exercise_training_session_id', athleteSessionId)
-      .eq('exercise_preset_id', presetData.id)
+      .eq('workout_log_id', athleteSessionId)
+      .eq('session_plan_exercise_id', presetData.id)
       .eq('set_index', setIndex)
       .maybeSingle()
 
     if (existing) {
       // Update existing
       const { error: updateError } = await supabase
-        .from('exercise_training_details')
+        .from('workout_log_sets')
         .update({
           performing_time: performingTime,
           completed: performingTime !== null
@@ -1397,12 +1571,12 @@ export async function updateSessionDetailAction(
         }
       }
     } else {
-      // Create new - use exercise_preset_id instead of exercise_id
+      // Create new - use session_plan_exercise_id to link to the planned exercise
       const { error: insertError } = await supabase
-        .from('exercise_training_details')
+        .from('workout_log_sets')
         .insert({
-          exercise_training_session_id: athleteSessionId,
-          exercise_preset_id: presetData.id,
+          workout_log_id: athleteSessionId,
+          session_plan_exercise_id: presetData.id,
           set_index: setIndex,
           performing_time: performingTime,
           completed: performingTime !== null

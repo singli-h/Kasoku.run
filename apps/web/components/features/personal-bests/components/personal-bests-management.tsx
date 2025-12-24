@@ -60,7 +60,8 @@ export function PersonalBestsManagement() {
       const result = await getMyPersonalBestsAction()
 
       if (result.isSuccess) {
-        setPbs(result.data)
+        // Use database types directly - they match the schema
+        setPbs(result.data as any)
       } else {
         setError(result.message)
       }

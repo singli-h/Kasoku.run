@@ -80,16 +80,16 @@ export function SessionExerciseCount({
 
 // Utility function to get session exercise count
 export function getSessionExerciseCount(session: ExerciseTrainingSessionWithDetails): number {
-  if (!session.exercise_preset_group?.exercise_presets) {
+  if (!session.session_plan?.session_plan_exercises) {
     return 0
   }
 
-  return session.exercise_preset_group.exercise_presets.length
+  return session.session_plan.session_plan_exercises.length
 }
 
 // Utility function to get exercise count by type
 export function getExerciseCountByType(session: ExerciseTrainingSessionWithDetails) {
-  if (!session.exercise_preset_group?.exercise_presets) {
+  if (!session.session_plan?.session_plan_exercises) {
     return {
       total: 0,
       byType: {}
@@ -99,7 +99,7 @@ export function getExerciseCountByType(session: ExerciseTrainingSessionWithDetai
   const byType: Record<string, number> = {}
   let total = 0
 
-  session.exercise_preset_group.exercise_presets.forEach((preset: any) => {
+  session.session_plan.session_plan_exercises.forEach((preset: any) => {
     if (preset.exercise?.exercise_type?.name) {
       const typeName = preset.exercise.exercise_type.name
       byType[typeName] = (byType[typeName] || 0) + 1

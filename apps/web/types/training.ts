@@ -13,13 +13,21 @@ import {
   Exercise, ExerciseInsert, ExerciseUpdate,
   ExerciseType,
   Unit,
+  // New type names
+  SessionPlan, SessionPlanInsert, SessionPlanUpdate,
+  SessionPlanExercise, SessionPlanExerciseInsert, SessionPlanExerciseUpdate,
+  SessionPlanSet, SessionPlanSetInsert, SessionPlanSetUpdate,
+  WorkoutLog, WorkoutLogInsert, WorkoutLogUpdate,
+  WorkoutLogExercise, WorkoutLogExerciseInsert, WorkoutLogExerciseUpdate,
+  WorkoutLogSet, WorkoutLogSetInsert, WorkoutLogSetUpdate,
+  // Legacy aliases (deprecated)
   ExercisePresetGroup, ExercisePresetGroupInsert, ExercisePresetGroupUpdate,
   ExercisePreset, ExercisePresetInsert, ExercisePresetUpdate,
   ExercisePresetDetail,
-  Athlete, AthleteInsert, AthleteUpdate,
-  AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate,
   ExerciseTrainingDetail,
   ExerciseTrainingSession, ExerciseTrainingSessionInsert, ExerciseTrainingSessionUpdate,
+  Athlete, AthleteInsert, AthleteUpdate,
+  AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate,
   Database
 } from './database'
 
@@ -31,13 +39,21 @@ export type {
   Exercise, ExerciseInsert, ExerciseUpdate,
   ExerciseType,
   Unit,
+  // New type names
+  SessionPlan, SessionPlanInsert, SessionPlanUpdate,
+  SessionPlanExercise, SessionPlanExerciseInsert, SessionPlanExerciseUpdate,
+  SessionPlanSet, SessionPlanSetInsert, SessionPlanSetUpdate,
+  WorkoutLog, WorkoutLogInsert, WorkoutLogUpdate,
+  WorkoutLogExercise, WorkoutLogExerciseInsert, WorkoutLogExerciseUpdate,
+  WorkoutLogSet, WorkoutLogSetInsert, WorkoutLogSetUpdate,
+  // Legacy aliases (deprecated)
   ExercisePresetGroup, ExercisePresetGroupInsert, ExercisePresetGroupUpdate,
   ExercisePreset, ExercisePresetInsert, ExercisePresetUpdate,
   ExercisePresetDetail,
-  Athlete, AthleteInsert, AthleteUpdate,
-  AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate,
   ExerciseTrainingDetail,
-  ExerciseTrainingSession, ExerciseTrainingSessionInsert, ExerciseTrainingSessionUpdate
+  ExerciseTrainingSession, ExerciseTrainingSessionInsert, ExerciseTrainingSessionUpdate,
+  Athlete, AthleteInsert, AthleteUpdate,
+  AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate
 }
 
 // ============================================================================
@@ -58,20 +74,56 @@ export interface MesocycleWithDetails extends Mesocycle {
 
 export interface MicrocycleWithDetails extends Microcycle {
   mesocycle?: Mesocycle | null
-  exercise_preset_groups?: ExercisePresetGroupWithDetails[]
+  session_plans?: SessionPlanWithDetails[]
+  /** @deprecated Use session_plans instead */
+  exercise_preset_groups?: SessionPlanWithDetails[]
   user?: any
 }
 
-export interface ExercisePresetGroupWithDetails extends ExercisePresetGroup {
+// New extended types
+export interface SessionPlanWithDetails extends SessionPlan {
   microcycle?: Microcycle | null
-  exercise_presets?: ExercisePresetWithDetails[]
+  session_plan_exercises?: SessionPlanExerciseWithDetails[]
   athlete_group?: AthleteGroup | null
 }
 
-export interface ExercisePresetWithDetails extends ExercisePreset {
+export interface SessionPlanExerciseWithDetails extends SessionPlanExercise {
   exercise?: ExerciseWithDetails | null
-  exercise_preset_group?: ExercisePresetGroup | null
-  exercise_preset_details?: ExercisePresetDetail[]
+  session_plan?: SessionPlan | null
+  session_plan_sets?: SessionPlanSet[]
+}
+
+// Workout log exercise (links workout to exercises)
+export interface WorkoutLogExerciseWithDetails extends WorkoutLogExercise {
+  exercise?: ExerciseWithDetails | null
+  session_plan_exercise?: SessionPlanExerciseWithDetails | null
+  workout_log_sets?: WorkoutLogSet[]
+}
+
+export interface WorkoutLogWithDetails extends WorkoutLog {
+  athlete?: Athlete | null
+  session_plan?: SessionPlanWithDetails | null
+  workout_log_exercises?: WorkoutLogExerciseWithDetails[]
+  /** @deprecated Use workout_log_exercises instead - sets are now nested under exercises */
+  workout_log_sets?: WorkoutLogSet[]
+}
+
+// Legacy aliases (deprecated)
+/** @deprecated Use SessionPlanWithDetails instead */
+export interface ExercisePresetGroupWithDetails extends SessionPlan {
+  microcycle?: Microcycle | null
+  exercise_presets?: SessionPlanExerciseWithDetails[]
+  session_plan_exercises?: SessionPlanExerciseWithDetails[]
+  athlete_group?: AthleteGroup | null
+}
+
+/** @deprecated Use SessionPlanExerciseWithDetails instead */
+export interface ExercisePresetWithDetails extends SessionPlanExercise {
+  exercise?: ExerciseWithDetails | null
+  exercise_preset_group?: SessionPlan | null
+  session_plan?: SessionPlan | null
+  exercise_preset_details?: SessionPlanSet[]
+  session_plan_sets?: SessionPlanSet[]
 }
 
 export interface ExerciseWithDetails extends Exercise {
@@ -80,11 +132,16 @@ export interface ExerciseWithDetails extends Exercise {
   // Additional fields for UI - all from Exercise are already included
 }
 
-export interface ExerciseTrainingSessionWithDetails extends ExerciseTrainingSession {
-  exercise?: ExerciseWithDetails | null
+/** @deprecated Use WorkoutLogWithDetails instead */
+export interface ExerciseTrainingSessionWithDetails extends WorkoutLog {
   athlete?: Athlete | null
-  exercise_preset_group?: ExercisePresetGroupWithDetails | null
-  exercise_training_details?: ExerciseTrainingDetail[]
+  exercise_preset_group?: SessionPlanWithDetails | null
+  session_plan?: SessionPlanWithDetails | null
+  workout_log_exercises?: WorkoutLogExerciseWithDetails[]
+  /** @deprecated Use workout_log_exercises instead */
+  exercise_training_details?: WorkoutLogSet[]
+  /** @deprecated Use workout_log_exercises instead */
+  workout_log_sets?: WorkoutLogSet[]
 }
 
 // ============================================================================
@@ -130,7 +187,7 @@ export interface CreateSessionForm {
 export interface CreateExercisePresetForm {
   exercise_id: number
   superset_id?: number
-  preset_order: number
+  exercise_order: number
   notes?: string
   presetDetails?: CreateExercisePresetDetailForm[]
 }

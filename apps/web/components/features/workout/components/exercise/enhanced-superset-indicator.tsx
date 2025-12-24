@@ -70,7 +70,7 @@ export function EnhancedSupersetIndicator({
 
   // Sort exercises by their position in superset
   const sortedExercises = useMemo(() => {
-    return [...exercises].sort((a, b) => (a.preset_order ?? 0) - (b.preset_order ?? 0))
+    return [...exercises].sort((a, b) => (a.exercise_order ?? 0) - (b.exercise_order ?? 0))
   }, [exercises])
 
   // Calculate superset statistics
@@ -80,10 +80,10 @@ export function EnhancedSupersetIndicator({
     
     // Calculate total sets from exercise preset details
     const totalSets = sortedExercises.reduce((sum, ex) => 
-      sum + (ex.exercise_preset_details?.length || 0), 0
+      sum + (ex.session_plan_sets?.length || 0), 0
     )
     const completedSets = sortedExercises.reduce((sum, ex) => 
-      sum + (ex.exercise_training_details?.filter(d => d.completed).length || 0), 0
+      sum + (ex.workout_log_sets?.filter(d => d.completed).length || 0), 0
     )
     
     // Estimate duration (rough calculation)

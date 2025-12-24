@@ -27,7 +27,7 @@ interface AssignmentResult {
 
 /**
  * Assigns a training plan (macrocycle) to athletes or groups
- * Creates exercise_training_sessions for each athlete
+ * Creates workout_logs for each athlete
  */
 export async function assignPlanToAthletesAction(
   input: AssignPlanInput
@@ -116,7 +116,7 @@ export async function assignPlanToAthletesAction(
       return { isSuccess: false, message: 'No athletes found to assign' }
     }
 
-    // Get all exercise_preset_groups in this macrocycle hierarchy
+    // Get all session_plans in this macrocycle hierarchy
     const { data: mesocycles } = await supabase
       .from('mesocycles')
       .select('id')
@@ -140,7 +140,7 @@ export async function assignPlanToAthletesAction(
     const microcycleIds = microcycles.map(m => m.id)
 
     const { data: presetGroups, error: presetError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select('id, name, description, date, week, day')
       .in('microcycle_id', microcycleIds)
       .order('date', { ascending: true })
@@ -152,17 +152,17 @@ export async function assignPlanToAthletesAction(
 
     // Check for existing sessions to prevent duplicate assignments (idempotency)
     const { data: existingSessions } = await supabase
-      .from('exercise_training_sessions')
-      .select('athlete_id, exercise_preset_group_id')
+      .from('workout_logs')
+      .select('athlete_id, session_plan_id')
       .in('athlete_id', targetAthleteIds)
-      .in('exercise_preset_group_id', presetGroups.map(p => p.id))
+      .in('session_plan_id', presetGroups.map(p => p.id))
 
     // Create a Set of existing combinations for fast lookup
     const existingCombos = new Set(
-      existingSessions?.map(s => `${s.athlete_id}-${s.exercise_preset_group_id}`) || []
+      existingSessions?.map(s => `${s.athlete_id}-${s.session_plan_id}`) || []
     )
 
-    // Create exercise_training_sessions for each athlete × each preset group
+    // Create workout_logs for each athlete × each preset group
     const sessionsToCreate = []
 
     for (const athleteId of targetAthleteIds) {
@@ -180,7 +180,7 @@ export async function assignPlanToAthletesAction(
 
         sessionsToCreate.push({
           athlete_id: athleteId,
-          exercise_preset_group_id: presetGroup.id,
+          session_plan_id: presetGroup.id,
           date_time: sessionDate.toISOString(),
           session_status: 'assigned' as const,
           session_mode: 'individual' as const,
@@ -199,7 +199,7 @@ export async function assignPlanToAthletesAction(
 
     // Batch insert sessions
     const { error: insertError, count } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .insert(sessionsToCreate)
 
     if (insertError) {

@@ -4,6 +4,7 @@
 **Scope**: Coach domain (Training Plans) only - Athlete domain deferred to V2
 **Tech Stack**: Next.js 15, Vercel AI SDK, React Context, Supabase
 **Constraint**: Must integrate with existing `saveSessionWithExercisesAction` in `apps/web/actions/plans/session-planner-actions.ts`
+**Database Tables**: `session_plans`, `session_plan_exercises`, `session_plan_sets` (Coach); `workout_logs`, `workout_log_exercises`, `workout_log_sets` (Athlete V2)
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -60,10 +61,10 @@
 
 - [x] T006 Create entity ID field mappings in `apps/web/lib/changeset/entity-mappings.ts`
   - Map entity types to their ID field names
-  - `preset_session` → `presetGroupId`
-  - `preset_exercise` → `presetExerciseId`
-  - `preset_set` → `presetDetailId` (Note: Sets are identified by exerciseId + setIndex in tools)
-  - Include camelCase → snake_case column mappings
+  - `preset_session` → `presetGroupId` (maps to `session_plans.id`)
+  - `preset_exercise` → `presetExerciseId` (maps to `session_plan_exercises.id`)
+  - `preset_set` → `presetDetailId` (maps to `session_plan_sets.id`, identified by exerciseId + setIndex in tools)
+  - Include camelCase → snake_case column mappings (e.g., `exerciseOrder` → `exercise_order`)
   - See reference: `20251221-changeset-transformation-layer.md`
 
 - [x] T007 Create transformation functions in `apps/web/lib/changeset/transformations.ts`

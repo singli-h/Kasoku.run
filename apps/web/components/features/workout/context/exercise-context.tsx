@@ -10,16 +10,16 @@
 "use client"
 
 import { createContext, useContext, useState, ReactNode, useCallback, useRef, useEffect } from "react"
-import type { ExercisePresetWithDetails, ExerciseTrainingDetail } from "@/types/training"
+import type { ExercisePresetWithDetails, WorkoutLogSet } from "@/types/training"
 import { useWorkoutApi } from "@/components/features/workout/hooks/use-workout-api"
 
 // Extended exercise type with training details for workout execution
 export interface WorkoutExercise extends ExercisePresetWithDetails {
-  exercise_training_details: ExerciseTrainingDetail[]
+  workout_log_sets: WorkoutLogSet[]
   completed?: boolean
   // Explicit fields from exercise_presets table
   id: number
-  preset_order: number | null
+  exercise_order: number | null
   superset_id: number | null
 }
 
@@ -151,13 +151,13 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       )
     )
 
-    // If updating exercise_training_details, add to save queue
-    if (updates.exercise_training_details && sessionId) {
+    // If updating workout_log_sets, add to save queue
+    if (updates.workout_log_sets && sessionId) {
       const exerciseData = exercises.find(e => e.id === id)
       if (!exerciseData) return
 
       // Queue each modified detail for save
-      updates.exercise_training_details.forEach((detail, index) => {
+      updates.workout_log_sets.forEach((detail, index) => {
         const queueKey = `${sessionId}-${exerciseData.exercise?.id}-${index}`
         saveQueueRef.current.set(queueKey, {
           exerciseId: exerciseData.exercise?.id,
@@ -181,12 +181,12 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       const updatedExercises = prevExercises.map((exercise) => {
         if (exercise.id !== exerciseId) return exercise
 
-        const updatedDetails = exercise.exercise_training_details.map((detail) => {
+        const updatedDetails = exercise.workout_log_sets.map((detail) => {
           if (detail.id !== detailId) return detail
           return { ...detail, completed: !detail.completed }
         })
 
-        return { ...exercise, exercise_training_details: updatedDetails }
+        return { ...exercise, workout_log_sets: updatedDetails }
       })
 
       // Queue completion status for save using UPDATED state
@@ -194,10 +194,10 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
         const exerciseData = updatedExercises.find(e => e.id === exerciseId)
         if (!exerciseData) return updatedExercises
 
-        const detailIndex = exerciseData.exercise_training_details.findIndex(d => d.id === detailId)
+        const detailIndex = exerciseData.workout_log_sets.findIndex(d => d.id === detailId)
         if (detailIndex === -1) return updatedExercises
 
-        const detail = exerciseData.exercise_training_details[detailIndex]
+        const detail = exerciseData.workout_log_sets[detailIndex]
         const queueKey = `${sessionId}-${exerciseData.exercise?.id}-${detailIndex}-completion`
 
         saveQueueRef.current.set(queueKey, {

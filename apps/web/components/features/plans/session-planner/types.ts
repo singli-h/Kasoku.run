@@ -6,21 +6,21 @@
 import type { Tables } from "@/types/database"
 
 // Database types
-export type ExercisePreset = Tables<"exercise_presets">
-export type ExercisePresetDetail = Tables<"exercise_preset_details">
+export type ExercisePreset = Tables<"session_plan_exercises">
+export type SessionPlanSet = Tables<"session_plan_sets">
 export type Exercise = Tables<"exercises">
-export type ExercisePresetGroup = Tables<"exercise_preset_groups">
+export type SessionPlan = Tables<"session_plans">
 
 /**
  * Set parameters for an exercise
- * Maps to exercise_preset_details table
+ * Maps to session_plan_sets table
  */
 export interface SetParameter {
-  id?: number // exercise_preset_detail id or exercise_training_detail id
-  exercise_preset_id?: number
+  id?: number // session_plan_set id or workout_log_set id
+  session_plan_exercise_id?: number
   set_index: number // Which set (1, 2, 3, etc.)
   
-  // Core fields that exist in BOTH tables (exercise_preset_details & exercise_training_details)
+  // Core fields that exist in BOTH tables (session_plan_sets & workout_log_sets)
   reps: number | null
   weight: number | null // In kg or lbs
   distance: number | null // For running/cardio
@@ -44,14 +44,14 @@ export interface SetParameter {
 
 /**
  * Exercise in session with full details
- * Extends exercise_presets table with UI state
+ * Extends session_plan_exercises table with UI state
  */
 export interface SessionExercise {
-  // Database fields from exercise_presets
+  // Database fields from session_plan_exercises
   id: string // Using string for client-side generation
-  exercise_preset_group_id?: number
+  session_plan_id?: number
   exercise_id: number
-  preset_order: number
+  exercise_order: number
   superset_id: number | null
   notes: string | null
 
@@ -64,7 +64,7 @@ export interface SessionExercise {
     video_url: string | null
   } | null
 
-  // Set parameters (from exercise_preset_details)
+  // Set parameters (from session_plan_sets)
   sets: SetParameter[]
 
   // UI-only fields (for state management)
@@ -96,7 +96,7 @@ export interface ExerciseLibraryItem {
 
 /**
  * Session metadata
- * Maps to exercise_preset_groups table
+ * Maps to session_plans table
  */
 export interface Session {
   id?: number

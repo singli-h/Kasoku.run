@@ -182,7 +182,7 @@ export function SessionPlannerClient({
   const handleAddExercises = useCallback(
     (exercises: ExerciseLibraryItem[]) => {
       setState((prev) => {
-        const maxOrder = prev.exercises.length > 0 ? Math.max(...prev.exercises.map((e) => e.preset_order)) : 0
+        const maxOrder = prev.exercises.length > 0 ? Math.max(...prev.exercises.map((e) => e.exercise_order)) : 0
 
         const newExercises = exercises.map((ex, index) =>
           createExerciseInSession(ex.id, ex.name, ex.exercise_type_id, maxOrder + index + 1),

@@ -15,11 +15,11 @@ import {
   Exercise, ExerciseInsert, ExerciseUpdate,
   ExerciseType,
   Unit,
-  ExercisePresetGroup, ExercisePresetGroupInsert, ExercisePresetGroupUpdate,
+  SessionPlan, SessionPlanInsert, SessionPlanUpdate,
   ExercisePreset, ExercisePresetInsert, ExercisePresetUpdate,
-  ExercisePresetDetail,
+  SessionPlanSet,
   ExerciseWithDetails,
-  ExercisePresetGroupWithDetails,
+  SessionPlanWithDetails,
   CreateSessionForm,
   ExerciseFilters
 } from "@/types/training"
@@ -772,11 +772,11 @@ export async function importExercisesAction(
 /**
  * Create a new exercise preset group (training session)
  */
-export async function createExercisePresetGroupAction(
+export async function createSessionPlanAction(
   sessionData: CreateSessionForm,
   microcycleId?: number,
   athleteGroupId?: number
-): Promise<ActionState<ExercisePresetGroup>> {
+): Promise<ActionState<SessionPlan>> {
   try {
     const { userId } = await auth()
     
@@ -790,7 +790,7 @@ export async function createExercisePresetGroupAction(
     // Get database user ID using the cache utility
     const dbUserId = await getDbUserId(userId)
 
-    const presetGroupData: ExercisePresetGroupInsert = {
+    const presetGroupData: SessionPlanInsert = {
       name: sessionData.name,
       description: sessionData.description || null,
       date: sessionData.date,
@@ -803,7 +803,7 @@ export async function createExercisePresetGroupAction(
     }
 
     const { data: presetGroup, error } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .insert(presetGroupData)
       .select()
       .single()
@@ -822,7 +822,7 @@ export async function createExercisePresetGroupAction(
       data: presetGroup
     }
   } catch (error) {
-    console.error('Error in createExercisePresetGroupAction:', error)
+    console.error('Error in createSessionPlanAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -833,9 +833,9 @@ export async function createExercisePresetGroupAction(
 /**
  * Get exercise preset groups for a specific microcycle
  */
-export async function getExercisePresetGroupsByMicrocycleAction(
+export async function getSessionPlansByMicrocycleAction(
   microcycleId: number
-): Promise<ActionState<ExercisePresetGroupWithDetails[]>> {
+): Promise<ActionState<SessionPlanWithDetails[]>> {
   try {
     const { userId } = await auth()
     
@@ -850,19 +850,19 @@ export async function getExercisePresetGroupsByMicrocycleAction(
     const dbUserId = await getDbUserId(userId)
 
     const { data: presetGroups, error } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select(`
         *,
         microcycle:microcycles(*),
         athlete_group:athlete_groups(*),
-        exercise_presets(
+        session_plan_exercises(
           *,
           exercise:exercises(
             *,
             exercise_type:exercise_types(*),
             unit:units(*)
           ),
-          exercise_preset_details(*)
+          session_plan_sets(*)
         )
       `)
       .eq('microcycle_id', microcycleId)
@@ -883,7 +883,7 @@ export async function getExercisePresetGroupsByMicrocycleAction(
       data: presetGroups || []
     }
   } catch (error) {
-    console.error('Error in getExercisePresetGroupsByMicrocycleAction:', error)
+    console.error('Error in getSessionPlansByMicrocycleAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -894,9 +894,9 @@ export async function getExercisePresetGroupsByMicrocycleAction(
 /**
  * Get a specific exercise preset group with all details
  */
-export async function getExercisePresetGroupByIdAction(
+export async function getSessionPlanByIdAction(
   id: number
-): Promise<ActionState<ExercisePresetGroupWithDetails>> {
+): Promise<ActionState<SessionPlanWithDetails>> {
   try {
     const { userId } = await auth()
     
@@ -911,19 +911,19 @@ export async function getExercisePresetGroupByIdAction(
     const dbUserId = await getDbUserId(userId)
 
     const { data: presetGroup, error } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select(`
         *,
         microcycle:microcycles(*),
         athlete_group:athlete_groups(*),
-        exercise_presets(
+        session_plan_exercises(
           *,
           exercise:exercises(
             *,
             exercise_type:exercise_types(*),
             unit:units(*)
           ),
-          exercise_preset_details(*)
+          session_plan_sets(*)
         )
       `)
       .eq('id', id)
@@ -950,7 +950,7 @@ export async function getExercisePresetGroupByIdAction(
       data: presetGroup
     }
   } catch (error) {
-    console.error('Error in getExercisePresetGroupByIdAction:', error)
+    console.error('Error in getSessionPlanByIdAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -981,15 +981,15 @@ export async function addExerciseToPresetGroupAction(
     // Using singleton supabase client
 
     const presetData: ExercisePresetInsert = {
-      exercise_preset_group_id: presetGroupId,
+      session_plan_id: presetGroupId,
       exercise_id: exerciseId,
-      preset_order: presetOrder,
+      exercise_order: presetOrder,
       notes: notes || null,
       superset_id: supersetId || null
     }
 
     const { data: preset, error } = await supabase
-      .from('exercise_presets')
+      .from('session_plan_exercises')
       .insert(presetData)
       .select()
       .single()
@@ -1019,10 +1019,10 @@ export async function addExerciseToPresetGroupAction(
 /**
  * Update an exercise preset group
  */
-export async function updateExercisePresetGroupAction(
+export async function updateSessionPlanAction(
   id: number,
-  updates: Partial<ExercisePresetGroupUpdate>
-): Promise<ActionState<ExercisePresetGroup>> {
+  updates: Partial<SessionPlanUpdate>
+): Promise<ActionState<SessionPlan>> {
   try {
     const { userId } = await auth()
     
@@ -1037,7 +1037,7 @@ export async function updateExercisePresetGroupAction(
     const dbUserId = await getDbUserId(userId)
 
     const { data: presetGroup, error } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .update(updates)
       .eq('id', id)
       .eq('user_id', dbUserId)
@@ -1058,7 +1058,7 @@ export async function updateExercisePresetGroupAction(
       data: presetGroup
     }
   } catch (error) {
-    console.error('Error in updateExercisePresetGroupAction:', error)
+    console.error('Error in updateSessionPlanAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -1069,7 +1069,7 @@ export async function updateExercisePresetGroupAction(
 /**
  * Delete an exercise preset group
  */
-export async function deleteExercisePresetGroupAction(id: number): Promise<ActionState<boolean>> {
+export async function deleteSessionPlanAction(id: number): Promise<ActionState<boolean>> {
   try {
     const { userId } = await auth()
     
@@ -1084,7 +1084,7 @@ export async function deleteExercisePresetGroupAction(id: number): Promise<Actio
     const dbUserId = await getDbUserId(userId)
 
     const { error } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .delete()
       .eq('id', id)
       .eq('user_id', dbUserId)
@@ -1103,7 +1103,7 @@ export async function deleteExercisePresetGroupAction(id: number): Promise<Actio
       data: true
     }
   } catch (error) {
-    console.error('Error in deleteExercisePresetGroupAction:', error)
+    console.error('Error in deleteSessionPlanAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -1118,10 +1118,10 @@ export async function deleteExercisePresetGroupAction(id: number): Promise<Actio
 /**
  * Add exercise preset details (sets/reps specifications) to an exercise preset
  */
-export async function addExercisePresetDetailsAction(
+export async function addSessionPlanSetsAction(
   presetId: number,
-  details: ExercisePresetDetail[]
-): Promise<ActionState<ExercisePresetDetail[]>> {
+  details: SessionPlanSet[]
+): Promise<ActionState<SessionPlanSet[]>> {
   try {
     const { userId } = await auth()
     
@@ -1136,7 +1136,7 @@ export async function addExercisePresetDetailsAction(
 
     // Prepare the details data for insertion
     const detailsData = details.map((detail, index) => ({
-      exercise_preset_id: presetId,
+      session_plan_exercise_id: presetId,
       set_index: detail.set_index || index + 1,
       reps: detail.reps,
       weight: detail.weight,
@@ -1155,7 +1155,7 @@ export async function addExercisePresetDetailsAction(
     }))
 
     const { data: insertedDetails, error } = await supabase
-      .from('exercise_preset_details')
+      .from('session_plan_sets')
       .insert(detailsData)
       .select()
 
@@ -1173,7 +1173,7 @@ export async function addExercisePresetDetailsAction(
       data: insertedDetails || []
     }
   } catch (error) {
-    console.error('Error in addExercisePresetDetailsAction:', error)
+    console.error('Error in addSessionPlanSetsAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -1184,10 +1184,10 @@ export async function addExercisePresetDetailsAction(
 /**
  * Update exercise preset details
  */
-export async function updateExercisePresetDetailsAction(
+export async function updateSessionPlanSetsAction(
   detailId: number,
-  updates: Partial<ExercisePresetDetail>
-): Promise<ActionState<ExercisePresetDetail>> {
+  updates: Partial<SessionPlanSet>
+): Promise<ActionState<SessionPlanSet>> {
   try {
     const { userId } = await auth()
     
@@ -1201,7 +1201,7 @@ export async function updateExercisePresetDetailsAction(
     // Using singleton supabase client
 
     const { data: detail, error } = await supabase
-      .from('exercise_preset_details')
+      .from('session_plan_sets')
       .update(updates)
       .eq('id', detailId)
       .select()
@@ -1221,7 +1221,7 @@ export async function updateExercisePresetDetailsAction(
       data: detail
     }
   } catch (error) {
-    console.error('Error in updateExercisePresetDetailsAction:', error)
+    console.error('Error in updateSessionPlanSetsAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -1232,7 +1232,7 @@ export async function updateExercisePresetDetailsAction(
 /**
  * Remove exercise preset details
  */
-export async function removeExercisePresetDetailsAction(
+export async function removeSessionPlanSetsAction(
   presetId: number
 ): Promise<ActionState<boolean>> {
   try {
@@ -1248,9 +1248,9 @@ export async function removeExercisePresetDetailsAction(
     // Using singleton supabase client
 
     const { error } = await supabase
-      .from('exercise_preset_details')
+      .from('session_plan_sets')
       .delete()
-      .eq('exercise_preset_id', presetId)
+      .eq('session_plan_exercise_id', presetId)
 
     if (error) {
       console.error('Error removing exercise preset details:', error)
@@ -1266,7 +1266,7 @@ export async function removeExercisePresetDetailsAction(
       data: true
     }
   } catch (error) {
-    console.error('Error in removeExercisePresetDetailsAction:', error)
+    console.error('Error in removeSessionPlanSetsAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -1286,7 +1286,7 @@ export async function applyProgressionToPresetAction(
   progressionType: 'weight' | 'reps' | 'volume',
   progressionValue: number,
   targetSets?: number[]
-): Promise<ActionState<ExercisePresetDetail[]>> {
+): Promise<ActionState<SessionPlanSet[]>> {
   try {
     const { userId } = await auth()
     
@@ -1301,9 +1301,9 @@ export async function applyProgressionToPresetAction(
 
     // Get existing preset details
     const { data: details, error: fetchError } = await supabase
-      .from('exercise_preset_details')
-      .select('id, exercise_preset_id, resistance_unit_id, set_index, reps, weight, distance, performing_time, rest_time, rpe, effort, power, velocity, resistance, height, tempo, metadata, created_at')
-      .eq('exercise_preset_id', presetId)
+      .from('session_plan_sets')
+      .select('id, session_plan_exercise_id, resistance_unit_id, set_index, reps, weight, distance, performing_time, rest_time, rpe, effort, power, velocity, resistance, height, tempo, metadata, created_at')
+      .eq('session_plan_exercise_id', presetId)
       .order('set_index', { ascending: true })
 
     if (fetchError || !details) {
@@ -1319,7 +1319,7 @@ export async function applyProgressionToPresetAction(
       
       if (!shouldUpdate) return detail
 
-      const updates: Partial<ExercisePresetDetail> = {}
+      const updates: Partial<SessionPlanSet> = {}
 
       switch (progressionType) {
         case 'weight':
@@ -1348,7 +1348,7 @@ export async function applyProgressionToPresetAction(
     // Update each detail in the database
     const updatePromises = updatedDetails.map(detail => 
       supabase
-        .from('exercise_preset_details')
+        .from('session_plan_sets')
         .update({
           reps: detail.reps,
           weight: detail.weight,
@@ -1409,7 +1409,7 @@ export async function copySessionWithAdaptationsAction(
     volumeIncrease?: number
     restTimeDecrease?: number
   }
-): Promise<ActionState<ExercisePresetGroup>> {
+): Promise<ActionState<SessionPlan>> {
   try {
     const { userId } = await auth()
     
@@ -1425,13 +1425,13 @@ export async function copySessionWithAdaptationsAction(
 
     // Get the original session with all its details
     const { data: originalSession, error: fetchError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select(`
         *,
-        exercise_presets(
+        session_plan_exercises(
           *,
           exercise:exercises(*),
-          exercise_preset_details(*)
+          session_plan_sets(*)
         )
       `)
       .eq('id', originalSessionId)
@@ -1459,7 +1459,7 @@ export async function copySessionWithAdaptationsAction(
     }
 
     const { data: newSession, error: sessionError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .insert(newSessionData)
       .select()
       .single()
@@ -1472,19 +1472,19 @@ export async function copySessionWithAdaptationsAction(
     }
 
     // Copy and adapt exercise presets
-    if (originalSession.exercise_presets && originalSession.exercise_presets.length > 0) {
-      for (const preset of originalSession.exercise_presets) {
+    if (originalSession.session_plan_exercises && originalSession.session_plan_exercises.length > 0) {
+      for (const preset of originalSession.session_plan_exercises) {
         // Create new preset
         const newPresetData = {
           exercise_id: preset.exercise_id,
-          exercise_preset_group_id: newSession.id,
-          preset_order: preset.preset_order,
+          session_plan_id: newSession.id,
+          exercise_order: preset.exercise_order,
           notes: preset.notes,
           superset_id: preset.superset_id
         }
 
         const { data: newPreset, error: presetError } = await supabase
-          .from('exercise_presets')
+          .from('session_plan_exercises')
           .insert(newPresetData)
           .select()
           .single()
@@ -1495,8 +1495,8 @@ export async function copySessionWithAdaptationsAction(
         }
 
         // Copy and adapt preset details
-        if (preset.exercise_preset_details && preset.exercise_preset_details.length > 0) {
-                     const adaptedDetails = preset.exercise_preset_details.map(detail => {
+        if (preset.session_plan_sets && preset.session_plan_sets.length > 0) {
+                     const adaptedDetails = preset.session_plan_sets.map(detail => {
              const adaptedDetail = { ...detail }
             
             // Apply adaptations
@@ -1519,7 +1519,7 @@ export async function copySessionWithAdaptationsAction(
             }
 
             return {
-              exercise_preset_id: newPreset.id,
+              session_plan_exercise_id: newPreset.id,
               set_index: adaptedDetail.set_index,
               reps: adaptedDetail.reps,
               weight: adaptedDetail.weight,
@@ -1539,7 +1539,7 @@ export async function copySessionWithAdaptationsAction(
           })
 
           await supabase
-            .from('exercise_preset_details')
+            .from('session_plan_sets')
             .insert(adaptedDetails)
         }
       }
@@ -1590,7 +1590,7 @@ export async function getSessionCountAnalyticsAction(
     const dbUserId = await getDbUserId(userId)
 
     let query = supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select('week, day, date')
       .eq('user_id', dbUserId)
 

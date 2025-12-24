@@ -49,7 +49,7 @@ Coach opens session planner → talks to AI → AI proposes changes → Coach ap
 | AI Streaming | Vercel AI SDK | `useChat`, `onToolCall` |
 | Changeset Buffer | React Context | In-memory, keyed Map |
 | Tool Execution | Client-side handlers | Proposal + coordination tools |
-| Database | Supabase | Existing `exercise_preset_*` tables |
+| Database | Supabase | `session_plans`, `session_plan_exercises`, `session_plan_sets` tables |
 | Execution | Server Action | Wraps Supabase transaction |
 
 ---
@@ -60,7 +60,7 @@ Coach opens session planner → talks to AI → AI proposes changes → Coach ap
 
 | Feature | Notes |
 |---------|-------|
-| Coach domain (training plans) | `exercise_preset_*` tables |
+| Coach domain (training plans) | `session_plans`, `session_plan_exercises`, `session_plan_sets` tables |
 | In-memory changeset buffer | Keyed Map, last-write-wins |
 | Approval flow with feedback | Approve / Regenerate / Dismiss |
 | Iterative correction | Regenerate clears buffer, AI re-proposes |

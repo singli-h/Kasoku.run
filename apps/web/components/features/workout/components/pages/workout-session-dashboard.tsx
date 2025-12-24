@@ -35,7 +35,7 @@ import { SaveStatusIndicator } from "../SaveStatusIndicator"
 import type { 
   ExerciseTrainingSessionWithDetails,
   ExercisePresetGroupWithDetails,
-  ExerciseTrainingDetail 
+  WorkoutLogSet 
 } from "@/types/training"
 
 interface WorkoutSessionDashboardProps {
@@ -82,17 +82,18 @@ function WorkoutSessionContent({
   useEffect(() => {
     try {
       // Prefer exercises from the provided preset group; fallback to session's group
-      const basePresets = (presetGroup?.exercise_presets
-        || existingSession?.exercise_preset_group?.exercise_presets
+      const basePresets = (presetGroup?.session_plan_exercises
+        || existingSession?.session_plan?.session_plan_exercises
         || [])
         .slice()
-        .sort((a: any, b: any) => (a.preset_order || 0) - (b.preset_order || 0))
+        .sort((a: any, b: any) => (a.exercise_order || 0) - (b.exercise_order || 0))
 
-      // Map training details by preset_id when an existing session is present
-      const details: ExerciseTrainingDetail[] = existingSession?.exercise_training_details || []
-      const detailsByPresetId = new Map<number, ExerciseTrainingDetail[]>()
+      // Map training details by session_plan_exercise_id when an existing session is present
+      const details: WorkoutLogSet[] = existingSession?.workout_log_sets || []
+      const detailsByPresetId = new Map<number, WorkoutLogSet[]>()
       for (const d of details) {
-        const pid = (d as any).exercise_preset_id as number | undefined
+        // Use session_plan_exercise_id (new schema) or workout_log_exercise_id
+        const pid = (d as any).session_plan_exercise_id as number | undefined
         if (!pid) continue
         const list = detailsByPresetId.get(pid) || []
         list.push(d)
@@ -102,7 +103,7 @@ function WorkoutSessionContent({
       const mapped: WorkoutExercise[] = basePresets.map((preset: any) => ({
         ...preset,
         // Attach any recorded training details for this preset if present
-        exercise_training_details: detailsByPresetId.get(preset.id) || [],
+        workout_log_sets: detailsByPresetId.get(preset.id) || [],
         completed: false,
       }))
 
@@ -110,7 +111,7 @@ function WorkoutSessionContent({
     } catch (err) {
       console.error("Failed to initialize workout exercises", err)
     }
-  }, [presetGroup?.exercise_presets, existingSession?.exercise_preset_group?.exercise_presets, existingSession?.exercise_training_details, setExercises])
+  }, [presetGroup?.session_plan_exercises, existingSession?.session_plan?.session_plan_exercises, existingSession?.workout_log_sets, setExercises])
 
   // Local state for session notes  
   const [sessionNotes, setSessionNotes] = useState((existingSession as any)?.notes || "")
@@ -121,10 +122,10 @@ function WorkoutSessionContent({
     const completedExercises = exercises.filter(ex => ex.completed).length
     // Calculate total sets from exercise preset details instead of non-existent 'sets' property
     const totalSets = exercises.reduce((sum, ex) => 
-      sum + (ex.exercise_preset_details?.length || 0), 0
+      sum + (ex.session_plan_sets?.length || 0), 0
     )
     const completedSets = exercises.reduce((sum, ex) => 
-      sum + (ex.exercise_training_details?.filter(d => d.completed).length || 0), 0
+      sum + (ex.workout_log_sets?.filter(d => d.completed).length || 0), 0
     )
     
     return {
@@ -173,7 +174,7 @@ function WorkoutSessionContent({
 
     // Validate that all exercises have at least some sets completed
     const incompleteExercises = exercises.filter(ex => {
-      const details = ex.exercise_training_details || []
+      const details = ex.workout_log_sets || []
       const completedSets = details.filter(d => d.completed).length
       return completedSets === 0 && details.length > 0
     })

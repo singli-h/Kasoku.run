@@ -11,7 +11,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useWorkoutApi } from "./use-workout-api"
 import type { 
   ExerciseTrainingSessionWithDetails,
-  ExerciseTrainingDetail 
+  WorkoutLogSet 
 } from "@/types/training"
 import type { WorkoutExercise } from "../context/exercise-context"
 
@@ -33,8 +33,8 @@ interface UseWorkoutSessionReturn extends WorkoutSessionState {
   startSession: () => Promise<{ success: boolean; error?: Error }>
   saveSession: () => Promise<{ success: boolean; error?: Error }>
   completeSession: () => Promise<{ success: boolean; error?: Error }>
-  updateTrainingDetail: (detailId: number, updates: Partial<ExerciseTrainingDetail>) => void
-  updateExerciseTrainingDetails: (exerciseId: number, updatedDetails: ExerciseTrainingDetail[]) => void
+  updateTrainingDetail: (detailId: number, updates: Partial<WorkoutLogSet>) => void
+  updateWorkoutLogSets: (exerciseId: number, updatedDetails: WorkoutLogSet[]) => void
   refreshSessionData: () => Promise<void>
 }
 
@@ -50,9 +50,9 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
   })
   
   // Add a dedicated state for exercise training details
-  const [trainingDetails, setTrainingDetails] = useState<ExerciseTrainingDetail[]>([])
+  const [trainingDetails, setTrainingDetails] = useState<WorkoutLogSet[]>([])
   // Add a ref to track latest training details
-  const trainingDetailsRef = useRef<ExerciseTrainingDetail[]>([])
+  const trainingDetailsRef = useRef<WorkoutLogSet[]>([])
   
   const [state, setState] = useState<WorkoutSessionState>({
     isLoading: !!initialSession, // Only loading if we have an initial session to process
@@ -73,7 +73,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
       const initializeSessionData = () => {
         try {
           // Extract all training details from the session
-          const allTrainingDetails = initialSession.exercise_training_details || []
+          const allTrainingDetails = initialSession.workout_log_sets || []
           
           setTrainingDetails(allTrainingDetails)
           
@@ -110,7 +110,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
       }
       
       // Extract all training details
-      const allTrainingDetails = sessionData.exercise_training_details || []
+      const allTrainingDetails = sessionData.workout_log_sets || []
       
       setTrainingDetails(allTrainingDetails)
       
@@ -130,7 +130,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
 
   // Start a training session
   const startSession = useCallback(async () => {
-    if (!state.session?.exercise_preset_group?.id) {
+    if (!state.session?.session_plan?.id) {
       console.error('No preset group ID available')
       return { success: false, error: new Error('No session available') }
     }
@@ -139,7 +139,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
       setState(prev => ({ ...prev, isLoading: true }))
 
       // Use the workout API to start session
-      const sessionData = await workoutApi.startSession(state.session.exercise_preset_group.id)
+      const sessionData = await workoutApi.startSession(state.session.session_plan.id)
       
       if (!sessionData) {
         throw new Error('Failed to start training session')
@@ -163,7 +163,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
       }))
       return { success: false, error: err }
     }
-  }, [state.session?.exercise_preset_group?.id, workoutApi])
+  }, [state.session?.session_plan?.id, workoutApi])
 
   // Save session progress
   const saveSession = useCallback(async () => {
@@ -224,7 +224,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
   }, [saveSession, (state.session as any)?.id, workoutApi, refreshSessionData])
 
   // Update a single training detail
-  const updateTrainingDetail = useCallback((detailId: number, updates: Partial<ExerciseTrainingDetail>) => {
+  const updateTrainingDetail = useCallback((detailId: number, updates: Partial<WorkoutLogSet>) => {
     setTrainingDetails(prev => {
       const updated = prev.map(detail => 
         detail.id === detailId 
@@ -236,7 +236,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
   }, [])
   
   // Update multiple training details for an exercise
-  const updateExerciseTrainingDetails = useCallback((exerciseId: number, updatedDetails: ExerciseTrainingDetail[]) => {
+  const updateWorkoutLogSets = useCallback((exerciseId: number, updatedDetails: WorkoutLogSet[]) => {
     setTrainingDetails(prev => {
       return prev.map(detail => {
         const matchingUpdate = updatedDetails.find(ud => ud.id === detail.id)
@@ -253,7 +253,7 @@ export const useWorkoutSession = (initialSession?: ExerciseTrainingSessionWithDe
     saveSession,
     completeSession,
     updateTrainingDetail,
-    updateExerciseTrainingDetails,
+    updateWorkoutLogSets,
     refreshSessionData
   }
 } 

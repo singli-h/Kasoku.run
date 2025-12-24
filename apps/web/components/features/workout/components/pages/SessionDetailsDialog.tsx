@@ -24,21 +24,21 @@ export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDet
 
   const sessionData = session as any
   const sessionDate = sessionData.date_time ? new Date(sessionData.date_time) : new Date()
-  const exercises = sessionData.exercise_preset_group?.exercise_presets || []
+  const exercises = sessionData.session_plan?.session_plan_exercises || []
 
   // Calculate session stats
   const totalSets = exercises.reduce((sum: number, ex: any) => {
-    return sum + (ex.exercise_preset_details?.length || 0)
+    return sum + (ex.session_plan_sets?.length || 0)
   }, 0)
 
   const completedSets = exercises.reduce((sum: number, ex: any) => {
-    const details = ex.exercise_preset_details || []
+    const details = ex.session_plan_sets || []
     return sum + details.filter((d: any) => d.completed).length
   }, 0)
 
   const sessionDuration = sessionData.duration || 0 // in minutes
   const totalVolume = exercises.reduce((sum: number, ex: any) => {
-    const details = ex.exercise_preset_details || []
+    const details = ex.session_plan_sets || []
     return sum + details.reduce((exSum: number, d: any) => {
       const weight = d.weight || 0
       const reps = d.reps || 0
@@ -107,7 +107,7 @@ export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDet
               <p className="text-muted-foreground">No exercises recorded for this session.</p>
             ) : (
               exercises.map((exercise: any, index: number) => {
-                const details = exercise.exercise_preset_details || []
+                const details = exercise.session_plan_sets || []
                 const exerciseName = exercise.exercise?.name || `Exercise ${index + 1}`
 
                 return (

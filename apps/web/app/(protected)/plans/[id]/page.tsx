@@ -14,7 +14,7 @@ interface SessionData {
   [key: string]: any
 }
 
-interface ExercisePresetGroup {
+interface SessionPlan {
   id: number
   day: number | null
   name: string | null
@@ -26,7 +26,7 @@ interface ExercisePresetGroup {
 interface MicrocycleData {
   id: number
   name: string | null
-  exercise_preset_groups?: ExercisePresetGroup[]
+  session_plans?: SessionPlan[]
   [key: string]: any
 }
 
@@ -104,8 +104,8 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
     })),
     mesocycles: (rawPlanData.mesocycles || []).map((meso: MesocycleData) => {
       const enrichedMicrocycles = (meso.microcycles || []).map((micro: MicrocycleData) => {
-        // Transform exercise_preset_groups into sessions with proper structure
-        const sessions = (micro.exercise_preset_groups || []).map((group: ExercisePresetGroup) => {
+        // Transform session_plans into sessions with proper structure
+        const sessions = (micro.session_plans || []).map((group: SessionPlan) => {
           // Extract only needed fields to avoid property conflicts
           return {
             id: group.id,
@@ -115,7 +115,7 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
             duration: 60, // Default duration
             volume: 0, // Default volume
             intensity: 0, // Default intensity
-            exercises: group.exercise_presets ?? [], // Include the nested exercise_presets
+            exercises: group.session_plan_exercises ?? [], // Include the nested exercise_presets
           }
         })
 

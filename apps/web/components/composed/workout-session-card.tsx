@@ -35,7 +35,7 @@ export function SessionCard({
   className 
 }: SessionCardProps) {
   const status = 'assigned' // Default status since the property doesn't exist on the type
-  const presetGroup = session.exercise_preset_group
+  const presetGroup = session.session_plan
 
   if (!presetGroup) {
     return null

@@ -10,10 +10,10 @@
 
 The AI Session Assistant operates in **two separate domains**, each with its own database tables and changeset context:
 
-| Domain | User | Purpose | Database Prefix |
+| Domain | User | Purpose | Database Tables |
 |--------|------|---------|-----------------|
-| **Training Plans** | Coach | Create/modify session blueprints | `exercise_preset_*` |
-| **Workout** | Athlete | Log performance, adjust actual workout | `exercise_training_*` |
+| **Training Plans** | Coach | Create/modify session blueprints | `session_plans`, `session_plan_exercises`, `session_plan_sets` |
+| **Workout** | Athlete | Log performance, adjust actual workout | `workout_logs`, `workout_log_exercises`, `workout_log_sets` |
 
 **Key Insight**: These are separate changesets. A coach modifying a plan and an athlete logging a workout are independent operations with no shared state.
 
@@ -31,14 +31,14 @@ Coaches create and modify **template sessions** (blueprints) that can be assigne
 Plan (Macrocycle)
 └── Phase (Mesocycle)
     └── Week (Microcycle)
-        └── Session (exercise_preset_groups)    ← ChangeSet operates here
-            └── Exercise (exercise_presets)
-                └── Set (exercise_preset_details)
+        └── Session (session_plans)    ← ChangeSet operates here
+            └── Exercise (session_plan_exercises)
+                └── Set (session_plan_sets)
 ```
 
 ### Database Tables
 
-#### exercise_preset_groups (Session Template)
+#### session_plans (Session Template)
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -57,23 +57,23 @@ Plan (Macrocycle)
 | `created_at` | TIMESTAMP | |
 | `updated_at` | TIMESTAMP | |
 
-#### exercise_presets (Exercise in Template)
+#### session_plan_exercises (Exercise in Template)
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | SERIAL | Primary key |
-| `exercise_preset_group_id` | INT | Parent session |
+| `session_plan_id` | INT | Parent session |
 | `exercise_id` | INT | Reference to exercise library |
-| `preset_order` | INT | Position in session |
+| `exercise_order` | INT | Position in session |
 | `superset_id` | TEXT | Grouping for supersets |
 | `notes` | TEXT | Exercise-specific notes |
 
-#### exercise_preset_details (Set Prescription)
+#### session_plan_sets (Set Prescription)
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | SERIAL | Primary key |
-| `exercise_preset_id` | INT | Parent exercise |
+| `session_plan_exercise_id` | INT | Parent exercise |
 | `set_index` | INT | Set number (1, 2, 3...) |
 | `reps` | INT | Prescribed reps |
 | `weight` | DECIMAL | Prescribed weight (kg) |
@@ -93,9 +93,9 @@ Plan (Macrocycle)
 
 | entityType | Maps To | Operations | Notes |
 |------------|---------|------------|-------|
-| `preset_session` | `exercise_preset_groups` | create, update | Coach can create new session templates; no delete (too destructive for AI) |
-| `preset_exercise` | `exercise_presets` | create, update, delete | Full CRUD for exercises within session |
-| `preset_set` | `exercise_preset_details` | create, update, delete | Full CRUD for set prescriptions |
+| `preset_session` | `session_plans` | create, update | Coach can create new session templates; no delete (too destructive for AI) |
+| `preset_exercise` | `session_plan_exercises` | create, update, delete | Full CRUD for exercises within session |
+| `preset_set` | `session_plan_sets` | create, update, delete | Full CRUD for set prescriptions |
 
 ---
 
@@ -108,19 +108,20 @@ Athletes execute assigned sessions, logging their **actual performance** (weight
 ### Entity Hierarchy
 
 ```
-Assigned Session (exercise_training_sessions)    ← ChangeSet operates here
-└── Performance Record (exercise_training_details)
-    └── Set-by-set actual data
+Assigned Session (workout_logs)    ← ChangeSet operates here
+└── Exercise Record (workout_log_exercises)
+    └── Performance Record (workout_log_sets)
+        └── Set-by-set actual data
 ```
 
 ### Database Tables
 
-#### exercise_training_sessions (Assigned/Active Session)
+#### workout_logs (Assigned/Active Session)
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | SERIAL | Primary key |
-| `exercise_preset_group_id` | INT | Source template |
+| `session_plan_id` | INT | Source template |
 | `athlete_id` | INT | Who this is assigned to |
 | `athlete_group_id` | INT | Associated athlete group (optional) |
 | `session_status` | TEXT | 'assigned' / 'ongoing' / 'completed' |
@@ -131,13 +132,28 @@ Assigned Session (exercise_training_sessions)    ← ChangeSet operates here
 | `created_at` | TIMESTAMP | |
 | `updated_at` | TIMESTAMP | |
 
-#### exercise_training_details (Performance Record)
+#### workout_log_exercises (Exercise Record)
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | SERIAL | Primary key |
-| `exercise_training_session_id` | INT | Parent session |
-| `exercise_preset_id` | INT | Reference to preset exercise |
+| `workout_log_id` | INT | Parent workout log |
+| `exercise_id` | INT | Reference to exercise library |
+| `session_plan_exercise_id` | INT | Reference to session plan exercise |
+| `exercise_order` | INT | Position in session |
+| `superset_id` | TEXT | Grouping for supersets |
+| `notes` | TEXT | Exercise-specific notes |
+| `created_at` | TIMESTAMP | |
+| `updated_at` | TIMESTAMP | |
+
+#### workout_log_sets (Performance Record)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | SERIAL | Primary key |
+| `workout_log_id` | INT | Parent workout log |
+| `workout_log_exercise_id` | INT | Parent workout log exercise |
+| `session_plan_exercise_id` | INT | Reference to session plan exercise |
 | `set_index` | INT | Set number |
 | `reps` | INT | **Actual** reps performed |
 | `weight` | DECIMAL | **Actual** weight used (kg) |
@@ -159,8 +175,9 @@ Assigned Session (exercise_training_sessions)    ← ChangeSet operates here
 
 | entityType | Maps To | Operations | Notes |
 |------------|---------|------------|-------|
-| `training_session` | `exercise_training_sessions` | update | Status, notes; no create (assigned by coach), no delete |
-| `training_set` | `exercise_training_details` | create, update | No delete - skipped sets recorded as `reps: 0` |
+| `training_session` | `workout_logs` | update | Status, notes; no create (assigned by coach), no delete |
+| `training_exercise` | `workout_log_exercises` | create, update | Exercises added during workout |
+| `training_set` | `workout_log_sets` | create, update | No delete - skipped sets recorded as `reps: 0` |
 
 **Skip Semantics**:
 - **Skip entire session**: No data inserted (session stays in 'assigned' status)
@@ -204,9 +221,9 @@ Both domains reference the **exercise library** (read-only for changesets):
   entityType: 'preset_exercise',
   entityId: null,
   proposedData: {
-    exercise_preset_group_id: 123,    // Session ID
+    session_plan_id: 123,              // Session ID
     exercise_id: 456,                  // From library
-    preset_order: 3,                   // Position
+    exercise_order: 3,                 // Position
     superset_id: null,
     notes: null
   },
@@ -282,15 +299,15 @@ Both domains reference the **exercise library** (read-only for changesets):
 | Rule | Validation |
 |------|------------|
 | Exercise exists | `exercise_id` references valid row in `exercises` |
-| Session belongs to user | `exercise_preset_groups.user_id` matches current user |
-| Order is sequential | No gaps in `preset_order` values |
+| Session belongs to user | `session_plans.user_id` matches current user |
+| Order is sequential | No gaps in `exercise_order` values |
 | Superset consistency | All exercises in superset have same `superset_id` |
 
 ### Workout Domain
 
 | Rule | Validation |
 |------|------------|
-| Session assigned to athlete | `exercise_training_sessions.athlete_id` matches current user |
+| Session assigned to athlete | `workout_logs.athlete_id` matches current user |
 | Session not completed | Cannot modify if `session_status = 'completed'` |
 | Valid set index | `set_index` within expected range |
 | Positive values | `reps`, `weight` must be positive when provided |
@@ -327,14 +344,15 @@ All tables already have `updated_at` columns - no schema changes needed.
 ┌───────────────────────────────┐   ┌───────────────────────────────────┐
 │     TRAINING PLANS (Coach)     │   │        WORKOUT (Athlete)          │
 │                               │   │                                   │
-│  exercise_preset_groups       │   │  exercise_training_sessions       │
+│  session_plans                │   │  workout_logs                     │
 │         │                     │   │         │                         │
 │         ▼                     │   │         ▼                         │
-│  exercise_presets             │──►│  exercise_training_details        │
-│         │                     │   │                                   │
-│         ▼                     │   │  (copies prescription from        │
-│  exercise_preset_details      │   │   presets, stores actuals)        │
+│  session_plan_exercises       │──►│  workout_log_exercises            │
+│         │                     │   │         │                         │
+│         ▼                     │   │         ▼                         │
+│  session_plan_sets            │   │  workout_log_sets                 │
 │                               │   │                                   │
+│  (prescriptions)              │   │  (copies from plan, stores actuals)│
 │  ChangeSet: preset_*          │   │  ChangeSet: training_*            │
 └───────────────────────────────┘   └───────────────────────────────────┘
 ```
@@ -349,7 +367,7 @@ When AI assistant is invoked, determine which domain based on:
 interface SessionContext {
   domain: 'training_plans' | 'workout'
   sessionId: number
-  sessionType: 'preset_group' | 'training_session'
+  sessionType: 'session_plan' | 'workout_log'
   userId: string
   userRole: 'coach' | 'athlete'
 }
@@ -358,7 +376,7 @@ function detectContext(url: string, user: User): SessionContext {
   if (url.includes('/plans/') || url.includes('/session-planner/')) {
     return {
       domain: 'training_plans',
-      sessionType: 'preset_group',
+      sessionType: 'session_plan',
       userRole: 'coach',
       // ...
     }
@@ -367,7 +385,7 @@ function detectContext(url: string, user: User): SessionContext {
   if (url.includes('/workout/')) {
     return {
       domain: 'workout',
-      sessionType: 'training_session',
+      sessionType: 'workout_log',
       userRole: 'athlete',
       // ...
     }

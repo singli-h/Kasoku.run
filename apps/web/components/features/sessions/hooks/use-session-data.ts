@@ -168,7 +168,7 @@ export function useSessionData(options: UseSessionDataOptions) {
         //   .on('postgres_changes', {
         //     event: '*',
         //     schema: 'public',
-        //     table: 'exercise_training_details',
+        //     table: 'workout_log_sets',
         //     filter: `exercise_training_session_id=eq.${sessionId}`
         //   }, (payload) => {
         //     console.log('[useSessionData] Real-time update:', payload)

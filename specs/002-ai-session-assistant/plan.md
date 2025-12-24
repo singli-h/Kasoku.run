@@ -13,7 +13,7 @@ Implement an AI-powered session planning assistant using the ChangeSet pattern. 
 
 **Language/Version**: TypeScript 5.x, Next.js 15
 **Primary Dependencies**: Vercel AI SDK (`useChat`, `onToolCall`), React Context
-**Storage**: Supabase (existing `exercise_preset_*` tables)
+**Storage**: Supabase (`session_plans`, `session_plan_exercises`, `session_plan_sets` tables)
 **Testing**: Manual E2E testing for V1
 **Target Platform**: Web (responsive, mobile-first)
 **Project Type**: Web application (monorepo)
@@ -26,7 +26,7 @@ Implement an AI-powered session planning assistant using the ChangeSet pattern. 
 | Gate | Status | Notes |
 |------|--------|-------|
 | Existing server action reuse | PASS | Uses `saveSessionWithExercisesAction` |
-| No new database tables | PASS | Uses existing `exercise_preset_*` tables |
+| No new database tables | PASS | Uses existing `session_plans`, `session_plan_exercises`, `session_plan_sets` tables |
 | RLS compliance | PASS | All queries go through existing auth flow |
 | ActionState pattern | PASS | Execution layer returns `ActionState<T>` |
 
@@ -153,17 +153,19 @@ export async function saveSessionWithExercisesAction(
 Tools use **camelCase** (AI-friendly), database uses **snake_case**.
 
 Transformation layer handles conversion:
-- `presetOrder` → `preset_order`
+- `exerciseOrder` → `exercise_order`
 - `supersetId` → `superset_id`
 - `exerciseId` → `exercise_id`
+- `sessionPlanId` → `session_plan_id`
+- `sessionPlanExerciseId` → `session_plan_exercise_id`
 
 ### 3. Entity ID Mappings
 
 ```typescript
 const entityIdFields = {
-  preset_session: 'presetGroupId',    // → exercise_preset_groups.id
-  preset_exercise: 'presetExerciseId', // → exercise_presets.id
-  preset_set: 'presetDetailId'         // → exercise_preset_details.id
+  preset_session: 'presetGroupId',    // → session_plans.id
+  preset_exercise: 'presetExerciseId', // → session_plan_exercises.id
+  preset_set: 'presetDetailId'         // → session_plan_sets.id
 }
 ```
 
@@ -207,7 +209,7 @@ From V1 Vision (`20251221-session-v1-vision.md`):
 | Document | Purpose |
 |----------|---------|
 | `20251221-session-v1-vision.md` | V1 scope, success criteria |
-| `20251221-session-entity-model.md` | Database table mappings (preset_*, training_*) |
+| `20251221-session-entity-model.md` | Database table mappings (session_plans, session_plan_exercises, session_plan_sets, workout_logs, workout_log_exercises, workout_log_sets) |
 | `20251221-session-tool-definitions.md` | Complete tool schemas (Coach + Athlete) |
 | `20251221-session-tools-overview.md` | Quick reference summary of all tools |
 | `20251221-session-ui-integration.md` | Component specs, visual design |

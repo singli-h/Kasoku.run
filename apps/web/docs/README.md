@@ -1,8 +1,16 @@
 # Kasoku Documentation Hub
 
-Welcome to the comprehensive documentation for Kasoku, an AI-powered fitness and running training platform. This documentation is organized into seven main categories to help developers, designers, and stakeholders understand and contribute to the project effectively.
+> **Last Updated**: 2025-12-24
+
+Welcome to the comprehensive documentation for Kasoku, an AI-powered fitness and running training platform. This documentation is organized into multiple categories to help developers, designers, and stakeholders understand and contribute to the project effectively.
 
 ## 📁 Documentation Structure
+
+### 📐 [Patterns](./patterns/)
+Reusable code patterns and architectural guidelines for consistent implementation.
+- **[Feature Pattern](./patterns/feature-pattern.md)** - Standard feature structure
+- **[ActionState Pattern](./patterns/actionstate-pattern.md)** - Server action pattern
+- **[Hooks vs Context](./patterns/hooks-vs-context.md)** - State management guide
 
 ### 🏗️ [Architecture](./architecture/)
 Core architectural patterns, component architecture, and system design principles.
@@ -38,9 +46,14 @@ Feature-specific documentation with detailed implementation guides for each majo
 ### 🔒 [Security](./security/)
 Authentication, authorization, data protection, and security patterns.
 - **[Row Level Security Analysis](./security/row-level-security-analysis.md)** - Database security and access control
+- **[Application-Level Validation](./security/application-level-validation.md)** - Validation patterns for complex access control
 
 ### 🔗 [Integrations](./integrations/)
 External service integrations, APIs, and third-party service documentation.
+
+### 🧪 [Testing](./testing/)
+Testing strategies, patterns, and requirements.
+- **[Test Strategy](./testing/test-strategy.md)** - Testing requirements by feature type
 
 ### 🛠️ [Development](./development/)
 Development workflows, API documentation, performance optimization, and coding standards.
@@ -48,6 +61,12 @@ Development workflows, API documentation, performance optimization, and coding s
 - **[Performance Optimization](./development/performance-optimization.md)** - Performance best practices and optimization
 - **[Package Status](./development/package-status.md)** - Current package versions and update policy
 - **[Taskmaster Development Workflow](./development/taskmaster-development-workflow.md)** - Development process and tooling
+
+### 📐 [Patterns](./patterns/)
+Reusable code patterns and architectural guidelines.
+- **[Feature Pattern](./patterns/feature-pattern.md)** - Standard feature structure and implementation
+- **[ActionState Pattern](./patterns/actionstate-pattern.md)** - Server action error handling pattern
+- **[Hooks vs Context](./patterns/hooks-vs-context.md)** - State management decision guide
 
 ### 🚀 [Deployment](./deployment/)
 Build configurations, deployment processes, environment setup, and production considerations.
@@ -57,9 +76,11 @@ Build configurations, deployment processes, environment setup, and production co
 
 ### For New Developers
 1. Start with **[Architecture Design Cheatsheet](./architecture/architecture-design-cheatsheet.md)** for system overview
-2. Review **[Design System Overview](./design/design-system-overview.md)** for UI/UX patterns
-3. Check **[Feature Overview](./features/feature-overview.md)** for functionality understanding
-4. Refer to specific feature folders for detailed implementation guides
+2. Review **[Feature Pattern](./patterns/feature-pattern.md)** for standard implementation patterns
+3. Check **[ActionState Pattern](./patterns/actionstate-pattern.md)** for server action guidelines
+4. Review **[Design System Overview](./design/design-system-overview.md)** for UI/UX patterns
+5. Check **[Feature Overview](./features/feature-overview.md)** for functionality understanding
+6. Refer to specific feature folders for detailed implementation guides
 
 ### For Designers
 1. Review **[Design System Overview](./design/design-system-overview.md)** for design principles

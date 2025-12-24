@@ -160,10 +160,10 @@ export const ExercisePresetSchema = z.object({
   exercise_id: z.number()
     .int("Exercise ID must be an integer")
     .positive("Exercise ID must be positive"),
-  exercise_preset_group_id: z.number()
+  session_plan_id: z.number()
     .int("Session ID must be an integer")
     .positive("Session ID must be positive"),
-  preset_order: z.number()
+  exercise_order: z.number()
     .int("Order must be an integer")
     .min(0, "Order must be 0 or greater"),
   superset_id: z.number()
@@ -184,9 +184,9 @@ export type ExercisePresetFormData = z.infer<typeof ExercisePresetSchema>
 // ============================================================================
 
 export const SetDetailsSchema = z.object({
-  exercise_preset_id: z.number()
-    .int("Exercise preset ID must be an integer")
-    .positive("Exercise preset ID must be positive"),
+  session_plan_exercise_id: z.number()
+    .int("Session plan exercise ID must be an integer")
+    .positive("Session plan exercise ID must be positive"),
   set_index: z.number()
     .int("Set index must be an integer")
     .min(0, "Set index must be 0 or greater"),
@@ -358,7 +358,7 @@ export const ExercisePresetArraySchema = z.array(ExercisePresetSchema)
 export const CompleteSessionSchema = SessionSchema.extend({
   exercises: z.array(
     ExercisePresetSchema.extend({
-      sets: z.array(SetDetailsSchema.omit({ exercise_preset_id: true }))
+      sets: z.array(SetDetailsSchema.omit({ session_plan_exercise_id: true }))
     })
   ).optional()
 })

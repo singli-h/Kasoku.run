@@ -14,7 +14,7 @@ import {
   startTrainingSessionAction,
   getTrainingSessionByIdAction,
   updateTrainingSessionAction,
-  addExercisePerformanceAction,
+  addExercisePerformanceByExerciseIdAction,
   updateExercisePerformanceAction,
   completeTrainingSessionAction
 } from "@/actions/sessions/training-session-actions"
@@ -67,7 +67,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
   const startSession = useCallback(async (
     exercisePresetGroupId: number,
     athleteId?: number
-  ): Promise<Database["public"]["Tables"]["exercise_training_sessions"]["Row"] | null> => {
+  ): Promise<Database["public"]["Tables"]["workout_logs"]["Row"] | null> => {
     setIsLoading(true)
     setError(null)
 
@@ -137,7 +137,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
    */
   const updateSession = useCallback(async (
     sessionId: number,
-    updates: Partial<Database["public"]["Tables"]["exercise_training_sessions"]["Update"]>,
+    updates: Partial<Database["public"]["Tables"]["workout_logs"]["Update"]>,
     immediate = false
   ): Promise<boolean> => {
     const saveItem: AutoSaveItem = {
@@ -379,7 +379,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
         completed: setData.completed
       }
       
-      const result = await addExercisePerformanceAction(sessionId, exerciseId, dbSetData)
+      const result = await addExercisePerformanceByExerciseIdAction(sessionId, exerciseId, dbSetData)
       
       if (!result.isSuccess) {
         console.error('Exercise performance save failed:', result.message)

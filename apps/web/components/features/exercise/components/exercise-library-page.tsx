@@ -6,8 +6,9 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useUser } from "@clerk/nextjs"
 import { AnimatePresence, motion } from "framer-motion"
-import { BookOpen, Edit, Eye, Filter, Grid3X3, List, Loader2, Play, Plus, Search, Settings, SortAsc, SortDesc, Target, Trash2, X } from "lucide-react"
+import { BookOpen, Edit, Eye, Filter, Grid3X3, List, Loader2, Play, Plus, Search, Settings, SortAsc, SortDesc, Target, Trash2, X, User } from "lucide-react"
 
 // UI Components
 import { Badge } from "@/components/ui/badge"
@@ -29,6 +30,7 @@ import {
   getUnitsAction,
   deleteExerciseAction
 } from "@/actions/library/exercise-actions"
+import { getCurrentUserAction } from "@/actions/auth/user-actions"
 
 // Types
 import type { 
@@ -48,16 +50,19 @@ type SortOrder = 'asc' | 'desc'
 interface ExerciseLibraryFilters extends ExerciseFilters {
   sortField: SortField
   sortOrder: SortOrder
+  myExercisesOnly?: boolean
 }
 
 export function ExerciseLibraryPage() {
   const { toast } = useToast()
+  const { user: clerkUser } = useUser()
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [exercises, setExercises] = useState<ExerciseWithDetails[]>([])
   const [exerciseTypes, setExerciseTypes] = useState<ExerciseType[]>([])
   const [units, setUnits] = useState<Unit[]>([])
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [selectedExercise, setSelectedExercise] = useState<ExerciseWithDetails | null>(null)
   const [showFilters, setShowFilters] = useState(false)
@@ -69,10 +74,11 @@ export function ExerciseLibraryPage() {
     setError(null)
 
     try {
-      const [exercisesResult, typesResult, unitsResult] = await Promise.all([
+      const [exercisesResult, typesResult, unitsResult, userResult] = await Promise.all([
         getExercisesAction(),
         getExerciseTypesAction(),
-        getUnitsAction()
+        getUnitsAction(),
+        clerkUser ? getCurrentUserAction() : Promise.resolve({ isSuccess: true, data: null, message: "" })
       ])
 
       if (!exercisesResult.isSuccess) throw new Error(exercisesResult.message)
@@ -82,13 +88,18 @@ export function ExerciseLibraryPage() {
       setExercises(exercisesResult.data)
       setExerciseTypes(typesResult.data)
       setUnits(unitsResult.data)
+      
+      // Store current user ID for ownership checks
+      if (userResult.isSuccess && userResult.data) {
+        setCurrentUserId(userResult.data.id)
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load exercise library"
       setError(message)
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [clerkUser])
 
   useEffect(() => {
     void loadLibraryData()
@@ -100,7 +111,8 @@ export function ExerciseLibraryPage() {
     exercise_type_id: undefined,
     unit_id: undefined,
     sortField: 'name',
-    sortOrder: 'asc'
+    sortOrder: 'asc',
+    myExercisesOnly: false
   })
 
   // Load data
@@ -126,6 +138,11 @@ export function ExerciseLibraryPage() {
     // Apply unit filter
     if (filters.unit_id) {
       result = result.filter(exercise => exercise.unit_id === filters.unit_id)
+    }
+    
+    // Apply "My Exercises" filter
+    if (filters.myExercisesOnly && currentUserId) {
+      result = result.filter(exercise => exercise.owner_user_id === currentUserId)
     }
     
     // Apply sorting
@@ -382,11 +399,22 @@ export function ExerciseLibraryPage() {
                     </Select>
                   </div>
                   
-                  <div className="flex items-end">
-                    <Button variant="outline" onClick={clearFilters} className="w-full">
-                      <X className="h-4 w-4 mr-2" />
-                      Clear Filters
-                    </Button>
+                  <div className="space-y-2">
+                    <Label>Filter</Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={filters.myExercisesOnly ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => updateFilter('myExercisesOnly', !filters.myExercisesOnly)}
+                        className="flex-1"
+                      >
+                        <User className="h-4 w-4 mr-2" />
+                        My Exercises
+                      </Button>
+                      <Button variant="outline" onClick={clearFilters} size="sm">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -474,6 +502,7 @@ export function ExerciseLibraryPage() {
               key={exercise.id}
               exercise={exercise}
               viewMode={viewMode}
+              currentUserId={currentUserId}
               onView={() => setSelectedExercise(exercise)}
               onEdit={() => handleEditExercise(exercise)}
               onDelete={() => handleDeleteExercise(exercise.id)}
@@ -531,13 +560,15 @@ export function ExerciseLibraryPage() {
 interface ExerciseCardProps {
   exercise: ExerciseWithDetails
   viewMode: ViewMode
+  currentUserId: number | null
   onView: () => void
   onEdit: () => void
   onDelete: () => void
 }
 
-function ExerciseCard({ exercise, viewMode, onView, onEdit, onDelete }: ExerciseCardProps) {
+function ExerciseCard({ exercise, viewMode, currentUserId, onView, onEdit, onDelete }: ExerciseCardProps) {
   const isGlobal = exercise.visibility === 'global' || !exercise.owner_user_id
+  const isCustom = currentUserId && exercise.owner_user_id === currentUserId
   if (viewMode === 'list') {
     return (
       <Card className="hover:shadow-md transition-shadow">
@@ -550,7 +581,13 @@ function ExerciseCard({ exercise, viewMode, onView, onEdit, onDelete }: Exercise
                 {exercise.unit && (
                   <Badge variant="secondary">{exercise.unit.name}</Badge>
                 )}
-                {isGlobal && (
+                {isCustom && (
+                  <Badge variant="default" className="bg-primary/10 text-primary">
+                    <User className="h-3 w-3 mr-1" />
+                    Custom
+                  </Badge>
+                )}
+                {isGlobal && !isCustom && (
                   <Badge variant="secondary">Default</Badge>
                 )}
               </div>
@@ -627,10 +664,18 @@ function ExerciseCard({ exercise, viewMode, onView, onEdit, onDelete }: Exercise
         </div>
         
         <div className="space-y-2">
-          <Badge variant="outline">{exercise.exercise_type?.type}</Badge>
-          {isGlobal && (
-            <Badge variant="secondary">Default</Badge>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline">{exercise.exercise_type?.type}</Badge>
+            {isCustom && (
+              <Badge variant="default" className="bg-primary/10 text-primary">
+                <User className="h-3 w-3 mr-1" />
+                Custom
+              </Badge>
+            )}
+            {isGlobal && !isCustom && (
+              <Badge variant="secondary">Default</Badge>
+            )}
+          </div>
           
           {exercise.unit && (
             <div className="flex items-center gap-1 text-sm text-muted-foreground">

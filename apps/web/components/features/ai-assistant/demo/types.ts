@@ -2,7 +2,7 @@
 
 export type ChangeType = 'swap' | 'add' | 'remove' | 'update'
 
-// Individual set data - matches exercise_training_details / exercise_preset_details
+// Individual set data - matches workout_log_sets / session_plan_sets
 export interface ExerciseSet {
   setIndex: number
   reps: number | null

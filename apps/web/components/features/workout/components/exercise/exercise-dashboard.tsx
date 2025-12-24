@@ -198,14 +198,14 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
           <div className="flex items-center justify-between">
             <div className="space-y-2">
               <h1 className="text-2xl font-bold text-gray-900">
-                {session.exercise_preset_group?.name || "Workout Session"}
+                {session.session_plan?.name || "Workout Session"}
               </h1>
               <div className="flex items-center gap-4 text-sm text-gray-600">
-                {session.exercise_preset_group?.week && (
-                  <span>Week {session.exercise_preset_group.week}</span>
+                {session.session_plan?.week && (
+                  <span>Week {session.session_plan.week}</span>
                 )}
-                {session.exercise_preset_group?.day && (
-                  <span>Day {session.exercise_preset_group.day}</span>
+                {session.session_plan?.day && (
+                  <span>Day {session.session_plan.day}</span>
                 )}
                 <span>{(session as any).date_time ? new Date((session as any).date_time).toLocaleDateString() : 'No date'}</span>
               </div>

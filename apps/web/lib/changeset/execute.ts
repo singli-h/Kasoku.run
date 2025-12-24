@@ -131,7 +131,7 @@ function applyExerciseChange(
       const newExercise: SessionExercise = {
         id: request.entityId ?? `temp_${Date.now()}`,
         exercise_id: Number(proposedData?.exerciseId ?? 0),
-        preset_order: Number(proposedData?.presetOrder ?? exercises.length),
+        exercise_order: Number(proposedData?.presetOrder ?? exercises.length),
         superset_id: proposedData?.supersetId as number | null ?? null,
         notes: (proposedData?.notes as string) ?? null,
         exercise: proposedData?.exerciseName
@@ -158,10 +158,10 @@ function applyExerciseChange(
             exercise_id: proposedData?.exerciseId
               ? Number(proposedData.exerciseId)
               : ex.exercise_id,
-            preset_order:
+            exercise_order:
               proposedData?.presetOrder !== undefined
                 ? Number(proposedData.presetOrder)
-                : ex.preset_order,
+                : ex.exercise_order,
             superset_id:
               proposedData?.supersetId !== undefined
                 ? (proposedData.supersetId as number | null)

@@ -25,7 +25,7 @@ export function createExerciseInSession(
   return {
     id: generateId(),
     exercise_id: exerciseId,
-    preset_order: order,
+    exercise_order: order,
     superset_id: null,
     notes: null,
     exercise: {
@@ -126,7 +126,7 @@ export function groupIntoSupersets(exercises: SessionExercise[]): (SessionExerci
         if (isFirst) {
           const superset: SupersetGroup = {
             id: ex.superset_id.toString(),
-            exercises: supersetExercises.sort((a, b) => a.preset_order - b.preset_order),
+            exercises: supersetExercises.sort((a, b) => a.exercise_order - b.exercise_order),
           }
           result.push(superset)
         }
@@ -173,12 +173,12 @@ export function canUngroupSuperset(exercises: SessionExercise[], selectedIds: Se
 
 /**
  * Reorder exercises after drag & drop or deletion
- * Updates preset_order to be sequential
+ * Updates exercise_order to be sequential
  */
 export function reorderExercises(exercises: SessionExercise[]): SessionExercise[] {
   return exercises.map((ex, index) => ({
     ...ex,
-    preset_order: index + 1,
+    exercise_order: index + 1,
   }))
 }
 
@@ -320,7 +320,7 @@ export function duplicateExercise(exercise: SessionExercise, newOrder: number): 
   return {
     ...exercise,
     id: generateId(),
-    preset_order: newOrder,
+    exercise_order: newOrder,
     superset_id: null, // Remove superset association
   }
 }

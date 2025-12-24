@@ -34,21 +34,23 @@ import { WorkoutSessionCard } from '@/components/composed'
 
 // Import types
 import type { 
-  ExercisePresetGroupWithDetails,
+  SessionPlanWithDetails,
   ExerciseTrainingSessionWithDetails 
 } from "@/types/training"
 
 interface WorkoutSessionSelectorProps {
   onSessionSelected: (
-    presetGroup: ExercisePresetGroupWithDetails, 
+    presetGroup: SessionPlanWithDetails, 
     session?: ExerciseTrainingSessionWithDetails
   ) => void
   className?: string
+  hideOngoing?: boolean
 }
 
 export function WorkoutSessionSelector({ 
   onSessionSelected, 
-  className 
+  className,
+  hideOngoing = false
 }: WorkoutSessionSelectorProps) {
   const { toast } = useToast()
   const [startingSessionId, setStartingSessionId] = useState<number | null>(null)
@@ -62,7 +64,7 @@ export function WorkoutSessionSelector({
   // Handle starting or continuing a session
   const handleStartSession = async (session: ExerciseTrainingSessionWithDetails) => {
     try {
-      const presetGroup = session.exercise_preset_group!
+      const presetGroup = session.session_plan!
       setStartingSessionId(presetGroup.id)
       
       if ((session as any).session_status === 'ongoing') {
@@ -137,24 +139,29 @@ export function WorkoutSessionSelector({
     )
   }
 
+  // Filter out ongoing sessions if hideOngoing is true
+  const filteredSessions = hideOngoing 
+    ? sessions?.filter((s: any) => s.session_status !== 'ongoing')
+    : sessions
+
   return (
     <div className={cn("space-y-4", className)}>
       {/* Workout Sessions - Clean grid layout */}
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {sessions?.map((session, index) => (
+        {filteredSessions?.map((session, index) => (
           <WorkoutSessionCard
             key={(session as any).id}
             session={session}
             onAction={handleStartSession}
             actionLabel={
-              startingSessionId === session.exercise_preset_group?.id ? 'Starting...' :
+              startingSessionId === session.session_plan?.id ? 'Starting...' :
               (session as any).session_status === 'ongoing' ? 'Continue Workout' :
               (session as any).session_status === 'assigned' ? 'Start Workout' :
               (session as any).session_status === 'completed' ? 'Completed' :
               'View Details'
             }
             actionIcon={
-              startingSessionId === session.exercise_preset_group?.id ? 
+              startingSessionId === session.session_plan?.id ? 
                 <RefreshCw className="h-4 w-4 animate-spin" /> : undefined
             }
             showDetails={true}
@@ -163,7 +170,7 @@ export function WorkoutSessionSelector({
       </div>
 
       {/* Empty State */}
-      {sessions?.length === 0 && (
+      {filteredSessions?.length === 0 && (
         <Card className="text-center py-12">
           <CardContent>
             <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />

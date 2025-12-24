@@ -17,18 +17,18 @@ import type { SessionEntityType } from './types'
  * These map to snake_case database columns during transformation.
  */
 export const ENTITY_ID_FIELDS: Record<SessionEntityType, string> = {
-  preset_session: 'presetGroupId', // exercise_preset_groups.id
-  preset_exercise: 'presetExerciseId', // exercise_presets.id
-  preset_set: 'presetDetailId', // exercise_preset_details.id
+  preset_session: 'presetGroupId', // session_plans.id
+  preset_exercise: 'presetExerciseId', // session_plan_exercises.id
+  preset_set: 'presetDetailId', // session_plan_sets.id
 }
 
 /**
  * Maps entity types to their database table names.
  */
 export const ENTITY_TABLE_NAMES: Record<SessionEntityType, string> = {
-  preset_session: 'exercise_preset_groups',
-  preset_exercise: 'exercise_presets',
-  preset_set: 'exercise_preset_details',
+  preset_session: 'session_plans',
+  preset_exercise: 'session_plan_exercises',
+  preset_set: 'session_plan_sets',
 }
 
 /**
@@ -36,8 +36,8 @@ export const ENTITY_TABLE_NAMES: Record<SessionEntityType, string> = {
  */
 export const ENTITY_PARENT_FIELDS: Record<SessionEntityType, string | null> = {
   preset_session: 'microcycle_id', // Parent is microcycle
-  preset_exercise: 'exercise_preset_group_id', // Parent is session
-  preset_set: 'exercise_preset_id', // Parent is exercise
+  preset_exercise: 'session_plan_id', // Parent is session
+  preset_set: 'session_plan_exercise_id', // Parent is exercise
 }
 
 /**
@@ -57,14 +57,14 @@ export const CAMEL_TO_SNAKE_MAP: Record<string, string> = {
 
   // Exercise (preset_exercise) fields
   presetExerciseId: 'id',
-  exercisePresetGroupId: 'exercise_preset_group_id',
+  sessionPlanId: 'session_plan_id',
   exerciseId: 'exercise_id',
-  presetOrder: 'preset_order',
+  presetOrder: 'exercise_order',
   supersetId: 'superset_id',
 
   // Set (preset_set) fields
   presetDetailId: 'id',
-  exercisePresetId: 'exercise_preset_id',
+  sessionPlanExerciseId: 'session_plan_exercise_id',
   setIndex: 'set_index',
   performingTime: 'performing_time',
   restTime: 'rest_time',
@@ -107,7 +107,7 @@ export const ID_FIELDS = new Set([
  *
  * @example
  * toSnakeCase('exerciseId') // 'exercise_id'
- * toSnakeCase('presetOrder') // 'preset_order'
+ * toSnakeCase('presetOrder') // 'exercise_order'
  * toSnakeCase('reps') // 'reps' (no change for single-word fields)
  */
 export function toSnakeCase(fieldName: string): string {
@@ -128,7 +128,7 @@ export function toSnakeCase(fieldName: string): string {
  *
  * @example
  * toCamelCase('exercise_id') // 'exerciseId'
- * toCamelCase('preset_order') // 'presetOrder'
+ * toCamelCase('exercise_order') // 'presetOrder'
  * toCamelCase('reps') // 'reps' (no change for single-word fields)
  */
 export function toCamelCase(fieldName: string): string {
@@ -151,7 +151,7 @@ export function toCamelCase(fieldName: string): string {
  *
  * @example
  * convertKeysToSnakeCase({ exerciseId: 1, presetOrder: 2 })
- * // { exercise_id: 1, preset_order: 2 }
+ * // { exercise_id: 1, exercise_order: 2 }
  */
 export function convertKeysToSnakeCase(
   obj: Record<string, unknown>
@@ -172,7 +172,7 @@ export function convertKeysToSnakeCase(
  * @returns New object with camelCase keys
  *
  * @example
- * convertKeysToCamelCase({ exercise_id: 1, preset_order: 2 })
+ * convertKeysToCamelCase({ exercise_id: 1, exercise_order: 2 })
  * // { exerciseId: 1, presetOrder: 2 }
  */
 export function convertKeysToCamelCase(

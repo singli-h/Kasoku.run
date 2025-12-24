@@ -74,9 +74,9 @@ export function SupersetContainer({
   // Sort exercises by their position in the superset
   const sortedExercises = useMemo(() => {
     return [...exercises].sort((a, b) => {
-      // First sort by preset_order, then by position_in_superset if available
-      const orderA = a.preset_order || 0
-      const orderB = b.preset_order || 0
+      // First sort by exercise_order, then by position_in_superset if available
+      const orderA = a.exercise_order || 0
+      const orderB = b.exercise_order || 0
       return orderA - orderB
     })
   }, [exercises])

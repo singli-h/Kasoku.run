@@ -49,6 +49,8 @@ import {
   updateSupabaseUserAction,
   createCurrentUserAction 
 } from "@/actions/auth/user-actions"
+import { createOrUpdateAthleteProfileAction } from "@/actions/athletes/athlete-actions"
+import { createOrUpdateCoachProfileAction } from "@/actions/athletes/coach-management-actions"
 
 // Temporary types until database schema is updated
 type UserType = any
@@ -289,14 +291,42 @@ export function ProfileSettingsPage() {
       }
       
       // Update user in Supabase
-      const result = await updateSupabaseUserAction(clerkUser.id, updateData)
+      const userResult = await updateSupabaseUserAction(clerkUser.id, updateData)
       
-      if (!result.isSuccess) {
-        throw new Error(result.message)
+      if (!userResult.isSuccess) {
+        throw new Error(userResult.message)
+      }
+      
+      // Update role-specific profile data
+      if (profileData.role === 'athlete' && athleteData) {
+        const athleteResult = await createOrUpdateAthleteProfileAction({
+          height: athleteData.height,
+          weight: athleteData.weight,
+          training_goals: athleteData.training_goals,
+          experience: athleteData.experience,
+          events: athleteData.events
+        })
+        
+        if (!athleteResult.isSuccess) {
+          console.warn('Failed to update athlete profile:', athleteResult.message)
+          // Don't throw - user data was saved, just warn
+        }
+      } else if (profileData.role === 'coach' && coachData) {
+        const coachResult = await createOrUpdateCoachProfileAction({
+          experience: coachData.experience,
+          philosophy: coachData.philosophy,
+          speciality: coachData.speciality,
+          sport_focus: coachData.sport_focus
+        })
+        
+        if (!coachResult.isSuccess) {
+          console.warn('Failed to update coach profile:', coachResult.message)
+          // Don't throw - user data was saved, just warn
+        }
       }
       
       // Update local state
-      setUser(result.data)
+      setUser(userResult.data)
       setHasChanges(false)
       
       toast({

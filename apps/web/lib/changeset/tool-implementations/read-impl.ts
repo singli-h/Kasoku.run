@@ -65,7 +65,7 @@ export async function executeGetSessionContext(
 
   // Fetch session (preset_group)
   const { data: session, error: sessionError } = await supabase
-    .from('exercise_preset_groups')
+    .from('session_plans')
     .select('id, name, description')
     .eq('id', sessionId)
     .single()
@@ -76,19 +76,19 @@ export async function executeGetSessionContext(
 
   // Fetch exercises with their sets
   const { data: presets, error: presetsError } = await supabase
-    .from('exercise_presets')
+    .from('session_plan_exercises')
     .select(
       `
       id,
       exercise_id,
-      preset_order,
+      exercise_order,
       superset_id,
       notes,
       exercises!inner (
         id,
         name
       ),
-      exercise_preset_details (
+      session_plan_sets (
         id,
         set_index,
         reps,
@@ -99,8 +99,8 @@ export async function executeGetSessionContext(
       )
     `
     )
-    .eq('exercise_preset_group_id', sessionId)
-    .order('preset_order', { ascending: true })
+    .eq('session_plan_id', sessionId)
+    .order('exercise_order', { ascending: true })
 
   if (presetsError) {
     console.error('[executeGetSessionContext] Error fetching presets:', presetsError)
@@ -112,7 +112,7 @@ export async function executeGetSessionContext(
     presets?.map((preset) => {
       // Type assertion for nested data
       const exercise = preset.exercises as unknown as { id: number; name: string }
-      const details = preset.exercise_preset_details as Array<{
+      const details = preset.session_plan_sets as Array<{
         id: number
         set_index: number
         reps: number | null
@@ -126,7 +126,7 @@ export async function executeGetSessionContext(
         id: String(preset.id),
         exerciseId: String(preset.exercise_id),
         exerciseName: exercise?.name ?? 'Unknown',
-        presetOrder: preset.preset_order ?? 0,
+        presetOrder: preset.exercise_order ?? 0,
         supersetId: preset.superset_id,
         notes: preset.notes,
         sets:
