@@ -24,10 +24,10 @@ import type { Database } from "@/types/database"
 import type { SessionExercise, Session } from "@/components/features/plans/session-planner/types"
 
 // Database types
-type ExercisePresetGroup = Database['public']['Tables']['exercise_preset_groups']['Row']
-type ExercisePresetGroupUpdate = Database['public']['Tables']['exercise_preset_groups']['Update']
-type ExercisePresetInsert = Database['public']['Tables']['exercise_presets']['Insert']
-type ExercisePresetDetailInsert = Database['public']['Tables']['exercise_preset_details']['Insert']
+type SessionPlan = Database['public']['Tables']['session_plans']['Row']
+type SessionPlanUpdate = Database['public']['Tables']['session_plans']['Update']
+type ExercisePresetInsert = Database['public']['Tables']['session_plan_exercises']['Insert']
+type SessionPlanSetInsert = Database['public']['Tables']['session_plan_sets']['Insert']
 
 // ============================================================================
 // SESSION PLANNER - COMPREHENSIVE SAVE ACTION
@@ -42,7 +42,7 @@ export async function saveSessionWithExercisesAction(
   sessionId: number,
   sessionUpdates: Partial<Session>,
   exercises: SessionExercise[]
-): Promise<ActionState<ExercisePresetGroup>> {
+): Promise<ActionState<SessionPlan>> {
   try {
     const { userId } = await auth()
 
@@ -57,7 +57,7 @@ export async function saveSessionWithExercisesAction(
 
     // Step 1: Verify ownership and get existing session
     const { data: existingSession, error: fetchError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select('id, user_id')
       .eq('id', sessionId)
       .single()
@@ -77,7 +77,7 @@ export async function saveSessionWithExercisesAction(
     }
 
     // Step 2: Update session metadata
-    const sessionUpdateData: Partial<ExercisePresetGroupUpdate> = {}
+    const sessionUpdateData: Partial<SessionPlanUpdate> = {}
     if (sessionUpdates.name !== undefined) sessionUpdateData.name = sessionUpdates.name
     if (sessionUpdates.description !== undefined) sessionUpdateData.description = sessionUpdates.description
     if (sessionUpdates.date !== undefined) sessionUpdateData.date = sessionUpdates.date
@@ -86,7 +86,7 @@ export async function saveSessionWithExercisesAction(
     if (sessionUpdates.session_mode !== undefined) sessionUpdateData.session_mode = sessionUpdates.session_mode
 
     const { error: updateError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .update(sessionUpdateData)
       .eq('id', sessionId)
       .eq('user_id', dbUserId)
@@ -101,9 +101,9 @@ export async function saveSessionWithExercisesAction(
 
     // Step 3: Get existing exercise presets to determine what to delete/update/insert
     const { data: existingPresets, error: presetsError } = await supabase
-      .from('exercise_presets')
-      .select('id, exercise_id, preset_order, superset_id, notes')
-      .eq('exercise_preset_group_id', sessionId)
+      .from('session_plan_exercises')
+      .select('id, exercise_id, exercise_order, superset_id, notes')
+      .eq('session_plan_id', sessionId)
 
     if (presetsError) {
       console.error('Error fetching existing presets:', presetsError)
@@ -139,20 +139,20 @@ export async function saveSessionWithExercisesAction(
     const idsToDelete = Array.from(existingPresetMap.keys()).filter(id => !exerciseIdsToKeep.has(id))
 
     if (idsToDelete.length > 0) {
-      // First delete exercise_preset_details for these presets
+      // First delete session_plan_sets for these presets
       const { error: deleteDetailsError } = await supabase
-        .from('exercise_preset_details')
+        .from('session_plan_sets')
         .delete()
-        .in('exercise_preset_id', idsToDelete)
+        .in('session_plan_exercise_id', idsToDelete)
 
       if (deleteDetailsError) {
         console.error('Error deleting exercise details:', deleteDetailsError)
         // Continue anyway - CASCADE might handle this
       }
 
-      // Then delete the exercise_presets
+      // Then delete the session_plan_exercises
       const { error: deletePresetsError } = await supabase
-        .from('exercise_presets')
+        .from('session_plan_exercises')
         .delete()
         .in('id', idsToDelete)
 
@@ -171,10 +171,10 @@ export async function saveSessionWithExercisesAction(
 
       // Update the exercise preset
       const { error: updatePresetError } = await supabase
-        .from('exercise_presets')
+        .from('session_plan_exercises')
         .update({
           exercise_id: exercise.exercise_id,
-          preset_order: exercise.preset_order,
+          exercise_order: exercise.exercise_order,
           superset_id: exercise.superset_id,
           notes: exercise.notes
         })
@@ -188,21 +188,21 @@ export async function saveSessionWithExercisesAction(
         }
       }
 
-      // Delete existing exercise_preset_details for this preset
+      // Delete existing session_plan_sets for this preset
       const { error: deleteOldDetailsError } = await supabase
-        .from('exercise_preset_details')
+        .from('session_plan_sets')
         .delete()
-        .eq('exercise_preset_id', dbId)
+        .eq('session_plan_exercise_id', dbId)
 
       if (deleteOldDetailsError) {
         console.error(`Error deleting old details for preset ${dbId}:`, deleteOldDetailsError)
         // Continue anyway
       }
 
-      // Insert new exercise_preset_details
+      // Insert new session_plan_sets
       if (exercise.sets && exercise.sets.length > 0) {
-        const detailsData: ExercisePresetDetailInsert[] = exercise.sets.map(set => ({
-          exercise_preset_id: dbId,
+        const detailsData: SessionPlanSetInsert[] = exercise.sets.map(set => ({
+          session_plan_exercise_id: dbId,
           set_index: set.set_index,
           reps: set.reps,
           weight: set.weight,
@@ -220,7 +220,7 @@ export async function saveSessionWithExercisesAction(
         }))
 
         const { error: insertDetailsError } = await supabase
-          .from('exercise_preset_details')
+          .from('session_plan_sets')
           .insert(detailsData)
 
         if (insertDetailsError) {
@@ -237,15 +237,15 @@ export async function saveSessionWithExercisesAction(
     for (const exercise of exercisesToInsert) {
       // Insert the exercise preset
       const presetData: ExercisePresetInsert = {
-        exercise_preset_group_id: sessionId,
+        session_plan_id: sessionId,
         exercise_id: exercise.exercise_id,
-        preset_order: exercise.preset_order,
+        exercise_order: exercise.exercise_order,
         superset_id: exercise.superset_id,
         notes: exercise.notes
       }
 
       const { data: newPreset, error: insertPresetError } = await supabase
-        .from('exercise_presets')
+        .from('session_plan_exercises')
         .insert(presetData)
         .select('id')
         .single()
@@ -258,10 +258,10 @@ export async function saveSessionWithExercisesAction(
         }
       }
 
-      // Insert exercise_preset_details for the new preset
+      // Insert session_plan_sets for the new preset
       if (exercise.sets && exercise.sets.length > 0) {
-        const detailsData: ExercisePresetDetailInsert[] = exercise.sets.map(set => ({
-          exercise_preset_id: newPreset.id,
+        const detailsData: SessionPlanSetInsert[] = exercise.sets.map(set => ({
+          session_plan_exercise_id: newPreset.id,
           set_index: set.set_index,
           reps: set.reps,
           weight: set.weight,
@@ -279,7 +279,7 @@ export async function saveSessionWithExercisesAction(
         }))
 
         const { error: insertDetailsError } = await supabase
-          .from('exercise_preset_details')
+          .from('session_plan_sets')
           .insert(detailsData)
 
         if (insertDetailsError) {
@@ -294,7 +294,7 @@ export async function saveSessionWithExercisesAction(
 
     // Step 7: Fetch and return the updated session
     const { data: updatedSession, error: finalFetchError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select('id, athlete_group_id, user_id, microcycle_id, name, description, session_mode, week, day, date, updated_at, created_at, deleted, is_template')
       .eq('id', sessionId)
       .single()

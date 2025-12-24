@@ -106,7 +106,7 @@ export async function getMacrocyclesAction(): Promise<ActionState<MacrocycleWith
           *,
           microcycles(
             *,
-            exercise_preset_groups(*)
+            session_plans(*)
           )
         )
       `)
@@ -161,9 +161,9 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
           *,
           microcycles!inner(
             *,
-            exercise_preset_groups(
+            session_plans(
               *,
-              exercise_presets(
+              session_plan_exercises(
                 *,
                 exercise:exercises(*)
               )
@@ -385,12 +385,12 @@ export async function getMesocyclesByMacrocycleAction(macrocycleId: number): Pro
         macrocycle:macrocycles(*),
         microcycles(
           *,
-          exercise_preset_groups(
+          session_plans(
             *,
-            exercise_presets(
+            session_plan_exercises(
               *,
               exercises(*),
-              exercise_preset_details(*)
+              session_plan_sets(*)
             )
           )
         )
@@ -445,12 +445,12 @@ export async function getMesocycleByIdAction(id: number): Promise<ActionState<Me
         macrocycle:macrocycles(*),
         microcycles(
           *,
-          exercise_preset_groups(
+          session_plans(
             *,
-            exercise_presets(
+            session_plan_exercises(
               *,
               exercises(*),
-              exercise_preset_details(*)
+              session_plan_sets(*)
             )
           )
         )
@@ -757,12 +757,12 @@ export async function getMicrocyclesByMesocycleAction(mesocycleId: number): Prom
       .select(`
         *,
         mesocycle:mesocycles(*),
-        exercise_preset_groups(
+        session_plans(
           *,
-          exercise_presets(
+          session_plan_exercises(
             *,
             exercises(*),
-            exercise_preset_details(*)
+            session_plan_sets(*)
           ),
           athlete_groups(*)
         )
@@ -815,9 +815,9 @@ export async function getMicrocycleByIdAction(id: number): Promise<ActionState<M
       .select(`
         *,
         mesocycle:mesocycles(*),
-        exercise_preset_groups(
+        session_plans(
           *,
-          exercise_presets(
+          session_plan_exercises(
             *,
             exercise:exercises(*)
           )
@@ -924,7 +924,7 @@ export async function deleteMicrocycleAction(id: number): Promise<ActionState<bo
 
     // Check if microcycle has any exercise preset groups
     const { data: presetGroups, error: checkError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select('id')
       .eq('microcycle_id', id)
       .limit(1)
@@ -1008,11 +1008,11 @@ export async function copyMacrocycleAsTemplateAction(
           *,
           microcycles(
             *,
-            exercise_preset_groups(
+            session_plans(
               *,
-              exercise_presets(
+              session_plan_exercises(
                 *,
-                exercise_preset_details(*)
+                session_plan_sets(*)
               )
             )
           )
@@ -1117,8 +1117,8 @@ export async function copyMacrocycleAsTemplateAction(
             }
 
             // Copy exercise preset groups for this microcycle
-            if (microcycle.exercise_preset_groups && microcycle.exercise_preset_groups.length > 0) {
-              for (const presetGroup of microcycle.exercise_preset_groups) {
+            if (microcycle.session_plans && microcycle.session_plans.length > 0) {
+              for (const presetGroup of microcycle.session_plans) {
                 const presetDate = new Date(presetGroup.date || new Date())
                 presetDate.setDate(presetDate.getDate() + daysDiff)
 
@@ -1135,7 +1135,7 @@ export async function copyMacrocycleAsTemplateAction(
                 }
 
                 const { data: newPresetGroup, error: presetError } = await supabase
-                  .from('exercise_preset_groups')
+                  .from('session_plans')
                   .insert(newPresetGroupData)
                   .select()
                   .single()
@@ -1146,18 +1146,18 @@ export async function copyMacrocycleAsTemplateAction(
                 }
 
                 // Copy exercise presets and their details
-                if (presetGroup.exercise_presets && presetGroup.exercise_presets.length > 0) {
-                  for (const preset of presetGroup.exercise_presets) {
+                if (presetGroup.session_plan_exercises && presetGroup.session_plan_exercises.length > 0) {
+                  for (const preset of presetGroup.session_plan_exercises) {
                     const newPresetData = {
                       exercise_id: preset.exercise_id,
-                      exercise_preset_group_id: newPresetGroup.id,
-                      preset_order: preset.preset_order,
+                      session_plan_id: newPresetGroup.id,
+                      exercise_order: preset.exercise_order,
                       notes: preset.notes,
                       superset_id: preset.superset_id
                     }
 
                     const { data: newPreset, error: presetInsertError } = await supabase
-                      .from('exercise_presets')
+                      .from('session_plan_exercises')
                       .insert(newPresetData)
                       .select()
                       .single()
@@ -1168,9 +1168,9 @@ export async function copyMacrocycleAsTemplateAction(
                     }
 
                     // Copy preset details
-                    if (preset.exercise_preset_details && preset.exercise_preset_details.length > 0) {
-                      const detailsData = preset.exercise_preset_details.map(detail => ({
-                        exercise_preset_id: newPreset.id,
+                    if (preset.session_plan_sets && preset.session_plan_sets.length > 0) {
+                      const detailsData = preset.session_plan_sets.map(detail => ({
+                        session_plan_exercise_id: newPreset.id,
                         set_index: detail.set_index,
                         reps: detail.reps,
                         weight: detail.weight,
@@ -1189,7 +1189,7 @@ export async function copyMacrocycleAsTemplateAction(
                       }))
 
                       await supabase
-                        .from('exercise_preset_details')
+                        .from('session_plan_sets')
                         .insert(detailsData)
                     }
                   }

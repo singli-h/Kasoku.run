@@ -2,7 +2,8 @@
 
 > **Last Updated**: 2025-12-24  
 > **Verified Against**: Sprint (Dev) Project (`pcteaouusthwbgzczoae`)  
-> **Schema Status**: Current as of 2025-12-24
+> **Schema Status**: Current as of 2025-12-24  
+> **Schema Optimization**: Completed (specs/003-database-schema-optimization)
 
 This document provides a comprehensive overview of the Kasoku database schema as implemented in Supabase.
 
@@ -81,7 +82,6 @@ Coach-specific profile information linked to users.
 | `experience` | `text` | Coaching experience | NULLABLE |
 
 **RLS**: Enabled  
-**Note**: Missing `created_at` and `updated_at` columns (to be added per schema optimization spec)  
 **Relationships**: One-to-one with `users` via `user_id`
 
 ### Training Organization
@@ -97,7 +97,6 @@ Groups of athletes managed by coaches.
 | `created_at` | `timestamptz` | Group creation time | NULLABLE, DEFAULT now() |
 
 **RLS**: Enabled  
-**Note**: Missing `updated_at` column (to be added per schema optimization spec)  
 **Relationships**: Many-to-one with `coaches` via `coach_id`
 
 #### `athlete_group_histories`
@@ -134,10 +133,9 @@ Long-term training cycles (typically 3-12 months).
 | `created_at` | `timestamptz` | Creation time | NULLABLE |
 
 **RLS**: Enabled  
-**Note**: Missing `updated_at` column (to be added per schema optimization spec)  
 **Relationships**: 
 - Many-to-one with `athlete_groups` via `athlete_group_id`
-- Many-to-one with `users` via `user_id`
+- Many-to-one with `users` via `user_id` (ON DELETE CASCADE)
 
 #### `mesocycles`
 Medium-term training cycles (typically 3-6 weeks).
@@ -194,10 +192,9 @@ Links athletes to specific training cycles.
 | `created_at` | `timestamptz` | Link creation time | NULLABLE |
 
 **RLS**: Enabled  
-**Note**: Missing `updated_at` column and `created_at` default (to be added per schema optimization spec)
 **Relationships**: 
-- Many-to-one with `athletes` via `athlete_id`
-- Many-to-one with `macrocycles` via `macrocycle_id`
+- Many-to-one with `athletes` via `athlete_id` (ON DELETE CASCADE)
+- Many-to-one with `macrocycles` via `macrocycle_id` (ON DELETE CASCADE)
 - Many-to-one with `mesocycles` via `mesocycle_id`
 
 ### Exercise Management
@@ -231,8 +228,7 @@ Master list of exercises available in the system with AI/ML capabilities.
 | `is_archived` | `boolean` | Archive status | NULLABLE, DEFAULT false |
 
 **RLS**: Enabled  
-**Note**: Missing `created_at` and `updated_at` columns (to be added per schema optimization spec)  
-**Security Issue**: Current RLS policy allows public read access - needs update to filter by visibility
+**Security**: RLS policy updated to filter by `visibility` and `owner_user_id` ✅
 **Relationships**: 
 - Many-to-one with `exercise_types` via `exercise_type_id`
 - Many-to-one with `units` via `unit_id`
@@ -277,8 +273,8 @@ Many-to-many relationship between exercises and tags.
 
 ### Training Sessions
 
-#### `exercise_preset_groups`
-Groups of exercise presets for training sessions.
+#### `session_plans` (Coach Planning Domain)
+Training session templates created by coaches. Previously named `exercise_preset_groups`.
 
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
@@ -286,8 +282,8 @@ Groups of exercise presets for training sessions.
 | `athlete_group_id` | `bigint` | Foreign key to athlete_groups | NULLABLE |
 | `user_id` | `integer` | Foreign key to users | NULLABLE |
 | `microcycle_id` | `integer` | Foreign key to microcycles | NULLABLE |
-| `name` | `text` | Group name | NULLABLE |
-| `description` | `text` | Group description | NULLABLE |
+| `name` | `text` | Session name | NULLABLE |
+| `description` | `text` | Session description | NULLABLE |
 | `session_mode` | `text` | Session type (individual/group) | NULLABLE |
 | `week` | `integer` | Week number | NULLABLE |
 | `day` | `integer` | Day number | NULLABLE |
@@ -298,38 +294,39 @@ Groups of exercise presets for training sessions.
 | `is_template` | `boolean` | Template flag | NULLABLE, DEFAULT false |
 
 **RLS**: Enabled
-**Planned Rename**: `exercise_preset_groups` → `session_plans` (Coach Planning domain)
 **Relationships**:
 - Many-to-one with `athlete_groups` via `athlete_group_id`
 - Many-to-one with `users` via `user_id`
 - Many-to-one with `microcycles` via `microcycle_id`
+- One-to-many with `session_plan_exercises` via `id`
 
-#### `exercise_presets`
-Individual exercises within a preset group.
+#### `session_plan_exercises` (Coach Planning Domain)
+Individual exercises within a session plan. Previously named `exercise_presets`.
 
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
-| `exercise_preset_group_id` | `integer` | Foreign key to exercise_preset_groups | NULLABLE |
+| `session_plan_id` | `integer` | Foreign key to session_plans | NULLABLE |
 | `exercise_id` | `integer` | Foreign key to exercises | NULLABLE |
-| `preset_order` | `integer` | Order within group | NULLABLE |
+| `exercise_order` | `integer` | Order within session | NULLABLE |
 | `superset_id` | `bigint` | Superset grouping | NULLABLE |
 | `notes` | `text` | Exercise notes | NULLABLE |
+| `created_at` | `timestamptz` | Creation time | NULLABLE, DEFAULT now() |
+| `updated_at` | `timestamptz` | Last update time | NULLABLE, DEFAULT now() |
 
 **RLS**: Enabled
-**Note**: Missing `created_at` and `updated_at` columns (to be added per schema optimization spec)
-**Planned Rename**: `exercise_presets` → `session_plan_exercises` (Coach Planning domain)
 **Relationships**:
-- Many-to-one with `exercise_preset_groups` (→ `session_plans`) via `exercise_preset_group_id` (→ `session_plan_id`)
+- Many-to-one with `session_plans` via `session_plan_id`
 - Many-to-one with `exercises` via `exercise_id`
+- One-to-many with `session_plan_sets` via `id`
 
-#### `exercise_preset_details`
-Detailed parameters for each exercise preset.
+#### `session_plan_sets` (Coach Planning Domain)
+Set prescriptions for exercises in session plans. Previously named `exercise_preset_details`.
 
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
-| `exercise_preset_id` | `integer` | Foreign key to exercise_presets | NULLABLE |
+| `session_plan_exercise_id` | `integer` | Foreign key to session_plan_exercises | NULLABLE |
 | `resistance_unit_id` | `integer` | Foreign key to units | NULLABLE |
 | `reps` | `integer` | Number of repetitions | NULLABLE |
 | `weight` | `real` | Weight amount | NULLABLE |
@@ -345,50 +342,73 @@ Detailed parameters for each exercise preset.
 | `resistance` | `real` | Resistance amount | NULLABLE |
 | `rpe` | `integer` | Rate of Perceived Exertion | NULLABLE |
 | `metadata` | `jsonb` | Additional parameters | NULLABLE |
-| `created_at` | `timestamptz` | Creation time | NULLABLE |
+| `created_at` | `timestamptz` | Creation time | NULLABLE, DEFAULT now() |
+| `updated_at` | `timestamptz` | Last update time | NULLABLE, DEFAULT now() |
 
 **RLS**: Enabled
-**Note**: Missing `updated_at` column and `created_at` default (to be added per schema optimization spec)
-**Schema Optimization**: Columns `height`, `effort`, `tempo`, `resistance` will be KEPT as explicit columns for direct SQL analytics (e.g., `AVG(height)`, `WHERE resistance > X`). PostgreSQL NULL handling is efficient (1 bit per NULL in bitmap). See table rename below.
-**Planned Rename**: `exercise_preset_details` → `session_plan_sets` (Coach Planning domain)
+**Schema Optimization**: Columns `height`, `effort`, `tempo`, `resistance` are kept as explicit columns for direct SQL analytics (e.g., `AVG(height)`, `WHERE resistance > X`). PostgreSQL NULL handling is efficient (1 bit per NULL in bitmap).
 **Relationships**:
-- Many-to-one with `exercise_presets` (→ `session_plan_exercises`) via `exercise_preset_id` (→ `session_plan_exercise_id`)
+- Many-to-one with `session_plan_exercises` via `session_plan_exercise_id`
 - Many-to-one with `units` via `resistance_unit_id`
 
-#### `exercise_training_sessions`
-Actual training sessions performed by athletes.
+#### `workout_logs` (Athlete Recording Domain)
+Actual workout sessions performed by athletes. Previously named `exercise_training_sessions`.
 
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
 | `athlete_group_id` | `integer` | Foreign key to athlete_groups | NULLABLE |
 | `athlete_id` | `integer` | Foreign key to athletes | NULLABLE |
-| `exercise_preset_group_id` | `integer` | Foreign key to exercise_preset_groups | NULLABLE |
+| `session_plan_id` | `integer` | Foreign key to session_plans | NULLABLE |
 | `date_time` | `timestamptz` | Session date and time | NULLABLE |
 | `session_mode` | `text` | Session type | NULLABLE |
-| `notes` | `character varying` | Session notes | NULLABLE |
+| `notes` | `text` | Session notes | NULLABLE |
 | `description` | `text` | Session description | NULLABLE |
 | `session_status` | `session_status` | Session status enum | NOT NULL |
-| `created_at` | `timestamptz` | Creation time | NULLABLE |
-| `updated_at` | `timestamp without time zone` | Last update time | NULLABLE |
+| `created_at` | `timestamptz` | Creation time | NULLABLE, DEFAULT now() |
+| `updated_at` | `timestamptz` | Last update time | NULLABLE, DEFAULT now() |
 
 **RLS**: Enabled
-**Note**: `updated_at` should be `timestamptz` (type mismatch), missing `created_at` default (to be fixed per schema optimization spec)
 **Valid Status Values**: 'assigned', 'ongoing', 'completed', 'cancelled'
-**Planned Rename**: `exercise_training_sessions` → `workout_logs` (Athlete Recording domain)
 **Relationships**:
 - Many-to-one with `athlete_groups` via `athlete_group_id`
-- Many-to-one with `athletes` via `athlete_id`
-- Many-to-one with `exercise_preset_groups` (→ `session_plans`) via `exercise_preset_group_id` (→ `session_plan_id`)
+- Many-to-one with `athletes` via `athlete_id` (ON DELETE CASCADE)
+- Many-to-one with `session_plans` via `session_plan_id`
+- One-to-many with `workout_log_exercises` via `id`
+- One-to-many with `workout_log_sets` via `id`
 
-#### `exercise_training_details`
-Actual performance data for each exercise in a training session.
+#### `workout_log_exercises` (Athlete Recording Domain)
+Exercises performed in a workout session. Tracks which exercises are in the workout, including exercises added by athletes that weren't in the original plan.
 
 | Column | Type | Description | Constraints |
 |--------|------|-------------|-------------|
 | `id` | `integer` | Primary key | Auto-increment, NOT NULL |
-| `exercise_training_session_id` | `integer` | Foreign key to exercise_training_sessions | NULLABLE |
-| `exercise_preset_id` | `integer` | Foreign key to exercise_presets | NULLABLE |
+| `workout_log_id` | `integer` | Foreign key to workout_logs | NOT NULL, ON DELETE CASCADE |
+| `exercise_id` | `integer` | Foreign key to exercises | NOT NULL, ON DELETE RESTRICT |
+| `session_plan_exercise_id` | `integer` | Foreign key to session_plan_exercises | NULLABLE, ON DELETE SET NULL |
+| `exercise_order` | `integer` | Order within workout | NOT NULL |
+| `superset_id` | `bigint` | Superset grouping | NULLABLE |
+| `notes` | `text` | Workout-specific exercise notes | NULLABLE |
+| `created_at` | `timestamptz` | Creation time | NOT NULL, DEFAULT now() |
+| `updated_at` | `timestamptz` | Last update time | NOT NULL, DEFAULT now() |
+
+**RLS**: Enabled
+**Unique Constraint**: `(workout_log_id, exercise_order)` - ensures unique ordering per workout
+**Relationships**:
+- Many-to-one with `workout_logs` via `workout_log_id` (ON DELETE CASCADE)
+- Many-to-one with `exercises` via `exercise_id` (ON DELETE RESTRICT)
+- Many-to-one with `session_plan_exercises` via `session_plan_exercise_id` (ON DELETE SET NULL)
+- One-to-many with `workout_log_sets` via `id`
+
+#### `workout_log_sets` (Athlete Recording Domain)
+Actual set performance data for exercises in workout sessions. Previously named `exercise_training_details`.
+
+| Column | Type | Description | Constraints |
+|--------|------|-------------|-------------|
+| `id` | `integer` | Primary key | Auto-increment, NOT NULL |
+| `workout_log_id` | `integer` | Foreign key to workout_logs | NULLABLE, ON DELETE CASCADE |
+| `workout_log_exercise_id` | `integer` | Foreign key to workout_log_exercises | NULLABLE, ON DELETE CASCADE |
+| `session_plan_exercise_id` | `integer` | Foreign key to session_plan_exercises | NULLABLE, ON DELETE SET NULL |
 | `resistance_unit_id` | `integer` | Foreign key to units | NULLABLE |
 | `reps` | `integer` | Actual repetitions performed | NULLABLE |
 | `weight` | `real` | Weight amount (kg) | NULLABLE |
@@ -404,16 +424,16 @@ Actual performance data for each exercise in a training session.
 | `resistance` | `real` | Resistance amount (kg) | NULLABLE |
 | `rpe` | `integer` | Rate of Perceived Exertion (1-10) | NULLABLE |
 | `metadata` | `jsonb` | Additional performance data | NULLABLE |
-| `created_at` | `timestamptz` | Creation time | NULLABLE |
+| `created_at` | `timestamptz` | Creation time | NULLABLE, DEFAULT now() |
 | `set_index` | `integer` | Set number | NULLABLE |
+| `updated_at` | `timestamptz` | Last update time | NULLABLE, DEFAULT now() |
 
 **RLS**: Enabled
-**Note**: Missing `updated_at` column and `created_at` default (to be added per schema optimization spec)
-**Schema Optimization**: Columns `height`, `effort`, `tempo`, `resistance` will be KEPT as explicit columns for direct SQL analytics (e.g., `AVG(height)`, `WHERE resistance > X`). PostgreSQL NULL handling is efficient (1 bit per NULL in bitmap). See table rename below.
-**Planned Rename**: `exercise_training_details` → `workout_log_sets` (Athlete Recording domain)
+**Schema Optimization**: Columns `height`, `effort`, `tempo`, `resistance` are kept as explicit columns for direct SQL analytics (e.g., `AVG(height)`, `WHERE resistance > X`). PostgreSQL NULL handling is efficient (1 bit per NULL in bitmap).
 **Relationships**:
-- Many-to-one with `exercise_training_sessions` (→ `workout_logs`) via `exercise_training_session_id` (→ `workout_log_id`)
-- Many-to-one with `exercise_presets` (→ `session_plan_exercises`) via `exercise_preset_id`
+- Many-to-one with `workout_logs` via `workout_log_id` (ON DELETE CASCADE)
+- Many-to-one with `workout_log_exercises` via `workout_log_exercise_id` (ON DELETE CASCADE)
+- Many-to-one with `session_plan_exercises` via `session_plan_exercise_id` (ON DELETE SET NULL - for backward compatibility)
 - Many-to-one with `units` via `resistance_unit_id`
 
 ### Performance Tracking
@@ -459,9 +479,7 @@ Competition and event information.
 | `created_at` | `timestamptz` | Creation time | NULLABLE |
 | `updated_at` | `timestamptz` | Last update time | NULLABLE |
 
-**RLS**: Enabled  
-**Note**: Missing defaults on `created_at` and `updated_at` (to be added per schema optimization spec)  
-**Note**: Missing defaults on `created_at` and `updated_at` (to be added per schema optimization spec)
+**RLS**: Enabled
 
 #### `races`
 Tracks races and competitions associated with training macrocycles.
@@ -548,9 +566,9 @@ AI-powered memory system for storing contextual information about athletes, coac
 | `updated_at` | `timestamptz` | Last update time | NOT NULL, DEFAULT now() |
 
 **RLS**: Enabled  
-**Note**: RLS enabled but policies need verification (may need explicit policies or service-role only access)  
+**Note**: RLS enabled, no policies (service-role only access per CLAUDE.md)  
 **Memory Types**: 'preference', 'philosophy', 'injury', 'profile', 'note', 'session_summary'  
-**Constraints**: Exactly one of coach_id, athlete_id, or group_id must be populated (CHECK constraint to be added per optimization spec)  
+**Constraints**: Exactly one of coach_id, athlete_id, or group_id must be populated  
 **Cascade Deletes**: Memories are automatically deleted when their subject is deleted (CASCADE on delete)
 
 ## Database Functions
@@ -604,11 +622,12 @@ All tables in the database have Row Level Security enabled. This provides compre
 | `units` | ✅ Enabled | Public read, authenticated write |
 | `tags` | ✅ Enabled | Public read, authenticated write |
 | `exercise_tags` | ✅ Enabled | Tag relationship access |
-| `exercise_preset_groups` | ✅ Enabled | Preset group access |
-| `exercise_presets` | ✅ Enabled | Preset access |
-| `exercise_preset_details` | ✅ Enabled | Preset detail access |
-| `exercise_training_sessions` | ✅ Enabled | Training session access |
-| `exercise_training_details` | ✅ Enabled | Training detail access |
+| `session_plans` | ✅ Enabled | Session plan access |
+| `session_plan_exercises` | ✅ Enabled | Session exercise access |
+| `session_plan_sets` | ✅ Enabled | Session set access |
+| `workout_logs` | ✅ Enabled | Workout log access |
+| `workout_log_exercises` | ✅ Enabled | Workout exercise access |
+| `workout_log_sets` | ✅ Enabled | Workout set access |
 | `events` | ✅ Enabled | Event data access |
 | `races` | ✅ Enabled | Race data access |
 | `knowledge_base_categories` | ✅ Enabled | Coach-specific categories |
@@ -621,7 +640,7 @@ All tables in the database have Row Level Security enabled. This provides compre
 - `users`, `athletes`, `coaches`, `macrocycles`, `mesocycles`, `microcycles`, `races`
 
 **Group-Scoped Tables**: Access based on `athlete_group_id` membership
-- `athlete_groups`, `exercise_preset_groups`, `exercise_training_sessions`
+- `athlete_groups`, `session_plans`, `workout_logs`
 
 **Coach-Scoped Tables**: Access based on `coach_id` ownership
 - `knowledge_base_categories`, `knowledge_base_articles`
@@ -630,7 +649,7 @@ All tables in the database have Row Level Security enabled. This provides compre
 - `exercises`, `exercise_types`, `units`, `tags`, `events`
 
 **Relationship Tables**: Access based on related entity permissions
-- `exercise_tags`, `exercise_presets`, `exercise_preset_details`, `exercise_training_details`
+- `exercise_tags`, `session_plan_exercises`, `session_plan_sets`, `workout_log_exercises`, `workout_log_sets`
 
 ### Security Notes
 
@@ -695,38 +714,49 @@ All foreign key relationships are properly constrained with appropriate cascade 
 ### RLS Policies
 Row Level Security policies are implemented to ensure data isolation and proper access control based on user roles and relationships.
 
-## Known Schema Issues & Planned Optimizations
+## Schema Optimization Status
 
-### Timestamp Columns
-Several tables are missing `created_at` and/or `updated_at` columns or have inconsistent defaults:
-- **Missing both**: `athletes`, `coaches`, `exercises`, `exercise_presets`
-- **Missing `updated_at`**: `athlete_groups`, `exercise_preset_details`, `exercise_training_details`, `macrocycles`, `mesocycles`, `microcycles`
-- **Missing defaults**: `athlete_cycles`, `exercise_preset_details`, `exercise_training_details`, `exercise_training_sessions`, `macrocycles`, `mesocycles`, `microcycles`, `events`
-- **Type mismatch**: `exercise_training_sessions.updated_at` is `timestamp` instead of `timestamptz`
+### Timestamp Columns (Completed)
+All timestamp columns have been added and updated:
+- ✅ **Added both**: `athletes`, `coaches`, `exercises`, `session_plan_exercises`
+- ✅ **Added `updated_at`**: `athlete_groups`, `session_plan_sets`, `workout_log_sets`, `macrocycles`, `mesocycles`, `microcycles`
+- ✅ **Added defaults**: All nullable `created_at`/`updated_at` columns now have `DEFAULT now()`
+- ✅ **Fixed type**: `workout_logs.updated_at` converted from `timestamp` to `timestamptz`
+- ✅ **Triggers**: Auto-update triggers added for all `updated_at` columns
 
 ### Schema Optimization
-Per `specs/005-database-schema-optimization/spec.md`:
+Per `specs/003-database-schema-optimization/spec.md`:
 
-#### Table Renaming (Planned)
-Current table names (`exercise_preset_*`, `exercise_training_*`) don't clearly distinguish between coach-created plans and athlete-recorded workouts. New naming creates two clear domains:
+#### Table Renaming (Completed)
+Table names have been updated to clearly distinguish between coach-created plans and athlete-recorded workouts:
 
-| Domain | Current Name | New Name | Purpose |
-|--------|--------------|----------|---------|
-| **Coach Planning** | `exercise_preset_groups` | `session_plans` | Training session templates |
-| **Coach Planning** | `exercise_presets` | `session_plan_exercises` | Exercises within a plan |
-| **Coach Planning** | `exercise_preset_details` | `session_plan_sets` | Set prescriptions |
-| **Athlete Recording** | `exercise_training_sessions` | `workout_logs` | Actual workout sessions |
-| **Athlete Recording** | `exercise_training_details` | `workout_log_sets` | Actual sets performed |
+| Domain | Old Name | New Name | Status |
+|--------|----------|----------|--------|
+| **Coach Planning** | `exercise_preset_groups` | `session_plans` | ✅ Complete |
+| **Coach Planning** | `exercise_presets` | `session_plan_exercises` | ✅ Complete |
+| **Coach Planning** | `exercise_preset_details` | `session_plan_sets` | ✅ Complete |
+| **Athlete Recording** | `exercise_training_sessions` | `workout_logs` | ✅ Complete |
+| **Athlete Recording** | `exercise_training_details` | `workout_log_sets` | ✅ Complete |
 
-#### Column Decisions
-- **KEEP explicit columns**: `height`, `effort`, `tempo`, `resistance` will remain as explicit columns for direct SQL analytics (e.g., `AVG(height)`, `WHERE resistance > X`). PostgreSQL efficiently handles NULL values via the null bitmap (1 bit per NULL column).
-- **VARCHAR to TEXT**: All `character varying` columns should be converted to `text` (PostgreSQL best practice - no performance difference)
-- **Cascade deletes**: Several foreign keys missing `ON DELETE CASCADE` (see spec for details)
+#### New Table: `workout_log_exercises`
+Added to support athletes adding/replacing exercises in workouts. Mirrors `session_plan_exercises` structure for consistency.
 
-### RLS Policy Updates Needed
-- `exercises` table: Update policy to filter by `visibility` and `owner_user_id`
-- `macrocycles` table: Add coach access via `athlete_group_id`
-- `ai_memories` table: Verify policies or document service-role only access
+#### Column Renaming (Completed)
+- `preset_order` → `exercise_order` in `session_plan_exercises` ✅
+- `exercise_preset_group_id` → `session_plan_id` ✅
+- `exercise_preset_id` → `session_plan_exercise_id` ✅
+- `exercise_training_session_id` → `workout_log_id` ✅
+
+#### Column Decisions (Completed)
+- **KEPT explicit columns**: `height`, `effort`, `tempo`, `resistance` remain as explicit columns for direct SQL analytics (e.g., `AVG(height)`, `WHERE resistance > X`). PostgreSQL efficiently handles NULL values via the null bitmap (1 bit per NULL column).
+- **VARCHAR to TEXT**: All `character varying` columns converted to `text` ✅
+- **Cascade deletes**: Foreign keys updated with `ON DELETE CASCADE` where appropriate ✅
+
+### RLS Policy Updates (Completed)
+- ✅ `exercises` table: Policy updated to filter by `visibility` and `owner_user_id`
+- ✅ `macrocycles` table: Coach access added via `athlete_group_id`
+- ✅ `ai_memories` table: Documented as service-role only (RLS enabled, no policies)
+- ✅ `workout_log_exercises` table: RLS policies added for athletes and coaches
 
 ## Migration Notes
 
@@ -736,7 +766,7 @@ This schema represents the current state of the database as of the latest migrat
 2. Ensure RLS policies are updated to match schema changes
 3. Update TypeScript types in `apps/web/types/database.ts` to match schema changes
 4. Update this documentation to reflect any modifications
-5. Reference `specs/005-database-schema-optimization/spec.md` for planned optimizations
+5. Reference `specs/003-database-schema-optimization/spec.md` for optimization details
 
 ## Related Documentation
 

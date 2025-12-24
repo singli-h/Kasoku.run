@@ -149,7 +149,7 @@ export function EnhancedExerciseOrganization({
     }
     
     // Maintain preset order
-    filteredExercises.sort((a, b) => ((a as any).preset_order || 0) - ((b as any).preset_order || 0))
+    filteredExercises.sort((a, b) => ((a as any).exercise_order || 0) - ((b as any).exercise_order || 0))
     
     return groupExercises(filteredExercises)
   }, [exercises, showCompleted])

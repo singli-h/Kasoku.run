@@ -548,7 +548,9 @@ if (resource?.user_id !== dbUserId) {
 **Core Tables** (see `docs/` for full schema):
 - **Identity**: users, athletes, coaches, athlete_groups
 - **Training**: macrocycles, mesocycles, microcycles
-- **Exercises**: exercises, exercise_types, exercise_preset_groups, exercise_training_sessions
+- **Session Planning** (Coach): session_plans, session_plan_exercises, session_plan_sets
+- **Workout Logs** (Athlete): workout_logs, workout_log_exercises, workout_log_sets
+- **Exercises**: exercises, exercise_types
 - **AI** (infrastructure ready, not implemented): memories, embeddings
 
 ### Query Patterns
@@ -566,13 +568,13 @@ const { data, error } = await supabase
 **Complex join**:
 ```typescript
 const { data } = await supabase
-  .from('exercise_training_sessions')
+  .from('workout_logs')
   .select(`
     *,
     athlete:athletes(id, user:users(first_name, last_name)),
-    exercise_preset_group:exercise_preset_groups(
+    session_plan:session_plans(
       id,
-      exercise_presets(exercise:exercises(name), exercise_preset_details(*))
+      session_plan_exercises(exercise:exercises(name), session_plan_sets(*))
     )
   `)
 ```
@@ -884,7 +886,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=<key>
 
 ---
 
-**Last Updated**: 2025-12-03
+**Last Updated**: 2025-12-24
 **Maintainer**: Development Team
-**Version**: 2.0.0 (Streamlined)
+**Version**: 2.1.0 (Schema Updated)
 

@@ -275,9 +275,9 @@ async function handleUserUpdated(data: UserWebhookEvent["data"]) {
     {
       p_clerk_id: data.id,
       p_email: primaryEmail,
-      p_first_name: data.first_name || null,
-      p_last_name: data.last_name || null,
-      p_avatar_url: data.image_url || null,
+      p_first_name: data.first_name || '',
+      p_last_name: data.last_name || '',
+      p_avatar_url: data.image_url || '',
     }
   )
 

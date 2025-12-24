@@ -38,7 +38,7 @@ An AI-powered assistant that enables coaches to modify training sessions using n
 
 > **Deferred to V2**: Natural language workout logging for athletes.
 
-**Summary**: Athletes describe their workout performance naturally, and the system parses and logs weights, reps, RPE to `exercise_training_details`.
+**Summary**: Athletes describe their workout performance naturally, and the system parses and logs weights, reps, RPE to `workout_log_sets`.
 
 ---
 
@@ -49,9 +49,9 @@ A coach needs to quickly modify a **template session** (reusable blueprint) by s
 **Target Audience**: Coach only
 
 **Target Database Tables**:
-- `exercise_preset_groups` - UPDATE (session metadata, where `is_template = true`)
-- `exercise_presets` - INSERT/UPDATE/DELETE (exercises in template)
-- `exercise_preset_details` - INSERT/UPDATE/DELETE (sets/reps prescription in template)
+- `session_plans` - UPDATE (session metadata, where `is_template = true`)
+- `session_plan_exercises` - INSERT/UPDATE/DELETE (exercises in template)
+- `session_plan_sets` - INSERT/UPDATE/DELETE (sets/reps prescription in template)
 
 **Why this priority**: Templates are the foundation of training programming. Coaches iterate on templates frequently before assigning to athletes.
 
@@ -59,11 +59,11 @@ A coach needs to quickly modify a **template session** (reusable blueprint) by s
 
 **Acceptance Scenarios**:
 
-1. **Given** a coach has a template session open, **When** they say "Add 2 sets of face pulls at the end", **Then** the system creates a new `exercise_presets` row with 2 `exercise_preset_details` rows.
+1. **Given** a coach has a template session open, **When** they say "Add 2 sets of face pulls at the end", **Then** the system creates a new `session_plan_exercises` row with 2 `session_plan_sets` rows.
 
-2. **Given** a coach viewing their template, **When** they say "Swap back squats for safety bar squats", **Then** the system updates the `exercise_presets` row to reference the new exercise while preserving set/rep details.
+2. **Given** a coach viewing their template, **When** they say "Swap back squats for safety bar squats", **Then** the system updates the `session_plan_exercises` row to reference the new exercise while preserving set/rep details.
 
-3. **Given** a coach wants to adjust volume, **When** they say "Reduce all sets by 1", **Then** all `exercise_preset_details` rows for this template have their set count decremented.
+3. **Given** a coach wants to adjust volume, **When** they say "Reduce all sets by 1", **Then** all `session_plan_sets` rows for this template have their set count decremented.
 
 4. **Given** a coach requests an exercise that doesn't exist in the library, **When** the assistant cannot find it, **Then** it suggests similar alternatives from the exercise library.
 
@@ -73,7 +73,7 @@ A coach needs to quickly modify a **template session** (reusable blueprint) by s
 
 > **Deferred to V2**: Coach modifies individual athlete's assigned session instance.
 
-**Summary**: Coach adjusts a specific athlete's session (not the template) for individual needs. Targets `exercise_training_sessions` and `exercise_training_details`.
+**Summary**: Coach adjusts a specific athlete's session (not the template) for individual needs. Targets `workout_logs`, `workout_log_exercises` and `workout_log_sets`.
 
 ---
 
@@ -478,7 +478,7 @@ interface ExerciseSet {
 1. **Vercel AI SDK**: The Vercel AI SDK provides stable `useChat`, `streamText`, and tool calling capabilities
 2. **Exercise Library Coverage**: The existing exercise library has sufficient coverage for meaningful search results
 3. **User Authentication**: Existing Clerk authentication provides user identity for authorization checks
-4. **Database Schema**: Current `exercise_preset_groups`, `exercise_presets`, and `exercise_preset_details` tables support required operations
+4. **Database Schema**: Current `session_plans`, `session_plan_exercises`, and `session_plan_sets` tables support required operations
 5. **Existing Server Action**: `saveSessionWithExercisesAction` handles atomic session saves correctly
 
 ---

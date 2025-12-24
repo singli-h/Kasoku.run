@@ -146,7 +146,8 @@ This is an existing project optimization. Skip to Phase 2.
 - [ ] T039 [US1] Create new `exercises` policy: `visibility = 'global' OR owner_user_id = auth.uid()` via Supabase SQL Editor
 - [ ] T040 [US1] Drop existing "Users can manage own macrocycles" policy on `macrocycles` table
 - [ ] T041 [US1] Create new `macrocycles` policy with coach access via `athlete_group_id` join
-- [ ] T042 [US1] Verify `ai_memories` RLS policies are appropriate (or document service-role only access)
+- [ ] T042 [US1] Verify `ai_memories` RLS: Keep RLS disabled (service-role only for AI operations per CLAUDE.md)
+- [ ] T042.1 [US1] Verify `workout_logs` policy allows coaches to view/manage sessions for their athlete groups (FR-004)
 
 ### 5.2 Verify RLS Security
 

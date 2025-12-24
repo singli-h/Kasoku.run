@@ -36,38 +36,51 @@ These operations are handled by the backend, NOT exposed as AI tools:
 
 ### initializeTrainingSession
 
-When an athlete opens a workout, the backend automatically creates `training_session` and `training_details` by copying from the assigned plan.
+When an athlete opens a workout, the backend automatically creates `workout_log`, `workout_log_exercises`, and `workout_log_sets` by copying from the assigned plan.
 
 ```typescript
 // Backend function, NOT an AI tool
 async function initializeTrainingSession(
-  presetGroupId: string,
+  sessionPlanId: string,
   athleteId: string,
   scheduledDate: Date
-): Promise<TrainingSession> {
-  // 1. Create training_session from preset_group
-  const session = await createTrainingSession({
-    exercise_preset_group_id: presetGroupId,
+): Promise<WorkoutLog> {
+  // 1. Create workout_log from session_plan
+  const workoutLog = await createWorkoutLog({
+    session_plan_id: sessionPlanId,
     athlete_id: athleteId,
     date_time: scheduledDate,
     session_status: 'assigned'
   })
 
-  // 2. Copy preset_details → training_details (with null actuals)
-  const presetDetails = await getPresetDetails(presetGroupId)
-  for (const preset of presetDetails) {
-    await createTrainingDetail({
-      exercise_training_session_id: session.id,
-      exercise_preset_id: preset.id,
-      set_index: preset.set_index,
-      // Actuals start as null - AI will help athlete fill these
-      reps: null,
-      weight: null,
-      completed: false
+  // 2. Copy session_plan_exercises → workout_log_exercises
+  const planExercises = await getSessionPlanExercises(sessionPlanId)
+  for (const planExercise of planExercises) {
+    const workoutLogExercise = await createWorkoutLogExercise({
+      workout_log_id: workoutLog.id,
+      exercise_id: planExercise.exercise_id,
+      session_plan_exercise_id: planExercise.id,
+      exercise_order: planExercise.exercise_order,
+      superset_id: planExercise.superset_id
     })
+
+    // 3. Copy session_plan_sets → workout_log_sets (with null actuals)
+    const planSets = await getSessionPlanSets(planExercise.id)
+    for (const planSet of planSets) {
+      await createWorkoutLogSet({
+        workout_log_id: workoutLog.id,
+        workout_log_exercise_id: workoutLogExercise.id,
+        session_plan_exercise_id: planExercise.id,
+        set_index: planSet.set_index,
+        // Actuals start as null - AI will help athlete fill these
+        reps: null,
+        weight: null,
+        completed: false
+      })
+    }
   }
 
-  return session
+  return workoutLog
 }
 ```
 
@@ -97,7 +110,7 @@ Get the current session structure for AI understanding.
     properties: {
       sessionId: {
         type: "string",
-        description: "ID of the session (preset_group or training_session)"
+        description: "ID of the session (session_plan or workout_log)"
       },
       includeHistory: {
         type: "boolean",
@@ -121,7 +134,7 @@ Get the current session structure for AI understanding.
     id: string,
     exerciseId: string,
     exerciseName: string,
-    presetOrder: number,
+    exerciseOrder: number,
     supersetId: string | null,
     notes: string | null,
     sets: [{
@@ -147,9 +160,10 @@ Get the current session structure for AI understanding.
   },
   exercises: [{
     id: string,
-    exercisePresetId: string,
+    workoutLogExerciseId: string,
+    sessionPlanExerciseId: string,
     exerciseName: string,
-    presetOrder: number,
+    exerciseOrder: number,
     prescribed: {
       reps: number,
       weight: number | null,
@@ -310,7 +324,7 @@ Add an exercise to the session.
         type: "string",
         description: "Name for display"
       },
-      presetOrder: {
+      exerciseOrder: {
         type: "integer",
         description: "Position in session (0-based)"
       },
@@ -343,11 +357,11 @@ Update exercise settings. **Also used for swapping exercises** by providing a ne
   description: "Update an exercise's settings in the session template. To swap exercises, provide a new exerciseId.",
   parameters: {
     type: "object",
-    required: ["presetExerciseId", "reasoning"],
+    required: ["sessionPlanExerciseId", "reasoning"],
     properties: {
-      presetExerciseId: {
+      sessionPlanExerciseId: {
         type: "string",
-        description: "ID of the exercise preset to update"
+        description: "ID of the session plan exercise to update"
       },
       exerciseId: {
         type: "string",
@@ -357,7 +371,7 @@ Update exercise settings. **Also used for swapping exercises** by providing a ne
         type: "string",
         description: "New exercise name (required when swapping)"
       },
-      presetOrder: {
+      exerciseOrder: {
         type: "integer"
       },
       supersetId: {
@@ -384,11 +398,11 @@ Remove an exercise from the session.
   description: "Remove an exercise from the session template.",
   parameters: {
     type: "object",
-    required: ["presetExerciseId", "reasoning"],
+    required: ["sessionPlanExerciseId", "reasoning"],
     properties: {
-      presetExerciseId: {
+      sessionPlanExerciseId: {
         type: "string",
-        description: "ID of the exercise to remove"
+        description: "ID of the session plan exercise to remove"
       },
       reasoning: {
         type: "string"
@@ -412,11 +426,11 @@ Add sets to an exercise.
   description: "Add one or more sets to an exercise in the template.",
   parameters: {
     type: "object",
-    required: ["presetExerciseId", "reasoning"],
+    required: ["sessionPlanExerciseId", "reasoning"],
     properties: {
-      presetExerciseId: {
+      sessionPlanExerciseId: {
         type: "string",
-        description: "Parent exercise ID"
+        description: "Parent session plan exercise ID"
       },
       setCount: {
         type: "integer",
@@ -469,11 +483,11 @@ Update set parameters.
   description: "Update parameters for a specific set or all sets of an exercise.",
   parameters: {
     type: "object",
-    required: ["presetExerciseId", "reasoning"],
+    required: ["sessionPlanExerciseId", "reasoning"],
     properties: {
-      presetExerciseId: {
+      sessionPlanExerciseId: {
         type: "string",
-        description: "Parent exercise ID"
+        description: "Parent session plan exercise ID"
       },
       setIndex: {
         type: "integer",
@@ -508,10 +522,11 @@ Remove sets from an exercise.
   description: "Remove sets from an exercise in the template.",
   parameters: {
     type: "object",
-    required: ["presetExerciseId", "reasoning"],
+    required: ["sessionPlanExerciseId", "reasoning"],
     properties: {
-      presetExerciseId: {
-        type: "string"
+      sessionPlanExerciseId: {
+        type: "string",
+        description: "Parent session plan exercise ID"
       },
       setIndex: {
         type: "integer",
@@ -538,7 +553,7 @@ Remove sets from an exercise.
 
 #### createTrainingSetChangeRequest
 
-Log actual performance for a set. Creates a training detail record.
+Log actual performance for a set. Creates a workout log set record.
 
 ```typescript
 {
@@ -546,11 +561,11 @@ Log actual performance for a set. Creates a training detail record.
   description: "Log the athlete's actual performance for a set.",
   parameters: {
     type: "object",
-    required: ["exercisePresetId", "setIndex", "reasoning"],
+    required: ["workoutLogExerciseId", "setIndex", "reasoning"],
     properties: {
-      exercisePresetId: {
+      workoutLogExerciseId: {
         type: "string",
-        description: "Exercise preset ID in this workout"
+        description: "Workout log exercise ID in this workout"
       },
       setIndex: {
         type: "integer",
@@ -603,11 +618,11 @@ Update already-logged performance.
   description: "Update performance data that was already logged.",
   parameters: {
     type: "object",
-    required: ["trainingDetailId", "reasoning"],
+    required: ["workoutLogSetId", "reasoning"],
     properties: {
-      trainingDetailId: {
+      workoutLogSetId: {
         type: "string",
-        description: "ID of the training detail to update"
+        description: "ID of the workout log set to update"
       },
       reps: { type: "integer" },
       weight: { type: "number" },
@@ -633,11 +648,11 @@ Update session-level properties (notes only).
   description: "Update the athlete's workout session notes.",
   parameters: {
     type: "object",
-    required: ["trainingSessionId", "reasoning"],
+    required: ["workoutLogId", "reasoning"],
     properties: {
-      trainingSessionId: {
+      workoutLogId: {
         type: "string",
-        description: "ID of the training session"
+        description: "ID of the workout log"
       },
       notes: {
         type: "string",
@@ -795,7 +810,7 @@ Each tool input is transformed to standard `ChangeRequest` format by the transfo
 {
   exerciseId: "ex-123",
   exerciseName: "Romanian Deadlifts",
-  presetOrder: 3,
+  exerciseOrder: 3,
   reasoning: "Added for posterior chain"
 }
 
@@ -809,7 +824,7 @@ Each tool input is transformed to standard `ChangeRequest` format by the transfo
   proposedData: {
     exerciseId: "ex-123",
     exerciseName: "Romanian Deadlifts",
-    presetOrder: 3
+    exerciseOrder: 3
   },
   executionOrder: 0,
   aiReasoning: "Added for posterior chain"

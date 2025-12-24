@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useExerciseContext } from "../../index"
 import type { WorkoutExercise } from "../../index"
-import type { ExerciseTrainingDetail } from "@/types/training"
+import type { WorkoutLogSet } from "@/types/training"
 import { SetTable, getDisplayColumns, DEFAULT_FIELD_CONFIG } from "./set-row"
 
 interface ExerciseCardProps {
@@ -30,7 +30,7 @@ interface ExerciseCardProps {
 
 // Exercise field configuration for dynamic table layout
 interface ExerciseField {
-  key: keyof ExerciseTrainingDetail
+  key: keyof WorkoutLogSet
   label: string
   type: 'number' | 'time' | 'text'
   required?: boolean
@@ -56,7 +56,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
 
   // Determine which fields to show based on available data
   const availableFields = useMemo(() => {
-    const details = exercise.exercise_training_details || []
+    const details = exercise.workout_log_sets || []
     const hasData = (field: ExerciseField) => {
       return details.some(detail => detail[field.key] !== null && detail[field.key] !== undefined)
     }
@@ -72,11 +72,11 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
     // Combine and dedupe
     const allFields = [...new Set([...fieldsWithData, ...basicFields])]
     return allFields.slice(0, 6) // Limit to 6 fields for clean layout
-  }, [exercise.exercise_training_details])
+  }, [exercise.workout_log_sets])
 
   // Calculate completion status
   const completionStatus = useMemo(() => {
-    const details = exercise.exercise_training_details || []
+    const details = exercise.workout_log_sets || []
     const totalSets = (exercise as any).sets || details.length || 1
     const completedSets = details.filter(detail => detail.completed).length
 
@@ -86,18 +86,19 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
       percentage: totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0,
       isComplete: completedSets >= totalSets && totalSets > 0
     }
-  }, [exercise.exercise_training_details, (exercise as any).sets])
+  }, [exercise.workout_log_sets, (exercise as any).sets])
 
   // Handle set data updates
-  const updateSetData = (setIndex: number, field: keyof ExerciseTrainingDetail, value: any) => {
-    const updatedDetails = [...(exercise.exercise_training_details || [])]
+  const updateSetData = (setIndex: number, field: keyof WorkoutLogSet, value: any) => {
+    const updatedDetails = [...(exercise.workout_log_sets || [])]
     
     // Ensure we have enough detail entries
     while (updatedDetails.length <= setIndex) {
       updatedDetails.push({
         id: 0, // Will be set by backend
-        exercise_training_session_id: 0, // Will be set by backend
-        exercise_preset_id: null,
+        workout_log_id: 0, // Will be set by backend
+        workout_log_exercise_id: null, // Links to workout_log_exercises table
+        session_plan_exercise_id: null, // Links to original session plan exercise
         set_index: updatedDetails.length + 1,
         completed: false,
         reps: null,
@@ -114,7 +115,8 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
         metadata: null,
         rpe: null,
         rest_time: null,
-        created_at: null
+        created_at: null,
+        updated_at: null
       })
     }
 
@@ -126,13 +128,13 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
 
     // Update exercise with new details
     updateExercise(exercise.id, {
-      exercise_training_details: updatedDetails
+      workout_log_sets: updatedDetails
     })
   }
 
   // Handle set completion toggle
   const toggleSetCompletion = (setIndex: number) => {
-    const detail = exercise.exercise_training_details?.[setIndex]
+    const detail = exercise.workout_log_sets?.[setIndex]
     if (!detail?.id) return // Need a valid detail ID
 
     toggleSetComplete(exercise.id, detail.id)
@@ -147,14 +149,14 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
   // Generate sets for display
   const sets = useMemo(() => {
     const targetSets = (exercise as any).sets || 3
-    const details = exercise.exercise_training_details || []
+    const details = exercise.workout_log_sets || []
 
     return Array.from({ length: Math.max(targetSets, details.length) }, (_, index) => ({
       index,
       detail: details[index] || null,
       isCompleted: details[index]?.completed || false
     }))
-  }, [(exercise as any).sets, exercise.exercise_training_details])
+  }, [(exercise as any).sets, exercise.workout_log_sets])
 
   return (
     <Card className={cn(
@@ -176,7 +178,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
 
             {/* Order Badge */}
             <Badge variant="outline" className="text-xs">
-              #{exercise.preset_order}
+              #{exercise.exercise_order}
             </Badge>
 
             {/* Completion Badge */}

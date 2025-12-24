@@ -14,7 +14,7 @@ import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import { 
   ExerciseTrainingSessionWithDetails,
-  ExercisePresetGroupWithDetails
+  SessionPlanWithDetails
 } from "@/types/training"
 import { Database } from "@/types/database"
 
@@ -64,23 +64,24 @@ export async function getTodayAndOngoingSessionsAction(
 
     // 5. Query sessions with proper prioritization
     // Optimized: Select only required fields instead of *
+    // Now includes workout_log_exercises with nested workout_log_sets
     const { data: sessions, error } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select(`
         id,
         date_time,
         session_status,
         notes,
         athlete_id,
-        exercise_preset_group_id,
-        exercise_preset_group:exercise_preset_groups(
+        session_plan_id,
+        session_plan:session_plans(
           id,
           name,
           description,
           date,
-          exercise_presets(
+          session_plan_exercises(
             id,
-            preset_order,
+            exercise_order,
             notes,
             exercise_id,
             superset_id,
@@ -92,7 +93,7 @@ export async function getTodayAndOngoingSessionsAction(
               exercise_type:exercise_types(id, type),
               unit:units(id, name)
             ),
-            exercise_preset_details(
+            session_plan_sets(
               id,
               set_index,
               reps,
@@ -109,7 +110,33 @@ export async function getTodayAndOngoingSessionsAction(
           user_id,
           athlete_group_id
         ),
-        exercise_training_details(
+        workout_log_exercises(
+          id,
+          exercise_id,
+          exercise_order,
+          superset_id,
+          notes,
+          session_plan_exercise_id,
+          exercise:exercises(
+            id,
+            name,
+            description,
+            video_url,
+            exercise_type:exercise_types(id, type),
+            unit:units(id, name)
+          ),
+          workout_log_sets(
+            id,
+            set_index,
+            reps,
+            weight,
+            distance,
+            performing_time,
+            completed,
+            workout_log_exercise_id
+          )
+        ),
+        workout_log_sets(
           id,
           set_index,
           reps,
@@ -117,7 +144,8 @@ export async function getTodayAndOngoingSessionsAction(
           distance,
           performing_time,
           completed,
-          exercise_preset_id
+          workout_log_exercise_id,
+          session_plan_exercise_id
         )
       `)
       .eq('athlete_id', targetAthleteId)
@@ -126,16 +154,17 @@ export async function getTodayAndOngoingSessionsAction(
       .order('date_time', { ascending: true })
 
     if (error) {
-      console.error('Error fetching sessions:', error)
+      console.error('[getTodayAndOngoingSessionsAction] Error:', error)
       return { isSuccess: false, message: "Failed to fetch sessions" }
     }
 
     // 6. Transform and return data
     const transformedSessions: ExerciseTrainingSessionWithDetails[] = (sessions || []).map((session: any) => ({
       ...session,
-      exercise_preset_group: session.exercise_preset_group as ExercisePresetGroupWithDetails,
+      session_plan: session.session_plan as SessionPlanWithDetails,
       athlete: session.athlete,
-      exercise_training_details: session.exercise_training_details || []
+      workout_log_exercises: session.workout_log_exercises || [],
+      workout_log_sets: session.workout_log_sets || []
     }))
 
     return {
@@ -190,23 +219,24 @@ export async function getPastSessionsAction(
 
     // 4. Build date filter
     // Optimized: Select only required fields instead of *
+    // Now includes workout_log_exercises with nested workout_log_sets
     let dateFilter = supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select(`
         id,
         date_time,
         session_status,
         notes,
         athlete_id,
-        exercise_preset_group_id,
-        exercise_preset_group:exercise_preset_groups(
+        session_plan_id,
+        session_plan:session_plans(
           id,
           name,
           description,
           date,
-          exercise_presets(
+          session_plan_exercises(
             id,
-            preset_order,
+            exercise_order,
             notes,
             exercise_id,
             superset_id,
@@ -218,7 +248,7 @@ export async function getPastSessionsAction(
               exercise_type:exercise_types(id, type),
               unit:units(id, name)
             ),
-            exercise_preset_details(
+            session_plan_sets(
               id,
               set_index,
               reps,
@@ -235,7 +265,33 @@ export async function getPastSessionsAction(
           user_id,
           athlete_group_id
         ),
-        exercise_training_details(
+        workout_log_exercises(
+          id,
+          exercise_id,
+          exercise_order,
+          superset_id,
+          notes,
+          session_plan_exercise_id,
+          exercise:exercises(
+            id,
+            name,
+            description,
+            video_url,
+            exercise_type:exercise_types(id, type),
+            unit:units(id, name)
+          ),
+          workout_log_sets(
+            id,
+            set_index,
+            reps,
+            weight,
+            distance,
+            performing_time,
+            completed,
+            workout_log_exercise_id
+          )
+        ),
+        workout_log_sets(
           id,
           set_index,
           reps,
@@ -243,7 +299,8 @@ export async function getPastSessionsAction(
           distance,
           performing_time,
           completed,
-          exercise_preset_id
+          workout_log_exercise_id,
+          session_plan_exercise_id
         )
       `)
       .eq('athlete_id', targetAthleteId)
@@ -258,7 +315,7 @@ export async function getPastSessionsAction(
 
     // 5. Get total count
     const { count, error: countError } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select('*', { count: 'exact', head: true })
       .eq('athlete_id', targetAthleteId)
       .eq('session_status', 'completed')
@@ -281,9 +338,10 @@ export async function getPastSessionsAction(
     // 7. Transform and return data
     const transformedSessions: ExerciseTrainingSessionWithDetails[] = (sessions || []).map((session: any) => ({
       ...session,
-      exercise_preset_group: session.exercise_preset_group as ExercisePresetGroupWithDetails,
+      session_plan: session.session_plan as SessionPlanWithDetails,
       athlete: session.athlete,
-      exercise_training_details: session.exercise_training_details || []
+      workout_log_exercises: session.workout_log_exercises || [],
+      workout_log_sets: session.workout_log_sets || []
     }))
 
     const totalCount = count || 0
@@ -310,7 +368,7 @@ export async function getPastSessionsAction(
 export async function updateTrainingSessionStatusAction(
   sessionId: number,
   status: SessionStatus
-): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
+): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
     // 1. Authentication check
     const { userId } = await auth()
@@ -323,7 +381,7 @@ export async function updateTrainingSessionStatusAction(
 
     // 3. Update session status
     const { data: session, error } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .update({ 
         session_status: status,
         updated_at: new Date().toISOString()
@@ -353,7 +411,7 @@ export async function updateTrainingSessionStatusAction(
  */
 export async function startTrainingSessionAction(
   sessionId: number
-): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
+): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
     // 1. Authentication check
     const { userId } = await auth()
@@ -366,7 +424,7 @@ export async function startTrainingSessionAction(
 
     // 3. Update session to ongoing
     const { data: session, error } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .update({ 
         session_status: 'ongoing',
         updated_at: new Date().toISOString()
@@ -396,7 +454,7 @@ export async function startTrainingSessionAction(
  */
 export async function completeTrainingSessionAction(
   sessionId: number
-): Promise<ActionState<Database["public"]["Tables"]["exercise_training_sessions"]["Row"]>> {
+): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
     // 1. Authentication check
     const { userId } = await auth()
@@ -409,7 +467,7 @@ export async function completeTrainingSessionAction(
 
     // 3. Update session to completed
     const { data: session, error } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .update({ 
         session_status: 'completed',
         updated_at: new Date().toISOString()

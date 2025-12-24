@@ -71,18 +71,18 @@ export function SessionDurationDisplay({
 
 // Utility function to calculate session duration
 export function calculateSessionDuration(session: ExerciseTrainingSessionWithDetails): string {
-  if (!session.exercise_preset_group?.exercise_presets) {
+  if (!session.session_plan?.session_plan_exercises) {
     return '0 min'
   }
 
   // Calculate total duration from exercise presets
-  const totalDuration = session.exercise_preset_group.exercise_presets.reduce((total: number, preset: any) => {
+  const totalDuration = session.session_plan.session_plan_exercises.reduce((total: number, preset: any) => {
     return total + (preset.duration_minutes || 0)
   }, 0)
 
   // If no duration is set, estimate based on exercise count
   if (totalDuration === 0) {
-    const exerciseCount = session.exercise_preset_group.exercise_presets.length
+    const exerciseCount = session.session_plan.session_plan_exercises.length
     const estimatedMinutes = exerciseCount * 3 // Rough estimate: 3 minutes per exercise
     return `${estimatedMinutes} min`
   }
@@ -99,16 +99,16 @@ export function calculateSessionDuration(session: ExerciseTrainingSessionWithDet
 
 // Utility function to get duration in minutes
 export function getSessionDurationMinutes(session: ExerciseTrainingSessionWithDetails): number {
-  if (!session.exercise_preset_group?.exercise_presets) {
+  if (!session.session_plan?.session_plan_exercises) {
     return 0
   }
 
-  const totalDuration = session.exercise_preset_group.exercise_presets.reduce((total: number, preset: any) => {
+  const totalDuration = session.session_plan.session_plan_exercises.reduce((total: number, preset: any) => {
     return total + (preset.duration_minutes || 0)
   }, 0)
 
   if (totalDuration === 0) {
-    const exerciseCount = session.exercise_preset_group.exercise_presets.length
+    const exerciseCount = session.session_plan.session_plan_exercises.length
     return exerciseCount * 3 // Rough estimate: 3 minutes per exercise
   }
 

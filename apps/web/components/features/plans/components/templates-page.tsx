@@ -60,9 +60,9 @@ import { cn } from "@/lib/utils"
 import { getTemplatesAction, createPlanFromTemplateAction, deleteTemplateAction } from "@/actions/plans/session-plan-actions"
 
 // Types
-import { ExercisePresetGroup } from "@/types/training"
+import { SessionPlan } from "@/types/training"
 
-interface TemplateWithStats extends ExercisePresetGroup {
+interface TemplateWithStats extends SessionPlan {
   usage_count: number
   avg_rating: number
   creator_name: string

@@ -105,14 +105,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_athlete_cycles_athlete_id"
+            foreignKeyName: "athlete_cycles_athlete_id_fkey"
             columns: ["athlete_id"]
             isOneToOne: false
             referencedRelation: "athletes"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_athlete_cycles_macrocycle_id"
+            foreignKeyName: "athlete_cycles_macrocycle_id_fkey"
             columns: ["macrocycle_id"]
             isOneToOne: false
             referencedRelation: "macrocycles"
@@ -175,18 +175,21 @@ export type Database = {
           created_at: string | null
           group_name: string | null
           id: number
+          updated_at: string | null
         }
         Insert: {
           coach_id?: number | null
           created_at?: string | null
           group_name?: string | null
           id?: number
+          updated_at?: string | null
         }
         Update: {
           coach_id?: number | null
           created_at?: string | null
           group_name?: string | null
           id?: number
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -200,49 +203,49 @@ export type Database = {
       }
       athlete_personal_bests: {
         Row: {
-          id: number
-          athlete_id: number
-          exercise_id: number | null
-          event_id: number | null
-          value: number
-          unit_id: number
-          metadata: Json | null
           achieved_date: string
-          session_id: number | null
-          verified: boolean
+          athlete_id: number
+          created_at: string | null
+          event_id: number | null
+          exercise_id: number | null
+          id: number
+          metadata: Json | null
           notes: string | null
-          created_at: string
-          updated_at: string
+          session_id: number | null
+          unit_id: number
+          updated_at: string | null
+          value: number
+          verified: boolean | null
         }
         Insert: {
-          id?: number
-          athlete_id: number
-          exercise_id?: number | null
-          event_id?: number | null
-          value: number
-          unit_id: number
-          metadata?: Json | null
           achieved_date?: string
-          session_id?: number | null
-          verified?: boolean
+          athlete_id: number
+          created_at?: string | null
+          event_id?: number | null
+          exercise_id?: number | null
+          id?: number
+          metadata?: Json | null
           notes?: string | null
-          created_at?: string
-          updated_at?: string
+          session_id?: number | null
+          unit_id: number
+          updated_at?: string | null
+          value: number
+          verified?: boolean | null
         }
         Update: {
-          id?: number
-          athlete_id?: number
-          exercise_id?: number | null
-          event_id?: number | null
-          value?: number
-          unit_id?: number
-          metadata?: Json | null
           achieved_date?: string
-          session_id?: number | null
-          verified?: boolean
+          athlete_id?: number
+          created_at?: string | null
+          event_id?: number | null
+          exercise_id?: number | null
+          id?: number
+          metadata?: Json | null
           notes?: string | null
-          created_at?: string
-          updated_at?: string
+          session_id?: number | null
+          unit_id?: number
+          updated_at?: string | null
+          value?: number
+          verified?: boolean | null
         }
         Relationships: [
           {
@@ -253,13 +256,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "athlete_personal_bests_exercise_id_fkey"
-            columns: ["exercise_id"]
-            isOneToOne: false
-            referencedRelation: "exercises"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "athlete_personal_bests_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
@@ -267,10 +263,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "athlete_personal_bests_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "athlete_personal_bests_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
-            referencedRelation: "exercise_training_sessions"
+            referencedRelation: "workout_logs"
             referencedColumns: ["id"]
           },
           {
@@ -285,35 +288,48 @@ export type Database = {
       athletes: {
         Row: {
           athlete_group_id: number | null
+          created_at: string | null
           events: Json | null
           experience: string | null
           height: number | null
           id: number
           training_goals: string | null
-          user_id: number | null
+          updated_at: string | null
+          user_id: number
           weight: number | null
         }
         Insert: {
           athlete_group_id?: number | null
+          created_at?: string | null
           events?: Json | null
           experience?: string | null
           height?: number | null
           id?: number
           training_goals?: string | null
-          user_id?: number | null
+          updated_at?: string | null
+          user_id: number
           weight?: number | null
         }
         Update: {
           athlete_group_id?: number | null
+          created_at?: string | null
           events?: Json | null
           experience?: string | null
           height?: number | null
           id?: number
           training_goals?: string | null
-          user_id?: number | null
+          updated_at?: string | null
+          user_id?: number
           weight?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "athletes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_athletes_group"
             columns: ["athlete_group_id"]
@@ -321,43 +337,42 @@ export type Database = {
             referencedRelation: "athlete_groups"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "fk_athletes_user_id"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       coaches: {
         Row: {
+          created_at: string | null
           experience: string | null
           id: number
           philosophy: string | null
           speciality: string | null
           sport_focus: string | null
+          updated_at: string | null
           user_id: number | null
         }
         Insert: {
+          created_at?: string | null
           experience?: string | null
           id?: number
           philosophy?: string | null
           speciality?: string | null
           sport_focus?: string | null
+          updated_at?: string | null
           user_id?: number | null
         }
         Update: {
+          created_at?: string | null
           experience?: string | null
           id?: number
           philosophy?: string | null
           speciality?: string | null
           sport_focus?: string | null
+          updated_at?: string | null
           user_id?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "fk_coaches_user_id"
+            foreignKeyName: "coaches_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -392,201 +407,6 @@ export type Database = {
         }
         Relationships: []
       }
-      exercise_preset_details: {
-        Row: {
-          created_at: string | null
-          distance: number | null
-          effort: number | null
-          exercise_preset_id: number | null
-          height: number | null
-          id: number
-          metadata: Json | null
-          performing_time: number | null
-          power: number | null
-          reps: number | null
-          resistance: number | null
-          resistance_unit_id: number | null
-          rest_time: number | null
-          rpe: number | null
-          set_index: number | null
-          tempo: string | null
-          velocity: number | null
-          weight: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          distance?: number | null
-          effort?: number | null
-          exercise_preset_id?: number | null
-          height?: number | null
-          id?: number
-          metadata?: Json | null
-          performing_time?: number | null
-          power?: number | null
-          reps?: number | null
-          resistance?: number | null
-          resistance_unit_id?: number | null
-          rest_time?: number | null
-          rpe?: number | null
-          set_index?: number | null
-          target_intensity?: number | null
-          tempo?: string | null
-          velocity?: number | null
-          weight?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          distance?: number | null
-          effort?: number | null
-          exercise_preset_id?: number | null
-          height?: number | null
-          id?: number
-          metadata?: Json | null
-          performing_time?: number | null
-          power?: number | null
-          reps?: number | null
-          resistance?: number | null
-          resistance_unit_id?: number | null
-          rest_time?: number | null
-          rpe?: number | null
-          set_index?: number | null
-          target_intensity?: number | null
-          tempo?: string | null
-          velocity?: number | null
-          weight?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_epd_preset"
-            columns: ["exercise_preset_id"]
-            isOneToOne: false
-            referencedRelation: "exercise_presets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_epd_unit"
-            columns: ["resistance_unit_id"]
-            isOneToOne: false
-            referencedRelation: "units"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      exercise_preset_groups: {
-        Row: {
-          athlete_group_id: number | null
-          created_at: string | null
-          date: string | null
-          day: number | null
-          deleted: boolean | null
-          description: string | null
-          id: number
-          is_template: boolean | null
-          microcycle_id: number | null
-          name: string | null
-          session_mode: string | null
-          updated_at: string | null
-          user_id: number | null
-          week: number | null
-        }
-        Insert: {
-          athlete_group_id?: number | null
-          created_at?: string | null
-          date?: string | null
-          day?: number | null
-          deleted?: boolean | null
-          description?: string | null
-          id?: number
-          is_template?: boolean | null
-          microcycle_id?: number | null
-          name?: string | null
-          session_mode?: string | null
-          updated_at?: string | null
-          user_id?: number | null
-          week?: number | null
-        }
-        Update: {
-          athlete_group_id?: number | null
-          created_at?: string | null
-          date?: string | null
-          day?: number | null
-          deleted?: boolean | null
-          description?: string | null
-          id?: number
-          is_template?: boolean | null
-          microcycle_id?: number | null
-          name?: string | null
-          session_mode?: string | null
-          updated_at?: string | null
-          user_id?: number | null
-          week?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "exercise_preset_groups_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_epg_athlete_group"
-            columns: ["athlete_group_id"]
-            isOneToOne: false
-            referencedRelation: "athlete_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_epg_microcycle"
-            columns: ["microcycle_id"]
-            isOneToOne: false
-            referencedRelation: "microcycles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      exercise_presets: {
-        Row: {
-          exercise_id: number | null
-          exercise_preset_group_id: number | null
-          id: number
-          notes: string | null
-          preset_order: number | null
-          superset_id: number | null
-        }
-        Insert: {
-          exercise_id?: number | null
-          exercise_preset_group_id?: number | null
-          id?: number
-          notes?: string | null
-          preset_order?: number | null
-          superset_id?: number | null
-        }
-        Update: {
-          exercise_id?: number | null
-          exercise_preset_group_id?: number | null
-          id?: number
-          notes?: string | null
-          preset_order?: number | null
-          superset_id?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_ep_exercise"
-            columns: ["exercise_id"]
-            isOneToOne: false
-            referencedRelation: "exercises"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ep_group"
-            columns: ["exercise_preset_group_id"]
-            isOneToOne: false
-            referencedRelation: "exercise_preset_groups"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       exercise_tags: {
         Row: {
           exercise_id: number | null
@@ -620,161 +440,6 @@ export type Database = {
           },
         ]
       }
-      exercise_training_details: {
-        Row: {
-          completed: boolean | null
-          created_at: string | null
-          distance: number | null
-          effort: number | null
-          exercise_preset_id: number | null
-          exercise_training_session_id: number | null
-          height: number | null
-          id: number
-          metadata: Json | null
-          performing_time: number | null
-          power: number | null
-          reps: number | null
-          resistance: number | null
-          resistance_unit_id: number | null
-          rest_time: number | null
-          rpe: number | null
-          set_index: number | null
-          tempo: string | null
-          velocity: number | null
-          weight: number | null
-        }
-        Insert: {
-          completed?: boolean | null
-          created_at?: string | null
-          distance?: number | null
-          effort?: number | null
-          exercise_preset_id?: number | null
-          exercise_training_session_id?: number | null
-          height?: number | null
-          id?: number
-          metadata?: Json | null
-          performing_time?: number | null
-          power?: number | null
-          reps?: number | null
-          resistance?: number | null
-          resistance_unit_id?: number | null
-          rest_time?: number | null
-          rpe?: number | null
-          set_index?: number | null
-          tempo?: string | null
-          velocity?: number | null
-          weight?: number | null
-        }
-        Update: {
-          completed?: boolean | null
-          created_at?: string | null
-          distance?: number | null
-          effort?: number | null
-          exercise_preset_id?: number | null
-          exercise_training_session_id?: number | null
-          height?: number | null
-          id?: number
-          metadata?: Json | null
-          performing_time?: number | null
-          power?: number | null
-          reps?: number | null
-          resistance?: number | null
-          resistance_unit_id?: number | null
-          rest_time?: number | null
-          rpe?: number | null
-          set_index?: number | null
-          tempo?: string | null
-          velocity?: number | null
-          weight?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_etd_preset"
-            columns: ["exercise_preset_id"]
-            isOneToOne: false
-            referencedRelation: "exercise_presets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_etd_session"
-            columns: ["exercise_training_session_id"]
-            isOneToOne: false
-            referencedRelation: "exercise_training_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_etd_unit"
-            columns: ["resistance_unit_id"]
-            isOneToOne: false
-            referencedRelation: "units"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      exercise_training_sessions: {
-        Row: {
-          athlete_group_id: number | null
-          athlete_id: number | null
-          created_at: string | null
-          date_time: string | null
-          description: string | null
-          exercise_preset_group_id: number | null
-          id: number
-          notes: string | null
-          session_mode: string | null
-          session_status: Database["public"]["Enums"]["session_status"]
-          updated_at: string | null
-        }
-        Insert: {
-          athlete_group_id?: number | null
-          athlete_id?: number | null
-          created_at?: string | null
-          date_time?: string | null
-          description?: string | null
-          exercise_preset_group_id?: number | null
-          id?: number
-          notes?: string | null
-          session_mode?: string | null
-          session_status: Database["public"]["Enums"]["session_status"]
-          updated_at?: string | null
-        }
-        Update: {
-          athlete_group_id?: number | null
-          athlete_id?: number | null
-          created_at?: string | null
-          date_time?: string | null
-          description?: string | null
-          exercise_preset_group_id?: number | null
-          id?: number
-          notes?: string | null
-          session_mode?: string | null
-          session_status?: Database["public"]["Enums"]["session_status"]
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_ets_athlete"
-            columns: ["athlete_id"]
-            isOneToOne: false
-            referencedRelation: "athletes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ets_group"
-            columns: ["athlete_group_id"]
-            isOneToOne: false
-            referencedRelation: "athlete_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ets_preset_group"
-            columns: ["exercise_preset_group_id"]
-            isOneToOne: false
-            referencedRelation: "exercise_preset_groups"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       exercise_types: {
         Row: {
           description: string | null
@@ -795,6 +460,7 @@ export type Database = {
       }
       exercises: {
         Row: {
+          created_at: string | null
           description: string | null
           embedding: string | null
           exercise_type_id: number | null
@@ -802,14 +468,16 @@ export type Database = {
           is_archived: boolean | null
           name: string | null
           owner_user_id: number | null
-          search_tsv: unknown | null
+          search_tsv: unknown
           unit_id: number | null
+          updated_at: string | null
           video_url: string | null
           visibility:
             | Database["public"]["Enums"]["exercise_visibility_type"]
             | null
         }
         Insert: {
+          created_at?: string | null
           description?: string | null
           embedding?: string | null
           exercise_type_id?: number | null
@@ -817,14 +485,16 @@ export type Database = {
           is_archived?: boolean | null
           name?: string | null
           owner_user_id?: number | null
-          search_tsv?: unknown | null
+          search_tsv?: unknown
           unit_id?: number | null
+          updated_at?: string | null
           video_url?: string | null
           visibility?:
             | Database["public"]["Enums"]["exercise_visibility_type"]
             | null
         }
         Update: {
+          created_at?: string | null
           description?: string | null
           embedding?: string | null
           exercise_type_id?: number | null
@@ -832,8 +502,9 @@ export type Database = {
           is_archived?: boolean | null
           name?: string | null
           owner_user_id?: number | null
-          search_tsv?: unknown | null
+          search_tsv?: unknown
           unit_id?: number | null
+          updated_at?: string | null
           video_url?: string | null
           visibility?:
             | Database["public"]["Enums"]["exercise_visibility_type"]
@@ -955,6 +626,7 @@ export type Database = {
           id: number
           name: string | null
           start_date: string | null
+          updated_at: string | null
           user_id: number | null
         }
         Insert: {
@@ -965,6 +637,7 @@ export type Database = {
           id?: number
           name?: string | null
           start_date?: string | null
+          updated_at?: string | null
           user_id?: number | null
         }
         Update: {
@@ -975,6 +648,7 @@ export type Database = {
           id?: number
           name?: string | null
           start_date?: string | null
+          updated_at?: string | null
           user_id?: number | null
         }
         Relationships: [
@@ -1004,6 +678,7 @@ export type Database = {
           metadata: Json | null
           name: string | null
           start_date: string | null
+          updated_at: string | null
           user_id: number | null
         }
         Insert: {
@@ -1015,6 +690,7 @@ export type Database = {
           metadata?: Json | null
           name?: string | null
           start_date?: string | null
+          updated_at?: string | null
           user_id?: number | null
         }
         Update: {
@@ -1026,6 +702,7 @@ export type Database = {
           metadata?: Json | null
           name?: string | null
           start_date?: string | null
+          updated_at?: string | null
           user_id?: number | null
         }
         Relationships: [
@@ -1055,6 +732,7 @@ export type Database = {
           mesocycle_id: number | null
           name: string | null
           start_date: string | null
+          updated_at: string | null
           user_id: number | null
           volume: number | null
         }
@@ -1067,6 +745,7 @@ export type Database = {
           mesocycle_id?: number | null
           name?: string | null
           start_date?: string | null
+          updated_at?: string | null
           user_id?: number | null
           volume?: number | null
         }
@@ -1079,6 +758,7 @@ export type Database = {
           mesocycle_id?: number | null
           name?: string | null
           start_date?: string | null
+          updated_at?: string | null
           user_id?: number | null
           volume?: number | null
         }
@@ -1153,6 +833,208 @@ export type Database = {
           },
         ]
       }
+      session_plan_exercises: {
+        Row: {
+          created_at: string | null
+          exercise_id: number | null
+          exercise_order: number | null
+          id: number
+          notes: string | null
+          session_plan_id: number | null
+          superset_id: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          exercise_id?: number | null
+          exercise_order?: number | null
+          id?: number
+          notes?: string | null
+          session_plan_id?: number | null
+          superset_id?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          exercise_id?: number | null
+          exercise_order?: number | null
+          id?: number
+          notes?: string | null
+          session_plan_id?: number | null
+          superset_id?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_ep_exercise"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_session_plan_exercises_session_plan"
+            columns: ["session_plan_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_plan_sets: {
+        Row: {
+          created_at: string | null
+          distance: number | null
+          effort: number | null
+          height: number | null
+          id: number
+          metadata: Json | null
+          performing_time: number | null
+          power: number | null
+          reps: number | null
+          resistance: number | null
+          resistance_unit_id: number | null
+          rest_time: number | null
+          rpe: number | null
+          session_plan_exercise_id: number | null
+          set_index: number | null
+          tempo: string | null
+          updated_at: string | null
+          velocity: number | null
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          distance?: number | null
+          effort?: number | null
+          height?: number | null
+          id?: number
+          metadata?: Json | null
+          performing_time?: number | null
+          power?: number | null
+          reps?: number | null
+          resistance?: number | null
+          resistance_unit_id?: number | null
+          rest_time?: number | null
+          rpe?: number | null
+          session_plan_exercise_id?: number | null
+          set_index?: number | null
+          tempo?: string | null
+          updated_at?: string | null
+          velocity?: number | null
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          distance?: number | null
+          effort?: number | null
+          height?: number | null
+          id?: number
+          metadata?: Json | null
+          performing_time?: number | null
+          power?: number | null
+          reps?: number | null
+          resistance?: number | null
+          resistance_unit_id?: number | null
+          rest_time?: number | null
+          rpe?: number | null
+          session_plan_exercise_id?: number | null
+          set_index?: number | null
+          tempo?: string | null
+          updated_at?: string | null
+          velocity?: number | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_epd_unit"
+            columns: ["resistance_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_session_plan_sets_session_plan_exercise"
+            columns: ["session_plan_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "session_plan_exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_plans: {
+        Row: {
+          athlete_group_id: number | null
+          created_at: string | null
+          date: string | null
+          day: number | null
+          deleted: boolean | null
+          description: string | null
+          id: number
+          is_template: boolean | null
+          microcycle_id: number | null
+          name: string | null
+          session_mode: string | null
+          updated_at: string | null
+          user_id: number | null
+          week: number | null
+        }
+        Insert: {
+          athlete_group_id?: number | null
+          created_at?: string | null
+          date?: string | null
+          day?: number | null
+          deleted?: boolean | null
+          description?: string | null
+          id?: number
+          is_template?: boolean | null
+          microcycle_id?: number | null
+          name?: string | null
+          session_mode?: string | null
+          updated_at?: string | null
+          user_id?: number | null
+          week?: number | null
+        }
+        Update: {
+          athlete_group_id?: number | null
+          created_at?: string | null
+          date?: string | null
+          day?: number | null
+          deleted?: boolean | null
+          description?: string | null
+          id?: number
+          is_template?: boolean | null
+          microcycle_id?: number | null
+          name?: string | null
+          session_mode?: string | null
+          updated_at?: string | null
+          user_id?: number | null
+          week?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_session_plans_athlete_group"
+            columns: ["athlete_group_id"]
+            isOneToOne: false
+            referencedRelation: "athlete_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_session_plans_microcycle"
+            columns: ["microcycle_id"]
+            isOneToOne: false
+            referencedRelation: "microcycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           category: string | null
@@ -1193,7 +1075,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           birthdate: string | null
-          clerk_id: string | null
+          clerk_id: string
           created_at: string
           deleted_at: string | null
           email: string
@@ -1212,7 +1094,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           birthdate?: string | null
-          clerk_id?: string | null
+          clerk_id: string
           created_at?: string
           deleted_at?: string | null
           email: string
@@ -1231,7 +1113,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           birthdate?: string | null
-          clerk_id?: string | null
+          clerk_id?: string
           created_at?: string
           deleted_at?: string | null
           email?: string
@@ -1249,126 +1131,256 @@ export type Database = {
         }
         Relationships: []
       }
+      workout_log_exercises: {
+        Row: {
+          created_at: string
+          exercise_id: number
+          exercise_order: number
+          id: number
+          notes: string | null
+          session_plan_exercise_id: number | null
+          superset_id: number | null
+          updated_at: string
+          workout_log_id: number
+        }
+        Insert: {
+          created_at?: string
+          exercise_id: number
+          exercise_order: number
+          id?: number
+          notes?: string | null
+          session_plan_exercise_id?: number | null
+          superset_id?: number | null
+          updated_at?: string
+          workout_log_id: number
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: number
+          exercise_order?: number
+          id?: number
+          notes?: string | null
+          session_plan_exercise_id?: number | null
+          superset_id?: number | null
+          updated_at?: string
+          workout_log_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_log_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_log_exercises_session_plan_exercise_id_fkey"
+            columns: ["session_plan_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "session_plan_exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_log_exercises_workout_log_id_fkey"
+            columns: ["workout_log_id"]
+            isOneToOne: false
+            referencedRelation: "workout_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_log_sets: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          distance: number | null
+          effort: number | null
+          height: number | null
+          id: number
+          metadata: Json | null
+          performing_time: number | null
+          power: number | null
+          reps: number | null
+          resistance: number | null
+          resistance_unit_id: number | null
+          rest_time: number | null
+          rpe: number | null
+          session_plan_exercise_id: number | null
+          set_index: number | null
+          tempo: string | null
+          updated_at: string | null
+          velocity: number | null
+          weight: number | null
+          workout_log_exercise_id: number | null
+          workout_log_id: number | null
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          distance?: number | null
+          effort?: number | null
+          height?: number | null
+          id?: number
+          metadata?: Json | null
+          performing_time?: number | null
+          power?: number | null
+          reps?: number | null
+          resistance?: number | null
+          resistance_unit_id?: number | null
+          rest_time?: number | null
+          rpe?: number | null
+          session_plan_exercise_id?: number | null
+          set_index?: number | null
+          tempo?: string | null
+          updated_at?: string | null
+          velocity?: number | null
+          weight?: number | null
+          workout_log_exercise_id?: number | null
+          workout_log_id?: number | null
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          distance?: number | null
+          effort?: number | null
+          height?: number | null
+          id?: number
+          metadata?: Json | null
+          performing_time?: number | null
+          power?: number | null
+          reps?: number | null
+          resistance?: number | null
+          resistance_unit_id?: number | null
+          rest_time?: number | null
+          rpe?: number | null
+          session_plan_exercise_id?: number | null
+          set_index?: number | null
+          tempo?: string | null
+          updated_at?: string | null
+          velocity?: number | null
+          weight?: number | null
+          workout_log_exercise_id?: number | null
+          workout_log_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_etd_unit"
+            columns: ["resistance_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_workout_log_sets_session_plan_exercise"
+            columns: ["session_plan_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "session_plan_exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_log_sets_workout_log_exercise_id_fkey"
+            columns: ["workout_log_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "workout_log_exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_log_sets_workout_log_id_fkey"
+            columns: ["workout_log_id"]
+            isOneToOne: false
+            referencedRelation: "workout_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_logs: {
+        Row: {
+          athlete_group_id: number | null
+          athlete_id: number | null
+          created_at: string | null
+          date_time: string | null
+          description: string | null
+          id: number
+          notes: string | null
+          session_mode: string | null
+          session_plan_id: number | null
+          session_status: Database["public"]["Enums"]["session_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          athlete_group_id?: number | null
+          athlete_id?: number | null
+          created_at?: string | null
+          date_time?: string | null
+          description?: string | null
+          id?: number
+          notes?: string | null
+          session_mode?: string | null
+          session_plan_id?: number | null
+          session_status: Database["public"]["Enums"]["session_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          athlete_group_id?: number | null
+          athlete_id?: number | null
+          created_at?: string | null
+          date_time?: string | null
+          description?: string | null
+          id?: number
+          notes?: string | null
+          session_mode?: string | null
+          session_plan_id?: number | null
+          session_status?: Database["public"]["Enums"]["session_status"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_ets_group"
+            columns: ["athlete_group_id"]
+            isOneToOne: false
+            referencedRelation: "athlete_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_workout_logs_session_plan"
+            columns: ["session_plan_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_logs_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      binary_quantize: {
-        Args: { "": string } | { "": unknown }
-        Returns: unknown
-      }
-      update_user_from_webhook: {
-        Args: {
-          p_clerk_id: string
-          p_email: string
-          p_first_name: string | null
-          p_last_name: string | null
-          p_avatar_url: string | null
-        }
-        Returns: void
-      }
       get_user_role_data: {
-        Args: { _clerk_id: string }
+        Args: { p_clerk_id: string }
         Returns: {
-          athlete_group_id: number
           athlete_id: number
           coach_id: number
           role: string
           user_id: number
         }[]
       }
-      halfvec_avg: {
-        Args: { "": number[] }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
-      hnsw_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown }
-        Returns: number
-      }
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: string
-      }
-      sparsevec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
-      unuse: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      vector_avg: {
-        Args: { "": number[] }
-        Returns: string
-      }
-      vector_dims: {
-        Args: { "": string } | { "": unknown }
-        Returns: number
-      }
-      vector_norm: {
-        Args: { "": string }
-        Returns: number
-      }
-      vector_out: {
-        Args: { "": string }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: { "": string }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
+      unuse: { Args: never; Returns: undefined }
+      update_user_from_webhook: {
+        Args: {
+          p_avatar_url: string
+          p_clerk_id: string
+          p_email: string
+          p_first_name: string
+          p_last_name: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
@@ -1523,7 +1535,12 @@ export const Constants = {
     },
   },
 } as const
-// Convenience type aliases for tables (manually maintained)
+
+// ============================================================================
+// Type Aliases for Convenience
+// ============================================================================
+
+// Core entities
 export type Macrocycle = Tables<"macrocycles">
 export type MacrocycleInsert = TablesInsert<"macrocycles">
 export type MacrocycleUpdate = TablesUpdate<"macrocycles">
@@ -1541,19 +1558,35 @@ export type ExerciseInsert = TablesInsert<"exercises">
 export type ExerciseUpdate = TablesUpdate<"exercises">
 
 export type ExerciseType = Tables<"exercise_types">
-
 export type Unit = Tables<"units">
 
-export type ExercisePresetGroup = Tables<"exercise_preset_groups">
-export type ExercisePresetGroupInsert = TablesInsert<"exercise_preset_groups">
-export type ExercisePresetGroupUpdate = TablesUpdate<"exercise_preset_groups">
+// Session Plans (coach domain)
+export type SessionPlan = Tables<"session_plans">
+export type SessionPlanInsert = TablesInsert<"session_plans">
+export type SessionPlanUpdate = TablesUpdate<"session_plans">
 
-export type ExercisePreset = Tables<"exercise_presets">
-export type ExercisePresetInsert = TablesInsert<"exercise_presets">
-export type ExercisePresetUpdate = TablesUpdate<"exercise_presets">
+export type SessionPlanExercise = Tables<"session_plan_exercises">
+export type SessionPlanExerciseInsert = TablesInsert<"session_plan_exercises">
+export type SessionPlanExerciseUpdate = TablesUpdate<"session_plan_exercises">
 
-export type ExercisePresetDetail = Tables<"exercise_preset_details">
+export type SessionPlanSet = Tables<"session_plan_sets">
+export type SessionPlanSetInsert = TablesInsert<"session_plan_sets">
+export type SessionPlanSetUpdate = TablesUpdate<"session_plan_sets">
 
+// Workout Logs (athlete domain)
+export type WorkoutLog = Tables<"workout_logs">
+export type WorkoutLogInsert = TablesInsert<"workout_logs">
+export type WorkoutLogUpdate = TablesUpdate<"workout_logs">
+
+export type WorkoutLogExercise = Tables<"workout_log_exercises">
+export type WorkoutLogExerciseInsert = TablesInsert<"workout_log_exercises">
+export type WorkoutLogExerciseUpdate = TablesUpdate<"workout_log_exercises">
+
+export type WorkoutLogSet = Tables<"workout_log_sets">
+export type WorkoutLogSetInsert = TablesInsert<"workout_log_sets">
+export type WorkoutLogSetUpdate = TablesUpdate<"workout_log_sets">
+
+// Athletes and Groups
 export type Athlete = Tables<"athletes">
 export type AthleteInsert = TablesInsert<"athletes">
 export type AthleteUpdate = TablesUpdate<"athletes">
@@ -1562,15 +1595,38 @@ export type AthleteGroup = Tables<"athlete_groups">
 export type AthleteGroupInsert = TablesInsert<"athlete_groups">
 export type AthleteGroupUpdate = TablesUpdate<"athlete_groups">
 
-export type ExerciseTrainingDetail = Tables<"exercise_training_details">
-
-export type ExerciseTrainingSession = Tables<"exercise_training_sessions">
-export type ExerciseTrainingSessionInsert = TablesInsert<"exercise_training_sessions">
-export type ExerciseTrainingSessionUpdate = TablesUpdate<"exercise_training_sessions">
-
+// Users
 export type User = Tables<"users">
 export type UserInsert = TablesInsert<"users">
 export type UserUpdate = TablesUpdate<"users">
 
-// UserRole is a string type, not an enum in the database
-export type UserRole = "athlete" | "coach" | "admin"
+// User role type from the users table
+export type UserRole = User["role"]
+
+// Legacy aliases (deprecated - use new names above)
+/** @deprecated Use SessionPlan instead */
+export type ExercisePresetGroup = SessionPlan
+/** @deprecated Use SessionPlanInsert instead */
+export type ExercisePresetGroupInsert = SessionPlanInsert
+/** @deprecated Use SessionPlanUpdate instead */
+export type ExercisePresetGroupUpdate = SessionPlanUpdate
+
+/** @deprecated Use SessionPlanExercise instead */
+export type ExercisePreset = SessionPlanExercise
+/** @deprecated Use SessionPlanExerciseInsert instead */
+export type ExercisePresetInsert = SessionPlanExerciseInsert
+/** @deprecated Use SessionPlanExerciseUpdate instead */
+export type ExercisePresetUpdate = SessionPlanExerciseUpdate
+
+/** @deprecated Use SessionPlanSet instead */
+export type ExercisePresetDetail = SessionPlanSet
+
+/** @deprecated Use WorkoutLog instead */
+export type ExerciseTrainingSession = WorkoutLog
+/** @deprecated Use WorkoutLogInsert instead */
+export type ExerciseTrainingSessionInsert = WorkoutLogInsert
+/** @deprecated Use WorkoutLogUpdate instead */
+export type ExerciseTrainingSessionUpdate = WorkoutLogUpdate
+
+/** @deprecated Use WorkoutLogSet instead */
+export type ExerciseTrainingDetail = WorkoutLogSet

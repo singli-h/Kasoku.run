@@ -338,7 +338,7 @@ function ExerciseItem({ exercise, onToggle, isSuperset = false }: ExerciseItemPr
 
       {/* Exercise Order Badge */}
       <Badge variant="outline" className="text-xs">
-        #{exercise.preset_order}
+        #{exercise.exercise_order}
       </Badge>
     </div>
   )

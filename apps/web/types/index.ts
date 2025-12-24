@@ -79,26 +79,56 @@ export type {
   Microcycle,
   MicrocycleInsert,
   MicrocycleUpdate,
-  
+
   // Exercise Library
   Exercise,
   ExerciseInsert,
   ExerciseUpdate,
   ExerciseType,
 
-  // Training Sessions
+  // Session Plans (new names)
+  SessionPlan,
+  SessionPlanInsert,
+  SessionPlanUpdate,
+  SessionPlanExercise,
+  SessionPlanExerciseInsert,
+  SessionPlanExerciseUpdate,
+  SessionPlanSet,
+  SessionPlanSetInsert,
+  SessionPlanSetUpdate,
+
+  // Workout Logs (new names)
+  WorkoutLog,
+  WorkoutLogInsert,
+  WorkoutLogUpdate,
+  WorkoutLogExercise,
+  WorkoutLogExerciseInsert,
+  WorkoutLogExerciseUpdate,
+  WorkoutLogSet,
+  WorkoutLogSetInsert,
+  WorkoutLogSetUpdate,
+
+  // Legacy Training Sessions (deprecated)
   ExerciseTrainingSession,
   ExerciseTrainingSessionInsert,
   ExerciseTrainingSessionUpdate,
   ExerciseTrainingDetail,
-  
-  // Extended types
+
+  // Extended types (new names)
+  SessionPlanWithDetails,
+  SessionPlanExerciseWithDetails,
+  WorkoutLogExerciseWithDetails,
+  WorkoutLogWithDetails,
+
+  // Extended types (legacy)
   MacrocycleWithDetails,
   MesocycleWithDetails,
   MicrocycleWithDetails,
   ExerciseWithDetails,
   ExerciseTrainingSessionWithDetails,
-  
+  ExercisePresetGroupWithDetails,
+  ExercisePresetWithDetails,
+
   // Form types
   CreateMacrocycleForm,
   CreateMesocycleForm,
@@ -106,11 +136,11 @@ export type {
   CreateSessionForm,
   CreateExercisePresetForm,
   CreateExercisePresetDetailForm,
-  
+
   // Filter types
   TrainingPlanFilters,
   ExerciseFilters,
-  
+
   // Constants
   TrainingGoal,
   ExperienceLevel,

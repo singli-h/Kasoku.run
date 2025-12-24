@@ -1,3 +1,5 @@
+
+
 # Research: Database Schema Optimization
 
 **Date**: 2025-12-24
@@ -164,7 +166,37 @@ visibility = 'global' OR owner_user_id = (
 
 ---
 
-## Decision 7: Migration Order
+## Decision 7: ai_memories Table RLS
+
+### Context
+The `ai_memories` table has RLS enabled but no policies defined, effectively blocking all client access.
+
+### Options Considered
+
+**Option A: Add explicit RLS policies**
+- Pros: Client-side access possible
+- Cons: Complex policy logic for AI operations, security risk
+
+**Option B: Keep RLS disabled (service-role only)**
+- Pros: Simple, secure, matches AI operation pattern
+- Cons: No client-side access (but not needed)
+
+### Decision
+**Keep RLS disabled for service-role only access** (Option B)
+
+### Rationale
+1. **CLAUDE.md guidance**: Documents that `memories` table has RLS disabled for AI operations
+2. **Security**: AI operations should only run server-side with service role
+3. **No client need**: Athletes/coaches don't directly access AI memories
+4. **Existing pattern**: Already working this way
+
+### Implementation
+- Verify RLS is disabled in Supabase dashboard
+- Document in security docs that ai_memories is service-role only
+
+---
+
+## Decision 8: Migration Order
 
 ### Context
 Schema changes must be applied in correct order to avoid breaking the application.

@@ -39,18 +39,18 @@ This feature is a database migration with no new libraries or architectural chan
 
 ### Documentation (this feature)
 
-\`\`\`text
+```text
 specs/003-database-schema-optimization/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 - Decision rationale
 ├── data-model.md        # Phase 1 - Entity definitions
 ├── quickstart.md        # Phase 1 - Implementation quick reference
 └── tasks.md             # Phase 2 output (from /speckit.tasks)
-\`\`\`
+```
 
 ### Source Code (repository root)
 
-\`\`\`text
+```text
 apps/web/
 ├── types/
 │   ├── database.ts      # Auto-regenerated after migration
@@ -70,7 +70,7 @@ apps/web/
 │   ├── changeset/       # Entity mappings to update
 │   └── validation/      # Schema names to update
 └── docs/                # Documentation updates (already started)
-\`\`\`
+```
 
 **Structure Decision**: This is a schema migration affecting the existing web application structure. No new directories or architectural changes required.
 
@@ -81,44 +81,44 @@ apps/web/
 Execute SQL migration in Supabase:
 
 1. **Table Renames** (non-breaking, immediate effect)
-   - \`exercise_preset_groups\` → \`session_plans\`
-   - \`exercise_presets\` → \`session_plan_exercises\`
-   - \`exercise_preset_details\` → \`session_plan_sets\`
-   - \`exercise_training_sessions\` → \`workout_logs\`
-   - \`exercise_training_details\` → \`workout_log_sets\`
+   - `exercise_preset_groups` → `session_plans`
+   - `exercise_presets` → `session_plan_exercises`
+   - `exercise_preset_details` → `session_plan_sets`
+   - `exercise_training_sessions` → `workout_logs`
+   - `exercise_training_details` → `workout_log_sets`
 
 2. **FK Column Renames** (non-breaking)
-   - \`exercise_preset_group_id\` → \`session_plan_id\`
-   - \`exercise_preset_id\` (in sets) → \`session_plan_exercise_id\`
-   - \`exercise_training_session_id\` → \`workout_log_id\`
+   - `exercise_preset_group_id` → `session_plan_id`
+   - `exercise_preset_id` (in sets) → `session_plan_exercise_id`
+   - `exercise_training_session_id` → `workout_log_id`
 
 3. **Cascade Constraints** (safety improvement)
-   - Add \`ON DELETE CASCADE\` to 5 foreign keys
+   - Add `ON DELETE CASCADE` to 5 foreign keys
 
 **Verification**: RLS policies auto-apply to renamed tables. Trigger names may need updating.
 
 ### Phase 2: Type Regeneration (P0 - Critical)
 
-\`\`\`bash
+```bash
 npx supabase gen types typescript --project-id pcteaouusthwbgzczoae > apps/web/types/database.ts
-\`\`\`
+```
 
 Then update:
-- Type aliases in \`database.ts\` (5 type renames)
-- Extended types in \`training.ts\` (3 interface updates)
-- Re-exports in \`index.ts\`
+- Type aliases in `database.ts` (5 type renames)
+- Extended types in `training.ts` (3 interface updates)
+- Re-exports in `index.ts`
 
 ### Phase 3: Server Action Updates (P0 - Critical)
 
 Update 8 action files with ~100 total references:
-- \`plan-actions.ts\` - 12 refs
-- \`session-plan-actions.ts\` - 25+ refs
-- \`session-planner-actions.ts\` - 10 refs
-- \`plan-assignment-actions.ts\` - 5 refs
-- \`training-session-actions.ts\` - 40+ refs
-- \`workout-session-actions.ts\` - 15 refs
-- \`exercise-actions.ts\` - 30+ refs
-- \`dashboard-actions.ts\` - 3 refs
+- `plan-actions.ts` - 12 refs
+- `session-plan-actions.ts` - 25+ refs
+- `session-planner-actions.ts` - 10 refs
+- `plan-assignment-actions.ts` - 5 refs
+- `training-session-actions.ts` - 40+ refs
+- `workout-session-actions.ts` - 15 refs
+- `exercise-actions.ts` - 30+ refs
+- `dashboard-actions.ts` - 3 refs
 
 ### Phase 4: Component Updates (P1 - High)
 
@@ -130,23 +130,23 @@ Update ~15 component files across:
 
 ### Phase 5: Utility Updates (P1 - High)
 
-- \`lib/changeset/entity-mappings.ts\` - Table/field mappings
-- \`lib/changeset/tool-implementations/read-impl.ts\` - Table references
-- \`lib/validation/training-schemas.ts\` - Schema names
+- `lib/changeset/entity-mappings.ts` - Table/field mappings
+- `lib/changeset/tool-implementations/read-impl.ts` - Table references
+- `lib/validation/training-schemas.ts` - Schema names
 
 ### Phase 6: Timestamps & Data Types (P2 - Medium)
 
-1. Add \`created_at\`/\`updated_at\` to tables missing them
-2. Add \`DEFAULT now()\` to nullable timestamp columns
-3. Fix \`timestamp\` → \`timestamptz\` type mismatch
-4. Create \`updated_at\` trigger function
+1. Add `created_at`/`updated_at` to tables missing them
+2. Add `DEFAULT now()` to nullable timestamp columns
+3. Fix `timestamp` → `timestamptz` type mismatch
+4. Create `updated_at` trigger function
 5. Apply triggers to all relevant tables
 
 ### Phase 7: RLS Security Fixes (P1 - High)
 
-1. Update \`exercises\` policy: \`visibility = 'global' OR owner_user_id = auth.uid()\`
-2. Update \`macrocycles\` policy: Add coach access via \`athlete_group_id\`
-3. Verify \`ai_memories\` policy (RLS enabled, needs explicit policies)
+1. Update `exercises` policy: `visibility = 'global' OR owner_user_id = auth.uid()`
+2. Update `macrocycles` policy: Add coach access via `athlete_group_id`
+3. Verify `ai_memories` policy (RLS enabled, needs explicit policies)
 
 ### Phase 8: Documentation (P2 - Medium)
 
@@ -158,9 +158,9 @@ Update ~15 component files across:
 - [ ] All table renames applied
 - [ ] All FK column renames applied
 - [ ] Type generation successful
-- [ ] \`npm run type-check\` passes
-- [ ] \`npm run lint\` passes
-- [ ] \`npm run build\` passes
+- [ ] `npm run type-check` passes
+- [ ] `npm run lint` passes
+- [ ] `npm run build` passes
 - [ ] CRUD operations work for session_plans
 - [ ] CRUD operations work for workout_logs
 - [ ] Cascade deletes work correctly

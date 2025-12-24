@@ -1,8 +1,8 @@
 /*
 <ai_context>
 Server actions for session plan CRUD operations in MesoWizard.
-Uses the existing exercise_preset_groups table structure to store session plans
-with their associated exercise_presets and exercise_preset_details.
+Uses the existing session_plans table structure to store session plans
+with their associated session_plan_exercises and session_plan_sets.
 </ai_context>
 */
 
@@ -15,12 +15,12 @@ import { ActionState } from "@/types"
 import type { Database } from "@/types/database"
 
 // Define types from database
-type ExercisePresetGroup = Database['public']['Tables']['exercise_preset_groups']['Row']
-type ExercisePresetGroupInsert = Database['public']['Tables']['exercise_preset_groups']['Insert']
-type ExercisePresetGroupUpdate = Database['public']['Tables']['exercise_preset_groups']['Update']
-type ExercisePreset = Database['public']['Tables']['exercise_presets']['Row']
-type ExercisePresetInsert = Database['public']['Tables']['exercise_presets']['Insert']
-type ExercisePresetDetail = Database['public']['Tables']['exercise_preset_details']['Row']
+type SessionPlan = Database['public']['Tables']['session_plans']['Row']
+type SessionPlanInsert = Database['public']['Tables']['session_plans']['Insert']
+type SessionPlanUpdate = Database['public']['Tables']['session_plans']['Update']
+type ExercisePreset = Database['public']['Tables']['session_plan_exercises']['Row']
+type ExercisePresetInsert = Database['public']['Tables']['session_plan_exercises']['Insert']
+type SessionPlanSet = Database['public']['Tables']['session_plan_sets']['Row']
 
 // Types for MesoWizard session plans
 export interface SessionPlanData {
@@ -89,7 +89,7 @@ export interface CreateSessionPlanForm {
  */
 export async function saveSessionPlanAction(
   planData: CreateSessionPlanForm
-): Promise<ActionState<ExercisePresetGroup[]>> {
+): Promise<ActionState<SessionPlan[]>> {
   try {
     const { userId } = await auth()
     
@@ -102,10 +102,10 @@ export async function saveSessionPlanAction(
 
     const dbUserId = await getDbUserId(userId)
 
-    const savedSessions: ExercisePresetGroup[] = []
+    const savedSessions: SessionPlan[] = []
     const errors: string[] = []
 
-    // Save each session as an exercise_preset_group
+    // Save each session as an session_plan
     for (const session of planData.sessions) {
       // Validate session data
       if (!session.exercises || session.exercises.length === 0) {
@@ -113,8 +113,8 @@ export async function saveSessionPlanAction(
         continue
       }
 
-      // Create the session (exercise_preset_group)
-      const sessionData: ExercisePresetGroupInsert = {
+      // Create the session (session_plan)
+      const sessionData: SessionPlanInsert = {
         name: session.name,
         description: session.description,
         date: new Date().toISOString().split('T')[0], // Current date, can be updated later
@@ -128,7 +128,7 @@ export async function saveSessionPlanAction(
       }
 
       const { data: savedSession, error: sessionError } = await supabase
-        .from('exercise_preset_groups')
+        .from('session_plans')
         .insert(sessionData)
         .select()
         .single()
@@ -164,15 +164,15 @@ export async function saveSessionPlanAction(
 
         // Create the exercise preset
         const exercisePresetData: ExercisePresetInsert = {
-          exercise_preset_group_id: savedSession.id,
+          session_plan_id: savedSession.id,
           exercise_id: exercise.exerciseId,
-          preset_order: exercise.order,
+          exercise_order: exercise.order,
           notes: exercise.notes,
           superset_id: supersetId
         }
 
         const { data: savedExercisePreset, error: exerciseError } = await supabase
-          .from('exercise_presets')
+          .from('session_plan_exercises')
           .insert(exercisePresetData)
           .select()
           .single()
@@ -191,7 +191,7 @@ export async function saveSessionPlanAction(
           const setIndex = set.setIndex || (i + 1)
           
           const setDetailData = {
-            exercise_preset_id: savedExercisePreset.id,
+            session_plan_exercise_id: savedExercisePreset.id,
             set_index: setIndex,
             reps: set.reps || null,
             weight: set.weight || null,
@@ -208,7 +208,7 @@ export async function saveSessionPlanAction(
           }
 
           const { error: detailError } = await supabase
-            .from('exercise_preset_details')
+            .from('session_plan_sets')
             .insert(setDetailData)
 
           if (detailError) {
@@ -230,12 +230,12 @@ export async function saveSessionPlanAction(
       }
     }
 
-    // Create exercise_training_sessions for individual assignments
+    // Create workout_logs for individual assignments
     if (planData.athleteIds && planData.athleteIds.length > 0 && !planData.isTemplate) {
       for (const athleteId of planData.athleteIds) {
         for (const savedSession of savedSessions) {
           const trainingSessionData = {
-            exercise_preset_group_id: savedSession.id,
+            session_plan_id: savedSession.id,
             athlete_id: athleteId,
             date_time: new Date().toISOString(),
             notes: null,
@@ -243,7 +243,7 @@ export async function saveSessionPlanAction(
           }
 
           const { error: trainingSessionError } = await supabase
-            .from('exercise_training_sessions')
+            .from('workout_logs')
             .insert(trainingSessionData)
 
           if (trainingSessionError) {
@@ -288,13 +288,13 @@ export async function getSessionPlansByMicrocycleAction(
     const dbUserId = await getDbUserId(userId)
 
     const { data: presetGroups, error } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select(`
         *,
-        exercise_presets(
+        session_plan_exercises(
           *,
           exercise:exercises(*),
-          exercise_preset_details(*)
+          session_plan_sets(*)
         )
       `)
       .eq('microcycle_id', microcycleId)
@@ -318,12 +318,12 @@ export async function getSessionPlansByMicrocycleAction(
       description: group.description || '',
       day: group.day || 1,
       week: group.week || 1,
-      exercises: (group.exercise_presets || []).map((preset: any, index: number) => ({
+      exercises: (group.session_plan_exercises || []).map((preset: any, index: number) => ({
         id: `exercise-${preset.id}`,
         exerciseId: preset.exercise_id,
-        order: preset.preset_order || index + 1,
+        order: preset.exercise_order || index + 1,
         supersetId: preset.superset_id ? `superset-${preset.superset_id}` : undefined,
-                 sets: (preset.exercise_preset_details || []).map((detail: any) => ({
+                 sets: (preset.session_plan_sets || []).map((detail: any) => ({
            setIndex: detail.set_index,
            reps: detail.reps,
            weight: detail.weight,
@@ -369,7 +369,7 @@ export async function getSessionPlansByMicrocycleAction(
 export async function updateSessionPlanAction(
   sessionId: number,
   sessionData: Partial<SessionPlanData>
-): Promise<ActionState<ExercisePresetGroup>> {
+): Promise<ActionState<SessionPlan>> {
   try {
     const { userId } = await auth()
     
@@ -382,8 +382,8 @@ export async function updateSessionPlanAction(
 
     const dbUserId = await getDbUserId(userId)
 
-    // Update the exercise_preset_group
-    const updateData: Partial<ExercisePresetGroupUpdate> = {
+    // Update the session_plan
+    const updateData: Partial<SessionPlanUpdate> = {
       name: sessionData.name,
       description: sessionData.description,
       day: sessionData.day,
@@ -391,7 +391,7 @@ export async function updateSessionPlanAction(
     }
 
     const { data: updatedSession, error } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .update(updateData)
       .eq('id', sessionId)
       .eq('user_id', dbUserId)
@@ -440,7 +440,7 @@ export async function deleteSessionPlanAction(
 
     // Soft delete by setting deleted flag
     const { error } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .update({ deleted: true })
       .eq('id', sessionId)
       .eq('user_id', dbUserId)
@@ -480,7 +480,7 @@ export async function copySessionPlanAction(
     volumeIncrease?: number
     restTimeDecrease?: number
   }
-): Promise<ActionState<ExercisePresetGroup>> {
+): Promise<ActionState<SessionPlan>> {
   try {
     const { userId } = await auth()
     
@@ -495,12 +495,12 @@ export async function copySessionPlanAction(
 
     // Get the source session with all details
     const { data: sourceSession, error: fetchError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select(`
         *,
-        exercise_presets(
+        session_plan_exercises(
           *,
-          exercise_preset_details(*)
+          session_plan_sets(*)
         )
       `)
       .eq('id', sourceSessionId)
@@ -515,7 +515,7 @@ export async function copySessionPlanAction(
     }
 
     // Create new session
-    const newSessionData: ExercisePresetGroupInsert = {
+    const newSessionData: SessionPlanInsert = {
       name: newName,
       description: sourceSession.description,
       date: newDate || sourceSession.date,
@@ -528,7 +528,7 @@ export async function copySessionPlanAction(
     }
 
     const { data: newSession, error: sessionError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .insert(newSessionData)
       .select()
       .single()
@@ -541,19 +541,19 @@ export async function copySessionPlanAction(
     }
 
     // Copy exercises with modifications
-    if (sourceSession.exercise_presets) {
-      for (const preset of sourceSession.exercise_presets) {
+    if (sourceSession.session_plan_exercises) {
+      for (const preset of sourceSession.session_plan_exercises) {
         // Create new preset
         const newPresetData: ExercisePresetInsert = {
           exercise_id: preset.exercise_id,
-          exercise_preset_group_id: newSession.id,
-          preset_order: preset.preset_order,
+          session_plan_id: newSession.id,
+          exercise_order: preset.exercise_order,
           notes: preset.notes,
           superset_id: preset.superset_id
         }
 
         const { data: newPreset, error: presetError } = await supabase
-          .from('exercise_presets')
+          .from('session_plan_exercises')
           .insert(newPresetData)
           .select()
           .single()
@@ -564,10 +564,10 @@ export async function copySessionPlanAction(
         }
 
         // Copy preset details with modifications
-        if (preset.exercise_preset_details) {
-          for (const detail of preset.exercise_preset_details) {
+        if (preset.session_plan_sets) {
+          for (const detail of preset.session_plan_sets) {
             const newDetailData = {
-              exercise_preset_id: newPreset.id,
+              session_plan_exercise_id: newPreset.id,
               set_index: detail.set_index,
               reps: detail.reps ? detail.reps + (modifications?.repIncrease || 0) : detail.reps,
               weight: detail.weight ? detail.weight + (modifications?.weightIncrease || 0) : detail.weight,
@@ -584,7 +584,7 @@ export async function copySessionPlanAction(
             }
 
             const { error: detailError } = await supabase
-              .from('exercise_preset_details')
+              .from('session_plan_sets')
               .insert(newDetailData)
 
             if (detailError) {
@@ -613,7 +613,7 @@ export async function copySessionPlanAction(
  * Get all training plans for the current user (coach)
  * Returns plans created by the coach or belonging to their athlete groups
  */
-export async function getTrainingPlansAction(): Promise<ActionState<ExercisePresetGroup[]>> {
+export async function getTrainingPlansAction(): Promise<ActionState<SessionPlan[]>> {
   try {
     const { userId } = await auth()
     
@@ -628,7 +628,7 @@ export async function getTrainingPlansAction(): Promise<ActionState<ExercisePres
     const dbUserId = await getDbUserId(userId)
 
     const { data: plans, error } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select(`
         *,
         athlete_groups(
@@ -679,7 +679,7 @@ export async function getTrainingPlansAction(): Promise<ActionState<ExercisePres
 
 /**
  * Assign an existing plan to individual athletes
- * Creates exercise_training_sessions for each athlete
+ * Creates workout_logs for each athlete
  */
 export async function assignPlanToAthletesAction(
   planId: number,
@@ -699,7 +699,7 @@ export async function assignPlanToAthletesAction(
 
     // Get the plan sessions
     const { data: sessions, error: sessionsError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select('id, athlete_group_id, user_id, microcycle_id, name, description, session_mode, week, day, date, updated_at, created_at, deleted, is_template')
       .eq('id', planId)
       .eq('user_id', dbUserId)
@@ -711,12 +711,12 @@ export async function assignPlanToAthletesAction(
       }
     }
 
-    // Create exercise_training_sessions for each athlete
+    // Create workout_logs for each athlete
     const trainingSessionsData = []
     for (const athleteId of athleteIds) {
       for (const session of sessions) {
         trainingSessionsData.push({
-          exercise_preset_group_id: session.id,
+          session_plan_id: session.id,
           athlete_id: athleteId,
           date_time: new Date().toISOString(),
           notes: null,
@@ -726,7 +726,7 @@ export async function assignPlanToAthletesAction(
     }
 
     const { error: insertError } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .insert(trainingSessionsData)
 
     if (insertError) {
@@ -758,7 +758,7 @@ export async function saveAsTemplateAction(
   planData: CreateSessionPlanForm,
   templateName: string,
   templateDescription?: string
-): Promise<ActionState<ExercisePresetGroup[]>> {
+): Promise<ActionState<SessionPlan[]>> {
   try {
     const { userId } = await auth()
     
@@ -769,12 +769,12 @@ export async function saveAsTemplateAction(
       }
     }
 
-    const savedSessions: ExercisePresetGroup[] = []
+    const savedSessions: SessionPlan[] = []
 
-    // Save each session as a template (exercise_preset_group)
+    // Save each session as a template (session_plan)
     for (const session of planData.sessions) {
-      // Create the template session (exercise_preset_group)
-      const sessionData: ExercisePresetGroupInsert = {
+      // Create the template session (session_plan)
+      const sessionData: SessionPlanInsert = {
         name: session.name,
         description: session.description,
         date: new Date().toISOString().split('T')[0],
@@ -788,7 +788,7 @@ export async function saveAsTemplateAction(
       }
 
       const { data: savedSession, error: sessionError } = await supabase
-        .from('exercise_preset_groups')
+        .from('session_plans')
         .insert(sessionData)
         .select()
         .single()
@@ -805,15 +805,15 @@ export async function saveAsTemplateAction(
       for (const exercise of session.exercises) {
         // Create the exercise preset
         const exercisePresetData: ExercisePresetInsert = {
-          exercise_preset_group_id: savedSession.id,
+          session_plan_id: savedSession.id,
           exercise_id: exercise.exerciseId,
-          preset_order: exercise.order,
+          exercise_order: exercise.order,
           notes: exercise.notes,
           superset_id: exercise.supersetId ? parseInt(exercise.supersetId.replace('superset-', '')) : null
         }
 
         const { data: savedExercisePreset, error: exerciseError } = await supabase
-          .from('exercise_presets')
+          .from('session_plan_exercises')
           .insert(exercisePresetData)
           .select()
           .single()
@@ -826,7 +826,7 @@ export async function saveAsTemplateAction(
         // Save exercise preset details (sets) for template
         for (const set of exercise.sets) {
           const setDetailData = {
-            exercise_preset_id: savedExercisePreset.id,
+            session_plan_exercise_id: savedExercisePreset.id,
             set_index: set.setIndex,
             reps: set.reps || null,
             weight: set.weight || null,
@@ -843,7 +843,7 @@ export async function saveAsTemplateAction(
           }
 
           const { error: detailError } = await supabase
-            .from('exercise_preset_details')
+            .from('session_plan_sets')
             .insert(setDetailData)
 
           if (detailError) {
@@ -872,16 +872,16 @@ export async function saveAsTemplateAction(
 /**
  * Get all templates (plans with is_template = true)
  */
-export async function getTemplatesAction(): Promise<ActionState<ExercisePresetGroup[]>> {
+export async function getTemplatesAction(): Promise<ActionState<SessionPlan[]>> {
   try {
     const { data: templates, error } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select(`
         *,
-        exercise_presets(
+        session_plan_exercises(
           *,
           exercise:exercises(*),
-          exercise_preset_details(*)
+          session_plan_sets(*)
         )
       `)
       .eq('is_template', true)
@@ -922,7 +922,7 @@ export async function createPlanFromTemplateAction(
     microcycleId?: number
     startDate?: string
   }
-): Promise<ActionState<ExercisePresetGroup[]>> {
+): Promise<ActionState<SessionPlan[]>> {
   try {
     const { userId } = await auth()
     
@@ -937,12 +937,12 @@ export async function createPlanFromTemplateAction(
 
     // Get the template with all its details
     const { data: template, error: templateError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .select(`
         *,
-        exercise_presets(
+        session_plan_exercises(
           *,
-          exercise_preset_details(*)
+          session_plan_sets(*)
         )
       `)
       .eq('id', templateId)
@@ -957,7 +957,7 @@ export async function createPlanFromTemplateAction(
     }
 
     // Create new plan from template
-    const newPlanSessionData: ExercisePresetGroupInsert = {
+    const newPlanSessionData: SessionPlanInsert = {
       name: newPlanData.name,
       description: newPlanData.description || template.description,
       date: newPlanData.startDate || new Date().toISOString().split('T')[0],
@@ -971,7 +971,7 @@ export async function createPlanFromTemplateAction(
     }
 
     const { data: newPlan, error: planError } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .insert(newPlanSessionData)
       .select()
       .single()
@@ -984,18 +984,18 @@ export async function createPlanFromTemplateAction(
     }
 
     // Copy exercises from template to new plan
-    if (template.exercise_presets && template.exercise_presets.length > 0) {
-      for (const templatePreset of template.exercise_presets) {
+    if (template.session_plan_exercises && template.session_plan_exercises.length > 0) {
+      for (const templatePreset of template.session_plan_exercises) {
         const newPresetData: ExercisePresetInsert = {
-          exercise_preset_group_id: newPlan.id,
+          session_plan_id: newPlan.id,
           exercise_id: templatePreset.exercise_id,
-          preset_order: templatePreset.preset_order,
+          exercise_order: templatePreset.exercise_order,
           notes: templatePreset.notes,
           superset_id: templatePreset.superset_id
         }
 
         const { data: newPreset, error: presetError } = await supabase
-          .from('exercise_presets')
+          .from('session_plan_exercises')
           .insert(newPresetData)
           .select()
           .single()
@@ -1006,9 +1006,9 @@ export async function createPlanFromTemplateAction(
         }
 
         // Copy preset details from template
-        if (templatePreset.exercise_preset_details && templatePreset.exercise_preset_details.length > 0) {
-          const detailsData = templatePreset.exercise_preset_details.map(detail => ({
-            exercise_preset_id: newPreset.id,
+        if (templatePreset.session_plan_sets && templatePreset.session_plan_sets.length > 0) {
+          const detailsData = templatePreset.session_plan_sets.map(detail => ({
+            session_plan_exercise_id: newPreset.id,
             set_index: detail.set_index,
             reps: detail.reps,
             weight: detail.weight,
@@ -1025,7 +1025,7 @@ export async function createPlanFromTemplateAction(
           }))
 
           const { error: detailsError } = await supabase
-            .from('exercise_preset_details')
+            .from('session_plan_sets')
             .insert(detailsData)
 
           if (detailsError) {
@@ -1065,7 +1065,7 @@ export async function deleteTemplateAction(templateId: number): Promise<ActionSt
 
     // Soft delete the template
     const { error } = await supabase
-      .from('exercise_preset_groups')
+      .from('session_plans')
       .update({ deleted: true })
       .eq('id', templateId)
       .eq('is_template', true)

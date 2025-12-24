@@ -1,6 +1,6 @@
 # Feature Specification: Database Schema Optimization
 
-**Feature Branch**: `005-database-schema-optimization`
+**Feature Branch**: `003-database-schema-optimization`
 **Created**: 2025-12-24
 **Status**: In Progress
 **Target Project**: Sprint (Dev) (`pcteaouusthwbgzczoae`)

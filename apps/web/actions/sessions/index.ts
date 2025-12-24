@@ -1,8 +1,8 @@
 /**
  * Training session execution actions
  *
- * Architecture: exercise_training_sessions table with coach/athlete views
- * - Coaches assign sessions via exercise_preset_groups
+ * Architecture: workout_logs table with coach/athlete views
+ * - Coaches assign sessions via session_plans
  * - Athletes execute and complete sessions
  * - Auto-PB detection on completion
  *

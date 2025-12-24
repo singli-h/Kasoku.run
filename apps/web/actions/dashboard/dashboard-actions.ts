@@ -45,13 +45,13 @@ export async function getDashboardDataAction(): Promise<
 
     // Get recent training sessions
     const { data: sessions, error: sessionsError } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select(`
         id,
         date_time,
         session_status,
         notes,
-        exercise_preset_group:exercise_preset_groups(
+        session_plan:session_plans(
           name
         )
       `)
@@ -69,7 +69,7 @@ export async function getDashboardDataAction(): Promise<
 
     // Get dashboard stats
     const { data: statsData, error: statsError } = await supabase
-      .from('exercise_training_sessions')
+      .from('workout_logs')
       .select('session_status, date_time')
       .eq('athlete_id', athlete.id)
 
@@ -102,7 +102,7 @@ export async function getDashboardDataAction(): Promise<
 
     const recentSessions: RecentSession[] = (sessions || []).map(session => ({
       id: session.id,
-      title: session.exercise_preset_group?.name || 'Untitled Session', 
+      title: session.session_plan?.name || 'Untitled Session', 
       date: session.date_time ? new Date(session.date_time) : new Date(),
       status: session.session_status as 'pending' | 'in-progress' | 'completed' | 'cancelled',
       notes: session.notes || undefined

@@ -88,7 +88,7 @@ export function getNextExecutionOrder(): number {
  *   presetExerciseId: 789,
  *   presetOrder: 2,
  *   reasoning: "Moving exercise to second position"
- * }, { currentData: { preset_order: 1 } })
+ * }, { currentData: { exercise_order: 1 } })
  */
 export function transformToolInput(
   entityType: string,
