@@ -35,6 +35,10 @@ interface ExerciseContextValue {
   toggleSetComplete: (exerciseId: number, detailId: number) => void
   toggleVideo: () => void
   setExercises: (exercises: WorkoutExercise[]) => void
+  /** Force immediate save of all pending changes - MUST call before completing session */
+  forceSave: () => Promise<boolean>
+  /** Check if there are pending unsaved changes */
+  hasPendingChanges: () => boolean
 }
 
 // Create context with null initial value
@@ -80,6 +84,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
   const saveQueueRef = useRef<Map<string, any>>(new Map())
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+
   // Workout API for saving data
   const { saveExercisePerformance } = useWorkoutApi()
 
@@ -95,7 +100,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
     try {
       // Process all pending saves
       const savePromises = Array.from(saveQueueRef.current.entries()).map(
-        async ([key, data]) => {
+        async ([_key, data]) => {
           const { exerciseId, setIndex, updates } = data
 
           return await saveExercisePerformance(
@@ -221,6 +226,61 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
     setShowVideo(prev => !prev)
   }, [])
 
+  /**
+   * Force immediate save of all pending changes
+   * MUST be called before completing/finishing a workout session
+   * @returns Promise<boolean> - true if save succeeded, false if failed
+   */
+  const forceSave = useCallback(async (): Promise<boolean> => {
+    // Cancel any pending debounced save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+    }
+
+    // If nothing to save, return success
+    if (saveQueueRef.current.size === 0) {
+      return true
+    }
+
+    setSaveStatus('saving')
+
+    try {
+      // Process all pending saves immediately
+      const savePromises = Array.from(saveQueueRef.current.entries()).map(
+        async ([_key, data]) => {
+          const { exerciseId, setIndex, updates } = data
+          return await saveExercisePerformance(
+            sessionId!,
+            exerciseId,
+            { set_index: setIndex, ...updates },
+            true // immediate save
+          )
+        }
+      )
+
+      await Promise.all(savePromises)
+
+      // Clear the queue
+      saveQueueRef.current.clear()
+      setSaveStatus('saved')
+
+      return true
+    } catch (error) {
+      console.error('[ExerciseProvider] Force save failed:', error)
+      setSaveStatus('error')
+      return false
+    }
+  }, [sessionId, saveExercisePerformance])
+
+  /**
+   * Check if there are pending unsaved changes
+   * @returns boolean - true if there are unsaved changes
+   */
+  const hasPendingChanges = useCallback((): boolean => {
+    return saveQueueRef.current.size > 0 || saveStatus === 'saving'
+  }, [saveStatus])
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -238,7 +298,9 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
     updateExercise,
     toggleSetComplete,
     toggleVideo,
-    setExercises
+    setExercises,
+    forceSave,
+    hasPendingChanges
   }
 
   return (

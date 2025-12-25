@@ -1,0 +1,358 @@
+"use client"
+
+import { useState, useMemo, useCallback } from "react"
+import { Check, Loader2, Plus, Timer } from "lucide-react"
+import { cn } from "@/lib/utils"
+import type { TrainingExercise, TrainingSet, ExerciseLibraryItem } from "../types"
+
+// Save status type (matches ExerciseContext)
+export type SaveStatus = 'saved' | 'saving' | 'error' | 'idle'
+import { getSectionOrder, groupBySupersets, getCompletedCount } from "../types"
+import { ExerciseCard } from "../components/ExerciseCard"
+import { SectionDivider } from "../components/SectionDivider"
+import { ExercisePickerSheet } from "../components/ExercisePickerSheet"
+import { SessionCompletionModal } from "../components/SessionCompletionModal"
+import { TimerDisplay } from "../components/TimerDisplay"
+
+export interface WorkoutViewProps {
+  /** Session title */
+  title: string
+  /** Session description */
+  description?: string
+  /** List of exercises with sets */
+  exercises: TrainingExercise[]
+  /** Is this for an athlete (true) or coach (false) */
+  isAthlete: boolean
+  /** Elapsed seconds for timer */
+  elapsedSeconds?: number
+  /** Is timer running */
+  isTimerRunning?: boolean
+  /** Session status */
+  sessionStatus?: 'assigned' | 'ongoing' | 'completed'
+  /** Save status for showing on buttons */
+  saveStatus?: SaveStatus
+
+  // Exercise library for picker
+  exerciseLibrary?: ExerciseLibraryItem[]
+  recentExerciseIds?: string[]
+
+  // Callbacks
+  onToggleTimer?: () => void
+  onToggleExpand?: (exerciseId: number | string) => void
+  onCompleteSet?: (exerciseId: number | string, setId: number | string) => void
+  onUpdateSet?: (exerciseId: number | string, setId: number | string, field: keyof TrainingSet, value: number | string | null) => void
+  onAddSet?: (exerciseId: number | string) => void
+  onRemoveSet?: (exerciseId: number | string, setId: number | string) => void
+  onAddExercise?: (exercise: ExerciseLibraryItem, section: string) => void
+  onRemoveExercise?: (exerciseId: number | string) => void
+  onUpdateExerciseName?: (exerciseId: number | string, name: string) => void
+  onReorderSets?: (exerciseId: number | string, fromIndex: number, toIndex: number) => void
+  onReorderExercises?: (fromId: number | string, toId: number | string) => void
+  onFinishSession?: () => void
+  onSaveSession?: () => void
+
+  className?: string
+}
+
+/**
+ * WorkoutView - Main workout session view using unified training components
+ *
+ * Designed for both athlete workout execution and coach session planning.
+ * Uses a clean, mobile-first design with section-based organization.
+ */
+export function WorkoutView({
+  title,
+  description,
+  exercises,
+  isAthlete,
+  elapsedSeconds = 0,
+  isTimerRunning = false,
+  sessionStatus = 'ongoing',
+  saveStatus = 'idle',
+  exerciseLibrary = [],
+  recentExerciseIds = [],
+  onToggleTimer,
+  onToggleExpand,
+  onCompleteSet,
+  onUpdateSet,
+  onAddSet,
+  onRemoveSet,
+  onAddExercise,
+  onRemoveExercise,
+  onUpdateExerciseName,
+  onReorderSets,
+  onReorderExercises,
+  onFinishSession,
+  onSaveSession,
+  className,
+}: WorkoutViewProps) {
+  const [showExercisePicker, setShowExercisePicker] = useState(false)
+  const [showCompletionModal, setShowCompletionModal] = useState(false)
+  const [draggingExerciseId, setDraggingExerciseId] = useState<string | number | null>(null)
+
+  // Calculate stats
+  const stats = useMemo(() => {
+    const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0)
+    const completedSets = exercises.reduce((sum, ex) => sum + getCompletedCount(ex), 0)
+    const completedExercises = exercises.filter(
+      ex => ex.sets.length > 0 && ex.sets.every(s => s.completed)
+    ).length
+
+    return {
+      totalExercises: exercises.length,
+      totalSets,
+      completedExercises,
+      completedSets,
+      progress: totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0,
+    }
+  }, [exercises])
+
+  // Organize exercises by section
+  const sections = useMemo(() => {
+    return [...new Set(exercises.map(e => e.section))].sort(
+      (a, b) => getSectionOrder(a) - getSectionOrder(b)
+    )
+  }, [exercises])
+
+  // Exercise drag handlers
+  const handleExerciseDragStart = useCallback((e: React.DragEvent, exerciseId: string | number) => {
+    setDraggingExerciseId(exerciseId)
+    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.setData("text/plain", String(exerciseId))
+  }, [])
+
+  const handleExerciseDragEnd = useCallback(() => {
+    setDraggingExerciseId(null)
+  }, [])
+
+  const handleExerciseDrop = useCallback((e: React.DragEvent, targetExerciseId: string | number) => {
+    e.preventDefault()
+    if (draggingExerciseId && draggingExerciseId !== targetExerciseId && onReorderExercises) {
+      onReorderExercises(draggingExerciseId, targetExerciseId)
+    }
+    setDraggingExerciseId(null)
+  }, [draggingExerciseId, onReorderExercises])
+
+  const handleFinishClick = useCallback(() => {
+    setShowCompletionModal(true)
+  }, [])
+
+  const handleConfirmFinish = useCallback(() => {
+    setShowCompletionModal(false)
+    onFinishSession?.()
+  }, [onFinishSession])
+
+  const isCompleted = sessionStatus === 'completed'
+
+  return (
+    <div className={cn("bg-background min-h-full relative", className)}>
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
+        <div className="px-4 py-3">
+          {/* Title Row */}
+          <h1 className="text-base font-semibold mb-2">{title}</h1>
+          {description && (
+            <p className="text-xs text-muted-foreground mb-2">{description}</p>
+          )}
+
+          {/* Actions Row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {isAthlete ? (
+                <span>{stats.progress}% complete</span>
+              ) : (
+                <span>{stats.totalSets} sets · {stats.totalExercises} exercises</span>
+              )}
+            </div>
+
+            {/* Timer & Actions */}
+            <div className="flex items-center gap-2">
+              {isAthlete && !isCompleted && (
+                <button
+                  onClick={onToggleTimer}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-mono transition-colors",
+                    isTimerRunning
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  <Timer className="w-4 h-4" />
+                  <TimerDisplay seconds={elapsedSeconds} size="sm" />
+                </button>
+              )}
+
+              {/* Save/Finish Buttons */}
+              {!isCompleted && isAthlete && (
+                <>
+                  {onSaveSession && (
+                    <button
+                      onClick={onSaveSession}
+                      disabled={saveStatus === 'saving'}
+                      className={cn(
+                        "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5",
+                        saveStatus === 'saving' && "opacity-70 cursor-not-allowed",
+                        saveStatus === 'saved' ? "bg-green-100 text-green-700" : "bg-muted text-foreground hover:bg-muted/80"
+                      )}
+                    >
+                      {saveStatus === 'saving' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      {saveStatus === 'saved' && <Check className="w-3.5 h-3.5" />}
+                      {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleFinishClick}
+                    className={cn(
+                      "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
+                      stats.progress === 100
+                        ? "bg-green-500 text-white hover:bg-green-600"
+                        : "bg-muted text-foreground hover:bg-muted/80"
+                    )}
+                  >
+                    Finish
+                  </button>
+                </>
+              )}
+
+              {isCompleted && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm font-medium">
+                  Completed
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          {isAthlete && !isCompleted && (
+            <div className="h-1 bg-muted rounded-full overflow-hidden mt-2">
+              <div
+                className="h-full bg-green-500 transition-all duration-500 rounded-full"
+                style={{ width: `${stats.progress}%` }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="px-4 py-4 space-y-2 pb-24">
+        {exercises.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="text-muted-foreground mb-4">No exercises yet</p>
+            {!isCompleted && (
+              <button
+                onClick={() => setShowExercisePicker(true)}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+              >
+                Add Your First Exercise
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {sections.map((section) => {
+              const sectionExercises = exercises.filter((e) => e.section === section)
+              const grouped = groupBySupersets(sectionExercises)
+
+              return (
+                <div key={section}>
+                  <SectionDivider label={section} />
+                  <div className="space-y-3 pl-2">
+                    {grouped.map((item, idx) => {
+                      if (Array.isArray(item)) {
+                        // Superset group
+                        return (
+                          <div key={`superset-${idx}`} className="space-y-3">
+                            {item.map((ex, exIdx) => (
+                              <ExerciseCard
+                                key={ex.id}
+                                exercise={ex}
+                                isAthlete={isAthlete}
+                                showSupersetBar
+                                supersetLabel={exIdx === 0 ? ex.supersetId || undefined : undefined}
+                                onToggleExpand={() => onToggleExpand?.(ex.id)}
+                                onCompleteSet={(setId) => onCompleteSet?.(ex.id, setId)}
+                                onUpdateSet={(setId, field, value) => onUpdateSet?.(ex.id, setId, field, value)}
+                                onAddSet={() => onAddSet?.(ex.id)}
+                                onRemoveSet={(setId) => onRemoveSet?.(ex.id, setId)}
+                                onRemoveExercise={() => onRemoveExercise?.(ex.id)}
+                                onUpdateName={(name) => onUpdateExerciseName?.(ex.id, name)}
+                                onReorderSets={(from, to) => onReorderSets?.(ex.id, from, to)}
+                                isDragging={draggingExerciseId === ex.id}
+                                onDragStart={handleExerciseDragStart}
+                                onDragOver={(e) => e.preventDefault()}
+                                onDragEnd={handleExerciseDragEnd}
+                                onDrop={handleExerciseDrop}
+                              />
+                            ))}
+                          </div>
+                        )
+                      }
+                      // Single exercise
+                      return (
+                        <ExerciseCard
+                          key={item.id}
+                          exercise={item}
+                          isAthlete={isAthlete}
+                          onToggleExpand={() => onToggleExpand?.(item.id)}
+                          onCompleteSet={(setId) => onCompleteSet?.(item.id, setId)}
+                          onUpdateSet={(setId, field, value) => onUpdateSet?.(item.id, setId, field, value)}
+                          onAddSet={() => onAddSet?.(item.id)}
+                          onRemoveSet={(setId) => onRemoveSet?.(item.id, setId)}
+                          onRemoveExercise={() => onRemoveExercise?.(item.id)}
+                          onUpdateName={(name) => onUpdateExerciseName?.(item.id, name)}
+                          onReorderSets={(from, to) => onReorderSets?.(item.id, from, to)}
+                          isDragging={draggingExerciseId === item.id}
+                          onDragStart={handleExerciseDragStart}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDragEnd={handleExerciseDragEnd}
+                          onDrop={handleExerciseDrop}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </>
+        )}
+      </div>
+
+      {/* Floating Action Button - Add Exercise */}
+      {exercises.length > 0 && !isCompleted && (
+        <button
+          onClick={() => setShowExercisePicker(true)}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
+        >
+          <Plus className="w-5 h-5" />
+          <span className="text-sm font-medium">Add Exercise</span>
+        </button>
+      )}
+
+      {/* Exercise Picker Sheet */}
+      {exerciseLibrary.length > 0 && (
+        <ExercisePickerSheet
+          isOpen={showExercisePicker}
+          onClose={() => setShowExercisePicker(false)}
+          onSelectExercise={(exercise, section) => {
+            onAddExercise?.(exercise, section)
+          }}
+          exercises={exerciseLibrary}
+          recentExerciseIds={recentExerciseIds}
+        />
+      )}
+
+      {/* Session Completion Modal */}
+      <SessionCompletionModal
+        isOpen={showCompletionModal}
+        onClose={() => setShowCompletionModal(false)}
+        onConfirm={handleConfirmFinish}
+        completedSets={stats.completedSets}
+        totalSets={stats.totalSets}
+        completedExercises={stats.completedExercises}
+        totalExercises={stats.totalExercises}
+        elapsedSeconds={elapsedSeconds}
+      />
+    </div>
+  )
+}

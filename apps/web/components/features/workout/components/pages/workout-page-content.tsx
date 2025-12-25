@@ -2,109 +2,63 @@
  * Workout Page Content
  * Main component that manages the workout flow with focus on "doing" rather than "finding"
  * Prioritizes ongoing sessions, then next scheduled session, with history in a separate view
+ *
+ * Updated: Now uses URL-based routing (/workout/[id]) for session views
  */
 
 "use client"
 
-import { useState, useEffect } from "react"
-import { ArrowLeft, History } from "lucide-react"
+import { useEffect } from "react"
+import { History } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WorkoutSessionSelector } from "./workout-session-selector"
-import { WorkoutSessionDashboard } from "./workout-session-dashboard"
 import { NextSessionCard } from "./next-session-card"
 import { FeatureErrorBoundary } from '@/components/error-boundary'
 import { useSessionsToday } from '../../hooks/use-workout-queries'
-import { getPastSessionsAction } from "@/actions/workout/workout-session-actions"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 // Import types
-import type { 
-  SessionPlanWithDetails,
-  WorkoutLogWithDetails 
+import type {
+  WorkoutLogWithDetails
 } from "@/types/training"
 
-type WorkoutPageState = 'selection' | 'active-session'
-
-interface ActiveSession {
-  presetGroup: SessionPlanWithDetails
-  session?: WorkoutLogWithDetails
-}
-
 export function WorkoutPageContent() {
-  const [pageState, setPageState] = useState<WorkoutPageState>('selection')
-  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   // Fetch today's and ongoing sessions
   const { data: sessions, isLoading: sessionsLoading } = useSessionsToday()
 
   // Find ongoing session (highest priority)
   const ongoingSession = sessions?.find((s: any) => s.session_status === 'ongoing')
-  
+
   // Find next assigned session (if no ongoing)
-  const nextSession = !ongoingSession 
+  const nextSession = !ongoingSession
     ? sessions?.find((s: any) => s.session_status === 'assigned')
     : null
 
-  // Handle session selection
-  const handleSessionSelected = async (
-    presetGroup: SessionPlanWithDetails, 
-    session?: WorkoutLogWithDetails
-  ) => {
-    setIsLoading(true)
-    try {
-      setActiveSession({ presetGroup, session })
-      setPageState('active-session')
-    } finally {
-      setIsLoading(false)
+  // Navigate to session page when selected
+  const handleSessionSelected = (session: WorkoutLogWithDetails) => {
+    if (session?.id) {
+      router.push(`/workout/${session.id}`)
     }
   }
 
-  // Handle back to selection
-  const handleBackToSelection = () => {
-    setActiveSession(null)
-    setPageState('selection')
-  }
-
-  // Auto-show ongoing session if it exists
+  // Auto-redirect to ongoing session if it exists
   useEffect(() => {
-    if (ongoingSession && pageState === 'selection' && !isLoading) {
-      const presetGroup = ongoingSession.session_plan
-      if (presetGroup) {
-        handleSessionSelected(presetGroup, ongoingSession)
-      }
+    if (ongoingSession?.id) {
+      router.push(`/workout/${ongoingSession.id}`)
     }
-  }, [ongoingSession, pageState])
+  }, [ongoingSession?.id, router])
 
-  // Render based on current state
+  // Render session selection view
   return (
     <FeatureErrorBoundary featureName="Workout" customMessage="Something went wrong with your workout. Please try again.">
       <div className="max-w-6xl mx-auto">
-        {isLoading || sessionsLoading ? (
+        {sessionsLoading ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading workout...</p>
+            <p className="text-muted-foreground">Loading workouts...</p>
           </div>
-        ) : pageState === 'active-session' && activeSession ? (
-          <>
-            {/* Back to Selection Button */}
-            <div className="mb-6">
-              <Button 
-                variant="ghost" 
-                onClick={handleBackToSelection}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Workouts
-              </Button>
-            </div>
-
-            {/* Workout Session Dashboard */}
-            <WorkoutSessionDashboard 
-              presetGroup={activeSession.presetGroup}
-              existingSession={activeSession.session}
-            />
-          </>
         ) : (
           <div className="space-y-6">
             {/* Header with History Link */}
@@ -125,14 +79,9 @@ export function WorkoutPageContent() {
             {nextSession && !ongoingSession && (
               <div>
                 <h2 className="text-lg font-semibold mb-3">Next Workout</h2>
-                <NextSessionCard 
-                  session={nextSession} 
-                  onStart={(session) => {
-                    const presetGroup = session.session_plan
-                    if (presetGroup) {
-                      handleSessionSelected(presetGroup, session)
-                    }
-                  }}
+                <NextSessionCard
+                  session={nextSession}
+                  onStart={handleSessionSelected}
                 />
               </div>
             )}
@@ -142,8 +91,10 @@ export function WorkoutPageContent() {
               <h2 className="text-lg font-semibold mb-3">
                 {ongoingSession ? "Other Sessions" : "Available Sessions"}
               </h2>
-              <WorkoutSessionSelector 
-                onSessionSelected={handleSessionSelected}
+              <WorkoutSessionSelector
+                onSessionSelected={(_presetGroup, session) => {
+                  if (session) handleSessionSelected(session)
+                }}
                 hideOngoing={!!ongoingSession}
               />
             </div>

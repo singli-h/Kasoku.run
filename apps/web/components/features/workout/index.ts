@@ -31,10 +31,21 @@ export * from './components/error-loading'
 
 // Export hooks
 export { useWorkoutApi } from './hooks/use-workout-api'
-export { 
-  useSessionsToday, 
-  useSessionsHistory, 
-  useSessionMutations, 
-  useWorkoutPrefetch, 
-  useWorkoutCache 
-} from './hooks/use-workout-queries' 
+export {
+  useSessionsToday,
+  useSessionsHistory,
+  useSessionMutations,
+  useWorkoutPrefetch,
+  useWorkoutCache
+} from './hooks/use-workout-queries'
+export {
+  useWorkoutMutations,
+  useSaveWorkoutSet,
+  useUpdateWorkoutSet,
+  useStartSession,
+  useCompleteSession,
+  useUpdateSessionNotes
+} from './hooks/useWorkoutMutations'
+
+// Export query config
+export { WORKOUT_QUERY_KEYS, CACHE_TIMES, STALE_TIMES } from './config/query-config' 

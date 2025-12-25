@@ -4,7 +4,7 @@
  * and performance settings for workout-related data
  */
 
-import { QueryClient } from '@tanstack/react-query'
+// QueryClient import removed - single instance in providers.tsx (FR-038)
 
 // Query keys for workout-related data
 export const WORKOUT_QUERY_KEYS = {
@@ -47,9 +47,9 @@ export const CACHE_TIMES = {
 
 // Stale time configurations (in milliseconds)
 export const STALE_TIMES = {
-  // Very fresh data (immediate stale)
-  SESSIONS_TODAY: 0, // Always refetch
-  SESSION_DETAILS: 0, // Always refetch
+  // Fresh data - short stale times to avoid excessive refetching
+  SESSIONS_TODAY: 30 * 1000, // 30 seconds (was 0 - caused excessive refetch)
+  SESSION_DETAILS: 60 * 1000, // 1 minute (was 0 - caused excessive refetch)
   
   // Moderately fresh data (1-5 minutes)
   SESSIONS_HISTORY: 2 * 60 * 1000, // 2 minutes
@@ -84,38 +84,8 @@ export const RETRY_CONFIG = {
   },
 } as const
 
-// Query client configuration
-export const createWorkoutQueryClient = () => {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        // Default stale time for workout queries
-        staleTime: 2 * 60 * 1000, // 2 minutes
-        
-        // Default cache time for workout queries
-        gcTime: 10 * 60 * 1000, // 10 minutes
-        
-        // Default retry configuration
-        retry: 2,
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-        
-        // Refetch on window focus for critical data
-        refetchOnWindowFocus: true,
-        
-        // Refetch on reconnect
-        refetchOnReconnect: true,
-        
-        // Background refetch interval for stale data
-        refetchInterval: 5 * 60 * 1000, // 5 minutes
-      },
-      mutations: {
-        // Retry mutations once
-        retry: 1,
-        retryDelay: 1000,
-      },
-    },
-  })
-}
+// NOTE: QueryClient is created in providers.tsx - single instance pattern (FR-038)
+// Do NOT create separate QueryClient instances per feature
 
 // Query invalidation helpers
 export const INVALIDATION_PATTERNS = {
@@ -193,7 +163,6 @@ export default {
   CACHE_TIMES,
   STALE_TIMES,
   RETRY_CONFIG,
-  createWorkoutQueryClient,
   INVALIDATION_PATTERNS,
   PREFETCH_STRATEGIES,
   PERFORMANCE_METRICS,

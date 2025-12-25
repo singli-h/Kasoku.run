@@ -8,7 +8,8 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -204,6 +205,9 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
+            <VisuallyHidden>
+              <SheetTitle>Navigation Menu</SheetTitle>
+            </VisuallyHidden>
             <div className="flex size-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>

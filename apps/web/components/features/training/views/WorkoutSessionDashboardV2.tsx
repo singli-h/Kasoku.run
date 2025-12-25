@@ -1,0 +1,345 @@
+"use client"
+
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { BackToTopButton } from "@/components/ui/back-to-top-button"
+import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
+import { useUnsavedChanges } from "@/lib/hooks/useUnsavedChanges"
+
+// Import workout feature context and hooks
+import {
+  ExerciseProvider,
+  useExerciseContext,
+  useWorkoutSession,
+  type WorkoutExercise
+} from "../../workout/index"
+
+// Import training types and views
+import type { TrainingExercise, TrainingSet } from "../types"
+import { WorkoutView } from "./WorkoutView"
+import { legacyToTrainingExercises, type LegacyWorkoutExercise } from "../adapters/workout-adapter"
+
+// Import types
+import type {
+  WorkoutLogWithDetails,
+  SessionPlanWithDetails,
+  WorkoutLogSet
+} from "@/types/training"
+
+interface WorkoutSessionDashboardV2Props {
+  presetGroup: SessionPlanWithDetails
+  existingSession?: WorkoutLogWithDetails
+  className?: string
+}
+
+export function WorkoutSessionDashboardV2({
+  presetGroup,
+  existingSession,
+  className
+}: WorkoutSessionDashboardV2Props) {
+  return (
+    <ExerciseProvider sessionId={(existingSession as any)?.id}>
+      <WorkoutSessionContentV2
+        presetGroup={presetGroup}
+        existingSession={existingSession}
+        className={className}
+      />
+    </ExerciseProvider>
+  )
+}
+
+function WorkoutSessionContentV2({
+  presetGroup,
+  existingSession,
+  className
+}: WorkoutSessionDashboardV2Props) {
+  const { toast } = useToast()
+  const { exercises, setExercises, updateExercise, toggleSetComplete, forceSave, hasPendingChanges, saveStatus } = useExerciseContext()
+
+  // Track expanded exercises
+  const [expandedIds, setExpandedIds] = useState<Set<number | string>>(new Set())
+
+  // T018: Warn users when leaving with unsaved changes
+  useUnsavedChanges({
+    hasUnsavedChanges: hasPendingChanges(),
+    onBeforeUnload: () => {}
+  })
+
+  // Session management hook
+  const {
+    sessionStatus,
+    startSession,
+    completeSession,
+    saveSession,
+    isLoading
+  } = useWorkoutSession(existingSession)
+
+  // Timer state
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [isTimerRunning, setIsTimerRunning] = useState(false)
+
+  // Timer effect
+  useEffect(() => {
+    if (!isTimerRunning || sessionStatus !== 'ongoing') return
+
+    const interval = setInterval(() => {
+      setElapsedSeconds(prev => prev + 1)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isTimerRunning, sessionStatus])
+
+  // Auto-start timer when session starts
+  useEffect(() => {
+    if (sessionStatus === 'ongoing' && !isTimerRunning) {
+      setIsTimerRunning(true)
+    }
+  }, [sessionStatus, isTimerRunning])
+
+  // Populate exercises from preset group/session on mount
+  useEffect(() => {
+    try {
+      const basePresets = (presetGroup?.session_plan_exercises
+        || existingSession?.session_plan?.session_plan_exercises
+        || [])
+        .slice()
+        .sort((a: any, b: any) => (a.exercise_order || 0) - (b.exercise_order || 0))
+
+      const details: WorkoutLogSet[] = existingSession?.workout_log_sets || []
+      const detailsByPresetId = new Map<number, WorkoutLogSet[]>()
+      for (const d of details) {
+        const pid = (d as any).session_plan_exercise_id as number | undefined
+        if (!pid) continue
+        const list = detailsByPresetId.get(pid) || []
+        list.push(d)
+        detailsByPresetId.set(pid, list)
+      }
+
+      const mapped: WorkoutExercise[] = basePresets.map((preset: any) => ({
+        ...preset,
+        workout_log_sets: detailsByPresetId.get(preset.id) || [],
+        completed: false,
+      }))
+
+      setExercises(mapped)
+
+      // Expand first exercise by default
+      if (mapped.length > 0) {
+        setExpandedIds(new Set([mapped[0].id]))
+      }
+    } catch (err) {
+      console.error("Failed to initialize workout exercises", err)
+    }
+  }, [presetGroup?.session_plan_exercises, existingSession?.session_plan?.session_plan_exercises, existingSession?.workout_log_sets, setExercises])
+
+  // Local state for session notes
+  const [sessionNotes, setSessionNotes] = useState((existingSession as any)?.notes || "")
+
+  // Convert legacy exercises to TrainingExercises for the view
+  const trainingExercises = useMemo(() => {
+    return legacyToTrainingExercises(exercises as unknown as LegacyWorkoutExercise[], expandedIds)
+  }, [exercises, expandedIds])
+
+  // Handle toggle expand
+  const handleToggleExpand = useCallback((exerciseId: number | string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(exerciseId)) {
+        next.delete(exerciseId)
+      } else {
+        next.add(exerciseId)
+      }
+      return next
+    })
+  }, [])
+
+  // Handle complete set
+  const handleCompleteSet = useCallback((exerciseId: number | string, setId: number | string) => {
+    // Use toggleSetComplete from context - it handles both state update and auto-save
+    if (typeof exerciseId === 'number' && typeof setId === 'number') {
+      toggleSetComplete(exerciseId, setId)
+    } else {
+      console.warn('[WorkoutSessionDashboardV2] Cannot complete set - invalid IDs', { exerciseId, setId })
+    }
+  }, [toggleSetComplete])
+
+  // Handle update set
+  const handleUpdateSet = useCallback((
+    exerciseId: number | string,
+    setId: number | string,
+    field: keyof TrainingSet,
+    value: number | string | null
+  ) => {
+    const exercise = exercises.find(e => e.id === exerciseId)
+    if (!exercise) return
+
+    const setIndex = exercise.workout_log_sets.findIndex(s => s.id === setId)
+    if (setIndex === -1) return
+
+    // Map TrainingSet field to WorkoutLogSet field
+    const dbField = field === 'performingTime' ? 'performing_time'
+      : field === 'restTime' ? 'rest_time'
+        : field
+
+    // Update the set in the exercise's workout_log_sets array
+    const updatedSets = exercise.workout_log_sets.map((set, idx) =>
+      idx === setIndex ? { ...set, [dbField]: value } : set
+    )
+
+    updateExercise(exerciseId as number, { workout_log_sets: updatedSets })
+  }, [exercises, updateExercise])
+
+  // Handle session start
+  const handleStartSession = useCallback(async () => {
+    try {
+      const result = await startSession()
+      if (result.success) {
+        setIsTimerRunning(true)
+        toast({
+          title: "Session Started",
+          description: "Your workout session has begun!"
+        })
+      } else {
+        throw result.error || new Error("Failed to start session")
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to start session",
+        variant: "destructive"
+      })
+    }
+  }, [startSession, toast])
+
+  // Handle finish session
+  const handleFinishSession = useCallback(async () => {
+    try {
+      const saveSuccess = await forceSave()
+      if (!saveSuccess) {
+        toast({
+          title: "Save Failed",
+          description: "Failed to save exercise data before completing. Please try again.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const result = await completeSession()
+      if (result.success) {
+        setIsTimerRunning(false)
+        toast({
+          title: "Session Completed!",
+          description: "Great work! Your session has been saved."
+        })
+      } else {
+        throw result.error || new Error("Failed to complete session")
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to complete session",
+        variant: "destructive"
+      })
+    }
+  }, [forceSave, completeSession, toast])
+
+  // Handle save session
+  const handleSaveSession = useCallback(async () => {
+    try {
+      const saveSuccess = await forceSave()
+      if (!saveSuccess) {
+        toast({
+          title: "Save Failed",
+          description: "Failed to save exercise data. Please try again.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const result = await saveSession()
+      if (result.success) {
+        toast({
+          title: "Session Saved",
+          description: "Your progress has been saved"
+        })
+      } else {
+        throw result.error || new Error("Failed to save session")
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to save session",
+        variant: "destructive"
+      })
+    }
+  }, [forceSave, saveSession, toast])
+
+  return (
+    <div className={cn("space-y-4", className)}>
+      {/* Back Button */}
+      <div className="mb-2">
+        <Button variant="ghost" asChild className="flex items-center gap-2">
+          <Link href="/workout">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Workouts
+          </Link>
+        </Button>
+      </div>
+
+      {/* Start Button for Assigned Sessions */}
+      {sessionStatus === 'assigned' && (
+        <div className="flex justify-center py-4">
+          <Button
+            onClick={handleStartSession}
+            disabled={isLoading}
+            size="lg"
+            className="px-8"
+          >
+            Start Workout
+          </Button>
+        </div>
+      )}
+
+      {/* Main Workout View */}
+      {sessionStatus !== 'assigned' && (
+        <WorkoutView
+          title={(presetGroup as any).name || "Workout Session"}
+          description={(presetGroup as any).description}
+          exercises={trainingExercises}
+          isAthlete={true}
+          elapsedSeconds={elapsedSeconds}
+          isTimerRunning={isTimerRunning}
+          sessionStatus={sessionStatus === 'cancelled' ? 'completed' : sessionStatus}
+          saveStatus={saveStatus}
+          onToggleTimer={() => setIsTimerRunning(prev => !prev)}
+          onToggleExpand={handleToggleExpand}
+          onCompleteSet={handleCompleteSet}
+          onUpdateSet={handleUpdateSet}
+          onFinishSession={handleFinishSession}
+          onSaveSession={handleSaveSession}
+        />
+      )}
+
+      {/* Session Notes */}
+      {sessionStatus !== 'assigned' && (
+        <div className="space-y-2 px-4">
+          <h3 className="text-sm font-medium">Notes</h3>
+          <Textarea
+            placeholder="Add notes about your workout session..."
+            value={sessionNotes}
+            onChange={(e) => setSessionNotes(e.target.value)}
+            className="min-h-20"
+            disabled={sessionStatus === 'completed'}
+          />
+        </div>
+      )}
+
+      {/* Back to Top Button */}
+      <BackToTopButton />
+    </div>
+  )
+}

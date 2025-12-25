@@ -1,15 +1,15 @@
 ﻿# Kasoku.run Development Guide for AI Assistants
 
-> **Last Updated**: 2025-12-03
+> **Last Updated**: 2025-12-24
 > **Project**: Kasoku.run - AI-Powered Training Platform
-> **Stack**: Next.js 15 + Supabase + Clerk + TypeScript
+> **Stack**: Next.js 16.0.10 + Supabase + Clerk 6.x + TypeScript
 
 ---
 
 ## Quick Start
 
 **Kasoku.run** is a training management platform for coaches and athletes built with:
-- Next.js 15 (App Router) + TypeScript (strict mode)
+- Next.js 16 (App Router) + TypeScript (strict mode)
 - Supabase (PostgreSQL) + Clerk (Auth)
 - Turborepo monorepo, primary app at `apps/web/`
 
@@ -21,6 +21,74 @@
 - `docs/features/` - Product requirements, feature specs
 
 **Key Principle**: This CLAUDE.md contains architectural decisions, non-obvious patterns, and common pitfalls. Detailed implementation examples live in the docs folder.
+
+---
+
+## ⚠️ Next.js 16 Breaking Changes (CRITICAL)
+
+**This project uses Next.js 16.0.10** - Several major breaking changes affect how you write code:
+
+### 1. Middleware → Proxy Rename (MAJOR)
+
+**DO NOT create `middleware.ts`** - It's deprecated and will be removed.
+
+| Old (Next.js ≤15) | New (Next.js 16) |
+|-------------------|------------------|
+| `middleware.ts` in root or `src/` | `app/proxy.ts` (inside App Router) |
+| `export function middleware()` | `export function proxy()` |
+| Edge Runtime supported | **Node.js runtime ONLY** |
+
+**CRITICAL: Auth should NOT be in proxy/middleware!**
+
+After CVE-2025-29927 (March 2025), Vercel recommends:
+- ❌ DO NOT use proxy for authentication
+- ✅ DO verify auth in **Server Actions** (our current pattern)
+- ✅ DO verify auth in **Layouts** for page-level protection
+- ✅ DO verify auth in **Route Handlers** for API protection
+
+```typescript
+// ❌ DON'T: Old middleware auth pattern (DEPRECATED)
+// app/proxy.ts
+export function proxy(request: Request) {
+  // Auth checks here are vulnerable - DON'T DO THIS
+}
+
+// ✅ DO: Auth in server actions (OUR PATTERN - CORRECT)
+// actions/plans/plan-actions.ts
+export async function createPlanAction(): Promise<ActionState<Plan>> {
+  const { userId } = await auth()
+  if (!userId) return { isSuccess: false, message: 'Not authenticated' }
+  // ... rest of action
+}
+```
+
+### 2. Async Request APIs (BREAKING)
+
+All request APIs must be awaited - synchronous access removed:
+
+```typescript
+// ❌ DON'T (Next.js 15 - no longer works)
+export default function Page({ params }) {
+  const slug = params.slug
+}
+
+// ✅ DO (Next.js 16)
+export default async function Page(props: { params: Promise<{ slug: string }> }) {
+  const { slug } = await props.params
+}
+```
+
+Affected APIs: `cookies()`, `headers()`, `draftMode()`, `params`, `searchParams`
+
+### 3. Turbopack is Default
+
+- No `--turbopack` flag needed for `next dev` or `next build`
+- Config moved from `experimental.turbopack` to top-level `turbopack`
+- Custom Webpack configs require `--webpack` flag
+
+### 4. Node.js 20.9+ Required
+
+Node.js 18 is no longer supported. Minimum: Node.js 20.9 (LTS).
 
 ---
 
@@ -57,6 +125,8 @@
 - Hardcode mock/default data as fallbacks
 - Return raw database errors to client
 - Disable RLS without explicit security review
+- Create `middleware.ts` for auth (DEPRECATED in Next.js 16 - use server actions)
+- Access `params` or `searchParams` synchronously (must use `await` in Next.js 16)
 
 **ALWAYS:**
 - Start server actions with `const { userId } = await auth()` check
@@ -483,9 +553,20 @@ import type { ActionState } from '@/types/api'
 
 ## Authentication & Security
 
-### Clerk + Supabase Flow
+### Next.js 16 Auth Strategy (Post CVE-2025-29927)
 
-**Pattern**: Clerk handles auth, Supabase uses JWT for RLS
+**IMPORTANT**: After the March 2025 security vulnerability, auth patterns have changed:
+
+| Layer | Use For | Auth Check |
+|-------|---------|------------|
+| `app/proxy.ts` | Routing ONLY (redirects, rewrites) | ❌ NO auth here |
+| Server Actions | Data mutations | ✅ Primary auth location |
+| Layouts | Page-level protection | ✅ For route groups |
+| Route Handlers | Webhooks, external APIs | ✅ As needed |
+
+### Clerk + Supabase Flow (2025 Native Integration)
+
+**Pattern**: Clerk handles auth, Supabase uses JWT for RLS via native third-party auth
 ```typescript
 // Server-side (lib/supabase-server.ts)
 const supabase = createClient(url, key, {
@@ -494,13 +575,14 @@ const supabase = createClient(url, key, {
   }
 })
 
-// In actions
+// In actions - THIS IS WHERE AUTH BELONGS
 const { userId } = await auth() // Clerk user ID
 const dbUserId = await getDbUserId(userId) // Database user.id (cached)
 ```
 
 **Why fresh tokens**: Security (never cached), RLS policies work correctly
 **Why cache user ID**: Performance (reduces DB queries), serverless-safe with TTL
+**Why no middleware auth**: CVE-2025-29927 showed middleware auth can be bypassed
 
 ### Row Level Security (RLS)
 
@@ -852,6 +934,9 @@ npx supabase gen types typescript --project-id pcteaouusthwbgzczoae
 | Clerk setup | `docs/integrations/clerk-authentication.md` |
 | Supabase patterns | `docs/integrations/supabase-integration.md` |
 | Design system | `docs/design/design-system-overview.md` |
+| **Feature pattern** | `docs/patterns/feature-pattern.md` |
+| **ActionState pattern** | `docs/patterns/actionstate-pattern.md` |
+| **Hooks vs Context** | `docs/patterns/hooks-vs-context.md` |
 
 ### Environment Variables
 
@@ -888,5 +973,5 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=<key>
 
 **Last Updated**: 2025-12-24
 **Maintainer**: Development Team
-**Version**: 2.1.0 (Schema Updated)
+**Version**: 2.2.0 (Next.js 16 Breaking Changes Documented)
 

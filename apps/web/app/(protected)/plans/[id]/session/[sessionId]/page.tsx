@@ -1,11 +1,16 @@
+/**
+ * Session Planner Page
+ *
+ * Uses the new unified training components (SessionPlannerV2)
+ * which provides a mobile-first, section-based exercise organization.
+ */
+
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { UnifiedPageSkeleton } from "@/components/layout"
-import { SessionPlannerClient } from "@/components/features/plans/session-planner/SessionPlannerClient"
+import { SessionPlannerV2 } from "@/components/features/training"
 import { SessionAssistantWrapper } from "./SessionAssistantWrapper"
-import { getSessionPlanByIdAction } from "@/actions/library/exercise-actions"
-import { getExercisesAction } from "@/actions/library/exercise-actions"
-import { getExerciseTypesAction } from "@/actions/library/exercise-actions"
+import { getSessionPlanByIdAction, getExercisesAction } from "@/actions/library/exercise-actions"
 import type { SessionExercise, ExerciseLibraryItem } from "@/components/features/plans/session-planner/types"
 
 interface PageProps {
@@ -114,11 +119,10 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
   const planId = resolvedParams.id
   const sessionId = Number(resolvedParams.sessionId)
 
-  // Load session data, exercise library, and exercise types in parallel
-  const [sessionResult, exercisesResult, exerciseTypesResult] = await Promise.all([
+  // Load session data and exercise library in parallel
+  const [sessionResult, exercisesResult] = await Promise.all([
     getSessionPlanByIdAction(sessionId),
     getExercisesAction(),
-    getExerciseTypesAction(),
   ])
 
   // Handle session not found
@@ -132,23 +136,18 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
     ? transformExerciseLibrary(exercisesResult.data)
     : []
 
-  const exerciseTypes = exerciseTypesResult.isSuccess
-    ? exerciseTypesResult.data
-    : []
-
   // Transform session data to client format
   const { session, exercises } = transformSessionData(sessionResult.data)
 
   return (
     <>
       <Suspense fallback={<UnifiedPageSkeleton title="Session Planner" />}>
-        <SessionPlannerClient
+        <SessionPlannerV2
           planId={planId}
           sessionId={sessionId}
           initialSession={session}
-          initialExercises={exercises}
+          initialExercises={exercises as any}
           exerciseLibrary={exerciseLibrary}
-          exerciseTypes={exerciseTypes}
         />
       </Suspense>
 

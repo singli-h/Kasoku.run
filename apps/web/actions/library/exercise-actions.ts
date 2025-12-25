@@ -11,11 +11,11 @@ import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
-import { 
+import {
   Exercise, ExerciseInsert, ExerciseUpdate,
   ExerciseType,
   Unit,
-  SessionPlan, SessionPlanInsert, SessionPlanUpdate,
+  SessionPlan, SessionPlanInsert,
   ExercisePreset, ExercisePresetInsert, ExercisePresetUpdate,
   SessionPlanSet,
   ExerciseWithDetails,
@@ -831,67 +831,6 @@ export async function createSessionPlanAction(
 }
 
 /**
- * Get exercise preset groups for a specific microcycle
- */
-export async function getSessionPlansByMicrocycleAction(
-  microcycleId: number
-): Promise<ActionState<SessionPlanWithDetails[]>> {
-  try {
-    const { userId } = await auth()
-    
-    if (!userId) {
-      return {
-        isSuccess: false,
-        message: "User not authenticated"
-      }
-    }
-
-    // Get database user ID using the cache utility
-    const dbUserId = await getDbUserId(userId)
-
-    const { data: presetGroups, error } = await supabase
-      .from('session_plans')
-      .select(`
-        *,
-        microcycle:microcycles(*),
-        athlete_group:athlete_groups(*),
-        session_plan_exercises(
-          *,
-          exercise:exercises(
-            *,
-            exercise_type:exercise_types(*),
-            unit:units(*)
-          ),
-          session_plan_sets(*)
-        )
-      `)
-      .eq('microcycle_id', microcycleId)
-      .eq('user_id', dbUserId)
-      .order('day', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching exercise preset groups:', error)
-      return {
-        isSuccess: false,
-        message: `Failed to fetch training sessions: ${error.message}`
-      }
-    }
-
-    return {
-      isSuccess: true,
-      message: "Training sessions retrieved successfully",
-      data: presetGroups || []
-    }
-  } catch (error) {
-    console.error('Error in getSessionPlansByMicrocycleAction:', error)
-    return {
-      isSuccess: false,
-      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
-    }
-  }
-}
-
-/**
  * Get a specific exercise preset group with all details
  */
 export async function getSessionPlanByIdAction(
@@ -1009,101 +948,6 @@ export async function addExerciseToPresetGroupAction(
     }
   } catch (error) {
     console.error('Error in addExerciseToPresetGroupAction:', error)
-    return {
-      isSuccess: false,
-      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
-    }
-  }
-}
-
-/**
- * Update an exercise preset group
- */
-export async function updateSessionPlanAction(
-  id: number,
-  updates: Partial<SessionPlanUpdate>
-): Promise<ActionState<SessionPlan>> {
-  try {
-    const { userId } = await auth()
-    
-    if (!userId) {
-      return {
-        isSuccess: false,
-        message: "User not authenticated"
-      }
-    }
-
-    // Get database user ID using the cache utility
-    const dbUserId = await getDbUserId(userId)
-
-    const { data: presetGroup, error } = await supabase
-      .from('session_plans')
-      .update(updates)
-      .eq('id', id)
-      .eq('user_id', dbUserId)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error updating exercise preset group:', error)
-      return {
-        isSuccess: false,
-        message: `Failed to update training session: ${error.message}`
-      }
-    }
-
-    return {
-      isSuccess: true,
-      message: "Training session updated successfully",
-      data: presetGroup
-    }
-  } catch (error) {
-    console.error('Error in updateSessionPlanAction:', error)
-    return {
-      isSuccess: false,
-      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
-    }
-  }
-}
-
-/**
- * Delete an exercise preset group
- */
-export async function deleteSessionPlanAction(id: number): Promise<ActionState<boolean>> {
-  try {
-    const { userId } = await auth()
-    
-    if (!userId) {
-      return {
-        isSuccess: false,
-        message: "User not authenticated"
-      }
-    }
-
-    // Get database user ID using the cache utility
-    const dbUserId = await getDbUserId(userId)
-
-    const { error } = await supabase
-      .from('session_plans')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', dbUserId)
-
-    if (error) {
-      console.error('Error deleting exercise preset group:', error)
-      return {
-        isSuccess: false,
-        message: `Failed to delete training session: ${error.message}`
-      }
-    }
-
-    return {
-      isSuccess: true,
-      message: "Training session deleted successfully",
-      data: true
-    }
-  } catch (error) {
-    console.error('Error in deleteSessionPlanAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`

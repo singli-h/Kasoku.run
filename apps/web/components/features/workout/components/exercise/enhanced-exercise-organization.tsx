@@ -264,14 +264,18 @@ export function EnhancedExerciseOrganization({
           const configB = SECTION_CONFIG[b.type]
           return configA.priority - configB.priority
         })
-        .map((group) => {
+        .map((group, groupIndex) => {
           const config = SECTION_CONFIG[group.type]
-          const isCollapsed = collapsedSections.has(group.type)
+          // Use unique key combining type and index to handle multiple groups of same type
+          const groupKey = group.type === 'superset' && group.id
+            ? `superset-${group.id}`
+            : `${group.type}-${groupIndex}`
+          const isCollapsed = collapsedSections.has(groupKey)
           const Icon = config.icon
-          
+
           return (
             <motion.div
-              key={group.type}
+              key={groupKey}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
@@ -279,7 +283,7 @@ export function EnhancedExerciseOrganization({
               <div className="card-enhanced border rounded-lg">
                 <div className="p-4">
                   <button
-                    onClick={() => toggleSectionCollapse(group.type)}
+                    onClick={() => toggleSectionCollapse(groupKey)}
                     className="flex items-center justify-between w-full text-left"
                   >
                     <div className="flex items-center gap-3">
