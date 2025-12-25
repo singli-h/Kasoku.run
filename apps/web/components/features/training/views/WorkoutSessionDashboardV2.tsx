@@ -191,6 +191,23 @@ function WorkoutSessionContentV2({
     }
   }, [toggleSetComplete])
 
+  // Handle complete all sets for an exercise (FR-051: Circle toggle)
+  const handleCompleteAllSets = useCallback((exerciseId: number | string) => {
+    const exercise = exercises.find(e => e.id === exerciseId)
+    if (!exercise) return
+
+    const allCompleted = exercise.workout_log_sets.every(s => s.completed)
+    const newCompleted = !allCompleted
+
+    // Update all sets to the new completion state
+    const updatedSets = exercise.workout_log_sets.map(set => ({
+      ...set,
+      completed: newCompleted
+    }))
+
+    updateExercise(exerciseId as number, { workout_log_sets: updatedSets })
+  }, [exercises, updateExercise])
+
   // Handle update set
   const handleUpdateSet = useCallback((
     exerciseId: number | string,
@@ -333,6 +350,7 @@ function WorkoutSessionContentV2({
         <WorkoutView
           title={(presetGroup as any).name || "Workout Session"}
           description={(presetGroup as any).description}
+          sessionDate={existingSession?.date_time || (presetGroup as any)?.date}
           exercises={trainingExercises}
           isAthlete={true}
           elapsedSeconds={elapsedSeconds}
@@ -342,6 +360,7 @@ function WorkoutSessionContentV2({
           onToggleTimer={() => setIsTimerRunning(prev => !prev)}
           onToggleExpand={handleToggleExpand}
           onCompleteSet={handleCompleteSet}
+          onCompleteAllSets={handleCompleteAllSets}
           onUpdateSet={handleUpdateSet}
           onFinishSession={handleFinishSession}
           onSaveSession={handleSaveSession}

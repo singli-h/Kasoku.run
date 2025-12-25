@@ -62,21 +62,21 @@ const collapseVariants = {
 }
 
 // Section type configuration for styling and behavior
-// Section configuration - simplified to default colors
+// Uses unified exercise type names as section labels
 const SECTION_CONFIG: Record<ExerciseGroupType, {
   label: string
 }> = {
-  "warm up": {
-    label: "Warm Up"
+  "warmup": {
+    label: "Warmup"
   },
   "gym": {
-    label: "Strength Training"
+    label: "Gym"
   },
   "gymMerged": {
-    label: "Strength Training"
+    label: "Gym"
   },
   "circuit": {
-    label: "Circuit Training"
+    label: "Circuit"
   },
   "isometric": {
     label: "Isometric"
@@ -88,7 +88,7 @@ const SECTION_CONFIG: Record<ExerciseGroupType, {
     label: "Sprint"
   },
   "drill": {
-    label: "Skill Drills"
+    label: "Drill"
   },
   "superset": {
     label: "Superset"

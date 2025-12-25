@@ -63,7 +63,7 @@ export interface TrainingExercise {
   exerciseId: number
   /** Display name of the exercise */
   name: string
-  /** Training section (Warmup, Speed, Strength, Plyometric, Conditioning, Cooldown) */
+  /** Training section (Warmup, Gym, Isometric, Plyometric, Sprint, Drill, Circuit) */
   section: string
   /** Order within the session */
   exerciseOrder: number
@@ -73,6 +73,8 @@ export interface TrainingExercise {
   notes?: string | null
   /** Sets for this exercise */
   sets: TrainingSet[]
+  /** Exercise type ID for field visibility logic */
+  exerciseTypeId?: number
 
   // UI state
   /** Whether card is expanded */
@@ -289,15 +291,18 @@ export function getDisplayColumns(
 
 /**
  * Get section order for sorting exercises by section
+ * Uses unified exercise type names as section names
  */
 export function getSectionOrder(section: string): number {
   const order: Record<string, number> = {
     Warmup: 1,
-    Speed: 2,
-    Plyometric: 3,
-    Strength: 4,
-    Conditioning: 5,
-    Cooldown: 6,
+    Gym: 2,
+    Isometric: 3,
+    Plyometric: 4,
+    Sprint: 5,
+    Drill: 6,
+    Circuit: 7,
+    Cooldown: 8,
   }
   return order[section] ?? 99
 }

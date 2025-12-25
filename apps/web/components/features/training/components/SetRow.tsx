@@ -5,11 +5,27 @@ import { Check, GripVertical, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TrainingSet } from "../types"
 
+/** Task 10.1: Visible fields computed from all sets in an exercise */
+export interface VisibleFields {
+  reps: boolean
+  weight: boolean
+  distance: boolean
+  performingTime: boolean
+  height: boolean
+  power: boolean
+  velocity: boolean
+  rpe: boolean
+  restTime: boolean
+  tempo: boolean
+  effort: boolean
+}
+
 export interface SetRowProps {
   set: TrainingSet
   isAthlete: boolean
   isActive?: boolean
-  hasVBTFields?: boolean
+  /** Task 10.1: Pre-computed visible fields from ExerciseCard */
+  visibleFields?: VisibleFields
   onComplete?: () => void
   onUpdate?: (field: keyof TrainingSet, value: number | string | null) => void
   onRemove?: () => void
@@ -31,7 +47,7 @@ export function SetRow({
   set,
   isAthlete,
   isActive,
-  hasVBTFields,
+  visibleFields,
   onComplete,
   onUpdate,
   onRemove,
@@ -41,17 +57,16 @@ export function SetRow({
   onDragEnd,
   onDrop
 }: SetRowProps) {
-  const hasVBT = set.power !== undefined || set.velocity !== undefined || hasVBTFields
-
-  // Determine which fields to show based on exercise data (only show if plan has value)
-  const showReps = set.reps !== undefined || (!set.distance && !set.performingTime)
-  const showWeight = set.weight !== undefined
-  const showDistance = set.distance !== undefined
-  const showTime = set.performingTime !== undefined
-  const showHeight = set.height !== undefined
-  const showPower = hasVBT
-  const showVelocity = hasVBT
-  const showRPE = set.rpe !== undefined
+  // Task 10.1: Use pre-computed visible fields from ExerciseCard
+  // Fall back to showing reps if no visibleFields provided
+  const showReps = visibleFields?.reps ?? true
+  const showWeight = visibleFields?.weight ?? false
+  const showDistance = visibleFields?.distance ?? false
+  const showTime = visibleFields?.performingTime ?? false
+  const showHeight = visibleFields?.height ?? false
+  const showPower = visibleFields?.power ?? false
+  const showVelocity = visibleFields?.velocity ?? false
+  const showRPE = visibleFields?.rpe ?? false
 
   // Shared input styles - larger for better touch targets
   const inputClass = cn(

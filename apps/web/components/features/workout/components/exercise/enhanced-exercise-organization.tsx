@@ -71,28 +71,29 @@ type ViewMode = 'grouped' | 'list'
 type SortMode = 'order'
 
 // Clean section configuration - Apple-like design
+// Uses unified exercise type names as section labels
 const SECTION_CONFIG: Record<ExerciseGroupType, {
   label: string
   icon: React.ComponentType<{ className?: string }>
   priority: number
 }> = {
-  "warm up": {
-    label: "Warm Up",
+  "warmup": {
+    label: "Warmup",
     icon: Target,
     priority: 1
   },
   "gym": {
-    label: "Strength Training",
+    label: "Gym",
     icon: Zap,
     priority: 2
   },
   "gymMerged": {
-    label: "Strength Training",
+    label: "Gym",
     icon: Zap,
     priority: 2
   },
   "circuit": {
-    label: "Circuit Training",
+    label: "Circuit",
     icon: Shuffle,
     priority: 3
   },
@@ -112,7 +113,7 @@ const SECTION_CONFIG: Record<ExerciseGroupType, {
     priority: 6
   },
   "drill": {
-    label: "Skill Drills",
+    label: "Drill",
     icon: Target,
     priority: 7
   },

@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { Check, Loader2, Plus, Timer } from "lucide-react"
+import { Check, Loader2, Plus, Timer, Calendar } from "lucide-react"
+import { format, isToday, isYesterday, isTomorrow } from "date-fns"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet, ExerciseLibraryItem } from "../types"
 
 // Save status type (matches ExerciseContext)
 export type SaveStatus = 'saved' | 'saving' | 'error' | 'idle'
-import { getSectionOrder, groupBySupersets, getCompletedCount } from "../types"
+import { groupBySupersets, getCompletedCount } from "../types"
 import { ExerciseCard } from "../components/ExerciseCard"
 import { SectionDivider } from "../components/SectionDivider"
 import { ExercisePickerSheet } from "../components/ExercisePickerSheet"
@@ -19,6 +20,8 @@ export interface WorkoutViewProps {
   title: string
   /** Session description */
   description?: string
+  /** Session date for display */
+  sessionDate?: Date | string | null
   /** List of exercises with sets */
   exercises: TrainingExercise[]
   /** Is this for an athlete (true) or coach (false) */
@@ -40,6 +43,7 @@ export interface WorkoutViewProps {
   onToggleTimer?: () => void
   onToggleExpand?: (exerciseId: number | string) => void
   onCompleteSet?: (exerciseId: number | string, setId: number | string) => void
+  onCompleteAllSets?: (exerciseId: number | string) => void
   onUpdateSet?: (exerciseId: number | string, setId: number | string, field: keyof TrainingSet, value: number | string | null) => void
   onAddSet?: (exerciseId: number | string) => void
   onRemoveSet?: (exerciseId: number | string, setId: number | string) => void
@@ -63,6 +67,7 @@ export interface WorkoutViewProps {
 export function WorkoutView({
   title,
   description,
+  sessionDate,
   exercises,
   isAthlete,
   elapsedSeconds = 0,
@@ -74,6 +79,7 @@ export function WorkoutView({
   onToggleTimer,
   onToggleExpand,
   onCompleteSet,
+  onCompleteAllSets,
   onUpdateSet,
   onAddSet,
   onRemoveSet,
@@ -86,6 +92,18 @@ export function WorkoutView({
   onSaveSession,
   className,
 }: WorkoutViewProps) {
+  // Format session date for display
+  const formattedDate = useMemo(() => {
+    if (!sessionDate) return null
+    const date = typeof sessionDate === 'string' ? new Date(sessionDate) : sessionDate
+    if (isNaN(date.getTime())) return null
+
+    if (isToday(date)) return 'Today'
+    if (isYesterday(date)) return 'Yesterday'
+    if (isTomorrow(date)) return 'Tomorrow'
+    return format(date, 'EEE, MMM d')
+  }, [sessionDate])
+
   const [showExercisePicker, setShowExercisePicker] = useState(false)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [draggingExerciseId, setDraggingExerciseId] = useState<string | number | null>(null)
@@ -107,11 +125,29 @@ export function WorkoutView({
     }
   }, [exercises])
 
-  // Organize exercises by section
-  const sections = useMemo(() => {
-    return [...new Set(exercises.map(e => e.section))].sort(
-      (a, b) => getSectionOrder(a) - getSectionOrder(b)
-    )
+  // Group consecutive exercises by section (preserves order, detects section changes)
+  const exerciseGroups = useMemo(() => {
+    if (exercises.length === 0) return []
+
+    // Sort by exerciseOrder to ensure correct sequence
+    const sortedExercises = [...exercises].sort((a, b) => a.exerciseOrder - b.exerciseOrder)
+
+    // Group consecutive exercises by section
+    const groups: { section: string; exercises: TrainingExercise[] }[] = []
+    let currentGroup: { section: string; exercises: TrainingExercise[] } | null = null
+
+    sortedExercises.forEach((exercise) => {
+      if (!currentGroup || currentGroup.section !== exercise.section) {
+        // Start a new group
+        currentGroup = { section: exercise.section, exercises: [exercise] }
+        groups.push(currentGroup)
+      } else {
+        // Add to current group
+        currentGroup.exercises.push(exercise)
+      }
+    })
+
+    return groups
   }, [exercises])
 
   // Exercise drag handlers
@@ -149,15 +185,38 @@ export function WorkoutView({
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="px-4 py-3">
-          {/* Title Row */}
-          <h1 className="text-base font-semibold mb-2">{title}</h1>
+          {/* Title Row with Date */}
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-base font-semibold">{title}</h1>
+            {formattedDate && (
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-muted rounded-full text-[10px] text-muted-foreground font-medium">
+                <Calendar className="w-3 h-3" />
+                {formattedDate}
+              </span>
+            )}
+          </div>
           {description && (
             <p className="text-xs text-muted-foreground mb-2">{description}</p>
           )}
 
-          {/* Actions Row */}
+          {/* Actions Row - Timer LEFT of % complete per FR-052 */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              {/* Timer positioned LEFT of % complete (FR-052) */}
+              {isAthlete && !isCompleted && (
+                <button
+                  onClick={onToggleTimer}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm font-mono transition-colors min-w-[80px]",
+                    isTimerRunning
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  <Timer className="w-3.5 h-3.5" />
+                  <TimerDisplay seconds={elapsedSeconds} size="sm" />
+                </button>
+              )}
               {isAthlete ? (
                 <span>{stats.progress}% complete</span>
               ) : (
@@ -165,24 +224,8 @@ export function WorkoutView({
               )}
             </div>
 
-            {/* Timer & Actions */}
+            {/* Save/Finish Buttons */}
             <div className="flex items-center gap-2">
-              {isAthlete && !isCompleted && (
-                <button
-                  onClick={onToggleTimer}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-mono transition-colors",
-                    isTimerRunning
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  <Timer className="w-4 h-4" />
-                  <TimerDisplay seconds={elapsedSeconds} size="sm" />
-                </button>
-              )}
-
-              {/* Save/Finish Buttons */}
               {!isCompleted && isAthlete && (
                 <>
                   {onSaveSession && (
@@ -250,13 +293,13 @@ export function WorkoutView({
           </div>
         ) : (
           <>
-            {sections.map((section) => {
-              const sectionExercises = exercises.filter((e) => e.section === section)
-              const grouped = groupBySupersets(sectionExercises)
+            {exerciseGroups.map((group, groupIdx) => {
+              const grouped = groupBySupersets(group.exercises)
 
               return (
-                <div key={section}>
-                  <SectionDivider label={section} />
+                <div key={`${group.section}-${groupIdx}`}>
+                  {/* Minimal section separator - only show between different sections */}
+                  <SectionDivider label={group.section} />
                   <div className="space-y-3 pl-2">
                     {grouped.map((item, idx) => {
                       if (Array.isArray(item)) {
@@ -272,6 +315,7 @@ export function WorkoutView({
                                 supersetLabel={exIdx === 0 ? ex.supersetId || undefined : undefined}
                                 onToggleExpand={() => onToggleExpand?.(ex.id)}
                                 onCompleteSet={(setId) => onCompleteSet?.(ex.id, setId)}
+                                onCompleteAllSets={() => onCompleteAllSets?.(ex.id)}
                                 onUpdateSet={(setId, field, value) => onUpdateSet?.(ex.id, setId, field, value)}
                                 onAddSet={() => onAddSet?.(ex.id)}
                                 onRemoveSet={(setId) => onRemoveSet?.(ex.id, setId)}
@@ -296,6 +340,7 @@ export function WorkoutView({
                           isAthlete={isAthlete}
                           onToggleExpand={() => onToggleExpand?.(item.id)}
                           onCompleteSet={(setId) => onCompleteSet?.(item.id, setId)}
+                          onCompleteAllSets={() => onCompleteAllSets?.(item.id)}
                           onUpdateSet={(setId, field, value) => onUpdateSet?.(item.id, setId, field, value)}
                           onAddSet={() => onAddSet?.(item.id)}
                           onRemoveSet={(setId) => onRemoveSet?.(item.id, setId)}

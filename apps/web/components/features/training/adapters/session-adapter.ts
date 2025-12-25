@@ -54,15 +54,38 @@ export interface SessionPlannerExercise {
 
 /**
  * Get section name from exercise type
+ * Uses exercise type ID for reliable mapping (matches workout-adapter.ts)
+ * Falls back to type name string matching if ID not available
+ * 
+ * Database exercise_types table:
+ * 1 = Isometric, 2 = Plyometric, 3 = Gym, 4 = Warmup, 5 = Circuit, 6 = Sprint, 7 = Drill
  */
 function getSection(exercise: SessionPlannerExercise): string {
-  const typeName = exercise.exercise?.exercise_type?.type?.toLowerCase() || ''
+  // Try exercise_type_id first (most reliable)
+  const exerciseTypeId = exercise.exercise?.exercise_type_id
 
+  if (exerciseTypeId) {
+    switch (exerciseTypeId) {
+      case 1: return 'Isometric'
+      case 2: return 'Plyometric'
+      case 3: return 'Gym'
+      case 4: return 'Warmup'
+      case 5: return 'Circuit'
+      case 6: return 'Sprint'
+      case 7: return 'Drill'
+      default: break
+    }
+  }
+
+  // Fallback to string matching if ID not available
+  const typeName = exercise.exercise?.exercise_type?.type?.toLowerCase() || ''
   if (typeName.includes('warm')) return 'Warmup'
-  if (typeName.includes('sprint') || typeName.includes('speed')) return 'Speed'
+  if (typeName.includes('sprint')) return 'Sprint'
   if (typeName.includes('plyo') || typeName.includes('jump')) return 'Plyometric'
-  if (typeName.includes('strength') || typeName.includes('gym')) return 'Strength'
-  if (typeName.includes('condition') || typeName.includes('circuit')) return 'Conditioning'
+  if (typeName.includes('gym')) return 'Gym'
+  if (typeName.includes('isometric')) return 'Isometric'
+  if (typeName.includes('circuit')) return 'Circuit'
+  if (typeName.includes('drill')) return 'Drill'
   if (typeName.includes('cool')) return 'Cooldown'
 
   return 'Other'
@@ -104,6 +127,7 @@ export function sessionExerciseToTraining(
     notes: exercise.notes,
     sets,
     expanded: expandedIds.has(exercise.id) || !exercise.isCollapsed,
+    exerciseTypeId: exercise.exercise?.exercise_type_id ?? undefined,
   }
 }
 

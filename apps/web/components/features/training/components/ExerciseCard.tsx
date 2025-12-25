@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { Check, ChevronDown, ChevronUp, GripVertical, Plus, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet } from "../types"
 import { formatShorthand, getCompletedCount } from "../types"
-import { SetRow } from "./SetRow"
+import { SetRow, type VisibleFields } from "./SetRow"
+import { getVisibleFields } from "../utils/field-visibility"
 
 export interface ExerciseCardProps {
   exercise: TrainingExercise
@@ -63,6 +64,46 @@ export function ExerciseCard({
   const totalSets = exercise.sets.length
   const isComplete = completedCount === totalSets && totalSets > 0
   const progress = totalSets > 0 ? (completedCount / totalSets) * 100 : 0
+
+  // Task 10.1: Compute visible fields based on exercise type requirements + plan data
+  // Uses field-visibility utility to ensure required fields always show
+  const visibleFields = useMemo((): VisibleFields => {
+    // Get plan sets from exercise (session_plan_sets or workout_log_sets with plan data)
+    // For workout exercises, we need to check if sets have plan data
+    // For now, we'll use the sets themselves as plan data source
+    const planSets = exercise.sets.map(set => ({
+      reps: set.reps,
+      weight: set.weight,
+      distance: set.distance,
+      performing_time: set.performingTime,
+      rest_time: set.restTime,
+      tempo: set.tempo,
+      rpe: set.rpe,
+      power: set.power,
+      velocity: set.velocity,
+      height: set.height,
+      resistance: set.resistance,
+      effort: set.effort,
+    }))
+
+    // Get visible field keys from utility
+    const visibleFieldKeys = getVisibleFields(exercise.exerciseTypeId, planSets)
+    
+    // Convert to VisibleFields object
+    return {
+      reps: visibleFieldKeys.includes('reps'),
+      weight: visibleFieldKeys.includes('weight'),
+      distance: visibleFieldKeys.includes('distance'),
+      performingTime: visibleFieldKeys.includes('performingTime'),
+      height: visibleFieldKeys.includes('height'),
+      power: visibleFieldKeys.includes('power'),
+      velocity: visibleFieldKeys.includes('velocity'),
+      rpe: visibleFieldKeys.includes('rpe'),
+      restTime: visibleFieldKeys.includes('restTime'),
+      tempo: visibleFieldKeys.includes('tempo'),
+      effort: visibleFieldKeys.includes('effort'),
+    }
+  }, [exercise.sets, exercise.exerciseTypeId])
 
   const handleHeaderClick = useCallback(() => {
     onToggleExpand()
@@ -151,16 +192,23 @@ export function ExerciseCard({
             {!isAthlete && (
               <GripVertical className="w-4 h-4 text-muted-foreground/50 shrink-0 -ml-1" />
             )}
-            <div
+            {/* Exercise circle - shows order number, clickable to toggle all sets (FR-051) */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onCompleteAllSets?.()
+              }}
               className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0",
+                "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 transition-all",
+                isAthlete && "hover:scale-110 active:scale-95",
                 isComplete
-                  ? "bg-green-500 text-white"
-                  : "bg-muted text-muted-foreground"
+                  ? "bg-green-500 text-white hover:bg-green-600"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
+              title={isComplete ? "Mark all incomplete" : "Mark all complete"}
             >
-              {isComplete ? <Check className="w-3 h-3" /> : completedCount}
-            </div>
+              {isComplete ? <Check className="w-3.5 h-3.5" /> : exercise.exerciseOrder}
+            </button>
 
             <div className="flex-1 min-w-0">
               {isAthlete ? (
@@ -223,7 +271,6 @@ export function ExerciseCard({
               // First incomplete set is active
               const firstIncompleteIndex = exercise.sets.findIndex((s) => !s.completed)
               const isActive = isAthlete && index === firstIncompleteIndex
-              const hasVBTFields = exercise.sets.some((s) => s.power !== undefined || s.velocity !== undefined)
               const isSetDragging = draggingSetId === set.id
               const isSetDragOver = dragOverSetId === set.id
 
@@ -239,7 +286,7 @@ export function ExerciseCard({
                     set={set}
                     isAthlete={isAthlete}
                     isActive={isActive}
-                    hasVBTFields={hasVBTFields}
+                    visibleFields={visibleFields}
                     onComplete={() => onCompleteSet(set.id)}
                     onUpdate={(field, value) => onUpdateSet?.(set.id, field, value)}
                     onRemove={() => onRemoveSet?.(set.id)}

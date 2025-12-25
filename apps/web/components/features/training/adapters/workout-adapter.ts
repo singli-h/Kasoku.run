@@ -22,9 +22,11 @@ export interface LegacyWorkoutExercise {
   exercise?: {
     id: number
     name: string
-    exercise_type_id?: number
+    exercise_type_id?: number // Direct ID property (may not always be present)
     exercise_type?: {
-      name: string
+      id?: number // From Supabase join: exercise_types(id, type)
+      name?: string
+      type?: string // DB column is 'type' not 'name'
     }
   }
   session_plan_sets?: Array<{
@@ -64,28 +66,36 @@ export interface LegacyWorkoutExercise {
 
 /**
  * Convert exercise type ID to section name
- * Uses exercise_type_id for reliable mapping (matches exercise-grouping.ts logic)
+ * Uses exercise type names directly as section names (unified naming)
+ * 
+ * Database exercise_types table:
+ * 1 = Isometric, 2 = Plyometric, 3 = Gym, 4 = Warmup, 5 = Circuit, 6 = Sprint, 7 = Drill
+ * 
+ * Note: exercise_type_id can come from two places depending on data source:
+ * - Direct: exercise.exercise_type_id (older format)
+ * - Joined: exercise.exercise_type.id (from Supabase join)
  */
 function getSection(exercise: LegacyWorkoutExercise): string {
-  const exerciseTypeId = exercise.exercise?.exercise_type_id
+  // Try both locations - joined object first (from Supabase), then direct property
+  const exerciseTypeId = 
+    exercise.exercise?.exercise_type?.id ?? 
+    exercise.exercise?.exercise_type_id
 
-  // Map exercise type IDs to sections (matches ExerciseTypeId enum from exercise-grouping.ts)
-  // 1 = WarmUp, 2 = Gym, 3 = Circuit, 4 = Isometric, 5 = Plyometric, 6 = Sprint, 7 = Drill
   switch (exerciseTypeId) {
-    case 1: // WarmUp
-      return 'Warmup'
-    case 2: // Gym
-      return 'Strength'
-    case 3: // Circuit
-      return 'Conditioning'
-    case 4: // Isometric
-      return 'Strength' // Isometric exercises are typically strength-focused
-    case 5: // Plyometric
+    case 1: // Isometric
+      return 'Isometric'
+    case 2: // Plyometric
       return 'Plyometric'
+    case 3: // Gym
+      return 'Gym'
+    case 4: // Warmup
+      return 'Warmup'
+    case 5: // Circuit
+      return 'Circuit'
     case 6: // Sprint
-      return 'Speed'
+      return 'Sprint'
     case 7: // Drill
-      return 'Speed' // Drills are typically speed/skill focused
+      return 'Drill'
     default:
       return 'Other'
   }
@@ -152,6 +162,11 @@ export function legacyToTrainingExercise(
     })
   }
 
+  // Get exercise type ID for field visibility logic
+  const exerciseTypeId = 
+    exercise.exercise?.exercise_type?.id ?? 
+    exercise.exercise?.exercise_type_id
+
   return {
     id: exercise.id,
     exerciseId: exercise.exercise_id,
@@ -162,6 +177,7 @@ export function legacyToTrainingExercise(
     notes: exercise.notes,
     sets,
     expanded: expandedIds.has(exercise.id),
+    exerciseTypeId: exerciseTypeId ?? undefined,
   }
 }
 

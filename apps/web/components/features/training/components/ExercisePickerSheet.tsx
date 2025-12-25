@@ -19,8 +19,8 @@ export interface ExercisePickerSheetProps {
   recentExerciseIds?: string[]
 }
 
-const DEFAULT_CATEGORIES = ["All", "Speed", "Strength", "Plyometric", "Warmup", "Conditioning"]
-const DEFAULT_SECTIONS = ["Warmup", "Speed", "Plyometric", "Strength", "Conditioning", "Cooldown"]
+const DEFAULT_CATEGORIES = ["All", "Warmup", "Gym", "Isometric", "Plyometric", "Sprint", "Drill", "Circuit"]
+const DEFAULT_SECTIONS = ["Warmup", "Gym", "Isometric", "Plyometric", "Sprint", "Drill", "Circuit"]
 
 // Map exercise type to category for display
 const EXERCISE_TYPE_TO_CATEGORY: Record<string, string> = {
