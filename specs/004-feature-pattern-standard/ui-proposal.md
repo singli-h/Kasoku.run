@@ -513,8 +513,9 @@ components/features/training/
 
 ## Requirements Log
 
-### 2025-12-25 Feedback Session
+### 2025-12-25 Feedback Session (Updated)
 
+#### Core UI Requirements
 1. **RPE conditional display** - Only show RPE field if the plan exercise has RPE value (same as other fields)
 2. **Unified device layouts** - Desktop should match tablet/phone layout (no 2-column exercise grid)
 3. **Coach notation consistency** - Coach view should show units after values (same pill notation as athlete)
@@ -524,3 +525,112 @@ components/features/training/
 7. **Compact exercise header** - Smaller padding (px-3 py-2.5), smaller fonts (text-sm for name, text-xs for details)
 8. **Drag-and-drop reordering** - Sets can be reordered within an exercise, exercises can be reordered within a section (coach mode only)
 9. **Drag handle integration** - Grip icon integrated into header (not separate column) to preserve card width
+
+#### New Requirements (2025-12-25 Session 2)
+
+**10. Dynamic Column Rendering for Athletes**
+- Only render input columns that the coach's plan actually includes (not all possible fields)
+- Logic: If `session_plan_sets` has non-null values for a field (e.g., `reps`, `weight`, `rpe`), show that column
+- Exercise-type exceptions:
+  - **Strength/Weight Lifting**: If plan has `effort/%` but not explicit `weight`, auto-generate target weight from `athlete_personal_bests` table
+  - **Sprinting**: If plan has `distance` and `effort/%`, auto-generate target `performing_time` from PR data
+- This reduces visual clutter and focuses athlete on relevant metrics
+
+**11. Pre-fill Workout Sets with Planned Values**
+- When athlete starts workout, set rows should pre-fill with coach's planned values from `session_plan_sets`
+- Rationale: Athletes typically follow the plan exactly; pre-filling reduces taps
+- Athlete can still modify values if needed (editable inputs)
+- Visual indicator for "following plan" vs "modified" values (subtle color or icon)
+
+**12. Click Exercise Circle to Complete All Sets**
+- The exercise index circle (e.g., "1", "2") already shows checkmark when all sets complete
+- NEW: Clicking the circle should toggle all sets to completed (if all pending) or all pending (if all completed)
+- Single tap to mark entire exercise done - follows "fewer taps = better" principle
+
+**13. Timer Positioning - Left of % Complete**
+- Current: Timer appears near save/finish button area, causing UI shift during animations
+- NEW: Move timer to the LEFT of the % complete indicator in session header
+- Layout: `[Timer] [% Complete] [... other actions ...]`
+- Goal: Reduce perceived UI drift/shift during save/finish animations
+
+**14. Workout Page Architecture (Clarified)**
+
+| Page | Purpose | Content | Navigation |
+|------|---------|---------|------------|
+| `/workout` | Session Selection | Shows ongoing session (if any) + today's scheduled sessions + upcoming preview | "Start" button redirects to `/workout/[id]` |
+| `/workout/[id]` | Active Workout | Full exercise tracking, set logging, completion | "Back" returns to `/workout` |
+
+**`/workout` Page Logic:**
+- Check for `workout_logs` with `status: 'ongoing'` → show "Continue Workout" card prominently
+- Check for `workout_logs` with `status: 'assigned'` and `date: today` → show "Today's Sessions" list
+- Optionally show upcoming sessions (next 3-7 days) in collapsed/preview state
+- Minimal design: Focus on ONE primary action (continue ongoing OR start next)
+- Clear date display on each session card
+- "Start Session" button → calls `startTrainingSessionAction()` → redirects to `/workout/[id]`
+
+**`/workout/[id]` Page Logic:**
+- Full workout execution interface
+- "Back to Workouts" button → navigates to `/workout` (not browser back)
+- If session status is 'ongoing': Show all exercises with progress
+- If session status is 'completed': Show read-only summary (future: redirect to history)
+
+**15. PR-Based Target Generation**
+
+For exercises where athletes typically work at percentages of their max:
+
+```typescript
+// When plan has effort/percentage but not explicit kg/time:
+if (sessionPlanSet.effort && !sessionPlanSet.weight) {
+  const pr = await getAthletePersonalBest(athleteId, exerciseId)
+  if (pr) {
+    const targetWeight = Math.round(pr.value * (sessionPlanSet.effort / 100))
+    // Pre-fill or show as suggested value
+  }
+}
+
+// For sprinting with effort percentage:
+if (exerciseType === 'sprint' && sessionPlanSet.effort) {
+  const pr = await getAthletePersonalBest(athleteId, exerciseId) // e.g., 10m = 0.95s
+  // Calculate target time (slower for lower effort %)
+  const targetTime = pr.value / (sessionPlanSet.effort / 100) // 100% effort = PR time
+}
+```
+
+**Database Reference** (`athlete_personal_bests` table):
+- `athlete_id`: FK to athletes
+- `exercise_id`: FK to exercises
+- `value`: numeric (kg, seconds, etc.)
+- `unit_id`: FK to units
+- `achieved_date`: when PR was set
+
+**16. Minimal Dynamic Section Grouping**
+
+Current implementation uses heavy Card-based section headers with labels, badges, progress bars, and "Mark All" buttons. This is visually noisy.
+
+**NEW Approach**: Exercises are implicitly grouped by their type via the order they appear. The UI should:
+- Use a minimal section separator line between different exercise types (not full Card headers)
+- The exercise order and adjacency already tells the user what section they're in
+- Example:
+  ```
+  Warm-up Ex 1
+  Warm-up Ex 2
+  ─────────────── (minimal line)
+  Drill 1
+  Drill 2
+  ─────────────── (minimal line)
+  Sprint 1
+  Sprint 2
+  ```
+
+**Implementation**:
+- Refactor `ExerciseTypeSection` from Card-based to minimal line separator
+- Section type label can be a small, unobtrusive text (optional) or omitted entirely
+- Grouping logic in `exercise-grouping.ts` already does this correctly - UI just needs to render minimally
+- "Mark All" functionality moves to the exercise circle tap (FR-051)
+- Progress tracked at session level (header), not section level
+
+**Key Benefits**:
+- Cleaner, less cluttered UI
+- Exercises flow naturally
+- Reduced cognitive load
+- Matches "distraction-free" design principle

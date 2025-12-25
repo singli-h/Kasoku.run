@@ -21,7 +21,8 @@ import {
   ExerciseWithDetails,
   SessionPlanWithDetails,
   CreateSessionForm,
-  ExerciseFilters
+  ExerciseFilters,
+  PaginatedExercises
 } from "@/types/training"
 
 // ============================================================================
@@ -97,6 +98,102 @@ export async function getExercisesAction(filters?: ExerciseFilters): Promise<Act
     }
   } catch (error) {
     console.error('Error in getExercisesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Search exercises with pagination - optimized for exercise picker
+ * Returns paginated results for efficient loading of large exercise libraries
+ */
+export async function searchExercisesAction(
+  filters?: ExerciseFilters
+): Promise<ActionState<PaginatedExercises>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID from cache
+    const dbUserId = await getDbUserId(userId)
+
+    // Pagination defaults
+    const limit = filters?.limit ?? 20
+    const offset = filters?.offset ?? 0
+
+    // Build base query for exercises visible to user
+    let query = supabase
+      .from('exercises')
+      .select(`
+        id,
+        name,
+        description,
+        video_url,
+        exercise_type_id,
+        unit_id,
+        visibility,
+        exercise_type:exercise_types(id, type, description)
+      `, { count: 'exact' })
+      .or(`visibility.eq.global,and(visibility.eq.private,owner_user_id.eq.${dbUserId})`)
+
+    // Apply search filter (name or description)
+    if (filters?.search && filters.search.trim()) {
+      const searchTerm = `%${filters.search.trim()}%`
+      query = query.or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`)
+    }
+
+    // Apply exercise type filter
+    if (filters?.exercise_type_id) {
+      query = query.eq('exercise_type_id', filters.exercise_type_id)
+    }
+
+    // Apply unit filter
+    if (filters?.unit_id) {
+      query = query.eq('unit_id', filters.unit_id)
+    }
+
+    // Execute with pagination
+    const { data: exercises, error, count } = await query
+      .order('name', { ascending: true })
+      .range(offset, offset + limit - 1)
+
+    if (error) {
+      console.error('[searchExercisesAction] Error:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to search exercises: ${error.message}`
+      }
+    }
+
+    const total = count ?? 0
+    const hasMore = offset + limit < total
+
+    // Transform to ExerciseWithDetails format (minimal fields for picker)
+    const transformedExercises: ExerciseWithDetails[] = (exercises || []).map((exercise: any) => ({
+      ...exercise,
+      tags: [], // Skip tags for search performance
+      unit: null // Skip unit for search performance
+    }))
+
+    return {
+      isSuccess: true,
+      message: "Exercises retrieved successfully",
+      data: {
+        exercises: transformedExercises,
+        total,
+        hasMore
+      }
+    }
+  } catch (error) {
+    console.error('Error in searchExercisesAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`

@@ -4,3 +4,4 @@
 
 export * from './useTrainingExercises'
 export * from './useSessionTimer'
+export * from './useExerciseSearch'

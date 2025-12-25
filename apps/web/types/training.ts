@@ -195,6 +195,17 @@ export interface ExerciseFilters {
   exercise_type_id?: number
   tag_ids?: number[]
   unit_id?: number
+  /** Maximum number of results to return (default: 50) */
+  limit?: number
+  /** Number of results to skip for pagination (default: 0) */
+  offset?: number
+}
+
+/** Paginated response for exercise queries */
+export interface PaginatedExercises {
+  exercises: ExerciseWithDetails[]
+  total: number
+  hasMore: boolean
 }
 
 // ============================================================================

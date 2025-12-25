@@ -1,15 +1,20 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { ChevronLeft, Clock, Dumbbell, Plus, Search, Zap } from "lucide-react"
+import { useState, useMemo, useCallback, useEffect } from "react"
+import { ChevronLeft, Clock, Dumbbell, Loader2, Plus, Search, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useExerciseSearch, useExerciseTypes } from "../hooks/useExerciseSearch"
 import type { ExerciseLibraryItem } from "../types"
 
 export interface ExercisePickerSheetProps {
   isOpen: boolean
   onClose: () => void
   onSelectExercise: (exercise: ExerciseLibraryItem, section: string) => void
-  exercises: ExerciseLibraryItem[]
+  /**
+   * Optional pre-loaded exercises (for backward compatibility).
+   * If not provided, uses server-side search via useExerciseSearch hook.
+   */
+  exercises?: ExerciseLibraryItem[]
   categories?: string[]
   recentExerciseIds?: string[]
 }
@@ -17,51 +22,131 @@ export interface ExercisePickerSheetProps {
 const DEFAULT_CATEGORIES = ["All", "Speed", "Strength", "Plyometric", "Warmup", "Conditioning"]
 const DEFAULT_SECTIONS = ["Warmup", "Speed", "Plyometric", "Strength", "Conditioning", "Cooldown"]
 
+// Map exercise type to category for display
+const EXERCISE_TYPE_TO_CATEGORY: Record<string, string> = {
+  sprint: "Speed",
+  speed: "Speed",
+  gym: "Strength",
+  strength: "Strength",
+  plyometric: "Plyometric",
+  warmup: "Warmup",
+  circuit: "Conditioning",
+  conditioning: "Conditioning",
+  drill: "Speed",
+  isometric: "Strength",
+}
+
 /**
  * ExercisePickerSheet - Full-screen bottom sheet for selecting exercises
  *
  * Features:
- * - Search by name, muscle groups, or equipment
+ * - Server-side search with debouncing (if exercises prop not provided)
  * - Category filter tabs
  * - Section selector for where to add the exercise
  * - Recent exercises section
+ * - Efficient loading for large exercise libraries
  */
 export function ExercisePickerSheet({
   isOpen,
   onClose,
   onSelectExercise,
-  exercises,
+  exercises: propExercises,
   categories = DEFAULT_CATEGORIES,
   recentExerciseIds = []
 }: ExercisePickerSheetProps) {
-  const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedSection, setSelectedSection] = useState("Warmup")
 
-  const filteredExercises = useMemo(() => {
-    let filtered = exercises
+  // Determine if we should use server-side search
+  const useServerSearch = !propExercises || propExercises.length === 0
 
-    // Filter by category
+  // Server-side search hook
+  const {
+    searchQuery,
+    setSearchQuery,
+    exercises: serverExercises,
+    isLoading,
+    hasMore,
+    fetchNextPage,
+    resetSearch
+  } = useExerciseSearch({
+    enabled: isOpen && useServerSearch,
+    pageSize: 30,
+    debounceMs: 300,
+  })
+
+  // Get exercise types for category filtering
+  const { data: exerciseTypes } = useExerciseTypes()
+
+  // Map exercise type ID to category
+  const getCategoryFromTypeId = useCallback((typeId?: number | null): string => {
+    if (!typeId || !exerciseTypes) return "Other"
+    const type = exerciseTypes.find(t => t.id === typeId)
+    if (!type) return "Other"
+    const typeName = type.type?.toLowerCase() || ""
+    return EXERCISE_TYPE_TO_CATEGORY[typeName] || "Other"
+  }, [exerciseTypes])
+
+  // Transform server exercises to ExerciseLibraryItem format
+  const transformedServerExercises = useMemo((): ExerciseLibraryItem[] => {
+    return serverExercises
+      .filter(ex => ex.name) // Filter out exercises without names
+      .map(ex => ({
+        id: String(ex.id),
+        name: ex.name!, // Safe after filter
+        category: getCategoryFromTypeId(ex.exercise_type_id),
+        equipment: "", // Not stored in DB
+        muscleGroups: [], // Not stored in DB
+      }))
+  }, [serverExercises, getCategoryFromTypeId])
+
+  // Choose which exercises to display
+  const baseExercises = useServerSearch ? transformedServerExercises : (propExercises || [])
+
+  // Local filtering (only used when not using server search for categories)
+  const filteredExercises = useMemo(() => {
+    let filtered = baseExercises
+
+    // Filter by category (client-side for both modes)
     if (selectedCategory !== "All") {
       filtered = filtered.filter(e => e.category === selectedCategory)
     }
 
-    // Filter by search query
-    if (searchQuery.trim()) {
+    // Client-side search only when using prop exercises
+    if (!useServerSearch && searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(e =>
         e.name.toLowerCase().includes(query) ||
-        e.muscleGroups.some(m => m.toLowerCase().includes(query)) ||
-        e.equipment.toLowerCase().includes(query)
+        e.muscleGroups?.some(m => m.toLowerCase().includes(query)) ||
+        e.equipment?.toLowerCase().includes(query)
       )
     }
 
     return filtered
-  }, [exercises, searchQuery, selectedCategory])
+  }, [baseExercises, searchQuery, selectedCategory, useServerSearch])
 
+  // Recent exercises
   const recentExercisesList = useMemo(() => {
-    return exercises.filter(e => recentExerciseIds.includes(e.id)).slice(0, 5)
-  }, [exercises, recentExerciseIds])
+    return baseExercises.filter(e => recentExerciseIds.includes(e.id)).slice(0, 5)
+  }, [baseExercises, recentExerciseIds])
+
+  // Reset search when closing
+  useEffect(() => {
+    if (!isOpen) {
+      resetSearch()
+      setSelectedCategory("All")
+    }
+  }, [isOpen, resetSearch])
+
+  // Handle scroll for infinite loading
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement
+    const nearBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 200
+
+    if (nearBottom && hasMore && !isLoading && useServerSearch) {
+      fetchNextPage()
+    }
+  }, [hasMore, isLoading, fetchNextPage, useServerSearch])
 
   if (!isOpen) return null
 
@@ -98,9 +183,12 @@ export function ExercisePickerSheet({
             placeholder="Search exercises..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full pl-10 pr-10 py-2.5 bg-muted/50 border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             autoFocus
           />
+          {isLoading && (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />
+          )}
         </div>
       </div>
 
@@ -141,7 +229,7 @@ export function ExercisePickerSheet({
       </div>
 
       {/* Exercise List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" onScroll={handleScroll}>
         {/* Recent Exercises */}
         {recentExercisesList.length > 0 && !searchQuery && selectedCategory === "All" && (
           <div className="px-4 py-3">
@@ -161,7 +249,9 @@ export function ExercisePickerSheet({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{exercise.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{exercise.muscleGroups.join(", ")}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {exercise.muscleGroups?.length > 0 ? exercise.muscleGroups.join(", ") : exercise.category}
+                    </p>
                   </div>
                   <Plus className="w-5 h-5 text-muted-foreground" />
                 </button>
@@ -176,36 +266,64 @@ export function ExercisePickerSheet({
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">All Exercises</h3>
           )}
           <div className="space-y-1">
-            {filteredExercises.length === 0 ? (
+            {/* Loading state for initial load */}
+            {isLoading && filteredExercises.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                <p className="text-sm">Loading exercises...</p>
+              </div>
+            ) : filteredExercises.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
                 <Dumbbell className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No exercises found</p>
+                {searchQuery && (
+                  <p className="text-xs mt-1">Try a different search term</p>
+                )}
               </div>
             ) : (
-              filteredExercises.map(exercise => (
-                <button
-                  key={exercise.id}
-                  onClick={() => {
-                    onSelectExercise(exercise, selectedSection)
-                    onClose()
-                  }}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
-                >
-                  <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center",
-                    getCategoryColor(exercise.category)
-                  )}>
-                    <Zap className="w-5 h-5" />
+              <>
+                {filteredExercises.map(exercise => (
+                  <button
+                    key={exercise.id}
+                    onClick={() => {
+                      onSelectExercise(exercise, selectedSection)
+                      onClose()
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center",
+                      getCategoryColor(exercise.category)
+                    )}>
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{exercise.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {exercise.equipment && exercise.muscleGroups?.length > 0
+                          ? `${exercise.equipment} · ${exercise.muscleGroups.join(", ")}`
+                          : exercise.category
+                        }
+                      </p>
+                    </div>
+                    <Plus className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                ))}
+
+                {/* Loading more indicator */}
+                {isLoading && filteredExercises.length > 0 && (
+                  <div className="py-4 text-center">
+                    <Loader2 className="w-5 h-5 mx-auto animate-spin text-muted-foreground" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{exercise.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {exercise.equipment} · {exercise.muscleGroups.join(", ")}
-                    </p>
+                )}
+
+                {/* Load more hint */}
+                {hasMore && !isLoading && (
+                  <div className="py-4 text-center text-xs text-muted-foreground">
+                    Scroll for more exercises
                   </div>
-                  <Plus className="w-5 h-5 text-muted-foreground" />
-                </button>
-              ))
+                )}
+              </>
             )}
           </div>
         </div>

@@ -63,20 +63,32 @@ export interface LegacyWorkoutExercise {
 }
 
 /**
- * Convert exercise type to section name
+ * Convert exercise type ID to section name
+ * Uses exercise_type_id for reliable mapping (matches exercise-grouping.ts logic)
  */
 function getSection(exercise: LegacyWorkoutExercise): string {
-  const typeName = exercise.exercise?.exercise_type?.name?.toLowerCase() || ''
+  const exerciseTypeId = exercise.exercise?.exercise_type_id
 
-  // Map exercise types to sections
-  if (typeName.includes('warm')) return 'Warmup'
-  if (typeName.includes('sprint') || typeName.includes('speed')) return 'Speed'
-  if (typeName.includes('plyo') || typeName.includes('jump')) return 'Plyometric'
-  if (typeName.includes('strength') || typeName.includes('gym')) return 'Strength'
-  if (typeName.includes('condition') || typeName.includes('circuit')) return 'Conditioning'
-  if (typeName.includes('cool')) return 'Cooldown'
-
-  return 'Other'
+  // Map exercise type IDs to sections (matches ExerciseTypeId enum from exercise-grouping.ts)
+  // 1 = WarmUp, 2 = Gym, 3 = Circuit, 4 = Isometric, 5 = Plyometric, 6 = Sprint, 7 = Drill
+  switch (exerciseTypeId) {
+    case 1: // WarmUp
+      return 'Warmup'
+    case 2: // Gym
+      return 'Strength'
+    case 3: // Circuit
+      return 'Conditioning'
+    case 4: // Isometric
+      return 'Strength' // Isometric exercises are typically strength-focused
+    case 5: // Plyometric
+      return 'Plyometric'
+    case 6: // Sprint
+      return 'Speed'
+    case 7: // Drill
+      return 'Speed' // Drills are typically speed/skill focused
+    default:
+      return 'Other'
+  }
 }
 
 /**
@@ -118,9 +130,10 @@ export function legacyToTrainingExercise(
     })
   } else {
     // No log sets yet - use plan sets as template
+    // Use negative IDs to indicate new sets (will be created on save)
     planSets.forEach((planSet, idx) => {
       sets.push({
-        id: `plan-${planSet.id}`, // String ID for non-persisted sets
+        id: -(exercise.id * 1000 + idx + 1), // Negative numeric ID for non-persisted sets
         setIndex: planSet.set_index ?? idx + 1,
         reps: planSet.reps,
         weight: planSet.weight,

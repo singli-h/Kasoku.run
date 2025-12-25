@@ -103,6 +103,43 @@ As a developer implementing data mutations, I want a single standardized pattern
 
 ---
 
+---
+
+### User Story 6 - Athlete Efficient Workout Logging (Priority: P1)
+
+As an athlete using the workout feature, I want a streamlined interface that shows only relevant metrics and pre-fills planned values so that I can log my workout with minimal taps and focus on training.
+
+**Why this priority**: Athletes are the primary end-users. Current UI shows all possible fields, overwhelming users with irrelevant inputs. Pre-filling planned values reduces friction significantly.
+
+**Independent Test**: Athlete can complete a 10-exercise workout with 3 sets each in under 60 seconds of active input time.
+
+**Acceptance Scenarios**:
+
+1. **Given** athlete starts a strength workout with reps/weight/rpe prescribed, **When** viewing exercise card, **Then** only reps, weight, and RPE columns are shown (not distance, time, velocity, etc.)
+2. **Given** coach prescribes 3×5 @ 80% effort for squat, **When** athlete opens that exercise, **Then** weight field is pre-filled with 80% of athlete's PR (from `athlete_personal_bests`)
+3. **Given** athlete wants to mark all sets complete, **When** tapping the exercise index circle, **Then** all sets toggle to completed state
+4. **Given** athlete is following the exact plan, **When** sets are already pre-filled with planned values, **Then** athlete only needs to tap complete (no manual entry required)
+5. **Given** athlete modifies a pre-filled value, **When** viewing the set row, **Then** a subtle indicator shows "modified from plan"
+
+---
+
+### User Story 7 - Clear Workout Navigation (Priority: P1)
+
+As an athlete, I want clear navigation between the workout list and active workout so that I always know where I am and can easily continue or start sessions.
+
+**Why this priority**: Current navigation is confusing - unclear distinction between `/workout` and `/workout/[id]` pages, "Back" behavior inconsistent.
+
+**Independent Test**: User can navigate from workout list → start session → complete session → back to list without confusion.
+
+**Acceptance Scenarios**:
+
+1. **Given** athlete has an ongoing session, **When** visiting `/workout`, **Then** "Continue Workout" card is prominently displayed at top
+2. **Given** athlete has today's assigned sessions, **When** visiting `/workout`, **Then** sessions are listed with clear date and "Start" action
+3. **Given** athlete is in active workout at `/workout/[id]`, **When** tapping "Back to Workouts", **Then** navigates to `/workout` (not browser back)
+4. **Given** athlete completes a workout, **When** tapping "Finish", **Then** shows completion summary and option to return to workout list
+
+---
+
 ### Edge Cases
 
 - What if a feature genuinely needs different patterns? (Document exception with rationale in feature README)
@@ -110,6 +147,9 @@ As a developer implementing data mutations, I want a single standardized pattern
 - What about third-party component patterns? (Wrap in feature-specific components that follow pattern)
 - What if user has no network during workout? (Local persistence + sync queue pattern)
 - What if multiple browser tabs have same workout? (Last-write-wins with conflict notification)
+- What if athlete has no PR for an exercise with effort percentage? (Show empty field, allow manual entry)
+- What if athlete modifies pre-filled value back to original? (Clear "modified" indicator)
+- What if coach didn't prescribe any values for a set? (Show empty inputs, athlete enters all values)
 
 ## Requirements
 
@@ -328,6 +368,32 @@ As a developer implementing data mutations, I want a single standardized pattern
 #### Multi-Tab Handling (NEW)
 
 - **FR-046**: When multiple browser tabs have the same workout open, the application MUST use last-write-wins semantics with a visible conflict notification to the user when data from another tab overwrites local changes
+
+#### Athlete Workout UI Requirements (NEW - 2025-12-25)
+
+- **FR-047**: Athlete workout view MUST dynamically render only the input columns that the coach's plan includes (based on non-null values in `session_plan_sets`)
+- **FR-048**: For strength exercises with `effort` percentage but no explicit `weight`, the system MUST auto-generate target weight from `athlete_personal_bests` table
+- **FR-049**: For sprint exercises with `effort` percentage, the system MUST auto-generate target time based on athlete's PR for that distance
+- **FR-050**: Workout set rows MUST pre-fill with coach's planned values from `session_plan_sets` when athlete starts a session
+- **FR-051**: Exercise index circle (showing exercise number) MUST be clickable to toggle all sets complete/incomplete in one tap
+- **FR-052**: Session timer MUST be positioned to the LEFT of the % complete indicator to minimize UI shift during save/finish animations
+
+#### Workout Page Architecture Requirements (NEW - 2025-12-25)
+
+- **FR-053**: `/workout` page MUST prioritize displaying ongoing sessions (`status: 'ongoing'`) with a prominent "Continue Workout" action
+- **FR-054**: `/workout` page MUST show today's assigned sessions (`status: 'assigned'`, `date: today`) below any ongoing session
+- **FR-055**: `/workout` page MUST display clear date indicators on each session card
+- **FR-056**: `/workout` page MUST redirect to `/workout/[id]` when user clicks "Start Session", after calling `startTrainingSessionAction()`
+- **FR-057**: `/workout/[id]` page MUST provide a "Back to Workouts" navigation that goes to `/workout` (not browser back)
+- **FR-058**: `/workout/[id]` page MUST show exercises with current progress for `ongoing` sessions, or read-only summary for `completed` sessions
+
+#### Minimal Section Grouping (NEW - 2025-12-25)
+
+- **FR-059**: Exercise sections MUST be determined dynamically by consecutive exercises with the same `exercise_type_id` (grouping logic already exists in `exercise-grouping.ts`)
+- **FR-060**: Section transitions MUST be rendered with a minimal separator line between different exercise types, NOT heavy Card headers
+- **FR-061**: Section labels (e.g., "Warm Up", "Sprint") MAY be shown as small, unobtrusive text above the separator line but are OPTIONAL
+- **FR-062**: Progress tracking MUST be at session level (header), NOT at section level (remove section-level progress bars)
+- **FR-063**: "Mark All" for sections is REPLACED by the exercise circle tap (FR-051) for individual exercises
 
 ### Key Entities
 

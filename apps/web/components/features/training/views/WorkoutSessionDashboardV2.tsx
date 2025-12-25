@@ -119,11 +119,35 @@ function WorkoutSessionContentV2({
         detailsByPresetId.set(pid, list)
       }
 
-      const mapped: WorkoutExercise[] = basePresets.map((preset: any) => ({
-        ...preset,
-        workout_log_sets: detailsByPresetId.get(preset.id) || [],
-        completed: false,
-      }))
+      const mapped: WorkoutExercise[] = basePresets.map((preset: any) => {
+        // Get existing workout_log_sets if any
+        const existingLogSets = detailsByPresetId.get(preset.id) || []
+
+        // If no log sets exist, initialize from session_plan_sets
+        // This ensures the user can input values immediately
+        let workoutLogSets: WorkoutLogSet[] = existingLogSets
+        if (existingLogSets.length === 0 && preset.session_plan_sets?.length > 0) {
+          workoutLogSets = preset.session_plan_sets.map((planSet: any, idx: number) => ({
+            // Use negative IDs for new sets (will be created on save)
+            id: -(preset.id * 1000 + idx + 1),
+            set_index: planSet.set_index ?? idx + 1,
+            reps: planSet.reps ?? null,
+            weight: planSet.weight ?? null,
+            distance: planSet.distance ?? null,
+            performing_time: planSet.performing_time ?? null,
+            rest_time: planSet.rest_time ?? null,
+            rpe: planSet.rpe ?? null,
+            completed: false,
+            session_plan_exercise_id: preset.id,
+          }))
+        }
+
+        return {
+          ...preset,
+          workout_log_sets: workoutLogSets,
+          completed: false,
+        }
+      })
 
       setExercises(mapped)
 
