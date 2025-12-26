@@ -532,61 +532,7 @@ export function ProfileSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
-      {/* Subtle texture overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.015] dark:opacity-[0.03]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`
-        }}
-      />
-
-      <div className="relative max-w-5xl mx-auto px-6 py-12 pb-32">
-        {/* Header */}
-        <AnimatedSection className="mb-16">
-          <div className="flex items-end justify-between">
-            <div>
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="flex items-center gap-3 mb-3"
-              >
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "font-medium tracking-wide uppercase text-[10px] px-3 py-1",
-                    profileData.role === 'coach'
-                      ? "border-cyan-500 text-cyan-600 dark:text-cyan-400"
-                      : "border-amber-500 text-amber-600 dark:text-amber-400"
-                  )}
-                >
-                  {profileData.role}
-                </Badge>
-                <Badge variant="outline" className="font-medium tracking-wide uppercase text-[10px] px-3 py-1 border-zinc-300 text-zinc-500">
-                  {user?.subscription_status || 'free'}
-                </Badge>
-              </motion.div>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                Profile Settings
-              </h1>
-              <p className="text-zinc-500 dark:text-zinc-400 mt-2 text-lg">
-                Manage your account and personalize your experience
-              </p>
-            </div>
-
-            {/* Avatar placeholder */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="hidden md:flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white text-2xl font-bold shadow-lg shadow-amber-500/25"
-            >
-              {profileData.first_name?.[0]?.toUpperCase() || profileData.email?.[0]?.toUpperCase() || '?'}
-              {profileData.last_name?.[0]?.toUpperCase() || ''}
-            </motion.div>
-          </div>
-        </AnimatedSection>
+    <div className="relative max-w-5xl mx-auto pb-32">
 
         {/* ================================================================ */}
         {/* SECTION 1: Identity */}
@@ -914,67 +860,66 @@ export function ProfileSettingsPage() {
             </div>
           </BentoCard>
         </AnimatedSection>
-      </div>
 
-      {/* ================================================================ */}
-      {/* Floating Save Bar */}
-      {/* ================================================================ */}
-      <AnimatePresence>
-        {hasChanges && (
-          <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50"
-          >
-            <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800">
-              <div className="max-w-5xl mx-auto px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                      Unsaved changes
-                    </span>
-                  </div>
+        {/* ================================================================ */}
+        {/* Floating Save Bar */}
+        {/* ================================================================ */}
+        <AnimatePresence>
+          {hasChanges && (
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-50"
+            >
+              <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800">
+                <div className="max-w-5xl mx-auto px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                        Unsaved changes
+                      </span>
+                    </div>
 
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        if (user) {
-                          populateFormData(user)
-                          setHasChanges(false)
-                        }
-                      }}
-                      className="text-zinc-500 hover:text-zinc-700"
-                    >
-                      Discard
-                    </Button>
-                    <Button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      className="bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 px-6"
-                    >
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          Save Changes
-                        </>
-                      )}
-                    </Button>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          if (user) {
+                            populateFormData(user)
+                            setHasChanges(false)
+                          }
+                        }}
+                        className="text-zinc-500 hover:text-zinc-700"
+                      >
+                        Discard
+                      </Button>
+                      <Button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 px-6"
+                      >
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Changes
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
   )
 }

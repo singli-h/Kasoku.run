@@ -301,8 +301,8 @@ export function ExerciseCard({
               const isActive = isAthlete && index === firstIncompleteIndex
               const isSetDragging = draggingSetId === set.id
               const isSetDragOver = dragOverSetId === set.id
-              // Get AI change info for this set
-              const setChange = setAIChanges?.get(set.id)
+              // Get AI change info for this set - use String(set.id) for Map lookup
+              const setChange = setAIChanges?.get(String(set.id))
 
               return (
                 <div

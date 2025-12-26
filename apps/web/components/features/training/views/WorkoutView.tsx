@@ -318,7 +318,8 @@ export function WorkoutView({
                         return (
                           <div key={`superset-${idx}`} className="space-y-3">
                             {item.map((ex, exIdx) => {
-                              const aiInfo = aiChangesByExercise?.get(ex.id)
+                              // Use String(ex.id) for Map lookup - entityId is always stored as string
+                              const aiInfo = aiChangesByExercise?.get(String(ex.id))
                               return (
                                 <ExerciseCard
                                   key={ex.id}
@@ -350,8 +351,8 @@ export function WorkoutView({
                           </div>
                         )
                       }
-                      // Single exercise
-                      const aiInfo = aiChangesByExercise?.get(item.id)
+                      // Single exercise - use String(item.id) for Map lookup
+                      const aiInfo = aiChangesByExercise?.get(String(item.id))
                       return (
                         <ExerciseCard
                           key={item.id}

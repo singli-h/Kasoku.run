@@ -24,9 +24,32 @@ import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import type { Database } from "@/types/database"
+import type { SessionPlannerExercise } from "@/components/features/training/adapters/session-adapter"
 
-// Import types from session planner
-import type { SessionExercise, Session } from "@/components/features/plans/session-planner/types"
+/**
+ * Session metadata for updates
+ * Matches the fields that can be updated on session_plans
+ */
+interface SessionUpdate {
+  name?: string | null
+  description?: string | null
+  date?: string | null
+  notes?: string | null
+  week?: number | null
+  day?: number | null
+  session_mode?: string | null
+}
+
+/**
+ * Convert superset_id from string | null to number | null for database
+ * Handles both string numbers ("123") and null values
+ */
+function toSupersetIdNumber(value: string | number | null | undefined): number | null {
+  if (value == null) return null
+  if (typeof value === 'number') return value
+  const parsed = parseInt(value, 10)
+  return isNaN(parsed) ? null : parsed
+}
 
 // Database types - using new schema naming
 type SessionPlan = Database['public']['Tables']['session_plans']['Row']
@@ -49,8 +72,8 @@ type SessionPlanSetInsert = Database['public']['Tables']['session_plan_sets']['I
  */
 export async function saveSessionWithExercisesAction(
   sessionId: number,
-  sessionUpdates: Partial<Session>,
-  exercises: SessionExercise[]
+  sessionUpdates: Partial<SessionUpdate>,
+  exercises: SessionPlannerExercise[]
 ): Promise<ActionState<SessionPlan>> {
   try {
     const { userId } = await auth()
@@ -132,8 +155,8 @@ export async function saveSessionWithExercisesAction(
 
     // Separate exercises into: existing (to update) vs new (to insert)
     // ID Convention: "new_" prefix = new item, numeric string = existing item
-    const exercisesToUpdate: SessionExercise[] = []
-    const exercisesToInsert: SessionExercise[] = []
+    const exercisesToUpdate: SessionPlannerExercise[] = []
+    const exercisesToInsert: SessionPlannerExercise[] = []
     const exerciseIdsToKeep = new Set<number>()
 
     for (const exercise of exercises) {
@@ -196,7 +219,7 @@ export async function saveSessionWithExercisesAction(
         .update({
           exercise_id: exercise.exercise_id,
           exercise_order: exercise.exercise_order,
-          superset_id: exercise.superset_id,
+          superset_id: toSupersetIdNumber(exercise.superset_id),
           notes: exercise.notes
         })
         .eq('id', dbId)
@@ -261,7 +284,7 @@ export async function saveSessionWithExercisesAction(
         session_plan_id: sessionId,
         exercise_id: exercise.exercise_id,
         exercise_order: exercise.exercise_order,
-        superset_id: exercise.superset_id,
+        superset_id: toSupersetIdNumber(exercise.superset_id),
         notes: exercise.notes
       }
 

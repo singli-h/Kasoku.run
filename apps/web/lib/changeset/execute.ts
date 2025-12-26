@@ -8,16 +8,27 @@
  */
 
 import { saveSessionWithExercisesAction } from '@/actions/plans/session-planner-actions'
-import type {
-  SessionExercise,
-  Session,
-  SetParameter,
-} from '@/components/features/plans/session-planner/types'
+import type { SessionPlannerExercise } from '@/components/features/training/adapters/session-adapter'
 import type { ChangeRequest, ChangeSet, ExecutionResult } from './types'
+
 import { classifyError } from './errors'
 import { isTempId } from './buffer-utils'
 import { convertKeysToCamelCase, ENTITY_REFERENCE_FIELDS } from './entity-mappings'
 import type { SessionEntityType } from './types'
+
+/**
+ * Session update fields for extractSessionUpdates
+ * Matches the fields that can be updated on session_plans
+ */
+interface SessionUpdate {
+  name?: string | null
+  description?: string | null
+  date?: string | null
+  notes?: string | null
+  week?: number | null
+  day?: number | null
+  session_mode?: string | null
+}
 
 /**
  * Resolves temporary IDs in proposedData to their actual values.
@@ -55,7 +66,7 @@ function resolveTemporaryIds(
  * Executes an approved ChangeSet by calling the existing server action.
  *
  * Flow:
- * 1. Convert ChangeRequests to SessionExercise[] format
+ * 1. Convert ChangeRequests to SessionPlannerExercise[] format
  * 2. Call saveSessionWithExercisesAction
  * 3. Handle temp ID → real ID mapping
  * 4. Return execution result
@@ -67,7 +78,7 @@ function resolveTemporaryIds(
  */
 export async function executeChangeSet(
   changeset: ChangeSet,
-  currentExercises: SessionExercise[],
+  currentExercises: SessionPlannerExercise[],
   sessionId: number
 ): Promise<ExecutionResult> {
   try {
@@ -133,8 +144,8 @@ export async function executeChangeSet(
  */
 function applyChangesToExercises(
   changeRequests: ChangeRequest[],
-  currentExercises: SessionExercise[]
-): SessionExercise[] {
+  currentExercises: SessionPlannerExercise[]
+): SessionPlannerExercise[] {
   // Create a mutable copy
   let exercises = [...currentExercises]
 
@@ -176,8 +187,8 @@ function applyChangesToExercises(
  */
 function applyExerciseChange(
   request: ChangeRequest,
-  exercises: SessionExercise[]
-): SessionExercise[] {
+  exercises: SessionPlannerExercise[]
+): SessionPlannerExercise[] {
   const proposedData = request.proposedData
     ? convertKeysToCamelCase(request.proposedData)
     : null
@@ -185,19 +196,22 @@ function applyExerciseChange(
   switch (request.operationType) {
     case 'create': {
       // Add new exercise
-      const newExercise: SessionExercise = {
-        id: request.entityId ?? `temp_${Date.now()}`,
+      const newExercise: SessionPlannerExercise = {
+        id: request.entityId ?? `new_${Date.now()}`,
+        session_plan_id: 0, // Will be set by save action
         exercise_id: Number(proposedData?.exerciseId ?? 0),
-        exercise_order: Number(proposedData?.exerciseOrder ?? exercises.length),
-        superset_id: (proposedData?.supersetId as number | null) ?? null,
+        exercise_order: Number(proposedData?.exerciseOrder ?? exercises.length + 1),
+        superset_id: (proposedData?.supersetId as string | null) ?? null,
         notes: (proposedData?.notes as string | null) ?? null,
+        isCollapsed: false,
+        isEditing: false,
+        validationErrors: [],
         exercise: proposedData?.exerciseName
           ? {
               id: Number(proposedData?.exerciseId ?? 0),
               name: proposedData.exerciseName as string,
-              description: null,
-              exercise_type_id: null,
-              video_url: null,
+              description: undefined,
+              exercise_type_id: undefined,
             }
           : null,
         sets: [],
@@ -208,9 +222,9 @@ function applyExerciseChange(
 
     case 'update': {
       // Update existing exercise
-      return exercises.map((ex) => {
+      return exercises.map((ex): SessionPlannerExercise => {
         if (String(ex.id) === request.entityId) {
-          return {
+          const updated: SessionPlannerExercise = {
             ...ex,
             exercise_id: proposedData?.exerciseId
               ? Number(proposedData.exerciseId)
@@ -221,24 +235,25 @@ function applyExerciseChange(
                 : ex.exercise_order,
             superset_id:
               proposedData?.supersetId !== undefined
-                ? (proposedData.supersetId as number | null)
-                : ex.superset_id,
+                ? (proposedData.supersetId as string | null) ?? null
+                : ex.superset_id ?? null,
             notes:
               proposedData?.notes !== undefined
-                ? (proposedData.notes as string | null)
-                : ex.notes,
+                ? (proposedData.notes as string | null) ?? null
+                : ex.notes ?? null,
             // Update exercise reference if exerciseId changed (swap)
             exercise:
               proposedData?.exerciseId && proposedData?.exerciseName
                 ? {
                     id: Number(proposedData.exerciseId),
                     name: proposedData.exerciseName as string,
-                    description: null,
-                    exercise_type_id: null,
-                    video_url: null,
+                    description: undefined,
+                    exercise_type_id: undefined,
+                    video_url: undefined,
                   }
                 : ex.exercise,
           }
+          return updated
         }
         return ex
       })
@@ -263,9 +278,9 @@ function applyExerciseChange(
  */
 function applySetChange(
   request: ChangeRequest,
-  exercises: SessionExercise[],
+  exercises: SessionPlannerExercise[],
   idMap: Map<string, string>
-): SessionExercise[] {
+): SessionPlannerExercise[] {
   const proposedData = request.proposedData
     ? convertKeysToCamelCase(request.proposedData)
     : null
@@ -290,11 +305,13 @@ function applySetChange(
       return exercises.map((ex) => {
         if (String(ex.id) === parentExerciseId) {
           const setCount = Number(proposedData?.setCount ?? 1)
-          const newSets: SetParameter[] = []
+          const newSets: SessionPlannerExercise['sets'] = []
 
           for (let i = 0; i < setCount; i++) {
             const setIndex = ex.sets.length + i + 1
             newSets.push({
+              id: `new_set_${Date.now()}_${i}`,
+              session_plan_exercise_id: typeof ex.id === 'number' ? ex.id : 0,
               set_index: setIndex,
               reps: (proposedData?.reps as number) ?? null,
               weight: (proposedData?.weight as number) ?? null,
@@ -309,6 +326,8 @@ function applySetChange(
               effort: (proposedData?.effort as number) ?? null,
               height: (proposedData?.height as number) ?? null,
               resistance: (proposedData?.resistance as number) ?? null,
+              completed: false,
+              isEditing: false,
             })
           }
 
@@ -363,7 +382,7 @@ function applySetChange(
 
       return exercises.map((ex) => {
         if (String(ex.id) === parentExerciseId) {
-          let updatedSets: SetParameter[]
+          let updatedSets: SessionPlannerExercise['sets']
 
           if (setIndex !== undefined) {
             // Remove specific set
@@ -395,8 +414,8 @@ function applySetChange(
  */
 function extractSessionUpdates(
   changeRequests: ChangeRequest[]
-): Partial<Session> {
-  const sessionUpdates: Partial<Session> = {}
+): Partial<SessionUpdate> {
+  const sessionUpdates: Partial<SessionUpdate> = {}
 
   for (const request of changeRequests) {
     if (request.entityType === 'preset_session' && request.operationType === 'update') {

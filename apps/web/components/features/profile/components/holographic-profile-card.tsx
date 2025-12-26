@@ -1,16 +1,15 @@
 /**
  * Holographic Profile Card Component
  *
- * A distinctive 3D trading-card style component for displaying athlete/coach profiles
- * with holographic effects, tilt animation, and flip interaction.
+ * A premium Pokemon TCG-style holographic trading card for athlete/coach profiles.
+ * Features authentic foil effects with cosmos pattern, rainbow sweep, and spotlight.
  *
- * Features:
- * - 3D CSS transforms with preserve-3d
- * - Holographic rainbow gradient effects
- * - Pointer-tracking tilt animation
- * - Flip animation to reveal back
- * - Accessibility and reduced-motion support
- * - Touch support for mobile devices
+ * Inspired by the distinctive look of holographic rare Pokemon cards:
+ * - Cosmos/galaxy sparkle pattern
+ * - Rainbow color sweep that shifts with tilt
+ * - Radial spotlight following pointer
+ * - Layered depth effect
+ * - High-contrast glitter/sparkle
  */
 
 "use client"
@@ -22,14 +21,13 @@ import { Badge } from "@/components/ui/badge"
 import {
   Trophy,
   Target,
-  Zap,
   Medal,
   Flame,
   TrendingUp,
   Calendar,
   MapPin,
   Dumbbell,
-  Timer
+  Sparkles
 } from "lucide-react"
 
 // ============================================================================
@@ -60,14 +58,10 @@ export interface ProfileCardData {
   username?: string
   avatarUrl?: string | null
   role: ProfileRole
-
-  // Common fields
   birthdate?: string | null
   sex?: string | null
   timezone?: string
   joinDate?: string
-
-  // Athlete-specific
   height?: number | null
   weight?: number | null
   experience?: ExperienceLevel | null
@@ -75,8 +69,6 @@ export interface ProfileCardData {
   trainingGoals?: string | null
   athleteStats?: AthleteStats
   groupName?: string
-
-  // Coach-specific
   speciality?: string | null
   sportFocus?: string | null
   philosophy?: string | null
@@ -86,7 +78,6 @@ export interface ProfileCardData {
 
 interface HolographicProfileCardProps {
   profile: ProfileCardData
-  onViewProfile?: (profileId: number) => void
   onFlip?: (isFlipped: boolean) => void
   className?: string
   size?: "sm" | "md" | "lg"
@@ -138,12 +129,203 @@ function getExperienceLabel(level: ExperienceLevel | null | undefined): string {
 }
 
 // ============================================================================
-// Component
+// CSS for Pokemon TCG-Style Holographic Effects
+// ============================================================================
+
+const holoStyles = `
+  /* ========================================
+     Pokemon TCG Holographic Card Styles
+     ======================================== */
+
+  .ptcg-card {
+    --mx: 0.5;
+    --my: 0.5;
+    --s: 1;
+    --o: 0;
+    --rx: 0deg;
+    --ry: 0deg;
+    --pos: 50% 50%;
+    --posx: 50%;
+    --posy: 50%;
+    --hyp: 0;
+  }
+
+  .ptcg-card[data-hovered="true"] {
+    --s: 1;
+    --o: 1;
+  }
+
+  /* === COSMOS HOLO PATTERN === */
+  /* The signature Pokemon cosmos/galaxy sparkle effect */
+  .ptcg-cosmos {
+    --space: 5%;
+    --red: #ff5555;
+    --orange: #ffaa00;
+    --yellow: #ffff55;
+    --green: #55ff55;
+    --cyan: #55ffff;
+    --blue: #5555ff;
+    --magenta: #ff55ff;
+
+    background-image:
+      /* Radial stars/sparkles */
+      radial-gradient(circle at 10% 10%, var(--red) 0.5px, transparent 0.5px),
+      radial-gradient(circle at 90% 15%, var(--orange) 0.4px, transparent 0.4px),
+      radial-gradient(circle at 25% 80%, var(--yellow) 0.6px, transparent 0.6px),
+      radial-gradient(circle at 75% 85%, var(--green) 0.5px, transparent 0.5px),
+      radial-gradient(circle at 50% 50%, var(--cyan) 0.7px, transparent 0.7px),
+      radial-gradient(circle at 15% 45%, var(--blue) 0.4px, transparent 0.4px),
+      radial-gradient(circle at 85% 45%, var(--magenta) 0.5px, transparent 0.5px),
+      radial-gradient(circle at 40% 25%, var(--red) 0.3px, transparent 0.3px),
+      radial-gradient(circle at 60% 70%, var(--yellow) 0.4px, transparent 0.4px),
+      radial-gradient(circle at 30% 60%, var(--cyan) 0.5px, transparent 0.5px),
+      radial-gradient(circle at 70% 30%, var(--green) 0.4px, transparent 0.4px),
+      radial-gradient(circle at 5% 90%, var(--magenta) 0.6px, transparent 0.6px),
+      radial-gradient(circle at 95% 5%, var(--blue) 0.5px, transparent 0.5px),
+      radial-gradient(circle at 45% 95%, var(--orange) 0.4px, transparent 0.4px),
+      radial-gradient(circle at 55% 5%, var(--yellow) 0.3px, transparent 0.3px);
+
+    background-size:
+      60px 60px, 55px 55px, 65px 65px, 50px 50px, 70px 70px,
+      45px 45px, 58px 58px, 52px 52px, 62px 62px, 48px 48px,
+      68px 68px, 42px 42px, 72px 72px, 56px 56px, 64px 64px;
+
+    background-position: var(--pos);
+    mix-blend-mode: color-dodge;
+    filter: brightness(1) contrast(1);
+    opacity: calc(var(--o) * 0.8);
+    transition: opacity 0.3s ease-out;
+  }
+
+  /* === RAINBOW GRADIENT SWEEP === */
+  /* The prismatic color shift that sweeps across as you tilt */
+  .ptcg-rainbow {
+    background: linear-gradient(
+      115deg,
+      transparent 0%,
+      transparent calc(var(--posx) - 30%),
+      rgba(255, 0, 0, 0.15) calc(var(--posx) - 25%),
+      rgba(255, 154, 0, 0.15) calc(var(--posx) - 20%),
+      rgba(208, 222, 33, 0.15) calc(var(--posx) - 15%),
+      rgba(79, 220, 74, 0.15) calc(var(--posx) - 10%),
+      rgba(63, 218, 216, 0.2) calc(var(--posx) - 5%),
+      rgba(47, 201, 226, 0.25) var(--posx),
+      rgba(28, 127, 238, 0.2) calc(var(--posx) + 5%),
+      rgba(95, 21, 242, 0.15) calc(var(--posx) + 10%),
+      rgba(186, 12, 248, 0.15) calc(var(--posx) + 15%),
+      rgba(251, 7, 217, 0.15) calc(var(--posx) + 20%),
+      rgba(255, 0, 0, 0.1) calc(var(--posx) + 25%),
+      transparent calc(var(--posx) + 30%),
+      transparent 100%
+    );
+    background-size: 200% 200%;
+    background-position: var(--pos);
+    mix-blend-mode: color-dodge;
+    filter: saturate(2) brightness(1.2);
+    opacity: calc(var(--o) * 0.9);
+    transition: opacity 0.25s ease-out;
+  }
+
+  /* === SPOTLIGHT/GLARE === */
+  /* The bright spot that follows your cursor like light on foil */
+  .ptcg-spotlight {
+    background: radial-gradient(
+      circle at var(--posx) var(--posy),
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 255, 255, 0.8) 5%,
+      rgba(255, 255, 255, 0.4) 15%,
+      rgba(255, 255, 255, 0.1) 30%,
+      transparent 60%
+    );
+    mix-blend-mode: soft-light;
+    opacity: calc(var(--o) * 0.7);
+    transition: opacity 0.15s ease-out;
+  }
+
+  /* === GLOSS/SHINE LAYER === */
+  /* The diagonal shine that sweeps across like light on plastic */
+  .ptcg-gloss {
+    background: linear-gradient(
+      115deg,
+      transparent 0%,
+      transparent 25%,
+      rgba(255, 255, 255, 0.15) 45%,
+      rgba(255, 255, 255, 0.4) 50%,
+      rgba(255, 255, 255, 0.15) 55%,
+      transparent 75%,
+      transparent 100%
+    );
+    background-size: 300% 300%;
+    background-position: var(--pos);
+    opacity: calc(var(--o) * 0.6);
+    transition: opacity 0.2s ease-out;
+  }
+
+  /* === GRAIN/SPARKLE TEXTURE === */
+  /* The high-contrast sparkle effect like glitter in the foil */
+  .ptcg-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 150px;
+    filter: contrast(400%) brightness(250%);
+    mix-blend-mode: color-dodge;
+    opacity: calc(var(--o) * 0.12);
+    transition: opacity 0.3s ease-out;
+    animation: grainShift 8s ease-in-out infinite;
+  }
+
+  @keyframes grainShift {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-2px, 1px); }
+    50% { transform: translate(1px, -2px); }
+    75% { transform: translate(-1px, -1px); }
+  }
+
+  /* === EDGE HIGHLIGHT === */
+  /* The bright edge glow like light catching the card edge */
+  .ptcg-edge {
+    background:
+      linear-gradient(to right, rgba(255,255,255,0.3) 0%, transparent 5%, transparent 95%, rgba(255,255,255,0.3) 100%),
+      linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, transparent 3%, transparent 97%, rgba(255,255,255,0.2) 100%);
+    opacity: calc(var(--o) * 0.5);
+    transition: opacity 0.2s ease-out;
+  }
+
+  /* === BORDER GLOW === */
+  .ptcg-glow {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.1),
+      0 0 15px 2px rgba(255, 200, 50, calc(var(--o) * 0.15)),
+      0 0 30px 5px rgba(200, 100, 255, calc(var(--o) * 0.1)),
+      0 0 45px 8px rgba(100, 200, 255, calc(var(--o) * 0.08)),
+      0 15px 30px -10px rgba(0, 0, 0, 0.4);
+    transition: box-shadow 0.3s ease-out;
+  }
+
+  /* === SUBTLE IRIDESCENT SHEEN === */
+  .ptcg-iridescent {
+    background: conic-gradient(
+      from calc(var(--mx) * 360deg) at var(--posx) var(--posy),
+      rgba(255, 0, 128, 0.1),
+      rgba(255, 128, 0, 0.1),
+      rgba(128, 255, 0, 0.1),
+      rgba(0, 255, 128, 0.1),
+      rgba(0, 128, 255, 0.1),
+      rgba(128, 0, 255, 0.1),
+      rgba(255, 0, 128, 0.1)
+    );
+    mix-blend-mode: overlay;
+    opacity: calc(var(--o) * 0.4);
+    transition: opacity 0.25s ease-out;
+  }
+`
+
+// ============================================================================
+// Main Component
 // ============================================================================
 
 export function HolographicProfileCard({
   profile,
-  onViewProfile,
   onFlip,
   className,
   size = "md",
@@ -155,15 +337,24 @@ export function HolographicProfileCard({
 
   const [isHovered, setIsHovered] = useState(false)
   const [isFlipped, setIsFlipped] = useState(false)
-  const [pointerPos, setPointerPos] = useState({ x: 0, y: 0 })
+  const [pointer, setPointer] = useState({ x: 0.5, y: 0.5 })
 
-  // Check for reduced motion preference
+  // Inject styles
+  useEffect(() => {
+    const styleId = 'ptcg-holo-styles'
+    if (!document.getElementById(styleId)) {
+      const styleEl = document.createElement('style')
+      styleEl.id = styleId
+      styleEl.textContent = holoStyles
+      document.head.appendChild(styleEl)
+    }
+  }, [])
+
   const prefersReducedMotion = useMemo(() => {
     if (typeof window === "undefined") return false
     return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false
   }, [])
 
-  // Card dimensions based on size
   const dimensions = useMemo(() => {
     switch (size) {
       case "sm": return { width: "w-64", height: "h-80" }
@@ -174,7 +365,6 @@ export function HolographicProfileCard({
 
   const age = calculateAge(profile.birthdate)
 
-  // Update cached rect on resize/scroll
   useEffect(() => {
     const el = cardRef.current
     if (!el) return
@@ -194,26 +384,19 @@ export function HolographicProfileCard({
     }
   }, [])
 
-  // Handle pointer movement for tilt effect
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (prefersReducedMotion || !interactive) return
 
-    const el = cardRef.current
-    if (!el) return
-
-    const rect = rectRef.current ?? el.getBoundingClientRect()
+    const rect = rectRef.current ?? cardRef.current?.getBoundingClientRect()
+    if (!rect) return
     rectRef.current = rect
 
     const px = clamp((e.clientX - rect.left) / rect.width, 0, 1)
     const py = clamp((e.clientY - rect.top) / rect.height, 0, 1)
 
-    // Map to [-1, 1] for tilt math
-    const nx = px * 2 - 1
-    const ny = py * 2 - 1
-
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
     rafRef.current = requestAnimationFrame(() => {
-      setPointerPos({ x: nx, y: ny })
+      setPointer({ x: px, y: py })
     })
   }, [prefersReducedMotion, interactive])
 
@@ -223,7 +406,7 @@ export function HolographicProfileCard({
 
   const handlePointerLeave = useCallback(() => {
     setIsHovered(false)
-    setPointerPos({ x: 0, y: 0 })
+    setPointer({ x: 0.5, y: 0.5 })
   }, [])
 
   const handleClick = useCallback(() => {
@@ -241,268 +424,275 @@ export function HolographicProfileCard({
     }
   }, [interactive, handleClick])
 
-  // CSS custom properties for effects
-  const cardStyle = {
-    "--pointer-x": pointerPos.x.toFixed(4),
-    "--pointer-y": pointerPos.y.toFixed(4),
-    "--tilt-intensity": isHovered ? "12deg" : "0deg",
+  // Calculate transforms - card surface faces toward the mouse position
+  // rotateX: positive = top edge toward viewer, negative = top edge away
+  // rotateY: positive = right edge toward viewer, negative = right edge away
+  // For natural "card faces mouse" effect:
+  // - Mouse at top → surface faces up → top edge away → rotateX negative
+  // - Mouse at bottom → surface faces down → top edge toward → rotateX positive
+  // - Mouse at left → surface faces left → right edge toward → rotateY positive
+  // - Mouse at right → surface faces right → right edge away → rotateY negative
+  const maxTilt = 20 // degrees
+  const tiltX = (pointer.y - 0.5) * (isHovered ? maxTilt : 0)
+  const tiltY = (0.5 - pointer.x) * (isHovered ? maxTilt : 0) // Inverted for natural feel
+  const hyp = Math.sqrt(Math.pow(pointer.x - 0.5, 2) + Math.pow(pointer.y - 0.5, 2))
+
+  // CSS variables for holo effects
+  const cssVars = {
+    "--mx": pointer.x.toFixed(3),
+    "--my": pointer.y.toFixed(3),
+    "--posx": `${pointer.x * 100}%`,
+    "--posy": `${pointer.y * 100}%`,
+    "--pos": `${50 + (pointer.x - 0.5) * 50}% ${50 + (pointer.y - 0.5) * 50}%`,
+    "--hyp": hyp.toFixed(3),
+    "--o": isHovered ? "1" : "0",
+    "--rx": `${tiltX}deg`,
+    "--ry": `${tiltY}deg`,
   } as React.CSSProperties
 
   return (
     <div className={cn("relative select-none", dimensions.width, className)}>
+      {/* Perspective wrapper */}
       <div
-        ref={cardRef}
-        className={cn(
-          "relative cursor-pointer",
-          "rounded-2xl",
-          "transition-shadow duration-300",
-          isHovered ? "shadow-2xl shadow-black/25" : "shadow-xl shadow-black/15"
-        )}
-        style={cardStyle}
-        onPointerMove={handlePointerMove}
-        onPointerEnter={handlePointerEnter}
-        onPointerLeave={handlePointerLeave}
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
-        role="button"
-        tabIndex={interactive ? 0 : -1}
-        aria-label={`${profile.firstName} ${profile.lastName}'s profile card. Press Enter or click to flip.`}
-        aria-pressed={isFlipped}
+        className="relative"
+        style={{ perspective: "1200px", perspectiveOrigin: "center" }}
       >
-        {/* 3D Scene Container */}
+        {/* Tilt wrapper - handles mouse-follow rotation */}
         <div
-          className={cn(
-            "relative",
-            dimensions.height,
-            "w-full",
-            "rounded-2xl",
-            "overflow-visible",
-            "[transform-style:preserve-3d]",
-            "transition-transform duration-500 ease-out",
-            prefersReducedMotion ? "" : isFlipped ? "[transform:rotateY(180deg)]" : ""
-          )}
-          style={prefersReducedMotion ? undefined : {
-            transform: isFlipped
-              ? "rotateY(180deg)"
-              : `rotateX(calc(var(--pointer-y) * var(--tilt-intensity) * -1)) rotateY(calc(var(--pointer-x) * var(--tilt-intensity)))`
+          ref={cardRef}
+          className="relative"
+          style={{
+            transform: prefersReducedMotion ? undefined : (
+              `rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${isHovered ? 1.02 : 1})`
+            ),
+            transformStyle: "preserve-3d",
+            transition: isHovered
+              ? "transform 0.1s ease-out" // Fast response when hovering
+              : "transform 0.4s ease-out", // Smooth return when leaving
           }}
+          onPointerMove={handlePointerMove}
+          onPointerEnter={handlePointerEnter}
+          onPointerLeave={handlePointerLeave}
         >
-          {/* FRONT FACE */}
+          {/* Flip wrapper - handles the card flip */}
+          <div
+            className={cn(
+              "ptcg-card relative cursor-pointer rounded-2xl",
+              dimensions.height, // Add height here so children can use absolute positioning
+              isHovered && "ptcg-glow"
+            )}
+            style={{
+              ...cssVars,
+              transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+              transformStyle: "preserve-3d",
+              transition: "transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1)",
+            }}
+            data-hovered={isHovered}
+            onClick={handleClick}
+            onKeyDown={handleKeyDown}
+            role="button"
+            tabIndex={interactive ? 0 : -1}
+            aria-label={`${profile.firstName} ${profile.lastName}'s profile card. Click to flip.`}
+            aria-pressed={isFlipped}
+          >
+          {/* ==================== FRONT FACE ==================== */}
           <div
             className={cn(
               "absolute inset-0",
-              "rounded-2xl",
-              "overflow-hidden",
-              "[backface-visibility:hidden]",
-              "[transform-style:preserve-3d]"
+              dimensions.height,
+              "rounded-2xl overflow-hidden",
+              "border-4 border-white/10"
             )}
+            style={{ backfaceVisibility: "hidden" }}
           >
-            {/* Background gradient */}
+            {/* Base gradient background */}
             <div className={cn(
               "absolute inset-0",
               profile.role === "athlete"
-                ? "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"
-                : "bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950"
+                ? "bg-gradient-to-br from-slate-950 via-slate-900 to-zinc-900"
+                : "bg-gradient-to-br from-indigo-950 via-slate-950 to-violet-950"
             )} />
 
-            {/* Geometric pattern overlay */}
+            {/* Subtle texture */}
             <div
-              className="absolute inset-0 opacity-10"
+              className="absolute inset-0 opacity-20"
               style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+                backgroundImage: `radial-gradient(circle at 25% 25%, rgba(255,255,255,0.05) 1px, transparent 1px)`,
+                backgroundSize: "20px 20px"
               }}
             />
 
-            {/* Content */}
+            {/* Content layer */}
             <div className="relative z-10 h-full flex flex-col p-5">
-              {/* Header with role badge and year */}
-              <div className="flex items-center justify-between mb-4">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-3">
                 <Badge
                   className={cn(
-                    "px-3 py-1 text-xs font-bold tracking-wider uppercase",
+                    "px-3 py-1 text-[10px] font-black tracking-[0.2em] uppercase border-0",
+                    "shadow-lg",
                     profile.role === "athlete"
-                      ? "bg-amber-500/90 text-black"
-                      : "bg-cyan-500/90 text-black"
+                      ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white"
+                      : "bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
                   )}
                 >
                   {profile.role}
                 </Badge>
-                <span className="text-white/60 text-sm font-mono">
+                <span className="text-white/50 text-xs font-mono tracking-wider">
                   {new Date().getFullYear()}
                 </span>
               </div>
 
-              {/* Avatar section */}
-              <div className="flex-1 flex flex-col items-center justify-center -mt-2">
+              {/* Avatar */}
+              <div className="flex-1 flex flex-col items-center justify-center">
                 <div className="relative">
                   <div className={cn(
-                    "absolute -inset-2 rounded-full blur-xl opacity-60",
+                    "absolute -inset-4 rounded-full blur-2xl opacity-60",
                     profile.role === "athlete"
-                      ? "bg-gradient-to-br from-amber-400 to-orange-600"
-                      : "bg-gradient-to-br from-cyan-400 to-blue-600"
+                      ? "bg-gradient-to-br from-amber-500/50 via-orange-500/30 to-red-500/50"
+                      : "bg-gradient-to-br from-cyan-500/50 via-blue-500/30 to-purple-500/50"
                   )} />
                   <Avatar className={cn(
-                    "relative border-4 border-white/20",
+                    "relative border-[3px] border-white/20 shadow-2xl",
                     size === "sm" ? "h-20 w-20" : size === "lg" ? "h-32 w-32" : "h-24 w-24"
                   )}>
-                    <AvatarImage
-                      src={profile.avatarUrl || undefined}
-                      alt={`${profile.firstName} ${profile.lastName}`}
-                    />
+                    <AvatarImage src={profile.avatarUrl || undefined} />
                     <AvatarFallback className={cn(
-                      "text-2xl font-bold",
+                      "text-2xl font-black",
                       profile.role === "athlete"
-                        ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white"
-                        : "bg-gradient-to-br from-cyan-500 to-blue-600 text-white"
+                        ? "bg-gradient-to-br from-amber-600 to-orange-700 text-white"
+                        : "bg-gradient-to-br from-cyan-600 to-blue-700 text-white"
                     )}>
                       {getInitials(profile.firstName, profile.lastName)}
                     </AvatarFallback>
                   </Avatar>
                 </div>
 
-                {/* Experience badge for athletes */}
                 {profile.role === "athlete" && profile.experience && (
                   <Badge className={cn(
-                    "mt-3 px-3 py-0.5 text-xs font-semibold",
+                    "mt-4 px-3 py-0.5 text-[10px] font-bold tracking-wide",
                     getExperienceBadgeColor(profile.experience),
-                    "text-white shadow-lg"
+                    "text-white border border-white/20"
                   )}>
+                    <Sparkles className="w-3 h-3 mr-1" />
                     {getExperienceLabel(profile.experience)}
                   </Badge>
                 )}
               </div>
 
-              {/* Name and info section */}
+              {/* Name section */}
               <div className="mt-auto text-center">
                 <h3 className={cn(
                   "font-black tracking-tight text-white",
-                  size === "sm" ? "text-xl" : size === "lg" ? "text-3xl" : "text-2xl"
+                  "drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]",
+                  size === "sm" ? "text-lg" : size === "lg" ? "text-2xl" : "text-xl"
                 )}>
                   {profile.firstName} {profile.lastName}
                 </h3>
 
                 {profile.groupName && (
-                  <p className="text-white/50 text-sm mt-1 flex items-center justify-center gap-1">
+                  <p className="text-white/40 text-xs mt-1 flex items-center justify-center gap-1">
                     <MapPin className="h-3 w-3" />
                     {profile.groupName}
                   </p>
                 )}
 
-                {/* Quick stats row */}
-                <div className="flex items-center justify-center gap-4 mt-3 text-white/70">
-                  {age && (
-                    <span className="text-sm">{age}y</span>
-                  )}
-                  {profile.sex && (
-                    <span className="text-sm uppercase">{profile.sex}</span>
-                  )}
-                  {profile.role === "athlete" && profile.height && (
-                    <span className="text-sm">{profile.height}cm</span>
-                  )}
+                <div className="flex items-center justify-center gap-3 mt-2 text-white/60">
+                  {age && <span className="text-xs font-medium">{age}y</span>}
+                  {profile.sex && <span className="text-xs font-medium uppercase">{profile.sex}</span>}
                 </div>
 
-                {/* Events tags for athletes */}
-                {profile.role === "athlete" && profile.events && profile.events.length > 0 && (
-                  <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
-                    {profile.events.slice(0, 3).map((event, i) => (
-                      <Badge
-                        key={i}
-                        variant="outline"
-                        className="text-xs border-white/30 text-white/80 bg-white/5"
-                      >
-                        {event}
-                      </Badge>
-                    ))}
-                    {profile.events.length > 3 && (
-                      <Badge variant="outline" className="text-xs border-white/30 text-white/60">
-                        +{profile.events.length - 3}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-
-                {/* Sport focus for coaches */}
                 {profile.role === "coach" && profile.sportFocus && (
-                  <Badge
-                    variant="outline"
-                    className="mt-3 text-xs border-cyan-400/50 text-cyan-300"
-                  >
+                  <Badge variant="outline" className="mt-2 text-[10px] border-cyan-500/30 text-cyan-400">
                     {profile.sportFocus}
                   </Badge>
                 )}
               </div>
 
-              {/* Flip hint */}
-              <p className="text-center text-white/30 text-xs mt-3">
-                Click to flip
+              <p className="text-center text-white/25 text-[10px] mt-3 tracking-wide">
+                TAP TO FLIP
               </p>
             </div>
 
-            {/* Holographic overlay effects */}
-            <HolographicOverlay isHovered={isHovered} role={profile.role} />
+            {/* ===== HOLOGRAPHIC EFFECT LAYERS ===== */}
+
+            {/* Layer 1: Cosmos sparkle pattern */}
+            <div className="ptcg-cosmos absolute inset-0 pointer-events-none rounded-xl" />
+
+            {/* Layer 2: Rainbow gradient sweep */}
+            <div className="ptcg-rainbow absolute inset-0 pointer-events-none rounded-xl" />
+
+            {/* Layer 3: Iridescent conic gradient */}
+            <div className="ptcg-iridescent absolute inset-0 pointer-events-none rounded-xl" />
+
+            {/* Layer 4: Spotlight/glare */}
+            <div className="ptcg-spotlight absolute inset-0 pointer-events-none rounded-xl" />
+
+            {/* Layer 5: Diagonal gloss */}
+            <div className="ptcg-gloss absolute inset-0 pointer-events-none rounded-xl" />
+
+            {/* Layer 6: Grain/sparkle texture */}
+            <div className="ptcg-grain absolute inset-0 pointer-events-none rounded-xl" />
+
+            {/* Layer 7: Edge highlight */}
+            <div className="ptcg-edge absolute inset-0 pointer-events-none rounded-xl" />
           </div>
 
-          {/* BACK FACE */}
+          {/* ==================== BACK FACE ==================== */}
           <div
             className={cn(
               "absolute inset-0",
-              "rounded-2xl",
-              "overflow-hidden",
-              "[backface-visibility:hidden]",
-              "[transform:rotateY(180deg)]"
+              dimensions.height,
+              "rounded-2xl overflow-hidden",
+              "border-4 border-white/10"
             )}
+            style={{
+              backfaceVisibility: "hidden",
+              transform: "rotateY(180deg)"
+            }}
           >
-            {/* Background */}
             <div className={cn(
               "absolute inset-0",
               profile.role === "athlete"
-                ? "bg-gradient-to-br from-slate-100 via-white to-slate-100"
-                : "bg-gradient-to-br from-indigo-50 via-white to-purple-50"
+                ? "bg-gradient-to-br from-amber-50 via-white to-orange-50"
+                : "bg-gradient-to-br from-cyan-50 via-white to-blue-50"
             )} />
 
-            {/* Content */}
             <div className="relative z-10 h-full flex flex-col p-5">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <h4 className={cn(
-                  "font-bold text-slate-900",
-                  size === "sm" ? "text-base" : "text-lg"
-                )}>
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-200">
+                <h4 className="font-black text-slate-900 text-base tracking-tight">
                   {profile.firstName} {profile.lastName}
                 </h4>
-                <Badge
-                  className={cn(
-                    "text-xs",
-                    profile.role === "athlete"
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-cyan-100 text-cyan-800"
-                  )}
-                >
+                <Badge className={cn(
+                  "text-[10px] font-bold",
+                  profile.role === "athlete"
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-cyan-100 text-cyan-800"
+                )}>
                   {profile.role}
                 </Badge>
               </div>
 
-              {/* Stats grid */}
               {profile.role === "athlete" ? (
                 <AthleteBackContent profile={profile} size={size} />
               ) : (
                 <CoachBackContent profile={profile} size={size} />
               )}
 
-              {/* Flip hint */}
-              <p className="text-center text-slate-400 text-xs mt-auto pt-3">
-                Click to flip back
+              <p className="text-center text-slate-300 text-[10px] mt-auto pt-2 tracking-wide">
+                TAP TO FLIP BACK
               </p>
             </div>
 
-            {/* Subtle pattern overlay */}
+            {/* Subtle dot pattern */}
             <div
-              className="absolute inset-0 opacity-5 pointer-events-none"
+              className="absolute inset-0 opacity-[0.02] pointer-events-none"
               style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.4' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='1.5'/%3E%3C/g%3E%3C/svg%3E")`
+                backgroundImage: `radial-gradient(circle, #000 1px, transparent 1px)`,
+                backgroundSize: "12px 12px"
               }}
             />
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -513,128 +703,65 @@ export function HolographicProfileCard({
 // Sub-components
 // ============================================================================
 
-function HolographicOverlay({ isHovered, role }: { isHovered: boolean; role: ProfileRole }) {
-  return (
-    <>
-      {/* Rainbow holographic gradient */}
-      <div
-        className={cn(
-          "absolute inset-0 pointer-events-none",
-          "mix-blend-color-dodge",
-          "transition-opacity duration-300",
-          isHovered ? "opacity-40" : "opacity-20"
-        )}
-        style={{
-          background: `linear-gradient(
-            115deg,
-            rgba(255, 0, 180, 0.35),
-            rgba(0, 210, 255, 0.35),
-            rgba(140, 255, 120, 0.25),
-            rgba(255, 220, 80, 0.25),
-            rgba(255, 0, 180, 0.30)
-          )`,
-          backgroundSize: "200% 200%",
-          backgroundPosition: `calc(50% + calc(var(--pointer-x) * 20%)) calc(50% + calc(var(--pointer-y) * 20%))`,
-          filter: "saturate(1.35) contrast(1.1)"
-        }}
-      />
-
-      {/* Spotlight highlight */}
-      <div
-        className={cn(
-          "absolute inset-0 pointer-events-none",
-          "mix-blend-overlay",
-          "transition-opacity duration-300",
-          isHovered ? "opacity-70" : "opacity-30"
-        )}
-        style={{
-          background: `radial-gradient(
-            280px circle at
-              calc(50% + calc(var(--pointer-x) * 45%))
-              calc(45% + calc(var(--pointer-y) * 35%)),
-            rgba(255, 255, 255, 0.85),
-            rgba(255, 255, 255, 0.12) 45%,
-            rgba(255, 255, 255, 0.0) 70%
-          )`
-        }}
-      />
-
-      {/* Subtle grain texture */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-15 mix-blend-soft-light"
-        style={{
-          backgroundImage: `repeating-linear-gradient(
-            0deg,
-            rgba(255,255,255,0.05),
-            rgba(255,255,255,0.05) 1px,
-            rgba(0,0,0,0.05) 2px,
-            rgba(0,0,0,0.05) 3px
-          )`,
-          filter: "blur(0.2px)"
-        }}
-      />
-    </>
-  )
-}
-
 function AthleteBackContent({ profile, size }: { profile: ProfileCardData; size: string }) {
   const stats = profile.athleteStats
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-2 mb-4">
+      <div className="grid grid-cols-2 gap-2 mb-3">
         <StatBox
-          icon={<Dumbbell className="h-4 w-4" />}
+          icon={<Dumbbell className="h-3.5 w-3.5" />}
           label="Workouts"
           value={stats?.totalWorkouts ?? "—"}
-          color="bg-amber-100 text-amber-700"
+          gradient="from-amber-100 to-orange-100"
+          textColor="text-amber-800"
         />
         <StatBox
-          icon={<Flame className="h-4 w-4" />}
+          icon={<Flame className="h-3.5 w-3.5" />}
           label="Streak"
           value={stats?.weeklyStreak ? `${stats.weeklyStreak}w` : "—"}
-          color="bg-orange-100 text-orange-700"
+          gradient="from-orange-100 to-red-100"
+          textColor="text-orange-800"
         />
         <StatBox
-          icon={<Medal className="h-4 w-4" />}
+          icon={<Medal className="h-3.5 w-3.5" />}
           label="PRs"
           value={stats?.personalRecords ?? "—"}
-          color="bg-purple-100 text-purple-700"
+          gradient="from-purple-100 to-pink-100"
+          textColor="text-purple-800"
         />
         <StatBox
-          icon={<Target className="h-4 w-4" />}
-          label="Complete"
+          icon={<Target className="h-3.5 w-3.5" />}
+          label="Rate"
           value={stats?.completionRate ? `${stats.completionRate}%` : "—"}
-          color="bg-emerald-100 text-emerald-700"
+          gradient="from-emerald-100 to-teal-100"
+          textColor="text-emerald-800"
         />
       </div>
 
-      {/* Physical stats */}
       {(profile.height || profile.weight) && (
-        <div className="flex items-center justify-center gap-6 py-2 border-y border-slate-200">
+        <div className="flex items-center justify-center gap-6 py-2 border-y border-slate-100">
           {profile.height && (
             <div className="text-center">
-              <p className="text-xs text-slate-500">Height</p>
-              <p className="font-semibold text-slate-900">{profile.height} cm</p>
+              <p className="text-[10px] text-slate-400 font-semibold uppercase">Height</p>
+              <p className="text-sm font-black text-slate-900">{profile.height}cm</p>
             </div>
           )}
           {profile.weight && (
             <div className="text-center">
-              <p className="text-xs text-slate-500">Weight</p>
-              <p className="font-semibold text-slate-900">{profile.weight} kg</p>
+              <p className="text-[10px] text-slate-400 font-semibold uppercase">Weight</p>
+              <p className="text-sm font-black text-slate-900">{profile.weight}kg</p>
             </div>
           )}
         </div>
       )}
 
-      {/* Training goals */}
       {profile.trainingGoals && (
-        <div className="mt-3">
-          <p className="text-xs text-slate-500 mb-1">Training Goals</p>
+        <div className="mt-2 flex-1">
+          <p className="text-[10px] text-slate-400 mb-1 font-semibold uppercase">Goals</p>
           <p className={cn(
-            "text-slate-700 leading-tight",
-            size === "sm" ? "text-xs line-clamp-2" : "text-sm line-clamp-3"
+            "text-slate-600 leading-relaxed",
+            size === "sm" ? "text-[10px] line-clamp-2" : "text-xs line-clamp-3"
           )}>
             {profile.trainingGoals}
           </p>
@@ -649,49 +776,50 @@ function CoachBackContent({ profile, size }: { profile: ProfileCardData; size: s
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-2 mb-4">
+      <div className="grid grid-cols-2 gap-2 mb-3">
         <StatBox
-          icon={<Trophy className="h-4 w-4" />}
+          icon={<Trophy className="h-3.5 w-3.5" />}
           label="Athletes"
           value={stats?.athletesCoached ?? "—"}
-          color="bg-cyan-100 text-cyan-700"
+          gradient="from-cyan-100 to-blue-100"
+          textColor="text-cyan-800"
         />
         <StatBox
-          icon={<Calendar className="h-4 w-4" />}
+          icon={<Calendar className="h-3.5 w-3.5" />}
           label="Years"
           value={stats?.yearsExperience ?? "—"}
-          color="bg-blue-100 text-blue-700"
+          gradient="from-blue-100 to-indigo-100"
+          textColor="text-blue-800"
         />
         <StatBox
-          icon={<Target className="h-4 w-4" />}
+          icon={<Target className="h-3.5 w-3.5" />}
           label="Programs"
           value={stats?.programsCreated ?? "—"}
-          color="bg-indigo-100 text-indigo-700"
+          gradient="from-indigo-100 to-purple-100"
+          textColor="text-indigo-800"
         />
         <StatBox
-          icon={<TrendingUp className="h-4 w-4" />}
+          icon={<TrendingUp className="h-3.5 w-3.5" />}
           label="Success"
           value={stats?.successRate ? `${stats.successRate}%` : "—"}
-          color="bg-purple-100 text-purple-700"
+          gradient="from-purple-100 to-pink-100"
+          textColor="text-purple-800"
         />
       </div>
 
-      {/* Speciality */}
       {profile.speciality && (
-        <div className="py-2 border-y border-slate-200 text-center">
-          <p className="text-xs text-slate-500">Specialization</p>
-          <p className="font-semibold text-slate-900">{profile.speciality}</p>
+        <div className="py-2 border-y border-slate-100 text-center">
+          <p className="text-[10px] text-slate-400 font-semibold uppercase">Specialty</p>
+          <p className="text-sm font-black text-slate-900">{profile.speciality}</p>
         </div>
       )}
 
-      {/* Philosophy */}
       {profile.philosophy && (
-        <div className="mt-3">
-          <p className="text-xs text-slate-500 mb-1">Coaching Philosophy</p>
+        <div className="mt-2 flex-1">
+          <p className="text-[10px] text-slate-400 mb-1 font-semibold uppercase">Philosophy</p>
           <p className={cn(
-            "text-slate-700 leading-tight italic",
-            size === "sm" ? "text-xs line-clamp-2" : "text-sm line-clamp-3"
+            "text-slate-600 leading-relaxed italic",
+            size === "sm" ? "text-[10px] line-clamp-2" : "text-xs line-clamp-3"
           )}>
             "{profile.philosophy}"
           </p>
@@ -705,23 +833,26 @@ function StatBox({
   icon,
   label,
   value,
-  color
+  gradient,
+  textColor
 }: {
   icon: React.ReactNode
   label: string
   value: string | number
-  color: string
+  gradient: string
+  textColor: string
 }) {
   return (
     <div className={cn(
-      "rounded-lg p-2.5 text-center",
-      color
+      "rounded-lg p-2 text-center",
+      `bg-gradient-to-br ${gradient}`,
+      textColor
     )}>
-      <div className="flex items-center justify-center gap-1 mb-0.5">
+      <div className="flex items-center justify-center mb-0.5 opacity-70">
         {icon}
       </div>
-      <p className="text-lg font-bold">{value}</p>
-      <p className="text-xs opacity-80">{label}</p>
+      <p className="text-base font-black">{value}</p>
+      <p className="text-[9px] font-bold uppercase tracking-wide opacity-60">{label}</p>
     </div>
   )
 }

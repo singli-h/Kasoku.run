@@ -31,6 +31,7 @@ import { ChatDrawer, ChatTrigger } from './ChatDrawer'
 import { ApprovalBanner } from './ApprovalBanner'
 import { SessionAssistantContext } from './SessionAssistantContext'
 import { useSessionExercisesOptional } from '@/components/features/training/context'
+import type { SessionPlannerExercise } from '@/components/features/training/adapters/session-adapter'
 import type { ExecutionError, ChangeSet } from '@/lib/changeset/types'
 
 // ============================================================================
@@ -298,18 +299,17 @@ function SessionAssistantContent({
     setExecutionError(undefined)
 
     try {
-      // Cast exercises - SessionPlannerExercise is compatible with SessionExercise at runtime
+      // Execute changes - exercises already in correct type
       const result = await executeChangeSet(
         changeSet.changeset,
-        exercises as unknown as import('@/components/features/plans/session-planner/types').SessionExercise[],
+        exercises,
         sessionId
       )
 
       if (result.status === 'approved') {
         // Success - update shared exercises context with execution result
         if (result.updatedExercises && setExercises) {
-          // Cast to SessionPlannerExercise[] - types are compatible at runtime
-          setExercises(result.updatedExercises as import('../training/adapters/session-adapter').SessionPlannerExercise[])
+          setExercises(result.updatedExercises as SessionPlannerExercise[])
         }
 
         // Return result to AI (no await to avoid deadlocks)

@@ -6,10 +6,12 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { 
-  Users, 
-  Search, 
-  MoreHorizontal, 
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import {
+  Users,
+  Search,
+  MoreHorizontal,
   X
 } from "lucide-react"
 
@@ -57,6 +59,7 @@ export function AthleteRosterSection({
   onGroupFilterChange,
   className
 }: AthleteRosterSectionProps) {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
 
   // Filter athletes
@@ -245,15 +248,18 @@ export function AthleteRosterSection({
                       />
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-3">
+                      <Link
+                        href={`/athletes/${athlete.id}`}
+                        className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                      >
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={athlete.user?.avatar_url || ''} />
                           <AvatarFallback>
                             {fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{fullName}</span>
-                      </div>
+                        <span className="font-medium hover:underline">{fullName}</span>
+                      </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {athlete.user?.email}
@@ -303,7 +309,7 @@ export function AthleteRosterSection({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/athletes/${athlete.id}`)}>
                             View Profile
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
