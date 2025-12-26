@@ -5,7 +5,7 @@ import { Check, GripVertical, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TrainingSet } from "../types"
 
-/** Task 10.1: Visible fields computed from all sets in an exercise */
+/** Visible fields computed from exercise type and plan data */
 export interface VisibleFields {
   reps: boolean
   weight: boolean
@@ -18,6 +18,7 @@ export interface VisibleFields {
   restTime: boolean
   tempo: boolean
   effort: boolean
+  resistance: boolean
 }
 
 export interface SetRowProps {
@@ -269,7 +270,21 @@ export function SetRow({
     )
   }
 
-  // Coach view - draggable with all fields visible
+  // Coach view - draggable with type-appropriate fields visible
+  // Use visibleFields if provided, otherwise show common fields
+  const coachShowReps = visibleFields?.reps ?? true
+  const coachShowWeight = visibleFields?.weight ?? true
+  const coachShowDistance = visibleFields?.distance ?? false
+  const coachShowTime = visibleFields?.performingTime ?? false
+  const coachShowHeight = visibleFields?.height ?? false
+  const coachShowPower = visibleFields?.power ?? false
+  const coachShowVelocity = visibleFields?.velocity ?? false
+  const coachShowRPE = visibleFields?.rpe ?? false
+  const coachShowRestTime = visibleFields?.restTime ?? true
+  const coachShowTempo = visibleFields?.tempo ?? false
+  const coachShowEffort = visibleFields?.effort ?? false
+  const coachShowResistance = visibleFields?.resistance ?? false
+
   return (
     <div
       draggable
@@ -292,96 +307,179 @@ export function SetRow({
         </span>
       </div>
 
-      {/* Pill notation inputs */}
+      {/* Pill notation inputs - show only type-appropriate fields */}
       <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            min={0}
-            max={999}
-            value={set.reps ?? ""}
-            onChange={(e) => handleChange("reps", e.target.value)}
-            className={cn(inputClass, "w-8")}
-            placeholder="--"
-          />
-          <span className="text-muted-foreground text-xs">x</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            min={0}
-            max={9999}
-            step={0.5}
-            value={set.weight ?? ""}
-            onChange={(e) => handleChange("weight", e.target.value)}
-            className={cn(inputClass, "w-10")}
-            placeholder="--"
-          />
-          <span className="text-muted-foreground text-xs">kg</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            min={0}
-            max={99999}
-            value={set.distance ?? ""}
-            onChange={(e) => handleChange("distance", e.target.value)}
-            className={cn(inputClass, "w-9")}
-            placeholder="--"
-          />
-          <span className="text-muted-foreground text-xs">m</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            min={0}
-            max={99999}
-            step={0.01}
-            value={set.performingTime ?? ""}
-            onChange={(e) => handleChange("performingTime", e.target.value)}
-            className={cn(inputClass, "w-12")}
-            placeholder="0.00"
-          />
-          <span className="text-muted-foreground text-xs">s</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            min={0}
-            max={99999}
-            step={0.1}
-            value={set.power ?? ""}
-            onChange={(e) => handleChange("power", e.target.value)}
-            className={cn(inputClass, "w-12")}
-            placeholder="--"
-          />
-          <span className="text-muted-foreground text-xs">W</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            min={0}
-            max={99}
-            step={0.01}
-            value={set.velocity ?? ""}
-            onChange={(e) => handleChange("velocity", e.target.value)}
-            className={cn(inputClass, "w-12")}
-            placeholder="0.00"
-          />
-          <span className="text-muted-foreground text-xs">m/s</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <span className="text-muted-foreground text-xs">RPE</span>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={set.rpe ?? ""}
-            onChange={(e) => handleChange("rpe", e.target.value)}
-            className={cn(inputClass, "w-7")}
-            placeholder="--"
-          />
-        </div>
+        {coachShowReps && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <input
+              type="number"
+              min={0}
+              max={999}
+              value={set.reps ?? ""}
+              onChange={(e) => handleChange("reps", e.target.value)}
+              className={cn(inputClass, "w-8")}
+              placeholder="--"
+            />
+            <span className="text-muted-foreground text-xs">x</span>
+          </div>
+        )}
+        {coachShowWeight && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <input
+              type="number"
+              min={0}
+              max={9999}
+              step={0.5}
+              value={set.weight ?? ""}
+              onChange={(e) => handleChange("weight", e.target.value)}
+              className={cn(inputClass, "w-10")}
+              placeholder="--"
+            />
+            <span className="text-muted-foreground text-xs">kg</span>
+          </div>
+        )}
+        {coachShowDistance && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <input
+              type="number"
+              min={0}
+              max={99999}
+              value={set.distance ?? ""}
+              onChange={(e) => handleChange("distance", e.target.value)}
+              className={cn(inputClass, "w-9")}
+              placeholder="--"
+            />
+            <span className="text-muted-foreground text-xs">m</span>
+          </div>
+        )}
+        {coachShowTime && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <input
+              type="number"
+              min={0}
+              max={99999}
+              step={0.01}
+              value={set.performingTime ?? ""}
+              onChange={(e) => handleChange("performingTime", e.target.value)}
+              className={cn(inputClass, "w-12")}
+              placeholder="0.00"
+            />
+            <span className="text-muted-foreground text-xs">s</span>
+          </div>
+        )}
+        {coachShowHeight && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <input
+              type="number"
+              min={0}
+              max={999}
+              step={0.1}
+              value={set.height ?? ""}
+              onChange={(e) => handleChange("height", e.target.value)}
+              className={cn(inputClass, "w-9")}
+              placeholder="--"
+            />
+            <span className="text-muted-foreground text-xs">cm</span>
+          </div>
+        )}
+        {coachShowResistance && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <input
+              type="number"
+              min={0}
+              max={9999}
+              step={0.5}
+              value={set.resistance ?? ""}
+              onChange={(e) => handleChange("resistance", e.target.value)}
+              className={cn(inputClass, "w-10")}
+              placeholder="--"
+            />
+            <span className="text-muted-foreground text-xs">R</span>
+          </div>
+        )}
+        {coachShowPower && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <input
+              type="number"
+              min={0}
+              max={99999}
+              step={0.1}
+              value={set.power ?? ""}
+              onChange={(e) => handleChange("power", e.target.value)}
+              className={cn(inputClass, "w-12")}
+              placeholder="--"
+            />
+            <span className="text-muted-foreground text-xs">W</span>
+          </div>
+        )}
+        {coachShowVelocity && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <input
+              type="number"
+              min={0}
+              max={99}
+              step={0.01}
+              value={set.velocity ?? ""}
+              onChange={(e) => handleChange("velocity", e.target.value)}
+              className={cn(inputClass, "w-12")}
+              placeholder="0.00"
+            />
+            <span className="text-muted-foreground text-xs">m/s</span>
+          </div>
+        )}
+        {coachShowRestTime && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <input
+              type="number"
+              min={0}
+              max={999}
+              value={set.restTime ?? ""}
+              onChange={(e) => handleChange("restTime", e.target.value)}
+              className={cn(inputClass, "w-9")}
+              placeholder="60"
+            />
+            <span className="text-muted-foreground text-xs">rest</span>
+          </div>
+        )}
+        {coachShowTempo && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <input
+              type="text"
+              value={set.tempo ?? ""}
+              onChange={(e) => onUpdate?.("tempo", e.target.value || null)}
+              className={cn(inputClass, "w-16")}
+              placeholder="3-1-2-0"
+            />
+          </div>
+        )}
+        {coachShowEffort && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={set.effort ?? ""}
+              onChange={(e) => handleChange("effort", e.target.value)}
+              className={cn(inputClass, "w-9")}
+              placeholder="80"
+            />
+            <span className="text-muted-foreground text-xs">%</span>
+          </div>
+        )}
+        {coachShowRPE && (
+          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+            <span className="text-muted-foreground text-xs">RPE</span>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={set.rpe ?? ""}
+              onChange={(e) => handleChange("rpe", e.target.value)}
+              className={cn(inputClass, "w-7")}
+              placeholder="--"
+            />
+          </div>
+        )}
       </div>
 
       <button

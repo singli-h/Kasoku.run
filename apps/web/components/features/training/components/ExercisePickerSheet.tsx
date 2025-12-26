@@ -22,18 +22,13 @@ export interface ExercisePickerSheetProps {
 const DEFAULT_CATEGORIES = ["All", "Warmup", "Gym", "Isometric", "Plyometric", "Sprint", "Drill", "Circuit"]
 const DEFAULT_SECTIONS = ["Warmup", "Gym", "Isometric", "Plyometric", "Sprint", "Drill", "Circuit"]
 
-// Map exercise type to category for display
-const EXERCISE_TYPE_TO_CATEGORY: Record<string, string> = {
-  sprint: "Speed",
-  speed: "Speed",
-  gym: "Strength",
-  strength: "Strength",
-  plyometric: "Plyometric",
-  warmup: "Warmup",
-  circuit: "Conditioning",
-  conditioning: "Conditioning",
-  drill: "Speed",
-  isometric: "Strength",
+/**
+ * Capitalize first letter of a string for display
+ * e.g., "warmup" -> "Warmup", "plyometric" -> "Plyometric"
+ */
+function capitalizeFirst(str: string): string {
+  if (!str) return "Other"
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
 /**
@@ -78,13 +73,13 @@ export function ExercisePickerSheet({
   // Get exercise types for category filtering
   const { data: exerciseTypes } = useExerciseTypes()
 
-  // Map exercise type ID to category
+  // Get category directly from exercise type (e.g., "warmup" -> "Warmup")
   const getCategoryFromTypeId = useCallback((typeId?: number | null): string => {
     if (!typeId || !exerciseTypes) return "Other"
     const type = exerciseTypes.find(t => t.id === typeId)
-    if (!type) return "Other"
-    const typeName = type.type?.toLowerCase() || ""
-    return EXERCISE_TYPE_TO_CATEGORY[typeName] || "Other"
+    if (!type || !type.type) return "Other"
+    // Use the exercise type directly, capitalized for display
+    return capitalizeFirst(type.type)
   }, [exerciseTypes])
 
   // Transform server exercises to ExerciseLibraryItem format
@@ -283,9 +278,9 @@ export function ExercisePickerSheet({
               </div>
             ) : (
               <>
-                {filteredExercises.map(exercise => (
+                {filteredExercises.map((exercise, idx) => (
                   <button
-                    key={exercise.id}
+                    key={`${exercise.id}-${idx}`}
                     onClick={() => {
                       onSelectExercise(exercise, selectedSection)
                       onClose()

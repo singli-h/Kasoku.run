@@ -295,6 +295,31 @@ export function SessionPlannerV2({
     })
   }, [saveToHistory])
 
+  // Handle reorder exercises (drag and drop)
+  const handleReorderExercises = useCallback((fromId: number | string, toId: number | string) => {
+    setExercises(prev => {
+      // Find the source and target indices
+      const fromIndex = prev.findIndex(e => e.id === fromId)
+      const toIndex = prev.findIndex(e => e.id === toId)
+
+      if (fromIndex === -1 || toIndex === -1) return prev
+
+      // Create a new array and move the exercise
+      const newExercises = [...prev]
+      const [moved] = newExercises.splice(fromIndex, 1)
+      newExercises.splice(toIndex, 0, moved)
+
+      // Update exercise_order for all exercises
+      const reorderedExercises = newExercises.map((ex, i) => ({
+        ...ex,
+        exercise_order: i + 1,
+      }))
+
+      saveToHistory(reorderedExercises)
+      return reorderedExercises
+    })
+  }, [saveToHistory])
+
   // Handle save
   const handleSave = useCallback(async () => {
     setIsSaving(true)
@@ -414,6 +439,7 @@ export function SessionPlannerV2({
           onAddExercise={handleAddExercise}
           onRemoveExercise={handleRemoveExercise}
           onReorderSets={handleReorderSets}
+          onReorderExercises={handleReorderExercises}
           onFinishSession={handleSave}
           onSaveSession={handleSave}
         />

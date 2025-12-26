@@ -63,7 +63,7 @@ export function ExerciseCard({
   const isComplete = completedCount === totalSets && totalSets > 0
   const progress = totalSets > 0 ? (completedCount / totalSets) * 100 : 0
 
-  // Task 10.1: Compute visible fields based on exercise type requirements + plan data
+  // Compute visible fields based on exercise type requirements + plan data
   // Uses field-visibility utility to ensure required fields always show
   const visibleFields = useMemo((): VisibleFields => {
     // Get plan sets from exercise (session_plan_sets or workout_log_sets with plan data)
@@ -85,8 +85,9 @@ export function ExerciseCard({
     }))
 
     // Get visible field keys from utility
-    const visibleFieldKeys = getVisibleFields(exercise.exerciseTypeId, planSets)
-    
+    // Coach mode shows all configurable fields, athlete mode shows required + optional with values
+    const visibleFieldKeys = getVisibleFields(exercise.exerciseTypeId, planSets, { forCoach: !isAthlete })
+
     // Convert to VisibleFields object
     return {
       reps: visibleFieldKeys.includes('reps'),
@@ -100,8 +101,9 @@ export function ExerciseCard({
       restTime: visibleFieldKeys.includes('restTime'),
       tempo: visibleFieldKeys.includes('tempo'),
       effort: visibleFieldKeys.includes('effort'),
+      resistance: visibleFieldKeys.includes('resistance'),
     }
-  }, [exercise.sets, exercise.exerciseTypeId])
+  }, [exercise.sets, exercise.exerciseTypeId, isAthlete])
 
   const handleHeaderClick = useCallback(() => {
     onToggleExpand()

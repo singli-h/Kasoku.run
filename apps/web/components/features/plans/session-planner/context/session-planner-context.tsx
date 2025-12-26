@@ -239,7 +239,18 @@ export function SessionPlannerProvider({
 
   // Exercise operations
   const addExercise = useCallback((exercise: SessionExercise) => {
-    const newExercises = [...exercises, exercise]
+    // Calculate the correct exercise_order based on existing exercises
+    const maxOrder = exercises.length > 0
+      ? Math.max(...exercises.map(e => e.exercise_order))
+      : 0
+
+    const exerciseWithOrder: SessionExercise = {
+      ...exercise,
+      // Use provided order if valid, otherwise calculate next order
+      exercise_order: exercise.exercise_order > 0 ? exercise.exercise_order : maxOrder + 1,
+    }
+
+    const newExercises = [...exercises, exerciseWithOrder]
     setExercises(newExercises)
     saveToHistory(newExercises)
     scheduleAutoSave()
