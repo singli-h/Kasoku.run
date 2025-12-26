@@ -453,4 +453,85 @@ export async function createCurrentUserAction(): Promise<ActionState<User>> {
       message: "Failed to create current user"
     }
   }
+}
+
+// Extended type for user with profile relations
+type Athlete = Database['public']['Tables']['athletes']['Row']
+type Coach = Database['public']['Tables']['coaches']['Row']
+type AthleteGroup = Database['public']['Tables']['athlete_groups']['Row']
+
+export type UserWithProfile = User & {
+  athlete?: (Athlete & { athlete_group?: AthleteGroup | null }) | null
+  coach?: Coach | null
+}
+
+/**
+ * Get the current user with athlete and coach profile data
+ */
+export async function getCurrentUserWithProfileAction(): Promise<ActionState<UserWithProfile>> {
+  try {
+    console.log("🔍 getCurrentUserWithProfileAction: Starting user with profile fetch...")
+
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated with Clerk"
+      }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Fetch user with athlete and coach profiles in a single query
+    const { data: user, error } = await supabase
+      .from('users')
+      .select(`
+        *,
+        athlete:athletes(
+          *,
+          athlete_group:athlete_groups(*)
+        ),
+        coach:coaches(*)
+      `)
+      .eq('id', dbUserId)
+      .single()
+
+    if (error) {
+      console.error("❌ Error fetching user with profile:", error)
+
+      if (error.code === 'PGRST116') {
+        return {
+          isSuccess: false,
+          message: "User not found in database"
+        }
+      }
+
+      return {
+        isSuccess: false,
+        message: `Failed to fetch user data: ${error.message}`
+      }
+    }
+
+    // Transform the response to match expected type
+    // Supabase returns arrays for one-to-one relations when using select
+    const userWithProfile: UserWithProfile = {
+      ...user,
+      athlete: Array.isArray(user.athlete) ? user.athlete[0] || null : user.athlete,
+      coach: Array.isArray(user.coach) ? user.coach[0] || null : user.coach
+    }
+
+    console.log("✅ User with profile fetched successfully")
+    return {
+      isSuccess: true,
+      message: "User with profile retrieved successfully",
+      data: userWithProfile
+    }
+  } catch (error) {
+    console.error('❌ Error in getCurrentUserWithProfileAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
 } 

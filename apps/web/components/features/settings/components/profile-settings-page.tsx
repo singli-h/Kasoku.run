@@ -52,14 +52,24 @@ import {
 import { createOrUpdateAthleteProfileAction } from "@/actions/athletes/athlete-actions"
 import { createOrUpdateCoachProfileAction } from "@/actions/athletes/coach-management-actions"
 
-// Temporary types until database schema is updated
-type UserType = any
-type UserUpdate = any
-type UserWithProfile = any
-type Athlete = any
-type Coach = any
-type AthleteUpdate = any
-type CoachUpdate = any
+// Import proper types from database
+import type { Database } from "@/types/database"
+
+// Define types from database schema
+type User = Database['public']['Tables']['users']['Row']
+type UserInsert = Database['public']['Tables']['users']['Insert']
+type Athlete = Database['public']['Tables']['athletes']['Row']
+type AthleteInsert = Database['public']['Tables']['athletes']['Insert']
+type Coach = Database['public']['Tables']['coaches']['Row']
+type CoachInsert = Database['public']['Tables']['coaches']['Insert']
+type AthleteGroup = Database['public']['Tables']['athlete_groups']['Row']
+
+// Extended types with nested relations
+type UserWithProfile = User & {
+  athlete?: (Athlete & { athlete_group?: AthleteGroup | null }) | null
+  coach?: Coach | null
+}
+
 type UserRole = 'athlete' | 'coach' | 'admin'
 type Gender = 'male' | 'female' | 'other'
 type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced' | 'elite'

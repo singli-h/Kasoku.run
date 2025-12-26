@@ -269,10 +269,20 @@ export function SessionPlannerV2({
 
   // Handle remove exercise
   const handleRemoveExercise = useCallback((exerciseId: number | string) => {
-    const newExercises = exercises.filter(e => e.id !== exerciseId)
-    setExercises(newExercises)
-    saveToHistory(newExercises)
-  }, [exercises, saveToHistory])
+    setExercises(prev => {
+      // Filter out the exercise by ID (handle both number and string IDs)
+      const newExercises = prev.filter(e => String(e.id) !== String(exerciseId))
+
+      // Update exercise_order for remaining exercises
+      const reorderedExercises = newExercises.map((ex, i) => ({
+        ...ex,
+        exercise_order: i + 1,
+      }))
+
+      saveToHistory(reorderedExercises)
+      return reorderedExercises
+    })
+  }, [saveToHistory])
 
   // Handle reorder sets
   const handleReorderSets = useCallback((exerciseId: number | string, fromIndex: number, toIndex: number) => {
