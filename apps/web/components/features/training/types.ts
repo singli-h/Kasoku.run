@@ -8,6 +8,21 @@
  * The UI components use these unified types, and mappers convert to/from database types.
  */
 
+// Re-export metadata types for advanced equipment data
+export type {
+  SetMetadata,
+  SprintMetadata,
+  PlyometricMetadata,
+  VBTMetadata,
+  KeiserMetadata,
+  IsometricMetadata,
+  PhysiologicalMetadata,
+} from './types/set-metadata'
+export { validateSetMetadata, extractKeyMetrics } from './types/set-metadata'
+
+// Import SetMetadata for use in TrainingSet type
+import type { SetMetadata } from './types/set-metadata'
+
 // =============================================================================
 // Core Types (shared between coach and athlete)
 // =============================================================================
@@ -46,8 +61,8 @@ export interface TrainingSet {
   // Unit reference
   resistanceUnitId?: number | null
 
-  // Extensible metadata
-  metadata?: Record<string, unknown> | null
+  // Extensible metadata for advanced equipment data (VBT, force plate, Freelap, etc.)
+  metadata?: SetMetadata | null
 
   // Athlete-only: completion status
   completed?: boolean
@@ -181,7 +196,7 @@ export function dbSetToTrainingSet(dbSet: DBWorkoutLogSet): TrainingSet {
     resistance: dbSet.resistance,
     effort: dbSet.effort,
     resistanceUnitId: dbSet.resistance_unit_id,
-    metadata: dbSet.metadata as Record<string, unknown> | null,
+    metadata: dbSet.metadata as SetMetadata | null,
     completed: dbSet.completed ?? false,
   }
 }
@@ -206,7 +221,7 @@ export function dbPlanSetToTrainingSet(dbSet: DBSessionPlanSet): TrainingSet {
     resistance: dbSet.resistance,
     effort: dbSet.effort,
     resistanceUnitId: dbSet.resistance_unit_id,
-    metadata: dbSet.metadata as Record<string, unknown> | null,
+    metadata: dbSet.metadata as SetMetadata | null,
     completed: false, // Plans don't have completion
   }
 }

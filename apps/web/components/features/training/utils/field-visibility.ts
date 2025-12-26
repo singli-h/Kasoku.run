@@ -36,11 +36,11 @@ const REQUIRED_FIELDS_BY_TYPE: Record<number, string[]> = {
  */
 const OPTIONAL_FIELDS_BY_TYPE: Record<number, string[]> = {
   1: ['resistance', 'effort'], // Isometric: resistance bands, effort %
-  2: ['distance', 'effort', 'power', 'velocity'], // Plyometric: bounding distance, VBT
-  3: ['rpe', 'tempo', 'resistance', 'effort', 'power', 'velocity'], // Gym: RPE, tempo, VBT
+  2: ['distance', 'effort', 'power', 'velocity'], // Plyometric: bounding distance, VBT, force plate
+  3: ['rpe', 'tempo', 'resistance', 'effort', 'power', 'velocity'], // Gym: RPE, tempo, VBT, Keiser
   4: ['distance', 'performing_time'], // Warmup: jogging distance, timed warmups
   5: ['reps', 'effort', 'distance'], // Circuit: rep-based stations, effort
-  6: ['velocity', 'effort'], // Sprint: velocity tracking, effort %
+  6: ['velocity', 'effort', 'resistance'], // Sprint: velocity, effort %, resistance (1080 Sprint)
   7: ['distance', 'performing_time', 'effort'], // Drill: running drills, timed drills
 }
 
@@ -50,11 +50,11 @@ const OPTIONAL_FIELDS_BY_TYPE: Record<number, string[]> = {
  */
 const EXCLUDED_FIELDS_BY_TYPE: Record<number, string[]> = {
   1: ['reps', 'weight', 'distance', 'height', 'tempo', 'power', 'velocity', 'rpe'], // Isometric
-  2: ['weight', 'resistance', 'tempo', 'rpe'], // Plyometric
+  2: ['weight', 'resistance', 'tempo', 'rpe'], // Plyometric (force plate data goes in metadata)
   3: ['distance', 'height'], // Gym
   4: ['weight', 'height', 'tempo', 'power', 'velocity', 'resistance', 'rpe', 'effort'], // Warmup
   5: ['weight', 'height', 'tempo', 'power', 'velocity', 'resistance', 'rpe'], // Circuit
-  6: ['reps', 'weight', 'height', 'resistance', 'tempo', 'power', 'rpe'], // Sprint
+  6: ['reps', 'weight', 'height', 'tempo', 'power', 'rpe'], // Sprint (resistance for 1080 Sprint)
   7: ['weight', 'height', 'resistance', 'tempo', 'power', 'velocity', 'rpe'], // Drill
 }
 
