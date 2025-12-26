@@ -946,29 +946,39 @@ export async function getSessionPlanByIdAction(
     // Get database user ID using the cache utility
     const dbUserId = await getDbUserId(userId)
 
-    const { data: presetGroup, error } = await supabase
+    console.log('[getSessionPlanByIdAction] Fetching session:', id, 'for user:', dbUserId, 'clerkId:', userId)
+    
+    // Split query into simpler parts to avoid RLS timeout on complex nested queries
+    // 1. Get session plan with basic relations
+    const { data: presetGroup, error: sessionError } = await supabase
       .from('session_plans')
       .select(`
         *,
         microcycle:microcycles(*),
-        athlete_group:athlete_groups(*),
-        session_plan_exercises(
-          *,
-          exercise:exercises(
-            *,
-            exercise_type:exercise_types(*),
-            unit:units(*)
-          ),
-          session_plan_sets(*)
-        )
+        athlete_group:athlete_groups(*)
       `)
       .eq('id', id)
-      .eq('user_id', dbUserId)
+      .eq('deleted', false)
       .single()
 
-    if (error) {
-      console.error('Error fetching exercise preset group:', error)
-      if (error.code === 'PGRST116') {
+    console.log('[getSessionPlanByIdAction] Session query result:', { 
+      hasData: !!presetGroup, 
+      error: sessionError ? { code: sessionError.code, message: sessionError.message } : null,
+      sessionUserId: presetGroup?.user_id,
+      sessionGroupId: presetGroup?.athlete_group_id
+    })
+
+    if (sessionError) {
+      console.error('[getSessionPlanByIdAction] Error fetching session plan:', JSON.stringify(sessionError, null, 2))
+      console.error('[getSessionPlanByIdAction] Error details:', {
+        code: sessionError.code,
+        message: sessionError.message,
+        hint: sessionError.hint,
+        details: sessionError.details,
+      })
+      if (sessionError.code === 'PGRST116') {
+        // PGRST116 = no rows found - could be RLS blocking or session doesn't exist
+        console.warn('[getSessionPlanByIdAction] Session not found - checking if RLS issue for session:', id, 'user:', dbUserId)
         return {
           isSuccess: false,
           message: "Training session not found"
@@ -976,14 +986,76 @@ export async function getSessionPlanByIdAction(
       }
       return {
         isSuccess: false,
-        message: `Failed to fetch training session: ${error.message}`
+        message: `Failed to fetch training session: ${sessionError.message}`
       }
+    }
+
+    // RLS policy handles access control - if we get here, user has access
+    // (owner, template, coach of group, or athlete in group)
+    if (!presetGroup) {
+      console.error('[getSessionPlanByIdAction] No data returned from query')
+      return {
+        isSuccess: false,
+        message: "Training session not found"
+      }
+    }
+
+    // 2. Get exercises separately to avoid nested RLS timeout
+    const { data: exercises, error: exercisesError } = await supabase
+      .from('session_plan_exercises')
+      .select(`
+        *,
+        exercise:exercises(
+          *,
+          exercise_type:exercise_types(*),
+          unit:units(*)
+        )
+      `)
+      .eq('session_plan_id', id)
+      .order('exercise_order', { ascending: true })
+
+    if (exercisesError) {
+      console.error('[getSessionPlanByIdAction] Error fetching exercises:', exercisesError)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch exercises: ${exercisesError.message}`
+      }
+    }
+
+    // 3. Get sets for all exercises (make this optional to avoid timeout)
+    const exerciseIds = exercises?.map(e => e.id) || []
+    let sets: any[] = []
+    
+    if (exerciseIds.length > 0) {
+      const { data: setsData, error: setsError } = await supabase
+        .from('session_plan_sets')
+        .select('*')
+        .in('session_plan_exercise_id', exerciseIds)
+        .order('session_plan_exercise_id', { ascending: true })
+        .order('set_index', { ascending: true })
+
+      if (setsError) {
+        // Log error but don't fail - sets can be loaded later if needed
+        console.warn('[getSessionPlanByIdAction] Error fetching sets (non-fatal):', setsError)
+        // Continue with empty sets array - page can still load
+      } else {
+        sets = setsData || []
+      }
+    }
+
+    // 4. Combine the data into the expected format
+    const presetGroupWithDetails = {
+      ...presetGroup,
+      session_plan_exercises: (exercises || []).map(exercise => ({
+        ...exercise,
+        session_plan_sets: sets.filter(set => set.session_plan_exercise_id === exercise.id)
+      }))
     }
 
     return {
       isSuccess: true,
       message: "Training session retrieved successfully",
-      data: presetGroup
+      data: presetGroupWithDetails
     }
   } catch (error) {
     console.error('Error in getSessionPlanByIdAction:', error)
@@ -1365,6 +1437,7 @@ export async function copySessionWithAdaptationsAction(
     const dbUserId = await getDbUserId(userId)
 
     // Get the original session with all its details
+    // RLS policy handles access control - no need for explicit user_id filter
     const { data: originalSession, error: fetchError } = await supabase
       .from('session_plans')
       .select(`
@@ -1376,7 +1449,7 @@ export async function copySessionWithAdaptationsAction(
         )
       `)
       .eq('id', originalSessionId)
-      .eq('user_id', dbUserId)
+      .eq('deleted', false)
       .single()
 
     if (fetchError || !originalSession) {
