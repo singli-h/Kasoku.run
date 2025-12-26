@@ -8,6 +8,7 @@
  * - Uses inline mode for proposals (displayed on page, not overlay)
  * - Chat drawer auto-collapses when proposals are pending
  * - InlineProposalSlot renders the proposal section above exercise list
+ * - SessionExercisesProvider manages shared state so AI updates sync with planner
  *
  * NOTE: Exercise library is now loaded on-demand via server-side search
  * in ExercisePickerSheet for better performance with large libraries.
@@ -19,7 +20,7 @@ import { UnifiedPageSkeleton } from "@/components/layout"
 import { SessionPlannerV2 } from "@/components/features/training"
 import { SessionAssistantWrapper, InlineProposalSlot } from "./SessionAssistantWrapper"
 import { getSessionPlanByIdAction } from "@/actions/library/exercise-actions"
-import type { SessionExercise } from "@/components/features/plans/session-planner/types"
+import type { SessionPlannerExercise } from "@/components/features/training/adapters/session-adapter"
 
 interface PageProps {
   params: Promise<{ id: string; sessionId: string }>
@@ -35,27 +36,29 @@ interface PageProps {
  * This allows the save action to distinguish between updates and inserts.
  */
 function transformSessionData(backendData: any): {
-  session: any
-  exercises: SessionExercise[]
+  session: {
+    id: number
+    name: string
+    description?: string | null
+    date?: string | null
+    week?: number | null
+    day?: number | null
+    session_mode?: string | null
+  }
+  exercises: SessionPlannerExercise[]
 } {
   const session = {
     id: backendData.id,
     name: backendData.name || `Session ${backendData.id}`,
     description: backendData.description,
     date: backendData.date,
-    microcycle_id: backendData.microcycle_id,
-    user_id: backendData.user_id,
-    athlete_group_id: backendData.athlete_group_id,
     session_mode: backendData.session_mode,
     week: backendData.week,
     day: backendData.day,
-    is_template: backendData.is_template,
-    estimatedDuration: null, // Will be calculated client-side
-    notes: null,
   }
 
-  // Transform session_plan_exercises to SessionExercise format
-  const exercises: SessionExercise[] = (backendData.session_plan_exercises || []).map((exerciseRecord: any) => ({
+  // Transform session_plan_exercises to SessionPlannerExercise format
+  const exercises: SessionPlannerExercise[] = (backendData.session_plan_exercises || []).map((exerciseRecord: any) => ({
     // Use numeric ID as string for existing records (allows save action to identify as existing)
     id: String(exerciseRecord.id),
     session_plan_id: exerciseRecord.session_plan_id,
@@ -119,20 +122,18 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
     <SessionAssistantWrapper
       sessionId={sessionId}
       planId={planId}
-      exercises={exercises}
-      exerciseLibrary={[]} // Empty - uses server-side search in picker
+      initialExercises={exercises}
       useInlineMode={true}
     >
       {/* Inline AI Proposals - shown when AI has pending changes */}
       <InlineProposalSlot className="mb-4" />
 
-      {/* Session Planner */}
+      {/* Session Planner - uses shared exercises context */}
       <Suspense fallback={<UnifiedPageSkeleton title="Session Planner" />}>
         <SessionPlannerV2
           planId={planId}
           sessionId={sessionId}
           initialSession={session}
-          initialExercises={exercises as any}
           exerciseLibrary={[]} // Empty - uses server-side search in picker
         />
       </Suspense>

@@ -30,7 +30,7 @@ import { createClientSupabaseClient } from '@/lib/supabase-client'
 import { ChatDrawer, ChatTrigger } from './ChatDrawer'
 import { ApprovalBanner } from './ApprovalBanner'
 import { SessionAssistantContext } from './SessionAssistantContext'
-import type { SessionExercise, ExerciseLibraryItem } from '@/components/features/plans/session-planner/types'
+import { useSessionExercisesOptional } from '@/components/features/training/context'
 import type { ExecutionError, ChangeSet } from '@/lib/changeset/types'
 
 // ============================================================================
@@ -93,15 +93,6 @@ interface SessionAssistantProps {
   /** The plan ID */
   planId: string
 
-  /** Current exercises in the session */
-  exercises: SessionExercise[]
-
-  /** Available exercises from the library */
-  exerciseLibrary: ExerciseLibraryItem[]
-
-  /** Optional callback when exercises are modified */
-  onExercisesChange?: (exercises: SessionExercise[]) => void
-
   /**
    * Use inline mode for proposals.
    * When true, the overlay ApprovalBanner is hidden.
@@ -137,12 +128,15 @@ export function SessionAssistant(props: SessionAssistantProps) {
  */
 function SessionAssistantContent({
   sessionId,
-  exercises,
-  onExercisesChange,
   useInlineMode = false,
   autoCollapseChat = true,
   children,
 }: SessionAssistantProps) {
+  // Get exercises from shared context (single source of truth)
+  const exercisesContext = useSessionExercisesOptional()
+  const exercises = exercisesContext?.exercises ?? []
+  const setExercises = exercisesContext?.setExercises
+
   // Load persisted state on mount
   const [initialState] = useState(() => loadPersistedState(sessionId))
 
@@ -304,16 +298,18 @@ function SessionAssistantContent({
     setExecutionError(undefined)
 
     try {
+      // Cast exercises - SessionPlannerExercise is compatible with SessionExercise at runtime
       const result = await executeChangeSet(
         changeSet.changeset,
-        exercises,
+        exercises as unknown as import('@/components/features/plans/session-planner/types').SessionExercise[],
         sessionId
       )
 
       if (result.status === 'approved') {
-        // Success - notify parent with updated exercises from execution result
-        if (result.updatedExercises) {
-          onExercisesChange?.(result.updatedExercises as SessionExercise[])
+        // Success - update shared exercises context with execution result
+        if (result.updatedExercises && setExercises) {
+          // Cast to SessionPlannerExercise[] - types are compatible at runtime
+          setExercises(result.updatedExercises as import('../training/adapters/session-adapter').SessionPlannerExercise[])
         }
 
         // Return result to AI (no await to avoid deadlocks)
@@ -354,7 +350,7 @@ function SessionAssistantContent({
       setIsExecuting(false)
       setPendingToolCall(null)
     }
-  }, [changeSet, exercises, sessionId, onExercisesChange, pendingToolCall, addToolOutput, sendMessage])
+  }, [changeSet, exercises, sessionId, setExercises, pendingToolCall, addToolOutput, sendMessage])
 
   /**
    * Handle user regeneration request.

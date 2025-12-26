@@ -1,10 +1,8 @@
 "use client"
 
-import { useState, useCallback, useMemo, useEffect } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, Undo2, Redo2, CheckCircle, Save } from "lucide-react"
-import Link from "next/link"
+import { ArrowLeft, Undo2, Redo2, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -20,21 +18,21 @@ import {
 } from "@/components/ui/alert-dialog"
 
 // Import training types and views
-import type { TrainingExercise, TrainingSet, ExerciseLibraryItem } from "../types"
+import type { TrainingSet, ExerciseLibraryItem } from "../types"
 import { WorkoutView } from "./WorkoutView"
 import {
   sessionExercisesToTraining,
   type SessionPlannerExercise
 } from "../adapters/session-adapter"
 
-// Import session planner types for props (different from training types)
-import type { ExerciseLibraryItem as SessionPlannerLibraryItem } from "@/components/features/plans/session-planner/types"
-
 // Import save action
 import { saveSessionWithExercisesAction } from "@/actions/plans/session-planner-actions"
 
 // Import AI change detection hook
 import { useAIExerciseChanges } from "@/components/features/ai-assistant/hooks"
+
+// Import shared exercises context
+import { useSessionExercises } from "../context"
 
 interface SessionPlannerV2Props {
   planId: string
@@ -48,7 +46,6 @@ interface SessionPlannerV2Props {
     day?: number | null
     session_mode?: string | null
   }
-  initialExercises: SessionPlannerExercise[]
   exerciseLibrary: ExerciseLibraryItem[]
   className?: string
 }
@@ -57,22 +54,28 @@ export function SessionPlannerV2({
   planId,
   sessionId,
   initialSession,
-  initialExercises,
   exerciseLibrary,
-  className
+  className,
 }: SessionPlannerV2Props) {
   const router = useRouter()
   const { toast } = useToast()
 
-  // State
-  const [exercises, setExercises] = useState<SessionPlannerExercise[]>(initialExercises)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  // Use shared exercises context (single source of truth)
+  const {
+    exercises,
+    setExercises,
+    hasUnsavedChanges,
+    markAsSaved,
+    markAsUnsaved,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+  } = useSessionExercises()
+
+  // Local UI state
   const [isSaving, setIsSaving] = useState(false)
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
-
-  // Undo/Redo history
-  const [history, setHistory] = useState<SessionPlannerExercise[][]>([initialExercises])
-  const [historyIndex, setHistoryIndex] = useState(0)
 
   // Convert to training exercises for rendering
   const trainingExercises = useMemo(() => {
@@ -93,43 +96,13 @@ export function SessionPlannerV2({
   // Get AI change indicators for exercises (safe outside ChangeSetProvider)
   const aiChangesByExercise = useAIExerciseChanges()
 
-  // Save to history
-  const saveToHistory = useCallback((newExercises: SessionPlannerExercise[]) => {
-    setHistory(prev => {
-      const newHistory = prev.slice(0, historyIndex + 1)
-      newHistory.push(JSON.parse(JSON.stringify(newExercises)))
-      return newHistory.slice(-50) // Keep last 50 states
-    })
-    setHistoryIndex(prev => Math.min(prev + 1, 49))
-    setHasUnsavedChanges(true)
-  }, [historyIndex])
-
-  // Undo
-  const handleUndo = useCallback(() => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1
-      setHistoryIndex(newIndex)
-      setExercises(history[newIndex])
-      setHasUnsavedChanges(true)
-    }
-  }, [historyIndex, history])
-
-  // Redo
-  const handleRedo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1
-      setHistoryIndex(newIndex)
-      setExercises(history[newIndex])
-      setHasUnsavedChanges(true)
-    }
-  }, [historyIndex, history])
-
-  // Handle toggle expand - updates isCollapsed on the exercise
+  // Handle toggle expand - updates isCollapsed on the exercise (doesn't count as unsaved change)
   const handleToggleExpand = useCallback((exerciseId: number | string) => {
+    // Direct state update for UI-only change (no history)
     setExercises(prev => prev.map(ex =>
       ex.id === exerciseId ? { ...ex, isCollapsed: !ex.isCollapsed } : ex
     ))
-  }, [])
+  }, [setExercises])
 
   // Handle update set (coach mode - update planned values)
   const handleUpdateSet = useCallback((
@@ -139,7 +112,7 @@ export function SessionPlannerV2({
     value: number | string | null
   ) => {
     setExercises(prev => {
-      const newExercises = prev.map(ex => {
+      return prev.map(ex => {
         if (ex.id !== exerciseId) return ex
 
         const dbField = field === 'performingTime' ? 'performing_time'
@@ -152,16 +125,13 @@ export function SessionPlannerV2({
 
         return { ...ex, sets: newSets }
       })
-
-      saveToHistory(newExercises)
-      return newExercises
     })
-  }, [saveToHistory])
+  }, [setExercises])
 
   // Handle add set
   const handleAddSet = useCallback((exerciseId: number | string) => {
     setExercises(prev => {
-      const newExercises = prev.map(ex => {
+      return prev.map(ex => {
         if (ex.id !== exerciseId) return ex
 
         const lastSet = ex.sets[ex.sets.length - 1]
@@ -189,16 +159,13 @@ export function SessionPlannerV2({
 
         return { ...ex, sets: [...ex.sets, newSet] }
       })
-
-      saveToHistory(newExercises)
-      return newExercises
     })
-  }, [saveToHistory])
+  }, [setExercises])
 
   // Handle remove set
   const handleRemoveSet = useCallback((exerciseId: number | string, setId: number | string) => {
     setExercises(prev => {
-      const newExercises = prev.map(ex => {
+      return prev.map(ex => {
         if (ex.id !== exerciseId) return ex
 
         const newSets = ex.sets
@@ -207,11 +174,8 @@ export function SessionPlannerV2({
 
         return { ...ex, sets: newSets }
       })
-
-      saveToHistory(newExercises)
-      return newExercises
     })
-  }, [saveToHistory])
+  }, [setExercises])
 
   // Handle add exercise from library/picker
   // The exercise data comes directly from the picker with full details
@@ -227,51 +191,51 @@ export function SessionPlannerV2({
       return
     }
 
-    const maxOrder = Math.max(0, ...exercises.map(e => e.exercise_order))
-    const timestamp = Date.now()
-    const newExercise: SessionPlannerExercise = {
-      id: `new_${timestamp}`, // Use new_ prefix for consistency with save action
-      session_plan_id: sessionId,
-      exercise_id: exerciseId,
-      exercise_order: maxOrder + 1,
-      notes: null,
-      isCollapsed: false,
-      isEditing: false,
-      validationErrors: [],
-      exercise: {
-        id: exerciseId,
-        name: exercise.name,
-        description: undefined,
-        exercise_type_id: exercise.exerciseTypeId,
-        exercise_type: {
-          type: section || exercise.category || 'other'
-        }
-      },
-      sets: [{
-        id: `new_set_${timestamp}`,
-        session_plan_exercise_id: 0,
-        set_index: 1,
-        reps: null,
-        weight: null,
-        distance: null,
-        performing_time: null,
-        rest_time: null,
-        tempo: null,
-        rpe: null,
-        completed: false,
+    setExercises(prev => {
+      const maxOrder = Math.max(0, ...prev.map(e => e.exercise_order))
+      const timestamp = Date.now()
+      const newExercise: SessionPlannerExercise = {
+        id: `new_${timestamp}`, // Use new_ prefix for consistency with save action
+        session_plan_id: sessionId,
+        exercise_id: exerciseId,
+        exercise_order: maxOrder + 1,
+        notes: null,
+        isCollapsed: false,
         isEditing: false,
-      }]
-    }
+        validationErrors: [],
+        exercise: {
+          id: exerciseId,
+          name: exercise.name,
+          description: undefined,
+          exercise_type_id: exercise.exerciseTypeId,
+          exercise_type: {
+            type: section || exercise.category || 'other'
+          }
+        },
+        sets: [{
+          id: `new_set_${timestamp}`,
+          session_plan_exercise_id: 0,
+          set_index: 1,
+          reps: null,
+          weight: null,
+          distance: null,
+          performing_time: null,
+          rest_time: null,
+          tempo: null,
+          rpe: null,
+          completed: false,
+          isEditing: false,
+        }]
+      }
 
-    const newExercises = [...exercises, newExercise]
-    setExercises(newExercises)
-    saveToHistory(newExercises)
+      return [...prev, newExercise]
+    })
 
     toast({
       title: "Exercise Added",
       description: `${exercise.name} has been added to the session.`
     })
-  }, [exercises, sessionId, saveToHistory, toast])
+  }, [sessionId, setExercises, toast])
 
   // Handle remove exercise
   const handleRemoveExercise = useCallback((exerciseId: number | string) => {
@@ -280,20 +244,17 @@ export function SessionPlannerV2({
       const newExercises = prev.filter(e => String(e.id) !== String(exerciseId))
 
       // Update exercise_order for remaining exercises
-      const reorderedExercises = newExercises.map((ex, i) => ({
+      return newExercises.map((ex, i) => ({
         ...ex,
         exercise_order: i + 1,
       }))
-
-      saveToHistory(reorderedExercises)
-      return reorderedExercises
     })
-  }, [saveToHistory])
+  }, [setExercises])
 
   // Handle reorder sets
   const handleReorderSets = useCallback((exerciseId: number | string, fromIndex: number, toIndex: number) => {
     setExercises(prev => {
-      const newExercises = prev.map(ex => {
+      return prev.map(ex => {
         if (ex.id !== exerciseId) return ex
 
         const newSets = [...ex.sets]
@@ -305,11 +266,8 @@ export function SessionPlannerV2({
           sets: newSets.map((s, i) => ({ ...s, set_index: i + 1 }))
         }
       })
-
-      saveToHistory(newExercises)
-      return newExercises
     })
-  }, [saveToHistory])
+  }, [setExercises])
 
   // Handle reorder exercises (drag and drop)
   const handleReorderExercises = useCallback((fromId: number | string, toId: number | string) => {
@@ -326,15 +284,12 @@ export function SessionPlannerV2({
       newExercises.splice(toIndex, 0, moved)
 
       // Update exercise_order for all exercises
-      const reorderedExercises = newExercises.map((ex, i) => ({
+      return newExercises.map((ex, i) => ({
         ...ex,
         exercise_order: i + 1,
       }))
-
-      saveToHistory(reorderedExercises)
-      return reorderedExercises
     })
-  }, [saveToHistory])
+  }, [setExercises])
 
   // Handle save
   const handleSave = useCallback(async () => {
@@ -364,7 +319,7 @@ export function SessionPlannerV2({
         throw new Error(result.message)
       }
 
-      setHasUnsavedChanges(false)
+      markAsSaved()
       toast({
         title: "Session Saved",
         description: "Your session plan has been saved successfully."
@@ -379,7 +334,7 @@ export function SessionPlannerV2({
     } finally {
       setIsSaving(false)
     }
-  }, [sessionId, initialSession, exercises, toast])
+  }, [sessionId, initialSession, exercises, markAsSaved, toast])
 
   // Handle back navigation
   const handleBack = useCallback(() => {
@@ -389,9 +344,6 @@ export function SessionPlannerV2({
       router.push(`/plans/${planId}`)
     }
   }, [hasUnsavedChanges, router, planId])
-
-  const canUndo = historyIndex > 0
-  const canRedo = historyIndex < history.length - 1
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
@@ -407,7 +359,7 @@ export function SessionPlannerV2({
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleUndo}
+              onClick={undo}
               disabled={!canUndo}
             >
               <Undo2 className="h-4 w-4" />
@@ -415,7 +367,7 @@ export function SessionPlannerV2({
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleRedo}
+              onClick={redo}
               disabled={!canRedo}
             >
               <Redo2 className="h-4 w-4" />

@@ -3,22 +3,23 @@
 /**
  * SessionAssistantWrapper
  *
- * Client-side wrapper that provides the ChangeSetProvider context
- * and integrates the AI assistant into the session planner page.
+ * Client-side wrapper that provides shared context for the session page:
+ * - SessionExercisesProvider: Single source of truth for exercises state
+ * - SessionAssistant: AI integration with ChangeSetProvider
  *
- * Supports two modes:
- * - Overlay mode (default): ApprovalBanner fixed at bottom
- * - Inline mode: Proposals rendered via ConnectedInlineProposalSection
+ * Architecture:
+ * ```
+ * SessionExercisesProvider  ← Shared exercises state
+ *   └── SessionAssistant (includes ChangeSetProvider)
+ *         └── SessionPlannerV2 (uses context)
+ * ```
  *
  * @see specs/002-ai-session-assistant/reference/20251221-session-ui-integration.md
  */
 
-import { ChangeSetProvider } from '@/lib/changeset/ChangeSetContext'
+import { SessionExercisesProvider } from '@/components/features/training/context'
 import { SessionAssistant, ConnectedInlineProposalSection } from '@/components/features/ai-assistant'
-import type {
-  SessionExercise,
-  ExerciseLibraryItem,
-} from '@/components/features/plans/session-planner/types'
+import type { SessionPlannerExercise } from '@/components/features/training/adapters/session-adapter'
 
 interface SessionAssistantWrapperProps {
   /** The session ID */
@@ -27,14 +28,8 @@ interface SessionAssistantWrapperProps {
   /** The plan ID */
   planId: string
 
-  /** Current exercises in the session */
-  exercises: SessionExercise[]
-
-  /** Available exercises from the library */
-  exerciseLibrary: ExerciseLibraryItem[]
-
-  /** Callback when exercises are modified by AI */
-  onExercisesChange?: (exercises: SessionExercise[]) => void
+  /** Initial exercises to populate the context */
+  initialExercises: SessionPlannerExercise[]
 
   /**
    * Use inline mode for proposals.
@@ -51,26 +46,21 @@ interface SessionAssistantWrapperProps {
 export function SessionAssistantWrapper({
   sessionId,
   planId,
-  exercises,
-  exerciseLibrary,
-  onExercisesChange,
+  initialExercises,
   useInlineMode = true,
   children,
 }: SessionAssistantWrapperProps) {
   return (
-    <ChangeSetProvider>
+    <SessionExercisesProvider initialExercises={initialExercises}>
       <SessionAssistant
         sessionId={sessionId}
         planId={planId}
-        exercises={exercises}
-        exerciseLibrary={exerciseLibrary}
-        onExercisesChange={onExercisesChange}
         useInlineMode={useInlineMode}
         autoCollapseChat={useInlineMode}
       >
         {children}
       </SessionAssistant>
-    </ChangeSetProvider>
+    </SessionExercisesProvider>
   )
 }
 
