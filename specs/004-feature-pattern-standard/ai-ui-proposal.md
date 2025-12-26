@@ -597,16 +597,15 @@ No inline approve/reject - banner only
 │  │  1  │  15  │  20  │ 60s                               │ │                       │
 │  │  2  │  15  │  20  │ 60s                               │ │                       │
 │  └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘ │                       │
-│                                                             │                       │
-├─────────────────────────────────────────────────────────────┼───────────────────────┤
-│  ┌────────────────────────────────────────────┐  🎤   ➤   │ ┌────────────┐ 🎤  ➤ │
-│  │ Describe changes...                        │            │ │ Ask AI...  │       │
-│  └────────────────────────────────────────────┘            │ └────────────┘       │
+│                                                             ├───────────────────────┤
+│                                                             │ ┌───────────────┐     │
+│                                                             │ │ Ask AI...     │ 🎤➤ │
+│                                                             │ └───────────────┘     │
 └─────────────────────────────────────────────────────────────┴───────────────────────┘
 
-Desktop: Side panel (380px) contains ALL approval controls
+Desktop: Side panel (380px) contains chat + approval controls
 Main area: Single column exercise cards (scrollable)
-NO duplicate approval banner in main area
+Input box in side panel only - no duplicate in main area
 ```
 
 ---
