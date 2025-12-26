@@ -229,19 +229,24 @@ export function buildProposedData(
     data['sessionPlanId'] = sessionId
   }
 
+  // Convert to snake_case for database FIRST
+  const result = convertKeysToSnakeCase(data)
+
   // Add parent foreign key from tool input for entities that specify it
   // (e.g., sets specify their parent exercise via sessionPlanExerciseId)
+  // IMPORTANT: Add AFTER conversion to use correct snake_case field name.
+  // This avoids the issue where sessionPlanExerciseId → 'id' (primary key mapping)
+  // instead of → 'session_plan_exercise_id' (foreign key mapping)
   const parentFkMapping = PARENT_FK_FROM_TOOL_INPUT[entityType]
   if (parentFkMapping) {
     const parentRef = toolInput[parentFkMapping.inputField]
     if (parentRef !== undefined && parentRef !== null) {
-      // Store the reference (may be temp ID, will be resolved during execution)
-      data[parentFkMapping.inputField] = parentRef
+      // Store using the correct snake_case database field name
+      result[parentFkMapping.dbField] = parentRef
     }
   }
 
-  // Convert to snake_case for database
-  return convertKeysToSnakeCase(data)
+  return result
 }
 
 /**
