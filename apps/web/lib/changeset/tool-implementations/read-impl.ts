@@ -12,6 +12,8 @@ import type { GetSessionContextInput, SearchExercisesInput } from '../tools'
 
 /**
  * Session context returned to the AI.
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export interface SessionContext {
   session: {
@@ -23,7 +25,7 @@ export interface SessionContext {
     id: string
     exerciseId: string
     exerciseName: string
-    presetOrder: number
+    exerciseOrder: number
     supersetId: string | null
     notes: string | null
     sets: Array<{
@@ -126,7 +128,7 @@ export async function executeGetSessionContext(
         id: String(preset.id),
         exerciseId: String(preset.exercise_id),
         exerciseName: exercise?.name ?? 'Unknown',
-        presetOrder: preset.exercise_order ?? 0,
+        exerciseOrder: preset.exercise_order ?? 0,
         supersetId: preset.superset_id,
         notes: preset.notes,
         sets:

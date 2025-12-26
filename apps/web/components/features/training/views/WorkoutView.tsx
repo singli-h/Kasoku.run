@@ -359,14 +359,14 @@ export function WorkoutView({
         )}
       </div>
 
-      {/* Floating Action Button - Add Exercise */}
+      {/* Floating Action Button - Add Exercise (positioned above AI button) */}
       {exercises.length > 0 && !isCompleted && (
         <button
           onClick={() => setShowExercisePicker(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
+          className="fixed bottom-24 right-6 z-40 flex items-center justify-center h-12 w-12 bg-secondary text-secondary-foreground rounded-full shadow-md hover:bg-secondary/90 transition-all hover:scale-105 active:scale-95 border border-border"
+          title="Add Exercise"
         >
           <Plus className="w-5 h-5" />
-          <span className="text-sm font-medium">Add Exercise</span>
         </button>
       )}
 

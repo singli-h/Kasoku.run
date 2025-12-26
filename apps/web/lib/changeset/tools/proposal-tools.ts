@@ -44,9 +44,11 @@ export const createSessionChangeRequestTool = tool({
 /**
  * Schema for updateSessionChangeRequest.
  * Updates session-level properties.
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const updateSessionChangeRequestSchema = z.object({
-  presetGroupId: z.string().describe('ID of the session to update'),
+  sessionPlanId: z.string().describe('ID of the session to update'),
   name: z.string().optional().transform(emptyToUndefined),
   description: z.string().optional().transform(emptyToUndefined),
   reasoning: z.string().describe('Why this change is being made'),
@@ -67,11 +69,13 @@ export const updateSessionChangeRequestTool = tool({
 /**
  * Schema for createExerciseChangeRequest.
  * Adds an exercise to the session.
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const createExerciseChangeRequestSchema = z.object({
   exerciseId: z.string().describe('ID from exercise library'),
   exerciseName: z.string().describe('Name for display'),
-  presetOrder: z
+  exerciseOrder: z
     .number()
     .int()
     .optional()
@@ -102,9 +106,11 @@ export const createExerciseChangeRequestTool = tool({
 /**
  * Schema for updateExerciseChangeRequest.
  * Updates exercise settings. Also used for swapping exercises by providing a new exerciseId.
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const updateExerciseChangeRequestSchema = z.object({
-  presetExerciseId: z.string().describe('ID of the exercise preset to update'),
+  sessionPlanExerciseId: z.string().describe('ID of the session plan exercise to update'),
   exerciseId: z
     .string()
     .optional()
@@ -115,7 +121,7 @@ export const updateExerciseChangeRequestSchema = z.object({
     .optional()
     .transform(emptyToUndefined)
     .describe('New exercise name (required when swapping)'),
-  presetOrder: z.number().int().optional().transform(emptyNumToUndefined),
+  exerciseOrder: z.number().int().optional().transform(emptyNumToUndefined),
   supersetId: z.string().optional().transform(emptyToUndefined),
   notes: z.string().optional().transform(emptyToUndefined),
   reasoning: z.string().describe('Why this change is being made'),
@@ -133,9 +139,11 @@ export const updateExerciseChangeRequestTool = tool({
 /**
  * Schema for deleteExerciseChangeRequest.
  * Removes an exercise from the session.
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const deleteExerciseChangeRequestSchema = z.object({
-  presetExerciseId: z.string().describe('ID of the exercise to remove'),
+  sessionPlanExerciseId: z.string().describe('ID of the exercise to remove'),
   reasoning: z.string().describe('Why this exercise is being removed'),
 })
 
@@ -154,9 +162,11 @@ export const deleteExerciseChangeRequestTool = tool({
 /**
  * Schema for createSetChangeRequest.
  * Adds sets to an exercise.
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const createSetChangeRequestSchema = z.object({
-  exercisePresetId: z
+  sessionPlanExerciseId: z
     .string()
     .describe(
       'Parent exercise ID. For NEW exercises created in this changeset, use the entityId returned from createExerciseChangeRequest (e.g., "temp_001"). For EXISTING exercises, use their id from the session data.'
@@ -194,12 +204,25 @@ export const createSetChangeRequestTool = tool({
 /**
  * Schema for updateSetChangeRequest.
  * Updates set parameters.
+ *
+ * Sets can be identified either by:
+ * 1. sessionPlanSetId (direct set ID) - preferred for existing sets
+ * 2. sessionPlanExerciseId + setIndex (composite) - for sets in newly created exercises
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const updateSetChangeRequestSchema = z.object({
-  exercisePresetId: z
+  sessionPlanSetId: z
     .string()
+    .optional()
+    .transform(emptyToUndefined)
+    .describe('Direct ID of the set to update. Preferred for existing sets.'),
+  sessionPlanExerciseId: z
+    .string()
+    .optional()
+    .transform(emptyToUndefined)
     .describe(
-      'Parent exercise ID. For NEW exercises, use the entityId from createExerciseChangeRequest. For EXISTING exercises, use their id from session data.'
+      'Parent exercise ID. Required when using setIndex to identify the set. For NEW exercises, use the entityId from createExerciseChangeRequest.'
     ),
   setIndex: z
     .number()
@@ -207,7 +230,7 @@ export const updateSetChangeRequestSchema = z.object({
     .min(1)
     .optional()
     .transform(emptyNumToUndefined)
-    .describe('Which set to update (1-based). Omit to update all sets.'),
+    .describe('Which set to update (1-based). Used with sessionPlanExerciseId. Omit to update all sets.'),
   applyToAllSets: z
     .boolean()
     .optional()
@@ -234,12 +257,25 @@ export const updateSetChangeRequestTool = tool({
 /**
  * Schema for deleteSetChangeRequest.
  * Removes sets from an exercise.
+ *
+ * Sets can be identified either by:
+ * 1. sessionPlanSetId (direct set ID) - preferred for existing sets
+ * 2. sessionPlanExerciseId + setIndex (composite) - for sets in newly created exercises
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const deleteSetChangeRequestSchema = z.object({
-  exercisePresetId: z
+  sessionPlanSetId: z
     .string()
+    .optional()
+    .transform(emptyToUndefined)
+    .describe('Direct ID of the set to delete. Preferred for existing sets.'),
+  sessionPlanExerciseId: z
+    .string()
+    .optional()
+    .transform(emptyToUndefined)
     .describe(
-      'Parent exercise ID. For NEW exercises, use the entityId from createExerciseChangeRequest. For EXISTING exercises, use their id from session data.'
+      'Parent exercise ID. Required when using setIndex to identify the set. For NEW exercises, use the entityId from createExerciseChangeRequest.'
     ),
   setIndex: z
     .number()

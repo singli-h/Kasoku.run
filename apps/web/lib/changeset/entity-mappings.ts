@@ -15,11 +15,13 @@ import type { SessionEntityType } from './types'
  *
  * Tool inputs use camelCase field names for AI-friendliness.
  * These map to snake_case database columns during transformation.
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const ENTITY_ID_FIELDS: Record<SessionEntityType, string> = {
-  preset_session: 'presetGroupId', // session_plans.id
-  preset_exercise: 'presetExerciseId', // session_plan_exercises.id
-  preset_set: 'presetDetailId', // session_plan_sets.id
+  preset_session: 'sessionPlanId', // session_plans.id
+  preset_exercise: 'sessionPlanExerciseId', // session_plan_exercises.id
+  preset_set: 'sessionPlanSetId', // session_plan_sets.id
 }
 
 /**
@@ -44,30 +46,36 @@ export const ENTITY_PARENT_FIELDS: Record<SessionEntityType, string | null> = {
  * Maps entity types to fields that contain entity references (foreign keys).
  * These fields may contain temporary IDs that need resolution during execution.
  * Keys are in snake_case (database column names).
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const ENTITY_REFERENCE_FIELDS: Record<SessionEntityType, string[]> = {
   preset_session: ['microcycle_id'],
-  preset_exercise: ['exercise_preset_group_id'],
-  preset_set: ['exercise_preset_id'],
+  preset_exercise: ['session_plan_id'],
+  preset_set: ['session_plan_exercise_id'],
 }
 
 /**
  * Maps tool input field names (camelCase) to their corresponding
  * entity reference fields (snake_case) for parent FK resolution.
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const PARENT_FK_FROM_TOOL_INPUT: Record<SessionEntityType, { inputField: string; dbField: string } | null> = {
   preset_session: null, // Session's parent (microcycle) comes from context
   preset_exercise: null, // Exercise's parent (session) comes from sessionId context
-  preset_set: { inputField: 'exercisePresetId', dbField: 'exercise_preset_id' },
+  preset_set: { inputField: 'sessionPlanExerciseId', dbField: 'session_plan_exercise_id' },
 }
 
 /**
  * Maps camelCase tool input field names to snake_case database column names.
  * Only includes fields that need conversion (same-case fields omitted).
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const CAMEL_TO_SNAKE_MAP: Record<string, string> = {
-  // Session (preset_session) fields
-  presetGroupId: 'id',
+  // Session (session_plans) fields
+  sessionPlanId: 'id',
   userId: 'user_id',
   athleteGroupId: 'athlete_group_id',
   microcycleId: 'microcycle_id',
@@ -76,16 +84,14 @@ export const CAMEL_TO_SNAKE_MAP: Record<string, string> = {
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 
-  // Exercise (preset_exercise) fields
-  presetExerciseId: 'id',
-  sessionPlanId: 'session_plan_id',
+  // Exercise (session_plan_exercises) fields
+  sessionPlanExerciseId: 'id',
   exerciseId: 'exercise_id',
-  presetOrder: 'exercise_order',
+  exerciseOrder: 'exercise_order',
   supersetId: 'superset_id',
 
-  // Set (preset_set) fields
-  presetDetailId: 'id',
-  sessionPlanExerciseId: 'session_plan_exercise_id',
+  // Set (session_plan_sets) fields
+  sessionPlanSetId: 'id',
   setIndex: 'set_index',
   setCount: 'set_count',
   performingTime: 'performing_time',
@@ -116,11 +122,13 @@ export const METADATA_FIELDS = new Set([
 /**
  * Fields that identify an entity and should be excluded from proposedData.
  * The ID is stored in entityId, not proposedData.
+ *
+ * Updated to use session_plan naming (post schema migration 2025-Q4).
  */
 export const ID_FIELDS = new Set([
-  'presetGroupId',
-  'presetExerciseId',
-  'presetDetailId',
+  'sessionPlanId',
+  'sessionPlanExerciseId',
+  'sessionPlanSetId',
   'id',
 ])
 
@@ -132,7 +140,7 @@ export const ID_FIELDS = new Set([
  *
  * @example
  * toSnakeCase('exerciseId') // 'exercise_id'
- * toSnakeCase('presetOrder') // 'exercise_order'
+ * toSnakeCase('exerciseOrder') // 'exercise_order'
  * toSnakeCase('reps') // 'reps' (no change for single-word fields)
  */
 export function toSnakeCase(fieldName: string): string {
@@ -153,7 +161,7 @@ export function toSnakeCase(fieldName: string): string {
  *
  * @example
  * toCamelCase('exercise_id') // 'exerciseId'
- * toCamelCase('exercise_order') // 'presetOrder'
+ * toCamelCase('exercise_order') // 'exerciseOrder'
  * toCamelCase('reps') // 'reps' (no change for single-word fields)
  */
 export function toCamelCase(fieldName: string): string {
@@ -175,7 +183,7 @@ export function toCamelCase(fieldName: string): string {
  * @returns New object with snake_case keys
  *
  * @example
- * convertKeysToSnakeCase({ exerciseId: 1, presetOrder: 2 })
+ * convertKeysToSnakeCase({ exerciseId: 1, exerciseOrder: 2 })
  * // { exercise_id: 1, exercise_order: 2 }
  */
 export function convertKeysToSnakeCase(
@@ -198,7 +206,7 @@ export function convertKeysToSnakeCase(
  *
  * @example
  * convertKeysToCamelCase({ exercise_id: 1, exercise_order: 2 })
- * // { exerciseId: 1, presetOrder: 2 }
+ * // { exerciseId: 1, exerciseOrder: 2 }
  */
 export function convertKeysToCamelCase(
   obj: Record<string, unknown>

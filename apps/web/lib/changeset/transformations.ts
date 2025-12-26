@@ -81,15 +81,15 @@ export function getNextExecutionOrder(): number {
  * // Create a new exercise
  * transformToolInput('preset_exercise', 'create', {
  *   exerciseId: 456,
- *   presetOrder: 1,
+ *   exerciseOrder: 1,
  *   reasoning: "Adding bench press as requested"
  * }, { sessionId: 123 })
  *
  * @example
  * // Update an exercise
  * transformToolInput('preset_exercise', 'update', {
- *   presetExerciseId: 789,
- *   presetOrder: 2,
+ *   sessionPlanExerciseId: 789,
+ *   exerciseOrder: 2,
  *   reasoning: "Moving exercise to second position"
  * }, { currentData: { exercise_order: 1 } })
  */
@@ -136,10 +136,15 @@ export function transformToolInput(
  * - For creates: Returns a temporary ID (will be replaced after DB insert)
  * - For updates/deletes: Returns the entity ID from the appropriate field
  *
+ * Special handling for sets (preset_set):
+ * - Sets can be identified by direct ID (sessionPlanSetId) OR
+ * - By composite key (sessionPlanExerciseId + setIndex)
+ * - When using composite identification, generates a composite ID string
+ *
  * @param entityType - The entity type
  * @param operationType - The operation type
  * @param toolInput - The tool input
- * @returns The entity ID (real or temporary)
+ * @returns The entity ID (real, temporary, or composite for sets)
  */
 export function extractEntityId(
   entityType: SessionEntityType,
@@ -155,9 +160,30 @@ export function extractEntityId(
   const idField = ENTITY_ID_FIELDS[entityType]
   const entityId = toolInput[idField]
 
+  // For sets, support composite identification (parent exercise + set index)
+  if (entityType === 'preset_set' && (entityId === undefined || entityId === null)) {
+    const parentExerciseId = toolInput['sessionPlanExerciseId']
+    const setIndex = toolInput['setIndex']
+    const applyToAllSets = toolInput['applyToAllSets']
+
+    // If we have parent exercise ID, create a composite identifier
+    if (parentExerciseId !== undefined && parentExerciseId !== null) {
+      // Format: "exercise:{parentId}:set:{setIndex}" or "exercise:{parentId}:all"
+      if (applyToAllSets) {
+        return `exercise:${parentExerciseId}:all`
+      }
+      if (setIndex !== undefined && setIndex !== null) {
+        return `exercise:${parentExerciseId}:set:${setIndex}`
+      }
+      // No specific set index - operation may apply to all sets
+      return `exercise:${parentExerciseId}:all`
+    }
+  }
+
   if (entityId === undefined || entityId === null) {
     throw new Error(
-      `Missing ${idField} for ${operationType} operation on ${entityType}`
+      `Missing ${idField} for ${operationType} operation on ${entityType}. ` +
+      `For sets, you can also use sessionPlanExerciseId + setIndex.`
     )
   }
 
@@ -194,16 +220,17 @@ export function buildProposedData(
   }
 
   // Add parent foreign key for exercises if not present
+  // Updated to use session_plan naming (post schema migration 2025-Q4)
   if (
     entityType === 'preset_exercise' &&
-    !data['exercisePresetGroupId'] &&
+    !data['sessionPlanId'] &&
     sessionId
   ) {
-    data['exercisePresetGroupId'] = sessionId
+    data['sessionPlanId'] = sessionId
   }
 
   // Add parent foreign key from tool input for entities that specify it
-  // (e.g., sets specify their parent exercise via presetExerciseId)
+  // (e.g., sets specify their parent exercise via sessionPlanExerciseId)
   const parentFkMapping = PARENT_FK_FROM_TOOL_INPUT[entityType]
   if (parentFkMapping) {
     const parentRef = toolInput[parentFkMapping.inputField]

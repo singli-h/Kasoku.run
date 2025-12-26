@@ -187,7 +187,7 @@ function applyExerciseChange(
       const newExercise: SessionExercise = {
         id: request.entityId ?? `temp_${Date.now()}`,
         exercise_id: Number(proposedData?.exerciseId ?? 0),
-        exercise_order: Number(proposedData?.presetOrder ?? exercises.length),
+        exercise_order: Number(proposedData?.exerciseOrder ?? exercises.length),
         superset_id: (proposedData?.supersetId as number | null) ?? null,
         notes: (proposedData?.notes as string | null) ?? null,
         exercise: proposedData?.exerciseName
@@ -215,8 +215,8 @@ function applyExerciseChange(
               ? Number(proposedData.exerciseId)
               : ex.exercise_id,
             exercise_order:
-              proposedData?.presetOrder !== undefined
-                ? Number(proposedData.presetOrder)
+              proposedData?.exerciseOrder !== undefined
+                ? Number(proposedData.exerciseOrder)
                 : ex.exercise_order,
             superset_id:
               proposedData?.supersetId !== undefined
@@ -271,7 +271,8 @@ function applySetChange(
 
   // Set changes need the parent exercise ID
   // This may be a temp ID that needs to be resolved
-  let parentExerciseId = proposedData?.exercisePresetId as string | undefined
+  // Updated to use session_plan naming (post schema migration 2025-Q4)
+  let parentExerciseId = proposedData?.sessionPlanExerciseId as string | undefined
 
   // Try to resolve temp ID if we have a mapping
   if (parentExerciseId && idMap.has(parentExerciseId)) {
