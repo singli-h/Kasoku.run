@@ -59,6 +59,18 @@ export function useChangeSet(): ChangeSetContextValue {
 }
 
 /**
+ * Optional hook to access the ChangeSet context.
+ * Returns null if used outside of ChangeSetProvider (no throw).
+ *
+ * Use this for components that may or may not be inside the AI context.
+ *
+ * @returns The ChangeSet context value or null if outside provider
+ */
+export function useChangeSetOptional(): ChangeSetContextValue | null {
+  return useContext(ChangeSetContext)
+}
+
+/**
  * Hook to check if the changeset is in a specific status.
  *
  * @param targetStatus - The status to check for

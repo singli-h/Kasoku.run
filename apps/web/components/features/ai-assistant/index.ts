@@ -37,7 +37,6 @@ export * from './inline'
 export { SessionAssistant } from './SessionAssistant'
 export { ApprovalBanner } from './ApprovalBanner'
 export { ChatDrawer, ChatTrigger } from './ChatDrawer'
-export { ChangePreview, ChangeList } from './ChangePreview'
 
 // =============================================================================
 // Context

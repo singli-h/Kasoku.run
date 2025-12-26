@@ -6,11 +6,13 @@
  * Hook to get all pending set changes for an exercise.
  * Useful for exercise cards that need to show AI indicators on multiple sets.
  *
+ * Safe to use outside of ChangeSetProvider - returns empty results.
+ *
  * @see specs/004-feature-pattern-standard/ai-ui-implementation-plan.md
  */
 
 import { useMemo } from 'react'
-import { useChangeSet } from '@/lib/changeset/useChangeSet'
+import { useChangeSetOptional } from '@/lib/changeset/useChangeSet'
 import type { ChangeRequest, UIDisplayType } from '@/lib/changeset/types'
 import { deriveUIDisplayType } from '../indicators/ChangeTypeBadge'
 
@@ -34,6 +36,13 @@ interface UseAISetChangesResult {
   pendingCount: number
   /** Get change info for a specific set */
   getSetChange: (setId: string | number) => SetChangeInfo | undefined
+}
+
+const EMPTY_RESULT: UseAISetChangesResult = {
+  setChanges: new Map(),
+  hasChanges: false,
+  pendingCount: 0,
+  getSetChange: () => undefined,
 }
 
 /**
@@ -68,18 +77,19 @@ export function useAISetChanges(
   exerciseId: number | string,
   entityType: 'preset_set' | 'training_set' = 'preset_set'
 ): UseAISetChangesResult {
-  const { changeset } = useChangeSet()
+  const context = useChangeSetOptional()
 
   return useMemo(() => {
+    // Return empty result if outside AI context
+    if (!context) {
+      return EMPTY_RESULT
+    }
+
+    const { changeset } = context
     const setChanges = new Map<string | number, SetChangeInfo>()
 
     if (!changeset) {
-      return {
-        setChanges,
-        hasChanges: false,
-        pendingCount: 0,
-        getSetChange: () => undefined,
-      }
+      return EMPTY_RESULT
     }
 
     // Filter to set changes for this exercise
@@ -89,10 +99,15 @@ export function useAISetChanges(
         if (req.entityType !== entityType) return false
 
         // Match exercise ID from current or proposed data
+        // Support both session_plan_exercise_id (snake_case DB) and exerciseId (camelCase)
         const currentExerciseId =
-          req.currentData?.exercise_id ?? req.currentData?.preset_exercise_id
+          req.currentData?.session_plan_exercise_id ??
+          req.currentData?.exercise_id ??
+          req.currentData?.preset_exercise_id
         const proposedExerciseId =
-          req.proposedData?.exercise_id ?? req.proposedData?.preset_exercise_id
+          req.proposedData?.session_plan_exercise_id ??
+          req.proposedData?.exercise_id ??
+          req.proposedData?.preset_exercise_id
 
         return (
           currentExerciseId === exerciseId ||
@@ -122,20 +137,33 @@ export function useAISetChanges(
       pendingCount: setChanges.size,
       getSetChange: (setId) => setChanges.get(setId),
     }
-  }, [changeset, exerciseId, entityType])
+  }, [context, exerciseId, entityType])
 }
 
 /**
  * Get pending AI change for the exercise itself (not sets).
  * Useful for detecting exercise-level changes like swap or remove.
+ *
+ * Safe to use outside of ChangeSetProvider - returns empty results.
  */
 export function useAIExerciseChange(
   exerciseId: number | string,
   entityType: 'preset_exercise' | 'training_exercise' = 'preset_exercise'
 ) {
-  const { changeset } = useChangeSet()
+  const context = useChangeSetOptional()
 
   return useMemo(() => {
+    // Return empty result if outside AI context
+    if (!context) {
+      return {
+        hasChange: false,
+        change: null,
+        changeType: null as UIDisplayType | null,
+      }
+    }
+
+    const { changeset } = context
+
     if (!changeset) {
       return {
         hasChange: false,
@@ -167,5 +195,5 @@ export function useAIExerciseChange(
         change.proposedData
       ),
     }
-  }, [changeset, exerciseId, entityType])
+  }, [context, exerciseId, entityType])
 }

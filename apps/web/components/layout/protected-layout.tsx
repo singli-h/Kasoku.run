@@ -12,6 +12,7 @@ import { AppSidebar } from "@/components/layout/sidebar/app-sidebar"
 import { ProtectedHeader } from "@/components/layout/header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { ErrorFallback } from "./error-fallback"
+import { UserRoleProvider } from "@/contexts/user-role-context"
 
 interface ProtectedLayoutProps {
   children: React.ReactNode
@@ -20,15 +21,17 @@ interface ProtectedLayoutProps {
 export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset className="overflow-x-hidden">
-          <ProtectedHeader />
-          <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
-            {children}
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+      <UserRoleProvider>
+        <SidebarProvider>
+          <AppSidebar />
+          <SidebarInset className="overflow-x-hidden">
+            <ProtectedHeader />
+            <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
+              {children}
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
+      </UserRoleProvider>
     </ErrorBoundary>
   )
 } 

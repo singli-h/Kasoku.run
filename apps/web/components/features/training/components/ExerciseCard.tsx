@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useCallback, useMemo } from "react"
-import { Check, ChevronDown, ChevronUp, GripVertical, Plus, Trash2 } from "lucide-react"
+import { Bot, Check, ChevronDown, ChevronUp, GripVertical, Plus, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet } from "../types"
 import { formatShorthand, getCompletedCount } from "../types"
 import { SetRow, type VisibleFields } from "./SetRow"
 import { getVisibleFields } from "../utils/field-visibility"
+import type { UIDisplayType } from "@/lib/changeset/types"
 
 export interface ExerciseCardProps {
   exercise: TrainingExercise
@@ -28,6 +29,15 @@ export interface ExerciseCardProps {
   onDragOver?: (e: React.DragEvent) => void
   onDragEnd?: () => void
   onDrop?: (e: React.DragEvent, targetExerciseId: string | number) => void
+  // AI pending change indicators
+  /** Whether this exercise has a pending AI change */
+  hasPendingChange?: boolean
+  /** The type of AI change for styling */
+  aiChangeType?: UIDisplayType | null
+  /** Map of set ID to pending change info */
+  setAIChanges?: Map<string | number, { changeType: UIDisplayType }>
+  /** Count of sets with pending AI changes */
+  pendingSetCount?: number
 }
 
 /**
@@ -54,9 +64,22 @@ export function ExerciseCard({
   onDragOver,
   onDragEnd,
   onDrop,
+  // AI indicator props
+  hasPendingChange = false,
+  aiChangeType,
+  setAIChanges,
+  pendingSetCount = 0,
 }: ExerciseCardProps) {
   const [draggingSetId, setDraggingSetId] = useState<string | number | null>(null)
   const [dragOverSetId, setDragOverSetId] = useState<string | number | null>(null)
+
+  // AI change indicator colors
+  const AI_BG_COLORS: Record<UIDisplayType, string> = {
+    swap: 'bg-blue-50/80 border-blue-200',
+    add: 'bg-green-50/80 border-green-200',
+    update: 'bg-amber-50/80 border-amber-200',
+    remove: 'bg-red-50/60 border-red-200 opacity-60',
+  }
 
   const completedCount = getCompletedCount(exercise)
   const totalSets = exercise.sets.length
@@ -175,7 +198,10 @@ export function ExerciseCard({
         </div>
       )}
 
-      <div className="flex-1 bg-card border border-border rounded-xl overflow-hidden">
+      <div className={cn(
+        "flex-1 bg-card border rounded-xl overflow-hidden transition-colors",
+        hasPendingChange && aiChangeType ? AI_BG_COLORS[aiChangeType] : "border-border"
+      )}>
         {/* Header - compact to give more space to sets */}
         <div
           role="button"
@@ -212,7 +238,19 @@ export function ExerciseCard({
 
             <div className="flex-1 min-w-0">
               {/* Exercise name is always read-only - comes from exercise library */}
-              <h3 className="text-sm font-medium truncate">{exercise.name}</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-medium truncate">{exercise.name}</h3>
+                {/* AI change indicator */}
+                {(hasPendingChange || pendingSetCount > 0) && (
+                  <span
+                    className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 shrink-0"
+                    title={`${pendingSetCount > 0 ? pendingSetCount : 1} AI change${pendingSetCount !== 1 ? 's' : ''} pending`}
+                  >
+                    <Bot className="h-2.5 w-2.5" />
+                    {pendingSetCount > 0 && <span>{pendingSetCount}</span>}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground truncate">
                 {formatShorthand(exercise)}
               </p>
@@ -263,6 +301,8 @@ export function ExerciseCard({
               const isActive = isAthlete && index === firstIncompleteIndex
               const isSetDragging = draggingSetId === set.id
               const isSetDragOver = dragOverSetId === set.id
+              // Get AI change info for this set
+              const setChange = setAIChanges?.get(set.id)
 
               return (
                 <div
@@ -285,6 +325,9 @@ export function ExerciseCard({
                     onDragOver={(e) => handleSetDragOver(e, set.id)}
                     onDragEnd={handleSetDragEnd}
                     onDrop={handleSetDrop}
+                    // AI indicator props
+                    hasPendingChange={!!setChange}
+                    aiChangeType={setChange?.changeType}
                   />
                 </div>
               )

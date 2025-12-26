@@ -33,6 +33,9 @@ import type { ExerciseLibraryItem as SessionPlannerLibraryItem } from "@/compone
 // Import save action
 import { saveSessionWithExercisesAction } from "@/actions/plans/session-planner-actions"
 
+// Import AI change detection hook
+import { useAIExerciseChanges } from "@/components/features/ai-assistant/hooks"
+
 interface SessionPlannerV2Props {
   planId: string
   sessionId: number
@@ -86,6 +89,9 @@ export function SessionPlannerV2({
       muscleGroups: []
     }))
   }, [exerciseLibrary])
+
+  // Get AI change indicators for exercises (safe outside ChangeSetProvider)
+  const aiChangesByExercise = useAIExerciseChanges()
 
   // Save to history
   const saveToHistory = useCallback((newExercises: SessionPlannerExercise[]) => {
@@ -452,6 +458,7 @@ export function SessionPlannerV2({
           onReorderExercises={handleReorderExercises}
           onFinishSession={handleSave}
           onSaveSession={handleSave}
+          aiChangesByExercise={aiChangesByExercise}
         />
       </div>
 

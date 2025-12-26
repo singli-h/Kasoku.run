@@ -9,21 +9,101 @@
  * This component is designed to be rendered as part of the page flow,
  * not as an overlay.
  *
- * @see specs/002-ai-session-assistant/reference/20251221-session-ui-integration.md
+ * @see specs/004-feature-pattern-standard/ai-ui-proposal.md
  */
 
 import { useState, useEffect } from 'react'
+import { Plus, Edit2, Minus, ArrowRightLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ChangeSet, ExecutionError } from '@/lib/changeset/types'
+import type { ChangeSet, ChangeRequest, ExecutionError } from '@/lib/changeset/types'
 import { getChangeSummary } from '@/lib/changeset/ui-helpers'
 import { formatErrorForUser } from '@/lib/changeset/errors'
-import { ChangeList } from '../ChangePreview'
 import { ProposalHeader } from './ProposalHeader'
 import { ProposalActionBar } from './ProposalActionBar'
 import { ProposalFeedbackInput } from './ProposalFeedbackInput'
 import { ProposalStatusBanner } from './ProposalStatusBanner'
 
 type SectionState = 'pending' | 'feedback' | 'executing' | 'success' | 'error'
+
+/**
+ * Get icon for change type
+ */
+function getChangeIcon(change: ChangeRequest) {
+  if (change.operationType === 'create') return Plus
+  if (change.operationType === 'delete') return Minus
+  if (change.operationType === 'update' && change.proposedData?.exercise_id) {
+    return ArrowRightLeft
+  }
+  return Edit2
+}
+
+/**
+ * Get simple label for a change
+ */
+function getChangeLabel(change: ChangeRequest): string {
+  const entityLabels: Record<string, string> = {
+    preset_session: 'Session',
+    preset_exercise: 'Exercise',
+    preset_set: 'Set',
+  }
+  const entity = entityLabels[change.entityType] || change.entityType
+
+  const name = change.proposedData?.exercise_name
+    || change.proposedData?.exerciseName
+    || change.currentData?.exercise_name
+    || change.currentData?.exerciseName
+
+  if (change.operationType === 'create') {
+    return name ? `Add ${name}` : `Add ${entity}`
+  }
+  if (change.operationType === 'delete') {
+    return name ? `Remove ${name}` : `Remove ${entity}`
+  }
+  if (change.operationType === 'update') {
+    if (change.proposedData?.exercise_id && change.currentData?.exercise_id) {
+      const oldName = change.currentData?.exercise_name || change.currentData?.exerciseName || 'exercise'
+      const newName = change.proposedData?.exercise_name || change.proposedData?.exerciseName || 'new exercise'
+      return `Swap ${oldName} → ${newName}`
+    }
+    return name ? `Update ${name}` : `Update ${entity}`
+  }
+  return `${change.operationType} ${entity}`
+}
+
+/**
+ * Simple inline change list component
+ */
+function SimpleChangeList({ changes }: { changes: ChangeRequest[] }) {
+  if (changes.length === 0) {
+    return (
+      <div className="py-2 text-center text-sm text-gray-500">
+        No pending changes
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-1">
+      {changes.map((change) => {
+        const Icon = getChangeIcon(change)
+        return (
+          <div
+            key={change.id}
+            className={cn(
+              'flex items-center gap-2 rounded px-2 py-1 text-sm',
+              change.operationType === 'create' && 'bg-green-50 text-green-700',
+              change.operationType === 'delete' && 'bg-red-50 text-red-700',
+              change.operationType === 'update' && 'bg-amber-50 text-amber-700'
+            )}
+          >
+            <Icon className="h-3 w-3 shrink-0" />
+            <span>{getChangeLabel(change)}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 interface InlineProposalSectionProps {
   /** The changeset awaiting approval */
@@ -59,7 +139,7 @@ export function InlineProposalSection({
 }: InlineProposalSectionProps) {
   const [state, setState] = useState<SectionState>('pending')
   const [feedback, setFeedback] = useState('')
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false) // Collapsed by default per spec
 
   const changeCount = changeset.changeRequests.length
   const summary = getChangeSummary(changeset.changeRequests)
@@ -111,7 +191,7 @@ export function InlineProposalSection({
       <div className={cn('rounded-lg', className)}>
         <ProposalStatusBanner
           type="success"
-          message="Changes saved successfully!"
+          message="Changes saved!"
         />
       </div>
     )
@@ -134,12 +214,12 @@ export function InlineProposalSection({
   return (
     <div
       className={cn(
-        'rounded-lg border border-blue-200 bg-blue-50/50',
+        'rounded-lg border border-amber-200 bg-amber-50/50',
         className
       )}
     >
       {/* Header */}
-      <div className="p-4 pb-2">
+      <div className="p-3">
         <ProposalHeader
           changeCount={changeCount}
           summary={summary}
@@ -150,14 +230,14 @@ export function InlineProposalSection({
 
       {/* Change list (collapsible) */}
       {isExpanded && state !== 'feedback' && (
-        <div className="max-h-60 overflow-y-auto px-4 pb-2">
-          <ChangeList changes={changeset.changeRequests} />
+        <div className="max-h-48 overflow-y-auto px-3 pb-2">
+          <SimpleChangeList changes={changeset.changeRequests} />
         </div>
       )}
 
       {/* Feedback input (when in feedback mode) */}
       {state === 'feedback' && (
-        <div className="px-4 pb-4">
+        <div className="px-3 pb-3">
           <ProposalFeedbackInput
             value={feedback}
             onChange={setFeedback}
@@ -169,7 +249,7 @@ export function InlineProposalSection({
 
       {/* Action bar */}
       {state !== 'feedback' && (
-        <div className="border-t border-blue-200 bg-blue-50 p-3">
+        <div className="border-t border-amber-200 bg-amber-50 p-2">
           <ProposalActionBar
             onApprove={handleApprove}
             onRegenerate={handleRegenerateClick}

@@ -333,3 +333,4 @@ import { ErrorFallback } from "@/components/layout/error-fallback"
 - [Component Architecture](./component-architecture.md) - Component organization patterns
 - [Design System Overview](../design/design-system-overview.md) - Complete design system
 
+

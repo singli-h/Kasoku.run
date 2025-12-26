@@ -99,6 +99,7 @@ export async function executeChangeSet(
     if (result.isSuccess) {
       return {
         status: 'approved',
+        updatedExercises,
         // Could extract ID mappings from result if needed
       }
     }

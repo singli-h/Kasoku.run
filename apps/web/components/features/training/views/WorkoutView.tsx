@@ -5,11 +5,20 @@ import { Check, Loader2, Plus, Timer, Calendar } from "lucide-react"
 import { format, isToday, isYesterday, isTomorrow } from "date-fns"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet, ExerciseLibraryItem } from "../types"
+import type { UIDisplayType } from "@/lib/changeset/types"
 
 // Save status type (matches ExerciseContext)
 export type SaveStatus = 'saved' | 'saving' | 'error' | 'idle'
 import { groupBySupersets, getCompletedCount } from "../types"
 import { ExerciseCard } from "../components/ExerciseCard"
+
+// AI change info type
+export interface AIExerciseChangeInfo {
+  hasPendingChange: boolean
+  changeType: UIDisplayType | null
+  setChanges: Map<string | number, { changeType: UIDisplayType }>
+  pendingSetCount: number
+}
 import { SectionDivider } from "../components/SectionDivider"
 import { ExercisePickerSheet } from "../components/ExercisePickerSheet"
 import { SessionCompletionModal } from "../components/SessionCompletionModal"
@@ -54,6 +63,9 @@ export interface WorkoutViewProps {
   onFinishSession?: () => void
   onSaveSession?: () => void
 
+  /** AI change info per exercise (keyed by exercise ID) */
+  aiChangesByExercise?: Map<string | number, AIExerciseChangeInfo>
+
   className?: string
 }
 
@@ -88,6 +100,7 @@ export function WorkoutView({
   onReorderExercises,
   onFinishSession,
   onSaveSession,
+  aiChangesByExercise,
   className,
 }: WorkoutViewProps) {
   // Format session date for display
@@ -304,32 +317,41 @@ export function WorkoutView({
                         // Superset group
                         return (
                           <div key={`superset-${idx}`} className="space-y-3">
-                            {item.map((ex, exIdx) => (
-                              <ExerciseCard
-                                key={ex.id}
-                                exercise={ex}
-                                isAthlete={isAthlete}
-                                showSupersetBar
-                                supersetLabel={exIdx === 0 ? ex.supersetId || undefined : undefined}
-                                onToggleExpand={() => onToggleExpand?.(ex.id)}
-                                onCompleteSet={(setId) => onCompleteSet?.(ex.id, setId)}
-                                onCompleteAllSets={() => onCompleteAllSets?.(ex.id)}
-                                onUpdateSet={(setId, field, value) => onUpdateSet?.(ex.id, setId, field, value)}
-                                onAddSet={() => onAddSet?.(ex.id)}
-                                onRemoveSet={(setId) => onRemoveSet?.(ex.id, setId)}
-                                onRemoveExercise={() => onRemoveExercise?.(ex.id)}
-                                onReorderSets={(from, to) => onReorderSets?.(ex.id, from, to)}
-                                isDragging={draggingExerciseId === ex.id}
-                                onDragStart={handleExerciseDragStart}
-                                onDragOver={(e) => e.preventDefault()}
-                                onDragEnd={handleExerciseDragEnd}
-                                onDrop={handleExerciseDrop}
-                              />
-                            ))}
+                            {item.map((ex, exIdx) => {
+                              const aiInfo = aiChangesByExercise?.get(ex.id)
+                              return (
+                                <ExerciseCard
+                                  key={ex.id}
+                                  exercise={ex}
+                                  isAthlete={isAthlete}
+                                  showSupersetBar
+                                  supersetLabel={exIdx === 0 ? ex.supersetId || undefined : undefined}
+                                  onToggleExpand={() => onToggleExpand?.(ex.id)}
+                                  onCompleteSet={(setId) => onCompleteSet?.(ex.id, setId)}
+                                  onCompleteAllSets={() => onCompleteAllSets?.(ex.id)}
+                                  onUpdateSet={(setId, field, value) => onUpdateSet?.(ex.id, setId, field, value)}
+                                  onAddSet={() => onAddSet?.(ex.id)}
+                                  onRemoveSet={(setId) => onRemoveSet?.(ex.id, setId)}
+                                  onRemoveExercise={() => onRemoveExercise?.(ex.id)}
+                                  onReorderSets={(from, to) => onReorderSets?.(ex.id, from, to)}
+                                  isDragging={draggingExerciseId === ex.id}
+                                  onDragStart={handleExerciseDragStart}
+                                  onDragOver={(e) => e.preventDefault()}
+                                  onDragEnd={handleExerciseDragEnd}
+                                  onDrop={handleExerciseDrop}
+                                  // AI indicator props
+                                  hasPendingChange={aiInfo?.hasPendingChange}
+                                  aiChangeType={aiInfo?.changeType}
+                                  setAIChanges={aiInfo?.setChanges}
+                                  pendingSetCount={aiInfo?.pendingSetCount}
+                                />
+                              )
+                            })}
                           </div>
                         )
                       }
                       // Single exercise
+                      const aiInfo = aiChangesByExercise?.get(item.id)
                       return (
                         <ExerciseCard
                           key={item.id}
@@ -348,6 +370,11 @@ export function WorkoutView({
                           onDragOver={(e) => e.preventDefault()}
                           onDragEnd={handleExerciseDragEnd}
                           onDrop={handleExerciseDrop}
+                          // AI indicator props
+                          hasPendingChange={aiInfo?.hasPendingChange}
+                          aiChangeType={aiInfo?.changeType}
+                          setAIChanges={aiInfo?.setChanges}
+                          pendingSetCount={aiInfo?.pendingSetCount}
                         />
                       )
                     })}

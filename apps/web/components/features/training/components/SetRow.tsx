@@ -1,9 +1,10 @@
 "use client"
 
 import { useCallback } from "react"
-import { Check, GripVertical, X } from "lucide-react"
+import { Bot, Check, GripVertical, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TrainingSet } from "../types"
+import type { UIDisplayType } from "@/lib/changeset/types"
 
 /** Visible fields computed from exercise type and plan data */
 export interface VisibleFields {
@@ -36,6 +37,11 @@ export interface SetRowProps {
   onDragOver?: (e: React.DragEvent) => void
   onDragEnd?: () => void
   onDrop?: (e: React.DragEvent, targetSetId: string | number) => void
+  // AI pending change indicators
+  /** Whether this set has a pending AI change */
+  hasPendingChange?: boolean
+  /** The type of AI change for styling */
+  aiChangeType?: UIDisplayType | null
 }
 
 /**
@@ -44,6 +50,14 @@ export interface SetRowProps {
  * - Athlete view: Tappable set number for completion, inline editable inputs
  * - Coach view: Drag handle for reordering, all fields visible, remove button
  */
+// AI change indicator colors for sets
+const AI_SET_COLORS: Record<UIDisplayType, string> = {
+  swap: 'bg-blue-50/60 border-l-2 border-l-blue-400',
+  add: 'bg-green-50/60 border-l-2 border-l-green-400',
+  update: 'bg-amber-50/60 border-l-2 border-l-amber-400',
+  remove: 'bg-red-50/40 border-l-2 border-l-red-400 opacity-60',
+}
+
 export function SetRow({
   set,
   isAthlete,
@@ -56,7 +70,10 @@ export function SetRow({
   onDragStart,
   onDragOver,
   onDragEnd,
-  onDrop
+  onDrop,
+  // AI indicator props
+  hasPendingChange = false,
+  aiChangeType,
 }: SetRowProps) {
   // Task 10.1: Use pre-computed visible fields from ExerciseCard
   // Fall back to showing reps if no visibleFields provided
@@ -131,20 +148,31 @@ export function SetRow({
     return (
       <div className={cn(
         "flex items-center gap-2 py-2 px-2 rounded-lg transition-colors",
-        set.completed ? "bg-green-500/10" : "bg-muted/30"
+        // Apply AI styling if there's a pending change, otherwise normal styling
+        hasPendingChange && aiChangeType
+          ? AI_SET_COLORS[aiChangeType]
+          : set.completed ? "bg-green-500/10" : "bg-muted/30"
       )}>
         {/* Set number / completion toggle */}
-        <button
-          onClick={onComplete}
-          className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all shrink-0",
-            set.completed
-              ? "bg-green-500 text-white"
-              : "bg-background border border-border hover:border-primary hover:bg-primary hover:text-primary-foreground"
+        <div className="relative shrink-0">
+          <button
+            onClick={onComplete}
+            className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all",
+              set.completed
+                ? "bg-green-500 text-white"
+                : "bg-background border border-border hover:border-primary hover:bg-primary hover:text-primary-foreground"
+            )}
+          >
+            {set.completed ? <Check className="w-4 h-4" /> : set.setIndex}
+          </button>
+          {/* AI indicator badge */}
+          {hasPendingChange && (
+            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-white">
+              <Bot className="h-2 w-2" />
+            </span>
           )}
-        >
-          {set.completed ? <Check className="w-4 h-4" /> : set.setIndex}
-        </button>
+        </div>
 
         {/* Inline editable inputs */}
         <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
@@ -297,14 +325,27 @@ export function SetRow({
       onDrop={(e) => onDrop?.(e, set.id)}
       className={cn(
         "flex items-center gap-2 py-2 px-2 rounded-lg transition-colors",
-        isDragging ? "opacity-50 bg-primary/10 border border-dashed border-primary" : "bg-muted/30 hover:bg-muted/50"
+        isDragging
+          ? "opacity-50 bg-primary/10 border border-dashed border-primary"
+          // Apply AI styling if there's a pending change, otherwise normal styling
+          : hasPendingChange && aiChangeType
+            ? AI_SET_COLORS[aiChangeType]
+            : "bg-muted/30 hover:bg-muted/50"
       )}
     >
       <div className="flex items-center gap-1.5 shrink-0">
         <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
-        <span className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground">
-          {set.setIndex}
-        </span>
+        <div className="relative">
+          <span className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground">
+            {set.setIndex}
+          </span>
+          {/* AI indicator badge */}
+          {hasPendingChange && (
+            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-white">
+              <Bot className="h-2 w-2" />
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Pill notation inputs - show only type-appropriate fields */}

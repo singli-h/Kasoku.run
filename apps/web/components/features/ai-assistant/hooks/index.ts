@@ -16,6 +16,9 @@ export {
 // Set-level change detection (for exercise cards)
 export { useAISetChanges, useAIExerciseChange } from './useAISetChanges'
 
+// Batch change detection (for WorkoutView)
+export { useAIExerciseChanges, type AIExerciseChangeInfo } from './useAIExerciseChanges'
+
 // Responsive layout detection
 export {
   useAILayoutMode,

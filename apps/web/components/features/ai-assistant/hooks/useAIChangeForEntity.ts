@@ -10,7 +10,7 @@
  */
 
 import { useMemo } from 'react'
-import { useChangeSet } from '@/lib/changeset/useChangeSet'
+import { useChangeSetOptional } from '@/lib/changeset/useChangeSet'
 import { makeBufferKey } from '@/lib/changeset/buffer-utils'
 import type { ChangeRequest, UIDisplayType } from '@/lib/changeset/types'
 import { deriveUIDisplayType } from '../indicators/ChangeTypeBadge'
@@ -37,8 +37,18 @@ interface UseAIChangeForEntityResult {
   aiReasoning: string | undefined
 }
 
+const EMPTY_RESULT: UseAIChangeForEntityResult = {
+  hasPendingChange: false,
+  pendingChange: null,
+  changeType: null,
+  proposedData: null,
+  currentData: null,
+  aiReasoning: undefined,
+}
+
 /**
  * Get pending AI change for a specific entity.
+ * Safe to use outside of ChangeSetProvider - returns empty results.
  *
  * @example
  * ```tsx
@@ -56,19 +66,19 @@ export function useAIChangeForEntity({
   entityType,
   entityId,
 }: UseAIChangeForEntityOptions): UseAIChangeForEntityResult {
-  const { changeset, hasPendingChanges } = useChangeSet()
+  const context = useChangeSetOptional()
 
   return useMemo(() => {
+    // Return empty result if outside AI context
+    if (!context) {
+      return EMPTY_RESULT
+    }
+
+    const { changeset, hasPendingChanges } = context
+
     // Early return if no pending changes
     if (!hasPendingChanges() || !changeset) {
-      return {
-        hasPendingChange: false,
-        pendingChange: null,
-        changeType: null,
-        proposedData: null,
-        currentData: null,
-        aiReasoning: undefined,
-      }
+      return EMPTY_RESULT
     }
 
     // Find matching change request
@@ -78,14 +88,7 @@ export function useAIChangeForEntity({
     )
 
     if (!pendingChange) {
-      return {
-        hasPendingChange: false,
-        pendingChange: null,
-        changeType: null,
-        proposedData: null,
-        currentData: null,
-        aiReasoning: undefined,
-      }
+      return EMPTY_RESULT
     }
 
     // Derive UI display type
@@ -103,7 +106,7 @@ export function useAIChangeForEntity({
       currentData: pendingChange.currentData,
       aiReasoning: pendingChange.aiReasoning,
     }
-  }, [changeset, hasPendingChanges, entityType, entityId])
+  }, [context, entityType, entityId])
 }
 
 /**

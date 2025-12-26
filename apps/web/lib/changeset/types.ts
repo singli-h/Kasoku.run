@@ -135,6 +135,9 @@ export interface ExecutionResult {
 
   /** Mapping of temp IDs to real IDs after creates */
   idMappings?: Record<string, string>
+
+  /** Updated exercises after applying changes (for UI state update) */
+  updatedExercises?: unknown[]
 }
 
 /**
