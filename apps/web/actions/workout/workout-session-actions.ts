@@ -450,11 +450,11 @@ export async function startTrainingSessionAction(
 }
 
 /**
- * Complete a training session (transition from ongoing to completed)
+ * Get a specific workout session by ID with all details
  */
-export async function completeTrainingSessionAction(
+export async function getWorkoutSessionByIdAction(
   sessionId: number
-): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
+): Promise<ActionState<WorkoutLogWithDetails>> {
   try {
     // 1. Authentication check
     const { userId } = await auth()
@@ -465,29 +465,130 @@ export async function completeTrainingSessionAction(
     // 2. Get database user ID
     const dbUserId = await getDbUserId(userId)
 
-    // 3. Update session to completed
+    // 3. Get athlete ID for authorization check
+    const { data: athlete } = await supabase
+      .from('athletes')
+      .select('id')
+      .eq('user_id', dbUserId)
+      .single()
+
+    if (!athlete) {
+      return { isSuccess: false, message: "Athlete profile not found" }
+    }
+
+    // 4. Query session with full details
     const { data: session, error } = await supabase
       .from('workout_logs')
-      .update({ 
-        session_status: 'completed',
-        updated_at: new Date().toISOString()
-      })
+      .select(`
+        id,
+        date_time,
+        session_status,
+        notes,
+        athlete_id,
+        session_plan_id,
+        session_plan:session_plans(
+          id,
+          name,
+          description,
+          date,
+          session_plan_exercises(
+            id,
+            exercise_order,
+            notes,
+            exercise_id,
+            superset_id,
+            exercise:exercises(
+              id,
+              name,
+              description,
+              video_url,
+              exercise_type:exercise_types(id, type),
+              unit:units(id, name)
+            ),
+            session_plan_sets(
+              id,
+              set_index,
+              reps,
+              weight,
+              distance,
+              performing_time,
+              rest_time,
+              rpe
+            )
+          )
+        ),
+        athlete:athletes(
+          id,
+          user_id,
+          athlete_group_id
+        ),
+        workout_log_exercises(
+          id,
+          exercise_id,
+          exercise_order,
+          superset_id,
+          notes,
+          session_plan_exercise_id,
+          exercise:exercises(
+            id,
+            name,
+            description,
+            video_url,
+            exercise_type:exercise_types(id, type),
+            unit:units(id, name)
+          ),
+          workout_log_sets(
+            id,
+            set_index,
+            reps,
+            weight,
+            distance,
+            performing_time,
+            completed,
+            workout_log_exercise_id
+          )
+        ),
+        workout_log_sets(
+          id,
+          set_index,
+          reps,
+          weight,
+          distance,
+          performing_time,
+          completed,
+          workout_log_exercise_id,
+          session_plan_exercise_id
+        )
+      `)
       .eq('id', sessionId)
-      .select()
+      .eq('athlete_id', athlete.id) // Authorization: user can only access their own sessions
       .single()
 
     if (error) {
-      console.error('Error completing session:', error)
-      return { isSuccess: false, message: "Failed to complete session" }
+      if (error.code === 'PGRST116') {
+        return { isSuccess: false, message: "Session not found" }
+      }
+      console.error('[getWorkoutSessionByIdAction] Error:', error)
+      return { isSuccess: false, message: "Failed to fetch session" }
     }
+
+    // 5. Transform and return data
+    // Use type assertion - the select includes all fields needed for the UI
+    const transformedSession = {
+      ...session,
+      session_plan: session.session_plan,
+      athlete: session.athlete,
+      workout_log_exercises: session.workout_log_exercises || [],
+      workout_log_sets: session.workout_log_sets || []
+    } as unknown as WorkoutLogWithDetails
 
     return {
       isSuccess: true,
-      message: "Session completed successfully",
-      data: session
+      message: "Session retrieved successfully",
+      data: transformedSession
     }
   } catch (error) {
-    console.error('Error in completeTrainingSessionAction:', error)
-    return { isSuccess: false, message: "Failed to complete session" }
+    console.error('Error in getWorkoutSessionByIdAction:', error)
+    return { isSuccess: false, message: "Failed to fetch session" }
   }
 }

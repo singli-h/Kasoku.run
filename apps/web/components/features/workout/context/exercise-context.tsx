@@ -35,6 +35,10 @@ interface ExerciseContextValue {
   toggleSetComplete: (exerciseId: number, detailId: number) => void
   toggleVideo: () => void
   setExercises: (exercises: WorkoutExercise[]) => void
+  /** Force immediate save of all pending changes - MUST call before completing session */
+  forceSave: () => Promise<boolean>
+  /** Check if there are pending unsaved changes */
+  hasPendingChanges: () => boolean
 }
 
 // Create context with null initial value
@@ -80,6 +84,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
   const saveQueueRef = useRef<Map<string, any>>(new Map())
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+
   // Workout API for saving data
   const { saveExercisePerformance } = useWorkoutApi()
 
@@ -95,7 +100,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
     try {
       // Process all pending saves
       const savePromises = Array.from(saveQueueRef.current.entries()).map(
-        async ([key, data]) => {
+        async ([_key, data]) => {
           const { exerciseId, setIndex, updates } = data
 
           return await saveExercisePerformance(
@@ -133,42 +138,59 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       clearTimeout(saveTimeoutRef.current)
     }
 
-    // Schedule new save after 2 second delay
+    // Schedule new save after 800ms delay (reduced from 2000ms for better responsiveness)
     saveTimeoutRef.current = setTimeout(() => {
       processSaveQueue()
-    }, 2000)
+    }, 800)
   }, [processSaveQueue])
 
   /**
    * Updates a specific exercise's data and triggers auto-save
+   * OPTIMIZED: Only queues sets that actually changed (comparing with previous state)
    * @param {number} id - Exercise ID to update
    * @param {Partial<WorkoutExercise>} updates - New properties to merge with existing exercise data
    */
   const updateExercise = useCallback((id: number, updates: Partial<WorkoutExercise>) => {
-    setExercises((prevExercises) =>
-      prevExercises.map((exercise) =>
+    setExercises((prevExercises) => {
+      const exerciseData = prevExercises.find(e => e.id === id)
+      if (!exerciseData) return prevExercises
+
+      // OPTIMIZATION: Only queue sets that actually changed
+      if (updates.workout_log_sets && sessionId) {
+        const prevSets = exerciseData.workout_log_sets
+        const newSets = updates.workout_log_sets
+
+        newSets.forEach((newSet, index) => {
+          const prevSet = prevSets[index]
+          // Only queue if set actually changed (compare key fields)
+          const hasChanged = !prevSet ||
+            prevSet.completed !== newSet.completed ||
+            prevSet.reps !== newSet.reps ||
+            prevSet.weight !== newSet.weight ||
+            prevSet.distance !== newSet.distance ||
+            prevSet.performing_time !== newSet.performing_time ||
+            prevSet.rpe !== newSet.rpe
+
+          if (hasChanged) {
+            const queueKey = `${sessionId}-${exerciseData.exercise?.id}-${index}`
+            saveQueueRef.current.set(queueKey, {
+              exerciseId: exerciseData.exercise?.id,
+              setIndex: index + 1,
+              updates: newSet
+            })
+          }
+        })
+
+        if (saveQueueRef.current.size > 0) {
+          scheduleAutoSave()
+        }
+      }
+
+      return prevExercises.map((exercise) =>
         exercise.id === id ? { ...exercise, ...updates } : exercise
       )
-    )
-
-    // If updating workout_log_sets, add to save queue
-    if (updates.workout_log_sets && sessionId) {
-      const exerciseData = exercises.find(e => e.id === id)
-      if (!exerciseData) return
-
-      // Queue each modified detail for save
-      updates.workout_log_sets.forEach((detail, index) => {
-        const queueKey = `${sessionId}-${exerciseData.exercise?.id}-${index}`
-        saveQueueRef.current.set(queueKey, {
-          exerciseId: exerciseData.exercise?.id,
-          setIndex: index + 1,
-          updates: detail
-        })
-      })
-
-      scheduleAutoSave()
-    }
-  }, [exercises, sessionId, scheduleAutoSave])
+    })
+  }, [sessionId, scheduleAutoSave])
 
   /**
    * Toggles completion status of a specific set
@@ -221,6 +243,61 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
     setShowVideo(prev => !prev)
   }, [])
 
+  /**
+   * Force immediate save of all pending changes
+   * MUST be called before completing/finishing a workout session
+   * @returns Promise<boolean> - true if save succeeded, false if failed
+   */
+  const forceSave = useCallback(async (): Promise<boolean> => {
+    // Cancel any pending debounced save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+    }
+
+    // If nothing to save, return success
+    if (saveQueueRef.current.size === 0) {
+      return true
+    }
+
+    setSaveStatus('saving')
+
+    try {
+      // Process all pending saves immediately
+      const savePromises = Array.from(saveQueueRef.current.entries()).map(
+        async ([_key, data]) => {
+          const { exerciseId, setIndex, updates } = data
+          return await saveExercisePerformance(
+            sessionId!,
+            exerciseId,
+            { set_index: setIndex, ...updates },
+            true // immediate save
+          )
+        }
+      )
+
+      await Promise.all(savePromises)
+
+      // Clear the queue
+      saveQueueRef.current.clear()
+      setSaveStatus('saved')
+
+      return true
+    } catch (error) {
+      console.error('[ExerciseProvider] Force save failed:', error)
+      setSaveStatus('error')
+      return false
+    }
+  }, [sessionId, saveExercisePerformance])
+
+  /**
+   * Check if there are pending unsaved changes
+   * @returns boolean - true if there are unsaved changes
+   */
+  const hasPendingChanges = useCallback((): boolean => {
+    return saveQueueRef.current.size > 0 || saveStatus === 'saving'
+  }, [saveStatus])
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -238,7 +315,9 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
     updateExercise,
     toggleSetComplete,
     toggleVideo,
-    setExercises
+    setExercises,
+    forceSave,
+    hasPendingChanges
   }
 
   return (

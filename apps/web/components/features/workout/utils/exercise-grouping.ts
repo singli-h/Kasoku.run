@@ -8,19 +8,20 @@
 
 import type { WorkoutExercise } from "../context/exercise-context"
 
-// Exercise type mapping - matches the old system's ExerciseType enum
+// Exercise type mapping - matches actual database exercise_types table
+// Database schema: 1=Isometric, 2=Plyometric, 3=Gym, 4=Warmup, 5=Circuit, 6=Sprint, 7=Drill
 export enum ExerciseTypeId {
-  WarmUp = 1,
-  Gym = 2,
-  Circuit = 3,
-  Isometric = 4,
-  Plyometric = 5,
+  Isometric = 1,
+  Plyometric = 2,
+  Gym = 3,
+  WarmUp = 4,
+  Circuit = 5,
   Sprint = 6,
   Drill = 7
 }
 
-// Exercise group types
-export type ExerciseGroupType = "warm up" | "gym" | "circuit" | "isometric" | "plyometric" | "sprint" | "drill" | "other" | "gymMerged" | "superset"
+// Exercise group types - unified with exercise type names
+export type ExerciseGroupType = "warmup" | "gym" | "circuit" | "isometric" | "plyometric" | "sprint" | "drill" | "other" | "gymMerged" | "superset"
 
 // Exercise group interface
 export interface ExerciseGroup {
@@ -31,24 +32,25 @@ export interface ExerciseGroup {
 
 /**
  * Maps exercise type ID to group type string
+ * Uses the enum values which match the database exercise_types table
  * @param exerciseTypeId - The exercise type ID from the database
  * @returns The corresponding group type string
  */
 export const getExerciseGroupType = (exerciseTypeId: number): ExerciseGroupType => {
   switch (exerciseTypeId) {
-    case ExerciseTypeId.WarmUp:
-      return "warm up"
-    case ExerciseTypeId.Gym:
-      return "gym"
-    case ExerciseTypeId.Circuit:
-      return "circuit"
-    case ExerciseTypeId.Isometric:
+    case ExerciseTypeId.Isometric: // 1
       return "isometric"
-    case ExerciseTypeId.Plyometric:
+    case ExerciseTypeId.Plyometric: // 2
       return "plyometric"
-    case ExerciseTypeId.Sprint:
+    case ExerciseTypeId.Gym: // 3
+      return "gym"
+    case ExerciseTypeId.WarmUp: // 4
+      return "warmup"
+    case ExerciseTypeId.Circuit: // 5
+      return "circuit"
+    case ExerciseTypeId.Sprint: // 6
       return "sprint"
-    case ExerciseTypeId.Drill:
+    case ExerciseTypeId.Drill: // 7
       return "drill"
     default:
       return "other"

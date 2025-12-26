@@ -71,28 +71,29 @@ type ViewMode = 'grouped' | 'list'
 type SortMode = 'order'
 
 // Clean section configuration - Apple-like design
+// Uses unified exercise type names as section labels
 const SECTION_CONFIG: Record<ExerciseGroupType, {
   label: string
   icon: React.ComponentType<{ className?: string }>
   priority: number
 }> = {
-  "warm up": {
-    label: "Warm Up",
+  "warmup": {
+    label: "Warmup",
     icon: Target,
     priority: 1
   },
   "gym": {
-    label: "Strength Training",
+    label: "Gym",
     icon: Zap,
     priority: 2
   },
   "gymMerged": {
-    label: "Strength Training",
+    label: "Gym",
     icon: Zap,
     priority: 2
   },
   "circuit": {
-    label: "Circuit Training",
+    label: "Circuit",
     icon: Shuffle,
     priority: 3
   },
@@ -112,7 +113,7 @@ const SECTION_CONFIG: Record<ExerciseGroupType, {
     priority: 6
   },
   "drill": {
-    label: "Skill Drills",
+    label: "Drill",
     icon: Target,
     priority: 7
   },
@@ -264,14 +265,18 @@ export function EnhancedExerciseOrganization({
           const configB = SECTION_CONFIG[b.type]
           return configA.priority - configB.priority
         })
-        .map((group) => {
+        .map((group, groupIndex) => {
           const config = SECTION_CONFIG[group.type]
-          const isCollapsed = collapsedSections.has(group.type)
+          // Use unique key combining type and index to handle multiple groups of same type
+          const groupKey = group.type === 'superset' && group.id
+            ? `superset-${group.id}`
+            : `${group.type}-${groupIndex}`
+          const isCollapsed = collapsedSections.has(groupKey)
           const Icon = config.icon
-          
+
           return (
             <motion.div
-              key={group.type}
+              key={groupKey}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
@@ -279,7 +284,7 @@ export function EnhancedExerciseOrganization({
               <div className="card-enhanced border rounded-lg">
                 <div className="p-4">
                   <button
-                    onClick={() => toggleSectionCollapse(group.type)}
+                    onClick={() => toggleSectionCollapse(groupKey)}
                     className="flex items-center justify-between w-full text-left"
                   >
                     <div className="flex items-center gap-3">

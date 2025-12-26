@@ -573,23 +573,65 @@ export async function addExercisePerformanceAction(
       performing_time: setData.performing_time || null
     }
 
-    const { data: detail, error } = await supabase
+    // Check if a set already exists for this exercise and set_index
+    const { data: existingSet } = await supabase
       .from('workout_log_sets')
-      .insert(detailData)
-      .select()
-      .single()
+      .select('id')
+      .eq('workout_log_exercise_id', workoutLogExerciseId)
+      .eq('set_index', setData.set_index)
+      .maybeSingle()
+
+    let detail: ExerciseTrainingDetail | null = null
+    let error: any = null
+
+    if (existingSet) {
+      // Update existing set
+      const { data, error: updateError } = await supabase
+        .from('workout_log_sets')
+        .update({
+          reps: setData.reps || null,
+          weight: setData.weight || null,
+          rest_time: setData.rest_time || null,
+          rpe: setData.rpe || null,
+          tempo: setData.tempo || null,
+          resistance: setData.resistance || null,
+          distance: setData.distance || null,
+          performing_time: setData.performing_time || null
+        })
+        .eq('id', existingSet.id)
+        .select()
+        .single()
+      detail = data
+      error = updateError
+    } else {
+      // Insert new set
+      const { data, error: insertError } = await supabase
+        .from('workout_log_sets')
+        .insert(detailData)
+        .select()
+        .single()
+      detail = data
+      error = insertError
+    }
 
     if (error) {
-      console.error('[addExercisePerformanceAction] Error inserting workout_log_set:', error)
+      console.error('[addExercisePerformanceAction] Error saving workout_log_set:', error)
       return {
         isSuccess: false,
         message: `Failed to add exercise performance: ${error.message}`
       }
     }
 
+    if (!detail) {
+      return {
+        isSuccess: false,
+        message: 'Failed to retrieve saved exercise performance'
+      }
+    }
+
     return {
       isSuccess: true,
-      message: "Exercise performance added successfully",
+      message: existingSet ? "Exercise performance updated successfully" : "Exercise performance added successfully",
       data: detail
     }
   } catch (error) {

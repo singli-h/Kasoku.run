@@ -437,8 +437,221 @@ import { useLoadingState, useButtonLoadingState } from '@/hooks/use-loading-stat
 ))}
 ```
 
+## Pattern 5: Server-Side Search with Pagination
+
+**Use for:** Large datasets that shouldn't be loaded upfront (e.g., exercise library, athlete database)
+
+This pattern combines server-side pagination with React Query caching for efficient, scalable data loading.
+
+### Implementation
+
+**Server Action with Pagination:**
+```typescript
+// actions/library/exercise-actions.ts
+export async function searchExercisesAction(
+  filters: ExerciseFilters
+): Promise<ActionState<PaginatedExercises>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) return { isSuccess: false, message: 'Not authenticated' }
+
+    const limit = filters.limit ?? 20
+    const offset = filters.offset ?? 0
+
+    let query = supabase
+      .from('exercises')
+      .select('*', { count: 'exact' })
+      .order('name')
+      .range(offset, offset + limit - 1)
+
+    // Apply search filter
+    if (filters.search) {
+      query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
+    }
+
+    const { data, error, count } = await query
+
+    return {
+      isSuccess: true,
+      message: 'Exercises retrieved',
+      data: {
+        exercises: data ?? [],
+        total: count ?? 0,
+        hasMore: (offset + limit) < (count ?? 0)
+      }
+    }
+  } catch (error) {
+    console.error('[searchExercisesAction]', error)
+    return { isSuccess: false, message: 'Failed to search exercises' }
+  }
+}
+```
+
+**React Query Hook with Debouncing:**
+```typescript
+// components/features/training/hooks/useExerciseSearch.ts
+export function useExerciseSearch({
+  initialQuery = '',
+  pageSize = 20,
+  debounceMs = 300,
+  enabled = true,
+}: UseExerciseSearchOptions = {}) {
+  const [searchQuery, setSearchQuery] = useState(initialQuery)
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [accumulatedResults, setAccumulatedResults] = useState([])
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery)
+      setCurrentPage(0)
+      setAccumulatedResults([])
+    }, debounceMs)
+    return () => clearTimeout(timer)
+  }, [searchQuery, debounceMs])
+
+  const filters = useMemo(() => ({
+    search: debouncedQuery || undefined,
+    limit: pageSize,
+    offset: currentPage * pageSize,
+  }), [debouncedQuery, pageSize, currentPage])
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['exercises', 'search', filters],
+    queryFn: async () => {
+      const result = await searchExercisesAction(filters)
+      if (!result.isSuccess) throw new Error(result.message)
+      return result.data
+    },
+    staleTime: 5 * 60 * 1000,  // 5 minutes
+    gcTime: 30 * 60 * 1000,    // 30 minutes
+    enabled,
+  })
+
+  // Accumulate for infinite scroll
+  useEffect(() => {
+    if (data?.exercises) {
+      setAccumulatedResults(prev =>
+        currentPage === 0 ? data.exercises : [...prev, ...data.exercises]
+      )
+    }
+  }, [data, currentPage])
+
+  const fetchNextPage = useCallback(() => {
+    if (data?.hasMore && !isFetching) {
+      setCurrentPage(prev => prev + 1)
+    }
+  }, [data?.hasMore, isFetching])
+
+  return {
+    searchQuery,
+    setSearchQuery,
+    results: accumulatedResults,
+    hasMore: data?.hasMore ?? false,
+    isLoading: isLoading && currentPage === 0,
+    fetchNextPage,
+  }
+}
+```
+
+**Component Usage:**
+```tsx
+'use client'
+
+function ExercisePicker({ onSelect }) {
+  const {
+    searchQuery,
+    setSearchQuery,
+    results,
+    hasMore,
+    isLoading,
+    fetchNextPage
+  } = useExerciseSearch({ enabled: isOpen })
+
+  return (
+    <div>
+      <Input
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search exercises..."
+      />
+
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : (
+        <VirtualizedList
+          items={results}
+          renderItem={(item) => (
+            <ExerciseCard exercise={item} onClick={() => onSelect(item)} />
+          )}
+          onEndReached={fetchNextPage}
+          hasMore={hasMore}
+        />
+      )}
+    </div>
+  )
+}
+```
+
+### Key Benefits
+
+1. **Performance**: Only loads data when needed, not at page load
+2. **Scalability**: Handles large datasets (1000+ items) efficiently
+3. **Caching**: React Query caches search results for 5 minutes
+4. **UX**: Debounced input prevents excessive API calls
+5. **Infinite Scroll**: Supports progressive loading with `fetchNextPage`
+
+### When to Use
+
+| Scenario | Pattern |
+|----------|---------|
+| Small dataset (<100 items) | Load upfront with server component |
+| Medium dataset (100-500 items) | Consider either approach |
+| Large dataset (500+ items) | **Use server-side search** |
+| Real-time search needed | **Use server-side search** |
+| Picker/modal component | **Use server-side search** |
+
+### Cache Configuration
+
+```typescript
+const SEARCH_CACHE_CONFIG = {
+  staleTime: 5 * 60 * 1000,   // 5 min - results still valid
+  gcTime: 30 * 60 * 1000,     // 30 min - keep in memory
+}
+```
+
+**Why these values?**
+- Exercise data rarely changes mid-session
+- 5-minute stale time balances freshness with performance
+- 30-minute garbage collection keeps frequently-used searches cached
+
+### Backward Compatibility
+
+Components can support both patterns for gradual migration:
+
+```tsx
+interface PickerProps {
+  /** Pre-loaded exercises (optional - uses server search if not provided) */
+  exercises?: Exercise[]
+}
+
+function ExercisePicker({ exercises: propExercises }: PickerProps) {
+  // Use prop data if provided, otherwise use server search
+  const useServerSearch = !propExercises || propExercises.length === 0
+
+  const { results, ... } = useExerciseSearch({
+    enabled: useServerSearch
+  })
+
+  const displayExercises = useServerSearch ? results : propExercises
+  // ...
+}
+```
+
 ## Related Documentation
 
 - [Performance Optimization](./performance-optimization.md) - Caching and optimization
 - [API Architecture](./api-architecture.md) - API loading patterns
 - [Design System](../design/design-system-overview.md) - UI components
+- [Exercise Library](../features/exercises/exercise-library-overview.md) - Feature documentation

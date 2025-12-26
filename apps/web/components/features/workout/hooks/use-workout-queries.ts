@@ -20,9 +20,9 @@ import {
   getTodayAndOngoingSessionsAction,
   getPastSessionsAction,
   startTrainingSessionAction,
-  completeTrainingSessionAction,
   updateTrainingSessionStatusAction
 } from '@/actions/workout/workout-session-actions'
+import { completeTrainingSessionAction } from '@/actions/sessions/training-session-actions'
 import { WorkoutLogWithDetails } from '@/types/training'
 import { Database } from '@/types/database'
 

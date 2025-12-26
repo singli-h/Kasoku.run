@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workout UI - Lofi Wireframes</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --wire-bg: #f8f9fa;
+      --wire-surface: #ffffff;
+      --wire-border: #dee2e6;
+      --wire-text: #212529;
+      --wire-text-muted: #6c757d;
+      --wire-text-light: #adb5bd;
+      --wire-accent: #4361ee;
+      --wire-accent-light: #e8ecfc;
+      --wire-success: #2d6a4f;
+      --wire-success-light: #d8f3dc;
+      --wire-superset-a: #4361ee;
+      --wire-superset-b: #7209b7;
+      --wire-superset-c: #f72585;
+      --font-mono: 'IBM Plex Mono', monospace;
+      --font-sans: 'IBM Plex Sans', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--wire-bg);
+      color: var(--wire-text);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    /* === HEADER === */
+    .page-header {
+      max-width: 1400px;
+      margin: 0 auto 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 2px solid var(--wire-border);
+    }
+
+    .page-header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .page-header p {
+      color: var(--wire-text-muted);
+      font-size: 1.125rem;
+    }
+
+    /* === SECTION LAYOUT === */
+    .wireframe-section {
+      max-width: 1400px;
+      margin: 0 auto 4rem;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .section-header h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--wire-text-muted);
+    }
+
+    .section-header .device-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0.75rem;
+      background: var(--wire-accent-light);
+      color: var(--wire-accent);
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .section-header .device-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--wire-accent);
+    }
+
+    /* === WIREFRAME GRID === */
+    .wireframe-grid {
+      display: grid;
+      gap: 2rem;
+    }
+
+    .wireframe-grid.two-col {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .wireframe-grid.three-col {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    @media (max-width: 1024px) {
+      .wireframe-grid.three-col {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .wireframe-grid.two-col,
+      .wireframe-grid.three-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* === DEVICE FRAME === */
+    .device-frame {
+      background: var(--wire-surface);
+      border: 2px solid var(--wire-border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+
+    .device-frame.phone {
+      max-width: 375px;
+    }
+
+    .device-frame.tablet {
+      max-width: 768px;
+    }
+
+    .device-frame.desktop {
+      max-width: 100%;
+    }
+
+    .device-notch {
+      height: 24px;
+      background: var(--wire-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .device-notch::before {
+      content: '';
+      width: 80px;
+      height: 6px;
+      background: var(--wire-border);
+      border-radius: 3px;
+    }
+
+    .device-content {
+      padding: 1rem;
+      min-height: 400px;
+    }
+
+    .device-label {
+      text-align: center;
+      padding: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--wire-text-muted);
+      background: var(--wire-bg);
+      border-top: 1px solid var(--wire-border);
+    }
+
+    /* === SESSION HEADER === */
+    .session-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--wire-border);
+      margin-bottom: 1rem;
+    }
+
+    .session-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .session-meta {
+      font-size: 0.75rem;
+      color: var(--wire-text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .session-timer {
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--wire-accent);
+    }
+
+    /* === PROGRESS BAR === */
+    .progress-bar {
+      height: 6px;
+      background: var(--wire-border);
+      border-radius: 3px;
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--wire-accent);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    /* === EXERCISE CARD === */
+    .exercise-card {
+      background: var(--wire-surface);
+      border: 1px solid var(--wire-border);
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+
+    .exercise-card.superset {
+      border-left: 4px solid var(--wire-superset-a);
+    }
+
+    .exercise-card.superset-b {
+      border-left-color: var(--wire-superset-b);
+    }
+
+    .exercise-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.875rem 1rem;
+      background: var(--wire-bg);
+      border-bottom: 1px solid var(--wire-border);
+    }
+
+    .exercise-name {
+      font-weight: 600;
+      font-size: 0.9375rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .superset-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: var(--wire-superset-a);
+      color: white;
+      border-radius: 6px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+    }
+
+    .superset-label.b { background: var(--wire-superset-b); }
+    .superset-label.c { background: var(--wire-superset-c); }
+
+    .expand-icon {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--wire-text-muted);
+      cursor: pointer;
+    }
+
+    /* === COMPACT NOTATION === */
+    .compact-notation {
+      padding: 0.75rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      color: var(--wire-text);
+    }
+
+    .compact-notation .metric {
+      color: var(--wire-accent);
+      font-weight: 500;
+    }
+
+    .compact-notation .achieved {
+      color: var(--wire-success);
+    }
+
+    .compact-progress {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem 0.75rem;
+    }
+
+    .compact-progress-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--wire-border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .compact-progress-fill {
+      height: 100%;
+      background: var(--wire-success);
+      border-radius: 2px;
+    }
+
+    .compact-progress-text {
+      font-size: 0.75rem;
+      color: var(--wire-text-muted);
+      font-weight: 500;
+    }
+
+    /* === EXPANDED SET ROWS === */
+    .set-list {
+      padding: 0.5rem;
+    }
+
+    .set-row {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0.75rem;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      background: var(--wire-bg);
+    }
+
+    .set-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .set-row.active {
+      background: var(--wire-accent-light);
+      border: 1px solid var(--wire-accent);
+    }
+
+    .set-row.completed {
+      background: var(--wire-success-light);
+    }
+
+    .set-number {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--wire-surface);
+      border: 1px solid var(--wire-border);
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .set-row.completed .set-number {
+      background: var(--wire-success);
+      color: white;
+      border-color: var(--wire-success);
+    }
+
+    .set-row.completed .set-number::after {
+      content: '✓';
+    }
+
+    .set-row.completed .set-number span {
+      display: none;
+    }
+
+    .set-details {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .set-prescribed {
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      font-weight: 500;
+    }
+
+    .set-actual {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--wire-success);
+    }
+
+    .set-target {
+      font-size: 0.6875rem;
+      color: var(--wire-text-muted);
+    }
+
+    .set-action {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--wire-border);
+      border-radius: 10px;
+      background: var(--wire-surface);
+      cursor: pointer;
+      font-size: 1.25rem;
+    }
+
+    .set-action.done {
+      background: var(--wire-success);
+      border-color: var(--wire-success);
+      color: white;
+    }
+
+    /* === TABLET: SIDE BY SIDE === */
+    .tablet-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--wire-border);
+    }
+
+    .tablet-column {
+      background: var(--wire-surface);
+      padding: 0.75rem;
+    }
+
+    .column-header {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--wire-text-muted);
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--wire-border);
+    }
+
+    .tablet-set-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.625rem;
+      background: var(--wire-bg);
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+    }
+
+    .tablet-input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px dashed var(--wire-border);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      text-align: center;
+      background: var(--wire-surface);
+    }
+
+    /* === DESKTOP LAYOUT === */
+    .desktop-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 1.5rem;
+      min-height: 500px;
+    }
+
+    .desktop-sidebar {
+      background: var(--wire-bg);
+      border-radius: 12px;
+      padding: 1rem;
+      border: 1px solid var(--wire-border);
+    }
+
+    .sidebar-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .sidebar-title {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--wire-text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .nav-item.active {
+      background: var(--wire-accent-light);
+      color: var(--wire-accent);
+      font-weight: 500;
+    }
+
+    .nav-icon {
+      width: 20px;
+      height: 20px;
+      background: var(--wire-border);
+      border-radius: 4px;
+    }
+
+    .nav-item.active .nav-icon {
+      background: var(--wire-accent);
+    }
+
+    .desktop-main {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .exercise-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    /* === COACH PLANNING === */
+    .planning-toolbar {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: var(--wire-bg);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+
+    .toolbar-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--wire-border);
+      border-radius: 6px;
+      background: var(--wire-surface);
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    .toolbar-btn.primary {
+      background: var(--wire-accent);
+      color: white;
+      border-color: var(--wire-accent);
+    }
+
+    .drag-handle {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      cursor: grab;
+    }
+
+    .drag-handle span {
+      width: 12px;
+      height: 2px;
+      background: var(--wire-text-light);
+      border-radius: 1px;
+    }
+
+    .editable-input {
+      border: 1px dashed var(--wire-accent);
+      background: var(--wire-accent-light);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+    }
+
+    /* === BOTTOM ACTION BAR === */
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background: var(--wire-surface);
+      border-top: 1px solid var(--wire-border);
+      margin-top: auto;
+    }
+
+    .action-btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      border: none;
+    }
+
+    .action-btn.primary {
+      background: var(--wire-accent);
+      color: white;
+    }
+
+    .action-btn.secondary {
+      background: var(--wire-bg);
+      color: var(--wire-text);
+      border: 1px solid var(--wire-border);
+    }
+
+    /* === SUPERSET GROUP === */
+    .superset-group {
+      border: 2px solid var(--wire-superset-a);
+      border-radius: 16px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+
+    .superset-group-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: linear-gradient(90deg, var(--wire-superset-a) 0%, var(--wire-superset-b) 100%);
+      color: white;
+      font-weight: 600;
+      font-size: 0.8125rem;
+    }
+
+    .superset-group-content {
+      padding: 0.75rem;
+    }
+
+    .superset-group .exercise-card {
+      margin-bottom: 0.75rem;
+      border-left: none;
+    }
+
+    .superset-group .exercise-card:last-child {
+      margin-bottom: 0;
+    }
+
+    /* === ANNOTATION CALLOUTS === */
+    .annotation {
+      position: relative;
+      margin: 1rem 0;
+      padding: 1rem;
+      background: #fffbe6;
+      border: 1px solid #ffe066;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+    }
+
+    .annotation::before {
+      content: '💡';
+      position: absolute;
+      top: -10px;
+      left: 12px;
+      background: #fffbe6;
+      padding: 0 4px;
+    }
+
+    .annotation strong {
+      color: #b38600;
+    }
+
+    /* === LEGEND === */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      background: var(--wire-surface);
+      border: 1px solid var(--wire-border);
+      border-radius: 12px;
+      margin-bottom: 2rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8125rem;
+    }
+
+    .legend-swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+
+    .legend-swatch.completed { background: var(--wire-success-light); border: 1px solid var(--wire-success); }
+    .legend-swatch.active { background: var(--wire-accent-light); border: 1px solid var(--wire-accent); }
+    .legend-swatch.pending { background: var(--wire-bg); border: 1px solid var(--wire-border); }
+    .legend-swatch.superset-a { background: var(--wire-superset-a); }
+    .legend-swatch.superset-b { background: var(--wire-superset-b); }
+
+    /* === VBT METRICS BADGE === */
+    .vbt-metrics {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .vbt-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.125rem 0.375rem;
+      background: var(--wire-bg);
+      border: 1px solid var(--wire-border);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--wire-text-muted);
+    }
+
+    .vbt-badge.achieved {
+      background: var(--wire-success-light);
+      border-color: var(--wire-success);
+      color: var(--wire-success);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="page-header">
+    <h1>Workout UI - Lofi Wireframes</h1>
+    <p>Feature 004: Unified Training Component System</p>
+  </header>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-swatch completed"></div>
+      <span>Completed Set</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch active"></div>
+      <span>Active/Current Set</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch pending"></div>
+      <span>Pending Set</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch superset-a"></div>
+      <span>Superset A</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch superset-b"></div>
+      <span>Superset B</span>
+    </div>
+  </div>
+
+  <!-- ========== PHONE VIEWS ========== -->
+  <section class="wireframe-section">
+    <div class="section-header">
+      <h2>Phone Views (Athlete Mode)</h2>
+      <span class="device-badge">375px</span>
+    </div>
+
+    <div class="wireframe-grid three-col">
+
+      <!-- PHONE: COMPACT -->
+      <div class="device-frame phone">
+        <div class="device-notch"></div>
+        <div class="device-content">
+          <div class="session-header">
+            <div>
+              <div class="session-title">Power Session</div>
+              <div class="session-meta">Week 4 · Day 2</div>
+            </div>
+            <div class="session-timer">12:34</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 65%"></div>
+          </div>
+
+          <!-- Superset Group -->
+          <div class="superset-group">
+            <div class="superset-group-header">
+              Superset A · 2 exercises
+            </div>
+            <div class="superset-group-content">
+              <div class="exercise-card">
+                <div class="exercise-header">
+                  <div class="exercise-name">
+                    <span class="superset-label">A1</span>
+                    Half Squat
+                  </div>
+                  <div class="expand-icon">▼</div>
+                </div>
+                <div class="compact-notation">
+                  <span class="metric">3+2+1</span> @ 80-90kg → <span class="achieved">1500W</span>
+                </div>
+                <div class="compact-progress">
+                  <div class="compact-progress-bar">
+                    <div class="compact-progress-fill" style="width: 66%"></div>
+                  </div>
+                  <span class="compact-progress-text">2/3</span>
+                </div>
+              </div>
+
+              <div class="exercise-card">
+                <div class="exercise-header">
+                  <div class="exercise-name">
+                    <span class="superset-label">A2</span>
+                    Box Jumps
+                  </div>
+                  <div class="expand-icon">▼</div>
+                </div>
+                <div class="compact-notation">
+                  <span class="metric">3×5</span> @ 60cm → <span class="achieved">48cm</span>
+                </div>
+                <div class="compact-progress">
+                  <div class="compact-progress-bar">
+                    <div class="compact-progress-fill" style="width: 33%"></div>
+                  </div>
+                  <span class="compact-progress-text">1/3</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Standalone Exercise -->
+          <div class="exercise-card">
+            <div class="exercise-header">
+              <div class="exercise-name">Flying 10m Sprint</div>
+              <div class="expand-icon">▼</div>
+            </div>
+            <div class="compact-notation">
+              <span class="metric">3×</span> 10m @ 95% → <span class="achieved">0.98s</span>
+            </div>
+            <div class="compact-progress">
+              <div class="compact-progress-bar">
+                <div class="compact-progress-fill" style="width: 0%"></div>
+              </div>
+              <span class="compact-progress-text">0/3</span>
+            </div>
+          </div>
+
+        </div>
+        <div class="device-label">Compact View (Overview)</div>
+      </div>
+
+      <!-- PHONE: EXPANDED -->
+      <div class="device-frame phone">
+        <div class="device-notch"></div>
+        <div class="device-content">
+          <div class="session-header">
+            <div>
+              <div class="session-title">Power Session</div>
+              <div class="session-meta">Week 4 · Day 2</div>
+            </div>
+            <div class="session-timer">12:34</div>
+          </div>
+
+          <div class="exercise-card superset">
+            <div class="exercise-header">
+              <div class="exercise-name">
+                <span class="superset-label">A1</span>
+                Half Squat
+              </div>
+              <div class="expand-icon">▲</div>
+            </div>
+
+            <div class="set-list">
+              <!-- Completed Set -->
+              <div class="set-row completed">
+                <div class="set-number"><span>1</span></div>
+                <div class="set-details">
+                  <div class="set-prescribed">3 reps @ 80kg</div>
+                  <div class="set-actual">→ 3 @ 80kg · 1050W · 1.82m/s</div>
+                </div>
+                <div class="set-action done">✓</div>
+              </div>
+
+              <!-- Active Set -->
+              <div class="set-row active">
+                <div class="set-number"><span>2</span></div>
+                <div class="set-details">
+                  <div class="set-prescribed">2 reps @ 85kg</div>
+                  <div class="set-target">Target: 1200W · 1.7m/s</div>
+                </div>
+                <div class="set-action">○</div>
+              </div>
+
+              <!-- Pending Set -->
+              <div class="set-row">
+                <div class="set-number"><span>3</span></div>
+                <div class="set-details">
+                  <div class="set-prescribed">1 rep @ 90kg</div>
+                  <div class="set-target">Target: 1500W · 1.5m/s</div>
+                </div>
+                <div class="set-action">○</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="annotation">
+            <strong>Variable Sets:</strong> Each set has different reps/weight/targets. Pro-level power progression from 80→85→90kg.
+          </div>
+
+        </div>
+        <div class="device-label">Expanded View (Active Logging)</div>
+      </div>
+
+      <!-- PHONE: VBT METRICS -->
+      <div class="device-frame phone">
+        <div class="device-notch"></div>
+        <div class="device-content">
+          <div class="session-header">
+            <div>
+              <div class="session-title">VBT Session</div>
+              <div class="session-meta">Velocity Focus</div>
+            </div>
+            <div class="session-timer">08:15</div>
+          </div>
+
+          <div class="exercise-card">
+            <div class="exercise-header">
+              <div class="exercise-name">Bench Press</div>
+              <div class="expand-icon">▲</div>
+            </div>
+
+            <div class="set-list">
+              <div class="set-row completed">
+                <div class="set-number"><span>1</span></div>
+                <div class="set-details">
+                  <div class="set-prescribed">5 reps @ 70kg</div>
+                  <div class="vbt-metrics">
+                    <span class="vbt-badge achieved">850W ✓</span>
+                    <span class="vbt-badge achieved">0.65m/s ✓</span>
+                    <span class="vbt-badge">RPE 6</span>
+                  </div>
+                </div>
+                <div class="set-action done">✓</div>
+              </div>
+
+              <div class="set-row completed">
+                <div class="set-number"><span>2</span></div>
+                <div class="set-details">
+                  <div class="set-prescribed">5 reps @ 75kg</div>
+                  <div class="vbt-metrics">
+                    <span class="vbt-badge achieved">920W ✓</span>
+                    <span class="vbt-badge">0.58m/s</span>
+                    <span class="vbt-badge">RPE 7</span>
+                  </div>
+                </div>
+                <div class="set-action done">✓</div>
+              </div>
+
+              <div class="set-row active">
+                <div class="set-number"><span>3</span></div>
+                <div class="set-details">
+                  <div class="set-prescribed">3 reps @ 80kg</div>
+                  <div class="set-target">Target: 1000W · 0.50m/s</div>
+                </div>
+                <div class="set-action">○</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="annotation">
+            <strong>VBT Badges:</strong> Power/velocity targets with achieved vs. missed indicators. RPE tracked per set.
+          </div>
+
+        </div>
+        <div class="device-label">VBT Metrics Display</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ========== TABLET VIEW ========== -->
+  <section class="wireframe-section">
+    <div class="section-header">
+      <h2>Tablet View (Side-by-Side)</h2>
+      <span class="device-badge">768px+</span>
+    </div>
+
+    <div class="wireframe-grid">
+      <div class="device-frame tablet">
+        <div class="device-content" style="padding: 1.5rem;">
+          <div class="session-header" style="margin-bottom: 1.5rem;">
+            <div>
+              <div class="session-title">Power Development Session</div>
+              <div class="session-meta">Macrocycle 2 · Week 4 · Day 2</div>
+            </div>
+            <div class="session-timer">18:42</div>
+          </div>
+          <div class="progress-bar" style="margin-bottom: 2rem;">
+            <div class="progress-fill" style="width: 45%"></div>
+          </div>
+
+          <div class="exercise-card superset" style="margin-bottom: 1.5rem;">
+            <div class="exercise-header">
+              <div class="exercise-name">
+                <span class="superset-label">A1</span>
+                Half Squat - Power Progression
+              </div>
+              <div class="expand-icon">▲</div>
+            </div>
+
+            <div class="tablet-layout">
+              <div class="tablet-column">
+                <div class="column-header">Prescribed</div>
+                <div class="tablet-set-row">
+                  <span>1. 3 reps @ 80kg</span>
+                  <span>1000W</span>
+                </div>
+                <div class="tablet-set-row">
+                  <span>2. 2 reps @ 85kg</span>
+                  <span>1200W</span>
+                </div>
+                <div class="tablet-set-row">
+                  <span>3. 1 rep @ 90kg</span>
+                  <span>1500W</span>
+                </div>
+              </div>
+              <div class="tablet-column">
+                <div class="column-header">Actual</div>
+                <div class="tablet-set-row" style="background: var(--wire-success-light);">
+                  <span>3 @ 80kg · 1050W ✓</span>
+                </div>
+                <div class="tablet-set-row" style="background: var(--wire-success-light);">
+                  <span>2 @ 85kg · 1180W ✓</span>
+                </div>
+                <div class="tablet-set-row" style="background: var(--wire-accent-light); border: 1px solid var(--wire-accent);">
+                  <input type="text" class="tablet-input" placeholder="Tap to log...">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="exercise-card superset superset-b">
+            <div class="exercise-header">
+              <div class="exercise-name">
+                <span class="superset-label b">A2</span>
+                Depth Jumps
+              </div>
+              <div class="expand-icon">▼</div>
+            </div>
+            <div class="compact-notation">
+              <span class="metric">3×5</span> @ 40cm drop → height target 55cm
+            </div>
+            <div class="compact-progress">
+              <div class="compact-progress-bar">
+                <div class="compact-progress-fill" style="width: 0%"></div>
+              </div>
+              <span class="compact-progress-text">0/3</span>
+            </div>
+          </div>
+
+          <div class="action-bar">
+            <button class="action-btn secondary">Pause Session</button>
+            <button class="action-btn primary">Complete Session</button>
+          </div>
+        </div>
+        <div class="device-label">Tablet - Prescribed vs Actual (Side by Side)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== DESKTOP VIEW ========== -->
+  <section class="wireframe-section">
+    <div class="section-header">
+      <h2>Desktop Dashboard</h2>
+      <span class="device-badge">1024px+</span>
+    </div>
+
+    <div class="wireframe-grid">
+      <div class="device-frame desktop">
+        <div class="device-content" style="padding: 0;">
+          <div class="desktop-layout">
+
+            <!-- Sidebar -->
+            <div class="desktop-sidebar">
+              <div class="sidebar-section">
+                <div class="sidebar-title">Today's Sessions</div>
+                <div class="nav-item active">
+                  <div class="nav-icon"></div>
+                  <span>Power Session</span>
+                </div>
+                <div class="nav-item">
+                  <div class="nav-icon"></div>
+                  <span>Speed Endurance</span>
+                </div>
+              </div>
+
+              <div class="sidebar-section">
+                <div class="sidebar-title">Quick Stats</div>
+                <div style="padding: 0.75rem; background: var(--wire-surface); border-radius: 8px; border: 1px solid var(--wire-border);">
+                  <div style="font-size: 0.75rem; color: var(--wire-text-muted); margin-bottom: 0.25rem;">Total Volume</div>
+                  <div style="font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono);">4,850 kg</div>
+                </div>
+              </div>
+
+              <div class="sidebar-section">
+                <div class="sidebar-title">Session Timer</div>
+                <div style="text-align: center; padding: 1rem; background: var(--wire-accent-light); border-radius: 8px;">
+                  <div style="font-family: var(--font-mono); font-size: 2rem; font-weight: 600; color: var(--wire-accent);">24:18</div>
+                  <div style="font-size: 0.6875rem; color: var(--wire-text-muted); margin-top: 0.25rem;">ELAPSED</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="desktop-main" style="padding: 1.5rem;">
+              <div class="session-header" style="margin-bottom: 1rem;">
+                <div>
+                  <div class="session-title">Power Development Session</div>
+                  <div class="session-meta">Macrocycle 2 · Week 4 · Day 2 · 6 exercises</div>
+                </div>
+              </div>
+              <div class="progress-bar" style="margin-bottom: 1.5rem;">
+                <div class="progress-fill" style="width: 55%"></div>
+              </div>
+
+              <div class="exercise-grid">
+                <!-- Card 1 -->
+                <div class="exercise-card superset">
+                  <div class="exercise-header">
+                    <div class="exercise-name">
+                      <span class="superset-label">A1</span>
+                      Half Squat
+                    </div>
+                    <div class="expand-icon">▲</div>
+                  </div>
+                  <div class="set-list">
+                    <div class="set-row completed">
+                      <div class="set-number"><span>1</span></div>
+                      <div class="set-details">
+                        <div class="set-prescribed">3 @ 80kg → 1050W</div>
+                      </div>
+                      <div class="set-action done">✓</div>
+                    </div>
+                    <div class="set-row completed">
+                      <div class="set-number"><span>2</span></div>
+                      <div class="set-details">
+                        <div class="set-prescribed">2 @ 85kg → 1180W</div>
+                      </div>
+                      <div class="set-action done">✓</div>
+                    </div>
+                    <div class="set-row active">
+                      <div class="set-number"><span>3</span></div>
+                      <div class="set-details">
+                        <div class="set-prescribed">1 @ 90kg</div>
+                        <div class="set-target">Target: 1500W</div>
+                      </div>
+                      <div class="set-action">○</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="exercise-card superset superset-b">
+                  <div class="exercise-header">
+                    <div class="exercise-name">
+                      <span class="superset-label b">A2</span>
+                      Depth Jumps
+                    </div>
+                    <div class="expand-icon">▼</div>
+                  </div>
+                  <div class="compact-notation">
+                    <span class="metric">3×5</span> @ 40cm drop
+                  </div>
+                  <div class="compact-progress">
+                    <div class="compact-progress-bar">
+                      <div class="compact-progress-fill" style="width: 0%"></div>
+                    </div>
+                    <span class="compact-progress-text">0/3</span>
+                  </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="exercise-card">
+                  <div class="exercise-header">
+                    <div class="exercise-name">Flying 10m Sprint</div>
+                    <div class="expand-icon">▼</div>
+                  </div>
+                  <div class="compact-notation">
+                    <span class="metric">3×</span> 10m @ 95%
+                  </div>
+                  <div class="compact-progress">
+                    <div class="compact-progress-bar">
+                      <div class="compact-progress-fill" style="width: 0%"></div>
+                    </div>
+                    <span class="compact-progress-text">0/3</span>
+                  </div>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="exercise-card">
+                  <div class="exercise-header">
+                    <div class="exercise-name">Hurdle Hops</div>
+                    <div class="expand-icon">▼</div>
+                  </div>
+                  <div class="compact-notation">
+                    <span class="metric">4×6</span> @ 45cm
+                  </div>
+                  <div class="compact-progress">
+                    <div class="compact-progress-bar">
+                      <div class="compact-progress-fill" style="width: 0%"></div>
+                    </div>
+                    <span class="compact-progress-text">0/4</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="action-bar" style="margin-top: 1.5rem; border-radius: 12px;">
+                <button class="action-btn secondary">Pause</button>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button class="action-btn secondary">Add Notes</button>
+                  <button class="action-btn primary">Complete Session</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        <div class="device-label">Desktop Dashboard - Athlete View</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== COACH PLANNING MODE ========== -->
+  <section class="wireframe-section">
+    <div class="section-header">
+      <h2>Coach Planning Mode</h2>
+      <span class="device-badge">Session Planner</span>
+    </div>
+
+    <div class="wireframe-grid">
+      <div class="device-frame desktop">
+        <div class="device-content" style="padding: 1.5rem;">
+
+          <div class="session-header" style="margin-bottom: 1rem;">
+            <div>
+              <div class="session-title">
+                <span style="color: var(--wire-text-muted);">Creating:</span> Power Session
+              </div>
+              <div class="session-meta">Drag to reorder · Click to edit</div>
+            </div>
+          </div>
+
+          <div class="planning-toolbar">
+            <button class="toolbar-btn primary">+ Add Exercise</button>
+            <button class="toolbar-btn">+ Superset</button>
+            <button class="toolbar-btn">Copy from Template</button>
+            <div style="flex: 1;"></div>
+            <button class="toolbar-btn">Preview</button>
+            <button class="toolbar-btn primary">Save Session</button>
+          </div>
+
+          <!-- Editable Exercise -->
+          <div class="exercise-card superset" style="margin-bottom: 1rem;">
+            <div class="exercise-header">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="drag-handle">
+                  <span></span><span></span><span></span>
+                </div>
+                <div class="exercise-name">
+                  <span class="superset-label">A1</span>
+                  <span class="editable-input">Half Squat</span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="toolbar-btn" style="padding: 0.25rem 0.5rem;">+ Set</button>
+                <div class="expand-icon">▲</div>
+              </div>
+            </div>
+
+            <div class="set-list">
+              <div class="set-row">
+                <div class="drag-handle" style="width: 32px;">
+                  <span></span><span></span>
+                </div>
+                <div class="set-details" style="display: flex; gap: 0.75rem; flex-direction: row; align-items: center;">
+                  <span class="editable-input">3</span>
+                  <span style="color: var(--wire-text-muted);">reps @</span>
+                  <span class="editable-input">80kg</span>
+                  <span style="color: var(--wire-text-muted);">target:</span>
+                  <span class="editable-input">1000W</span>
+                  <span class="editable-input">1.8m/s</span>
+                </div>
+                <button class="toolbar-btn" style="padding: 0.25rem 0.5rem; color: #dc3545;">×</button>
+              </div>
+
+              <div class="set-row">
+                <div class="drag-handle" style="width: 32px;">
+                  <span></span><span></span>
+                </div>
+                <div class="set-details" style="display: flex; gap: 0.75rem; flex-direction: row; align-items: center;">
+                  <span class="editable-input">2</span>
+                  <span style="color: var(--wire-text-muted);">reps @</span>
+                  <span class="editable-input">85kg</span>
+                  <span style="color: var(--wire-text-muted);">target:</span>
+                  <span class="editable-input">1200W</span>
+                  <span class="editable-input">1.6m/s</span>
+                </div>
+                <button class="toolbar-btn" style="padding: 0.25rem 0.5rem; color: #dc3545;">×</button>
+              </div>
+
+              <div class="set-row">
+                <div class="drag-handle" style="width: 32px;">
+                  <span></span><span></span>
+                </div>
+                <div class="set-details" style="display: flex; gap: 0.75rem; flex-direction: row; align-items: center;">
+                  <span class="editable-input">1</span>
+                  <span style="color: var(--wire-text-muted);">rep @</span>
+                  <span class="editable-input">90kg</span>
+                  <span style="color: var(--wire-text-muted);">target:</span>
+                  <span class="editable-input">1500W</span>
+                  <span class="editable-input">1.4m/s</span>
+                </div>
+                <button class="toolbar-btn" style="padding: 0.25rem 0.5rem; color: #dc3545;">×</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="annotation">
+            <strong>Coach Planning:</strong> Editable inputs with dashed borders. Drag handles for reordering. Variable sets with different targets per set.
+          </div>
+
+        </div>
+        <div class="device-label">Coach Planning Mode - Editable Session</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SHORTHAND NOTATION EXAMPLES ========== -->
+  <section class="wireframe-section">
+    <div class="section-header">
+      <h2>Shorthand Notation Examples</h2>
+      <span class="device-badge">Print/Export View</span>
+    </div>
+
+    <div class="wireframe-grid two-col">
+
+      <!-- Uniform Sets -->
+      <div class="device-frame" style="max-width: 100%;">
+        <div class="device-content" style="font-family: var(--font-mono); font-size: 0.9375rem; line-height: 2;">
+          <div style="font-weight: 600; margin-bottom: 1rem; font-family: var(--font-sans); font-size: 1rem;">Uniform Sets (Simple)</div>
+          <div style="padding: 1rem; background: var(--wire-bg); border-radius: 8px;">
+            <div>3×10 Back Squat @ 80% (160kg)</div>
+            <div>4×8 Romanian Deadlift @ 70% (100kg)</div>
+            <div>3×12 Leg Press @ 75% (180kg)</div>
+            <div style="margin-top: 0.5rem; color: var(--wire-superset-a);">A1: 3×8 Pull-ups @ BW</div>
+            <div style="color: var(--wire-superset-b);">A2: 3×12 Push-ups @ BW</div>
+          </div>
+        </div>
+        <div class="device-label">Simple SETSxREPS Format</div>
+      </div>
+
+      <!-- Variable Sets -->
+      <div class="device-frame" style="max-width: 100%;">
+        <div class="device-content" style="font-family: var(--font-mono); font-size: 0.875rem; line-height: 1.8;">
+          <div style="font-weight: 600; margin-bottom: 1rem; font-family: var(--font-sans); font-size: 1rem;">Variable Sets (Pro-Level)</div>
+          <div style="padding: 1rem; background: var(--wire-bg); border-radius: 8px;">
+            <div style="font-weight: 600; margin-bottom: 0.5rem;">Half Squat - Power Progression</div>
+            <div style="padding-left: 1rem;">
+              <div>1. 3 @ 80kg → 1000W 1.8m/s</div>
+              <div>2. 2 @ 85kg → 1200W 1.6m/s</div>
+              <div>3. 1 @ 90kg → 1500W 1.4m/s</div>
+            </div>
+            <div style="font-weight: 600; margin: 1rem 0 0.5rem;">Flying Sprint 10m</div>
+            <div style="padding-left: 1rem;">
+              <div>1. 10m @ 95% → 1.02s</div>
+              <div>2. 10m @ 97% → 0.98s</div>
+              <div>3. 10m @ 100% → 0.95s</div>
+            </div>
+          </div>
+        </div>
+        <div class="device-label">Per-Set Variables Format</div>
+      </div>
+
+      <!-- Ultra Compact -->
+      <div class="device-frame" style="max-width: 100%;">
+        <div class="device-content" style="font-family: var(--font-mono); font-size: 0.9375rem; line-height: 2;">
+          <div style="font-weight: 600; margin-bottom: 1rem; font-family: var(--font-sans); font-size: 1rem;">Ultra-Compact (List View)</div>
+          <div style="padding: 1rem; background: var(--wire-bg); border-radius: 8px;">
+            <div>Half Squat: <span style="color: var(--wire-accent);">3+2+1</span> @ 80-85-90kg</div>
+            <div>Flying 10m: <span style="color: var(--wire-accent);">3×</span> @ 0.95-1.02s</div>
+            <div>Box Jump: <span style="color: var(--wire-accent);">4×5</span> @ 60cm H:48-52cm</div>
+            <div>Bench T:3-1-2-0: <span style="color: var(--wire-accent);">3×8</span> @ 80kg RPE 7</div>
+          </div>
+        </div>
+        <div class="device-label">Ultra-Compact with Ranges</div>
+      </div>
+
+      <!-- With All Metrics -->
+      <div class="device-frame" style="max-width: 100%;">
+        <div class="device-content" style="font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.7;">
+          <div style="font-weight: 600; margin-bottom: 1rem; font-family: var(--font-sans); font-size: 1rem;">Full Metrics (VBT Session)</div>
+          <div style="padding: 1rem; background: var(--wire-bg); border-radius: 8px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--wire-border); text-align: left;">
+                  <th style="padding: 0.5rem;">Exercise</th>
+                  <th>Set</th>
+                  <th>Reps</th>
+                  <th>Weight</th>
+                  <th>Power</th>
+                  <th>Velocity</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td style="padding: 0.25rem 0.5rem;">Half Squat</td><td>1</td><td>3</td><td>80kg</td><td style="color: var(--wire-success);">1050W</td><td>1.82m/s</td></tr>
+                <tr><td></td><td>2</td><td>2</td><td>85kg</td><td style="color: var(--wire-success);">1180W</td><td>1.65m/s</td></tr>
+                <tr><td></td><td>3</td><td>1</td><td>90kg</td><td>-</td><td>-</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="device-label">Tabular Format (Export/Print)</div>
+      </div>
+
+    </div>
+  </section>
+
+</body>
+</html>

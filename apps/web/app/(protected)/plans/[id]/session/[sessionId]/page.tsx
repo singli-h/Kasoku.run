@@ -1,12 +1,20 @@
+/**
+ * Session Planner Page
+ *
+ * Uses the new unified training components (SessionPlannerV2)
+ * which provides a mobile-first, section-based exercise organization.
+ *
+ * NOTE: Exercise library is now loaded on-demand via server-side search
+ * in ExercisePickerSheet for better performance with large libraries.
+ */
+
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { UnifiedPageSkeleton } from "@/components/layout"
-import { SessionPlannerClient } from "@/components/features/plans/session-planner/SessionPlannerClient"
+import { SessionPlannerV2 } from "@/components/features/training"
 import { SessionAssistantWrapper } from "./SessionAssistantWrapper"
 import { getSessionPlanByIdAction } from "@/actions/library/exercise-actions"
-import { getExercisesAction } from "@/actions/library/exercise-actions"
-import { getExerciseTypesAction } from "@/actions/library/exercise-actions"
-import type { SessionExercise, ExerciseLibraryItem } from "@/components/features/plans/session-planner/types"
+import type { SessionExercise } from "@/components/features/plans/session-planner/types"
 
 interface PageProps {
   params: Promise<{ id: string; sessionId: string }>
@@ -32,7 +40,7 @@ function transformSessionData(backendData: any): {
     day: backendData.day,
     is_template: backendData.is_template,
     estimatedDuration: null, // Will be calculated client-side
-      notes: null,
+    notes: null,
   }
 
   // Transform exercise presets to SessionExercise format
@@ -78,48 +86,13 @@ function transformSessionData(backendData: any): {
   return { session, exercises }
 }
 
-/**
- * Transform exercise library data to ExerciseLibraryItem format
- */
-function transformExerciseLibrary(backendData: any[]): ExerciseLibraryItem[] {
-  return backendData.map((exercise) => ({
-    id: exercise.id,
-    name: exercise.name,
-    description: exercise.description,
-    exercise_type_id: exercise.exercise_type_id,
-    type: getExerciseTypeFromId(exercise.exercise_type_id),
-    category: exercise.exercise_type?.type || "other",
-    isFavorite: false, // Default for now
-  }))
-}
-
-/**
- * Map exercise type ID to type string
- */
-function getExerciseTypeFromId(typeId: number | null): ExerciseLibraryItem["type"] {
-  const typeMap: Record<number, ExerciseLibraryItem["type"]> = {
-    1: "warmup",
-    2: "gym",
-    3: "circuit",
-    4: "isometric",
-    5: "plyometric",
-    6: "sprint",
-    7: "drill",
-  }
-  return typeMap[typeId || 0] || "other"
-}
-
 export default async function SessionPlannerRoute({ params }: PageProps) {
   const resolvedParams = await params
   const planId = resolvedParams.id
   const sessionId = Number(resolvedParams.sessionId)
 
-  // Load session data, exercise library, and exercise types in parallel
-  const [sessionResult, exercisesResult, exerciseTypesResult] = await Promise.all([
-    getSessionPlanByIdAction(sessionId),
-    getExercisesAction(),
-    getExerciseTypesAction(),
-  ])
+  // Load session data only - exercise library is loaded on-demand via server-side search
+  const sessionResult = await getSessionPlanByIdAction(sessionId)
 
   // Handle session not found
   if (!sessionResult.isSuccess || !sessionResult.data) {
@@ -127,28 +100,18 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
     notFound()
   }
 
-  // Handle exercise library errors gracefully
-  const exerciseLibrary = exercisesResult.isSuccess
-    ? transformExerciseLibrary(exercisesResult.data)
-    : []
-
-  const exerciseTypes = exerciseTypesResult.isSuccess
-    ? exerciseTypesResult.data
-    : []
-
   // Transform session data to client format
   const { session, exercises } = transformSessionData(sessionResult.data)
 
   return (
     <>
       <Suspense fallback={<UnifiedPageSkeleton title="Session Planner" />}>
-        <SessionPlannerClient
+        <SessionPlannerV2
           planId={planId}
           sessionId={sessionId}
           initialSession={session}
-          initialExercises={exercises}
-          exerciseLibrary={exerciseLibrary}
-          exerciseTypes={exerciseTypes}
+          initialExercises={exercises as any}
+          exerciseLibrary={[]} // Empty - uses server-side search in picker
         />
       </Suspense>
 
@@ -157,7 +120,7 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
         sessionId={sessionId}
         planId={planId}
         exercises={exercises}
-        exerciseLibrary={exerciseLibrary}
+        exerciseLibrary={[]} // Empty - uses server-side search in picker
       />
     </>
   )
