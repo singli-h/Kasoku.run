@@ -95,8 +95,7 @@ function getSection(exercise: SessionPlannerExercise): string {
  * Convert session planner exercise to TrainingExercise
  */
 export function sessionExerciseToTraining(
-  exercise: SessionPlannerExercise,
-  expandedIds: Set<string | number> = new Set()
+  exercise: SessionPlannerExercise
 ): TrainingExercise {
   const sets: TrainingSet[] = exercise.sets.map((set, idx) => ({
     id: set.id,
@@ -126,7 +125,8 @@ export function sessionExerciseToTraining(
     supersetId: exercise.superset_id,
     notes: exercise.notes,
     sets,
-    expanded: expandedIds.has(exercise.id) || !exercise.isCollapsed,
+    // Default to expanded if isCollapsed is undefined, otherwise respect isCollapsed
+    expanded: exercise.isCollapsed === undefined ? true : !exercise.isCollapsed,
     exerciseTypeId: exercise.exercise?.exercise_type_id ?? undefined,
   }
 }
@@ -135,11 +135,10 @@ export function sessionExerciseToTraining(
  * Convert multiple session planner exercises to TrainingExercises
  */
 export function sessionExercisesToTraining(
-  exercises: SessionPlannerExercise[],
-  expandedIds: Set<string | number> = new Set()
+  exercises: SessionPlannerExercise[]
 ): TrainingExercise[] {
   return exercises
-    .map(ex => sessionExerciseToTraining(ex, expandedIds))
+    .map(ex => sessionExerciseToTraining(ex))
     .sort((a, b) => a.exerciseOrder - b.exerciseOrder)
 }
 

@@ -20,7 +20,6 @@ export interface ExerciseCardProps {
   onAddSet?: () => void
   onRemoveSet?: (setId: string | number) => void
   onRemoveExercise?: () => void
-  onUpdateName?: (name: string) => void
   // Set reordering
   onReorderSets?: (fromIndex: number, toIndex: number) => void
   // Exercise drag-and-drop
@@ -35,7 +34,7 @@ export interface ExerciseCardProps {
  * ExerciseCard - Unified exercise card for both athlete and coach views
  *
  * - Athlete view: Tappable to expand, shows progress, completion toggle per set
- * - Coach view: Draggable for reordering, editable name, add/remove sets
+ * - Coach view: Draggable for reordering, add/remove sets
  */
 export function ExerciseCard({
   exercise,
@@ -49,7 +48,6 @@ export function ExerciseCard({
   onAddSet,
   onRemoveSet,
   onRemoveExercise,
-  onUpdateName,
   onReorderSets,
   isDragging,
   onDragStart,
@@ -211,18 +209,8 @@ export function ExerciseCard({
             </button>
 
             <div className="flex-1 min-w-0">
-              {isAthlete ? (
-                <h3 className="text-sm font-medium truncate">{exercise.name}</h3>
-              ) : (
-                <input
-                  type="text"
-                  value={exercise.name}
-                  onChange={(e) => onUpdateName?.(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  className="text-sm font-medium bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-1 -ml-1 w-full"
-                />
-              )}
+              {/* Exercise name is always read-only - comes from exercise library */}
+              <h3 className="text-sm font-medium truncate">{exercise.name}</h3>
               <p className="text-xs text-muted-foreground truncate">
                 {formatShorthand(exercise)}
               </p>

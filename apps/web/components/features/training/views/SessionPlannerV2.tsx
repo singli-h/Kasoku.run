@@ -63,7 +63,6 @@ export function SessionPlannerV2({
 
   // State
   const [exercises, setExercises] = useState<SessionPlannerExercise[]>(initialExercises)
-  const [expandedIds, setExpandedIds] = useState<Set<string | number>>(new Set())
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
@@ -74,8 +73,8 @@ export function SessionPlannerV2({
 
   // Convert to training exercises for rendering
   const trainingExercises = useMemo(() => {
-    return sessionExercisesToTraining(exercises, expandedIds)
-  }, [exercises, expandedIds])
+    return sessionExercisesToTraining(exercises)
+  }, [exercises])
 
   // Transform exercise library to the format WorkoutView expects
   const exerciseLibraryItems = useMemo(() => {
@@ -119,19 +118,8 @@ export function SessionPlannerV2({
     }
   }, [historyIndex, history])
 
-  // Handle toggle expand
+  // Handle toggle expand - updates isCollapsed on the exercise
   const handleToggleExpand = useCallback((exerciseId: number | string) => {
-    setExpandedIds(prev => {
-      const next = new Set(prev)
-      if (next.has(exerciseId)) {
-        next.delete(exerciseId)
-      } else {
-        next.add(exerciseId)
-      }
-      return next
-    })
-
-    // Also update isCollapsed in exercises
     setExercises(prev => prev.map(ex =>
       ex.id === exerciseId ? { ...ex, isCollapsed: !ex.isCollapsed } : ex
     ))
@@ -262,9 +250,7 @@ export function SessionPlannerV2({
     const newExercises = [...exercises, newExercise]
     setExercises(newExercises)
     saveToHistory(newExercises)
-
-    // Expand the new exercise
-    setExpandedIds(prev => new Set([...prev, newExercise.id]))
+    // New exercise starts expanded (isCollapsed: false set above)
   }, [exercises, exerciseLibrary, sessionId, saveToHistory])
 
   // Handle remove exercise
@@ -273,20 +259,6 @@ export function SessionPlannerV2({
     setExercises(newExercises)
     saveToHistory(newExercises)
   }, [exercises, saveToHistory])
-
-  // Handle update exercise name
-  const handleUpdateExerciseName = useCallback((exerciseId: number | string, name: string) => {
-    setExercises(prev => {
-      const newExercises = prev.map(ex =>
-        ex.id === exerciseId && ex.exercise
-          ? { ...ex, exercise: { ...ex.exercise, name } }
-          : ex
-      )
-      // Don't save to history for name changes (too granular)
-      return newExercises
-    })
-    setHasUnsavedChanges(true)
-  }, [])
 
   // Handle reorder sets
   const handleReorderSets = useCallback((exerciseId: number | string, fromIndex: number, toIndex: number) => {
@@ -427,7 +399,6 @@ export function SessionPlannerV2({
           onRemoveSet={handleRemoveSet}
           onAddExercise={handleAddExercise}
           onRemoveExercise={handleRemoveExercise}
-          onUpdateExerciseName={handleUpdateExerciseName}
           onReorderSets={handleReorderSets}
           onFinishSession={handleSave}
           onSaveSession={handleSave}

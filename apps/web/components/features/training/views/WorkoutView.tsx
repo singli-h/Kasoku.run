@@ -49,7 +49,6 @@ export interface WorkoutViewProps {
   onRemoveSet?: (exerciseId: number | string, setId: number | string) => void
   onAddExercise?: (exercise: ExerciseLibraryItem, section: string) => void
   onRemoveExercise?: (exerciseId: number | string) => void
-  onUpdateExerciseName?: (exerciseId: number | string, name: string) => void
   onReorderSets?: (exerciseId: number | string, fromIndex: number, toIndex: number) => void
   onReorderExercises?: (fromId: number | string, toId: number | string) => void
   onFinishSession?: () => void
@@ -85,7 +84,6 @@ export function WorkoutView({
   onRemoveSet,
   onAddExercise,
   onRemoveExercise,
-  onUpdateExerciseName,
   onReorderSets,
   onReorderExercises,
   onFinishSession,
@@ -320,7 +318,6 @@ export function WorkoutView({
                                 onAddSet={() => onAddSet?.(ex.id)}
                                 onRemoveSet={(setId) => onRemoveSet?.(ex.id, setId)}
                                 onRemoveExercise={() => onRemoveExercise?.(ex.id)}
-                                onUpdateName={(name) => onUpdateExerciseName?.(ex.id, name)}
                                 onReorderSets={(from, to) => onReorderSets?.(ex.id, from, to)}
                                 isDragging={draggingExerciseId === ex.id}
                                 onDragStart={handleExerciseDragStart}
@@ -345,7 +342,6 @@ export function WorkoutView({
                           onAddSet={() => onAddSet?.(item.id)}
                           onRemoveSet={(setId) => onRemoveSet?.(item.id, setId)}
                           onRemoveExercise={() => onRemoveExercise?.(item.id)}
-                          onUpdateName={(name) => onUpdateExerciseName?.(item.id, name)}
                           onReorderSets={(from, to) => onReorderSets?.(item.id, from, to)}
                           isDragging={draggingExerciseId === item.id}
                           onDragStart={handleExerciseDragStart}
@@ -374,18 +370,16 @@ export function WorkoutView({
         </button>
       )}
 
-      {/* Exercise Picker Sheet */}
-      {exerciseLibrary.length > 0 && (
-        <ExercisePickerSheet
-          isOpen={showExercisePicker}
-          onClose={() => setShowExercisePicker(false)}
-          onSelectExercise={(exercise, section) => {
-            onAddExercise?.(exercise, section)
-          }}
-          exercises={exerciseLibrary}
-          recentExerciseIds={recentExerciseIds}
-        />
-      )}
+      {/* Exercise Picker Sheet - Always render, uses server-side search when exercises empty */}
+      <ExercisePickerSheet
+        isOpen={showExercisePicker}
+        onClose={() => setShowExercisePicker(false)}
+        onSelectExercise={(exercise, section) => {
+          onAddExercise?.(exercise, section)
+        }}
+        exercises={exerciseLibrary}
+        recentExerciseIds={recentExerciseIds}
+      />
 
       {/* Session Completion Modal */}
       <SessionCompletionModal
