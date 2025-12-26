@@ -221,10 +221,8 @@ function SessionAssistantContent({
       const supabase = createClientSupabaseClient(getTokenRef.current)
 
       try {
-        // toolCall may have 'args' or 'input' depending on the SDK version
-        const toolArgs = (toolCall as unknown as { args?: unknown; input?: unknown }).args
-          ?? (toolCall as unknown as { input?: unknown }).input
-          ?? {}
+        // AI SDK 6 uses 'input' for tool arguments
+        const toolArgs = (toolCall as { input?: unknown }).input ?? {}
 
         const result = await handleToolCall(
           toolCall.toolName,
