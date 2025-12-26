@@ -9,10 +9,14 @@
  * - Tool handler for processing AI tool calls
  * - ChatDrawer and ApprovalBanner UI
  *
+ * Supports two modes:
+ * - Overlay mode (default): ApprovalBanner fixed at bottom
+ * - Inline mode: Proposals rendered via InlineProposalSection elsewhere
+ *
  * @see specs/002-ai-session-assistant/reference/20251221-changeset-architecture.md section 5
  */
 
-import { useCallback, useState, useMemo, useRef } from 'react'
+import { useCallback, useState, useMemo, useRef, useEffect } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from 'ai'
 import { useAuth } from '@clerk/nextjs'
@@ -25,6 +29,7 @@ import { buildRejectionFollowUpPrompt, buildExecutionFailurePrompt } from '@/lib
 import { createClientSupabaseClient } from '@/lib/supabase-client'
 import { ChatDrawer, ChatTrigger } from './ChatDrawer'
 import { ApprovalBanner } from './ApprovalBanner'
+import { SessionAssistantContext } from './SessionAssistantContext'
 import type { SessionExercise, ExerciseLibraryItem } from '@/components/features/plans/session-planner/types'
 import type { ExecutionError } from '@/lib/changeset/types'
 
@@ -43,6 +48,22 @@ interface SessionAssistantProps {
 
   /** Optional callback when exercises are modified */
   onExercisesChange?: (exercises: SessionExercise[]) => void
+
+  /**
+   * Use inline mode for proposals.
+   * When true, the overlay ApprovalBanner is hidden.
+   * Use InlineProposalSection component to display proposals.
+   */
+  useInlineMode?: boolean
+
+  /**
+   * Auto-collapse chat when proposals are pending.
+   * Only applies when useInlineMode is true.
+   */
+  autoCollapseChat?: boolean
+
+  /** Children to render inside the context provider */
+  children?: React.ReactNode
 }
 
 /**
@@ -65,6 +86,9 @@ function SessionAssistantContent({
   sessionId,
   exercises,
   onExercisesChange,
+  useInlineMode = false,
+  autoCollapseChat = true,
+  children,
 }: SessionAssistantProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [showBanner, setShowBanner] = useState(false)
@@ -79,6 +103,13 @@ function SessionAssistantContent({
   } | null>(null)
 
   const changeSet = useChangeSet()
+
+  // Auto-collapse chat when proposals are pending (inline mode only)
+  useEffect(() => {
+    if (useInlineMode && autoCollapseChat && showBanner) {
+      setDrawerOpen(false)
+    }
+  }, [useInlineMode, autoCollapseChat, showBanner])
 
   // Get Clerk auth for Supabase client
   const { getToken } = useAuth()
@@ -291,8 +322,37 @@ function SessionAssistantContent({
     setPendingToolCall(null)
   }, [pendingToolCall, addToolOutput, changeSet])
 
+  // Context value for inline proposal section
+  const contextValue = useMemo(
+    () => ({
+      hasPendingProposals: showBanner && !!changeSet.changeset,
+      changeset: changeSet.changeset,
+      isExecuting,
+      executionError,
+      isChatOpen: drawerOpen,
+      openChat: () => setDrawerOpen(true),
+      closeChat: () => setDrawerOpen(false),
+      approve: handleApprove,
+      regenerate: handleRegenerate,
+      dismiss: handleDismiss,
+    }),
+    [
+      showBanner,
+      changeSet.changeset,
+      isExecuting,
+      executionError,
+      drawerOpen,
+      handleApprove,
+      handleRegenerate,
+      handleDismiss,
+    ]
+  )
+
   return (
-    <>
+    <SessionAssistantContext.Provider value={contextValue}>
+      {/* Children (for custom layouts with inline proposals) */}
+      {children}
+
       {/* Chat trigger button */}
       <ChatTrigger
         onClick={() => setDrawerOpen(true)}
@@ -312,8 +372,8 @@ function SessionAssistantContent({
         onStop={stop}
       />
 
-      {/* Approval banner */}
-      {showBanner && changeSet.changeset && (
+      {/* Approval banner (overlay mode only) */}
+      {!useInlineMode && showBanner && changeSet.changeset && (
         <ApprovalBanner
           changeset={changeSet.changeset}
           onApprove={handleApprove}
@@ -323,6 +383,6 @@ function SessionAssistantContent({
           executionError={executionError}
         />
       )}
-    </>
+    </SessionAssistantContext.Provider>
   )
 }

@@ -4,6 +4,11 @@
  * Uses the new unified training components (SessionPlannerV2)
  * which provides a mobile-first, section-based exercise organization.
  *
+ * AI Assistant Integration:
+ * - Uses inline mode for proposals (displayed on page, not overlay)
+ * - Chat drawer auto-collapses when proposals are pending
+ * - InlineProposalSlot renders the proposal section above exercise list
+ *
  * NOTE: Exercise library is now loaded on-demand via server-side search
  * in ExercisePickerSheet for better performance with large libraries.
  */
@@ -12,7 +17,7 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { UnifiedPageSkeleton } from "@/components/layout"
 import { SessionPlannerV2 } from "@/components/features/training"
-import { SessionAssistantWrapper } from "./SessionAssistantWrapper"
+import { SessionAssistantWrapper, InlineProposalSlot } from "./SessionAssistantWrapper"
 import { getSessionPlanByIdAction } from "@/actions/library/exercise-actions"
 import type { SessionExercise } from "@/components/features/plans/session-planner/types"
 
@@ -111,7 +116,17 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
   const { session, exercises } = transformSessionData(sessionResult.data)
 
   return (
-    <>
+    <SessionAssistantWrapper
+      sessionId={sessionId}
+      planId={planId}
+      exercises={exercises}
+      exerciseLibrary={[]} // Empty - uses server-side search in picker
+      useInlineMode={true}
+    >
+      {/* Inline AI Proposals - shown when AI has pending changes */}
+      <InlineProposalSlot className="mb-4" />
+
+      {/* Session Planner */}
       <Suspense fallback={<UnifiedPageSkeleton title="Session Planner" />}>
         <SessionPlannerV2
           planId={planId}
@@ -121,14 +136,6 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
           exerciseLibrary={[]} // Empty - uses server-side search in picker
         />
       </Suspense>
-
-      {/* AI Session Assistant - provides chat drawer and approval banner */}
-      <SessionAssistantWrapper
-        sessionId={sessionId}
-        planId={planId}
-        exercises={exercises}
-        exerciseLibrary={[]} // Empty - uses server-side search in picker
-      />
-    </>
+    </SessionAssistantWrapper>
   )
 }

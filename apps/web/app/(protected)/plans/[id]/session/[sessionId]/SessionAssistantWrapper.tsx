@@ -6,11 +6,15 @@
  * Client-side wrapper that provides the ChangeSetProvider context
  * and integrates the AI assistant into the session planner page.
  *
+ * Supports two modes:
+ * - Overlay mode (default): ApprovalBanner fixed at bottom
+ * - Inline mode: Proposals rendered via ConnectedInlineProposalSection
+ *
  * @see specs/002-ai-session-assistant/reference/20251221-session-ui-integration.md
  */
 
 import { ChangeSetProvider } from '@/lib/changeset/ChangeSetContext'
-import { SessionAssistant } from '@/components/features/ai-assistant'
+import { SessionAssistant, ConnectedInlineProposalSection } from '@/components/features/ai-assistant'
 import type {
   SessionExercise,
   ExerciseLibraryItem,
@@ -31,6 +35,17 @@ interface SessionAssistantWrapperProps {
 
   /** Callback when exercises are modified by AI */
   onExercisesChange?: (exercises: SessionExercise[]) => void
+
+  /**
+   * Use inline mode for proposals.
+   * When true, proposals are displayed via ConnectedInlineProposalSection
+   * instead of the overlay ApprovalBanner.
+   * @default true
+   */
+  useInlineMode?: boolean
+
+  /** Children to render (optional - for custom layouts) */
+  children?: React.ReactNode
 }
 
 export function SessionAssistantWrapper({
@@ -39,6 +54,8 @@ export function SessionAssistantWrapper({
   exercises,
   exerciseLibrary,
   onExercisesChange,
+  useInlineMode = true,
+  children,
 }: SessionAssistantWrapperProps) {
   return (
     <ChangeSetProvider>
@@ -48,7 +65,21 @@ export function SessionAssistantWrapper({
         exercises={exercises}
         exerciseLibrary={exerciseLibrary}
         onExercisesChange={onExercisesChange}
-      />
+        useInlineMode={useInlineMode}
+        autoCollapseChat={useInlineMode}
+      >
+        {children}
+      </SessionAssistant>
     </ChangeSetProvider>
   )
+}
+
+/**
+ * InlineProposalSlot
+ *
+ * A convenience component to render the inline proposal section.
+ * Must be used inside SessionAssistantWrapper.
+ */
+export function InlineProposalSlot({ className }: { className?: string }) {
+  return <ConnectedInlineProposalSection className={className} />
 }
