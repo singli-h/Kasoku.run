@@ -1,7 +1,7 @@
 # Kasoku Design System Overview
 
 ## Overview
-Kasoku is a comprehensive AI-powered fitness and running training platform built with Next.js 15, featuring a sophisticated training periodization system, real-time performance tracking, and personalized coaching capabilities. The application serves both athletes and coaches with role-based access control and comprehensive workout management.
+Kasoku is a comprehensive AI-powered fitness and running training platform built with Next.js 16, featuring a sophisticated training periodization system, real-time performance tracking, and personalized coaching capabilities. The application serves both athletes and coaches with role-based access control and comprehensive workout management.
 
 ## Design Philosophy
 
@@ -22,28 +22,31 @@ The application now features a centralized layout system that eliminates redunda
 - **Consistent Error Handling**: Centralized error states with retry functionality
 - **Responsive Design**: Mobile-first approach with proper breakpoints
 
-For detailed information about the layout system, see [Unified Layout System Documentation](./unified-layout-system.md).
-Technology Stack
-Frontend
-Framework: Next.js 15.1+ with App Router
-UI Library: React 19+
-Styling: Tailwind CSS 3.3.2 with custom animations
-Component Library: Radix UI primitives with shadcn/ui components
-Animation: Framer Motion 12.6+ for smooth transitions
-Icons: Lucide React for consistent iconography
-State Management: React Context API with custom hooks
-Backend & Database
-Database: Supabase (PostgreSQL) with Row Level Security (RLS)
-Authentication: Clerk 6.16+ with Supabase integration
-API: Next.js API routes with server actions
-Real-time: Supabase real-time subscriptions
-File Storage: Supabase Storage for media assets
-Development Tools
-Language: TypeScript 5.8+
-Linting: ESLint with TypeScript support
-Formatting: Prettier
-Package Manager: npm
-Build Tool: Next.js built-in bundler
+For detailed information about the layout system, see [Layout Design System](./layout-design-system.md) and [Layout System Architecture](../architecture/layout-system.md).
+## Technology Stack
+
+### Frontend
+- **Framework**: Next.js 16.0.10 with App Router
+- **UI Library**: React 19.2.1
+- **Styling**: Tailwind CSS 4.1.0 with custom animations
+- **Component Library**: Radix UI primitives with shadcn/ui components
+- **Animation**: Framer Motion 12.0.0 for smooth transitions
+- **Icons**: Lucide React for consistent iconography
+- **State Management**: React Context API with custom hooks
+
+### Backend & Database
+- **Database**: Supabase (PostgreSQL) with Row Level Security (RLS)
+- **Authentication**: Clerk 6.36.2 with Supabase integration
+- **API**: Next.js API routes with server actions
+- **Real-time**: Supabase real-time subscriptions
+- **File Storage**: Supabase Storage for media assets
+
+### Development Tools
+- **Language**: TypeScript 5.x
+- **Linting**: ESLint with TypeScript support
+- **Formatting**: Prettier
+- **Package Manager**: npm
+- **Build Tool**: Next.js built-in bundler
 Project Architecture
 Directory Structure
 Apply to index.ts

@@ -3,6 +3,10 @@
  *
  * Converts between session planner data structures and unified TrainingExercise/TrainingSet types.
  * This enables using the new training components for coach session planning.
+ *
+ * ID Format Convention:
+ * - Existing database records: Numeric ID as string (e.g., "123")
+ * - New client-side items: "new_" prefix (e.g., "new_1735123456789")
  */
 
 import type { TrainingExercise, TrainingSet } from '../types'

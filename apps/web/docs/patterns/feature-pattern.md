@@ -54,7 +54,7 @@ All server actions follow the `ActionState<T>` pattern:
 ```typescript
 import { auth } from "@clerk/nextjs/server"
 import { getDbUserId } from "@/lib/user-cache"
-import { getSupabase } from "@/lib/supabase"
+import supabase from "@/lib/supabase-server"
 import { ActionState } from "@/types"
 
 export async function getFeatureDataAction(
@@ -70,8 +70,7 @@ export async function getFeatureDataAction(
     // 2. Get database user ID
     const dbUserId = await getDbUserId(userId)
 
-    // 3. Get Supabase client
-    const supabase = getSupabase()
+    // 3. Use singleton Supabase client (JWT automatically handled)
 
     // 4. Query with RLS (policies handle access control)
     const { data, error } = await supabase
@@ -205,8 +204,8 @@ export async function createFeatureAction(
 
     // Business logic
     const dbUserId = await getDbUserId(userId)
-    const supabase = getSupabase()
     
+    // Use singleton Supabase client (imported at top of file)
     const { data, error } = await supabase
       .from('features')
       .insert({ ...validated, user_id: dbUserId })

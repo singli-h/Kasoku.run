@@ -43,7 +43,7 @@ export async function createMemoryAction(
   }
 
   // RLS will also enforce access, but we validate at application level too
-  const supabase = getSupabase()
+  // Import singleton Supabase client at top: import supabase from "@/lib/supabase-server"
   const { data, error } = await supabase
     .from('ai_memories')
     .insert({ ...input, created_by: dbUserId })
@@ -229,7 +229,7 @@ export async function updateAthleteAction(
   }
 
   // Layer 5: Database operation (RLS will also enforce access)
-  const supabase = getSupabase()
+  // Import singleton Supabase client at top: import supabase from "@/lib/supabase-server"
   const { data, error } = await supabase
     .from('athletes')
     .update(input)

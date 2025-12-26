@@ -1,7 +1,7 @@
 /*
 <ai_context>
 Server actions for SESSION PLANNER page (/plans/[id]/session/[sessionId]).
-Handles SINGLE session editing with full exercise preset management.
+Handles SINGLE session editing with full exercise and set management.
 
 DIFFERENT FROM session-plan-actions.ts which handles MesoWizard MULTIPLE session creation.
 
@@ -9,12 +9,17 @@ This file manages:
 - Loading a single session with all exercises and sets
 - Saving all changes to a session (metadata, exercises, sets) atomically
 - Managing exercise order, supersets, and set parameters
+
+ID Format Convention:
+- Existing database records: Numeric ID as string (e.g., "123")
+- New client-side items: "new_" prefix (e.g., "new_1735123456789")
 </ai_context>
 */
 
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
+import { revalidatePath } from "next/cache"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
@@ -23,10 +28,10 @@ import type { Database } from "@/types/database"
 // Import types from session planner
 import type { SessionExercise, Session } from "@/components/features/plans/session-planner/types"
 
-// Database types
+// Database types - using new schema naming
 type SessionPlan = Database['public']['Tables']['session_plans']['Row']
 type SessionPlanUpdate = Database['public']['Tables']['session_plans']['Update']
-type ExercisePresetInsert = Database['public']['Tables']['session_plan_exercises']['Insert']
+type SessionPlanExerciseInsert = Database['public']['Tables']['session_plan_exercises']['Insert']
 type SessionPlanSetInsert = Database['public']['Tables']['session_plan_sets']['Insert']
 
 // ============================================================================
@@ -37,6 +42,10 @@ type SessionPlanSetInsert = Database['public']['Tables']['session_plan_sets']['I
  * Save complete session with all exercises and sets
  * Handles: session metadata, exercise order, supersets, and all set parameters
  * Performs atomic transaction-like operations for data consistency
+ *
+ * ID Format Convention:
+ * - Existing records: Numeric ID as string (e.g., "123") - will be updated
+ * - New items: "new_" prefix (e.g., "new_1735123456789") - will be inserted
  */
 export async function saveSessionWithExercisesAction(
   sessionId: number,
@@ -55,14 +64,15 @@ export async function saveSessionWithExercisesAction(
 
     const dbUserId = await getDbUserId(userId)
 
-    // Step 1: Verify ownership and get existing session
+    // Step 1: Verify ownership and get existing session with microcycle for path revalidation
     const { data: existingSession, error: fetchError } = await supabase
       .from('session_plans')
-      .select('id, user_id')
+      .select('id, user_id, microcycle_id')
       .eq('id', sessionId)
       .single()
 
     if (fetchError || !existingSession) {
+      console.error('[saveSessionWithExercisesAction] Session not found:', fetchError)
       return {
         isSuccess: false,
         message: "Session not found"
@@ -85,92 +95,103 @@ export async function saveSessionWithExercisesAction(
     if (sessionUpdates.day !== undefined) sessionUpdateData.day = sessionUpdates.day
     if (sessionUpdates.session_mode !== undefined) sessionUpdateData.session_mode = sessionUpdates.session_mode
 
-    const { error: updateError } = await supabase
-      .from('session_plans')
-      .update(sessionUpdateData)
-      .eq('id', sessionId)
-      .eq('user_id', dbUserId)
+    if (Object.keys(sessionUpdateData).length > 0) {
+      const { error: updateError } = await supabase
+        .from('session_plans')
+        .update(sessionUpdateData)
+        .eq('id', sessionId)
+        .eq('user_id', dbUserId)
 
-    if (updateError) {
-      console.error('Error updating session metadata:', updateError)
-      return {
-        isSuccess: false,
-        message: `Failed to update session: ${updateError.message}`
+      if (updateError) {
+        console.error('[saveSessionWithExercisesAction] Error updating session metadata:', updateError)
+        return {
+          isSuccess: false,
+          message: `Failed to update session: ${updateError.message}`
+        }
       }
     }
 
-    // Step 3: Get existing exercise presets to determine what to delete/update/insert
-    const { data: existingPresets, error: presetsError } = await supabase
+    // Step 3: Get existing session_plan_exercises to determine what to delete/update/insert
+    const { data: existingExercises, error: exercisesError } = await supabase
       .from('session_plan_exercises')
       .select('id, exercise_id, exercise_order, superset_id, notes')
       .eq('session_plan_id', sessionId)
 
-    if (presetsError) {
-      console.error('Error fetching existing presets:', presetsError)
+    if (exercisesError) {
+      console.error('[saveSessionWithExercisesAction] Error fetching existing exercises:', exercisesError)
       return {
         isSuccess: false,
-        message: `Failed to fetch existing exercises: ${presetsError.message}`
+        message: `Failed to fetch existing exercises: ${exercisesError.message}`
       }
     }
 
-    // Create a map of existing presets by ID for quick lookup
-    const existingPresetMap = new Map(
-      (existingPresets || []).map(preset => [preset.id, preset])
+    // Create a map of existing exercises by ID for quick lookup
+    const existingExerciseMap = new Map(
+      (existingExercises || []).map(ex => [ex.id, ex])
     )
 
     // Separate exercises into: existing (to update) vs new (to insert)
+    // ID Convention: "new_" prefix = new item, numeric string = existing item
     const exercisesToUpdate: SessionExercise[] = []
     const exercisesToInsert: SessionExercise[] = []
     const exerciseIdsToKeep = new Set<number>()
 
     for (const exercise of exercises) {
-      // Check if this exercise has a database ID (numeric string or number from id field)
-      const dbId = exercise.id.startsWith('ex_') ? null : parseInt(exercise.id)
+      const idStr = String(exercise.id)
+      const isNewExercise = idStr.startsWith('new_') || idStr.startsWith('new-')
 
-      if (dbId && existingPresetMap.has(dbId)) {
-        exercisesToUpdate.push(exercise)
-        exerciseIdsToKeep.add(dbId)
-      } else {
+      if (isNewExercise) {
+        // New exercise - will be inserted
         exercisesToInsert.push(exercise)
-      }
-    }
-
-    // Step 4: Delete exercise presets that are no longer in the list
-    const idsToDelete = Array.from(existingPresetMap.keys()).filter(id => !exerciseIdsToKeep.has(id))
-
-    if (idsToDelete.length > 0) {
-      // First delete session_plan_sets for these presets
-      const { error: deleteDetailsError } = await supabase
-        .from('session_plan_sets')
-        .delete()
-        .in('session_plan_exercise_id', idsToDelete)
-
-      if (deleteDetailsError) {
-        console.error('Error deleting exercise details:', deleteDetailsError)
-        // Continue anyway - CASCADE might handle this
-      }
-
-      // Then delete the session_plan_exercises
-      const { error: deletePresetsError } = await supabase
-        .from('session_plan_exercises')
-        .delete()
-        .in('id', idsToDelete)
-
-      if (deletePresetsError) {
-        console.error('Error deleting exercise presets:', deletePresetsError)
-        return {
-          isSuccess: false,
-          message: `Failed to delete removed exercises: ${deletePresetsError.message}`
+      } else {
+        // Try to parse as existing database ID
+        const dbId = parseInt(idStr, 10)
+        if (!isNaN(dbId) && existingExerciseMap.has(dbId)) {
+          exercisesToUpdate.push(exercise)
+          exerciseIdsToKeep.add(dbId)
+        } else {
+          // ID doesn't match existing records - treat as new
+          exercisesToInsert.push(exercise)
         }
       }
     }
 
-    // Step 5: Update existing exercise presets
-    for (const exercise of exercisesToUpdate) {
-      const dbId = parseInt(exercise.id)
+    // Step 4: Delete session_plan_exercises that are no longer in the list
+    const idsToDelete = Array.from(existingExerciseMap.keys()).filter(id => !exerciseIdsToKeep.has(id))
 
-      // Update the exercise preset
-      const { error: updatePresetError } = await supabase
+    if (idsToDelete.length > 0) {
+      // First delete session_plan_sets for these exercises (CASCADE should handle but be explicit)
+      const { error: deleteSetsError } = await supabase
+        .from('session_plan_sets')
+        .delete()
+        .in('session_plan_exercise_id', idsToDelete)
+
+      if (deleteSetsError) {
+        console.error('[saveSessionWithExercisesAction] Error deleting sets:', deleteSetsError)
+        // Continue - CASCADE might handle this
+      }
+
+      // Then delete the session_plan_exercises
+      const { error: deleteExercisesError } = await supabase
+        .from('session_plan_exercises')
+        .delete()
+        .in('id', idsToDelete)
+
+      if (deleteExercisesError) {
+        console.error('[saveSessionWithExercisesAction] Error deleting exercises:', deleteExercisesError)
+        return {
+          isSuccess: false,
+          message: `Failed to delete removed exercises: ${deleteExercisesError.message}`
+        }
+      }
+    }
+
+    // Step 5: Update existing session_plan_exercises
+    for (const exercise of exercisesToUpdate) {
+      const dbId = parseInt(String(exercise.id), 10)
+
+      // Update the exercise record
+      const { error: updateExerciseError } = await supabase
         .from('session_plan_exercises')
         .update({
           exercise_id: exercise.exercise_id,
@@ -180,30 +201,30 @@ export async function saveSessionWithExercisesAction(
         })
         .eq('id', dbId)
 
-      if (updatePresetError) {
-        console.error(`Error updating exercise preset ${dbId}:`, updatePresetError)
+      if (updateExerciseError) {
+        console.error(`[saveSessionWithExercisesAction] Error updating exercise ${dbId}:`, updateExerciseError)
         return {
           isSuccess: false,
-          message: `Failed to update exercise: ${updatePresetError.message}`
+          message: `Failed to update exercise: ${updateExerciseError.message}`
         }
       }
 
-      // Delete existing session_plan_sets for this preset
-      const { error: deleteOldDetailsError } = await supabase
+      // Delete existing session_plan_sets for this exercise (will re-insert with updated values)
+      const { error: deleteOldSetsError } = await supabase
         .from('session_plan_sets')
         .delete()
         .eq('session_plan_exercise_id', dbId)
 
-      if (deleteOldDetailsError) {
-        console.error(`Error deleting old details for preset ${dbId}:`, deleteOldDetailsError)
+      if (deleteOldSetsError) {
+        console.error(`[saveSessionWithExercisesAction] Error deleting old sets for exercise ${dbId}:`, deleteOldSetsError)
         // Continue anyway
       }
 
-      // Insert new session_plan_sets
+      // Insert updated session_plan_sets
       if (exercise.sets && exercise.sets.length > 0) {
-        const detailsData: SessionPlanSetInsert[] = exercise.sets.map(set => ({
+        const setsData: SessionPlanSetInsert[] = exercise.sets.map((set, idx) => ({
           session_plan_exercise_id: dbId,
-          set_index: set.set_index,
+          set_index: set.set_index ?? idx + 1,
           reps: set.reps,
           weight: set.weight,
           distance: set.distance,
@@ -219,24 +240,24 @@ export async function saveSessionWithExercisesAction(
           resistance: set.resistance
         }))
 
-        const { error: insertDetailsError } = await supabase
+        const { error: insertSetsError } = await supabase
           .from('session_plan_sets')
-          .insert(detailsData)
+          .insert(setsData)
 
-        if (insertDetailsError) {
-          console.error(`Error inserting details for preset ${dbId}:`, insertDetailsError)
+        if (insertSetsError) {
+          console.error(`[saveSessionWithExercisesAction] Error inserting sets for exercise ${dbId}:`, insertSetsError)
           return {
             isSuccess: false,
-            message: `Failed to save exercise sets: ${insertDetailsError.message}`
+            message: `Failed to save exercise sets: ${insertSetsError.message}`
           }
         }
       }
     }
 
-    // Step 6: Insert new exercise presets
+    // Step 6: Insert new session_plan_exercises
     for (const exercise of exercisesToInsert) {
-      // Insert the exercise preset
-      const presetData: ExercisePresetInsert = {
+      // Insert the exercise record
+      const exerciseData: SessionPlanExerciseInsert = {
         session_plan_id: sessionId,
         exercise_id: exercise.exercise_id,
         exercise_order: exercise.exercise_order,
@@ -244,25 +265,25 @@ export async function saveSessionWithExercisesAction(
         notes: exercise.notes
       }
 
-      const { data: newPreset, error: insertPresetError } = await supabase
+      const { data: newExercise, error: insertExerciseError } = await supabase
         .from('session_plan_exercises')
-        .insert(presetData)
+        .insert(exerciseData)
         .select('id')
         .single()
 
-      if (insertPresetError || !newPreset) {
-        console.error('Error inserting exercise preset:', insertPresetError)
+      if (insertExerciseError || !newExercise) {
+        console.error('[saveSessionWithExercisesAction] Error inserting exercise:', insertExerciseError)
         return {
           isSuccess: false,
-          message: `Failed to add exercise: ${insertPresetError?.message}`
+          message: `Failed to add exercise: ${insertExerciseError?.message}`
         }
       }
 
-      // Insert session_plan_sets for the new preset
+      // Insert session_plan_sets for the new exercise
       if (exercise.sets && exercise.sets.length > 0) {
-        const detailsData: SessionPlanSetInsert[] = exercise.sets.map(set => ({
-          session_plan_exercise_id: newPreset.id,
-          set_index: set.set_index,
+        const setsData: SessionPlanSetInsert[] = exercise.sets.map((set, idx) => ({
+          session_plan_exercise_id: newExercise.id,
+          set_index: set.set_index ?? idx + 1,
           reps: set.reps,
           weight: set.weight,
           distance: set.distance,
@@ -278,15 +299,15 @@ export async function saveSessionWithExercisesAction(
           resistance: set.resistance
         }))
 
-        const { error: insertDetailsError } = await supabase
+        const { error: insertSetsError } = await supabase
           .from('session_plan_sets')
-          .insert(detailsData)
+          .insert(setsData)
 
-        if (insertDetailsError) {
-          console.error(`Error inserting details for new preset:`, insertDetailsError)
+        if (insertSetsError) {
+          console.error('[saveSessionWithExercisesAction] Error inserting sets for new exercise:', insertSetsError)
           return {
             isSuccess: false,
-            message: `Failed to save exercise sets: ${insertDetailsError.message}`
+            message: `Failed to save exercise sets: ${insertSetsError.message}`
           }
         }
       }
@@ -300,11 +321,17 @@ export async function saveSessionWithExercisesAction(
       .single()
 
     if (finalFetchError || !updatedSession) {
+      console.error('[saveSessionWithExercisesAction] Error fetching updated session:', finalFetchError)
       return {
         isSuccess: false,
         message: "Session saved but failed to fetch updated data"
       }
     }
+
+    // Step 8: Revalidate cache paths for updated data
+    revalidatePath('/plans')
+    revalidatePath(`/plans/[id]`, 'page')
+    revalidatePath(`/plans/[id]/session/[sessionId]`, 'page')
 
     return {
       isSuccess: true,
@@ -312,7 +339,7 @@ export async function saveSessionWithExercisesAction(
       data: updatedSession
     }
   } catch (error) {
-    console.error('Error in saveSessionWithExercisesAction:', error)
+    console.error('[saveSessionWithExercisesAction] Unexpected error:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`

@@ -115,6 +115,8 @@ export interface ExerciseLibraryItem {
   category: string
   equipment: string
   muscleGroups: string[]
+  /** Database exercise_type_id for proper section assignment */
+  exerciseTypeId?: number
 }
 
 // =============================================================================

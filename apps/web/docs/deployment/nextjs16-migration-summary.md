@@ -55,7 +55,9 @@ The Kasoku platform has been successfully migrated from Next.js 15.2.3 to Next.j
 ### AI & Integrations
 | Package | Version | Status |
 |---------|---------|--------|
-| **ai** (Vercel SDK) | ^5.0.112 | ✅ Latest (v5) |
+| **ai** (Vercel SDK) | ^6.0.1 | ✅ Latest (v6) |
+| **@ai-sdk/openai** | ^3.0.0 | ✅ Latest |
+| **@ai-sdk/react** | ^3.0.1 | ✅ Latest |
 | **tailwindcss** | ^4.1.0 | ✅ Latest (v4) |
 
 **All packages are up to date as of December 2025.**
@@ -120,7 +122,7 @@ export async function myAction(): Promise<ActionState<T>> {
 
 **Major Version Updates**:
 - ✅ Zod 3.24.1 → 4.1.13 (v4 migration complete)
-- ✅ AI SDK 4.3.16 → 5.0.112 (v5 migration complete)
+- ✅ AI SDK 4.3.16 → 5.0.112 → 6.0.1 (v6 migration complete)
 - ✅ Tailwind CSS 3.4 → 4.1.0 (v4 migration complete)
 
 **Minor/Patch Updates**:
@@ -210,10 +212,10 @@ const { id } = await params
 
 **Solution**: ✅ All form validations tested and working correctly
 
-### 4. AI SDK v5 Migration
+### 4. AI SDK v5 → v6 Migration
 **Impact**: API changes in AI SDK
 
-**Solution**: ✅ AI features updated to v5 patterns
+**Solution**: ✅ AI features updated to v6 patterns
 
 ---
 
@@ -230,7 +232,7 @@ const { id } = await params
 - ✅ Protected routes: Properly secured
 - ✅ Form validations: Working with Zod v4
 - ✅ Data fetching: TanStack Query working correctly
-- ✅ AI features: Working with SDK v5
+- ✅ AI features: Working with SDK v6
 
 ### Security Verification
 - ✅ npm audit: No critical vulnerabilities
@@ -248,7 +250,7 @@ const { id } = await params
 - **Backend**: Supabase (PostgreSQL), Clerk Authentication 6.36.2
 - **State**: TanStack Query 5.90.12, React Context
 - **Forms**: React Hook Form 7.68.0, Zod 4.1.13
-- **AI**: Vercel AI SDK 5.0.112
+- **AI**: Vercel AI SDK 6.0.1, @ai-sdk/openai 3.0.0, @ai-sdk/react 3.0.1
 
 ### Security Model
 1. **Proxy Layer**: Lightweight auth check + redirects
@@ -288,7 +290,7 @@ const { id } = await params
 ### Internal Documentation
 - [Security Implementation](./../security/rbac-implementation.md)
 - [API Architecture](./../development/api-architecture.md)
-- [Database Schema](./../database-schema.md)
+- [Database Schema](./../database-schema.md) (Note: Consider moving to development/ folder)
 
 ---
 

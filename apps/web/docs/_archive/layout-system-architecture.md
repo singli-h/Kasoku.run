@@ -1,4 +1,15 @@
-# Layout System Documentation (Task 003)
+# Layout System Documentation (Task 003) (ARCHIVED)
+
+> **Status**: ⚠️ **DEPRECATED** - This document has been consolidated  
+> **Date Archived**: 2025-12-24  
+> **Replaced By**: [Layout System Architecture](../architecture/layout-system.md)
+
+This document has been consolidated into the new unified layout documentation. Please refer to:
+
+- **[Layout System Architecture](../architecture/layout-system.md)** - Complete technical guide
+- **[Layout Design System](../design/layout-design-system.md)** - Design patterns and visual guidelines
+
+---
 
 ## Overview
 This document describes the standardized layout system implemented to fix header duplication and provide consistent page structure across the application.

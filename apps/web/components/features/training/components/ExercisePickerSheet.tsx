@@ -97,6 +97,7 @@ export function ExercisePickerSheet({
         category: getCategoryFromTypeId(ex.exercise_type_id),
         equipment: "", // Not stored in DB
         muscleGroups: [], // Not stored in DB
+        exerciseTypeId: ex.exercise_type_id ?? undefined, // Pass through for section assignment
       }))
   }, [serverExercises, getCategoryFromTypeId])
 

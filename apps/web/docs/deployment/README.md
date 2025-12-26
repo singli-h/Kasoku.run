@@ -7,6 +7,9 @@ This section contains comprehensive documentation about deployment processes, bu
 ### Migration & Upgrades
 - **[Next.js 16 Migration Summary](./nextjs16-migration-summary.md)** - Complete migration documentation, package status, and verification results
 
+### Production Readiness
+- **[Production Readiness Assessment](./production-readiness.md)** - Comprehensive production readiness assessment and status
+
 ### Deployment Strategies
 - **Vercel Deployment**: Primary hosting platform configuration
 - **Environment Management**: Environment variable setup and management

@@ -22,10 +22,10 @@ This section contains documentation about the core architectural patterns, compo
   - Responsive design guidelines
 
 ### Layout Systems
-- **[Layout System Architecture](./layout-system-architecture.md)**
-  - Layout component patterns
-  - Error boundary implementation
-  - CSS layout classes and utilities
+- **[Layout System Architecture](./layout-system.md)**
+  - Complete technical guide to layout system
+  - Component hierarchy and implementation
+  - Error boundary patterns
   - Page structure standards
   - Responsive design patterns
 
@@ -113,14 +113,18 @@ components/
 
 ### Page Layout Pattern
 ```tsx
-export default function SomePage() {
+import { PageLayout } from "@/components/layout"
+
+export default async function SomePage() {
   return (
-    <div className="space-y-6">
-      <PageHeader />
-      <Suspense fallback={<PageSkeleton />}>
+    <PageLayout
+      title="Page Title"
+      description="Page description"
+    >
+      <Suspense fallback={<PageSkeleton title="Page Title" variant="default" />}>
         <PageContent />
       </Suspense>
-    </div>
+    </PageLayout>
   )
 }
 ```

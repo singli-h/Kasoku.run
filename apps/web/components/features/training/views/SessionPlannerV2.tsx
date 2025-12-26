@@ -20,15 +20,15 @@ import {
 } from "@/components/ui/alert-dialog"
 
 // Import training types and views
-import type { TrainingExercise, TrainingSet } from "../types"
+import type { TrainingExercise, TrainingSet, ExerciseLibraryItem } from "../types"
 import { WorkoutView } from "./WorkoutView"
 import {
   sessionExercisesToTraining,
   type SessionPlannerExercise
 } from "../adapters/session-adapter"
 
-// Import session planner types
-import type { ExerciseLibraryItem } from "@/components/features/plans/session-planner/types"
+// Import session planner types for props (different from training types)
+import type { ExerciseLibraryItem as SessionPlannerLibraryItem } from "@/components/features/plans/session-planner/types"
 
 // Import save action
 import { saveSessionWithExercisesAction } from "@/actions/plans/session-planner-actions"
@@ -161,7 +161,7 @@ export function SessionPlannerV2({
         const lastSet = ex.sets[ex.sets.length - 1]
         const newSetIndex = ex.sets.length + 1
         const newSet = {
-          id: `new-${Date.now()}`,
+          id: `new_set_${Date.now()}`,
           session_plan_exercise_id: typeof ex.id === 'number' ? ex.id : 0,
           set_index: newSetIndex,
           reps: lastSet?.reps ?? null,
@@ -207,32 +207,42 @@ export function SessionPlannerV2({
     })
   }, [saveToHistory])
 
-  // Handle add exercise from library
-  const handleAddExercise = useCallback((exercise: { id: string; name: string; category: string }, section: string) => {
-    const libraryExercise = exerciseLibrary.find(e => String(e.id) === exercise.id)
-    if (!libraryExercise) return
+  // Handle add exercise from library/picker
+  // The exercise data comes directly from the picker with full details
+  const handleAddExercise = useCallback((exercise: ExerciseLibraryItem, section: string) => {
+    const exerciseId = parseInt(exercise.id, 10)
+    if (isNaN(exerciseId)) {
+      console.error('[SessionPlannerV2] Invalid exercise ID:', exercise.id)
+      toast({
+        title: "Error",
+        description: "Invalid exercise selected. Please try again.",
+        variant: "destructive"
+      })
+      return
+    }
 
     const maxOrder = Math.max(0, ...exercises.map(e => e.exercise_order))
+    const timestamp = Date.now()
     const newExercise: SessionPlannerExercise = {
-      id: `new-${Date.now()}`,
+      id: `new_${timestamp}`, // Use new_ prefix for consistency with save action
       session_plan_id: sessionId,
-      exercise_id: libraryExercise.id,
+      exercise_id: exerciseId,
       exercise_order: maxOrder + 1,
       notes: null,
       isCollapsed: false,
       isEditing: false,
       validationErrors: [],
       exercise: {
-        id: libraryExercise.id,
-        name: libraryExercise.name,
-        description: libraryExercise.description ?? undefined,
-        exercise_type_id: libraryExercise.exercise_type_id ?? undefined,
+        id: exerciseId,
+        name: exercise.name,
+        description: undefined,
+        exercise_type_id: exercise.exerciseTypeId,
         exercise_type: {
-          type: libraryExercise.category || 'other'
+          type: section || exercise.category || 'other'
         }
       },
       sets: [{
-        id: `new-set-${Date.now()}`,
+        id: `new_set_${timestamp}`,
         session_plan_exercise_id: 0,
         set_index: 1,
         reps: null,
@@ -250,8 +260,12 @@ export function SessionPlannerV2({
     const newExercises = [...exercises, newExercise]
     setExercises(newExercises)
     saveToHistory(newExercises)
-    // New exercise starts expanded (isCollapsed: false set above)
-  }, [exercises, exerciseLibrary, sessionId, saveToHistory])
+
+    toast({
+      title: "Exercise Added",
+      description: `${exercise.name} has been added to the session.`
+    })
+  }, [exercises, sessionId, saveToHistory, toast])
 
   // Handle remove exercise
   const handleRemoveExercise = useCallback((exerciseId: number | string) => {

@@ -31,7 +31,7 @@ architecture/
 ├── 📄 README.md                          # Architecture overview and navigation
 ├── 📄 architecture-design-cheatsheet.md   # Complete system overview
 ├── 📄 component-architecture.md           # Component patterns and organization
-└── 📄 layout-system-architecture.md       # Layout patterns and responsive design
+└── 📄 layout-system.md                    # Complete technical guide to layout system
 ```
 
 ### 🎨 Design (`/design/`)
@@ -39,6 +39,7 @@ architecture/
 design/
 ├── 📄 README.md                      # Design system overview and navigation
 ├── 📄 design-system-overview.md       # Complete design system documentation
+├── 📄 layout-design-system.md        # Layout design patterns and visual guidelines
 └── 📄 web-application-design-details.md  # Detailed design specifications
 ```
 
@@ -92,7 +93,8 @@ development/
 ```
 deployment/
 ├── 📄 README.md                    # Deployment overview and navigation
-└── 📄 nextjs16-migration-summary.md  # Next.js 16 migration documentation
+├── 📄 nextjs16-migration-summary.md  # Next.js 16 migration documentation
+└── 📄 production-readiness.md      # Production readiness assessment
 ```
 
 ## 📖 Documentation Standards

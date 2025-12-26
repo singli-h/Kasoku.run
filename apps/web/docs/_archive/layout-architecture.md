@@ -1,3 +1,23 @@
+# Layout Architecture (ARCHIVED)
+
+> **Status**: ⚠️ **DEPRECATED** - This document has been consolidated  
+> **Date Archived**: 2025-12-24  
+> **Replaced By**: [Layout System Architecture](../architecture/layout-system.md)
+
+This document has been consolidated into the new unified layout documentation. Please refer to:
+
+- **[Layout System Architecture](../architecture/layout-system.md)** - Complete technical guide
+- **[Layout Design System](../design/layout-design-system.md)** - Design patterns and visual guidelines
+
+## Migration Notes
+
+All technical content from this document has been merged into `architecture/layout-system.md`.  
+All design content has been merged into `design/layout-design-system.md`.
+
+---
+
+**Original content preserved below for reference:**
+
 # Layout Architecture
 
 ## Overview

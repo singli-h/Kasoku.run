@@ -12,6 +12,6 @@ Comprehensive testing strategy defining requirements by feature type, testing pa
 ## Related Documentation
 
 - [E2E Test Guidelines](../../__tests__/e2e/TEST_GUIDELINES.md)
-- [Testing Summary](../TESTING_SUMMARY.md)
+- [Testing Summary](./testing-summary.md)
 - [Feature Pattern](../patterns/feature-pattern.md)
 

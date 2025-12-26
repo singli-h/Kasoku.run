@@ -22,6 +22,12 @@ interface PageProps {
 
 /**
  * Transform backend data to session planner format
+ *
+ * ID Format Convention:
+ * - Existing database records: Use numeric ID as string (e.g., "123")
+ * - New client-side items: Use "new_" prefix (e.g., "new_1735123456789")
+ *
+ * This allows the save action to distinguish between updates and inserts.
  */
 function transformSessionData(backendData: any): {
   session: any
@@ -43,38 +49,39 @@ function transformSessionData(backendData: any): {
     notes: null,
   }
 
-  // Transform exercise presets to SessionExercise format
-  const exercises: SessionExercise[] = (backendData.session_plan_exercises || []).map((preset: any) => ({
-    id: `preset_${preset.id}`, // Use string ID for client-side
-    session_plan_id: preset.session_plan_id,
-    exercise_id: preset.exercise_id,
-    exercise_order: preset.exercise_order,
-    superset_id: preset.superset_id,
-    notes: preset.notes,
-    exercise: preset.exercise ? {
-      id: preset.exercise.id,
-      name: preset.exercise.name,
-      description: preset.exercise.description,
-      exercise_type_id: preset.exercise.exercise_type_id,
-      video_url: preset.exercise.video_url,
+  // Transform session_plan_exercises to SessionExercise format
+  const exercises: SessionExercise[] = (backendData.session_plan_exercises || []).map((exerciseRecord: any) => ({
+    // Use numeric ID as string for existing records (allows save action to identify as existing)
+    id: String(exerciseRecord.id),
+    session_plan_id: exerciseRecord.session_plan_id,
+    exercise_id: exerciseRecord.exercise_id,
+    exercise_order: exerciseRecord.exercise_order,
+    superset_id: exerciseRecord.superset_id,
+    notes: exerciseRecord.notes,
+    exercise: exerciseRecord.exercise ? {
+      id: exerciseRecord.exercise.id,
+      name: exerciseRecord.exercise.name,
+      description: exerciseRecord.exercise.description,
+      exercise_type_id: exerciseRecord.exercise.exercise_type_id,
+      video_url: exerciseRecord.exercise.video_url,
     } : null,
-    sets: (preset.session_plan_sets || []).map((detail: any) => ({
-      id: detail.id,
-      session_plan_exercise_id: detail.session_plan_exercise_id,
-      set_index: detail.set_index,
-      reps: detail.reps,
-      weight: detail.weight,
-      distance: detail.distance,
-      performing_time: detail.performing_time,
-      rest_time: detail.rest_time,
-      tempo: detail.tempo,
-      rpe: detail.rpe,
-      resistance_unit_id: detail.resistance_unit_id,
-      power: detail.power,
-      velocity: detail.velocity,
-      effort: detail.effort,
-      height: detail.height,
-      resistance: detail.resistance,
+    sets: (exerciseRecord.session_plan_sets || []).map((setRecord: any) => ({
+      id: setRecord.id,
+      session_plan_exercise_id: setRecord.session_plan_exercise_id,
+      set_index: setRecord.set_index,
+      reps: setRecord.reps,
+      weight: setRecord.weight,
+      distance: setRecord.distance,
+      performing_time: setRecord.performing_time,
+      rest_time: setRecord.rest_time,
+      tempo: setRecord.tempo,
+      rpe: setRecord.rpe,
+      resistance_unit_id: setRecord.resistance_unit_id,
+      power: setRecord.power,
+      velocity: setRecord.velocity,
+      effort: setRecord.effort,
+      height: setRecord.height,
+      resistance: setRecord.resistance,
       completed: false, // Default for planning mode
       isEditing: false,
     })),

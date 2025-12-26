@@ -1,4 +1,15 @@
-# Unified Layout System - Apple-Inspired Design
+# Unified Layout System - Apple-Inspired Design (ARCHIVED)
+
+> **Status**: ⚠️ **DEPRECATED** - This document has been consolidated  
+> **Date Archived**: 2025-12-24  
+> **Replaced By**: [Layout Design System](../design/layout-design-system.md) and [Layout System Architecture](../architecture/layout-system.md)
+
+This document has been consolidated into the new unified layout documentation. Please refer to:
+
+- **[Layout System Architecture](../architecture/layout-system.md)** - Complete technical guide
+- **[Layout Design System](../design/layout-design-system.md)** - Design patterns and visual guidelines
+
+---
 
 ## Overview
 

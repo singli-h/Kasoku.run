@@ -13,6 +13,14 @@ This section contains comprehensive documentation about the UI/UX design system,
   - Responsive design patterns
   - Performance optimization techniques
 
+### Layout Design System
+- **[Layout Design System](./layout-design-system.md)**
+  - Apple-inspired design principles
+  - CSS classes and styling patterns
+  - Skeleton variants and loading states
+  - Responsive design patterns
+  - Migration guide and best practices
+
 ### Detailed Design Specifications
 - **[Web Application Design Details](./web-application-design-details.md)**
   - Detailed design specifications

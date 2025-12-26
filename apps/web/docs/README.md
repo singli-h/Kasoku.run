@@ -1,6 +1,6 @@
 # Kasoku Documentation Hub
 
-> **Last Updated**: 2025-12-24
+> **Last Updated**: 2025-12-24 (Verified against codebase)
 
 Welcome to the comprehensive documentation for Kasoku, an AI-powered fitness and running training platform. This documentation is organized into multiple categories to help developers, designers, and stakeholders understand and contribute to the project effectively.
 
@@ -16,11 +16,12 @@ Reusable code patterns and architectural guidelines for consistent implementatio
 Core architectural patterns, component architecture, and system design principles.
 - **[Architecture Design Cheatsheet](./architecture/architecture-design-cheatsheet.md)** - Complete system overview and design patterns
 - **[Component Architecture](./architecture/component-architecture.md)** - Component organization and patterns
-- **[Layout System Architecture](./architecture/layout-system-architecture.md)** - Layout patterns and responsive design
+- **[Layout System Architecture](./architecture/layout-system.md)** - Complete technical guide to layout system
 
 ### 🎨 [Design](./design/)
 UI/UX patterns, design system, styling guidelines, and visual design principles.
 - **[Design System Overview](./design/design-system-overview.md)** - Complete design system and technology stack
+- **[Layout Design System](./design/layout-design-system.md)** - Layout design patterns and visual guidelines
 - **[Web Application Design Details](./design/web-application-design-details.md)** - Detailed design specifications
 
 ### ✨ [Features](./features/)
@@ -71,6 +72,7 @@ Reusable code patterns and architectural guidelines.
 ### 🚀 [Deployment](./deployment/)
 Build configurations, deployment processes, environment setup, and production considerations.
 - **[Next.js 16 Migration Summary](./deployment/nextjs16-migration-summary.md)** - Complete migration documentation and current status
+- **[Production Readiness Assessment](./deployment/production-readiness.md)** - Comprehensive production readiness assessment
 
 ## 📖 How to Use This Documentation
 
@@ -99,7 +101,7 @@ Build configurations, deployment processes, environment setup, and production co
 - **UI**: Radix UI, Tailwind CSS 4.1.0, Framer Motion 12.0.0, shadcn/ui
 - **Backend**: Supabase (PostgreSQL), Clerk Authentication 6.36.2
 - **Development**: Turborepo, ESLint, Prettier
-- **Additional**: TanStack Query 5.90.12, React Hook Form 7.68.0, Zod 4.1.13, AI SDK 5.0.112
+- **Additional**: TanStack Query 5.90.12, React Hook Form 7.68.0, Zod 4.1.13, AI SDK 6.0.1
 
 ### Core Concepts
 - **Component Architecture**: Hybrid structure with ui/, composed/, features/ layers

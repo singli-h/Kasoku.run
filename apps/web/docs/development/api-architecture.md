@@ -3,7 +3,15 @@
 ## Overview
 This document describes the current API structure and design conventions for the **Next.js** application within our Turborepo.
 
-All API routes live under `apps/web/app/api` and follow Next.js file-based routing (`route.ts`). Edge functions under `apps/edge-functions` are being migrated to Next.js API routes.
+**Important Note**: The Kasoku application primarily uses **Server Actions** for data operations rather than API routes. API routes (`apps/web/app/api`) are reserved for:
+- External webhooks (Clerk, Stripe)
+- External integrations (AI session assistant)
+- Debug endpoints
+- User role fetching (client-side context)
+
+Most functionality described below (dashboard, plans, etc.) is implemented via server actions in `apps/web/actions/` rather than API routes. This document may contain historical or planned API routes that have been migrated to server actions.
+
+All API routes live under `apps/web/app/api` and follow Next.js file-based routing (`route.ts`). Edge functions under `apps/edge-functions` are not in use and have been replaced by Next.js API routes or server actions.
 
 ## Table of Contents
 - [Monorepo Structure](#monorepo-structure)
