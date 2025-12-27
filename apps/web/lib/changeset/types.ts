@@ -181,6 +181,7 @@ export type BufferKey = `${string}:${string}`
  */
 export type ToolHandlerResult =
   | { success: true; entityId?: string; changeId?: string; message?: string }
+  | { success: true; entityIds?: string[]; changeIds?: string[]; message?: string }
   | { success: false; error: string }
   | 'PAUSE'
 

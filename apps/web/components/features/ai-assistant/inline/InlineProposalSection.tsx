@@ -3,133 +3,42 @@
 /**
  * InlineProposalSection Component
  *
- * Main container for displaying AI proposals inline on the page.
- * Orchestrates the header, change list, action bar, and status displays.
+ * Ultra-compact notification bar for AI change proposals.
+ * Shows concise summary with inline approve/dismiss actions.
  *
- * This component is designed to be rendered as part of the page flow,
- * not as an overlay.
- *
- * Design: Clean, minimal aesthetic with subtle shadows and refined typography.
- * Uses blue accent for AI, semantic colors only for change type indicators.
+ * Design: Industrial/utilitarian - functional status bar aesthetic.
+ * Details are shown on the actual set rows, not here.
  *
  * @see specs/004-feature-pattern-standard/ai-ui-proposal.md
  */
 
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Minus, ArrowRightLeft, Sparkles } from 'lucide-react'
+import { Bot, Check, X, RefreshCw, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ChangeSet, ChangeRequest, ExecutionError } from '@/lib/changeset/types'
-import { getChangeSummary } from '@/lib/changeset/ui-helpers'
 import { formatErrorForUser } from '@/lib/changeset/errors'
-import { ProposalHeader } from './ProposalHeader'
-import { ProposalActionBar } from './ProposalActionBar'
 import { ProposalFeedbackInput } from './ProposalFeedbackInput'
-import { ProposalStatusBanner } from './ProposalStatusBanner'
 
 type SectionState = 'pending' | 'feedback' | 'executing' | 'success' | 'error'
 
-/** Color scheme for change types - minimal, refined palette */
-const CHANGE_STYLES = {
-  create: {
-    icon: 'text-emerald-600',
-    bg: 'bg-emerald-50/50',
-    border: 'border-l-2 border-l-emerald-400',
-    text: 'text-emerald-700',
-  },
-  delete: {
-    icon: 'text-rose-500',
-    bg: 'bg-rose-50/30',
-    border: 'border-l-2 border-l-rose-300',
-    text: 'text-rose-600',
-  },
-  update: {
-    icon: 'text-blue-600',
-    bg: 'bg-blue-50/40',
-    border: 'border-l-2 border-l-blue-400',
-    text: 'text-blue-700',
-  },
-} as const
-
 /**
- * Get icon for change type
+ * Generate ultra-concise summary (e.g., "+5 sets, 2 updates")
  */
-function getChangeIcon(change: ChangeRequest) {
-  if (change.operationType === 'create') return Plus
-  if (change.operationType === 'delete') return Minus
-  if (change.operationType === 'update' && change.proposedData?.exercise_id) {
-    return ArrowRightLeft
-  }
-  return Edit2
-}
+function getCompactSummary(changes: ChangeRequest[]): string {
+  const counts = { add: 0, update: 0, remove: 0 }
 
-/**
- * Get simple label for a change
- */
-function getChangeLabel(change: ChangeRequest): string {
-  const entityLabels: Record<string, string> = {
-    preset_session: 'Session',
-    preset_exercise: 'Exercise',
-    preset_set: 'Set',
-  }
-  const entity = entityLabels[change.entityType] || change.entityType
-
-  const name = change.proposedData?.exercise_name
-    || change.proposedData?.exerciseName
-    || change.currentData?.exercise_name
-    || change.currentData?.exerciseName
-
-  if (change.operationType === 'create') {
-    return name ? `Add ${name}` : `Add ${entity}`
-  }
-  if (change.operationType === 'delete') {
-    return name ? `Remove ${name}` : `Remove ${entity}`
-  }
-  if (change.operationType === 'update') {
-    if (change.proposedData?.exercise_id && change.currentData?.exercise_id) {
-      const oldName = change.currentData?.exercise_name || change.currentData?.exerciseName || 'exercise'
-      const newName = change.proposedData?.exercise_name || change.proposedData?.exerciseName || 'new exercise'
-      return `${oldName} → ${newName}`
-    }
-    return name ? `Update ${name}` : `Update ${entity}`
-  }
-  return `${change.operationType} ${entity}`
-}
-
-/**
- * Refined inline change list with subtle styling
- */
-function SimpleChangeList({ changes }: { changes: ChangeRequest[] }) {
-  if (changes.length === 0) {
-    return (
-      <div className="py-3 text-center text-sm text-muted-foreground">
-        No pending changes
-      </div>
-    )
+  for (const change of changes) {
+    if (change.operationType === 'create') counts.add++
+    else if (change.operationType === 'update') counts.update++
+    else if (change.operationType === 'delete') counts.remove++
   }
 
-  return (
-    <div className="space-y-1.5">
-      {changes.map((change) => {
-        const Icon = getChangeIcon(change)
-        const style = CHANGE_STYLES[change.operationType as keyof typeof CHANGE_STYLES] || CHANGE_STYLES.update
-        return (
-          <div
-            key={change.id}
-            className={cn(
-              'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors',
-              style.bg,
-              style.border
-            )}
-          >
-            <Icon className={cn('h-3.5 w-3.5 shrink-0', style.icon)} />
-            <span className={cn('font-medium', style.text)}>
-              {getChangeLabel(change)}
-            </span>
-          </div>
-        )
-      })}
-    </div>
-  )
+  const parts: string[] = []
+  if (counts.add > 0) parts.push(`+${counts.add}`)
+  if (counts.update > 0) parts.push(`${counts.update} update${counts.update > 1 ? 's' : ''}`)
+  if (counts.remove > 0) parts.push(`-${counts.remove}`)
+
+  return parts.join(', ') || 'No changes'
 }
 
 interface InlineProposalSectionProps {
@@ -166,10 +75,9 @@ export function InlineProposalSection({
 }: InlineProposalSectionProps) {
   const [state, setState] = useState<SectionState>('pending')
   const [feedback, setFeedback] = useState('')
-  const [isExpanded, setIsExpanded] = useState(false) // Collapsed by default per spec
 
   const changeCount = changeset.changeRequests.length
-  const summary = getChangeSummary(changeset.changeRequests)
+  const compactSummary = getCompactSummary(changeset.changeRequests)
 
   // Sync external state
   useEffect(() => {
@@ -185,7 +93,6 @@ export function InlineProposalSection({
     try {
       await onApprove()
       setState('success')
-      // Auto-hide after success (parent will handle cleanup)
     } catch {
       setState('error')
     }
@@ -193,12 +100,10 @@ export function InlineProposalSection({
 
   const handleRegenerateClick = () => {
     if (state === 'feedback') {
-      // Submit feedback
       onRegenerate(feedback || undefined)
       setFeedback('')
       setState('pending')
     } else {
-      // Open feedback input
       setState('feedback')
     }
   }
@@ -208,86 +113,174 @@ export function InlineProposalSection({
     setState('pending')
   }
 
-  const handleRetry = () => {
-    setState('pending')
-  }
-
-  // Success state - minimal display
+  // Success state - brief flash, then fades
   if (state === 'success') {
     return (
-      <div className={cn('rounded-lg', className)}>
-        <ProposalStatusBanner
-          type="success"
-          message="Changes saved!"
-        />
+      <div
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-lg',
+          'bg-emerald-500/10 border border-emerald-500/20',
+          'animate-in fade-in-0 duration-200',
+          className
+        )}
+      >
+        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500">
+          <Check className="h-3 w-3 text-white" />
+        </div>
+        <span className="text-sm font-medium text-emerald-700">
+          Changes applied
+        </span>
       </div>
     )
   }
 
-  // Error state
+  // Error state - inline with retry
   if (state === 'error' && executionError) {
     return (
-      <div className={cn('rounded-lg', className)}>
-        <ProposalStatusBanner
-          type="error"
-          message={formatErrorForUser(executionError)}
-          onDismiss={onDismiss}
-          onRetry={handleRetry}
+      <div
+        className={cn(
+          'flex items-center justify-between gap-3 px-3 py-2 rounded-lg',
+          'bg-red-500/10 border border-red-500/20',
+          className
+        )}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500">
+            <X className="h-3 w-3 text-white" />
+          </div>
+          <span className="text-sm text-red-700 truncate">
+            {formatErrorForUser(executionError)}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => setState('pending')}
+            className="px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-500/10 rounded transition-colors"
+          >
+            Retry
+          </button>
+          <button
+            onClick={onDismiss}
+            className="p-1 text-red-400 hover:text-red-600 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Feedback input mode
+  if (state === 'feedback') {
+    return (
+      <div
+        className={cn(
+          'rounded-lg border border-blue-500/20 bg-blue-500/5 p-3',
+          'animate-in fade-in-0 slide-in-from-top-1 duration-200',
+          className
+        )}
+      >
+        <ProposalFeedbackInput
+          value={feedback}
+          onChange={setFeedback}
+          onSubmit={handleRegenerateClick}
+          onCancel={handleCancelFeedback}
         />
       </div>
     )
   }
 
+  // Main compact bar - single line with everything
   return (
     <div
       className={cn(
-        // Clean, minimal container with subtle elevation
-        'rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm',
-        'shadow-sm shadow-black/3',
+        // Industrial status bar aesthetic
+        'flex items-center justify-between gap-3',
+        'px-3 py-2 rounded-lg',
+        'bg-gradient-to-r from-slate-50 to-slate-100/80',
+        'border border-slate-200/80',
+        'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)]',
         'transition-all duration-200',
         className
       )}
     >
-      {/* Header - compact with breathing room */}
-      <div className="px-4 py-3">
-        <ProposalHeader
-          changeCount={changeCount}
-          summary={summary}
-          isExpanded={isExpanded}
-          onToggleExpand={() => setIsExpanded(!isExpanded)}
-        />
+      {/* Left: AI indicator + summary */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        {/* Compact AI badge */}
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-600 shadow-sm">
+          <Bot className="h-3.5 w-3.5 text-white" />
+        </div>
+
+        {/* Concise summary - single line */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-sm font-semibold text-slate-800 tabular-nums">
+            {changeCount}
+          </span>
+          <span className="text-sm text-slate-500">
+            change{changeCount !== 1 ? 's' : ''}
+          </span>
+          <span className="text-slate-300 mx-0.5">|</span>
+          <span className="text-sm font-medium text-slate-600 truncate">
+            {compactSummary}
+          </span>
+        </div>
       </div>
 
-      {/* Change list (collapsible) - smooth transition */}
-      {isExpanded && state !== 'feedback' && (
-        <div className="max-h-52 overflow-y-auto px-4 pb-3 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-          <SimpleChangeList changes={changeset.changeRequests} />
-        </div>
-      )}
+      {/* Right: Actions */}
+      <div className="flex items-center gap-1 shrink-0">
+        {/* Regenerate button */}
+        <button
+          onClick={handleRegenerateClick}
+          disabled={state === 'executing'}
+          className={cn(
+            'p-1.5 rounded-md transition-colors',
+            'text-slate-400 hover:text-blue-600 hover:bg-blue-50',
+            state === 'executing' && 'opacity-50 cursor-not-allowed'
+          )}
+          title="Regenerate with feedback"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </button>
 
-      {/* Feedback input (when in feedback mode) */}
-      {state === 'feedback' && (
-        <div className="px-4 pb-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-          <ProposalFeedbackInput
-            value={feedback}
-            onChange={setFeedback}
-            onSubmit={handleRegenerateClick}
-            onCancel={handleCancelFeedback}
-          />
-        </div>
-      )}
+        {/* Dismiss button */}
+        <button
+          onClick={onDismiss}
+          disabled={state === 'executing'}
+          className={cn(
+            'p-1.5 rounded-md transition-colors',
+            'text-slate-400 hover:text-red-500 hover:bg-red-50',
+            state === 'executing' && 'opacity-50 cursor-not-allowed'
+          )}
+          title="Dismiss changes"
+        >
+          <X className="h-4 w-4" />
+        </button>
 
-      {/* Action bar - clean separator, subtle background */}
-      {state !== 'feedback' && (
-        <div className="border-t border-border/40 bg-muted/30 px-4 py-2.5">
-          <ProposalActionBar
-            onApprove={handleApprove}
-            onRegenerate={handleRegenerateClick}
-            onDismiss={onDismiss}
-            isExecuting={state === 'executing'}
-          />
-        </div>
-      )}
+        {/* Approve button - prominent */}
+        <button
+          onClick={handleApprove}
+          disabled={state === 'executing'}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium',
+            'bg-blue-600 text-white',
+            'hover:bg-blue-700 active:bg-blue-800',
+            'shadow-sm transition-all',
+            state === 'executing' && 'opacity-70 cursor-not-allowed'
+          )}
+        >
+          {state === 'executing' ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Applying</span>
+            </>
+          ) : (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              <span>Apply</span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
   )
 }

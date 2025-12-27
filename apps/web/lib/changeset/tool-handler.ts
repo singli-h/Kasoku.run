@@ -102,6 +102,9 @@ export async function handleToolCall(
 
 /**
  * Handles a proposal tool call (creates/updates ChangeRequest in buffer).
+ *
+ * Special handling for createSetChangeRequest with setCount > 1:
+ * Creates N separate ChangeRequests so each set appears as its own ghost row.
  */
 function handleProposalTool(
   toolName: string,
@@ -128,7 +131,49 @@ function handleProposalTool(
     // Get or create changeset ID for consistency
     const changesetId = context.changeSet.getOrCreateChangesetId()
 
-    // Transform tool input to ChangeRequest
+    // Special handling: createSetChangeRequest with setCount > 1
+    // Create N separate ChangeRequests so each set appears as its own ghost row
+    const setCount = typeof args.setCount === 'number' ? args.setCount : 1
+    const isMultiSetCreate =
+      toolName === 'createSetChangeRequest' &&
+      operation === 'create' &&
+      entitySnakeCase === 'preset_set' &&
+      setCount > 1
+
+    if (isMultiSetCreate) {
+      const entityIds: string[] = []
+      const changeIds: string[] = []
+
+      // Create N separate ChangeRequests (one per set)
+      for (let i = 0; i < setCount; i++) {
+        // Remove setCount from args - each request is for 1 set
+        const singleSetArgs = { ...args, setCount: 1 }
+
+        const changeRequest = transformToolInput(
+          entitySnakeCase,
+          operation,
+          { ...singleSetArgs, reasoning: args.reasoning as string },
+          { sessionId: context.sessionId, changesetId }
+        )
+
+        console.log(`[ProposalTool] ChangeRequest ${i + 1}/${setCount}:`, JSON.stringify(changeRequest, null, 2))
+        context.changeSet.upsert(changeRequest)
+
+        if (changeRequest.entityId) entityIds.push(changeRequest.entityId)
+        changeIds.push(changeRequest.id)
+      }
+
+      console.log(`[ProposalTool] ✅ Added ${setCount} sets to changeset`)
+
+      return {
+        success: true,
+        entityIds, // Array of temp IDs for the created sets
+        changeIds,
+        message: `${setCount} sets added to changeset`,
+      }
+    }
+
+    // Standard single ChangeRequest flow
     const changeRequest = transformToolInput(
       entitySnakeCase,
       operation,

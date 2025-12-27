@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback } from "react"
-import { Bot, Check, GripVertical, X } from "lucide-react"
+import { Bot, Check, GripVertical, Plus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TrainingSet } from "../types"
 import type { UIDisplayType } from "@/lib/changeset/types"
@@ -42,6 +42,15 @@ export interface SetRowProps {
   hasPendingChange?: boolean
   /** The type of AI change for styling */
   aiChangeType?: UIDisplayType | null
+  /** For UPDATE: current data for diff display (shows old→new) */
+  aiCurrentData?: Record<string, unknown> | null
+  /** For UPDATE: proposed data for diff display */
+  aiProposedData?: Record<string, unknown> | null
+  // Ghost row mode (for pending CREATE operations)
+  /** If true, renders as a read-only ghost row with dashed border */
+  isGhostRow?: boolean
+  /** Data for ghost row display (from AI proposal) */
+  ghostData?: Record<string, unknown> | null
 }
 
 /**
@@ -74,6 +83,11 @@ export function SetRow({
   // AI indicator props
   hasPendingChange = false,
   aiChangeType,
+  aiCurrentData,
+  aiProposedData,
+  // Ghost row props
+  isGhostRow = false,
+  ghostData,
 }: SetRowProps) {
   // Task 10.1: Use pre-computed visible fields from ExerciseCard
   // Fall back to showing reps if no visibleFields provided
@@ -142,6 +156,147 @@ export function SetRow({
       }
     }
   }, [onUpdate, validateField])
+
+  // Ghost row mode - read-only display for pending CREATE operations
+  if (isGhostRow && ghostData) {
+    // Extract values from ghost data (snake_case from changeset)
+    const gReps = ghostData.reps ?? ghostData.set_count
+    const gWeight = ghostData.weight
+    const gDistance = ghostData.distance
+    const gTime = ghostData.performing_time ?? ghostData.performingTime
+    const gHeight = ghostData.height
+    const gPower = ghostData.power
+    const gVelocity = ghostData.velocity
+    const gRpe = ghostData.rpe
+    const gRestTime = ghostData.rest_time ?? ghostData.restTime
+    const gTempo = ghostData.tempo
+    const gEffort = ghostData.effort
+    const gResistance = ghostData.resistance
+
+    // Use visibleFields for ghost rows too
+    const gShowReps = visibleFields?.reps ?? true
+    const gShowWeight = visibleFields?.weight ?? false
+    const gShowDistance = visibleFields?.distance ?? false
+    const gShowTime = visibleFields?.performingTime ?? false
+    const gShowHeight = visibleFields?.height ?? false
+    const gShowPower = visibleFields?.power ?? false
+    const gShowVelocity = visibleFields?.velocity ?? false
+    const gShowRPE = visibleFields?.rpe ?? false
+    const gShowRestTime = visibleFields?.restTime ?? true
+    const gShowTempo = visibleFields?.tempo ?? false
+    const gShowEffort = visibleFields?.effort ?? false
+    const gShowResistance = visibleFields?.resistance ?? false
+
+    const pillClass = "px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-emerald-100/80 text-emerald-700"
+
+    return (
+      <div
+        className={cn(
+          "flex items-center gap-2 py-2 px-2 rounded-lg transition-colors",
+          "border-2 border-dashed border-emerald-400 bg-emerald-50/60",
+          "animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
+        )}
+      >
+        {/* Set number with NEW badge */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="relative">
+            <span className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-sm font-medium text-emerald-700">
+              <Plus className="w-3.5 h-3.5" />
+            </span>
+            {/* AI NEW badge */}
+            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+              <Bot className="h-2.5 w-2.5" />
+            </span>
+          </div>
+          <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
+            New
+          </span>
+        </div>
+
+        {/* Read-only value pills */}
+        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+          {gShowReps && gReps != null && (
+            <div className={pillClass}>
+              <span>{String(gReps)}</span>
+              <span className="text-emerald-500 text-xs">x</span>
+            </div>
+          )}
+          {gShowWeight && gWeight != null && (
+            <div className={pillClass}>
+              <span>{String(gWeight)}</span>
+              <span className="text-emerald-500 text-xs">kg</span>
+            </div>
+          )}
+          {gShowDistance && gDistance != null && (
+            <div className={pillClass}>
+              <span>{String(gDistance)}</span>
+              <span className="text-emerald-500 text-xs">m</span>
+            </div>
+          )}
+          {gShowTime && gTime != null && (
+            <div className={pillClass}>
+              <span>{String(gTime)}</span>
+              <span className="text-emerald-500 text-xs">s</span>
+            </div>
+          )}
+          {gShowHeight && gHeight != null && (
+            <div className={pillClass}>
+              <span>{String(gHeight)}</span>
+              <span className="text-emerald-500 text-xs">cm</span>
+            </div>
+          )}
+          {gShowResistance && gResistance != null && (
+            <div className={pillClass}>
+              <span>{String(gResistance)}</span>
+              <span className="text-emerald-500 text-xs">R</span>
+            </div>
+          )}
+          {gShowPower && gPower != null && (
+            <div className={pillClass}>
+              <span>{String(gPower)}</span>
+              <span className="text-emerald-500 text-xs">W</span>
+            </div>
+          )}
+          {gShowVelocity && gVelocity != null && (
+            <div className={pillClass}>
+              <span>{String(gVelocity)}</span>
+              <span className="text-emerald-500 text-xs">m/s</span>
+            </div>
+          )}
+          {gShowRestTime && gRestTime != null && (
+            <div className={pillClass}>
+              <span>{String(gRestTime)}</span>
+              <span className="text-emerald-500 text-xs">rest</span>
+            </div>
+          )}
+          {gShowTempo && gTempo != null && (
+            <div className={pillClass}>
+              <span>{String(gTempo)}</span>
+            </div>
+          )}
+          {gShowEffort && gEffort != null && (
+            <div className={pillClass}>
+              <span>{String(gEffort)}</span>
+              <span className="text-emerald-500 text-xs">%</span>
+            </div>
+          )}
+          {gShowRPE && gRpe != null && (
+            <div className={pillClass}>
+              <span className="text-emerald-500 text-xs">RPE</span>
+              <span>{String(gRpe)}</span>
+            </div>
+          )}
+
+          {/* Fallback if no fields have values */}
+          {!gReps && !gWeight && !gDistance && !gTime && (
+            <div className={cn(pillClass, "text-emerald-500/70 italic")}>
+              Pending...
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   // Athlete view - inline editable inputs with completion toggle
   if (isAthlete) {

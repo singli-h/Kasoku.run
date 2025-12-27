@@ -8,6 +8,7 @@ import { formatShorthand, getCompletedCount } from "../types"
 import { SetRow, type VisibleFields } from "./SetRow"
 import { getVisibleFields } from "../utils/field-visibility"
 import type { UIDisplayType } from "@/lib/changeset/types"
+import type { AISetChangeInfo } from "@/components/features/ai-assistant/hooks"
 
 export interface ExerciseCardProps {
   exercise: TrainingExercise
@@ -35,7 +36,9 @@ export interface ExerciseCardProps {
   /** The type of AI change for styling */
   aiChangeType?: UIDisplayType | null
   /** Map of set ID to pending change info */
-  setAIChanges?: Map<string | number, { changeType: UIDisplayType }>
+  setAIChanges?: Map<string | number, AISetChangeInfo>
+  /** Pending new sets (CREATE operations) for ghost row rendering */
+  pendingNewSets?: AISetChangeInfo[]
   /** Count of sets with pending AI changes */
   pendingSetCount?: number
 }
@@ -68,6 +71,7 @@ export function ExerciseCard({
   hasPendingChange = false,
   aiChangeType,
   setAIChanges,
+  pendingNewSets = [],
   pendingSetCount = 0,
 }: ExerciseCardProps) {
   const [draggingSetId, setDraggingSetId] = useState<string | number | null>(null)
@@ -301,8 +305,8 @@ export function ExerciseCard({
               const isActive = isAthlete && index === firstIncompleteIndex
               const isSetDragging = draggingSetId === set.id
               const isSetDragOver = dragOverSetId === set.id
-              // Get AI change info for this set - use String(set.id) for Map lookup
-              const setChange = setAIChanges?.get(String(set.id))
+              // Get AI change info for this set - try both string and number keys
+              const setChange = setAIChanges?.get(String(set.id)) ?? setAIChanges?.get(set.id)
 
               return (
                 <div
@@ -328,10 +332,40 @@ export function ExerciseCard({
                     // AI indicator props
                     hasPendingChange={!!setChange}
                     aiChangeType={setChange?.changeType}
+                    aiCurrentData={setChange?.currentData}
+                    aiProposedData={setChange?.proposedData}
                   />
                 </div>
               )
             })}
+
+            {/* Ghost rows for pending new sets (AI CREATE operations) */}
+            {pendingNewSets.map((pendingSet, index) => (
+              <SetRow
+                key={`ghost-${index}`}
+                set={{
+                  id: `ghost-${index}`,
+                  setIndex: exercise.sets.length + index + 1,
+                  completed: false,
+                  reps: null,
+                  weight: null,
+                  distance: null,
+                  performingTime: null,
+                  height: null,
+                  power: null,
+                  velocity: null,
+                  rpe: null,
+                  restTime: null,
+                  tempo: null,
+                  effort: null,
+                  resistance: null,
+                }}
+                isAthlete={isAthlete}
+                visibleFields={visibleFields}
+                isGhostRow={true}
+                ghostData={pendingSet.proposedData}
+              />
+            ))}
 
             {!isAthlete && (
               <button

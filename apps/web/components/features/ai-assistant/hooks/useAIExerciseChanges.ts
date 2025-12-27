@@ -16,10 +16,25 @@ import { useChangeSetOptional } from '@/lib/changeset/useChangeSet'
 import type { UIDisplayType } from '@/lib/changeset/types'
 import { deriveUIDisplayType } from '../indicators/ChangeTypeBadge'
 
+export interface AISetChangeInfo {
+  changeType: UIDisplayType
+  /** For CREATE: the proposed set data to render as ghost row */
+  proposedData?: Record<string, unknown> | null
+  /** For UPDATE: current data for diff display */
+  currentData?: Record<string, unknown> | null
+}
+
 export interface AIExerciseChangeInfo {
   hasPendingChange: boolean
   changeType: UIDisplayType | null
-  setChanges: Map<string | number, { changeType: UIDisplayType }>
+  /** For CREATE: the proposed exercise data */
+  proposedData?: Record<string, unknown> | null
+  /** For DELETE/UPDATE: current data */
+  currentData?: Record<string, unknown> | null
+  /** Map of set ID to change info (keyed by real ID for UPDATE/DELETE, temp ID for CREATE) */
+  setChanges: Map<string | number, AISetChangeInfo>
+  /** Pending CREATE sets (for rendering ghost rows) */
+  pendingNewSets: AISetChangeInfo[]
   pendingSetCount: number
 }
 
@@ -84,7 +99,10 @@ export function useAIExerciseChanges(
         result.set(exerciseId, {
           hasPendingChange: true,
           changeType,
+          proposedData: req.proposedData,
+          currentData: req.currentData,
           setChanges: new Map(),
+          pendingNewSets: [],
           pendingSetCount: 0,
         })
       })
@@ -120,16 +138,42 @@ export function useAIExerciseChanges(
             hasPendingChange: false,
             changeType: null,
             setChanges: new Map(),
+            pendingNewSets: [],
             pendingSetCount: 0,
           }
           result.set(exerciseId, exerciseInfo)
         }
 
-        // Add set change - entityId should already be validated
-        const setId = req.entityId
+        const setChangeInfo: AISetChangeInfo = {
+          changeType,
+          proposedData: req.proposedData,
+          currentData: req.currentData,
+        }
+
+        // For CREATE operations: add to pendingNewSets array (for ghost row rendering)
+        if (req.operationType === 'create') {
+          exerciseInfo.pendingNewSets.push(setChangeInfo)
+          exerciseInfo.pendingSetCount = exerciseInfo.pendingNewSets.length + exerciseInfo.setChanges.size
+          return // Don't add to setChanges map for creates
+        }
+
+        // For UPDATE/DELETE: use the real set ID from currentData if available
+        let setId: string | number | null = null
+
+        // Prefer the real database ID from currentData
+        const realId = req.currentData?.id ?? req.currentData?.session_plan_set_id
+        if (realId != null && (typeof realId === 'string' || typeof realId === 'number')) {
+          setId = realId
+        }
+
+        // Fall back to entityId if no real ID found
+        if (setId == null && req.entityId != null) {
+          setId = req.entityId
+        }
+
         if (setId != null && (typeof setId === 'string' || typeof setId === 'number')) {
-          exerciseInfo.setChanges.set(setId, { changeType })
-          exerciseInfo.pendingSetCount = exerciseInfo.setChanges.size
+          exerciseInfo.setChanges.set(setId, setChangeInfo)
+          exerciseInfo.pendingSetCount = exerciseInfo.pendingNewSets.length + exerciseInfo.setChanges.size
         }
       })
 

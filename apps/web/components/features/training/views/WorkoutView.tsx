@@ -5,20 +5,12 @@ import { Check, Loader2, Plus, Timer, Calendar } from "lucide-react"
 import { format, isToday, isYesterday, isTomorrow } from "date-fns"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet, ExerciseLibraryItem } from "../types"
-import type { UIDisplayType } from "@/lib/changeset/types"
+import type { AIExerciseChangeInfo } from "@/components/features/ai-assistant/hooks"
 
 // Save status type (matches ExerciseContext)
 export type SaveStatus = 'saved' | 'saving' | 'error' | 'idle'
 import { groupBySupersets, getCompletedCount } from "../types"
 import { ExerciseCard } from "../components/ExerciseCard"
-
-// AI change info type
-export interface AIExerciseChangeInfo {
-  hasPendingChange: boolean
-  changeType: UIDisplayType | null
-  setChanges: Map<string | number, { changeType: UIDisplayType }>
-  pendingSetCount: number
-}
 import { SectionDivider } from "../components/SectionDivider"
 import { ExercisePickerSheet } from "../components/ExercisePickerSheet"
 import { SessionCompletionModal } from "../components/SessionCompletionModal"
@@ -344,6 +336,7 @@ export function WorkoutView({
                                   hasPendingChange={aiInfo?.hasPendingChange}
                                   aiChangeType={aiInfo?.changeType}
                                   setAIChanges={aiInfo?.setChanges}
+                                  pendingNewSets={aiInfo?.pendingNewSets}
                                   pendingSetCount={aiInfo?.pendingSetCount}
                                 />
                               )
@@ -375,6 +368,7 @@ export function WorkoutView({
                           hasPendingChange={aiInfo?.hasPendingChange}
                           aiChangeType={aiInfo?.changeType}
                           setAIChanges={aiInfo?.setChanges}
+                          pendingNewSets={aiInfo?.pendingNewSets}
                           pendingSetCount={aiInfo?.pendingSetCount}
                         />
                       )
