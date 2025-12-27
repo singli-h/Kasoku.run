@@ -1,4 +1,4 @@
-export { KnowledgeBaseSidebar } from './knowledge-base-sidebar'
+export { KnowledgeBaseSidebar, KnowledgeBaseSidebarTrigger } from './knowledge-base-sidebar'
 export { ArticleCard } from './article-card'
 export { CategoryManager } from './category-manager'
 export { KeyboardShortcuts } from './keyboard-shortcuts'

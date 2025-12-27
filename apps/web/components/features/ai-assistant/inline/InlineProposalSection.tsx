@@ -9,11 +9,14 @@
  * This component is designed to be rendered as part of the page flow,
  * not as an overlay.
  *
+ * Design: Clean, minimal aesthetic with subtle shadows and refined typography.
+ * Uses blue accent for AI, semantic colors only for change type indicators.
+ *
  * @see specs/004-feature-pattern-standard/ai-ui-proposal.md
  */
 
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Minus, ArrowRightLeft } from 'lucide-react'
+import { Plus, Edit2, Minus, ArrowRightLeft, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ChangeSet, ChangeRequest, ExecutionError } from '@/lib/changeset/types'
 import { getChangeSummary } from '@/lib/changeset/ui-helpers'
@@ -24,6 +27,28 @@ import { ProposalFeedbackInput } from './ProposalFeedbackInput'
 import { ProposalStatusBanner } from './ProposalStatusBanner'
 
 type SectionState = 'pending' | 'feedback' | 'executing' | 'success' | 'error'
+
+/** Color scheme for change types - minimal, refined palette */
+const CHANGE_STYLES = {
+  create: {
+    icon: 'text-emerald-600',
+    bg: 'bg-emerald-50/50',
+    border: 'border-l-2 border-l-emerald-400',
+    text: 'text-emerald-700',
+  },
+  delete: {
+    icon: 'text-rose-500',
+    bg: 'bg-rose-50/30',
+    border: 'border-l-2 border-l-rose-300',
+    text: 'text-rose-600',
+  },
+  update: {
+    icon: 'text-blue-600',
+    bg: 'bg-blue-50/40',
+    border: 'border-l-2 border-l-blue-400',
+    text: 'text-blue-700',
+  },
+} as const
 
 /**
  * Get icon for change type
@@ -63,7 +88,7 @@ function getChangeLabel(change: ChangeRequest): string {
     if (change.proposedData?.exercise_id && change.currentData?.exercise_id) {
       const oldName = change.currentData?.exercise_name || change.currentData?.exerciseName || 'exercise'
       const newName = change.proposedData?.exercise_name || change.proposedData?.exerciseName || 'new exercise'
-      return `Swap ${oldName} → ${newName}`
+      return `${oldName} → ${newName}`
     }
     return name ? `Update ${name}` : `Update ${entity}`
   }
@@ -71,33 +96,35 @@ function getChangeLabel(change: ChangeRequest): string {
 }
 
 /**
- * Simple inline change list component
+ * Refined inline change list with subtle styling
  */
 function SimpleChangeList({ changes }: { changes: ChangeRequest[] }) {
   if (changes.length === 0) {
     return (
-      <div className="py-2 text-center text-sm text-gray-500">
+      <div className="py-3 text-center text-sm text-muted-foreground">
         No pending changes
       </div>
     )
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       {changes.map((change) => {
         const Icon = getChangeIcon(change)
+        const style = CHANGE_STYLES[change.operationType as keyof typeof CHANGE_STYLES] || CHANGE_STYLES.update
         return (
           <div
             key={change.id}
             className={cn(
-              'flex items-center gap-2 rounded px-2 py-1 text-sm',
-              change.operationType === 'create' && 'bg-green-50 text-green-700',
-              change.operationType === 'delete' && 'bg-red-50 text-red-700',
-              change.operationType === 'update' && 'bg-amber-50 text-amber-700'
+              'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors',
+              style.bg,
+              style.border
             )}
           >
-            <Icon className="h-3 w-3 shrink-0" />
-            <span>{getChangeLabel(change)}</span>
+            <Icon className={cn('h-3.5 w-3.5 shrink-0', style.icon)} />
+            <span className={cn('font-medium', style.text)}>
+              {getChangeLabel(change)}
+            </span>
           </div>
         )
       })}
@@ -214,12 +241,15 @@ export function InlineProposalSection({
   return (
     <div
       className={cn(
-        'rounded-lg border border-amber-200 bg-amber-50/50',
+        // Clean, minimal container with subtle elevation
+        'rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm',
+        'shadow-sm shadow-black/3',
+        'transition-all duration-200',
         className
       )}
     >
-      {/* Header */}
-      <div className="p-3">
+      {/* Header - compact with breathing room */}
+      <div className="px-4 py-3">
         <ProposalHeader
           changeCount={changeCount}
           summary={summary}
@@ -228,16 +258,16 @@ export function InlineProposalSection({
         />
       </div>
 
-      {/* Change list (collapsible) */}
+      {/* Change list (collapsible) - smooth transition */}
       {isExpanded && state !== 'feedback' && (
-        <div className="max-h-48 overflow-y-auto px-3 pb-2">
+        <div className="max-h-52 overflow-y-auto px-4 pb-3 animate-in fade-in-0 slide-in-from-top-1 duration-200">
           <SimpleChangeList changes={changeset.changeRequests} />
         </div>
       )}
 
       {/* Feedback input (when in feedback mode) */}
       {state === 'feedback' && (
-        <div className="px-3 pb-3">
+        <div className="px-4 pb-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
           <ProposalFeedbackInput
             value={feedback}
             onChange={setFeedback}
@@ -247,9 +277,9 @@ export function InlineProposalSection({
         </div>
       )}
 
-      {/* Action bar */}
+      {/* Action bar - clean separator, subtle background */}
       {state !== 'feedback' && (
-        <div className="border-t border-amber-200 bg-amber-50 p-2">
+        <div className="border-t border-border/40 bg-muted/30 px-4 py-2.5">
           <ProposalActionBar
             onApprove={handleApprove}
             onRegenerate={handleRegenerateClick}

@@ -5,10 +5,12 @@
  *
  * Displays status messages for success and error states.
  *
+ * Design: Clean, minimal status feedback with subtle semantic colors.
+ *
  * Single Responsibility: Status display only
  */
 
-import { Check, AlertCircle, X } from 'lucide-react'
+import { Check, AlertCircle, X, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -39,38 +41,60 @@ export function ProposalStatusBanner({
   return (
     <div
       className={cn(
-        'rounded-lg border p-4',
+        'rounded-xl border px-4 py-3',
+        'animate-in fade-in-0 slide-in-from-top-1 duration-200',
         isSuccess
-          ? 'border-green-200 bg-green-50'
-          : 'border-red-200 bg-red-50'
+          ? 'border-emerald-200/60 bg-emerald-50/50'
+          : 'border-rose-200/60 bg-rose-50/50'
       )}
     >
-      <div className="flex items-center justify-between">
-        <div
-          className={cn(
-            'flex items-center gap-2',
-            isSuccess ? 'text-green-700' : 'text-red-700'
-          )}
-        >
-          {isSuccess ? (
-            <Check className="h-5 w-5" />
-          ) : (
-            <AlertCircle className="h-5 w-5" />
-          )}
-          <span className="font-medium">{message}</span>
+      <div className="flex items-center justify-between gap-3">
+        {/* Status indicator + message */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div
+            className={cn(
+              'flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
+              isSuccess ? 'bg-emerald-100' : 'bg-rose-100'
+            )}
+          >
+            {isSuccess ? (
+              <Check className="h-3.5 w-3.5 text-emerald-600" />
+            ) : (
+              <AlertCircle className="h-3.5 w-3.5 text-rose-600" />
+            )}
+          </div>
+          <span
+            className={cn(
+              'text-sm font-medium truncate',
+              isSuccess ? 'text-emerald-700' : 'text-rose-700'
+            )}
+          >
+            {message}
+          </span>
         </div>
 
+        {/* Error actions */}
         {!isSuccess && (
-          <div className="flex gap-2">
-            {onDismiss && (
-              <Button variant="ghost" size="sm" onClick={onDismiss}>
-                <X className="mr-1 h-4 w-4" />
-                Dismiss
+          <div className="flex items-center gap-1 shrink-0">
+            {onRetry && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onRetry}
+                className="h-7 px-2 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-100/50"
+              >
+                <RefreshCw className="mr-1 h-3 w-3" />
+                Retry
               </Button>
             )}
-            {onRetry && (
-              <Button variant="outline" size="sm" onClick={onRetry}>
-                Try Again
+            {onDismiss && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDismiss}
+                className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-100/50"
+              >
+                <X className="h-3.5 w-3.5" />
               </Button>
             )}
           </div>

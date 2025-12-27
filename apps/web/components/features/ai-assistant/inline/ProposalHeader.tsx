@@ -6,11 +6,14 @@
  * Displays the header for the inline proposal section with
  * icon, change count, summary, and expand/collapse toggle.
  *
+ * Design: Refined, minimal with blue AI accent and clean typography.
+ *
  * Single Responsibility: Header UI only, no business logic
  */
 
-import { Bot, ChevronDown, ChevronUp } from 'lucide-react'
+import { Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface ProposalHeaderProps {
   /** Number of pending changes */
@@ -33,24 +36,34 @@ export function ProposalHeader({
   onToggleExpand,
 }: ProposalHeaderProps) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-          <Bot className="h-5 w-5 text-blue-600" />
+    <div className="flex items-center justify-between gap-3">
+      {/* Left: AI indicator + count */}
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Refined AI indicator - smaller, more elegant */}
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-blue-500 to-blue-600 shadow-sm">
+          <Sparkles className="h-4 w-4 text-white" />
         </div>
-        <div>
-          <p className="font-medium text-gray-900">
-            {changeCount} AI Change{changeCount !== 1 ? 's' : ''} Pending
+
+        {/* Content - compact typography */}
+        <div className="min-w-0">
+          <p className="font-semibold text-sm text-foreground tracking-tight">
+            {changeCount} Change{changeCount !== 1 ? 's' : ''} Pending
           </p>
-          <p className="text-sm text-gray-500">{summary}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {summary}
+          </p>
         </div>
       </div>
 
+      {/* Right: Expand toggle */}
       <Button
         variant="ghost"
         size="sm"
         onClick={onToggleExpand}
-        className="text-gray-500"
+        className={cn(
+          'h-8 w-8 p-0 text-muted-foreground hover:text-foreground',
+          'hover:bg-muted/50 transition-colors'
+        )}
         aria-label={isExpanded ? 'Collapse changes' : 'Expand changes'}
       >
         {isExpanded ? (

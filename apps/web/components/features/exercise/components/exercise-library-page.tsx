@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { Paginator } from "@/components/ui/paginator"
 import { cn } from "@/lib/utils"
 
 // Actions
@@ -68,6 +69,8 @@ export function ExerciseLibraryPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [showExerciseForm, setShowExerciseForm] = useState(false)
   const [editingExercise, setEditingExercise] = useState<ExerciseWithDetails | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const exercisesPerPage = 12
 
   const loadLibraryData = useCallback(async () => {
     setIsLoading(true)
@@ -165,11 +168,19 @@ export function ExerciseLibraryPage() {
     })
     
     return result
-  }, [exercises, filters])
+  }, [exercises, filters, currentUserId])
 
-  // Handle filter changes
+  // Pagination calculations
+  const totalPages = Math.ceil(processedExercises.length / exercisesPerPage)
+  const paginatedExercises = useMemo(() => {
+    const startIndex = (currentPage - 1) * exercisesPerPage
+    return processedExercises.slice(startIndex, startIndex + exercisesPerPage)
+  }, [processedExercises, currentPage, exercisesPerPage])
+
+  // Handle filter changes - reset page when filter changes
   const updateFilter = (key: keyof ExerciseLibraryFilters, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }))
+    setCurrentPage(1)
   }
 
   // Clear all filters
@@ -181,6 +192,7 @@ export function ExerciseLibraryPage() {
       sortField: 'name',
       sortOrder: 'asc'
     })
+    setCurrentPage(1)
   }
 
   // Handle exercise deletion and refresh data
@@ -285,68 +297,75 @@ export function ExerciseLibraryPage() {
       {/* Search and Filters Bar */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          {/* Mobile: Stack layout, Desktop: Single row */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            {/* Search - Full width on mobile */}
+            <div className="flex-1 relative min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search exercises..."
                 value={filters.search}
                 onChange={(e) => updateFilter('search', e.target.value)}
-                className="pl-10"
+                className="pl-10 w-full"
               />
             </div>
-            
-            {/* Filter Toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className={cn(showFilters && "bg-muted")}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
-            
-            {/* View Mode Toggle */}
-            <div className="flex border rounded-md">
+
+            {/* Controls row - wraps on tablet */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 shrink-0">
+              {/* Filter Toggle */}
               <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                variant="outline"
                 size="sm"
-                onClick={() => setViewMode('grid')}
-                className="rounded-r-none"
+                onClick={() => setShowFilters(!showFilters)}
+                className={cn("shrink-0", showFilters && "bg-muted")}
               >
-                <Grid3X3 className="h-4 w-4" />
+                <Filter className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Filters</span>
               </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="rounded-l-none"
-              >
-                <List className="h-4 w-4" />
-              </Button>
+
+              {/* View Mode Toggle */}
+              <div className="flex border rounded-md shrink-0">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="rounded-r-none"
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="rounded-l-none"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Sort - hidden on very small screens, shown in filters */}
+              <div className="hidden xs:flex items-center gap-2">
+                <Select value={filters.sortField} onValueChange={(value) => updateFilter('sortField', value as SortField)}>
+                  <SelectTrigger className="w-[110px] sm:w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">Name</SelectItem>
+                    <SelectItem value="type">Type</SelectItem>
+                    <SelectItem value="created_at">Created</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => updateFilter('sortOrder', filters.sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="shrink-0"
+                >
+                  {filters.sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
-            
-            {/* Sort */}
-            <Select value={filters.sortField} onValueChange={(value) => updateFilter('sortField', value as SortField)}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name">Name</SelectItem>
-                <SelectItem value="type">Type</SelectItem>
-                <SelectItem value="created_at">Created</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => updateFilter('sortOrder', filters.sortOrder === 'asc' ? 'desc' : 'asc')}
-            >
-              {filters.sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
-            </Button>
           </div>
           
           {/* Advanced Filters */}
@@ -358,12 +377,12 @@ export function ExerciseLibraryPage() {
                 exit={{ opacity: 0, height: 0 }}
                 className="mt-4 pt-4 border-t space-y-4"
               >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label>Exercise Type</Label>
-                    <Select 
-                      value={filters.exercise_type_id?.toString() || ''} 
-                      onValueChange={(value) => updateFilter('exercise_type_id', value ? parseInt(value) : undefined)}
+                    <Select
+                      value={filters.exercise_type_id?.toString() || ''}
+                      onValueChange={(value) => updateFilter('exercise_type_id', value && value !== 'all' ? parseInt(value) : undefined)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="All types" />
@@ -378,12 +397,12 @@ export function ExerciseLibraryPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label>Unit</Label>
-                    <Select 
-                      value={filters.unit_id?.toString() || ''} 
-                      onValueChange={(value) => updateFilter('unit_id', value ? parseInt(value) : undefined)}
+                    <Select
+                      value={filters.unit_id?.toString() || ''}
+                      onValueChange={(value) => updateFilter('unit_id', value && value !== 'all' ? parseInt(value) : undefined)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="All units" />
@@ -398,20 +417,45 @@ export function ExerciseLibraryPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
+                  {/* Sort controls - visible in filters on mobile */}
+                  <div className="space-y-2 xs:hidden">
+                    <Label>Sort By</Label>
+                    <div className="flex items-center gap-2">
+                      <Select value={filters.sortField} onValueChange={(value) => updateFilter('sortField', value as SortField)}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="name">Name</SelectItem>
+                          <SelectItem value="type">Type</SelectItem>
+                          <SelectItem value="created_at">Created</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateFilter('sortOrder', filters.sortOrder === 'asc' ? 'desc' : 'asc')}
+                        className="shrink-0 h-9"
+                      >
+                        {filters.sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label>Filter</Label>
+                    <Label>Filter & Actions</Label>
                     <div className="flex items-center gap-2">
                       <Button
                         variant={filters.myExercisesOnly ? "default" : "outline"}
                         size="sm"
                         onClick={() => updateFilter('myExercisesOnly', !filters.myExercisesOnly)}
-                        className="flex-1"
+                        className="flex-1 h-9"
                       >
                         <User className="h-4 w-4 mr-2" />
                         My Exercises
                       </Button>
-                      <Button variant="outline" onClick={clearFilters} size="sm">
+                      <Button variant="outline" onClick={clearFilters} size="sm" className="h-9" title="Clear all filters">
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -424,48 +468,58 @@ export function ExerciseLibraryPage() {
       </Card>
 
       {/* Results Summary */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <p className="text-sm text-muted-foreground">
             {processedExercises.length} of {exercises.length} exercises
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {(filters.search || filters.exercise_type_id || filters.unit_id) && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-muted-foreground">Active filters:</span>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          {/* Active filters - scrollable on mobile */}
+          {(filters.search || filters.exercise_type_id || filters.unit_id || filters.myExercisesOnly) && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-thin">
+              <span className="text-sm text-muted-foreground shrink-0 hidden sm:inline">Active:</span>
               {filters.search && (
-                <Badge variant="secondary" className="gap-1">
-                  Search: {filters.search}
+                <Badge variant="secondary" className="gap-1 shrink-0">
+                  <span className="max-w-[100px] truncate">Search: {filters.search}</span>
                   <X
-                    className="h-3 w-3 cursor-pointer"
+                    className="h-3 w-3 cursor-pointer shrink-0"
                     onClick={() => updateFilter('search', '')}
                   />
                 </Badge>
               )}
               {filters.exercise_type_id && (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant="secondary" className="gap-1 shrink-0">
                   Type: {exerciseTypes.find(t => t.id === filters.exercise_type_id)?.type}
                   <X
-                    className="h-3 w-3 cursor-pointer"
+                    className="h-3 w-3 cursor-pointer shrink-0"
                     onClick={() => updateFilter('exercise_type_id', undefined)}
                   />
                 </Badge>
               )}
               {filters.unit_id && (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant="secondary" className="gap-1 shrink-0">
                   Unit: {units.find(u => u.id === filters.unit_id)?.name}
                   <X
-                    className="h-3 w-3 cursor-pointer"
+                    className="h-3 w-3 cursor-pointer shrink-0"
                     onClick={() => updateFilter('unit_id', undefined)}
+                  />
+                </Badge>
+              )}
+              {filters.myExercisesOnly && (
+                <Badge variant="secondary" className="gap-1 shrink-0">
+                  My Exercises
+                  <X
+                    className="h-3 w-3 cursor-pointer shrink-0"
+                    onClick={() => updateFilter('myExercisesOnly', false)}
                   />
                 </Badge>
               )}
             </div>
           )}
 
-          <Button size="sm" onClick={handleCreateExercise} className="ml-auto">
+          <Button size="sm" onClick={handleCreateExercise} className="w-full sm:w-auto sm:ml-auto shrink-0">
             <Plus className="mr-2 h-4 w-4" />
             Add Exercise
           </Button>
@@ -491,24 +545,33 @@ export function ExerciseLibraryPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className={cn(
-          "grid gap-4",
-          viewMode === 'grid'
-            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-            : "grid-cols-1"
-        )}>
-          {processedExercises.map((exercise) => (
-            <ExerciseCard
-              key={exercise.id}
-              exercise={exercise}
-              viewMode={viewMode}
-              currentUserId={currentUserId}
-              onView={() => setSelectedExercise(exercise)}
-              onEdit={() => handleEditExercise(exercise)}
-              onDelete={() => handleDeleteExercise(exercise.id)}
-            />
-          ))}
-        </div>
+        <>
+          <div className={cn(
+            "grid gap-4",
+            viewMode === 'grid'
+              ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              : "grid-cols-1"
+          )}>
+            {paginatedExercises.map((exercise) => (
+              <ExerciseCard
+                key={exercise.id}
+                exercise={exercise}
+                viewMode={viewMode}
+                currentUserId={currentUserId}
+                onView={() => setSelectedExercise(exercise)}
+                onEdit={() => handleEditExercise(exercise)}
+                onDelete={() => handleDeleteExercise(exercise.id)}
+              />
+            ))}
+          </div>
+
+          <Paginator
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            className="mt-6"
+          />
+        </>
       )}
 
       {/* Exercise Detail Dialog */}

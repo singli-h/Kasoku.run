@@ -14,8 +14,8 @@ export function CompletionStep({ onComplete, isSubmitting }: CompletionStepProps
       <div className="space-y-6">
         <div className="flex justify-center">
           <div className="relative">
-            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="w-12 h-12 text-green-600" />
+            <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-12 h-12 text-primary" />
             </div>
             <div className="absolute -top-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center animate-pulse">
               <Sparkles className="w-4 h-4 text-primary-foreground" />
@@ -37,19 +37,19 @@ export function CompletionStep({ onComplete, isSubmitting }: CompletionStepProps
           <h3 className="font-semibold text-foreground mb-4">What happens next?</h3>
           <div className="space-y-3 text-sm text-muted-foreground text-left">
             <div className="flex items-start">
-              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 flex-shrink-0" />
+              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 shrink-0" />
               <span>Your personalized dashboard will be prepared</span>
             </div>
             <div className="flex items-start">
-              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 flex-shrink-0" />
+              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 shrink-0" />
               <span>You'll have access to all the features for your plan</span>
             </div>
             <div className="flex items-start">
-              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 flex-shrink-0" />
+              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 shrink-0" />
               <span>You can start tracking workouts immediately</span>
             </div>
             <div className="flex items-start">
-              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 flex-shrink-0" />
+              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 shrink-0" />
               <span>Check your email for additional setup tips</span>
             </div>
           </div>

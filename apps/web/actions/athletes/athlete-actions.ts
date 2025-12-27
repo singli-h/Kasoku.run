@@ -19,6 +19,62 @@ import {
 
 // (removed unused User type alias)
 
+// Event type for track & field events
+export interface Event {
+  id: number
+  name: string | null
+  category: string | null
+  type: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+// ============================================================================
+// EVENTS ACTIONS
+// ============================================================================
+
+/**
+ * Get all available track & field events
+ */
+export async function getEventsAction(): Promise<ActionState<Event[]>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    const { data: events, error } = await supabase
+      .from('events')
+      .select('*')
+      .order('type', { ascending: true })
+      .order('name', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching events:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch events: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Events retrieved successfully",
+      data: events || []
+    }
+  } catch (error) {
+    console.error('Error in getEventsAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
 // ============================================================================
 // ATHLETE ACTIONS
 // ============================================================================

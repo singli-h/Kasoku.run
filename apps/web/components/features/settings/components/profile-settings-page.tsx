@@ -9,7 +9,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useUser } from "@clerk/nextjs"
+import { useUser, useClerk } from "@clerk/nextjs"
 import { motion, useInView, AnimatePresence } from "framer-motion"
 import {
   User,
@@ -25,12 +25,17 @@ import {
   Weight,
   Sparkles,
   Globe,
-  Mail,
-  AtSign,
   ChevronDown,
   Shield,
-  Zap
+  Zap,
+  Medal,
+  X,
+  Sun,
+  Moon,
+  Monitor,
+  Palette
 } from "lucide-react"
+import { useTheme } from "next-themes"
 import { format } from "date-fns"
 
 // UI Components
@@ -53,7 +58,7 @@ import {
   createCurrentUserAction,
   type UserWithProfile
 } from "@/actions/auth/user-actions"
-import { createOrUpdateAthleteProfileAction } from "@/actions/athletes/athlete-actions"
+import { createOrUpdateAthleteProfileAction, getEventsAction, type Event } from "@/actions/athletes/athlete-actions"
 import { createOrUpdateCoachProfileAction } from "@/actions/athletes/coach-management-actions"
 
 // Import proper types from database
@@ -156,15 +161,15 @@ interface BentoCardProps {
 
 function BentoCard({ children, className, variant = 'default' }: BentoCardProps) {
   const variants = {
-    default: 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800',
-    highlight: 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200 dark:border-amber-900',
-    subtle: 'bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50'
+    default: 'bg-card border border-border',
+    highlight: 'bg-accent/50 border border-border',
+    subtle: 'bg-muted/50 border border-border/50'
   }
 
   return (
     <div className={cn(
       'rounded-2xl p-6 transition-all duration-300',
-      'hover:shadow-lg hover:shadow-zinc-200/50 dark:hover:shadow-zinc-900/50',
+      'hover:shadow-lg hover:shadow-foreground/5',
       'hover:-translate-y-0.5',
       variants[variant],
       className
@@ -189,15 +194,15 @@ interface FormFieldProps {
 function FormField({ label, icon, description, children, className }: FormFieldProps) {
   return (
     <div className={cn("space-y-2 group", className)}>
-      <Label className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 transition-colors group-focus-within:text-amber-600 dark:group-focus-within:text-amber-400">
-        {icon && <span className="text-zinc-400 group-focus-within:text-amber-500 transition-colors">{icon}</span>}
+      <Label className="flex items-center gap-2 text-sm font-medium text-foreground transition-colors group-focus-within:text-primary">
+        {icon && <span className="text-muted-foreground group-focus-within:text-primary transition-colors">{icon}</span>}
         {label}
       </Label>
       <div className="relative">
         {children}
       </div>
       {description && (
-        <p className="text-xs text-zinc-400 dark:text-zinc-500">{description}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
       )}
     </div>
   )
@@ -218,14 +223,14 @@ function SectionHeader({ title, subtitle, icon, badge }: SectionHeaderProps) {
   return (
     <div className="flex items-start justify-between mb-8">
       <div className="flex items-start gap-4">
-        <div className="p-3 rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 text-zinc-600 dark:text-zinc-400">
+        <div className="p-3 rounded-xl bg-muted text-muted-foreground">
           {icon}
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white tracking-tight">
+          <h2 className="text-xl font-semibold text-foreground tracking-tight">
             {title}
           </h2>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             {subtitle}
           </p>
         </div>
@@ -251,13 +256,13 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon }: StatCardProps) {
   return (
-    <div className="flex items-center gap-3 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
-      <div className="p-2 rounded-lg bg-white dark:bg-zinc-800 text-zinc-500">
+    <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50">
+      <div className="p-2 rounded-lg bg-background text-muted-foreground">
         {icon}
       </div>
       <div>
-        <p className="text-xs text-zinc-400 uppercase tracking-wider">{label}</p>
-        <p className="text-sm font-medium text-zinc-900 dark:text-white">{value}</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider">{label}</p>
+        <p className="text-sm font-medium text-foreground">{value}</p>
       </div>
     </div>
   )
@@ -269,7 +274,15 @@ function StatCard({ label, value, icon }: StatCardProps) {
 
 export function ProfileSettingsPage() {
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser()
+  const { openUserProfile } = useClerk()
   const { toast } = useToast()
+  const { theme, setTheme } = useTheme()
+  const [themeMounted, setThemeMounted] = useState(false)
+
+  // Theme mounting effect to prevent hydration mismatch
+  useEffect(() => {
+    setThemeMounted(true)
+  }, [])
 
   // State
   const [user, setUser] = useState<UserWithProfile | null>(null)
@@ -278,6 +291,8 @@ export function ProfileSettingsPage() {
   const [hasChanges, setHasChanges] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date>()
   const [showCalendar, setShowCalendar] = useState(false)
+  const [availableEvents, setAvailableEvents] = useState<Event[]>([])
+  const [selectedEventIds, setSelectedEventIds] = useState<number[]>([])
 
   // Form data
   const [profileData, setProfileData] = useState<ProfileFormData>({
@@ -381,6 +396,11 @@ export function ProfileSettingsPage() {
         experience: userData.athlete.experience as ExperienceLevel || null,
         events: userData.athlete.events as unknown[] || null
       })
+      // Set selected event IDs from stored events
+      const storedEvents = userData.athlete.events as Array<{ id: number }> | null
+      if (storedEvents && Array.isArray(storedEvents)) {
+        setSelectedEventIds(storedEvents.map(e => e.id))
+      }
     }
 
     if (userData.coach) {
@@ -445,19 +465,32 @@ export function ProfileSettingsPage() {
         throw new Error(userResult.message)
       }
 
-      if (profileData.role === 'athlete' && athleteData) {
+      // Always save athlete profile (both athletes and coaches can have athlete data)
+      if (athleteData) {
+        // Convert selected events to minimal format for storage (id + name only)
+        // type/category can be looked up from events table when needed
+        const eventsToSave = selectedEventIds.length > 0
+          ? availableEvents.filter(e => selectedEventIds.includes(e.id)).map(e => ({
+              id: e.id,
+              name: e.name
+            }))
+          : null
+
         const athleteResult = await createOrUpdateAthleteProfileAction({
           height: athleteData.height,
           weight: athleteData.weight,
           training_goals: athleteData.training_goals,
           experience: athleteData.experience,
-          events: athleteData.events
+          events: eventsToSave as Json | null
         })
 
         if (!athleteResult.isSuccess) {
           console.warn('Failed to update athlete profile:', athleteResult.message)
         }
-      } else if (profileData.role === 'coach' && coachData) {
+      }
+
+      // Save coach profile only for coaches
+      if (profileData.role === 'coach' && coachData) {
         const coachResult = await createOrUpdateCoachProfileAction({
           experience: coachData.experience,
           philosophy: coachData.philosophy,
@@ -489,9 +522,78 @@ export function ProfileSettingsPage() {
     }
   }
 
+  // Helper function to extract distance from event name for sorting
+  const getEventDistance = (name: string | null): number => {
+    if (!name) return 99999
+    // Extract numeric distance from event name (e.g., "100m" -> 100, "1500m" -> 1500)
+    const match = name.match(/^(\d+(?:\.\d+)?)\s*(?:m|km|k)?/i)
+    if (match) {
+      let distance = parseFloat(match[1])
+      // Convert km to meters for proper sorting
+      if (name.toLowerCase().includes('km') || name.toLowerCase().includes('k ')) {
+        distance *= 1000
+      }
+      // Marathon is ~42195m, Half Marathon is ~21097m
+      if (name.toLowerCase().includes('marathon') && !name.toLowerCase().includes('half')) {
+        return 42195
+      }
+      if (name.toLowerCase().includes('half marathon')) {
+        return 21097
+      }
+      return distance
+    }
+    // For events without distance (e.g., "Hurdles"), return a high number to sort last within type
+    return 99999
+  }
+
+  // Sort events: by distance (short to long) then A-Z
+  const sortEvents = (events: Event[]): Event[] => {
+    return [...events].sort((a, b) => {
+      // First sort by type to group them
+      if (a.type !== b.type) {
+        const typeOrder = ['track', 'field', 'decathlon', 'heptathlon']
+        return typeOrder.indexOf(a.type || '') - typeOrder.indexOf(b.type || '')
+      }
+      // Within same type, sort by distance then alphabetically
+      const distA = getEventDistance(a.name)
+      const distB = getEventDistance(b.name)
+      if (distA !== distB) {
+        return distA - distB
+      }
+      // Same distance, sort alphabetically
+      return (a.name || '').localeCompare(b.name || '')
+    })
+  }
+
+  // Load available events
+  const loadEvents = async () => {
+    const result = await getEventsAction()
+    if (result.isSuccess && result.data) {
+      setAvailableEvents(sortEvents(result.data))
+    }
+  }
+
+  // Toggle event selection
+  const toggleEventSelection = (eventId: number) => {
+    setSelectedEventIds(prev => {
+      const newIds = prev.includes(eventId)
+        ? prev.filter(id => id !== eventId)
+        : [...prev, eventId]
+      // Update athleteData.events with the selected events
+      const selectedEvents = availableEvents.filter(e => newIds.includes(e.id))
+      setAthleteData(prevData => ({
+        ...prevData,
+        events: selectedEvents as unknown[] | null
+      }))
+      setHasChanges(true)
+      return newIds
+    })
+  }
+
   useEffect(() => {
     if (clerkLoaded && clerkUser) {
       loadUserData()
+      loadEvents()
     }
   }, [clerkLoaded, clerkUser])
 
@@ -505,14 +607,14 @@ export function ProfileSettingsPage() {
           className="flex flex-col items-center gap-4"
         >
           <div className="relative">
-            <div className="w-16 h-16 rounded-full border-4 border-zinc-200 dark:border-zinc-700" />
+            <div className="w-16 h-16 rounded-full border-4 border-border" />
             <motion.div
-              className="absolute inset-0 w-16 h-16 rounded-full border-4 border-amber-500 border-t-transparent"
+              className="absolute inset-0 w-16 h-16 rounded-full border-4 border-primary border-t-transparent"
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             />
           </div>
-          <p className="text-sm text-zinc-500">Loading your profile...</p>
+          <p className="text-sm text-muted-foreground">Loading your profile...</p>
         </motion.div>
       </div>
     )
@@ -535,65 +637,71 @@ export function ProfileSettingsPage() {
     <div className="relative max-w-5xl mx-auto pb-32">
 
         {/* ================================================================ */}
-        {/* SECTION 1: Identity */}
+        {/* SECTION 1: Account & Identity */}
         {/* ================================================================ */}
         <AnimatedSection delay={0.1} className="mb-12">
           <SectionHeader
-            title="Identity"
-            subtitle="Your name and account details"
-            icon={<User className="w-5 h-5" />}
+            title="Account"
+            subtitle="Manage your account settings and subscription"
+            icon={<Shield className="w-5 h-5" />}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <BentoCard className="md:col-span-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField label="First Name" icon={<User className="w-4 h-4" />}>
-                  <Input
-                    value={profileData.first_name}
-                    onChange={(e) => handleProfileChange('first_name', e.target.value)}
-                    placeholder="Enter your first name"
-                    className="h-12 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-                  />
-                </FormField>
-
-                <FormField label="Last Name" icon={<User className="w-4 h-4" />}>
-                  <Input
-                    value={profileData.last_name}
-                    onChange={(e) => handleProfileChange('last_name', e.target.value)}
-                    placeholder="Enter your last name"
-                    className="h-12 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-                  />
-                </FormField>
+            {/* Clerk Account Settings Card */}
+            <BentoCard variant="highlight" className="md:col-span-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {clerkUser?.imageUrl ? (
+                    <img
+                      src={clerkUser.imageUrl}
+                      alt={`${clerkUser?.firstName || ''} ${clerkUser?.lastName || ''}`}
+                      className="w-14 h-14 rounded-2xl object-cover shadow-lg"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground text-xl font-bold shadow-lg shadow-primary/25">
+                      {clerkUser?.firstName?.[0]?.toUpperCase() || clerkUser?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || '?'}
+                      {clerkUser?.lastName?.[0]?.toUpperCase() || ''}
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="font-semibold text-foreground">
+                      {clerkUser?.firstName} {clerkUser?.lastName}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {clerkUser?.emailAddresses?.[0]?.emailAddress}
+                    </p>
+                    {clerkUser?.username && (
+                      <p className="text-xs text-muted-foreground">@{clerkUser.username}</p>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => openUserProfile()}
+                  className="flex items-center gap-2"
+                >
+                  <User className="w-4 h-4" />
+                  Manage Account
+                </Button>
               </div>
             </BentoCard>
 
+            {/* Status Cards */}
             <BentoCard>
-              <FormField
-                label="Username"
-                icon={<AtSign className="w-4 h-4" />}
-                description="Your unique identifier on the platform"
-              >
-                <Input
-                  value={profileData.username}
-                  onChange={(e) => handleProfileChange('username', e.target.value)}
-                  placeholder="Choose a username"
-                  className="h-12 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-                />
-              </FormField>
+              <StatCard
+                label="Status"
+                value={user?.onboarding_completed ? "Active" : "Setup Required"}
+                icon={user?.onboarding_completed ? <CheckCircle className="w-4 h-4 text-green-500" /> : <AlertCircle className="w-4 h-4 text-yellow-500" />}
+              />
             </BentoCard>
-
-            <BentoCard variant="subtle">
-              <FormField
-                label="Email"
-                icon={<Mail className="w-4 h-4" />}
-                description="Managed by your auth provider"
-              >
-                <Input
-                  value={profileData.email}
-                  disabled
-                  className="h-12 bg-zinc-100 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 text-zinc-500 cursor-not-allowed"
+            <BentoCard>
+              <div className="flex items-center justify-between">
+                <StatCard
+                  label="Plan"
+                  value={(user?.subscription_status || "Free").charAt(0).toUpperCase() + (user?.subscription_status || "free").slice(1)}
+                  icon={<Zap className="w-4 h-4 text-primary" />}
                 />
-              </FormField>
+              </div>
             </BentoCard>
           </div>
         </AnimatedSection>
@@ -616,13 +724,13 @@ export function ProfileSettingsPage() {
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full h-12 justify-start text-left font-normal bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700",
-                        !selectedDate && "text-zinc-400"
+                        "w-full h-12 justify-start text-left font-normal bg-muted/50 border-input hover:bg-muted",
+                        !selectedDate && "text-muted-foreground"
                       )}
                     >
-                      <Calendar className="mr-2 h-4 w-4 text-zinc-400" />
+                      <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                       {selectedDate ? format(selectedDate, "MMM d, yyyy") : "Select date"}
-                      <ChevronDown className="ml-auto h-4 w-4 text-zinc-400" />
+                      <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -644,7 +752,7 @@ export function ProfileSettingsPage() {
                   value={profileData.sex || ""}
                   onValueChange={(value) => handleProfileChange('sex', value as Gender)}
                 >
-                  <SelectTrigger className="h-12 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700">
+                  <SelectTrigger className="h-12 bg-muted/50 border-input">
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
@@ -662,7 +770,7 @@ export function ProfileSettingsPage() {
                   value={profileData.timezone}
                   onValueChange={(value) => handleProfileChange('timezone', value)}
                 >
-                  <SelectTrigger className="h-12 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700">
+                  <SelectTrigger className="h-12 bg-muted/50 border-input">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -679,91 +787,7 @@ export function ProfileSettingsPage() {
         </AnimatedSection>
 
         {/* ================================================================ */}
-        {/* SECTION 3: Training Profile (Athletes) */}
-        {/* ================================================================ */}
-        {profileData.role === "athlete" && (
-          <AnimatedSection delay={0.3} className="mb-12">
-            <SectionHeader
-              title="Training Profile"
-              subtitle="Physical metrics and training objectives"
-              icon={<Target className="w-5 h-5" />}
-              badge="Athlete"
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <BentoCard>
-                <FormField label="Height" icon={<Ruler className="w-4 h-4" />}>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      value={athleteData.height || ""}
-                      onChange={(e) => handleAthleteChange('height', parseInt(e.target.value) || null)}
-                      placeholder="180"
-                      className="h-12 pr-12 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-zinc-400">cm</span>
-                  </div>
-                </FormField>
-              </BentoCard>
-
-              <BentoCard>
-                <FormField label="Weight" icon={<Weight className="w-4 h-4" />}>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      value={athleteData.weight || ""}
-                      onChange={(e) => handleAthleteChange('weight', parseInt(e.target.value) || null)}
-                      placeholder="75"
-                      className="h-12 pr-12 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-zinc-400">kg</span>
-                  </div>
-                </FormField>
-              </BentoCard>
-
-              <BentoCard className="md:col-span-2">
-                <FormField label="Experience Level" icon={<Sparkles className="w-4 h-4" />}>
-                  <Select
-                    value={athleteData.experience || ""}
-                    onValueChange={(value) => handleAthleteChange('experience', value as ExperienceLevel)}
-                  >
-                    <SelectTrigger className="h-12 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700">
-                      <SelectValue placeholder="Select your level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {experienceLevels.map((level) => (
-                        <SelectItem key={level.value} value={level.value}>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{level.label}</span>
-                            <span className="text-xs text-zinc-400">— {level.description}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              </BentoCard>
-
-              <BentoCard variant="highlight" className="md:col-span-2 lg:col-span-4">
-                <FormField
-                  label="Training Goals"
-                  icon={<Target className="w-4 h-4" />}
-                  description="What are you working towards? Be specific about times, distances, or achievements."
-                >
-                  <Textarea
-                    value={athleteData.training_goals || ""}
-                    onChange={(e) => handleAthleteChange('training_goals', e.target.value)}
-                    placeholder="E.g., Break 11 seconds in the 100m by end of season, improve my 5K time to under 20 minutes..."
-                    className="min-h-[120px] bg-white/50 dark:bg-zinc-900/50 border-amber-200 dark:border-amber-900 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all resize-none"
-                  />
-                </FormField>
-              </BentoCard>
-            </div>
-          </AnimatedSection>
-        )}
-
-        {/* ================================================================ */}
-        {/* SECTION 3: Coaching Profile (Coaches) */}
+        {/* SECTION 3: Coaching Profile (Coaches) - Shown first when applicable */}
         {/* ================================================================ */}
         {profileData.role === "coach" && (
           <AnimatedSection delay={0.3} className="mb-12">
@@ -781,7 +805,7 @@ export function ProfileSettingsPage() {
                     value={coachData.speciality || ""}
                     onChange={(e) => handleCoachChange('speciality', e.target.value)}
                     placeholder="e.g., Sprints, Endurance, Strength"
-                    className="h-12 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all"
+                    className="h-12 bg-muted/50 border-input focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                   />
                 </FormField>
               </BentoCard>
@@ -792,7 +816,7 @@ export function ProfileSettingsPage() {
                     value={coachData.sport_focus || ""}
                     onChange={(e) => handleCoachChange('sport_focus', e.target.value)}
                     placeholder="e.g., Track & Field, CrossFit, Marathon"
-                    className="h-12 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all"
+                    className="h-12 bg-muted/50 border-input focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                   />
                 </FormField>
               </BentoCard>
@@ -807,7 +831,7 @@ export function ProfileSettingsPage() {
                     value={coachData.experience || ""}
                     onChange={(e) => handleCoachChange('experience', e.target.value)}
                     placeholder="Describe your coaching journey..."
-                    className="min-h-[100px] bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all resize-none"
+                    className="min-h-[100px] bg-muted/50 border-input focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
                   />
                 </FormField>
               </BentoCard>
@@ -822,7 +846,7 @@ export function ProfileSettingsPage() {
                     value={coachData.philosophy || ""}
                     onChange={(e) => handleCoachChange('philosophy', e.target.value)}
                     placeholder="Share your coaching philosophy and values..."
-                    className="min-h-[120px] bg-white/50 dark:bg-zinc-900/50 border-cyan-200 dark:border-cyan-900 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all resize-none"
+                    className="min-h-[120px] bg-muted/50 border-input focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
                   />
                 </FormField>
               </BentoCard>
@@ -831,34 +855,301 @@ export function ProfileSettingsPage() {
         )}
 
         {/* ================================================================ */}
-        {/* SECTION 4: Account Status */}
+        {/* SECTION 4: Athlete Profile (Both Athletes & Coaches) */}
         {/* ================================================================ */}
-        <AnimatedSection delay={0.4} className="mb-12">
+        <AnimatedSection delay={profileData.role === "coach" ? 0.4 : 0.3} className="mb-12">
           <SectionHeader
-            title="Account"
-            subtitle="Subscription and membership details"
-            icon={<Shield className="w-5 h-5" />}
+            title="Athlete Profile"
+            subtitle="Physical metrics, events, and training objectives"
+            icon={<Target className="w-5 h-5" />}
+            badge={profileData.role === "coach" ? "Coach Athlete" : "Athlete"}
           />
 
-          <BentoCard variant="subtle">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <StatCard
-                label="Status"
-                value={user?.onboarding_completed ? "Active" : "Setup Required"}
-                icon={user?.onboarding_completed ? <CheckCircle className="w-4 h-4 text-green-500" /> : <AlertCircle className="w-4 h-4 text-amber-500" />}
-              />
-              <StatCard
-                label="Plan"
-                value={(user?.subscription_status || "Free").charAt(0).toUpperCase() + (user?.subscription_status || "free").slice(1)}
-                icon={<Zap className="w-4 h-4 text-amber-500" />}
-              />
-              <StatCard
-                label="Member Since"
-                value={user?.created_at ? format(new Date(user.created_at), "MMM yyyy") : "Unknown"}
-                icon={<Calendar className="w-4 h-4 text-zinc-400" />}
-              />
-            </div>
-          </BentoCard>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <BentoCard>
+              <FormField label="Height" icon={<Ruler className="w-4 h-4" />}>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={athleteData.height || ""}
+                    onChange={(e) => handleAthleteChange('height', parseInt(e.target.value) || null)}
+                    placeholder="180"
+                    className="h-12 pr-12 bg-muted/50 border-input focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">cm</span>
+                </div>
+              </FormField>
+            </BentoCard>
+
+            <BentoCard>
+              <FormField label="Weight" icon={<Weight className="w-4 h-4" />}>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={athleteData.weight || ""}
+                    onChange={(e) => handleAthleteChange('weight', parseInt(e.target.value) || null)}
+                    placeholder="75"
+                    className="h-12 pr-12 bg-muted/50 border-input focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">kg</span>
+                </div>
+              </FormField>
+            </BentoCard>
+
+            <BentoCard className="md:col-span-2">
+              <FormField label="Experience Level" icon={<Sparkles className="w-4 h-4" />}>
+                <Select
+                  value={athleteData.experience || ""}
+                  onValueChange={(value) => handleAthleteChange('experience', value as ExperienceLevel)}
+                >
+                  <SelectTrigger className="h-12 bg-muted/50 border-input">
+                    <SelectValue placeholder="Select your level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {experienceLevels.map((level) => (
+                      <SelectItem key={level.value} value={level.value}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{level.label}</span>
+                          <span className="text-xs text-muted-foreground">— {level.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </BentoCard>
+
+            {/* Events Multi-Select */}
+            <BentoCard className="md:col-span-2 lg:col-span-4">
+              <FormField
+                label="Events"
+                icon={<Medal className="w-4 h-4" />}
+                description="Select the track & field events you compete in or train for"
+              >
+                <div className="space-y-3">
+                  {/* Selected Events */}
+                  {selectedEventIds.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedEventIds.map(eventId => {
+                        const event = availableEvents.find(e => e.id === eventId)
+                        return event ? (
+                          <Badge
+                            key={event.id}
+                            variant="secondary"
+                            className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer transition-colors"
+                            onClick={() => toggleEventSelection(event.id)}
+                          >
+                            {event.name}
+                            <X className="w-3 h-3 ml-1" />
+                          </Badge>
+                        ) : null
+                      })}
+                    </div>
+                  )}
+
+                  {/* Event Categories */}
+                  <div className="space-y-4">
+                    {/* Track Events */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Track</p>
+                      <div className="flex flex-wrap gap-2">
+                        {availableEvents
+                          .filter(e => e.type === 'track')
+                          .map(event => (
+                            <Badge
+                              key={event.id}
+                              variant={selectedEventIds.includes(event.id) ? "default" : "outline"}
+                              className={cn(
+                                "cursor-pointer transition-all",
+                                selectedEventIds.includes(event.id)
+                                  ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+                                  : "hover:bg-muted"
+                              )}
+                              onClick={() => toggleEventSelection(event.id)}
+                            >
+                              {event.name}
+                            </Badge>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Field Events */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Field</p>
+                      <div className="flex flex-wrap gap-2">
+                        {availableEvents
+                          .filter(e => e.type === 'field')
+                          .map(event => (
+                            <Badge
+                              key={event.id}
+                              variant={selectedEventIds.includes(event.id) ? "default" : "outline"}
+                              className={cn(
+                                "cursor-pointer transition-all",
+                                selectedEventIds.includes(event.id)
+                                  ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+                                  : "hover:bg-muted"
+                              )}
+                              onClick={() => toggleEventSelection(event.id)}
+                            >
+                              {event.name}
+                            </Badge>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Combined Events */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Combined</p>
+                      <div className="flex flex-wrap gap-2">
+                        {availableEvents
+                          .filter(e => e.type === 'decathlon' || e.type === 'heptathlon')
+                          .map(event => (
+                            <Badge
+                              key={event.id}
+                              variant={selectedEventIds.includes(event.id) ? "default" : "outline"}
+                              className={cn(
+                                "cursor-pointer transition-all",
+                                selectedEventIds.includes(event.id)
+                                  ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+                                  : "hover:bg-muted"
+                              )}
+                              onClick={() => toggleEventSelection(event.id)}
+                            >
+                              {event.name}
+                            </Badge>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </FormField>
+            </BentoCard>
+
+            <BentoCard variant="highlight" className="md:col-span-2 lg:col-span-4">
+              <FormField
+                label="Training Goals"
+                icon={<Target className="w-4 h-4" />}
+                description="What are you working towards? Be specific about times, distances, or achievements."
+              >
+                <Textarea
+                  value={athleteData.training_goals || ""}
+                  onChange={(e) => handleAthleteChange('training_goals', e.target.value)}
+                  placeholder="E.g., Break 11 seconds in the 100m by end of season, improve my 5K time to under 20 minutes..."
+                  className="min-h-[120px] bg-muted/50 border-input focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                />
+              </FormField>
+            </BentoCard>
+          </div>
+        </AnimatedSection>
+
+        {/* ================================================================ */}
+        {/* SECTION 5: Appearance / Theme */}
+        {/* ================================================================ */}
+        <AnimatedSection delay={profileData.role === "coach" ? 0.5 : 0.4} className="mb-12">
+          <SectionHeader
+            title="Appearance"
+            subtitle="Customize how Kasoku looks for you"
+            icon={<Palette className="w-5 h-5" />}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {themeMounted && (
+              <>
+                {/* Light Theme */}
+                <BentoCard
+                  className={cn(
+                    "cursor-pointer transition-all",
+                    theme === "light" && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                  )}
+                >
+                  <button
+                    onClick={() => setTheme("light")}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "p-3 rounded-xl transition-colors",
+                        theme === "light"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      )}>
+                        <Sun className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">Light</p>
+                        <p className="text-sm text-muted-foreground">Bright and clean</p>
+                      </div>
+                      {theme === "light" && (
+                        <CheckCircle className="w-5 h-5 text-primary ml-auto" />
+                      )}
+                    </div>
+                  </button>
+                </BentoCard>
+
+                {/* Dark Theme */}
+                <BentoCard
+                  className={cn(
+                    "cursor-pointer transition-all",
+                    theme === "dark" && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                  )}
+                >
+                  <button
+                    onClick={() => setTheme("dark")}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "p-3 rounded-xl transition-colors",
+                        theme === "dark"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      )}>
+                        <Moon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">Dark</p>
+                        <p className="text-sm text-muted-foreground">Easy on the eyes</p>
+                      </div>
+                      {theme === "dark" && (
+                        <CheckCircle className="w-5 h-5 text-primary ml-auto" />
+                      )}
+                    </div>
+                  </button>
+                </BentoCard>
+
+                {/* System Theme */}
+                <BentoCard
+                  className={cn(
+                    "cursor-pointer transition-all",
+                    theme === "system" && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                  )}
+                >
+                  <button
+                    onClick={() => setTheme("system")}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "p-3 rounded-xl transition-colors",
+                        theme === "system"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      )}>
+                        <Monitor className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">System</p>
+                        <p className="text-sm text-muted-foreground">Match device settings</p>
+                      </div>
+                      {theme === "system" && (
+                        <CheckCircle className="w-5 h-5 text-primary ml-auto" />
+                      )}
+                    </div>
+                  </button>
+                </BentoCard>
+              </>
+            )}
+          </div>
         </AnimatedSection>
 
         {/* ================================================================ */}
@@ -873,12 +1164,12 @@ export function ProfileSettingsPage() {
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               className="fixed bottom-0 left-0 right-0 z-50"
             >
-              <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800">
+              <div className="bg-background/80 backdrop-blur-xl border-t border-border">
                 <div className="max-w-5xl mx-auto px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                      <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                      <span className="text-sm font-medium text-muted-foreground">
                         Unsaved changes
                       </span>
                     </div>
@@ -892,14 +1183,14 @@ export function ProfileSettingsPage() {
                             setHasChanges(false)
                           }
                         }}
-                        className="text-zinc-500 hover:text-zinc-700"
+                        className="text-muted-foreground hover:text-foreground"
                       >
                         Discard
                       </Button>
                       <Button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 px-6"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 px-6"
                       >
                         {isSaving ? (
                           <>

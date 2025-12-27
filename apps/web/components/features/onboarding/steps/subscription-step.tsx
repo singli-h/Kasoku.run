@@ -42,8 +42,8 @@ export function SubscriptionStep({ userData, updateUserData, onNext, onPrev }: S
           onClick={() => handleSubscriptionSelect("free")}
         >
           <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Zap className="w-8 h-8 text-green-600" />
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Zap className="w-8 h-8 text-primary" />
             </div>
             <CardTitle className="text-xl">Free Plan</CardTitle>
             <CardDescription>
@@ -56,23 +56,23 @@ export function SubscriptionStep({ userData, updateUserData, onNext, onPrev }: S
           <CardContent className="space-y-4">
             <div className="space-y-3">
               <div className="flex items-center">
-                <Check className="w-4 h-4 text-green-600 mr-3" />
+                <Check className="w-4 h-4 text-primary mr-3" />
                 <span className="text-sm">Basic workout tracking</span>
               </div>
               <div className="flex items-center">
-                <Check className="w-4 h-4 text-green-600 mr-3" />
+                <Check className="w-4 h-4 text-primary mr-3" />
                 <span className="text-sm">Performance analytics</span>
               </div>
               <div className="flex items-center">
-                <Check className="w-4 h-4 text-green-600 mr-3" />
+                <Check className="w-4 h-4 text-primary mr-3" />
                 <span className="text-sm">Training calendar</span>
               </div>
               <div className="flex items-center">
-                <Check className="w-4 h-4 text-green-600 mr-3" />
+                <Check className="w-4 h-4 text-primary mr-3" />
                 <span className="text-sm">Mobile app access</span>
               </div>
               <div className="flex items-center">
-                <Check className="w-4 h-4 text-green-600 mr-3" />
+                <Check className="w-4 h-4 text-primary mr-3" />
                 <span className="text-sm">Community support</span>
               </div>
             </div>

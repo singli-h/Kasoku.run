@@ -171,6 +171,18 @@ export default function RootLayout({
     <ClerkProvider
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/onboarding"
+      appearance={{
+        userProfile: {
+          elements: {
+            // Hide notifications and theme tabs from Clerk UserProfile
+            // Theme is handled in our own settings page
+            navbarButton__notifications: { display: 'none' },
+            pageRow__notifications: { display: 'none' },
+            profileSection__notifications: { display: 'none' },
+            profilePage__notifications: { display: 'none' }
+          }
+        }
+      }}
     >
       <html lang="en" suppressHydrationWarning>
         <head>

@@ -15,37 +15,37 @@ export function DashboardTourStep({ onNext, onPrev }: DashboardTourStepProps) {
       icon: BarChart3,
       title: "Performance Analytics",
       description: "Track your progress with detailed charts and metrics",
-      color: "bg-blue-100 text-blue-600"
+      color: "bg-primary/10 text-primary"
     },
     {
       icon: Calendar,
       title: "Training Calendar",
       description: "Plan and schedule your workouts and sessions",
-      color: "bg-green-100 text-green-600"
+      color: "bg-primary/15 text-primary"
     },
     {
       icon: Users,
       title: "Team Management",
       description: "Manage athletes and coaching relationships",
-      color: "bg-purple-100 text-purple-600"
+      color: "bg-primary/20 text-primary"
     },
     {
       icon: Trophy,
       title: "Competition Tracking",
       description: "Log meets, races, and competitive performances",
-      color: "bg-yellow-100 text-yellow-600"
+      color: "bg-primary/10 text-primary"
     },
     {
       icon: Target,
       title: "Goal Setting",
       description: "Set and track personal and seasonal goals",
-      color: "bg-red-100 text-red-600"
+      color: "bg-primary/15 text-primary"
     },
     {
       icon: BookOpen,
       title: "Training Library",
       description: "Access workout templates and training resources",
-      color: "bg-indigo-100 text-indigo-600"
+      color: "bg-primary/20 text-primary"
     }
   ]
 
@@ -101,15 +101,15 @@ export function DashboardTourStep({ onNext, onPrev }: DashboardTourStepProps) {
           </p>
           <div className="flex justify-center space-x-4 text-sm text-muted-foreground">
             <div className="flex items-center">
-              <div className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+              <div className="w-2 h-2 bg-primary rounded-full mr-2" />
               Easy to use
             </div>
             <div className="flex items-center">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mr-2" />
+              <div className="w-2 h-2 bg-primary/70 rounded-full mr-2" />
               Mobile friendly
             </div>
             <div className="flex items-center">
-              <div className="w-2 h-2 bg-purple-500 rounded-full mr-2" />
+              <div className="w-2 h-2 bg-primary/50 rounded-full mr-2" />
               Always improving
             </div>
           </div>

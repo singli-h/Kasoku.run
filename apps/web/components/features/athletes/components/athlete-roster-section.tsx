@@ -117,20 +117,34 @@ export function AthleteRosterSection({
     return age
   }, [])
 
-  // Parse events from JSON
+  // Parse events from JSON - handles both string arrays and object arrays with {id, name}
   const parseEvents = useCallback((events: unknown): string[] => {
     if (!events) return []
+
+    let parsedEvents: unknown[]
+
     if (typeof events === 'string') {
       try {
-        return JSON.parse(events)
+        parsedEvents = JSON.parse(events)
       } catch {
         return []
       }
+    } else if (Array.isArray(events)) {
+      parsedEvents = events
+    } else {
+      return []
     }
-    if (Array.isArray(events)) {
-      return events
-    }
-    return []
+
+    // Convert array items to strings, handling objects with {id, name} structure
+    return parsedEvents.map((event) => {
+      if (typeof event === 'string') {
+        return event
+      }
+      if (event && typeof event === 'object' && 'name' in event) {
+        return String((event as { name: unknown }).name)
+      }
+      return String(event)
+    }).filter(Boolean)
   }, [])
 
   return (

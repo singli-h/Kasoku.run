@@ -88,6 +88,14 @@ BEST PRACTICES:
   --z-modal: 50;
   --z-toast: 60;
 
+  /* Z-Index Tailwind utilities - must be in @theme for Tailwind v4 */
+  --z-index-sidebar: 10;
+  --z-index-header: 20;
+  --z-index-dropdown: 30;
+  --z-index-tooltip: 40;
+  --z-index-modal: 50;
+  --z-index-toast: 60;
+
   /* Animation definitions */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
@@ -196,6 +204,11 @@ BEST PRACTICES:
   border-color: hsl(var(--border));
 }
 
+html {
+  /* Prevent layout shift when scrollbar appears/disappears (e.g., dropdown open) */
+  scrollbar-gutter: stable;
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
@@ -241,6 +254,474 @@ body {
 
 .text-low-contrast {
   color: hsl(var(--muted-foreground));
+}
+
+/* ============================================
+   SEMANTIC SURFACE UTILITIES
+   Use these for consistent card/panel styling
+   ============================================ */
+
+/* Surface levels - for layered UI */
+.surface-base {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.surface-raised {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.surface-sunken {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.surface-overlay {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+/* Interactive states - consistent hover/focus */
+.interactive-bg {
+  transition: background-color 0.15s ease;
+}
+
+.interactive-bg:hover {
+  background-color: hsl(var(--accent));
+}
+
+.interactive-bg:focus-visible {
+  background-color: hsl(var(--accent));
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Status colors - semantic feedback */
+.status-success {
+  color: hsl(142 76% 36%);
+}
+
+.dark .status-success {
+  color: hsl(142 70% 50%);
+}
+
+.status-warning {
+  color: hsl(38 92% 40%);
+}
+
+.dark .status-warning {
+  color: hsl(38 92% 55%);
+}
+
+.status-error {
+  color: hsl(var(--destructive));
+}
+
+.status-info {
+  color: hsl(var(--primary));
+}
+
+/* Status backgrounds */
+.status-success-bg {
+  background-color: hsl(142 76% 36% / 0.1);
+  color: hsl(142 76% 36%);
+}
+
+.dark .status-success-bg {
+  background-color: hsl(142 70% 50% / 0.15);
+  color: hsl(142 70% 50%);
+}
+
+.status-warning-bg {
+  background-color: hsl(38 92% 40% / 0.1);
+  color: hsl(38 92% 40%);
+}
+
+.dark .status-warning-bg {
+  background-color: hsl(38 92% 55% / 0.15);
+  color: hsl(38 92% 55%);
+}
+
+.status-error-bg {
+  background-color: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
+}
+
+.status-info-bg {
+  background-color: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+/* Input field consistent styling */
+.input-base {
+  background-color: hsl(var(--muted) / 0.5);
+  border: 1px solid hsl(var(--input));
+  color: hsl(var(--foreground));
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input-base::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.input-base:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+  outline: none;
+}
+
+/* Badge/tag consistent styling */
+.badge-default {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+
+.badge-primary {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.badge-outline {
+  background-color: transparent;
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.badge-subtle {
+  background-color: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+/* ============================================
+   UNIFIED SHADOW SYSTEM
+   Consistent elevation across the app
+   ============================================ */
+
+.shadow-soft-sm {
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+}
+
+.shadow-soft {
+  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.06);
+}
+
+.shadow-soft-md {
+  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.08);
+}
+
+.shadow-soft-lg {
+  box-shadow: 0 8px 32px hsl(var(--foreground) / 0.1);
+}
+
+.shadow-soft-xl {
+  box-shadow: 0 16px 48px hsl(var(--foreground) / 0.12);
+}
+
+/* ============================================
+   UNIFIED SPACING SCALE
+   Based on 4px grid system
+   ============================================ */
+
+.gap-section { gap: 2rem; }         /* 32px - between major sections */
+.gap-group { gap: 1.5rem; }         /* 24px - between related groups */
+.gap-element { gap: 1rem; }         /* 16px - between elements */
+.gap-item { gap: 0.5rem; }          /* 8px - between items */
+.gap-tight { gap: 0.25rem; }        /* 4px - tight spacing */
+
+.p-section { padding: 2rem; }
+.p-group { padding: 1.5rem; }
+.p-element { padding: 1rem; }
+.p-item { padding: 0.5rem; }
+.p-tight { padding: 0.25rem; }
+
+/* ============================================
+   UNIFIED TYPOGRAPHY SYSTEM
+   Consistent text styles across the app
+   ============================================ */
+
+.text-display {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: hsl(var(--foreground));
+}
+
+.text-heading-lg {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+}
+
+.text-heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: hsl(var(--foreground));
+}
+
+.text-heading-sm {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: hsl(var(--foreground));
+}
+
+.text-body-lg {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: hsl(var(--foreground));
+}
+
+.text-body {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: hsl(var(--foreground));
+}
+
+.text-body-sm {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: hsl(var(--foreground));
+}
+
+.text-caption {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: hsl(var(--muted-foreground));
+}
+
+.text-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ============================================
+   UNIFIED BORDER RADIUS SYSTEM
+   ============================================ */
+
+.rounded-card { border-radius: 0.75rem; }      /* 12px - cards/dialogs */
+.rounded-element { border-radius: 0.5rem; }    /* 8px - buttons/inputs */
+.rounded-item { border-radius: 0.375rem; }     /* 6px - badges/tags */
+.rounded-tight { border-radius: 0.25rem; }     /* 4px - small elements */
+
+/* ============================================
+   UNIFIED ANIMATION SYSTEM
+   Consistent motion across the app
+   ============================================ */
+
+.transition-fast {
+  transition: all 0.1s ease-out;
+}
+
+.transition-normal {
+  transition: all 0.2s ease-out;
+}
+
+.transition-slow {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Hover lift effect */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.08);
+}
+
+/* Hover glow effect */
+.hover-glow {
+  transition: box-shadow 0.2s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
+}
+
+/* Press effect */
+.active-press:active {
+  transform: scale(0.98);
+}
+
+/* ============================================
+   UNIFIED CARD STYLES
+   Consistent card appearance
+   ============================================ */
+
+.card-base {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.card-interactive {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+
+.card-interactive:hover {
+  border-color: hsl(var(--border) / 0.8);
+  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.06);
+  transform: translateY(-1px);
+}
+
+.card-selected {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+.card-inset {
+  background-color: hsl(var(--muted) / 0.5);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+/* ============================================
+   UNIFIED BUTTON BASE STYLES
+   Consistent button appearance
+   ============================================ */
+
+.btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-base:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   UNIFIED DIVIDER STYLES
+   ============================================ */
+
+.divider {
+  height: 1px;
+  background-color: hsl(var(--border));
+  border: none;
+  margin: 1rem 0;
+}
+
+.divider-light {
+  background-color: hsl(var(--border) / 0.5);
+}
+
+.divider-vertical {
+  width: 1px;
+  height: 100%;
+  background-color: hsl(var(--border));
+}
+
+/* ============================================
+   UNIFIED ICON SIZING
+   ============================================ */
+
+.icon-xs { width: 0.875rem; height: 0.875rem; }  /* 14px */
+.icon-sm { width: 1rem; height: 1rem; }          /* 16px */
+.icon-md { width: 1.25rem; height: 1.25rem; }    /* 20px */
+.icon-lg { width: 1.5rem; height: 1.5rem; }      /* 24px */
+.icon-xl { width: 2rem; height: 2rem; }          /* 32px */
+
+/* ============================================
+   UNIFIED EMPTY STATES
+   ============================================ */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  gap: 1rem;
+}
+
+.empty-state-icon {
+  width: 3rem;
+  height: 3rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.empty-state-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+.empty-state-description {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  max-width: 24rem;
+}
+
+/* ============================================
+   UNIFIED LOADING STATES
+   ============================================ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted-foreground) / 0.1) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 0.375rem;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+  height: 1rem;
+  width: 100%;
+}
+
+.skeleton-text-sm {
+  height: 0.75rem;
+  width: 75%;
+}
+
+.skeleton-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+}
+
+.skeleton-card {
+  height: 8rem;
+  width: 100%;
 }
 
 /* ============================================
