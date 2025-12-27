@@ -55,8 +55,8 @@ export interface WorkoutViewProps {
   onFinishSession?: () => void
   onSaveSession?: () => void
 
-  /** AI change info per exercise (keyed by exercise ID) */
-  aiChangesByExercise?: Map<string | number, AIExerciseChangeInfo>
+  /** AI change info per exercise (keyed by exercise ID as string) */
+  aiChangesByExercise?: Map<string, AIExerciseChangeInfo>
 
   className?: string
 }
@@ -152,6 +152,53 @@ export function WorkoutView({
 
     return groups
   }, [exercises])
+
+  // Extract pending add exercises from aiChangesByExercise (CREATE operations for new exercises)
+  const pendingAddExercises = useMemo((): TrainingExercise[] => {
+    if (!aiChangesByExercise) return []
+
+    const existingIds = new Set(exercises.map(ex => String(ex.id)))
+    const ghostExercises: TrainingExercise[] = []
+
+    aiChangesByExercise.forEach((info, exerciseId) => {
+      // Only include if:
+      // 1. It's an 'add' change type
+      // 2. The exercise doesn't exist in the current exercises array
+      // 3. It has proposed data
+      if (info.changeType === 'add' && !existingIds.has(exerciseId) && info.proposedData) {
+        const proposed = info.proposedData
+        // Convert proposed data to TrainingExercise format
+        ghostExercises.push({
+          id: exerciseId,
+          exerciseId: (proposed.exercise_id as number) || 0, // Exercise library reference
+          name: (proposed.exercise_name as string) || (proposed.name as string) || 'New Exercise',
+          section: (proposed.section as string) || 'Main',
+          exerciseOrder: (proposed.exercise_order as number) || exercises.length + 1,
+          exerciseTypeId: proposed.exercise_type_id as number | undefined,
+          expanded: true, // Always expanded so sets are visible
+          sets: info.pendingNewSets.map((setInfo, index) => ({
+            id: `ghost-set-${index}`,
+            setIndex: index + 1,
+            completed: false,
+            reps: (setInfo.proposedData?.reps as number | null) ?? null,
+            weight: (setInfo.proposedData?.weight as number | null) ?? null,
+            distance: (setInfo.proposedData?.distance as number | null) ?? null,
+            performingTime: (setInfo.proposedData?.performing_time as number | null) ?? null,
+            height: (setInfo.proposedData?.height as number | null) ?? null,
+            power: (setInfo.proposedData?.power as number | null) ?? null,
+            velocity: (setInfo.proposedData?.velocity as number | null) ?? null,
+            rpe: (setInfo.proposedData?.rpe as number | null) ?? null,
+            restTime: (setInfo.proposedData?.rest_time as number | null) ?? null,
+            tempo: (setInfo.proposedData?.tempo as string | null) ?? null,
+            effort: (setInfo.proposedData?.effort as number | null) ?? null,
+            resistance: (setInfo.proposedData?.resistance as number | null) ?? null,
+          })),
+        })
+      }
+    })
+
+    return ghostExercises.sort((a, b) => a.exerciseOrder - b.exerciseOrder)
+  }, [aiChangesByExercise, exercises])
 
   // Exercise drag handlers
   const handleExerciseDragStart = useCallback((e: React.DragEvent, exerciseId: string | number) => {
@@ -338,6 +385,8 @@ export function WorkoutView({
                                   setAIChanges={aiInfo?.setChanges}
                                   pendingNewSets={aiInfo?.pendingNewSets}
                                   pendingSetCount={aiInfo?.pendingSetCount}
+                                  aiProposedData={aiInfo?.proposedData}
+                                  aiCurrentData={aiInfo?.currentData}
                                 />
                               )
                             })}
@@ -370,6 +419,8 @@ export function WorkoutView({
                           setAIChanges={aiInfo?.setChanges}
                           pendingNewSets={aiInfo?.pendingNewSets}
                           pendingSetCount={aiInfo?.pendingSetCount}
+                          aiProposedData={aiInfo?.proposedData}
+                          aiCurrentData={aiInfo?.currentData}
                         />
                       )
                     })}
@@ -377,6 +428,26 @@ export function WorkoutView({
                 </div>
               )
             })}
+
+            {/* Ghost exercises (pending CREATE operations) */}
+            {pendingAddExercises.length > 0 && (
+              <div>
+                <SectionDivider label="Pending" />
+                <div className="space-y-3 pl-2">
+                  {pendingAddExercises.map((ghostEx) => (
+                    <ExerciseCard
+                      key={`ghost-ex-${ghostEx.id}`}
+                      exercise={ghostEx}
+                      isAthlete={isAthlete}
+                      isGhostExercise={true}
+                      onToggleExpand={() => {}}
+                      onCompleteSet={() => {}}
+                      // Ghost exercises are read-only
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

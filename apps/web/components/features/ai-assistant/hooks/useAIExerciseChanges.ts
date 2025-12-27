@@ -64,7 +64,7 @@ interface UseAIExerciseChangesOptions {
  */
 export function useAIExerciseChanges(
   options: UseAIExerciseChangesOptions = {}
-): Map<string | number, AIExerciseChangeInfo> {
+): Map<string, AIExerciseChangeInfo> {
   const {
     exerciseEntityType = 'preset_exercise',
     setEntityType = 'preset_set',
@@ -73,7 +73,7 @@ export function useAIExerciseChanges(
   const context = useChangeSetOptional()
 
   return useMemo(() => {
-    const result = new Map<string | number, AIExerciseChangeInfo>()
+    const result = new Map<string, AIExerciseChangeInfo>()
 
     // Return empty map if outside AI context
     if (!context || !context.changeset) {
@@ -87,8 +87,10 @@ export function useAIExerciseChanges(
     changeset.changeRequests
       .filter(req => req.entityType === exerciseEntityType)
       .forEach(req => {
-        const exerciseId = req.entityId
-        if (exerciseId == null) return
+        const rawExerciseId = req.entityId
+        if (rawExerciseId == null) return
+        // Normalize to string for consistent Map key lookup
+        const exerciseId = String(rawExerciseId)
 
         const changeType = deriveUIDisplayType(
           req.operationType,
@@ -123,7 +125,9 @@ export function useAIExerciseChanges(
         // Validate exerciseId is a valid type
         if (rawExerciseId == null) return
         if (typeof rawExerciseId !== 'string' && typeof rawExerciseId !== 'number') return
-        const exerciseId: string | number = rawExerciseId
+        // Normalize to string for consistent Map key lookup
+        // WorkoutView uses String(ex.id) for lookups, so we must match
+        const exerciseId: string = String(rawExerciseId)
 
         const changeType = deriveUIDisplayType(
           req.operationType,

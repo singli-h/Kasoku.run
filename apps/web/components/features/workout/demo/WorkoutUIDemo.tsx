@@ -1,12 +1,42 @@
 "use client"
 
+/**
+ * WorkoutUIDemo - Interactive demo of workout/session planning UI
+ *
+ * This demo uses the EXACT SAME components as the real session page:
+ * - SessionExercisesProvider for shared exercises state
+ * - ChangeSetProvider for AI changeset management
+ * - ChatDrawer + ChatTrigger for AI chat interface
+ * - InlineProposalSection for approval UI
+ * - WorkoutView for the exercise list
+ *
+ * The only difference is we simulate AI tool calls instead of
+ * calling the real API endpoint.
+ *
+ * @see /app/(protected)/plans/[id]/session/[sessionId]/page.tsx
+ */
+
 import { useState, useCallback, useEffect, useMemo } from "react"
 import {
-  Check, ChevronDown, ChevronUp, GripVertical, Plus, Trash2, X,
-  Monitor, Tablet, Smartphone, Search, Dumbbell, Timer, Trophy,
-  ChevronLeft, Heart, Clock, Zap
+  Monitor, Tablet, Smartphone, Plus, Minus, Edit3, Trash2, ArrowLeftRight, RefreshCw, Bot
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+// Import actual training components and types
+import { WorkoutView } from "@/components/features/training/views/WorkoutView"
+import type { TrainingSet, ExerciseLibraryItem } from "@/components/features/training/types"
+import { sessionExercisesToTraining } from "@/components/features/training/adapters/session-adapter"
+import type { SessionPlannerExercise } from "@/components/features/training/adapters/session-adapter"
+import { SessionExercisesProvider, useSessionExercises } from "@/components/features/training/context"
+
+// Import REAL AI assistant components
+import { ChangeSetProvider } from "@/lib/changeset/ChangeSetContext"
+import { useChangeSet } from "@/lib/changeset/useChangeSet"
+import { useAIExerciseChanges } from "@/components/features/ai-assistant/hooks"
+import { ChatDrawer, ChatTrigger } from "@/components/features/ai-assistant/ChatDrawer"
+import { InlineProposalSection } from "@/components/features/ai-assistant/inline/InlineProposalSection"
+import type { ChangeRequest, OperationType } from "@/lib/changeset/types"
+import type { UIMessage } from "@ai-sdk/react"
 
 // =============================================================================
 // Types
@@ -14,1229 +44,138 @@ import { cn } from "@/lib/utils"
 
 type DeviceView = "phone" | "tablet" | "desktop"
 type UserMode = "athlete" | "coach"
-
-interface SetData {
-  id: string
-  setIndex: number
-  reps?: number
-  weight?: number
-  distance?: number
-  time?: number
-  power?: number
-  velocity?: number
-  height?: number
-  rpe?: number
-  completed: boolean
-}
-
-interface ExerciseData {
-  id: string
-  name: string
-  section: string
-  supersetId?: string
-  sets: SetData[]
-  notes?: string
-  expanded: boolean
-}
-
-// Exercise library item (for picker)
-interface ExerciseLibraryItem {
-  id: string
-  name: string
-  category: string
-  equipment: string
-  muscleGroups: string[]
-}
+type AIScenario = 'none' | 'add_sets' | 'update_set' | 'delete_set' | 'add_exercise' | 'swap_exercise' | 'delete_exercise' | 'mixed_changes' | 'superset_changes'
 
 // =============================================================================
 // Exercise Library (Demo Data)
 // =============================================================================
 
 const EXERCISE_LIBRARY: ExerciseLibraryItem[] = [
-  // Speed
-  { id: "lib-1", name: "Flying 10m", category: "Speed", equipment: "None", muscleGroups: ["Legs", "Core"] },
-  { id: "lib-2", name: "Flying 20m", category: "Speed", equipment: "None", muscleGroups: ["Legs", "Core"] },
-  { id: "lib-3", name: "Block Start 30m", category: "Speed", equipment: "Blocks", muscleGroups: ["Legs", "Core"] },
-  { id: "lib-4", name: "Standing Start 20m", category: "Speed", equipment: "None", muscleGroups: ["Legs", "Core"] },
-  { id: "lib-5", name: "A-Skips", category: "Speed", equipment: "None", muscleGroups: ["Legs", "Hip Flexors"] },
-  { id: "lib-6", name: "B-Skips", category: "Speed", equipment: "None", muscleGroups: ["Legs", "Hamstrings"] },
-  // Strength
-  { id: "lib-10", name: "Half Squat", category: "Strength", equipment: "Barbell", muscleGroups: ["Quads", "Glutes"] },
-  { id: "lib-11", name: "Power Clean", category: "Strength", equipment: "Barbell", muscleGroups: ["Full Body"] },
-  { id: "lib-12", name: "Deadlift", category: "Strength", equipment: "Barbell", muscleGroups: ["Back", "Hamstrings", "Glutes"] },
-  { id: "lib-13", name: "Bench Press", category: "Strength", equipment: "Barbell", muscleGroups: ["Chest", "Shoulders", "Triceps"] },
-  { id: "lib-14", name: "Romanian Deadlift", category: "Strength", equipment: "Barbell", muscleGroups: ["Hamstrings", "Glutes"] },
-  { id: "lib-15", name: "Hip Thrust", category: "Strength", equipment: "Barbell", muscleGroups: ["Glutes", "Hamstrings"] },
-  // Plyometric
-  { id: "lib-20", name: "Drop Jumps", category: "Plyometric", equipment: "Box", muscleGroups: ["Legs"] },
-  { id: "lib-21", name: "Box Jumps", category: "Plyometric", equipment: "Box", muscleGroups: ["Legs"] },
-  { id: "lib-22", name: "Depth Jumps", category: "Plyometric", equipment: "Box", muscleGroups: ["Legs"] },
-  { id: "lib-23", name: "Hurdle Hops", category: "Plyometric", equipment: "Hurdles", muscleGroups: ["Legs"] },
-  { id: "lib-24", name: "Bounding", category: "Plyometric", equipment: "None", muscleGroups: ["Legs", "Core"] },
-  // Warmup
-  { id: "lib-30", name: "Dynamic Stretches", category: "Warmup", equipment: "None", muscleGroups: ["Full Body"] },
-  { id: "lib-31", name: "Foam Rolling", category: "Warmup", equipment: "Foam Roller", muscleGroups: ["Full Body"] },
-  { id: "lib-32", name: "Leg Swings", category: "Warmup", equipment: "None", muscleGroups: ["Hip Flexors", "Hamstrings"] },
-  { id: "lib-33", name: "Arm Circles", category: "Warmup", equipment: "None", muscleGroups: ["Shoulders"] },
-  // Conditioning
-  { id: "lib-40", name: "Tempo Runs", category: "Conditioning", equipment: "None", muscleGroups: ["Legs", "Cardio"] },
-  { id: "lib-41", name: "Shuttle Runs", category: "Conditioning", equipment: "None", muscleGroups: ["Legs", "Cardio"] },
-  { id: "lib-42", name: "Sled Push", category: "Conditioning", equipment: "Sled", muscleGroups: ["Legs", "Core"] },
+  { id: "1", name: "Flying 10m", category: "Speed", equipment: "", muscleGroups: ["Legs", "Core"], exerciseTypeId: 5 },
+  { id: "2", name: "Flying 20m", category: "Speed", equipment: "", muscleGroups: ["Legs", "Core"], exerciseTypeId: 5 },
+  { id: "3", name: "Block Start 30m", category: "Speed", equipment: "Blocks", muscleGroups: ["Legs", "Core"], exerciseTypeId: 5 },
+  { id: "10", name: "Half Squat", category: "Strength", equipment: "Barbell", muscleGroups: ["Quads", "Glutes"], exerciseTypeId: 3 },
+  { id: "11", name: "Power Clean", category: "Strength", equipment: "Barbell", muscleGroups: ["Full Body"], exerciseTypeId: 3 },
+  { id: "12", name: "Deadlift", category: "Strength", equipment: "Barbell", muscleGroups: ["Back", "Hamstrings", "Glutes"], exerciseTypeId: 3 },
+  { id: "13", name: "Romanian Deadlift", category: "Strength", equipment: "Barbell", muscleGroups: ["Hamstrings", "Glutes"], exerciseTypeId: 3 },
+  { id: "14", name: "Bulgarian Split Squat", category: "Strength", equipment: "Dumbbells", muscleGroups: ["Quads", "Glutes"], exerciseTypeId: 3 },
+  { id: "15", name: "Barbell Row", category: "Strength", equipment: "Barbell", muscleGroups: ["Back", "Biceps"], exerciseTypeId: 3 },
+  { id: "20", name: "Drop Jumps", category: "Plyometric", equipment: "Box", muscleGroups: ["Legs"], exerciseTypeId: 4 },
+  { id: "21", name: "Box Jumps", category: "Plyometric", equipment: "Box", muscleGroups: ["Legs"], exerciseTypeId: 4 },
+  { id: "30", name: "Dynamic Stretches", category: "Warmup", equipment: "", muscleGroups: ["Full Body"], exerciseTypeId: 1 },
 ]
 
-const CATEGORIES = ["All", "Speed", "Strength", "Plyometric", "Warmup", "Conditioning"]
-
 // =============================================================================
-// Demo Data
+// Demo Data (SessionPlannerExercise format)
 // =============================================================================
 
-const initialAthleteExercises: ExerciseData[] = [
-  // Warmup Section
+const createInitialExercises = (): SessionPlannerExercise[] => [
   {
-    id: "w1",
-    name: "Dynamic Stretches",
-    section: "Warmup",
+    id: 137,
+    session_plan_id: 1,
+    exercise_id: 13,
+    exercise_order: 1,
+    notes: "Posterior chain development",
+    isCollapsed: false,
+    isEditing: false,
+    validationErrors: [],
+    exercise: {
+      id: 13,
+      name: "Romanian Deadlift",
+      exercise_type_id: 3,
+      exercise_type: { type: "Gym" }
+    },
     sets: [
-      { id: "w1s1", setIndex: 1, reps: 10, completed: true },
-      { id: "w1s2", setIndex: 2, reps: 10, completed: true },
+      { id: 301, session_plan_exercise_id: 137, set_index: 1, reps: 8, weight: 100, rest_time: 180, tempo: "2-1-1-0", rpe: 7, completed: false, isEditing: false },
+      { id: 302, session_plan_exercise_id: 137, set_index: 2, reps: 8, weight: 100, rest_time: 180, tempo: "2-1-1-0", rpe: 8, completed: false, isEditing: false },
     ],
-    expanded: false,
   },
   {
-    id: "w2",
-    name: "A-Skips",
-    section: "Warmup",
+    id: 138,
+    session_plan_id: 1,
+    exercise_id: 14,
+    exercise_order: 2,
+    notes: "Unilateral strength - superset A",
+    isCollapsed: false,
+    isEditing: false,
+    validationErrors: [],
+    superset_id: "ss1",
+    exercise: {
+      id: 14,
+      name: "Bulgarian Split Squat",
+      exercise_type_id: 3,
+      exercise_type: { type: "Gym" }
+    },
     sets: [
-      { id: "w2s1", setIndex: 1, distance: 20, completed: true },
-      { id: "w2s2", setIndex: 2, distance: 20, completed: false },
+      { id: 303, session_plan_exercise_id: 138, set_index: 1, reps: 10, weight: 40, rest_time: 120, rpe: 7, completed: false, isEditing: false },
+      { id: 304, session_plan_exercise_id: 138, set_index: 2, reps: 10, weight: 45, rest_time: 120, rpe: 8, completed: false, isEditing: false },
     ],
-    expanded: false,
-  },
-  // Speed Section - Superset
-  {
-    id: "s1",
-    name: "Flying 10m",
-    section: "Speed",
-    supersetId: "A",
-    sets: [
-      { id: "s1s1", setIndex: 1, distance: 10, time: 1.02, completed: true },
-      { id: "s1s2", setIndex: 2, distance: 10, time: 0.98, completed: true },
-      { id: "s1s3", setIndex: 3, distance: 10, time: 0.95, completed: false },
-    ],
-    expanded: true,
   },
   {
-    id: "s2",
-    name: "Standing Start 20m",
-    section: "Speed",
-    supersetId: "A",
+    id: 139,
+    session_plan_id: 1,
+    exercise_id: 15,
+    exercise_order: 3,
+    notes: "Superset pair A",
+    isCollapsed: false,
+    isEditing: false,
+    validationErrors: [],
+    superset_id: "ss1",
+    exercise: {
+      id: 15,
+      name: "Barbell Row",
+      exercise_type_id: 3,
+      exercise_type: { type: "Gym" }
+    },
     sets: [
-      { id: "s2s1", setIndex: 1, distance: 20, time: 2.85, completed: true },
-      { id: "s2s2", setIndex: 2, distance: 20, completed: false },
+      { id: 305, session_plan_exercise_id: 139, set_index: 1, reps: 12, weight: 60, rest_time: 60, completed: false, isEditing: false },
     ],
-    expanded: false,
-  },
-  // Strength Section with VBT
-  {
-    id: "str1",
-    name: "Half Squat",
-    section: "Strength",
-    sets: [
-      { id: "str1s1", setIndex: 1, reps: 3, weight: 80, power: 1000, velocity: 1.8, completed: true },
-      { id: "str1s2", setIndex: 2, reps: 2, weight: 85, power: 1200, velocity: 1.6, completed: false },
-      { id: "str1s3", setIndex: 3, reps: 1, weight: 90, power: 1500, velocity: 1.4, completed: false },
-    ],
-    expanded: true,
-  },
-  // Plyometric Section
-  {
-    id: "p1",
-    name: "Drop Jumps",
-    section: "Plyometric",
-    sets: [
-      { id: "p1s1", setIndex: 1, reps: 5, height: 45, completed: false },
-      { id: "p1s2", setIndex: 2, reps: 5, height: 45, completed: false },
-      { id: "p1s3", setIndex: 3, reps: 5, height: 50, completed: false },
-    ],
-    expanded: false,
-  },
-  // Conditioning
-  {
-    id: "c1",
-    name: "Tempo Runs",
-    section: "Conditioning",
-    sets: [
-      { id: "c1s1", setIndex: 1, distance: 200, time: 28, rpe: 7, completed: false },
-      { id: "c1s2", setIndex: 2, distance: 200, time: 28, rpe: 8, completed: false },
-    ],
-    expanded: false,
-  },
-]
-
-const initialCoachExercises: ExerciseData[] = [
-  {
-    id: "c-w1",
-    name: "Foam Rolling",
-    section: "Warmup",
-    sets: [{ id: "cw1s1", setIndex: 1, time: 300, completed: false }],
-    expanded: false,
   },
   {
-    id: "c-s1",
-    name: "Block Start 30m",
-    section: "Speed",
-    supersetId: "A",
+    id: 140,
+    session_plan_id: 1,
+    exercise_id: 20,
+    exercise_order: 4,
+    notes: "Reactive strength",
+    isCollapsed: true,
+    isEditing: false,
+    validationErrors: [],
+    exercise: {
+      id: 20,
+      name: "Drop Jumps",
+      exercise_type_id: 4,
+      exercise_type: { type: "Plyometric" }
+    },
     sets: [
-      { id: "cs1s1", setIndex: 1, distance: 30, completed: false },
-      { id: "cs1s2", setIndex: 2, distance: 30, completed: false },
-      { id: "cs1s3", setIndex: 3, distance: 30, completed: false },
+      { id: 306, session_plan_exercise_id: 140, set_index: 1, reps: 6, height: 45, rest_time: 120, completed: false, isEditing: false },
     ],
-    expanded: true,
-  },
-  {
-    id: "c-s2",
-    name: "Flying 20m",
-    section: "Speed",
-    supersetId: "A",
-    sets: [
-      { id: "cs2s1", setIndex: 1, distance: 20, completed: false },
-      { id: "cs2s2", setIndex: 2, distance: 20, completed: false },
-    ],
-    expanded: false,
-  },
-  {
-    id: "c-str1",
-    name: "Power Clean",
-    section: "Strength",
-    sets: [
-      { id: "cstr1s1", setIndex: 1, reps: 3, weight: 60, power: 800, velocity: 1.2, completed: false },
-      { id: "cstr1s2", setIndex: 2, reps: 3, weight: 70, power: 900, velocity: 1.1, completed: false },
-      { id: "cstr1s3", setIndex: 3, reps: 2, weight: 80, power: 1000, velocity: 1.0, completed: false },
-    ],
-    expanded: false,
   },
 ]
 
 // =============================================================================
-// Helper Functions
+// AI Scenario Descriptions
 // =============================================================================
 
-function formatShorthand(exercise: ExerciseData): string {
-  const sets = exercise.sets
-  if (sets.length === 0) return "No sets"
-
-  const firstSet = sets[0]
-  const isUniform = sets.every(
-    (s) =>
-      s.reps === firstSet.reps &&
-      s.weight === firstSet.weight &&
-      s.distance === firstSet.distance &&
-      s.time === firstSet.time &&
-      s.height === firstSet.height
-  )
-
-  if (isUniform) {
-    const parts: string[] = []
-    if (firstSet.reps) parts.push(`${sets.length}×${firstSet.reps}`)
-    if (firstSet.distance) parts.push(`${sets.length}× ${firstSet.distance}m`)
-    if (firstSet.weight) parts.push(`@ ${firstSet.weight}kg`)
-    if (firstSet.time) parts.push(`${firstSet.time}s`)
-    if (firstSet.height) parts.push(`@ ${firstSet.height}cm`)
-    return parts.join(" ") || `${sets.length} sets`
-  }
-
-  const repsStr = sets.map((s) => s.reps).filter(Boolean)
-  const weightsStr = sets.map((s) => s.weight).filter(Boolean)
-  const distStr = sets.map((s) => s.distance).filter(Boolean)
-  const timeStr = sets.map((s) => s.time).filter(Boolean)
-  const heightStr = sets.map((s) => s.height).filter(Boolean)
-
-  const parts: string[] = []
-  if (repsStr.length > 0) parts.push(repsStr.join("+"))
-  if (distStr.length > 0) parts.push(`${distStr[0]}m`)
-  if (weightsStr.length > 0) {
-    const validWeights = weightsStr.filter((w): w is number => w !== undefined)
-    const min = Math.min(...validWeights)
-    const max = Math.max(...validWeights)
-    parts.push(min === max ? `@ ${min}kg` : `@ ${min}-${max}kg`)
-  }
-  if (timeStr.length > 0) {
-    const times = timeStr.map((t) => `${t}s`).join("/")
-    parts.push(times)
-  }
-  if (heightStr.length > 0) parts.push(`@ ${heightStr[0]}cm`)
-
-  return parts.join(" ") || `${sets.length} sets`
-}
-
-function getCompletedCount(exercise: ExerciseData): number {
-  return exercise.sets.filter((s) => s.completed).length
-}
-
-function getSectionOrder(section: string): number {
-  const order: Record<string, number> = {
-    Warmup: 1,
-    Speed: 2,
-    Plyometric: 3,
-    Strength: 4,
-    Conditioning: 5,
-    Cooldown: 6,
-  }
-  return order[section] || 99
-}
-
-function groupBySupersets(exercises: ExerciseData[]): (ExerciseData | ExerciseData[])[] {
-  const result: (ExerciseData | ExerciseData[])[] = []
-  const supersetGroups: Record<string, ExerciseData[]> = {}
-
-  exercises.forEach((ex) => {
-    if (ex.supersetId) {
-      if (!supersetGroups[ex.supersetId]) {
-        supersetGroups[ex.supersetId] = []
-      }
-      supersetGroups[ex.supersetId].push(ex)
-    }
-  })
-
-  let lastSupersetId: string | null = null
-  exercises.forEach((ex) => {
-    if (ex.supersetId) {
-      if (ex.supersetId !== lastSupersetId) {
-        result.push(supersetGroups[ex.supersetId])
-        lastSupersetId = ex.supersetId
-      }
-    } else {
-      result.push(ex)
-      lastSupersetId = null
-    }
-  })
-
-  return result
+const SCENARIO_DESCRIPTIONS: Record<AIScenario, string> = {
+  none: "No pending AI changes",
+  add_sets: "Add 3 new sets to Romanian Deadlift (8 reps @ 100kg)",
+  update_set: "Update set 1: reps 8->12, weight 100kg->110kg",
+  delete_set: "Remove set 2 from Romanian Deadlift",
+  add_exercise: "Add new exercise: Power Clean with 3 sets",
+  swap_exercise: "Swap Bulgarian Split Squat -> Step Ups",
+  delete_exercise: "Remove Barbell Row from session",
+  mixed_changes: "Add sets + Update set + Delete set across exercises",
+  superset_changes: "Modify both exercises in superset A",
 }
 
 // =============================================================================
-// Components
-// =============================================================================
-
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3 py-2 px-1">
-      <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
-        {label}
-      </span>
-      <div className="flex-1 h-px bg-border" />
-    </div>
-  )
-}
-
-// Timer Display Component
-interface TimerDisplayProps {
-  seconds: number
-  size?: "sm" | "lg"
-}
-
-function TimerDisplay({ seconds, size = "lg" }: TimerDisplayProps) {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  const formatted = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-
-  return (
-    <div className={cn("font-mono font-bold text-primary", size === "lg" ? "text-2xl" : "text-xl")}>
-      {formatted}
-    </div>
-  )
-}
-
-interface SetRowProps {
-  set: SetData
-  isAthlete: boolean
-  deviceView: DeviceView
-  isActive?: boolean
-  hasVBTFields?: boolean
-  onComplete?: () => void
-  onUpdate?: (field: keyof SetData, value: number | undefined) => void
-  onRemove?: () => void
-  // Drag-and-drop
-  isDragging?: boolean
-  onDragStart?: (e: React.DragEvent, setId: string) => void
-  onDragOver?: (e: React.DragEvent) => void
-  onDragEnd?: () => void
-  onDrop?: (e: React.DragEvent, targetSetId: string) => void
-}
-
-function SetRow({
-  set,
-  isAthlete,
-  deviceView,
-  isActive,
-  hasVBTFields,
-  onComplete,
-  onUpdate,
-  onRemove,
-  isDragging,
-  onDragStart,
-  onDragOver,
-  onDragEnd,
-  onDrop
-}: SetRowProps) {
-  const hasVBT = set.power !== undefined || set.velocity !== undefined || hasVBTFields
-
-  // Determine which fields to show based on exercise data (only show if plan has value)
-  const showReps = set.reps !== undefined || (!set.distance && !set.time)
-  const showWeight = set.weight !== undefined
-  const showDistance = set.distance !== undefined
-  const showTime = set.time !== undefined
-  const showHeight = set.height !== undefined
-  const showPower = hasVBT
-  const showVelocity = hasVBT
-  const showRPE = set.rpe !== undefined
-
-  // Unified athlete view - same layout for all states, inline editable inputs
-  // Larger height and font for better touch interaction
-  if (isAthlete) {
-    // Shared input styles - larger for better touch targets
-    const inputClass = cn(
-      "h-8 text-center font-mono text-sm bg-transparent border-0 rounded",
-      "focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none",
-      "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-      "transition-colors cursor-text"
-    )
-
-    return (
-      <div className={cn(
-        "flex items-center gap-2 py-2 px-2 rounded-lg transition-colors",
-        set.completed ? "bg-green-500/10" : "bg-muted/30"
-      )}>
-        {/* Set number / completion toggle - larger touch target */}
-        <button
-          onClick={onComplete}
-          className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all shrink-0",
-            set.completed
-              ? "bg-green-500 text-white"
-              : "bg-background border border-border hover:border-primary hover:bg-primary hover:text-primary-foreground"
-          )}
-        >
-          {set.completed ? <Check className="w-4 h-4" /> : set.setIndex}
-        </button>
-
-        {/* Inline editable inputs - same layout always, no shift */}
-        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-          {showReps && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <input
-                type="number"
-                value={set.reps ?? ""}
-                onChange={(e) => onUpdate?.("reps", e.target.value ? Number(e.target.value) : undefined)}
-                className={cn(inputClass, "w-8")}
-                placeholder="--"
-              />
-              <span className="text-muted-foreground text-xs">×</span>
-            </div>
-          )}
-          {showWeight && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <input
-                type="number"
-                step={0.5}
-                value={set.weight ?? ""}
-                onChange={(e) => onUpdate?.("weight", e.target.value ? Number(e.target.value) : undefined)}
-                className={cn(inputClass, "w-10")}
-                placeholder="--"
-              />
-              <span className="text-muted-foreground text-xs">kg</span>
-            </div>
-          )}
-          {showDistance && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <input
-                type="number"
-                value={set.distance ?? ""}
-                onChange={(e) => onUpdate?.("distance", e.target.value ? Number(e.target.value) : undefined)}
-                className={cn(inputClass, "w-9")}
-                placeholder="--"
-              />
-              <span className="text-muted-foreground text-xs">m</span>
-            </div>
-          )}
-          {showTime && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <input
-                type="number"
-                step={0.01}
-                value={set.time ?? ""}
-                onChange={(e) => onUpdate?.("time", e.target.value ? Number(e.target.value) : undefined)}
-                className={cn(inputClass, "w-12")}
-                placeholder="0.00"
-              />
-              <span className="text-muted-foreground text-xs">s</span>
-            </div>
-          )}
-          {showHeight && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <input
-                type="number"
-                value={set.height ?? ""}
-                onChange={(e) => onUpdate?.("height", e.target.value ? Number(e.target.value) : undefined)}
-                className={cn(inputClass, "w-9")}
-                placeholder="--"
-              />
-              <span className="text-muted-foreground text-xs">cm</span>
-            </div>
-          )}
-          {showPower && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <input
-                type="number"
-                value={set.power ?? ""}
-                onChange={(e) => onUpdate?.("power", e.target.value ? Number(e.target.value) : undefined)}
-                className={cn(inputClass, "w-12")}
-                placeholder="--"
-              />
-              <span className="text-muted-foreground text-xs">W</span>
-            </div>
-          )}
-          {showVelocity && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <input
-                type="number"
-                step={0.01}
-                value={set.velocity ?? ""}
-                onChange={(e) => onUpdate?.("velocity", e.target.value ? Number(e.target.value) : undefined)}
-                className={cn(inputClass, "w-12")}
-                placeholder="0.00"
-              />
-              <span className="text-muted-foreground text-xs">m/s</span>
-            </div>
-          )}
-          {showRPE && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <span className="text-muted-foreground text-xs">RPE</span>
-              <input
-                type="number"
-                min={1}
-                max={10}
-                value={set.rpe ?? ""}
-                onChange={(e) => onUpdate?.("rpe", e.target.value ? Number(e.target.value) : undefined)}
-                className={cn(inputClass, "w-7")}
-                placeholder="--"
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // Coach planning view - pill notation style with units (matching athlete sizing)
-  // Larger height and font for better touch interaction
-  const coachInputClass = cn(
-    "h-8 text-center font-mono text-sm bg-transparent border-0 rounded",
-    "focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none",
-    "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-    "transition-colors cursor-text"
-  )
-
-  return (
-    <div
-      draggable
-      onDragStart={(e) => onDragStart?.(e, set.id)}
-      onDragOver={(e) => {
-        e.preventDefault()
-        onDragOver?.(e)
-      }}
-      onDragEnd={onDragEnd}
-      onDrop={(e) => onDrop?.(e, set.id)}
-      className={cn(
-        "flex items-center gap-2 py-2 px-2 rounded-lg transition-colors",
-        isDragging ? "opacity-50 bg-primary/10 border border-dashed border-primary" : "bg-muted/30 hover:bg-muted/50"
-      )}
-    >
-      <div className="flex items-center gap-1.5 shrink-0">
-        <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
-        <span className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground">
-          {set.setIndex}
-        </span>
-      </div>
-
-      {/* Pill notation inputs - same style as athlete, units always visible */}
-      <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            value={set.reps ?? ""}
-            onChange={(e) => onUpdate?.("reps", e.target.value ? Number(e.target.value) : undefined)}
-            className={cn(coachInputClass, "w-8")}
-            placeholder="--"
-          />
-          <span className="text-muted-foreground text-xs">×</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            step={0.5}
-            value={set.weight ?? ""}
-            onChange={(e) => onUpdate?.("weight", e.target.value ? Number(e.target.value) : undefined)}
-            className={cn(coachInputClass, "w-10")}
-            placeholder="--"
-          />
-          <span className="text-muted-foreground text-xs">kg</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            value={set.distance ?? ""}
-            onChange={(e) => onUpdate?.("distance", e.target.value ? Number(e.target.value) : undefined)}
-            className={cn(coachInputClass, "w-9")}
-            placeholder="--"
-          />
-          <span className="text-muted-foreground text-xs">m</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            step={0.01}
-            value={set.time ?? ""}
-            onChange={(e) => onUpdate?.("time", e.target.value ? Number(e.target.value) : undefined)}
-            className={cn(coachInputClass, "w-12")}
-            placeholder="0.00"
-          />
-          <span className="text-muted-foreground text-xs">s</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            value={set.power ?? ""}
-            onChange={(e) => onUpdate?.("power", e.target.value ? Number(e.target.value) : undefined)}
-            className={cn(coachInputClass, "w-12")}
-            placeholder="--"
-          />
-          <span className="text-muted-foreground text-xs">W</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <input
-            type="number"
-            step={0.01}
-            value={set.velocity ?? ""}
-            onChange={(e) => onUpdate?.("velocity", e.target.value ? Number(e.target.value) : undefined)}
-            className={cn(coachInputClass, "w-12")}
-            placeholder="0.00"
-          />
-          <span className="text-muted-foreground text-xs">m/s</span>
-        </div>
-        <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
-          <span className="text-muted-foreground text-xs">RPE</span>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={set.rpe ?? ""}
-            onChange={(e) => onUpdate?.("rpe", e.target.value ? Number(e.target.value) : undefined)}
-            className={cn(coachInputClass, "w-7")}
-            placeholder="--"
-          />
-        </div>
-      </div>
-
-      <button
-        onClick={onRemove}
-        className="p-1.5 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  )
-}
-
-interface ExerciseCardProps {
-  exercise: ExerciseData
-  isAthlete: boolean
-  deviceView: DeviceView
-  showSupersetBar?: boolean
-  supersetLabel?: string
-  onToggleExpand: () => void
-  onCompleteSet: (setId: string) => void
-  onCompleteAllSets?: () => void
-  onUpdateSet?: (setId: string, field: keyof SetData, value: number | undefined) => void
-  onAddSet?: () => void
-  onRemoveSet?: (setId: string) => void
-  onRemoveExercise?: () => void
-  onUpdateName?: (name: string) => void
-  // Set reordering
-  onReorderSets?: (fromIndex: number, toIndex: number) => void
-  // Exercise drag-and-drop
-  isDragging?: boolean
-  onDragStart?: (e: React.DragEvent, exerciseId: string) => void
-  onDragOver?: (e: React.DragEvent) => void
-  onDragEnd?: () => void
-  onDrop?: (e: React.DragEvent, targetExerciseId: string) => void
-}
-
-function ExerciseCard({
-  exercise,
-  isAthlete,
-  deviceView,
-  showSupersetBar,
-  supersetLabel,
-  onToggleExpand,
-  onCompleteSet,
-  onCompleteAllSets,
-  onUpdateSet,
-  onAddSet,
-  onRemoveSet,
-  onRemoveExercise,
-  onUpdateName,
-  onReorderSets,
-  isDragging,
-  onDragStart,
-  onDragOver,
-  onDragEnd,
-  onDrop,
-}: ExerciseCardProps) {
-  const [draggingSetId, setDraggingSetId] = useState<string | null>(null)
-  const [dragOverSetId, setDragOverSetId] = useState<string | null>(null)
-
-  const completedCount = getCompletedCount(exercise)
-  const totalSets = exercise.sets.length
-  const isComplete = completedCount === totalSets
-  const progress = totalSets > 0 ? (completedCount / totalSets) * 100 : 0
-
-  const handleHeaderClick = () => {
-    onToggleExpand()
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault()
-      onToggleExpand()
-    }
-  }
-
-  // Set drag handlers
-  const handleSetDragStart = (e: React.DragEvent, setId: string) => {
-    setDraggingSetId(setId)
-    e.dataTransfer.effectAllowed = "move"
-    e.dataTransfer.setData("text/plain", setId)
-  }
-
-  const handleSetDragOver = (e: React.DragEvent, setId: string) => {
-    e.preventDefault()
-    if (setId !== draggingSetId) {
-      setDragOverSetId(setId)
-    }
-  }
-
-  const handleSetDragEnd = () => {
-    setDraggingSetId(null)
-    setDragOverSetId(null)
-  }
-
-  const handleSetDrop = (e: React.DragEvent, targetSetId: string) => {
-    e.preventDefault()
-    if (draggingSetId && draggingSetId !== targetSetId && onReorderSets) {
-      const fromIndex = exercise.sets.findIndex((s) => s.id === draggingSetId)
-      const toIndex = exercise.sets.findIndex((s) => s.id === targetSetId)
-      if (fromIndex !== -1 && toIndex !== -1) {
-        onReorderSets(fromIndex, toIndex)
-      }
-    }
-    setDraggingSetId(null)
-    setDragOverSetId(null)
-  }
-
-  return (
-    <div
-      className={cn(
-        "flex transition-opacity",
-        isDragging && "opacity-50"
-      )}
-      draggable={!isAthlete}
-      onDragStart={(e) => !isAthlete && onDragStart?.(e, exercise.id)}
-      onDragOver={(e) => {
-        if (!isAthlete) {
-          e.preventDefault()
-          onDragOver?.(e)
-        }
-      }}
-      onDragEnd={() => !isAthlete && onDragEnd?.()}
-      onDrop={(e) => !isAthlete && onDrop?.(e, exercise.id)}
-    >
-      {showSupersetBar && (
-        <div className="w-1 bg-primary/60 rounded-full mr-3 shrink-0 relative">
-          {supersetLabel && (
-            <span className="absolute -left-1 top-0 text-[10px] font-bold text-primary bg-background px-0.5">
-              {supersetLabel}
-            </span>
-          )}
-        </div>
-      )}
-
-      <div className="flex-1 bg-card border border-border rounded-xl overflow-hidden">
-        {/* Header - compact to give more space to sets */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={handleHeaderClick}
-          onKeyDown={handleKeyDown}
-          className={cn(
-            "w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-muted/50 transition-colors",
-            !isAthlete ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
-          )}
-        >
-          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            {/* Drag grip for coach mode - integrated into header */}
-            {!isAthlete && (
-              <GripVertical className="w-4 h-4 text-muted-foreground/50 shrink-0 -ml-1" />
-            )}
-            <div
-              className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0",
-                isComplete
-                  ? "bg-green-500 text-white"
-                  : "bg-muted text-muted-foreground"
-              )}
-            >
-              {isComplete ? <Check className="w-3 h-3" /> : completedCount}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              {isAthlete ? (
-                <h3 className="text-sm font-medium truncate">{exercise.name}</h3>
-              ) : (
-                <input
-                  type="text"
-                  value={exercise.name}
-                  onChange={(e) => onUpdateName?.(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  className="text-sm font-medium bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-1 -ml-1 w-full"
-                />
-              )}
-              <p className="text-xs text-muted-foreground truncate">
-                {formatShorthand(exercise)}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {isAthlete && (
-              <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                {completedCount}/{totalSets}
-              </span>
-            )}
-
-            {!isAthlete && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onRemoveExercise?.()
-                }}
-                className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            )}
-
-            {exercise.expanded ? (
-              <ChevronUp className="w-4 h-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            )}
-          </div>
-        </div>
-
-        {isAthlete && (
-          <div className="h-0.5 bg-muted">
-            <div
-              className="h-full bg-green-500 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
-
-        {exercise.expanded && (
-          <div className="p-4 pt-2 space-y-2 border-t border-border">
-            {exercise.sets.map((set, index) => {
-              // First incomplete set is active
-              const firstIncompleteIndex = exercise.sets.findIndex((s) => !s.completed)
-              const isActive = isAthlete && index === firstIncompleteIndex
-              const hasVBTFields = exercise.sets.some((s) => s.power !== undefined || s.velocity !== undefined)
-              const isSetDragging = draggingSetId === set.id
-              const isSetDragOver = dragOverSetId === set.id
-
-              return (
-                <div
-                  key={set.id}
-                  className={cn(
-                    "transition-all",
-                    isSetDragOver && "border-t-2 border-primary pt-1"
-                  )}
-                >
-                  <SetRow
-                    set={set}
-                    isAthlete={isAthlete}
-                    deviceView={deviceView}
-                    isActive={isActive}
-                    hasVBTFields={hasVBTFields}
-                    onComplete={() => onCompleteSet(set.id)}
-                    onUpdate={(field, value) => onUpdateSet?.(set.id, field, value)}
-                    onRemove={() => onRemoveSet?.(set.id)}
-                    isDragging={isSetDragging}
-                    onDragStart={handleSetDragStart}
-                    onDragOver={(e) => handleSetDragOver(e, set.id)}
-                    onDragEnd={handleSetDragEnd}
-                    onDrop={handleSetDrop}
-                  />
-                </div>
-              )
-            })}
-
-            {!isAthlete && (
-              <button
-                onClick={onAddSet}
-                className="w-full flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground hover:text-primary border border-dashed border-border rounded-lg hover:border-primary transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Set
-              </button>
-            )}
-
-            {exercise.notes && (
-              <p className="text-sm text-muted-foreground italic mt-2 px-3">
-                {exercise.notes}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// =============================================================================
-// Exercise Picker Sheet (Full-screen bottom sheet)
-// =============================================================================
-
-interface ExercisePickerSheetProps {
-  isOpen: boolean
-  onClose: () => void
-  onSelectExercise: (exercise: ExerciseLibraryItem, section: string) => void
-  recentExercises?: string[] // IDs of recently used exercises
-}
-
-function ExercisePickerSheet({ isOpen, onClose, onSelectExercise, recentExercises = [] }: ExercisePickerSheetProps) {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("All")
-  const [selectedSection, setSelectedSection] = useState("Warmup")
-
-  const filteredExercises = useMemo(() => {
-    let exercises = EXERCISE_LIBRARY
-
-    // Filter by category
-    if (selectedCategory !== "All") {
-      exercises = exercises.filter(e => e.category === selectedCategory)
-    }
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      exercises = exercises.filter(e =>
-        e.name.toLowerCase().includes(query) ||
-        e.muscleGroups.some(m => m.toLowerCase().includes(query)) ||
-        e.equipment.toLowerCase().includes(query)
-      )
-    }
-
-    return exercises
-  }, [searchQuery, selectedCategory])
-
-  const recentExercisesList = useMemo(() => {
-    return EXERCISE_LIBRARY.filter(e => recentExercises.includes(e.id)).slice(0, 5)
-  }, [recentExercises])
-
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-        <button
-          onClick={onClose}
-          className="p-2 -ml-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <h2 className="text-lg font-semibold flex-1">Add Exercise</h2>
-      </div>
-
-      {/* Search */}
-      <div className="px-4 py-3 border-b border-border">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search exercises..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            autoFocus
-          />
-        </div>
-      </div>
-
-      {/* Category Tabs */}
-      <div className="px-4 py-2 border-b border-border overflow-x-auto scrollbar-hide">
-        <div className="flex gap-2">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={cn(
-                "px-3 py-1.5 text-sm font-medium rounded-full whitespace-nowrap transition-colors",
-                selectedCategory === cat
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Section Selector */}
-      <div className="px-4 py-2 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Add to:</span>
-          <select
-            value={selectedSection}
-            onChange={(e) => setSelectedSection(e.target.value)}
-            className="text-sm font-medium bg-transparent border-0 focus:outline-none cursor-pointer"
-          >
-            {["Warmup", "Speed", "Plyometric", "Strength", "Conditioning", "Cooldown"].map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Exercise List */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Recent Exercises */}
-        {recentExercisesList.length > 0 && !searchQuery && selectedCategory === "All" && (
-          <div className="px-4 py-3">
-            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Recent</h3>
-            <div className="space-y-1">
-              {recentExercisesList.map(exercise => (
-                <button
-                  key={exercise.id}
-                  onClick={() => {
-                    onSelectExercise(exercise, selectedSection)
-                    onClose()
-                  }}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{exercise.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{exercise.muscleGroups.join(", ")}</p>
-                  </div>
-                  <Plus className="w-5 h-5 text-muted-foreground" />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* All Exercises */}
-        <div className="px-4 py-3">
-          {!searchQuery && selectedCategory === "All" && recentExercisesList.length > 0 && (
-            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">All Exercises</h3>
-          )}
-          <div className="space-y-1">
-            {filteredExercises.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">
-                <Dumbbell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No exercises found</p>
-              </div>
-            ) : (
-              filteredExercises.map(exercise => (
-                <button
-                  key={exercise.id}
-                  onClick={() => {
-                    onSelectExercise(exercise, selectedSection)
-                    onClose()
-                  }}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
-                >
-                  <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center",
-                    exercise.category === "Speed" && "bg-blue-500/10 text-blue-500",
-                    exercise.category === "Strength" && "bg-red-500/10 text-red-500",
-                    exercise.category === "Plyometric" && "bg-orange-500/10 text-orange-500",
-                    exercise.category === "Warmup" && "bg-green-500/10 text-green-500",
-                    exercise.category === "Conditioning" && "bg-purple-500/10 text-purple-500"
-                  )}>
-                    <Zap className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{exercise.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {exercise.equipment} · {exercise.muscleGroups.join(", ")}
-                    </p>
-                  </div>
-                  <Plus className="w-5 h-5 text-muted-foreground" />
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// =============================================================================
-// Session Completion Modal
-// =============================================================================
-
-interface SessionCompletionModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onConfirm: () => void
-  completedSets: number
-  totalSets: number
-  completedExercises: number
-  totalExercises: number
-  elapsedSeconds: number
-}
-
-function SessionCompletionModal({
-  isOpen,
-  onClose,
-  onConfirm,
-  completedSets,
-  totalSets,
-  completedExercises,
-  totalExercises,
-  elapsedSeconds
-}: SessionCompletionModalProps) {
-  if (!isOpen) return null
-
-  const isPartial = completedSets < totalSets
-  const completionPercent = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Modal */}
-      <div className="relative bg-card border border-border rounded-2xl w-full max-w-sm p-6 shadow-xl">
-        {/* Icon */}
-        <div className={cn(
-          "w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center",
-          isPartial ? "bg-yellow-500/10" : "bg-green-500/10"
-        )}>
-          {isPartial ? (
-            <Timer className="w-8 h-8 text-yellow-500" />
-          ) : (
-            <Trophy className="w-8 h-8 text-green-500" />
-          )}
-        </div>
-
-        {/* Title */}
-        <h2 className="text-xl font-bold text-center mb-2">
-          {isPartial ? "Finish Early?" : "Great Workout!"}
-        </h2>
-
-        {/* Message */}
-        <p className="text-sm text-muted-foreground text-center mb-6">
-          {isPartial
-            ? `You've completed ${completionPercent}% of your planned workout. Save what you've done?`
-            : "You crushed it! All sets completed."}
-        </p>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="text-center">
-            <p className="text-2xl font-bold">{formatTime(elapsedSeconds)}</p>
-            <p className="text-xs text-muted-foreground">Duration</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold">{completedSets}/{totalSets}</p>
-            <p className="text-xs text-muted-foreground">Sets</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold">{completedExercises}/{totalExercises}</p>
-            <p className="text-xs text-muted-foreground">Exercises</p>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-3 text-sm font-medium border border-border rounded-xl hover:bg-muted transition-colors"
-          >
-            {isPartial ? "Keep Going" : "Cancel"}
-          </button>
-          <button
-            onClick={onConfirm}
-            className={cn(
-              "flex-1 px-4 py-3 text-sm font-medium rounded-xl transition-colors",
-              isPartial
-                ? "bg-yellow-500 text-black hover:bg-yellow-600"
-                : "bg-green-500 text-white hover:bg-green-600"
-            )}
-          >
-            {isPartial ? "Save & Finish" : "Complete"}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// =============================================================================
-// Floating Action Button
-// =============================================================================
-
-interface FloatingActionButtonProps {
-  onClick: () => void
-  icon?: React.ReactNode
-  label?: string
-}
-
-function FloatingActionButton({ onClick, icon, label }: FloatingActionButtonProps) {
-  return (
-    <button
-      onClick={onClick}
-      className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
-    >
-      {icon || <Plus className="w-5 h-5" />}
-      {label && <span className="text-sm font-medium">{label}</span>}
-    </button>
-  )
-}
-
-// =============================================================================
-// Device Frame Components
+// Device Frames
 // =============================================================================
 
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto max-w-[375px]">
-      <div className="bg-card rounded-4xl border-4 border-border overflow-hidden shadow-2xl">
-        {/* Notch */}
+      <div className="bg-card rounded-[2.5rem] border-4 border-border overflow-hidden shadow-2xl">
         <div className="h-8 bg-background flex items-center justify-center">
           <div className="w-20 h-5 bg-border rounded-full" />
         </div>
@@ -1270,284 +209,736 @@ function DesktopFrame({ children }: { children: React.ReactNode }) {
 }
 
 // =============================================================================
-// Main Workout View Component
+// AI Control Panel - for simulating AI changes (Demo-specific)
 // =============================================================================
 
-interface WorkoutViewProps {
+interface AIControlPanelProps {
+  scenario: AIScenario
+  onScenarioChange: (scenario: AIScenario) => void
+  onApplyScenario: (scenario: AIScenario) => void
+}
+
+function AIControlPanel({ scenario, onScenarioChange, onApplyScenario }: AIControlPanelProps) {
+  const handleClick = (newScenario: AIScenario) => {
+    onScenarioChange(newScenario)
+    onApplyScenario(newScenario)
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <Bot className="w-5 h-5 text-blue-500" />
+        <h3 className="font-semibold">AI Change Scenarios (Demo Controls)</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Click a scenario to simulate AI-proposed changes. In production, these come from the AI chat.
+      </p>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        <button
+          onClick={() => handleClick('none')}
+          className={cn(
+            "px-3 py-2 text-sm rounded-lg border transition-colors",
+            scenario === 'none' ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+          )}
+        >
+          <RefreshCw className="w-4 h-4 inline mr-2" />
+          Reset
+        </button>
+        <button
+          onClick={() => handleClick('add_sets')}
+          className={cn(
+            "px-3 py-2 text-sm rounded-lg border transition-colors",
+            scenario === 'add_sets' ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+          )}
+        >
+          <Plus className="w-4 h-4 inline mr-2" />
+          Add Sets
+        </button>
+        <button
+          onClick={() => handleClick('update_set')}
+          className={cn(
+            "px-3 py-2 text-sm rounded-lg border transition-colors",
+            scenario === 'update_set' ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+          )}
+        >
+          <Edit3 className="w-4 h-4 inline mr-2" />
+          Update Set
+        </button>
+        <button
+          onClick={() => handleClick('delete_set')}
+          className={cn(
+            "px-3 py-2 text-sm rounded-lg border transition-colors",
+            scenario === 'delete_set' ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+          )}
+        >
+          <Minus className="w-4 h-4 inline mr-2" />
+          Delete Set
+        </button>
+        <button
+          onClick={() => handleClick('add_exercise')}
+          className={cn(
+            "px-3 py-2 text-sm rounded-lg border transition-colors",
+            scenario === 'add_exercise' ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+          )}
+        >
+          <Plus className="w-4 h-4 inline mr-2" />
+          Add Exercise
+        </button>
+        <button
+          onClick={() => handleClick('swap_exercise')}
+          className={cn(
+            "px-3 py-2 text-sm rounded-lg border transition-colors",
+            scenario === 'swap_exercise' ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+          )}
+        >
+          <ArrowLeftRight className="w-4 h-4 inline mr-2" />
+          Swap Exercise
+        </button>
+        <button
+          onClick={() => handleClick('delete_exercise')}
+          className={cn(
+            "px-3 py-2 text-sm rounded-lg border transition-colors",
+            scenario === 'delete_exercise' ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+          )}
+        >
+          <Trash2 className="w-4 h-4 inline mr-2" />
+          Delete Exercise
+        </button>
+        <button
+          onClick={() => handleClick('mixed_changes')}
+          className={cn(
+            "px-3 py-2 text-sm rounded-lg border transition-colors",
+            scenario === 'mixed_changes' ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+          )}
+        >
+          Mixed Changes
+        </button>
+        <button
+          onClick={() => handleClick('superset_changes')}
+          className={cn(
+            "px-3 py-2 text-sm rounded-lg border transition-colors",
+            scenario === 'superset_changes' ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+          )}
+        >
+          Superset Changes
+        </button>
+      </div>
+      {scenario !== 'none' && (
+        <div className="p-3 bg-muted rounded-lg">
+          <p className="text-sm font-medium">Active Scenario:</p>
+          <p className="text-sm text-muted-foreground">{SCENARIO_DESCRIPTIONS[scenario]}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// Demo Content with REAL AI Components
+// =============================================================================
+
+/** Counter for generating unique IDs */
+let tempIdCounter = 0
+const generateTempId = () => `temp_${++tempIdCounter}_${Date.now()}`
+const generateRequestId = () => `cr_demo_${++tempIdCounter}_${Date.now()}`
+
+interface DemoContentProps {
   deviceView: DeviceView
   userMode: UserMode
-  exercises: ExerciseData[]
   elapsedSeconds: number
   isTimerRunning: boolean
   onToggleTimer: () => void
-  onToggleExpand: (id: string) => void
-  onCompleteSet: (exerciseId: string, setId: string) => void
-  onCompleteAllSets: (exerciseId: string) => void
-  onUpdateSet: (exerciseId: string, setId: string, field: keyof SetData, value: number | undefined) => void
-  onAddSet: (exerciseId: string) => void
-  onRemoveSet: (exerciseId: string, setId: string) => void
-  onAddExerciseFromLibrary: (exercise: ExerciseLibraryItem, section: string) => void
-  onRemoveExercise: (exerciseId: string) => void
-  onUpdateName: (exerciseId: string, name: string) => void
-  onReorderSets: (exerciseId: string, fromIndex: number, toIndex: number) => void
-  onReorderExercises: (fromId: string, toId: string) => void
-  onFinishSession: () => void
+  scenario: AIScenario
+  onScenarioChange: (scenario: AIScenario) => void
 }
 
-function WorkoutView({
+function DemoContent({
   deviceView,
   userMode,
-  exercises,
   elapsedSeconds,
   isTimerRunning,
   onToggleTimer,
-  onToggleExpand,
-  onCompleteSet,
-  onCompleteAllSets,
-  onUpdateSet,
-  onAddSet,
-  onRemoveSet,
-  onAddExerciseFromLibrary,
-  onRemoveExercise,
-  onUpdateName,
-  onReorderSets,
-  onReorderExercises,
-  onFinishSession,
-}: WorkoutViewProps) {
-  const [draggingExerciseId, setDraggingExerciseId] = useState<string | null>(null)
-  const [showExercisePicker, setShowExercisePicker] = useState(false)
-  const [showCompletionModal, setShowCompletionModal] = useState(false)
+  scenario,
+  onScenarioChange,
+}: DemoContentProps) {
+  // Get exercises from REAL shared context (same as production)
+  const { exercises, setExercises } = useSessionExercises()
 
+  // Get changeset from REAL context (same as production)
+  const changeSet = useChangeSet()
+
+  // Get AI changes map using REAL hook (same as production)
+  const aiChangesByExercise = useAIExerciseChanges()
+
+  // State for REAL ChatDrawer
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [chatInput, setChatInput] = useState('')
+  const [chatMessages, setChatMessages] = useState<UIMessage[]>([])
+  const [isExecuting, setIsExecuting] = useState(false)
+
+  // Convert exercises to training format for WorkoutView
+  const trainingExercises = useMemo(() => sessionExercisesToTraining(exercises), [exercises])
+
+  // Helper to create a ChangeRequest
+  const createChangeRequest = useCallback((
+    operationType: OperationType,
+    entityType: string,
+    entityId: string | null,
+    proposedData: Record<string, unknown> | null,
+    currentData: Record<string, unknown> | null = null
+  ): Omit<ChangeRequest, 'changesetId'> => ({
+    id: generateRequestId(),
+    operationType,
+    entityType,
+    entityId: entityId ?? generateTempId(),
+    proposedData,
+    currentData,
+    executionOrder: Date.now(),
+    aiReasoning: `Demo: ${operationType} ${entityType}`,
+    createdAt: new Date(),
+  }), [])
+
+  // Apply scenario to changeset (simulating AI tool calls)
+  const applyScenario = useCallback((newScenario: AIScenario) => {
+    changeSet.clear()
+
+    if (newScenario === 'none') return
+
+    changeSet.getOrCreateChangesetId()
+
+    switch (newScenario) {
+      case 'add_sets':
+        // Add 3 sets to exercise 137
+        for (let i = 0; i < 3; i++) {
+          changeSet.upsert(createChangeRequest(
+            'create',
+            'preset_set',
+            null,
+            {
+              session_plan_exercise_id: 137,
+              reps: 8,
+              weight: 100,
+              rest_time: 180,
+              tempo: '2-1-1-0',
+              rpe: 7,
+            }
+          ))
+        }
+        changeSet.setMetadata("Add 3 sets", "Adding 3 sets to Romanian Deadlift with 8 reps @ 100kg")
+        changeSet.setStatus('pending_approval')
+
+        // Add simulated AI message
+        setChatMessages([
+          { id: '1', role: 'user', parts: [{ type: 'text', text: 'Add 3 more sets to Romanian Deadlift' }] },
+          { id: '2', role: 'assistant', parts: [{ type: 'text', text: "I'll add 3 sets to the Romanian Deadlift exercise, matching the existing set parameters (8 reps @ 100kg). Please review and approve the changes." }] },
+        ])
+        break
+
+      case 'update_set':
+        changeSet.upsert(createChangeRequest(
+          'update',
+          'preset_set',
+          '301',
+          {
+            session_plan_exercise_id: 137,
+            reps: 12,
+            weight: 110,
+          },
+          {
+            id: 301,
+            session_plan_exercise_id: 137,
+            reps: 8,
+            weight: 100,
+          }
+        ))
+        changeSet.setMetadata("Update set", "Updating set 1: reps 8->12, weight 100kg->110kg")
+        changeSet.setStatus('pending_approval')
+
+        setChatMessages([
+          { id: '1', role: 'user', parts: [{ type: 'text', text: 'Increase reps and weight on the first set of RDL' }] },
+          { id: '2', role: 'assistant', parts: [{ type: 'text', text: "I'll increase the first set from 8 reps @ 100kg to 12 reps @ 110kg. This is a significant increase - please confirm." }] },
+        ])
+        break
+
+      case 'delete_set':
+        changeSet.upsert(createChangeRequest(
+          'delete',
+          'preset_set',
+          '302',
+          null,
+          {
+            id: 302,
+            session_plan_exercise_id: 137,
+            set_index: 2,
+            reps: 8,
+            weight: 100,
+          }
+        ))
+        changeSet.setMetadata("Remove set", "Removing set 2 from Romanian Deadlift")
+        changeSet.setStatus('pending_approval')
+
+        setChatMessages([
+          { id: '1', role: 'user', parts: [{ type: 'text', text: 'Remove the second set from Romanian Deadlift' }] },
+          { id: '2', role: 'assistant', parts: [{ type: 'text', text: "I'll remove set 2 from the Romanian Deadlift. This will reduce the total volume for this exercise." }] },
+        ])
+        break
+
+      case 'add_exercise':
+        const newExerciseId = generateTempId()
+        changeSet.upsert(createChangeRequest(
+          'create',
+          'preset_exercise',
+          newExerciseId,
+          {
+            exercise_id: 11,
+            exercise_name: 'Power Clean',
+            exercise_order: 5,
+            notes: 'Olympic lift for power development',
+          }
+        ))
+        for (let i = 0; i < 3; i++) {
+          changeSet.upsert(createChangeRequest(
+            'create',
+            'preset_set',
+            null,
+            {
+              session_plan_exercise_id: newExerciseId,
+              reps: 3,
+              weight: 70,
+              rest_time: 180,
+            }
+          ))
+        }
+        changeSet.setMetadata("Add exercise", "Adding Power Clean with 3 sets of 3 @ 70kg")
+        changeSet.setStatus('pending_approval')
+
+        setChatMessages([
+          { id: '1', role: 'user', parts: [{ type: 'text', text: 'Add power cleans to the session' }] },
+          { id: '2', role: 'assistant', parts: [{ type: 'text', text: "I'll add Power Clean as a new exercise at the end with 3 sets of 3 reps @ 70kg. This is a great Olympic lift for explosive power." }] },
+        ])
+        break
+
+      case 'swap_exercise':
+        changeSet.upsert(createChangeRequest(
+          'update',
+          'preset_exercise',
+          '138',
+          {
+            exercise_id: 999,
+            exercise_name: 'Step Ups',
+          },
+          {
+            id: 138,
+            exercise_id: 14,
+            exercise_name: 'Bulgarian Split Squat',
+          }
+        ))
+        changeSet.setMetadata("Swap exercise", "Swapping Bulgarian Split Squat for Step Ups")
+        changeSet.setStatus('pending_approval')
+
+        setChatMessages([
+          { id: '1', role: 'user', parts: [{ type: 'text', text: 'Replace Bulgarian split squats with step ups' }] },
+          { id: '2', role: 'assistant', parts: [{ type: 'text', text: "I'll swap out Bulgarian Split Squats for Step Ups. Both are unilateral exercises but Step Ups may be easier on balance." }] },
+        ])
+        break
+
+      case 'delete_exercise':
+        changeSet.upsert(createChangeRequest(
+          'delete',
+          'preset_exercise',
+          '139',
+          null,
+          {
+            id: 139,
+            exercise_name: 'Barbell Row',
+          }
+        ))
+        changeSet.setMetadata("Remove exercise", "Removing Barbell Row from the session")
+        changeSet.setStatus('pending_approval')
+
+        setChatMessages([
+          { id: '1', role: 'user', parts: [{ type: 'text', text: 'Remove barbell row from the session' }] },
+          { id: '2', role: 'assistant', parts: [{ type: 'text', text: "I'll remove Barbell Row from the session. Note: this will also remove it from superset A." }] },
+        ])
+        break
+
+      case 'mixed_changes':
+        // Add sets to 137
+        for (let i = 0; i < 2; i++) {
+          changeSet.upsert(createChangeRequest(
+            'create',
+            'preset_set',
+            null,
+            {
+              session_plan_exercise_id: 137,
+              reps: 6,
+              weight: 120,
+              rest_time: 240,
+            }
+          ))
+        }
+        // Update set in 138
+        changeSet.upsert(createChangeRequest(
+          'update',
+          'preset_set',
+          '303',
+          {
+            session_plan_exercise_id: 138,
+            reps: 12,
+            weight: 50,
+          },
+          {
+            id: 303,
+            session_plan_exercise_id: 138,
+            reps: 10,
+            weight: 40,
+          }
+        ))
+        // Delete set from 139
+        changeSet.upsert(createChangeRequest(
+          'delete',
+          'preset_set',
+          '305',
+          null,
+          {
+            id: 305,
+            session_plan_exercise_id: 139,
+            set_index: 1,
+          }
+        ))
+        changeSet.setMetadata("Mixed changes", "Add 2 sets + Update 1 set + Delete 1 set")
+        changeSet.setStatus('pending_approval')
+
+        setChatMessages([
+          { id: '1', role: 'user', parts: [{ type: 'text', text: 'Make the session more strength-focused' }] },
+          { id: '2', role: 'assistant', parts: [{ type: 'text', text: "I've made several adjustments:\n• Added 2 heavy sets to RDL (6 reps @ 120kg)\n• Increased BSS set 1 to 12 reps @ 50kg\n• Removed the Barbell Row set to reduce volume" }] },
+        ])
+        break
+
+      case 'superset_changes':
+        // Update set in 138
+        changeSet.upsert(createChangeRequest(
+          'update',
+          'preset_set',
+          '303',
+          {
+            session_plan_exercise_id: 138,
+            reps: 8,
+            weight: 50,
+          },
+          {
+            id: 303,
+            session_plan_exercise_id: 138,
+            reps: 10,
+            weight: 40,
+          }
+        ))
+        // Add set to 139
+        changeSet.upsert(createChangeRequest(
+          'create',
+          'preset_set',
+          null,
+          {
+            session_plan_exercise_id: 139,
+            reps: 12,
+            weight: 65,
+            rest_time: 60,
+          }
+        ))
+        changeSet.setMetadata("Superset changes", "Updating superset: modify reps/weight + add set")
+        changeSet.setStatus('pending_approval')
+
+        setChatMessages([
+          { id: '1', role: 'user', parts: [{ type: 'text', text: 'Balance the superset A exercises' }] },
+          { id: '2', role: 'assistant', parts: [{ type: 'text', text: "I've balanced superset A:\n• Increased BSS weight to 50kg with 8 reps\n• Added an extra set to Barbell Row to match" }] },
+        ])
+        break
+    }
+  }, [changeSet, createChangeRequest])
+
+  // Apply scenario when user clicks a button (not in useEffect to avoid loops)
+
+  // Handlers for approval (simulated execution)
+  const handleApprove = useCallback(async () => {
+    setIsExecuting(true)
+
+    // Simulate execution delay
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // Add success message to chat
+    setChatMessages(prev => [
+      ...prev,
+      { id: `${Date.now()}`, role: 'assistant', parts: [{ type: 'text', text: '✅ Changes applied successfully!' }] },
+    ])
+
+    setIsExecuting(false)
+    changeSet.clear()
+    onScenarioChange('none')
+  }, [changeSet, onScenarioChange])
+
+  const handleRegenerate = useCallback((feedback?: string) => {
+    setChatMessages(prev => [
+      ...prev,
+      { id: `${Date.now()}-user`, role: 'user', parts: [{ type: 'text', text: feedback || 'Try a different approach' }] },
+      { id: `${Date.now()}-assistant`, role: 'assistant', parts: [{ type: 'text', text: "I'll revise my suggestions based on your feedback. What would you like me to change?" }] },
+    ])
+    changeSet.clear()
+    onScenarioChange('none')
+  }, [changeSet, onScenarioChange])
+
+  const handleDismiss = useCallback(() => {
+    setChatMessages(prev => [
+      ...prev,
+      { id: `${Date.now()}`, role: 'assistant', parts: [{ type: 'text', text: 'Changes dismissed. Let me know if you need anything else!' }] },
+    ])
+    changeSet.clear()
+    onScenarioChange('none')
+  }, [changeSet, onScenarioChange])
+
+  // Handle demo chat submit (simulated)
+  const handleChatSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault()
+    if (!chatInput.trim()) return
+
+    setChatMessages(prev => [
+      ...prev,
+      { id: `${Date.now()}-user`, role: 'user', parts: [{ type: 'text', text: chatInput }] },
+      { id: `${Date.now()}-assistant`, role: 'assistant', parts: [{ type: 'text', text: "This is a demo. Use the scenario buttons above to simulate AI changes." }] },
+    ])
+    setChatInput('')
+  }, [chatInput])
+
+  // Exercise handlers using REAL shared context
+  const handleToggleExpand = useCallback((exerciseId: number | string) => {
+    setExercises((prev) =>
+      prev.map((e) => (String(e.id) === String(exerciseId) ? { ...e, isCollapsed: !e.isCollapsed } : e))
+    )
+  }, [setExercises])
+
+  const handleCompleteSet = useCallback((exerciseId: number | string, setId: number | string) => {
+    setExercises((prev) =>
+      prev.map((e) =>
+        String(e.id) === String(exerciseId)
+          ? {
+              ...e,
+              sets: e.sets.map((s) => (String(s.id) === String(setId) ? { ...s, completed: !s.completed } : s)),
+            }
+          : e
+      )
+    )
+  }, [setExercises])
+
+  const handleUpdateSet = useCallback((
+    exerciseId: number | string,
+    setId: number | string,
+    field: keyof TrainingSet,
+    value: number | string | null
+  ) => {
+    setExercises((prev) =>
+      prev.map((e) =>
+        String(e.id) === String(exerciseId)
+          ? { ...e, sets: e.sets.map((s) => (String(s.id) === String(setId) ? { ...s, [field]: value } : s)) }
+          : e
+      )
+    )
+  }, [setExercises])
+
+  const handleAddSet = useCallback((exerciseId: number | string) => {
+    setExercises((prev) =>
+      prev.map((e) => {
+        if (String(e.id) !== String(exerciseId)) return e
+        const lastSet = e.sets[e.sets.length - 1]
+        const newSetIndex = e.sets.length + 1
+        return {
+          ...e,
+          sets: [...e.sets, {
+            id: `new_set_${Date.now()}`,
+            session_plan_exercise_id: typeof e.id === 'number' ? e.id : 0,
+            set_index: newSetIndex,
+            reps: lastSet?.reps ?? null,
+            weight: lastSet?.weight ?? null,
+            completed: false,
+            isEditing: false,
+          }],
+        }
+      })
+    )
+  }, [setExercises])
+
+  const handleRemoveSet = useCallback((exerciseId: number | string, setId: number | string) => {
+    setExercises((prev) =>
+      prev.map((e) => {
+        if (String(e.id) !== String(exerciseId)) return e
+        const newSets = e.sets.filter((s) => String(s.id) !== String(setId)).map((s, i) => ({ ...s, set_index: i + 1 }))
+        return { ...e, sets: newSets }
+      })
+    )
+  }, [setExercises])
+
+  const handleAddExercise = useCallback((exercise: ExerciseLibraryItem, section: string) => {
+    const exerciseId = parseInt(exercise.id, 10)
+    if (isNaN(exerciseId)) return
+
+    setExercises((prev) => {
+      const maxOrder = Math.max(0, ...prev.map(e => e.exercise_order))
+      const timestamp = Date.now()
+      const newExercise: SessionPlannerExercise = {
+        id: `new_${timestamp}`,
+        session_plan_id: 1,
+        exercise_id: exerciseId,
+        exercise_order: maxOrder + 1,
+        notes: null,
+        isCollapsed: false,
+        isEditing: false,
+        validationErrors: [],
+        exercise: {
+          id: exerciseId,
+          name: exercise.name,
+          exercise_type_id: exercise.exerciseTypeId,
+          exercise_type: { type: section || exercise.category || 'other' }
+        },
+        sets: [{
+          id: `new_set_${timestamp}`,
+          session_plan_exercise_id: 0,
+          set_index: 1,
+          reps: null,
+          weight: null,
+          completed: false,
+          isEditing: false,
+        }]
+      }
+      return [...prev, newExercise]
+    })
+  }, [setExercises])
+
+  const handleRemoveExercise = useCallback((exerciseId: number | string) => {
+    setExercises((prev) => {
+      const newExercises = prev.filter(e => String(e.id) !== String(exerciseId))
+      return newExercises.map((ex, i) => ({ ...ex, exercise_order: i + 1 }))
+    })
+  }, [setExercises])
+
+  const handleReorderSets = useCallback((exerciseId: number | string, fromIndex: number, toIndex: number) => {
+    setExercises((prev) =>
+      prev.map((e) => {
+        if (String(e.id) !== String(exerciseId)) return e
+        const newSets = [...e.sets]
+        const [moved] = newSets.splice(fromIndex, 1)
+        newSets.splice(toIndex, 0, moved)
+        return { ...e, sets: newSets.map((s, i) => ({ ...s, set_index: i + 1 })) }
+      })
+    )
+  }, [setExercises])
+
+  const handleReorderExercises = useCallback((fromId: number | string, toId: number | string) => {
+    setExercises((prev) => {
+      const fromIndex = prev.findIndex((e) => String(e.id) === String(fromId))
+      const toIndex = prev.findIndex((e) => String(e.id) === String(toId))
+      if (fromIndex === -1 || toIndex === -1) return prev
+      const newExercises = [...prev]
+      const [movedExercise] = newExercises.splice(fromIndex, 1)
+      newExercises.splice(toIndex, 0, movedExercise)
+      return newExercises.map((ex, i) => ({ ...ex, exercise_order: i + 1 }))
+    })
+  }, [setExercises])
+
+  const DeviceFrame = deviceView === "phone" ? PhoneFrame : deviceView === "tablet" ? TabletFrame : DesktopFrame
   const isAthlete = userMode === "athlete"
 
-  // Exercise drag handlers
-  const handleExerciseDragStart = (e: React.DragEvent, exerciseId: string) => {
-    setDraggingExerciseId(exerciseId)
-    e.dataTransfer.effectAllowed = "move"
-    e.dataTransfer.setData("text/plain", exerciseId)
-  }
-
-  const handleExerciseDragEnd = () => {
-    setDraggingExerciseId(null)
-  }
-
-  const handleExerciseDrop = (e: React.DragEvent, targetExerciseId: string) => {
-    e.preventDefault()
-    if (draggingExerciseId && draggingExerciseId !== targetExerciseId) {
-      onReorderExercises(draggingExerciseId, targetExerciseId)
-    }
-    setDraggingExerciseId(null)
-  }
-
-  const sections = [...new Set(exercises.map((e) => e.section))].sort(
-    (a, b) => getSectionOrder(a) - getSectionOrder(b)
-  )
-
-  const totalSets = exercises.reduce((acc, e) => acc + e.sets.length, 0)
-  const completedSets = exercises.reduce((acc, e) => acc + getCompletedCount(e), 0)
-  const overallProgress = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0
-  const completedExercises = exercises.filter(e => e.sets.every(s => s.completed)).length
-
   return (
-    <div className="bg-background min-h-full relative">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className={cn("px-4 py-3", deviceView === "desktop" && "px-6")}>
-          {/* Title Row */}
-          <h1 className={cn("font-semibold mb-2", deviceView === "phone" ? "text-base" : "text-lg")}>
-            {isAthlete ? "Sprint Power Development" : "Week 3 Day 2"}
-          </h1>
+    <div className="space-y-6">
+      {/* AI Control Panel (Demo-specific) */}
+      <AIControlPanel
+        scenario={scenario}
+        onScenarioChange={onScenarioChange}
+        onApplyScenario={applyScenario}
+      />
 
-          {/* Actions Row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {isAthlete ? (
-                <span>{overallProgress}% complete</span>
-              ) : (
-                <span>{totalSets} sets · {exercises.length} exercises</span>
-              )}
-            </div>
+      {/* REAL Inline Proposal Section (same as production) */}
+      {changeSet.changeset && changeSet.status === 'pending_approval' && (
+        <InlineProposalSection
+          changeset={changeSet.changeset}
+          onApprove={handleApprove}
+          onRegenerate={handleRegenerate}
+          onDismiss={handleDismiss}
+          isExecuting={isExecuting}
+        />
+      )}
 
-            {/* Timer & Actions */}
-            <div className="flex items-center gap-2">
-              {isAthlete && (
-                <button
-                  onClick={onToggleTimer}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-mono transition-colors",
-                    isTimerRunning
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  <Timer className="w-4 h-4" />
-                  <TimerDisplay seconds={elapsedSeconds} size="sm" />
-                </button>
-              )}
-
-              {/* Finish Button */}
-              <button
-                onClick={() => setShowCompletionModal(true)}
-                className={cn(
-                  "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
-                  overallProgress === 100
-                    ? "bg-green-500 text-white hover:bg-green-600"
-                    : "bg-muted text-foreground hover:bg-muted/80"
-                )}
-              >
-                {isAthlete ? "Finish" : "Save"}
-              </button>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          {isAthlete && (
-            <div className="h-1 bg-muted rounded-full overflow-hidden mt-2">
-              <div
-                className="h-full bg-green-500 transition-all duration-500 rounded-full"
-                style={{ width: `${overallProgress}%` }}
-              />
-            </div>
-          )}
+      {/* Debug Info */}
+      <div className="p-3 bg-muted/50 rounded-lg text-xs space-y-1">
+        <div className="flex gap-4 flex-wrap">
+          <span>Status: <strong>{changeSet.status ?? 'null'}</strong></span>
+          <span>Changes: <strong>{changeSet.changeset?.changeRequests.length ?? 0}</strong></span>
+          <span>AI Map Size: <strong>{aiChangesByExercise.size}</strong></span>
         </div>
-      </div>
-
-      {/* Content */}
-      <div className={cn("px-4 py-4 space-y-2 pb-24", deviceView === "desktop" && "px-6")}>
-        {exercises.length === 0 ? (
-          <div className="py-12 text-center">
-            <Dumbbell className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
-            <p className="text-muted-foreground mb-4">No exercises yet</p>
-            <button
-              onClick={() => setShowExercisePicker(true)}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-            >
-              Add Your First Exercise
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* Unified single-column layout for all devices (phone/tablet/desktop) */}
-            {sections.map((section) => {
-              const sectionExercises = exercises.filter((e) => e.section === section)
-              const grouped = groupBySupersets(sectionExercises)
-
-              return (
-                <div key={section}>
-                  <SectionDivider label={section} />
-                  <div className="space-y-3 pl-2">
-                    {grouped.map((item, idx) => {
-                      if (Array.isArray(item)) {
-                        return (
-                          <div key={`superset-${idx}`} className="space-y-3">
-                            {item.map((ex, exIdx) => (
-                              <ExerciseCard
-                                key={ex.id}
-                                exercise={ex}
-                                isAthlete={isAthlete}
-                                deviceView={deviceView}
-                                showSupersetBar
-                                supersetLabel={exIdx === 0 ? ex.supersetId : undefined}
-                                onToggleExpand={() => onToggleExpand(ex.id)}
-                                onCompleteSet={(setId) => onCompleteSet(ex.id, setId)}
-                                onCompleteAllSets={() => onCompleteAllSets(ex.id)}
-                                onUpdateSet={(setId, field, value) => onUpdateSet(ex.id, setId, field, value)}
-                                onAddSet={() => onAddSet(ex.id)}
-                                onRemoveSet={(setId) => onRemoveSet(ex.id, setId)}
-                                onRemoveExercise={() => onRemoveExercise(ex.id)}
-                                onUpdateName={(name) => onUpdateName(ex.id, name)}
-                                onReorderSets={(fromIndex, toIndex) => onReorderSets(ex.id, fromIndex, toIndex)}
-                                isDragging={draggingExerciseId === ex.id}
-                                onDragStart={handleExerciseDragStart}
-                                onDragOver={(e) => e.preventDefault()}
-                                onDragEnd={handleExerciseDragEnd}
-                                onDrop={handleExerciseDrop}
-                              />
-                            ))}
-                          </div>
-                        )
-                      }
-                      return (
-                        <ExerciseCard
-                          key={item.id}
-                          exercise={item}
-                          isAthlete={isAthlete}
-                          deviceView={deviceView}
-                          onToggleExpand={() => onToggleExpand(item.id)}
-                          onCompleteSet={(setId) => onCompleteSet(item.id, setId)}
-                          onCompleteAllSets={() => onCompleteAllSets(item.id)}
-                          onUpdateSet={(setId, field, value) => onUpdateSet(item.id, setId, field, value)}
-                          onAddSet={() => onAddSet(item.id)}
-                          onRemoveSet={(setId) => onRemoveSet(item.id, setId)}
-                          onRemoveExercise={() => onRemoveExercise(item.id)}
-                          onUpdateName={(name) => onUpdateName(item.id, name)}
-                          onReorderSets={(fromIndex, toIndex) => onReorderSets(item.id, fromIndex, toIndex)}
-                          isDragging={draggingExerciseId === item.id}
-                          onDragStart={handleExerciseDragStart}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDragEnd={handleExerciseDragEnd}
-                          onDrop={handleExerciseDrop}
-                        />
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
-          </>
+        {changeSet.changeset && changeSet.changeset.changeRequests.length > 0 && (
+          <details>
+            <summary className="cursor-pointer text-muted-foreground">View ChangeRequests</summary>
+            <pre className="mt-2 p-2 bg-background rounded text-xs overflow-auto max-h-40">
+              {JSON.stringify(changeSet.changeset.changeRequests, null, 2)}
+            </pre>
+          </details>
         )}
       </div>
 
-      {/* Floating Action Button - Add Exercise */}
-      {exercises.length > 0 && (
-        <button
-          onClick={() => setShowExercisePicker(true)}
-          className="absolute bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
-        >
-          <Plus className="w-5 h-5" />
-          <span className="text-sm font-medium">Add Exercise</span>
-        </button>
-      )}
+      {/* Device Frame with REAL WorkoutView */}
+      <DeviceFrame>
+        <WorkoutView
+          title={isAthlete ? "Sprint Power Development" : "Week 3 Day 2"}
+          description={isAthlete ? undefined : "Lower body power session"}
+          exercises={trainingExercises}
+          isAthlete={isAthlete}
+          elapsedSeconds={elapsedSeconds}
+          isTimerRunning={isTimerRunning}
+          sessionStatus="ongoing"
+          exerciseLibrary={EXERCISE_LIBRARY}
+          onToggleTimer={onToggleTimer}
+          onToggleExpand={handleToggleExpand}
+          onCompleteSet={handleCompleteSet}
+          onUpdateSet={handleUpdateSet}
+          onAddSet={handleAddSet}
+          onRemoveSet={handleRemoveSet}
+          onAddExercise={handleAddExercise}
+          onRemoveExercise={handleRemoveExercise}
+          onReorderSets={handleReorderSets}
+          onReorderExercises={handleReorderExercises}
+          onFinishSession={() => alert('Session finished!')}
+          aiChangesByExercise={aiChangesByExercise}
+        />
+      </DeviceFrame>
 
-      {/* Exercise Picker Sheet */}
-      <ExercisePickerSheet
-        isOpen={showExercisePicker}
-        onClose={() => setShowExercisePicker(false)}
-        onSelectExercise={(exercise, section) => {
-          onAddExerciseFromLibrary(exercise, section)
-        }}
-        recentExercises={["lib-1", "lib-10", "lib-20"]} // Demo: recent exercises
+      {/* REAL ChatTrigger (same as production) */}
+      <ChatTrigger
+        onClick={() => setDrawerOpen(true)}
+        hasChanges={changeSet.hasPendingChanges()}
+        changeCount={changeSet.getPendingCount()}
       />
 
-      {/* Session Completion Modal */}
-      <SessionCompletionModal
-        isOpen={showCompletionModal}
-        onClose={() => setShowCompletionModal(false)}
-        onConfirm={() => {
-          setShowCompletionModal(false)
-          onFinishSession()
-        }}
-        completedSets={completedSets}
-        totalSets={totalSets}
-        completedExercises={completedExercises}
-        totalExercises={exercises.length}
-        elapsedSeconds={elapsedSeconds}
+      {/* REAL ChatDrawer (same as production) */}
+      <ChatDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        messages={chatMessages}
+        input={chatInput}
+        onInputChange={setChatInput}
+        onSubmit={handleChatSubmit}
+        isLoading={false}
       />
     </div>
   )
 }
 
 // =============================================================================
-// Main Component
+// Main Component with REAL Providers (same hierarchy as production)
 // =============================================================================
 
 export function WorkoutUIDemo() {
   const [deviceView, setDeviceView] = useState<DeviceView>("phone")
-  const [userMode, setUserMode] = useState<UserMode>("athlete")
-  const [athleteExercises, setAthleteExercises] = useState<ExerciseData[]>(initialAthleteExercises)
-  const [coachExercises, setCoachExercises] = useState<ExerciseData[]>(initialCoachExercises)
-  const [elapsedSeconds, setElapsedSeconds] = useState(1122) // Start at 18:42 like the prototype
-  const [isTimerRunning, setIsTimerRunning] = useState(true)
+  const [userMode, setUserMode] = useState<UserMode>("coach")
+  const [elapsedSeconds, setElapsedSeconds] = useState(1122)
+  const [isTimerRunning, setIsTimerRunning] = useState(false)
+  const [scenario, setScenario] = useState<AIScenario>('none')
 
   // Timer effect
   useEffect(() => {
@@ -1559,159 +950,6 @@ export function WorkoutUIDemo() {
 
     return () => clearInterval(interval)
   }, [isTimerRunning, userMode])
-
-  const exercises = userMode === "athlete" ? athleteExercises : coachExercises
-  const setExercises = userMode === "athlete" ? setAthleteExercises : setCoachExercises
-
-  // Handlers
-  const handleToggleExpand = useCallback(
-    (exerciseId: string) => {
-      setExercises((prev) =>
-        prev.map((e) => (e.id === exerciseId ? { ...e, expanded: !e.expanded } : e))
-      )
-    },
-    [setExercises]
-  )
-
-  const handleCompleteSet = useCallback(
-    (exerciseId: string, setId: string) => {
-      setExercises((prev) =>
-        prev.map((e) =>
-          e.id === exerciseId
-            ? {
-                ...e,
-                sets: e.sets.map((s) => (s.id === setId ? { ...s, completed: !s.completed } : s)),
-              }
-            : e
-        )
-      )
-    },
-    [setExercises]
-  )
-
-  const handleCompleteAllSets = useCallback(
-    (exerciseId: string) => {
-      setExercises((prev) =>
-        prev.map((e) =>
-          e.id === exerciseId
-            ? {
-                ...e,
-                sets: e.sets.map((s) => ({ ...s, completed: true })),
-              }
-            : e
-        )
-      )
-    },
-    [setExercises]
-  )
-
-  const handleUpdateSet = useCallback(
-    (exerciseId: string, setId: string, field: keyof SetData, value: number | undefined) => {
-      setExercises((prev) =>
-        prev.map((e) =>
-          e.id === exerciseId
-            ? { ...e, sets: e.sets.map((s) => (s.id === setId ? { ...s, [field]: value } : s)) }
-            : e
-        )
-      )
-    },
-    [setExercises]
-  )
-
-  const handleAddSet = useCallback(
-    (exerciseId: string) => {
-      setExercises((prev) =>
-        prev.map((e) => {
-          if (e.id !== exerciseId) return e
-          const newSetIndex = e.sets.length + 1
-          return {
-            ...e,
-            sets: [...e.sets, { id: `${exerciseId}-s${newSetIndex}`, setIndex: newSetIndex, completed: false }],
-          }
-        })
-      )
-    },
-    [setExercises]
-  )
-
-  const handleRemoveSet = useCallback(
-    (exerciseId: string, setId: string) => {
-      setExercises((prev) =>
-        prev.map((e) => {
-          if (e.id !== exerciseId) return e
-          const newSets = e.sets.filter((s) => s.id !== setId).map((s, i) => ({ ...s, setIndex: i + 1 }))
-          return { ...e, sets: newSets }
-        })
-      )
-    },
-    [setExercises]
-  )
-
-  const handleAddExerciseFromLibrary = useCallback(
-    (exercise: ExerciseLibraryItem, section: string) => {
-      const newId = `new-${Date.now()}`
-      setExercises((prev) => [
-        ...prev,
-        { id: newId, name: exercise.name, section, sets: [{ id: `${newId}-s1`, setIndex: 1, completed: false }], expanded: true },
-      ])
-    },
-    [setExercises]
-  )
-
-  const handleFinishSession = useCallback(() => {
-    // In a real app, this would save to the database
-    alert(`Session completed! ${exercises.reduce((acc, e) => acc + e.sets.filter(s => s.completed).length, 0)} sets saved.`)
-  }, [exercises])
-
-  const handleRemoveExercise = useCallback(
-    (exerciseId: string) => {
-      setExercises((prev) => prev.filter((e) => e.id !== exerciseId))
-    },
-    [setExercises]
-  )
-
-  const handleUpdateName = useCallback(
-    (exerciseId: string, name: string) => {
-      setExercises((prev) => prev.map((e) => (e.id === exerciseId ? { ...e, name } : e)))
-    },
-    [setExercises]
-  )
-
-  const handleReorderSets = useCallback(
-    (exerciseId: string, fromIndex: number, toIndex: number) => {
-      setExercises((prev) =>
-        prev.map((e) => {
-          if (e.id !== exerciseId) return e
-          const newSets = [...e.sets]
-          const [movedSet] = newSets.splice(fromIndex, 1)
-          newSets.splice(toIndex, 0, movedSet)
-          // Update setIndex for all sets
-          return {
-            ...e,
-            sets: newSets.map((s, i) => ({ ...s, setIndex: i + 1 })),
-          }
-        })
-      )
-    },
-    [setExercises]
-  )
-
-  const handleReorderExercises = useCallback(
-    (fromId: string, toId: string) => {
-      setExercises((prev) => {
-        const fromIndex = prev.findIndex((e) => e.id === fromId)
-        const toIndex = prev.findIndex((e) => e.id === toId)
-        if (fromIndex === -1 || toIndex === -1) return prev
-        const newExercises = [...prev]
-        const [movedExercise] = newExercises.splice(fromIndex, 1)
-        newExercises.splice(toIndex, 0, movedExercise)
-        return newExercises
-      })
-    },
-    [setExercises]
-  )
-
-  const DeviceFrame = deviceView === "phone" ? PhoneFrame : deviceView === "tablet" ? TabletFrame : DesktopFrame
 
   return (
     <div className="min-h-screen bg-background">
@@ -1782,30 +1020,27 @@ export function WorkoutUIDemo() {
         </div>
       </div>
 
-      {/* Demo content */}
-      <div className="py-8 px-4">
-        <DeviceFrame>
-          <WorkoutView
-            deviceView={deviceView}
-            userMode={userMode}
-            exercises={exercises}
-            elapsedSeconds={elapsedSeconds}
-            isTimerRunning={isTimerRunning}
-            onToggleTimer={() => setIsTimerRunning((prev) => !prev)}
-            onToggleExpand={handleToggleExpand}
-            onCompleteSet={handleCompleteSet}
-            onCompleteAllSets={handleCompleteAllSets}
-            onUpdateSet={handleUpdateSet}
-            onAddSet={handleAddSet}
-            onRemoveSet={handleRemoveSet}
-            onAddExerciseFromLibrary={handleAddExerciseFromLibrary}
-            onRemoveExercise={handleRemoveExercise}
-            onUpdateName={handleUpdateName}
-            onReorderSets={handleReorderSets}
-            onReorderExercises={handleReorderExercises}
-            onFinishSession={handleFinishSession}
-          />
-        </DeviceFrame>
+      {/* Demo content wrapped with REAL providers (same as production) */}
+      <div className="py-8 px-4 max-w-6xl mx-auto">
+        {/*
+          Architecture matches production:
+          SessionExercisesProvider ← Shared exercises state
+            └── ChangeSetProvider ← AI changeset management
+                  └── DemoContent (WorkoutView + ChatDrawer + InlineProposalSection)
+        */}
+        <SessionExercisesProvider initialExercises={createInitialExercises()}>
+          <ChangeSetProvider>
+            <DemoContent
+              deviceView={deviceView}
+              userMode={userMode}
+              elapsedSeconds={elapsedSeconds}
+              isTimerRunning={isTimerRunning}
+              onToggleTimer={() => setIsTimerRunning((prev) => !prev)}
+              scenario={scenario}
+              onScenarioChange={setScenario}
+            />
+          </ChangeSetProvider>
+        </SessionExercisesProvider>
       </div>
     </div>
   )

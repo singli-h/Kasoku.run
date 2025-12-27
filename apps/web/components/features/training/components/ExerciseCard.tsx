@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useMemo } from "react"
-import { Bot, Check, ChevronDown, ChevronUp, GripVertical, Plus, Trash2 } from "lucide-react"
+import { ArrowRight, Bot, Check, ChevronDown, ChevronUp, GripVertical, Plus, Trash2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet } from "../types"
 import { formatShorthand, getCompletedCount } from "../types"
@@ -41,6 +41,12 @@ export interface ExerciseCardProps {
   pendingNewSets?: AISetChangeInfo[]
   /** Count of sets with pending AI changes */
   pendingSetCount?: number
+  /** For SWAP: proposed exercise data (contains new exercise name) */
+  aiProposedData?: Record<string, unknown> | null
+  /** For DELETE: current exercise data */
+  aiCurrentData?: Record<string, unknown> | null
+  /** Whether this is a ghost exercise card (pending CREATE) */
+  isGhostExercise?: boolean
 }
 
 /**
@@ -73,16 +79,26 @@ export function ExerciseCard({
   setAIChanges,
   pendingNewSets = [],
   pendingSetCount = 0,
+  aiProposedData,
+  aiCurrentData,
+  isGhostExercise = false,
 }: ExerciseCardProps) {
+  // Derive AI change states
+  const isSwap = aiChangeType === 'swap'
+  const isRemove = aiChangeType === 'remove'
+  const isAdd = aiChangeType === 'add'
+
+  // For swap: get new exercise name from proposed data
+  const swapNewName = isSwap ? (aiProposedData?.exercise_name as string | undefined) : undefined
   const [draggingSetId, setDraggingSetId] = useState<string | number | null>(null)
   const [dragOverSetId, setDragOverSetId] = useState<string | number | null>(null)
 
-  // AI change indicator colors
+  // AI change indicator colors - more visible, no opacity reduction
   const AI_BG_COLORS: Record<UIDisplayType, string> = {
-    swap: 'bg-blue-50/80 border-blue-200',
-    add: 'bg-green-50/80 border-green-200',
-    update: 'bg-amber-50/80 border-amber-200',
-    remove: 'bg-red-50/60 border-red-200 opacity-60',
+    swap: 'bg-blue-50/90 border-blue-300',
+    add: 'bg-emerald-50/90 border-emerald-300',
+    update: 'bg-amber-50/90 border-amber-300',
+    remove: 'bg-red-100/90 border-red-300',
   }
 
   const completedCount = getCompletedCount(exercise)
@@ -204,7 +220,11 @@ export function ExerciseCard({
 
       <div className={cn(
         "flex-1 bg-card border rounded-xl overflow-hidden transition-colors",
-        hasPendingChange && aiChangeType ? AI_BG_COLORS[aiChangeType] : "border-border"
+        isGhostExercise
+          ? "border-dashed border-2 border-emerald-400 bg-emerald-50/80"
+          : hasPendingChange && aiChangeType
+            ? AI_BG_COLORS[aiChangeType]
+            : "border-border"
       )}>
         {/* Header - compact to give more space to sets */}
         <div
@@ -241,21 +261,58 @@ export function ExerciseCard({
             </button>
 
             <div className="flex-1 min-w-0">
-              {/* Exercise name is always read-only - comes from exercise library */}
-              <div className="flex items-center gap-1.5">
-                <h3 className="text-sm font-medium truncate">{exercise.name}</h3>
-                {/* AI change indicator */}
-                {(hasPendingChange || pendingSetCount > 0) && (
+              {/* Exercise name - shows swap/delete states */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {isGhostExercise ? (
+                  // Ghost exercise: new exercise in emerald
+                  <h3 className="text-sm font-medium truncate text-emerald-700">{exercise.name}</h3>
+                ) : isSwap && swapNewName ? (
+                  // Swap: show "Old Name → New Name"
+                  <>
+                    <span className="text-sm font-medium line-through text-muted-foreground">{exercise.name}</span>
+                    <ArrowRight className="w-3 h-3 text-blue-500 shrink-0" />
+                    <span className="text-sm font-medium text-blue-700">{swapNewName}</span>
+                  </>
+                ) : isRemove ? (
+                  // Delete: strikethrough with red
+                  <h3 className="text-sm font-medium truncate line-through text-red-600 opacity-70">{exercise.name}</h3>
+                ) : (
+                  // Normal state
+                  <h3 className="text-sm font-medium truncate">{exercise.name}</h3>
+                )}
+                {/* AI change indicator badge */}
+                {(isGhostExercise || hasPendingChange || pendingSetCount > 0) && (
                   <span
-                    className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 shrink-0"
-                    title={`${pendingSetCount > 0 ? pendingSetCount : 1} AI change${pendingSetCount !== 1 ? 's' : ''} pending`}
+                    className={cn(
+                      "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0",
+                      isGhostExercise ? "bg-emerald-100 text-emerald-700" :
+                      isRemove ? "bg-red-100 text-red-700" :
+                      isSwap ? "bg-blue-100 text-blue-700" :
+                      isAdd ? "bg-emerald-100 text-emerald-700" :
+                      "bg-amber-100 text-amber-700"
+                    )}
+                    title={isGhostExercise ? "New exercise" : isRemove ? "Will be removed" : isSwap ? "Will be swapped" : `${pendingSetCount > 0 ? pendingSetCount : 1} AI change${pendingSetCount !== 1 ? 's' : ''} pending`}
                   >
-                    <Bot className="h-2.5 w-2.5" />
-                    {pendingSetCount > 0 && <span>{pendingSetCount}</span>}
+                    {isGhostExercise ? (
+                      <>
+                        <Plus className="h-2.5 w-2.5" />
+                        <span>New</span>
+                      </>
+                    ) : isRemove ? (
+                      <X className="h-2.5 w-2.5" />
+                    ) : (
+                      <>
+                        <Bot className="h-2.5 w-2.5" />
+                        {!isSwap && pendingSetCount > 0 && <span>{pendingSetCount}</span>}
+                      </>
+                    )}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className={cn(
+                "text-xs text-muted-foreground truncate",
+                isRemove && "line-through opacity-60"
+              )}>
                 {formatShorthand(exercise)}
               </p>
             </div>

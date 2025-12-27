@@ -61,10 +61,11 @@ export interface SetRowProps {
  */
 // AI change indicator colors for sets
 const AI_SET_COLORS: Record<UIDisplayType, string> = {
-  swap: 'bg-blue-50/60 border-l-2 border-l-blue-400',
-  add: 'bg-green-50/60 border-l-2 border-l-green-400',
-  update: 'bg-amber-50/60 border-l-2 border-l-amber-400',
-  remove: 'bg-red-50/40 border-l-2 border-l-red-400 opacity-60',
+  swap: 'bg-blue-50/80 border-l-2 border-l-blue-400',
+  add: 'bg-emerald-50/80 border-l-2 border-l-emerald-400',
+  update: 'bg-amber-50/80 border-l-2 border-l-amber-400',
+  // More visible red without heavy opacity - user can still read values
+  remove: 'bg-red-100/90 border-l-2 border-l-red-400',
 }
 
 export function SetRow({
@@ -99,6 +100,26 @@ export function SetRow({
   const showPower = visibleFields?.power ?? false
   const showVelocity = visibleFields?.velocity ?? false
   const showRPE = visibleFields?.rpe ?? false
+
+  // Helper to check if a field was changed by AI (for UPDATE operations)
+  const isFieldChanged = useCallback((field: string): boolean => {
+    if (aiChangeType !== 'update' || !aiProposedData) return false
+    const proposedVal = aiProposedData[field]
+    const currentVal = aiCurrentData?.[field]
+    return proposedVal !== undefined && proposedVal !== currentVal
+  }, [aiChangeType, aiProposedData, aiCurrentData])
+
+  // Helper to get display value - use proposed value for UPDATE, current otherwise
+  const getDisplayValue = useCallback((field: string, currentValue: unknown): unknown => {
+    if (aiChangeType === 'update' && aiProposedData?.[field] !== undefined) {
+      return aiProposedData[field]
+    }
+    return currentValue
+  }, [aiChangeType, aiProposedData])
+
+  // Is this a remove operation?
+  const isRemove = aiChangeType === 'remove'
+  const isUpdate = aiChangeType === 'update'
 
   // Shared input styles - larger for better touch targets
   const inputClass = cn(
@@ -197,19 +218,10 @@ export function SetRow({
           "animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
         )}
       >
-        {/* Set number with NEW badge */}
+        {/* Set number with plus icon (emerald styling indicates new) */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <div className="relative">
-            <span className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-sm font-medium text-emerald-700">
-              <Plus className="w-3.5 h-3.5" />
-            </span>
-            {/* AI NEW badge */}
-            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
-              <Bot className="h-2.5 w-2.5" />
-            </span>
-          </div>
-          <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
-            New
+          <span className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-sm font-medium text-emerald-700">
+            <Plus className="w-3.5 h-3.5" />
           </span>
         </div>
 
@@ -482,21 +494,30 @@ export function SetRow({
         "flex items-center gap-2 py-2 px-2 rounded-lg transition-colors",
         isDragging
           ? "opacity-50 bg-primary/10 border border-dashed border-primary"
-          // Apply AI styling if there's a pending change, otherwise normal styling
-          : hasPendingChange && aiChangeType
+          // Apply AI styling: update only highlights cells, not the row
+          : hasPendingChange && aiChangeType && aiChangeType !== 'update'
             ? AI_SET_COLORS[aiChangeType]
             : "bg-muted/30 hover:bg-muted/50"
       )}
     >
       <div className="flex items-center gap-1.5 shrink-0">
-        <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
+        <GripVertical className={cn(
+          "w-4 h-4 text-muted-foreground cursor-grab active:cursor-grabbing",
+          isRemove && "opacity-50"
+        )} />
         <div className="relative">
-          <span className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground">
+          <span className={cn(
+            "w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium",
+            isRemove ? "bg-red-100 text-red-600 line-through" : "bg-muted text-muted-foreground"
+          )}>
             {set.setIndex}
           </span>
-          {/* AI indicator badge */}
-          {hasPendingChange && (
-            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-white">
+          {/* AI indicator badge - only for update (remove uses strikethrough on set index) */}
+          {hasPendingChange && !isRemove && (
+            <span className={cn(
+              "absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full text-white",
+              isUpdate ? "bg-amber-500" : "bg-blue-500"
+            )}>
               <Bot className="h-2 w-2" />
             </span>
           )}
@@ -504,31 +525,42 @@ export function SetRow({
       </div>
 
       {/* Pill notation inputs - show only type-appropriate fields */}
-      <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+      <div className={cn(
+        "flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide",
+        isRemove && "opacity-60"
+      )}>
         {coachShowReps && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className={cn(
+            "px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1",
+            isFieldChanged('reps') ? "bg-amber-100" : "bg-muted"
+          )}>
             <input
               type="number"
               min={0}
               max={999}
-              value={set.reps ?? ""}
+              value={getDisplayValue('reps', set.reps) as number ?? ""}
               onChange={(e) => handleChange("reps", e.target.value)}
-              className={cn(inputClass, "w-8")}
+              disabled={isRemove}
+              className={cn(inputClass, "w-8", isRemove && "cursor-not-allowed")}
               placeholder="--"
             />
             <span className="text-muted-foreground text-xs">x</span>
           </div>
         )}
         {coachShowWeight && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className={cn(
+            "px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1",
+            isFieldChanged('weight') ? "bg-amber-100" : "bg-muted"
+          )}>
             <input
               type="number"
               min={0}
               max={9999}
               step={0.5}
-              value={set.weight ?? ""}
+              value={getDisplayValue('weight', set.weight) as number ?? ""}
               onChange={(e) => handleChange("weight", e.target.value)}
-              className={cn(inputClass, "w-10")}
+              disabled={isRemove}
+              className={cn(inputClass, "w-10", isRemove && "cursor-not-allowed")}
               placeholder="--"
             />
             <span className="text-muted-foreground text-xs">kg</span>
