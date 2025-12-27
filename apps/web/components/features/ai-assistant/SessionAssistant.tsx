@@ -28,8 +28,10 @@ import { executeReadTool } from '@/lib/changeset/tool-implementations/read-impl'
 import { buildRejectionFollowUpPrompt, buildExecutionFailurePrompt } from '@/lib/changeset/prompts/session-planner'
 import { createClientSupabaseClient } from '@/lib/supabase-client'
 import { ChatDrawer, ChatTrigger } from './ChatDrawer'
+import { ChatSidebar } from './ChatSidebar'
 import { ApprovalBanner } from './ApprovalBanner'
 import { SessionAssistantContext } from './SessionAssistantContext'
+import { useIsDesktop } from './hooks/useAILayoutMode'
 import { useSessionExercisesOptional } from '@/components/features/training/context'
 import type { SessionPlannerExercise } from '@/components/features/training/adapters/session-adapter'
 import type { ExecutionError, ChangeSet } from '@/lib/changeset/types'
@@ -133,6 +135,9 @@ function SessionAssistantContent({
   autoCollapseChat = true,
   children,
 }: SessionAssistantProps) {
+  // Responsive layout detection
+  const isDesktop = useIsDesktop()
+
   // Get exercises from shared context (single source of truth)
   const exercisesContext = useSessionExercisesOptional()
   const exercises = exercisesContext?.exercises ?? []
@@ -141,7 +146,8 @@ function SessionAssistantContent({
   // Load persisted state on mount
   const [initialState] = useState(() => loadPersistedState(sessionId))
 
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [sidebarPinned, setSidebarPinned] = useState(false)
   const [showBanner, setShowBanner] = useState(initialState?.showBanner ?? false)
   const [isExecuting, setIsExecuting] = useState(false)
   const [executionError, setExecutionError] = useState<ExecutionError | undefined>()
@@ -168,7 +174,7 @@ function SessionAssistantContent({
   // Auto-collapse chat when proposals are pending (inline mode only)
   useEffect(() => {
     if (useInlineMode && autoCollapseChat && showBanner) {
-      setDrawerOpen(false)
+      setChatOpen(false)
     }
   }, [useInlineMode, autoCollapseChat, showBanner])
 
@@ -408,9 +414,9 @@ function SessionAssistantContent({
       changeset: changeSet.changeset,
       isExecuting,
       executionError,
-      isChatOpen: drawerOpen,
-      openChat: () => setDrawerOpen(true),
-      closeChat: () => setDrawerOpen(false),
+      isChatOpen: chatOpen,
+      openChat: () => setChatOpen(true),
+      closeChat: () => setChatOpen(false),
       approve: handleApprove,
       regenerate: handleRegenerate,
       dismiss: handleDismiss,
@@ -420,35 +426,66 @@ function SessionAssistantContent({
       changeSet.changeset,
       isExecuting,
       executionError,
-      drawerOpen,
+      chatOpen,
       handleApprove,
       handleRegenerate,
       handleDismiss,
     ]
   )
 
+  // On desktop, sidebar pushes content instead of overlaying
+  const showSidebar = isDesktop && chatOpen
+
   return (
     <SessionAssistantContext.Provider value={contextValue}>
-      {/* Children (for custom layouts with inline proposals) */}
-      {children}
+      {/* Desktop: Flex layout with sidebar pushing content */}
+      <div className="flex min-h-full">
+        {/* Main content area - shrinks when sidebar is open */}
+        <div
+          className="flex-1 min-w-0 transition-all duration-300 ease-out"
+          style={{
+            marginRight: showSidebar ? 400 : 0,
+          }}
+        >
+          {children}
+        </div>
+
+        {/* Desktop: Right sidebar (fixed, pushes content via margin) */}
+        {isDesktop && (
+          <ChatSidebar
+            open={chatOpen}
+            onOpenChange={setChatOpen}
+            isPinned={sidebarPinned}
+            onPinChange={setSidebarPinned}
+            messages={messages}
+            input={input}
+            onInputChange={setInput}
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+            onStop={stop}
+          />
+        )}
+      </div>
+
+      {/* Mobile/Tablet: Bottom drawer */}
+      {!isDesktop && (
+        <ChatDrawer
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          messages={messages}
+          input={input}
+          onInputChange={setInput}
+          onSubmit={handleSubmit}
+          isLoading={isLoading}
+          onStop={stop}
+        />
+      )}
 
       {/* Chat trigger button */}
       <ChatTrigger
-        onClick={() => setDrawerOpen(true)}
+        onClick={() => setChatOpen(true)}
         hasChanges={changeSet.hasPendingChanges()}
         changeCount={changeSet.getPendingCount()}
-      />
-
-      {/* Chat drawer */}
-      <ChatDrawer
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        messages={messages}
-        input={input}
-        onInputChange={setInput}
-        onSubmit={handleSubmit}
-        isLoading={isLoading}
-        onStop={stop}
       />
 
       {/* Approval banner (overlay mode only) */}

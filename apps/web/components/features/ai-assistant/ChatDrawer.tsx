@@ -3,11 +3,9 @@
 /**
  * ChatDrawer Component
  *
- * Sliding drawer interface for AI conversation.
+ * Mobile sliding drawer interface for AI conversation.
  * Uses Vaul for drawer behavior.
- * Includes voice dictation support via Web Speech API.
- *
- * @see specs/002-ai-session-assistant/reference/20251221-session-ui-integration.md
+ * Consistent styling with ChatSidebar.
  */
 
 import { useRef, useEffect, useCallback } from 'react'
@@ -21,28 +19,13 @@ import type { UIMessage } from '@ai-sdk/react'
 import { useSpeechRecognition } from './use-speech-recognition'
 
 interface ChatDrawerProps {
-  /** Whether the drawer is open */
   open: boolean
-
-  /** Called when drawer open state changes */
   onOpenChange: (open: boolean) => void
-
-  /** Chat messages */
   messages: UIMessage[]
-
-  /** Input value */
   input: string
-
-  /** Handle input change */
   onInputChange: (value: string) => void
-
-  /** Handle form submission */
   onSubmit: (e: React.FormEvent) => void
-
-  /** Whether AI is currently generating a response */
   isLoading?: boolean
-
-  /** Stop generation callback */
   onStop?: () => void
 }
 
@@ -58,10 +41,8 @@ export function ChatDrawer({
 }: ChatDrawerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Handle transcript from speech recognition
   const handleTranscript = useCallback(
     (transcript: string) => {
-      // Append transcript to existing input with space if needed
       const newValue = input.trim()
         ? `${input.trim()} ${transcript.trim()}`
         : transcript.trim()
@@ -70,7 +51,6 @@ export function ChatDrawer({
     [input, onInputChange]
   )
 
-  // Speech recognition hook
   const {
     isSupported: isSpeechSupported,
     isListening,
@@ -84,16 +64,10 @@ export function ChatDrawer({
     language: 'en-US',
   })
 
-  // Toggle microphone
   const handleMicToggle = useCallback(() => {
-    if (isListening) {
-      stopListening()
-    } else {
-      startListening()
-    }
+    isListening ? stopListening() : startListening()
   }, [isListening, startListening, stopListening])
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -101,9 +75,8 @@ export function ChatDrawer({
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-60 bg-black/50 backdrop-blur-sm" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-60 flex h-[85vh] flex-col rounded-t-2xl bg-background border-t shadow-2xl">
-          {/* Accessible title and description for screen readers */}
+        <Drawer.Overlay className="fixed inset-0 z-60 bg-black/40" />
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-60 flex h-[85vh] flex-col rounded-t-2xl bg-background border-t shadow-xl">
           <VisuallyHidden.Root asChild>
             <Drawer.Title>AI Session Assistant Chat</Drawer.Title>
           </VisuallyHidden.Root>
@@ -123,7 +96,7 @@ export function ChatDrawer({
                 <Bot className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h3 className="font-semibold text-foreground">AI Assistant</h3>
+                <h3 className="font-medium text-foreground">AI Assistant</h3>
                 <p className="text-xs text-muted-foreground">
                   {isLoading ? 'Thinking...' : 'Ready to help'}
                 </p>
@@ -133,9 +106,9 @@ export function ChatDrawer({
               variant="ghost"
               size="icon"
               onClick={() => onOpenChange(false)}
-              className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              className="h-8 w-8"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
 
@@ -151,7 +124,7 @@ export function ChatDrawer({
                 {isLoading && (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>AI is thinking...</span>
+                    <span className="text-sm">AI is thinking...</span>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
@@ -160,8 +133,7 @@ export function ChatDrawer({
           </div>
 
           {/* Input */}
-          <div className="border-t bg-background/80 backdrop-blur-sm p-4">
-            {/* Speech recognition status */}
+          <div className="border-t p-4">
             {isListening && (
               <div className="flex items-center gap-2 mb-2 text-sm text-primary">
                 <span className="relative flex h-2 w-2">
@@ -176,7 +148,6 @@ export function ChatDrawer({
             )}
 
             <form onSubmit={onSubmit} className="flex gap-2">
-              {/* Microphone button */}
               {isSpeechSupported && (
                 <Button
                   type="button"
@@ -185,19 +156,13 @@ export function ChatDrawer({
                   onClick={handleMicToggle}
                   disabled={isLoading}
                   className={cn(
-                    'shrink-0 transition-colors',
+                    'shrink-0',
                     isListening && 'bg-red-500 hover:bg-red-600 text-white border-red-500'
                   )}
-                  title={isListening ? 'Stop recording' : 'Start voice input'}
                 >
-                  {isListening ? (
-                    <MicOff className="h-4 w-4" />
-                  ) : (
-                    <Mic className="h-4 w-4" />
-                  )}
+                  {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </Button>
               )}
-
               <Input
                 value={input}
                 onChange={(e) => onInputChange(e.target.value)}
@@ -222,33 +187,23 @@ export function ChatDrawer({
   )
 }
 
-/**
- * Individual chat message component.
- */
 function ChatMessage({ message }: { message: UIMessage }) {
   const isUser = message.role === 'user'
 
-  // Extract text content from message parts
   const textContent = message.parts
     .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
     .map((part) => part.text)
     .join('')
 
   // Count tool calls in progress (not yet completed)
-  // Tool parts have states: 'input-streaming', 'input-available', 'output-streaming', 'output-available'
-  // Only show "Processing..." for tools that haven't received output yet
   const toolCalls = message.parts.filter((part) => {
-    if (!part.type.startsWith('tool-') || part.type.startsWith('tool-result')) {
-      return false
-    }
-    const toolPart = part as { state?: string }
-    // Tool is still in progress if state is not 'output-available'
-    return toolPart.state !== 'output-available'
+    if (!part.type.startsWith('tool-') || part.type.startsWith('tool-result')) return false
+    const toolPart = part as { state?: string; output?: unknown; result?: unknown }
+    const hasOutput = toolPart.output !== undefined || toolPart.result !== undefined
+    return !(hasOutput || toolPart.state === 'output-available')
   })
-  const hasToolCalls = toolCalls.length > 0
 
-  // If assistant message with no text but has tool calls, show tool activity
-  if (!isUser && !textContent && hasToolCalls) {
+  if (!isUser && !textContent && toolCalls.length > 0) {
     return (
       <div className="flex gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -262,19 +217,10 @@ function ChatMessage({ message }: { message: UIMessage }) {
     )
   }
 
-  // Skip if no text content and no tool calls
-  if (!textContent) {
-    return null
-  }
+  if (!textContent) return null
 
   return (
-    <div
-      className={cn(
-        'flex gap-3',
-        isUser && 'flex-row-reverse'
-      )}
-    >
-      {/* Avatar */}
+    <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
       <div
         className={cn(
           'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
@@ -287,8 +233,6 @@ function ChatMessage({ message }: { message: UIMessage }) {
           <Bot className="h-4 w-4 text-primary" />
         )}
       </div>
-
-      {/* Content */}
       <div
         className={cn(
           'max-w-[80%] rounded-2xl px-4 py-2.5',
@@ -301,9 +245,6 @@ function ChatMessage({ message }: { message: UIMessage }) {
   )
 }
 
-/**
- * Empty state shown when no messages.
- */
 function EmptyState() {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
@@ -318,15 +259,11 @@ function EmptyState() {
         <SuggestionChip text="Add 3 sets of face pulls at the end" />
         <SuggestionChip text="Swap back squats for safety bar squats" />
         <SuggestionChip text="Increase all sets by 1 rep" />
-        <SuggestionChip text="Find exercises for posterior chain" />
       </div>
     </div>
   )
 }
 
-/**
- * Clickable suggestion chip.
- */
 function SuggestionChip({ text }: { text: string }) {
   return (
     <div className="rounded-full bg-muted px-3 py-1.5 text-muted-foreground hover:bg-muted/80 transition-colors cursor-pointer">
@@ -336,7 +273,7 @@ function SuggestionChip({ text }: { text: string }) {
 }
 
 /**
- * Trigger button for opening the chat drawer.
+ * Trigger button for opening the chat drawer/sidebar.
  */
 interface ChatTriggerProps {
   onClick: () => void

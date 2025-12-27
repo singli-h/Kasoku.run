@@ -110,10 +110,8 @@ export function ApprovalBanner({
     try {
       await onApprove()
       setState('success')
-      // Auto-dismiss after success
-      setTimeout(() => {
-        onDismiss()
-      }, 1500)
+      // Note: Don't call onDismiss here - SessionAssistant.handleApprove
+      // already clears the changeset and hides the banner via setShowBanner(false)
     } catch {
       setState('error')
     }
