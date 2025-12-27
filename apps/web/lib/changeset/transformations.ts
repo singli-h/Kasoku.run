@@ -108,10 +108,20 @@ export function transformToolInput(
   const entityId = extractEntityId(entityType, operationType, toolInput)
 
   // Build proposed data
-  const proposedData =
-    operationType !== 'delete'
-      ? buildProposedData(entityType, toolInput, options.sessionId)
-      : null
+  // For delete operations on sets: include parent FK so UI can group by exercise
+  let proposedData: Record<string, unknown> | null = null
+  if (operationType !== 'delete') {
+    proposedData = buildProposedData(entityType, toolInput, options.sessionId)
+  } else {
+    // For delete: include minimal data for UI grouping (parent FK only)
+    const parentFkMapping = PARENT_FK_FROM_TOOL_INPUT[entityType as SessionEntityType]
+    if (parentFkMapping) {
+      const parentRef = toolInput[parentFkMapping.inputField]
+      if (parentRef !== undefined && parentRef !== null) {
+        proposedData = { [parentFkMapping.dbField]: parentRef }
+      }
+    }
+  }
 
   // Extract reasoning
   const aiReasoning = toolInput.reasoning as string | undefined

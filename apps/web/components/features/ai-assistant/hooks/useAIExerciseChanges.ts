@@ -38,6 +38,12 @@ export interface AIExerciseChangeInfo {
   pendingSetCount: number
 }
 
+/**
+ * Special key for set changes that couldn't be grouped by exercise.
+ * ExerciseCard should also check this when looking up set changes.
+ */
+export const UNGROUPED_SET_CHANGES_KEY = '__ungrouped__'
+
 interface UseAIExerciseChangesOptions {
   /** Entity type for exercises (default: 'preset_exercise') */
   exerciseEntityType?: 'preset_exercise' | 'training_exercise'
@@ -122,12 +128,15 @@ export function useAIExerciseChanges(
           req.proposedData?.exercise_id ??
           req.proposedData?.preset_exercise_id
 
-        // Validate exerciseId is a valid type
-        if (rawExerciseId == null) return
-        if (typeof rawExerciseId !== 'string' && typeof rawExerciseId !== 'number') return
-        // Normalize to string for consistent Map key lookup
-        // WorkoutView uses String(ex.id) for lookups, so we must match
-        const exerciseId: string = String(rawExerciseId)
+        // Normalize to string, or use special ungrouped key if no exercise ID found
+        // This handles cases like delete where only the set ID is provided
+        let exerciseId: string
+        if (rawExerciseId == null || (typeof rawExerciseId !== 'string' && typeof rawExerciseId !== 'number')) {
+          // Store in ungrouped entry - ExerciseCard will check this fallback
+          exerciseId = UNGROUPED_SET_CHANGES_KEY
+        } else {
+          exerciseId = String(rawExerciseId)
+        }
 
         const changeType = deriveUIDisplayType(
           req.operationType,

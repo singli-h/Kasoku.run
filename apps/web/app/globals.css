@@ -355,6 +355,90 @@ body {
   color: hsl(var(--primary));
 }
 
+/* AI Change Indicator Colors
+ * Standardized colors for AI-proposed changes in dark and light themes
+ * Used by ExerciseCard, SetRow for pending change visualization
+ */
+
+/* Add (emerald) - for new exercises/sets */
+.ai-add-bg {
+  background-color: hsl(160 84% 39% / 0.1);
+  border-left: 2px solid hsl(160 84% 39%);
+}
+.dark .ai-add-bg {
+  background-color: hsl(160 74% 45% / 0.2);
+  border-left-color: hsl(160 74% 45%);
+}
+.ai-add-text {
+  color: hsl(160 84% 30%);
+}
+.dark .ai-add-text {
+  color: hsl(160 74% 55%);
+}
+
+/* Update (amber) - for modified values */
+.ai-update-bg {
+  background-color: hsl(43 96% 56% / 0.15);
+  border-left: 2px solid hsl(43 96% 40%);
+}
+.dark .ai-update-bg {
+  background-color: hsl(43 96% 56% / 0.2);
+  border-left-color: hsl(43 96% 50%);
+}
+.ai-update-text {
+  color: hsl(43 96% 30%);
+}
+.dark .ai-update-text {
+  color: hsl(43 96% 65%);
+}
+.ai-update-cell {
+  background-color: hsl(43 96% 56% / 0.25);
+}
+.dark .ai-update-cell {
+  background-color: hsl(43 96% 56% / 0.3);
+}
+
+/* Remove (red) - for deletions */
+.ai-remove-bg {
+  background-color: hsl(0 84% 60% / 0.12);
+  border-left: 2px solid hsl(0 84% 50%);
+}
+.dark .ai-remove-bg {
+  background-color: hsl(0 74% 50% / 0.2);
+  border-left-color: hsl(0 74% 55%);
+}
+.ai-remove-text {
+  color: hsl(0 84% 40%);
+}
+.dark .ai-remove-text {
+  color: hsl(0 74% 65%);
+}
+
+/* Swap (blue) - for exercise swaps */
+.ai-swap-bg {
+  background-color: hsl(217 91% 60% / 0.12);
+  border-left: 2px solid hsl(217 91% 50%);
+}
+.dark .ai-swap-bg {
+  background-color: hsl(217 91% 60% / 0.2);
+  border-left-color: hsl(217 91% 60%);
+}
+.ai-swap-text {
+  color: hsl(217 91% 40%);
+}
+.dark .ai-swap-text {
+  color: hsl(217 91% 70%);
+}
+
+/* Ghost row styling - dashed border for pending CREATE */
+.ai-ghost-row {
+  border: 1px dashed hsl(160 84% 39%);
+  background-color: transparent;
+}
+.dark .ai-ghost-row {
+  border-color: hsl(160 74% 45%);
+}
+
 /* Input field consistent styling */
 .input-base {
   background-color: hsl(var(--muted) / 0.5);

@@ -6,6 +6,7 @@ import { format, isToday, isYesterday, isTomorrow } from "date-fns"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet, ExerciseLibraryItem } from "../types"
 import type { AIExerciseChangeInfo } from "@/components/features/ai-assistant/hooks"
+import { UNGROUPED_SET_CHANGES_KEY } from "@/components/features/ai-assistant/hooks"
 
 // Save status type (matches ExerciseContext)
 export type SaveStatus = 'saved' | 'saving' | 'error' | 'idle'
@@ -200,6 +201,11 @@ export function WorkoutView({
     return ghostExercises.sort((a, b) => a.exerciseOrder - b.exerciseOrder)
   }, [aiChangesByExercise, exercises])
 
+  // Extract ungrouped set changes (for delete operations without exercise ID)
+  const ungroupedSetChanges = useMemo(() => {
+    return aiChangesByExercise?.get(UNGROUPED_SET_CHANGES_KEY)?.setChanges
+  }, [aiChangesByExercise])
+
   // Exercise drag handlers
   const handleExerciseDragStart = useCallback((e: React.DragEvent, exerciseId: string | number) => {
     setDraggingExerciseId(exerciseId)
@@ -383,6 +389,7 @@ export function WorkoutView({
                                   hasPendingChange={aiInfo?.hasPendingChange}
                                   aiChangeType={aiInfo?.changeType}
                                   setAIChanges={aiInfo?.setChanges}
+                                  ungroupedSetChanges={ungroupedSetChanges}
                                   pendingNewSets={aiInfo?.pendingNewSets}
                                   pendingSetCount={aiInfo?.pendingSetCount}
                                   aiProposedData={aiInfo?.proposedData}
@@ -417,6 +424,7 @@ export function WorkoutView({
                           hasPendingChange={aiInfo?.hasPendingChange}
                           aiChangeType={aiInfo?.changeType}
                           setAIChanges={aiInfo?.setChanges}
+                          ungroupedSetChanges={ungroupedSetChanges}
                           pendingNewSets={aiInfo?.pendingNewSets}
                           pendingSetCount={aiInfo?.pendingSetCount}
                           aiProposedData={aiInfo?.proposedData}

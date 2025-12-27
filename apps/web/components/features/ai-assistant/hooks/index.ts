@@ -17,7 +17,12 @@ export {
 export { useAISetChanges, useAIExerciseChange } from './useAISetChanges'
 
 // Batch change detection (for WorkoutView)
-export { useAIExerciseChanges, type AIExerciseChangeInfo, type AISetChangeInfo } from './useAIExerciseChanges'
+export {
+  useAIExerciseChanges,
+  UNGROUPED_SET_CHANGES_KEY,
+  type AIExerciseChangeInfo,
+  type AISetChangeInfo,
+} from './useAIExerciseChanges'
 
 // Responsive layout detection
 export {

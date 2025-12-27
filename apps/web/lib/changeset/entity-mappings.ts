@@ -87,6 +87,7 @@ export const CAMEL_TO_SNAKE_MAP: Record<string, string> = {
   // Exercise (session_plan_exercises) fields
   sessionPlanExerciseId: 'id',
   exerciseId: 'exercise_id',
+  exerciseName: 'exercise_name', // For UI display (not a DB column, but kept for ghost cards/swap)
   exerciseOrder: 'exercise_order',
   supersetId: 'superset_id',
 
@@ -114,7 +115,7 @@ export const SNAKE_TO_CAMEL_MAP: Record<string, string> = Object.fromEntries(
 export const METADATA_FIELDS = new Set([
   'reasoning', // AI reasoning - stored separately
   'aiReasoning', // Alternative casing
-  'exerciseName', // UI display only, not a DB column
+  // Note: exerciseName is kept in proposedData for UI display (ghost cards, swap)
   'insertAfterExerciseId', // Ordering helper, not a DB column
   // Note: setCount is NOT excluded - it's needed in proposedData for execution
 ])

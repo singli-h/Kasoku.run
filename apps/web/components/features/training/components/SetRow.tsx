@@ -59,13 +59,12 @@ export interface SetRowProps {
  * - Athlete view: Tappable set number for completion, inline editable inputs
  * - Coach view: Drag handle for reordering, all fields visible, remove button
  */
-// AI change indicator colors for sets
+// AI change indicator colors for sets - uses CSS classes from globals.css for dark mode support
 const AI_SET_COLORS: Record<UIDisplayType, string> = {
-  swap: 'bg-blue-50/80 border-l-2 border-l-blue-400',
-  add: 'bg-emerald-50/80 border-l-2 border-l-emerald-400',
-  update: 'bg-amber-50/80 border-l-2 border-l-amber-400',
-  // More visible red without heavy opacity - user can still read values
-  remove: 'bg-red-100/90 border-l-2 border-l-red-400',
+  swap: 'ai-swap-bg',
+  add: 'ai-add-bg',
+  update: 'ai-update-bg',
+  remove: 'ai-remove-bg',
 }
 
 export function SetRow({
@@ -532,7 +531,7 @@ export function SetRow({
         {coachShowReps && (
           <div className={cn(
             "px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1",
-            isFieldChanged('reps') ? "bg-amber-100" : "bg-muted"
+            isFieldChanged('reps') ? "ai-update-cell" : "bg-muted"
           )}>
             <input
               type="number"
@@ -550,7 +549,7 @@ export function SetRow({
         {coachShowWeight && (
           <div className={cn(
             "px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1",
-            isFieldChanged('weight') ? "bg-amber-100" : "bg-muted"
+            isFieldChanged('weight') ? "ai-update-cell" : "bg-muted"
           )}>
             <input
               type="number"

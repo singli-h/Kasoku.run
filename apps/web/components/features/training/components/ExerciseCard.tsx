@@ -9,6 +9,7 @@ import { SetRow, type VisibleFields } from "./SetRow"
 import { getVisibleFields } from "../utils/field-visibility"
 import type { UIDisplayType } from "@/lib/changeset/types"
 import type { AISetChangeInfo } from "@/components/features/ai-assistant/hooks"
+import { UNGROUPED_SET_CHANGES_KEY } from "@/components/features/ai-assistant/hooks"
 
 export interface ExerciseCardProps {
   exercise: TrainingExercise
@@ -37,6 +38,8 @@ export interface ExerciseCardProps {
   aiChangeType?: UIDisplayType | null
   /** Map of set ID to pending change info */
   setAIChanges?: Map<string | number, AISetChangeInfo>
+  /** Fallback map for set changes without known exercise (keyed by set ID) */
+  ungroupedSetChanges?: Map<string | number, AISetChangeInfo>
   /** Pending new sets (CREATE operations) for ghost row rendering */
   pendingNewSets?: AISetChangeInfo[]
   /** Count of sets with pending AI changes */
@@ -77,6 +80,7 @@ export function ExerciseCard({
   hasPendingChange = false,
   aiChangeType,
   setAIChanges,
+  ungroupedSetChanges,
   pendingNewSets = [],
   pendingSetCount = 0,
   aiProposedData,
@@ -84,7 +88,16 @@ export function ExerciseCard({
   isGhostExercise = false,
 }: ExerciseCardProps) {
   // Derive AI change states
-  const isSwap = aiChangeType === 'swap'
+  // Enhanced swap detection: also check if proposedData has a different exercise_id
+  // This handles cases where currentData is null but we can compare with exercise.exerciseId
+  const proposedExerciseId = aiProposedData?.exercise_id as number | string | undefined
+  const isSwapByExerciseId = (
+    hasPendingChange &&
+    aiChangeType === 'update' && // Updates that change exercise_id are swaps
+    proposedExerciseId !== undefined &&
+    proposedExerciseId !== exercise.exerciseId
+  )
+  const isSwap = aiChangeType === 'swap' || isSwapByExerciseId
   const isRemove = aiChangeType === 'remove'
   const isAdd = aiChangeType === 'add'
 
@@ -93,12 +106,12 @@ export function ExerciseCard({
   const [draggingSetId, setDraggingSetId] = useState<string | number | null>(null)
   const [dragOverSetId, setDragOverSetId] = useState<string | number | null>(null)
 
-  // AI change indicator colors - more visible, no opacity reduction
+  // AI change indicator colors - uses CSS classes from globals.css for dark mode support
   const AI_BG_COLORS: Record<UIDisplayType, string> = {
-    swap: 'bg-blue-50/90 border-blue-300',
-    add: 'bg-emerald-50/90 border-emerald-300',
-    update: 'bg-amber-50/90 border-amber-300',
-    remove: 'bg-red-100/90 border-red-300',
+    swap: 'ai-swap-bg',
+    add: 'ai-add-bg',
+    update: 'ai-update-bg',
+    remove: 'ai-remove-bg',
   }
 
   const completedCount = getCompletedCount(exercise)
@@ -265,17 +278,17 @@ export function ExerciseCard({
               <div className="flex items-center gap-1.5 flex-wrap">
                 {isGhostExercise ? (
                   // Ghost exercise: new exercise in emerald
-                  <h3 className="text-sm font-medium truncate text-emerald-700">{exercise.name}</h3>
+                  <h3 className="text-sm font-medium truncate ai-add-text">{exercise.name}</h3>
                 ) : isSwap && swapNewName ? (
                   // Swap: show "Old Name → New Name"
                   <>
                     <span className="text-sm font-medium line-through text-muted-foreground">{exercise.name}</span>
-                    <ArrowRight className="w-3 h-3 text-blue-500 shrink-0" />
-                    <span className="text-sm font-medium text-blue-700">{swapNewName}</span>
+                    <ArrowRight className="w-3 h-3 ai-swap-text shrink-0" />
+                    <span className="text-sm font-medium ai-swap-text">{swapNewName}</span>
                   </>
                 ) : isRemove ? (
                   // Delete: strikethrough with red
-                  <h3 className="text-sm font-medium truncate line-through text-red-600 opacity-70">{exercise.name}</h3>
+                  <h3 className="text-sm font-medium truncate line-through ai-remove-text opacity-70">{exercise.name}</h3>
                 ) : (
                   // Normal state
                   <h3 className="text-sm font-medium truncate">{exercise.name}</h3>
@@ -285,11 +298,11 @@ export function ExerciseCard({
                   <span
                     className={cn(
                       "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0",
-                      isGhostExercise ? "bg-emerald-100 text-emerald-700" :
-                      isRemove ? "bg-red-100 text-red-700" :
-                      isSwap ? "bg-blue-100 text-blue-700" :
-                      isAdd ? "bg-emerald-100 text-emerald-700" :
-                      "bg-amber-100 text-amber-700"
+                      isGhostExercise ? "bg-emerald-100 dark:bg-emerald-900/40 ai-add-text" :
+                      isRemove ? "bg-red-100 dark:bg-red-900/40 ai-remove-text" :
+                      isSwap ? "bg-blue-100 dark:bg-blue-900/40 ai-swap-text" :
+                      isAdd ? "bg-emerald-100 dark:bg-emerald-900/40 ai-add-text" :
+                      "bg-amber-100 dark:bg-amber-900/40 ai-update-text"
                     )}
                     title={isGhostExercise ? "New exercise" : isRemove ? "Will be removed" : isSwap ? "Will be swapped" : `${pendingSetCount > 0 ? pendingSetCount : 1} AI change${pendingSetCount !== 1 ? 's' : ''} pending`}
                   >
@@ -363,7 +376,12 @@ export function ExerciseCard({
               const isSetDragging = draggingSetId === set.id
               const isSetDragOver = dragOverSetId === set.id
               // Get AI change info for this set - try both string and number keys
-              const setChange = setAIChanges?.get(String(set.id)) ?? setAIChanges?.get(set.id)
+              // Also check ungrouped changes as fallback (for deletes without exercise ID)
+              const setChange =
+                setAIChanges?.get(String(set.id)) ??
+                setAIChanges?.get(set.id) ??
+                ungroupedSetChanges?.get(String(set.id)) ??
+                ungroupedSetChanges?.get(set.id)
 
               return (
                 <div
