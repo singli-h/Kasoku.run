@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { Check, Loader2, Plus, Timer, Calendar } from "lucide-react"
+import { Check, Loader2, Plus, Calendar, SlidersHorizontal } from "lucide-react"
 import { format, isToday, isYesterday, isTomorrow } from "date-fns"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet, ExerciseLibraryItem } from "../types"
@@ -15,7 +15,7 @@ import { ExerciseCard } from "../components/ExerciseCard"
 import { SectionDivider } from "../components/SectionDivider"
 import { ExercisePickerSheet } from "../components/ExercisePickerSheet"
 import { SessionCompletionModal } from "../components/SessionCompletionModal"
-import { TimerDisplay } from "../components/TimerDisplay"
+import { BackToTopButton } from "@/components/ui/back-to-top-button"
 
 export interface WorkoutViewProps {
   /** Session title */
@@ -55,6 +55,10 @@ export interface WorkoutViewProps {
   onReorderExercises?: (fromId: number | string, toId: number | string) => void
   onFinishSession?: () => void
   onSaveSession?: () => void
+  /** Create a superset from selected exercise IDs */
+  onCreateSuperset?: (exerciseIds: (string | number)[]) => void
+  /** Unlink a superset (dissolve all exercises in it) */
+  onUnlinkSuperset?: (supersetId: string) => void
 
   /** AI change info per exercise (keyed by exercise ID as string) */
   aiChangesByExercise?: Map<string, AIExerciseChangeInfo>
@@ -93,6 +97,8 @@ export function WorkoutView({
   onReorderExercises,
   onFinishSession,
   onSaveSession,
+  onCreateSuperset,
+  onUnlinkSuperset,
   aiChangesByExercise,
   className,
 }: WorkoutViewProps) {
@@ -111,6 +117,55 @@ export function WorkoutView({
   const [showExercisePicker, setShowExercisePicker] = useState(false)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [draggingExerciseId, setDraggingExerciseId] = useState<string | number | null>(null)
+  // Toggle for showing all optional fields vs. only required + filled fields
+  const [showAllFields, setShowAllFields] = useState(false)
+  // Track which section to pre-select when opening exercise picker
+  const [preSelectedSection, setPreSelectedSection] = useState<string | null>(null)
+  // Selection mode for superset creation (coach mode only)
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string | number>>(new Set())
+
+  // Open exercise picker with a pre-selected section (for section [+ Add] buttons)
+  const handleAddToSection = useCallback((section: string) => {
+    setPreSelectedSection(section)
+    setShowExercisePicker(true)
+  }, [])
+
+  // Toggle selection mode
+  const toggleSelectionMode = useCallback(() => {
+    setIsSelectionMode(prev => !prev)
+    if (isSelectionMode) {
+      setSelectedExerciseIds(new Set())
+    }
+  }, [isSelectionMode])
+
+  // Toggle exercise selection
+  const handleToggleSelection = useCallback((exerciseId: string | number) => {
+    setSelectedExerciseIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(exerciseId)) {
+        newSet.delete(exerciseId)
+      } else {
+        newSet.add(exerciseId)
+      }
+      return newSet
+    })
+  }, [])
+
+  // Create superset from selected exercises
+  const handleCreateSuperset = useCallback(() => {
+    if (selectedExerciseIds.size >= 2 && onCreateSuperset) {
+      onCreateSuperset(Array.from(selectedExerciseIds))
+      setSelectedExerciseIds(new Set())
+      setIsSelectionMode(false)
+    }
+  }, [selectedExerciseIds, onCreateSuperset])
+
+  // Cancel selection mode
+  const handleCancelSelection = useCallback(() => {
+    setSelectedExerciseIds(new Set())
+    setIsSelectionMode(false)
+  }, [])
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -130,6 +185,7 @@ export function WorkoutView({
   }, [exercises])
 
   // Group consecutive exercises by section (preserves order, detects section changes)
+  // For superset exercises, use "Superset" as the section label instead of individual exercise types
   const exerciseGroups = useMemo(() => {
     if (exercises.length === 0) return []
 
@@ -137,17 +193,32 @@ export function WorkoutView({
     const sortedExercises = [...exercises].sort((a, b) => a.exerciseOrder - b.exerciseOrder)
 
     // Group consecutive exercises by section
-    const groups: { section: string; exercises: TrainingExercise[] }[] = []
-    let currentGroup: { section: string; exercises: TrainingExercise[] } | null = null
+    // Superset exercises use "Superset" as their effective section
+    const groups: { section: string; exercises: TrainingExercise[]; isSuperset?: boolean }[] = []
+    let currentGroup: { section: string; exercises: TrainingExercise[]; isSuperset?: boolean } | null = null
+    let currentSupersetId: string | null = null
 
     sortedExercises.forEach((exercise) => {
-      if (!currentGroup || currentGroup.section !== exercise.section) {
-        // Start a new group
-        currentGroup = { section: exercise.section, exercises: [exercise] }
-        groups.push(currentGroup)
-      } else {
+      // Determine effective section: "Superset" for superset exercises, otherwise the actual section
+      const isInSuperset = !!exercise.supersetId
+      const effectiveSection = isInSuperset ? 'Superset' : exercise.section
+
+      // Check if we should continue in the same group
+      const isSameSuperset = isInSuperset && exercise.supersetId === currentSupersetId
+      const isSameSection = !isInSuperset && currentGroup?.section === exercise.section && !currentGroup?.isSuperset
+
+      if (isSameSuperset || isSameSection) {
         // Add to current group
-        currentGroup.exercises.push(exercise)
+        currentGroup!.exercises.push(exercise)
+      } else {
+        // Start a new group
+        currentGroup = {
+          section: effectiveSection,
+          exercises: [exercise],
+          isSuperset: isInSuperset
+        }
+        groups.push(currentGroup)
+        currentSupersetId = isInSuperset ? exercise.supersetId! : null
       }
     })
 
@@ -238,45 +309,60 @@ export function WorkoutView({
 
   return (
     <div className={cn("bg-background min-h-full relative", className)}>
-      {/* Header */}
+      {/* Header - only show if title is provided */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="px-4 py-3">
-          {/* Title Row with Date */}
-          <div className="flex items-center gap-2 mb-2">
-            <h1 className="text-base font-semibold">{title}</h1>
-            {formattedDate && (
-              <span className="flex items-center gap-1 px-2 py-0.5 bg-muted rounded-full text-[10px] text-muted-foreground font-medium">
-                <Calendar className="w-3 h-3" />
-                {formattedDate}
-              </span>
-            )}
-          </div>
-          {description && (
-            <p className="text-xs text-muted-foreground mb-2">{description}</p>
+          {/* Title Row with Date - only show if title exists */}
+          {title && (
+            <>
+              <div className="flex items-center gap-2 mb-2">
+                <h1 className="text-base font-semibold">{title}</h1>
+                {formattedDate && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-muted rounded-full text-[10px] text-muted-foreground font-medium">
+                    <Calendar className="w-3 h-3" />
+                    {formattedDate}
+                  </span>
+                )}
+              </div>
+              {description && (
+                <p className="text-xs text-muted-foreground mb-2">{description}</p>
+              )}
+            </>
           )}
 
-          {/* Actions Row - Timer LEFT of % complete per FR-052 */}
+          {/* Actions Row */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              {/* Timer positioned LEFT of % complete (FR-052) */}
-              {isAthlete && !isCompleted && (
-                <button
-                  onClick={onToggleTimer}
-                  className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm font-mono transition-colors min-w-[80px]",
-                    isTimerRunning
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  <Timer className="w-3.5 h-3.5" />
-                  <TimerDisplay seconds={elapsedSeconds} size="sm" />
-                </button>
-              )}
+              {/* Field visibility toggle */}
+              <button
+                onClick={() => setShowAllFields(prev => !prev)}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 rounded-md transition-colors",
+                  showAllFields
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+                title={showAllFields ? "Hide optional fields" : "Show all fields"}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-medium">{showAllFields ? "All" : "Min"}</span>
+              </button>
               {isAthlete ? (
                 <span>{stats.progress}% complete</span>
               ) : (
-                <span>{stats.totalSets} sets · {stats.totalExercises} exercises</span>
+                <>
+                  <span>{stats.totalSets} sets · {stats.totalExercises} exercises</span>
+                  {/* Superset link button (coach mode only) */}
+                  {onCreateSuperset && !isSelectionMode && exercises.length >= 2 && (
+                    <button
+                      onClick={toggleSelectionMode}
+                      className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+                      title="Create superset"
+                    >
+                      <span className="text-[10px] font-medium">🔗 Link</span>
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
@@ -334,7 +420,7 @@ export function WorkoutView({
       </div>
 
       {/* Content */}
-      <div className="px-4 py-4 space-y-2 pb-24">
+      <div className="px-2 sm:px-4 py-4 space-y-2 pb-24">
         {exercises.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-muted-foreground mb-4">No exercises yet</p>
@@ -355,8 +441,12 @@ export function WorkoutView({
               return (
                 <div key={`${group.section}-${groupIdx}`}>
                   {/* Minimal section separator - only show between different sections */}
-                  <SectionDivider label={group.section} />
-                  <div className="space-y-3 pl-2">
+                  <SectionDivider
+                    label={group.section}
+                    showAddButton={!isAthlete && !group.isSuperset && !isCompleted}
+                    onAddClick={() => handleAddToSection(group.section)}
+                  />
+                  <div className="space-y-3 pl-0 sm:pl-2">
                     {grouped.map((item, idx) => {
                       if (Array.isArray(item)) {
                         // Superset group
@@ -370,6 +460,7 @@ export function WorkoutView({
                                   key={ex.id}
                                   exercise={ex}
                                   isAthlete={isAthlete}
+                                  showAllFields={showAllFields}
                                   showSupersetBar
                                   supersetLabel={exIdx === 0 ? ex.supersetId || undefined : undefined}
                                   onToggleExpand={() => onToggleExpand?.(ex.id)}
@@ -385,6 +476,10 @@ export function WorkoutView({
                                   onDragOver={(e) => e.preventDefault()}
                                   onDragEnd={handleExerciseDragEnd}
                                   onDrop={handleExerciseDrop}
+                                  // Selection mode props
+                                  isSelectionMode={isSelectionMode}
+                                  isSelected={selectedExerciseIds.has(ex.id)}
+                                  onToggleSelection={handleToggleSelection}
                                   // AI indicator props
                                   hasPendingChange={aiInfo?.hasPendingChange}
                                   aiChangeType={aiInfo?.changeType}
@@ -407,6 +502,7 @@ export function WorkoutView({
                           key={item.id}
                           exercise={item}
                           isAthlete={isAthlete}
+                          showAllFields={showAllFields}
                           onToggleExpand={() => onToggleExpand?.(item.id)}
                           onCompleteSet={(setId) => onCompleteSet?.(item.id, setId)}
                           onCompleteAllSets={() => onCompleteAllSets?.(item.id)}
@@ -420,6 +516,10 @@ export function WorkoutView({
                           onDragOver={(e) => e.preventDefault()}
                           onDragEnd={handleExerciseDragEnd}
                           onDrop={handleExerciseDrop}
+                          // Selection mode props
+                          isSelectionMode={isSelectionMode}
+                          isSelected={selectedExerciseIds.has(item.id)}
+                          onToggleSelection={handleToggleSelection}
                           // AI indicator props
                           hasPendingChange={aiInfo?.hasPendingChange}
                           aiChangeType={aiInfo?.changeType}
@@ -441,12 +541,13 @@ export function WorkoutView({
             {pendingAddExercises.length > 0 && (
               <div>
                 <SectionDivider label="Pending" />
-                <div className="space-y-3 pl-2">
+                <div className="space-y-3 pl-0 sm:pl-2">
                   {pendingAddExercises.map((ghostEx) => (
                     <ExerciseCard
                       key={`ghost-ex-${ghostEx.id}`}
                       exercise={ghostEx}
                       isAthlete={isAthlete}
+                      showAllFields={showAllFields}
                       isGhostExercise={true}
                       onToggleExpand={() => {}}
                       onCompleteSet={() => {}}
@@ -460,26 +561,66 @@ export function WorkoutView({
         )}
       </div>
 
-      {/* Floating Action Button - Add Exercise (positioned above AI button) */}
-      {exercises.length > 0 && !isCompleted && (
-        <button
-          onClick={() => setShowExercisePicker(true)}
-          className="fixed bottom-24 right-6 z-40 flex items-center justify-center h-12 w-12 bg-secondary text-secondary-foreground rounded-full shadow-md hover:bg-secondary/90 transition-all hover:scale-105 active:scale-95 border border-border"
-          title="Add Exercise"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
+      {/* Floating Action Buttons - positioned above AI button */}
+      {exercises.length > 0 && !isSelectionMode && (
+        <div className="fixed bottom-24 right-6 z-40 flex flex-col-reverse items-end gap-3">
+          {/* Add Exercise Button - hidden when completed */}
+          {!isCompleted && (
+            <button
+              onClick={() => setShowExercisePicker(true)}
+              className="flex items-center justify-center h-14 w-14 bg-secondary text-secondary-foreground rounded-full shadow-md hover:bg-secondary/90 transition-all hover:scale-105 active:scale-95 border border-border"
+              title="Add Exercise"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          )}
+          {/* Back to Top Button - shows when scrolled, appears above Add Exercise */}
+          <BackToTopButton relative threshold={300} />
+        </div>
+      )}
+
+      {/* Selection Mode Action Bar */}
+      {isSelectionMode && (
+        <div className="fixed bottom-0 inset-x-0 z-50 bg-background border-t border-border px-4 py-3 flex items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleCancelSelection}
+              className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <span className="text-sm text-muted-foreground">
+              {selectedExerciseIds.size} selected
+            </span>
+          </div>
+          <button
+            onClick={handleCreateSuperset}
+            disabled={selectedExerciseIds.size < 2}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+              selectedExerciseIds.size >= 2
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-muted text-muted-foreground cursor-not-allowed"
+            )}
+          >
+            🔗 Link Superset
+          </button>
+        </div>
       )}
 
       {/* Exercise Picker Sheet - Always render, uses server-side search when exercises empty */}
       <ExercisePickerSheet
         isOpen={showExercisePicker}
-        onClose={() => setShowExercisePicker(false)}
+        onClose={() => {
+          setShowExercisePicker(false)
+          setPreSelectedSection(null)
+        }}
         onSelectExercise={(exercise, section) => {
           onAddExercise?.(exercise, section)
         }}
         exercises={exerciseLibrary}
         recentExerciseIds={recentExerciseIds}
+        defaultSection={preSelectedSection}
       />
 
       {/* Session Completion Modal */}

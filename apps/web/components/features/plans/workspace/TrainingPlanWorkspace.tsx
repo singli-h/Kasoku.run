@@ -340,7 +340,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
     <div className="min-h-screen bg-background">
       {/* Mobile navigation helper (only visible on mobile) */}
       <div className="lg:hidden border-b bg-card">
-        <div className="px-6 py-2">
+        <div className="px-2 sm:px-4 py-2">
           <Button
             variant="ghost"
             size="sm"
@@ -361,11 +361,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
         backPath="/plans"
         backLabel="Back to Plans"
         status={plan.status}
-        showUndoRedo
-        canUndo={historyIndex > 0}
-        canRedo={historyIndex < history.length - 1}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
         editable
         onTitleChange={(newName) => {
           setPlan((prev) => ({
@@ -377,7 +372,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
       />
 
       {/* Main Content */}
-      <main className="p-6">
+      <main className="p-2 sm:p-4 lg:p-6">
         {/* Desktop View - 3 Column Grid */}
         <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6">
           {/* Left Panel - Mesocycle Timeline */}
@@ -570,21 +565,23 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                           <Edit className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="mt-3 flex gap-4">
+                      <div className="mt-3 flex flex-wrap gap-2 xl:gap-4">
                         <div className="flex items-center gap-1">
-                          <div className="h-2 w-16 overflow-hidden rounded-full bg-secondary">
+                          <span className="text-[10px] xl:text-xs text-muted-foreground">Vol</span>
+                          <div className="h-2 w-12 xl:w-16 overflow-hidden rounded-full bg-secondary">
                             <div className="h-full bg-blue-500" style={{ width: `${((micro.volume || 0) / 10) * 100}%` }} />
                           </div>
-                          <span className="text-xs text-muted-foreground">{micro.volume || 0}/10</span>
+                          <span className="text-[10px] xl:text-xs text-muted-foreground">{micro.volume || 0}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <div className="h-2 w-16 overflow-hidden rounded-full bg-secondary">
+                          <span className="text-[10px] xl:text-xs text-muted-foreground">Int</span>
+                          <div className="h-2 w-12 xl:w-16 overflow-hidden rounded-full bg-secondary">
                             <div
                               className="h-full bg-orange-500"
                               style={{ width: `${((micro.intensity || 0) / 10) * 100}%` }}
                             />
                           </div>
-                          <span className="text-xs text-muted-foreground">{micro.intensity || 0}/10</span>
+                          <span className="text-[10px] xl:text-xs text-muted-foreground">{micro.intensity || 0}</span>
                         </div>
                       </div>
                       <div className="mt-2">
@@ -702,11 +699,42 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
         </div>
 
         {/* Mobile View - Sliding Panels */}
-        <div className="lg:hidden overflow-hidden w-full" ref={containerRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+        <div className="lg:hidden overflow-hidden w-full relative" ref={containerRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+          {/* Edge Arrow Indicators */}
+          {/* Left Arrow - visible when can go back */}
+          {mobileView !== "meso" && (
+            <button
+              onClick={mobileView === "micro" ? handleBackToMeso : handleBackToMicro}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-8 h-16 bg-gradient-to-r from-background/90 to-transparent"
+              aria-label={mobileView === "session" ? "Back to Week" : "Back to Phases"}
+            >
+              <ChevronLeft className="h-6 w-6 text-muted-foreground" />
+            </button>
+          )}
+
+          {/* Right Arrow - visible when can go forward */}
+          {((mobileView === "meso" && selectedMeso) || (mobileView === "micro" && selectedMicro)) && (
+            <button
+              onClick={() => {
+                if (mobileView === "meso" && selectedMeso) {
+                  setSlideDirection("left")
+                  setMobileView("micro")
+                } else if (mobileView === "micro" && selectedMicro) {
+                  setSlideDirection("left")
+                  setMobileView("session")
+                }
+              }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-8 h-16 bg-gradient-to-l from-background/90 to-transparent"
+              aria-label={mobileView === "meso" ? "View Weeks" : "View Sessions"}
+            >
+              <ChevronRight className="h-6 w-6 text-muted-foreground" />
+            </button>
+          )}
+
           <div className="flex transition-transform duration-300 ease-out w-[300%]" style={{ transform: getTransformValue() }}>
             {/* Mesocycle View - Always rendered */}
-            <div className="w-full flex-shrink-0">
-              <Card className="p-6">
+            <div className="w-full flex-shrink-0 px-1">
+              <Card className="p-4">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-semibold">Training Phases</h2>
                   <Button
@@ -787,8 +815,8 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
             </div>
 
             {/* Microcycle View - Always rendered */}
-            <div className="w-full flex-shrink-0 pl-6">
-              <Card className="p-6">
+            <div className="w-full flex-shrink-0 px-1">
+              <Card className="p-4">
                 {selectedMeso ? (
                   <>
                     <div className="mb-4 flex items-center justify-between">
@@ -837,21 +865,23 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                                 {micro.start_date} - {micro.end_date}
                               </p>
                               <p className="mt-1 text-sm text-muted-foreground">{micro.description}</p>
-                              <div className="mt-3 flex gap-4">
+                              <div className="mt-3 flex flex-wrap gap-2 sm:gap-4">
                                 <div className="flex items-center gap-1">
-                                  <div className="h-2 w-16 overflow-hidden rounded-full bg-secondary">
+                                  <span className="text-[10px] sm:text-xs text-muted-foreground w-6 sm:w-auto">Vol</span>
+                                  <div className="h-2 w-10 sm:w-14 overflow-hidden rounded-full bg-secondary">
                                     <div className="h-full bg-blue-500" style={{ width: `${((micro.volume || 0) / 10) * 100}%` }} />
                                   </div>
-                                  <span className="text-xs text-muted-foreground">{micro.volume || 0}/10</span>
+                                  <span className="text-[10px] sm:text-xs text-muted-foreground">{micro.volume || 0}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <div className="h-2 w-16 overflow-hidden rounded-full bg-secondary">
+                                  <span className="text-[10px] sm:text-xs text-muted-foreground w-6 sm:w-auto">Int</span>
+                                  <div className="h-2 w-10 sm:w-14 overflow-hidden rounded-full bg-secondary">
                                     <div
                                       className="h-full bg-orange-500"
                                       style={{ width: `${((micro.intensity || 0) / 10) * 100}%` }}
                                     />
                                   </div>
-                                  <span className="text-xs text-muted-foreground">{micro.intensity || 0}/10</span>
+                                  <span className="text-[10px] sm:text-xs text-muted-foreground">{micro.intensity || 0}</span>
                                 </div>
                               </div>
                               <div className="mt-2">
@@ -875,8 +905,8 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
             </div>
 
             {/* Session View - Always rendered */}
-            <div className="w-full flex-shrink-0 pl-6">
-              <Card className="p-6">
+            <div className="w-full flex-shrink-0 px-1">
+              <Card className="p-4">
                 {selectedMicro ? (
                   <>
                     <div className="mb-4 flex items-center justify-between">

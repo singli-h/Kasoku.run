@@ -75,7 +75,7 @@ const EMPTY_RESULT: UseAISetChangesResult = {
  */
 export function useAISetChanges(
   exerciseId: number | string,
-  entityType: 'preset_set' | 'training_set' = 'preset_set'
+  entityType: 'session_plan_set' | 'workout_log_set' = 'session_plan_set'
 ): UseAISetChangesResult {
   const context = useChangeSetOptional()
 
@@ -99,15 +99,17 @@ export function useAISetChanges(
         if (req.entityType !== entityType) return false
 
         // Match exercise ID from current or proposed data
-        // Support both session_plan_exercise_id (snake_case DB) and exerciseId (camelCase)
+        // Support both session_plan_exercise_id (snake_case DB) and sessionPlanExerciseId (camelCase)
         const currentExerciseId =
           req.currentData?.session_plan_exercise_id ??
-          req.currentData?.exercise_id ??
-          req.currentData?.preset_exercise_id
+          req.currentData?.sessionPlanExerciseId ??
+          req.currentData?.workout_log_exercise_id ??
+          req.currentData?.workoutLogExerciseId
         const proposedExerciseId =
           req.proposedData?.session_plan_exercise_id ??
-          req.proposedData?.exercise_id ??
-          req.proposedData?.preset_exercise_id
+          req.proposedData?.sessionPlanExerciseId ??
+          req.proposedData?.workout_log_exercise_id ??
+          req.proposedData?.workoutLogExerciseId
 
         return (
           currentExerciseId === exerciseId ||
@@ -148,7 +150,7 @@ export function useAISetChanges(
  */
 export function useAIExerciseChange(
   exerciseId: number | string,
-  entityType: 'preset_exercise' | 'training_exercise' = 'preset_exercise'
+  entityType: 'session_plan_exercise' | 'workout_log_exercise' = 'session_plan_exercise'
 ) {
   const context = useChangeSetOptional()
 

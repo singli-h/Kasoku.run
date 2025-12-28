@@ -70,10 +70,10 @@ const PricingCard = ({ plan, index }: PricingCardProps) => {
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
       className={`relative p-8 ${
-        highlighted 
-          ? 'bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 text-white' 
-          : 'bg-white dark:bg-card text-gray-900 dark:text-gray-100 border border-transparent dark:border-border/50'
-      } rounded-2xl shadow-xl dark:shadow-2xl`}
+        highlighted
+          ? 'bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 text-white'
+          : 'bg-card text-foreground border border-border/50'
+      } rounded-2xl shadow-xl`}
     >
       {highlighted && (
         <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-4 py-1 rounded-full text-sm font-medium">
@@ -82,23 +82,23 @@ const PricingCard = ({ plan, index }: PricingCardProps) => {
       )}
       
       <div className="text-center">
-        <h3 className={`text-2xl font-bold ${highlighted ? 'text-white' : 'text-gray-900 dark:text-gray-100'}`}>
+        <h3 className={`text-2xl font-bold ${highlighted ? 'text-white' : 'text-foreground'}`}>
           {name}
         </h3>
-        <p className={`mt-2 ${highlighted ? 'text-blue-100' : 'text-gray-600 dark:text-gray-300'}`}>
+        <p className={`mt-2 ${highlighted ? 'text-blue-100' : 'text-muted-foreground'}`}>
           {description}
         </p>
         <div className="mt-4">
           <span className="text-5xl font-bold">${price}</span>
-          <span className={`${highlighted ? 'text-blue-100' : 'text-gray-600 dark:text-gray-300'}`}>/month</span>
+          <span className={`${highlighted ? 'text-blue-100' : 'text-muted-foreground'}`}>/month</span>
         </div>
       </div>
 
       <ul className="mt-8 space-y-4">
         {features.map((feature) => (
           <li key={feature} className="flex items-center">
-            <Check className={`h-5 w-5 ${highlighted ? 'text-blue-200' : 'text-blue-500 dark:text-blue-400'} mr-3`} />
-            <span className={highlighted ? 'text-blue-100' : 'text-gray-600 dark:text-gray-300'}>{feature}</span>
+            <Check className={`h-5 w-5 ${highlighted ? 'text-blue-200' : 'text-primary'} mr-3`} />
+            <span className={highlighted ? 'text-blue-100' : 'text-muted-foreground'}>{feature}</span>
           </li>
         ))}
       </ul>
@@ -122,14 +122,14 @@ const PricingCard = ({ plan, index }: PricingCardProps) => {
 
 export default function Pricing() {
   return (
-    <section id="pricing" className="py-20 bg-white dark:bg-background">
+    <section id="pricing" className="py-20 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-4xl font-bold text-gray-900 dark:text-gray-100"
+            className="text-4xl font-bold text-foreground"
           >
             Simple, Transparent
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
@@ -140,7 +140,7 @@ export default function Pricing() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="mt-4 text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
+            className="mt-4 text-xl text-muted-foreground max-w-2xl mx-auto"
           >
             Choose the perfect plan for your training needs
           </motion.p>

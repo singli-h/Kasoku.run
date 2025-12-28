@@ -35,7 +35,7 @@ import type { ChangeSetContextValue } from './types'
  *   upsert({
  *     id: 'cr_123',
  *     operationType: 'create',
- *     entityType: 'preset_exercise',
+ *     entityType: 'session_plan_exercise',
  *     entityId: 'temp_001',
  *     currentData: null,
  *     proposedData: { exercise_id: 456 },

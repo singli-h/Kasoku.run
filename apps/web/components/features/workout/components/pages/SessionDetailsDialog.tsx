@@ -8,7 +8,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, Clock, Target, CheckCircle, TrendingUp } from "lucide-react"
+import { Clock, Target, CheckCircle, TrendingUp, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { WorkoutLogWithDetails } from "@/types/training"
 import { format } from "date-fns"
@@ -19,27 +19,59 @@ interface SessionDetailsDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+// Define all possible columns with their display info
+const ALL_COLUMNS = [
+  { key: 'reps', label: 'Reps', unit: '' },
+  { key: 'weight', label: 'Weight', unit: 'kg' },
+  { key: 'distance', label: 'Distance', unit: 'm' },
+  { key: 'performing_time', label: 'Time', unit: 's' },
+  { key: 'velocity', label: 'Velocity', unit: 'm/s' },
+  { key: 'height', label: 'Height', unit: 'cm' },
+  { key: 'power', label: 'Power', unit: 'W' },
+  { key: 'rest_time', label: 'Rest', unit: 's' },
+  { key: 'rpe', label: 'RPE', unit: '' },
+  { key: 'effort', label: 'Effort', unit: '%' },
+  { key: 'resistance', label: 'Resistance', unit: '' },
+  { key: 'tempo', label: 'Tempo', unit: '' },
+] as const
+
+// Helper to determine which columns have data for a set of details
+function getActiveColumns(details: any[]) {
+  return ALL_COLUMNS.filter(col =>
+    details.some(d => d[col.key] !== null && d[col.key] !== undefined && d[col.key] !== '')
+  )
+}
+
 export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDetailsDialogProps) {
   if (!session) return null
 
   const sessionData = session as any
   const sessionDate = sessionData.date_time ? new Date(sessionData.date_time) : new Date()
-  const exercises = sessionData.session_plan?.session_plan_exercises || []
 
-  // Calculate session stats
+  // Use workout_log_exercises (actual completed data) if available,
+  // fallback to session_plan_exercises (planned data) for older sessions
+  const exercises = sessionData.workout_log_exercises?.length > 0
+    ? sessionData.workout_log_exercises
+    : sessionData.session_plan?.session_plan_exercises || []
+
+  // Determine if we're showing actual workout data or planned data
+  const isActualWorkoutData = sessionData.workout_log_exercises?.length > 0
+
+  // Calculate session stats using the appropriate sets field
   const totalSets = exercises.reduce((sum: number, ex: any) => {
-    return sum + (ex.session_plan_sets?.length || 0)
+    const sets = isActualWorkoutData ? ex.workout_log_sets : ex.session_plan_sets
+    return sum + (sets?.length || 0)
   }, 0)
 
   const completedSets = exercises.reduce((sum: number, ex: any) => {
-    const details = ex.session_plan_sets || []
-    return sum + details.filter((d: any) => d.completed).length
+    const sets = isActualWorkoutData ? ex.workout_log_sets : ex.session_plan_sets
+    return sum + (sets || []).filter((d: any) => d.completed).length
   }, 0)
 
   const sessionDuration = sessionData.duration || 0 // in minutes
   const totalVolume = exercises.reduce((sum: number, ex: any) => {
-    const details = ex.session_plan_sets || []
-    return sum + details.reduce((exSum: number, d: any) => {
+    const sets = isActualWorkoutData ? ex.workout_log_sets : ex.session_plan_sets
+    return sum + (sets || []).reduce((exSum: number, d: any) => {
       const weight = d.weight || 0
       const reps = d.reps || 0
       return exSum + (weight * reps)
@@ -107,7 +139,10 @@ export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDet
               <p className="text-muted-foreground">No exercises recorded for this session.</p>
             ) : (
               exercises.map((exercise: any, index: number) => {
-                const details = exercise.session_plan_sets || []
+                // Use workout_log_sets for actual data, session_plan_sets for planned
+                const details = isActualWorkoutData
+                  ? exercise.workout_log_sets || []
+                  : exercise.session_plan_sets || []
                 const exerciseName = exercise.exercise?.name || `Exercise ${index + 1}`
 
                 return (
@@ -125,43 +160,54 @@ export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDet
                         <p className="text-sm text-muted-foreground">No sets recorded</p>
                       ) : (
                         <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b">
-                                <th className="text-left py-2 px-2">Set</th>
-                                <th className="text-center py-2 px-2">Reps</th>
-                                <th className="text-center py-2 px-2">Weight (kg)</th>
-                                <th className="text-center py-2 px-2">Rest (s)</th>
-                                <th className="text-center py-2 px-2">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {details.map((detail: any, setIndex: number) => (
-                                <tr
-                                  key={detail.id}
-                                  className={cn(
-                                    "border-b",
-                                    detail.completed && "bg-green-50"
-                                  )}
-                                >
-                                  <td className="py-2 px-2 font-medium">{setIndex + 1}</td>
-                                  <td className="py-2 px-2 text-center">{detail.reps || "-"}</td>
-                                  <td className="py-2 px-2 text-center">{detail.weight || "-"}</td>
-                                  <td className="py-2 px-2 text-center">{detail.rest_time || "-"}</td>
-                                  <td className="py-2 px-2 text-center">
-                                    {detail.completed ? (
-                                      <Badge variant="default" className="bg-green-500">
-                                        <CheckCircle className="h-3 w-3 mr-1" />
-                                        Done
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="outline">Skipped</Badge>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                          {(() => {
+                            // Determine which columns have data for this exercise
+                            const activeColumns = getActiveColumns(details)
+                            return (
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b">
+                                    <th className="text-left py-2 px-2">Set</th>
+                                    {activeColumns.map(col => (
+                                      <th key={col.key} className="text-center py-2 px-2">
+                                        {col.label}{col.unit ? ` (${col.unit})` : ''}
+                                      </th>
+                                    ))}
+                                    <th className="text-center py-2 px-2">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {details.map((detail: any, setIndex: number) => (
+                                    <tr
+                                      key={detail.id}
+                                      className="border-b"
+                                    >
+                                      <td className="py-2 px-2 font-medium">{setIndex + 1}</td>
+                                      {activeColumns.map(col => (
+                                        <td key={col.key} className="py-2 px-2 text-center">
+                                          {detail[col.key] !== null && detail[col.key] !== undefined
+                                            ? (typeof detail[col.key] === 'number'
+                                                ? Number(detail[col.key]).toFixed(col.key === 'velocity' ? 2 : 0)
+                                                : detail[col.key])
+                                            : "-"}
+                                        </td>
+                                      ))}
+                                      <td className="py-2 px-2 text-center">
+                                        {detail.completed ? (
+                                          <Badge variant="default" className="bg-green-500 text-white">
+                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                            Done
+                                          </Badge>
+                                        ) : (
+                                          <Badge variant="outline">Skipped</Badge>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )
+                          })()}
                         </div>
                       )}
                     </CardContent>

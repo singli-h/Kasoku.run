@@ -16,7 +16,7 @@ import type { ChangeRequest, UIDisplayType } from '@/lib/changeset/types'
 import { deriveUIDisplayType } from '../indicators/ChangeTypeBadge'
 
 interface UseAIChangeForEntityOptions {
-  /** Entity type (e.g., 'preset_exercise', 'preset_set', 'training_set') */
+  /** Entity type (e.g., 'session_plan_exercise', 'session_plan_set', 'workout_log_set') */
   entityType: string
   /** Entity ID */
   entityId: number | string
@@ -53,7 +53,7 @@ const EMPTY_RESULT: UseAIChangeForEntityResult = {
  * @example
  * ```tsx
  * const { hasPendingChange, proposedData, changeType } = useAIChangeForEntity({
- *   entityType: 'preset_set',
+ *   entityType: 'session_plan_set',
  *   entityId: set.id,
  * })
  *

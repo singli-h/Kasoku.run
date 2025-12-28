@@ -51,20 +51,30 @@ export function SessionCard({
     >
       <Card className="hover:shadow-md transition-shadow duration-200">
         <CardHeader className="pb-3">
+          {/* Prominent Date Display */}
+          <div className="mb-3">
+            <SessionDateDisplay
+              session={session}
+              format="medium"
+              size="md"
+              className="text-foreground! font-semibold bg-muted/50 rounded-md px-2.5 py-1.5 inline-flex"
+            />
+          </div>
+
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <CardTitle className="text-lg font-semibold mb-2">
                 {presetGroup.name}
               </CardTitle>
-              
+
               <div className="flex items-center gap-2 mb-3">
-                <SessionStatusBadge 
-                  status={status} 
-                  size="sm" 
+                <SessionStatusBadge
+                  status={status}
+                  size="sm"
                 />
               </div>
             </div>
-            
+
             {onAction && (
               <Button
                 onClick={() => onAction(session)}
@@ -84,16 +94,11 @@ export function SessionCard({
             <div className="space-y-3">
               {/* Session Info */}
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <SessionDateDisplay 
-                  session={session} 
-                  format="short"
-                  size="sm"
-                />
-                <SessionDurationDisplay 
+                <SessionDurationDisplay
                   session={session}
                   size="sm"
                 />
-                <SessionExerciseCount 
+                <SessionExerciseCount
                   session={session}
                   size="sm"
                 />

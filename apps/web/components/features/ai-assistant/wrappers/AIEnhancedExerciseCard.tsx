@@ -25,9 +25,9 @@ interface AIEnhancedExerciseCardProps {
   /** Exercise ID for change detection */
   exerciseId: number | string
   /** Entity type for exercise lookup */
-  exerciseEntityType?: 'preset_exercise' | 'training_exercise'
+  exerciseEntityType?: 'session_plan_exercise' | 'workout_log_exercise'
   /** Entity type for set lookup */
-  setEntityType?: 'preset_set' | 'training_set'
+  setEntityType?: 'session_plan_set' | 'workout_log_set'
   /** The ExerciseCard component to wrap */
   children: React.ReactNode
   /** Additional wrapper classes */
@@ -61,8 +61,8 @@ interface AIEnhancedExerciseCardProps {
  */
 export function AIEnhancedExerciseCard({
   exerciseId,
-  exerciseEntityType = 'preset_exercise',
-  setEntityType = 'preset_set',
+  exerciseEntityType = 'session_plan_exercise',
+  setEntityType = 'session_plan_set',
   children,
   className,
   renderBadge,

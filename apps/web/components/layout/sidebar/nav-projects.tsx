@@ -1,34 +1,19 @@
 /*
 <ai_context>
-This client component provides a list of projects for the sidebar.
+This client component provides a list of training projects for the sidebar.
 </ai_context>
 */
 
 "use client"
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
-import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar
+  SidebarMenuItem
 } from "@/components/ui/sidebar"
-import {
-  Folder,
-  Forward,
-  MoreHorizontal,
-  Trash2,
-  type LucideIcon
-} from "lucide-react"
+import { type LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -41,7 +26,6 @@ export function NavProjects({
     icon: LucideIcon
   }[]
 }) {
-  const { isMobile } = useSidebar()
   const pathname = usePathname()
 
   return (
@@ -56,33 +40,6 @@ export function NavProjects({
                 <span>{item.name}</span>
               </Link>
             </SidebarMenuButton>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuAction showOnHover>
-                  <MoreHorizontal />
-                  <span className="sr-only">More</span>
-                </SidebarMenuAction>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-48 rounded-lg"
-                side={isMobile ? "bottom" : "right"}
-                align={isMobile ? "end" : "start"}
-              >
-                <DropdownMenuItem>
-                  <Folder className="text-muted-foreground" />
-                  <span>View {item.name}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Forward className="text-muted-foreground" />
-                  <span>Share {item.name}</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Trash2 className="text-muted-foreground" />
-                  <span>Manage {item.name}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </SidebarMenuItem>
         ))}
       </SidebarMenu>

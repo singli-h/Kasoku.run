@@ -13,24 +13,27 @@ import {
   Users,
   TrendingUp,
   Settings,
-  Target,
+  Zap,
   BookOpen,
   PlayCircle,
   FileText
 } from "lucide-react"
 import * as React from "react"
 import { usePathname } from "next/navigation"
+import Link from "next/link"
 
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarRail
 } from "@/components/ui/sidebar"
 import { NavMain } from "./nav-main"
 import { NavProjects } from "./nav-projects"
-import { TeamSwitcher } from "./team-switcher"
 import { useUserRole } from "@/contexts/user-role-context"
 
 // Navigation item type with optional role restriction
@@ -105,14 +108,6 @@ const trainingItems: TrainingItem[] = [
   }
 ]
 
-const teams = [
-  {
-    name: "Kasoku Training",
-    logo: Target,
-    plan: "Pro"
-  }
-]
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const { isCoach, isAdmin, isLoading } = useUserRole()
@@ -152,7 +147,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={teams} />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link href="/dashboard">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <Zap className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">Kasoku</span>
+                  <span className="truncate text-xs text-muted-foreground">Training Platform</span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navItemsWithActive} />

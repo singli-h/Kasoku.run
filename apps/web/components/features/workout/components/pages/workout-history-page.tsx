@@ -81,58 +81,60 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
   return (
     <FeatureErrorBoundary featureName="Workout History" customMessage="Something went wrong while loading your workout history. Please try again.">
       <div className={cn("space-y-6", className)}>
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+      {/* Filters - Compact on mobile */}
+      <Card className="overflow-hidden">
+        <CardHeader className="py-3 px-4 md:py-4 md:px-6">
+          <CardTitle className="flex items-center gap-2 text-sm md:text-base">
+            <Filter className="h-4 w-4 md:h-5 md:w-5" />
             Filters
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
+        <CardContent className="px-4 pb-4 pt-0 md:px-6 md:pb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+            <div className="space-y-1 md:space-y-2">
+              <Label htmlFor="startDate" className="text-xs md:text-sm">From</Label>
               <Input
                 id="startDate"
                 type="date"
                 value={filters.startDate}
                 onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                className="h-8 md:h-10 text-xs md:text-sm"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">End Date</Label>
+            <div className="space-y-1 md:space-y-2">
+              <Label htmlFor="endDate" className="text-xs md:text-sm">To</Label>
               <Input
                 id="endDate"
                 type="date"
                 value={filters.endDate}
                 onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                className="h-8 md:h-10 text-xs md:text-sm"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="limit">Sessions per page</Label>
+            <div className="space-y-1 md:space-y-2">
+              <Label htmlFor="limit" className="text-xs md:text-sm">Per page</Label>
               <Select
                 value={filters.limit.toString()}
                 onValueChange={(value) => handleFilterChange('limit', parseInt(value))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-8 md:h-10 text-xs md:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="5">5 sessions</SelectItem>
-                  <SelectItem value="10">10 sessions</SelectItem>
-                  <SelectItem value="20">20 sessions</SelectItem>
-                  <SelectItem value="50">50 sessions</SelectItem>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setFilters({ startDate: "", endDate: "", limit: 10 })}
-                className="w-full"
+                className="w-full h-8 md:h-10 text-xs md:text-sm"
               >
-                Clear Filters
+                Clear
               </Button>
             </div>
           </div>

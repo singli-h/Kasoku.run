@@ -3,21 +3,24 @@
  * Displays a specific workout session by ID
  * URL: /workout/[id]
  *
- * Uses the new unified training components (WorkoutSessionDashboardV2)
- * which provides a mobile-first, section-based exercise organization.
+ * Uses React Query for seamless data refresh:
+ * - Server-side fetch for fast initial load (SSR)
+ * - Client-side React Query for auto-refresh on tab focus
+ * - No loading flash thanks to initialData pattern
  */
 
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { getWorkoutSessionByIdAction } from "@/actions/workout/workout-session-actions"
-import { WorkoutSessionDashboardV2 } from "@/components/features/training"
 import { UnifiedPageSkeleton } from "@/components/layout"
+import { WorkoutSessionClient } from "./WorkoutSessionClient"
 
 interface WorkoutSessionPageProps {
   params: Promise<{ id: string }>
 }
 
 async function WorkoutSessionContent({ sessionId }: { sessionId: number }) {
+  // Server-side fetch for fast initial render
   const result = await getWorkoutSessionByIdAction(sessionId)
 
   if (!result.isSuccess || !result.data) {
@@ -31,10 +34,12 @@ async function WorkoutSessionContent({ sessionId }: { sessionId: number }) {
     notFound()
   }
 
+  // Pass to client component for React Query hydration
+  // This enables seamless background refresh without loading states
   return (
-    <WorkoutSessionDashboardV2
-      presetGroup={sessionPlan}
-      existingSession={session}
+    <WorkoutSessionClient
+      initialSession={session}
+      sessionId={sessionId}
     />
   )
 }

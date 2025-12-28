@@ -530,6 +530,11 @@ export async function addExercisePerformanceAction(
     resistance?: number
     distance?: number
     performing_time?: number
+    velocity?: number
+    power?: number
+    height?: number
+    effort?: number
+    completed?: boolean
     notes?: string
   }
 ): Promise<ActionState<ExerciseTrainingDetail>> {
@@ -558,19 +563,25 @@ export async function addExercisePerformanceAction(
       }
     }
 
+    // Use ?? null to preserve 0 values (|| null treats 0 as falsy)
     const detailData = {
       workout_log_id: workoutLogExercise.workout_log_id,
       workout_log_exercise_id: workoutLogExerciseId,
       session_plan_exercise_id: workoutLogExercise.session_plan_exercise_id,
       set_index: setData.set_index,
-      reps: setData.reps || null,
-      weight: setData.weight || null,
-      rest_time: setData.rest_time || null,
-      rpe: setData.rpe || null,
-      tempo: setData.tempo || null,
-      resistance: setData.resistance || null,
-      distance: setData.distance || null,
-      performing_time: setData.performing_time || null
+      reps: setData.reps ?? null,
+      weight: setData.weight ?? null,
+      rest_time: setData.rest_time ?? null,
+      rpe: setData.rpe ?? null,
+      tempo: setData.tempo ?? null,
+      resistance: setData.resistance ?? null,
+      distance: setData.distance ?? null,
+      performing_time: setData.performing_time ?? null,
+      velocity: setData.velocity ?? null,
+      power: setData.power ?? null,
+      height: setData.height ?? null,
+      effort: setData.effort ?? null,
+      completed: setData.completed ?? false
     }
 
     // Check if a set already exists for this exercise and set_index
@@ -582,22 +593,28 @@ export async function addExercisePerformanceAction(
       .maybeSingle()
 
     let detail: ExerciseTrainingDetail | null = null
-    let error: any = null
+    let error: unknown = null
 
     if (existingSet) {
-      // Update existing set
+      // Update existing set - only update fields that are explicitly provided
+      const updateData: Record<string, unknown> = {}
+      if (setData.reps !== undefined) updateData.reps = setData.reps
+      if (setData.weight !== undefined) updateData.weight = setData.weight
+      if (setData.rest_time !== undefined) updateData.rest_time = setData.rest_time
+      if (setData.rpe !== undefined) updateData.rpe = setData.rpe
+      if (setData.tempo !== undefined) updateData.tempo = setData.tempo
+      if (setData.resistance !== undefined) updateData.resistance = setData.resistance
+      if (setData.distance !== undefined) updateData.distance = setData.distance
+      if (setData.performing_time !== undefined) updateData.performing_time = setData.performing_time
+      if (setData.velocity !== undefined) updateData.velocity = setData.velocity
+      if (setData.power !== undefined) updateData.power = setData.power
+      if (setData.height !== undefined) updateData.height = setData.height
+      if (setData.effort !== undefined) updateData.effort = setData.effort
+      if (setData.completed !== undefined) updateData.completed = setData.completed
+
       const { data, error: updateError } = await supabase
         .from('workout_log_sets')
-        .update({
-          reps: setData.reps || null,
-          weight: setData.weight || null,
-          rest_time: setData.rest_time || null,
-          rpe: setData.rpe || null,
-          tempo: setData.tempo || null,
-          resistance: setData.resistance || null,
-          distance: setData.distance || null,
-          performing_time: setData.performing_time || null
-        })
+        .update(updateData)
         .eq('id', existingSet.id)
         .select()
         .single()
@@ -616,9 +633,10 @@ export async function addExercisePerformanceAction(
 
     if (error) {
       console.error('[addExercisePerformanceAction] Error saving workout_log_set:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Database error'
       return {
         isSuccess: false,
-        message: `Failed to add exercise performance: ${error.message}`
+        message: `Failed to add exercise performance: ${errorMessage}`
       }
     }
 
@@ -628,6 +646,9 @@ export async function addExercisePerformanceAction(
         message: 'Failed to retrieve saved exercise performance'
       }
     }
+
+    // Revalidate workout page for seamless React Query refresh
+    revalidatePath(`/workout/${workoutLogExercise.workout_log_id}`, 'page')
 
     return {
       isSuccess: true,
@@ -661,6 +682,11 @@ export async function addExercisePerformanceByExerciseIdAction(
     resistance?: number
     distance?: number
     performing_time?: number
+    velocity?: number
+    power?: number
+    height?: number
+    effort?: number
+    completed?: boolean
     notes?: string
   }
 ): Promise<ActionState<ExerciseTrainingDetail>> {

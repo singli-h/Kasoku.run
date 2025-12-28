@@ -26,7 +26,7 @@ const REQUIRED_FIELDS_BY_TYPE: Record<number, string[]> = {
   3: ['reps', 'weight', 'rest_time'], // Gym: reps + weight + rest
   4: ['reps', 'rest_time'], // Warmup: reps + rest
   5: ['performing_time', 'rest_time'], // Circuit: duration + rest
-  6: ['distance', 'performing_time', 'rest_time'], // Sprint: distance + time + rest
+  6: ['distance', 'performing_time', 'velocity', 'rest_time'], // Sprint: distance + time + velocity + rest
   7: ['reps', 'rest_time'], // Drill: reps + rest
 }
 
@@ -40,7 +40,7 @@ const OPTIONAL_FIELDS_BY_TYPE: Record<number, string[]> = {
   3: ['rpe', 'tempo', 'resistance', 'effort', 'power', 'velocity'], // Gym: RPE, tempo, VBT, Keiser
   4: ['distance', 'performing_time'], // Warmup: jogging distance, timed warmups
   5: ['reps', 'effort', 'distance'], // Circuit: rep-based stations, effort
-  6: ['velocity', 'effort', 'resistance'], // Sprint: velocity, effort %, resistance (1080 Sprint)
+  6: ['effort', 'resistance'], // Sprint: effort %, resistance (1080 Sprint) - velocity now required
   7: ['distance', 'performing_time', 'effort'], // Drill: running drills, timed drills
 }
 

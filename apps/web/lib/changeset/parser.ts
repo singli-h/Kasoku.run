@@ -31,12 +31,12 @@ const CHANGE_REQUEST_TOOL_PATTERN = /^(create|update|delete)(\w+)ChangeRequest$/
 
 /**
  * Maps PascalCase entity names to their snake_case database equivalents.
- * These are the V1 Coach domain entity types.
+ * Session Planning domain (Coach): session_plan, session_plan_exercise, session_plan_set
  */
 const ENTITY_NAME_MAP: Record<string, string> = {
-  Session: 'preset_session',
-  Exercise: 'preset_exercise',
-  Set: 'preset_set',
+  Session: 'session_plan',
+  Exercise: 'session_plan_exercise',
+  Set: 'session_plan_set',
 }
 
 /**
@@ -47,11 +47,11 @@ const ENTITY_NAME_MAP: Record<string, string> = {
  *
  * @example
  * parseChangeRequestToolName("createExerciseChangeRequest")
- * // Returns: { operation: 'create', entityPascalCase: 'Exercise', entitySnakeCase: 'preset_exercise' }
+ * // Returns: { operation: 'create', entityPascalCase: 'Exercise', entitySnakeCase: 'session_plan_exercise' }
  *
  * @example
  * parseChangeRequestToolName("updateSessionChangeRequest")
- * // Returns: { operation: 'update', entityPascalCase: 'Session', entitySnakeCase: 'preset_session' }
+ * // Returns: { operation: 'update', entityPascalCase: 'Session', entitySnakeCase: 'session_plan' }
  *
  * @example
  * parseChangeRequestToolName("searchExercises")

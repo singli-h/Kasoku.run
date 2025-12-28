@@ -91,40 +91,55 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
   /**
    * Process the auto-save queue
    * Debounced to avoid excessive database writes
+   * Properly handles individual save failures
    */
   const processSaveQueue = useCallback(async () => {
+    console.log('[ExerciseProvider] processSaveQueue called', { queueSize: saveQueueRef.current.size, sessionId })
     if (saveQueueRef.current.size === 0 || !sessionId) return
 
     setSaveStatus('saving')
 
     try {
-      // Process all pending saves
-      const savePromises = Array.from(saveQueueRef.current.entries()).map(
-        async ([_key, data]) => {
+      // Process all pending saves and track success/failure per item
+      const entries = Array.from(saveQueueRef.current.entries())
+      const results = await Promise.all(
+        entries.map(async ([key, data]) => {
           const { exerciseId, setIndex, updates } = data
 
-          return await saveExercisePerformance(
+          const success = await saveExercisePerformance(
             sessionId,
             exerciseId,
             { set_index: setIndex, ...updates },
             true // immediate save
           )
-        }
+
+          return { key, success }
+        })
       )
 
-      await Promise.all(savePromises)
+      // Only remove successful saves from the queue
+      let hasFailures = false
+      for (const { key, success } of results) {
+        if (success) {
+          saveQueueRef.current.delete(key)
+        } else {
+          hasFailures = true
+          console.error('[ExerciseProvider] Save failed for key:', key)
+        }
+      }
 
-      // Clear the queue
-      saveQueueRef.current.clear()
-      setSaveStatus('saved')
-
-      // Reset to idle after 2 seconds
-      setTimeout(() => setSaveStatus('idle'), 2000)
+      if (hasFailures) {
+        setSaveStatus('error')
+        // Keep failed items in queue - will retry on next save trigger
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      } else {
+        setSaveStatus('saved')
+        setTimeout(() => setSaveStatus('idle'), 2000)
+      }
     } catch (error) {
       console.error('[ExerciseProvider] Auto-save failed:', error)
       setSaveStatus('error')
-
-      // Reset to idle after 3 seconds on error
+      // Keep items in queue for retry
       setTimeout(() => setSaveStatus('idle'), 3000)
     }
   }, [sessionId, saveExercisePerformance])
@@ -151,9 +166,13 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
    * @param {Partial<WorkoutExercise>} updates - New properties to merge with existing exercise data
    */
   const updateExercise = useCallback((id: number, updates: Partial<WorkoutExercise>) => {
+    console.log('[ExerciseProvider] updateExercise called', { id, sessionId, hasWorkoutLogSets: !!updates.workout_log_sets })
     setExercises((prevExercises) => {
       const exerciseData = prevExercises.find(e => e.id === id)
-      if (!exerciseData) return prevExercises
+      if (!exerciseData) {
+        console.log('[ExerciseProvider] Exercise not found:', id)
+        return prevExercises
+      }
 
       // OPTIMIZATION: Only queue sets that actually changed
       if (updates.workout_log_sets && sessionId) {
@@ -162,19 +181,34 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
 
         newSets.forEach((newSet, index) => {
           const prevSet = prevSets[index]
-          // Only queue if set actually changed (compare key fields)
+          // Only queue if set actually changed (compare all saveable fields)
           const hasChanged = !prevSet ||
             prevSet.completed !== newSet.completed ||
             prevSet.reps !== newSet.reps ||
             prevSet.weight !== newSet.weight ||
             prevSet.distance !== newSet.distance ||
             prevSet.performing_time !== newSet.performing_time ||
+            prevSet.rest_time !== newSet.rest_time ||
+            prevSet.velocity !== newSet.velocity ||
+            prevSet.power !== newSet.power ||
+            prevSet.height !== newSet.height ||
+            prevSet.effort !== newSet.effort ||
+            prevSet.resistance !== newSet.resistance ||
+            prevSet.tempo !== newSet.tempo ||
             prevSet.rpe !== newSet.rpe
 
           if (hasChanged) {
-            const queueKey = `${sessionId}-${exerciseData.exercise?.id}-${index}`
+            // Get exercise ID from nested object or direct field (workout_log_exercises has exercise_id)
+            const exId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
+            console.log('[ExerciseProvider] Change detected for set', { index, exId, exerciseDataId: exerciseData.id, hasExercise: !!exerciseData.exercise })
+            if (!exId) {
+              console.error('[ExerciseProvider] Cannot save - no exercise ID found for exercise:', exerciseData.id)
+              return
+            }
+            const queueKey = `${sessionId}-${exId}-${index}`
+            console.log('[ExerciseProvider] Queueing save', { queueKey, setIndex: index + 1, newSet })
             saveQueueRef.current.set(queueKey, {
-              exerciseId: exerciseData.exercise?.id,
+              exerciseId: exId,
               setIndex: index + 1,
               updates: newSet
             })
@@ -219,11 +253,18 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
         const detailIndex = exerciseData.workout_log_sets.findIndex(d => d.id === detailId)
         if (detailIndex === -1) return updatedExercises
 
+        // Get exercise ID from nested object or direct field
+        const exId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
+        if (!exId) {
+          console.error('[ExerciseProvider] Cannot save completion - no exercise ID found')
+          return updatedExercises
+        }
+
         const detail = exerciseData.workout_log_sets[detailIndex]
-        const queueKey = `${sessionId}-${exerciseData.exercise?.id}-${detailIndex}-completion`
+        const queueKey = `${sessionId}-${exId}-${detailIndex}-completion`
 
         saveQueueRef.current.set(queueKey, {
-          exerciseId: exerciseData.exercise?.id,
+          exerciseId: exId,
           setIndex: detailIndex + 1,
           updates: { completed: detail.completed } // Now using the NEW toggled value
         })
@@ -246,7 +287,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
   /**
    * Force immediate save of all pending changes
    * MUST be called before completing/finishing a workout session
-   * @returns Promise<boolean> - true if save succeeded, false if failed
+   * @returns Promise<boolean> - true if ALL saves succeeded, false if any failed
    */
   const forceSave = useCallback(async (): Promise<boolean> => {
     // Cancel any pending debounced save
@@ -263,26 +304,39 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
     setSaveStatus('saving')
 
     try {
-      // Process all pending saves immediately
-      const savePromises = Array.from(saveQueueRef.current.entries()).map(
-        async ([_key, data]) => {
+      // Process all pending saves and track results
+      const entries = Array.from(saveQueueRef.current.entries())
+      const results = await Promise.all(
+        entries.map(async ([key, data]) => {
           const { exerciseId, setIndex, updates } = data
-          return await saveExercisePerformance(
+          const success = await saveExercisePerformance(
             sessionId!,
             exerciseId,
             { set_index: setIndex, ...updates },
             true // immediate save
           )
-        }
+          return { key, success }
+        })
       )
 
-      await Promise.all(savePromises)
+      // Check results and handle failures
+      let allSucceeded = true
+      for (const { key, success } of results) {
+        if (success) {
+          saveQueueRef.current.delete(key)
+        } else {
+          allSucceeded = false
+          console.error('[ExerciseProvider] Force save failed for key:', key)
+        }
+      }
 
-      // Clear the queue
-      saveQueueRef.current.clear()
-      setSaveStatus('saved')
-
-      return true
+      if (allSucceeded) {
+        setSaveStatus('saved')
+        return true
+      } else {
+        setSaveStatus('error')
+        return false
+      }
     } catch (error) {
       console.error('[ExerciseProvider] Force save failed:', error)
       setSaveStatus('error')

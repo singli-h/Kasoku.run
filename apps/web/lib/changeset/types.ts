@@ -44,7 +44,8 @@ export interface ChangeRequest {
 
   /**
    * Domain-specific entity type being modified.
-   * For Session Assistant V1: 'preset_session' | 'preset_exercise' | 'preset_set'
+   * Session domain: 'session_plan' | 'session_plan_exercise' | 'session_plan_set'
+   * Workout domain: 'workout_log' | 'workout_log_exercise' | 'workout_log_set'
    */
   entityType: string
 
@@ -186,9 +187,22 @@ export type ToolHandlerResult =
   | 'PAUSE'
 
 /**
- * Entity types supported in Session Assistant V1 (Coach domain).
+ * Entity types supported in Session Assistant (Coach domain).
+ * Maps to session_plans, session_plan_exercises, session_plan_sets tables.
  */
-export type SessionEntityType = 'preset_session' | 'preset_exercise' | 'preset_set'
+export type SessionEntityType = 'session_plan' | 'session_plan_exercise' | 'session_plan_set'
+
+/**
+ * Entity types supported for Workout domain (Athlete).
+ * Maps to workout_logs, workout_log_exercises, workout_log_sets tables.
+ */
+export type WorkoutEntityType = 'workout_log' | 'workout_log_exercise' | 'workout_log_set'
+
+/**
+ * Combined entity types for both domains.
+ * Used in hooks and execution that support both coach and athlete workflows.
+ */
+export type AllEntityType = SessionEntityType | WorkoutEntityType
 
 /**
  * UI display types derived from operation types.

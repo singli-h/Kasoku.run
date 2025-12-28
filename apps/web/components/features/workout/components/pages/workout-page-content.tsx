@@ -9,13 +9,10 @@
 "use client"
 
 import { useEffect } from "react"
-import { History } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { WorkoutSessionSelector } from "./workout-session-selector"
 import { NextSessionCard } from "./next-session-card"
 import { FeatureErrorBoundary } from '@/components/error-boundary'
 import { useSessionsToday } from '../../hooks/use-workout-queries'
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 // Import types
@@ -61,18 +58,10 @@ export function WorkoutPageContent() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Header with History Link */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold">My Workouts</h1>
-                <p className="text-muted-foreground">Continue your workout or start a new session</p>
-              </div>
-              <Button variant="outline" asChild>
-                <Link href="/workout/history">
-                  <History className="h-4 w-4 mr-2" />
-                  View History
-                </Link>
-              </Button>
+            {/* Header */}
+            <div>
+              <h1 className="text-2xl font-bold">My Workouts</h1>
+              <p className="text-muted-foreground">Continue your workout or start a new session</p>
             </div>
 
             {/* Next Session Card (if no ongoing session) */}

@@ -1,4 +1,4 @@
 export { DashboardLayout } from "./dashboard-layout"
-export { ActionCardsSection } from "./action-cards-section"
-export { RecentSessionsSection } from "./recent-tasks-section"
-export { DashboardSkeleton } from "./dashboard-skeleton" 
+export { DashboardSkeleton } from "./dashboard-skeleton"
+// Note: ActionCardsSection and RecentSessionsSection removed -
+// now using lean inline components in dashboard-layout.tsx 

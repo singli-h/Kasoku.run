@@ -17,6 +17,8 @@ export interface ExercisePickerSheetProps {
   exercises?: ExerciseLibraryItem[]
   categories?: string[]
   recentExerciseIds?: string[]
+  /** Pre-select a section when opening (from section [+ Add] buttons) */
+  defaultSection?: string | null
 }
 
 const DEFAULT_CATEGORIES = ["All", "Warmup", "Gym", "Isometric", "Plyometric", "Sprint", "Drill", "Circuit"]
@@ -47,10 +49,18 @@ export function ExercisePickerSheet({
   onSelectExercise,
   exercises: propExercises,
   categories = DEFAULT_CATEGORIES,
-  recentExerciseIds = []
+  recentExerciseIds = [],
+  defaultSection = null
 }: ExercisePickerSheetProps) {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedSection, setSelectedSection] = useState("Warmup")
+
+  // Set default section when opening with a pre-selected section
+  useEffect(() => {
+    if (isOpen && defaultSection && DEFAULT_SECTIONS.includes(defaultSection)) {
+      setSelectedSection(defaultSection)
+    }
+  }, [isOpen, defaultSection])
 
   // Determine if we should use server-side search
   const useServerSearch = !propExercises || propExercises.length === 0
@@ -158,9 +168,22 @@ export function ExercisePickerSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+    <>
+      {/* Backdrop overlay */}
+      <div
+        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Half-sheet (70% height) */}
+      <div className="fixed inset-x-0 bottom-0 z-50 bg-background flex flex-col rounded-t-2xl shadow-2xl max-h-[70vh] animate-in slide-in-from-bottom duration-300">
+        {/* Drag handle indicator */}
+        <div className="flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-2 border-b border-border">
         <button
           onClick={onClose}
           className="p-2 -ml-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -324,6 +347,7 @@ export function ExercisePickerSheet({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

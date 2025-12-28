@@ -162,7 +162,7 @@ function applyChangesToExercises(
     console.log(`[applyChangesToExercises] Processing: ${request.operationType} ${request.entityType} (entityId: ${request.entityId})`)
 
     switch (request.entityType) {
-      case 'preset_exercise':
+      case 'session_plan_exercise':
         exercises = applyExerciseChange(request, exercises)
         // Track the temp ID for this exercise so sets can reference it
         if (request.operationType === 'create' && request.entityId) {
@@ -171,11 +171,11 @@ function applyChangesToExercises(
         }
         break
 
-      case 'preset_set':
+      case 'session_plan_set':
         exercises = applySetChange(request, exercises, idMap)
         break
 
-      // preset_session changes are handled separately
+      // session_plan changes are handled separately
     }
   }
 
@@ -418,7 +418,7 @@ function extractSessionUpdates(
   const sessionUpdates: Partial<SessionUpdate> = {}
 
   for (const request of changeRequests) {
-    if (request.entityType === 'preset_session' && request.operationType === 'update') {
+    if (request.entityType === 'session_plan' && request.operationType === 'update') {
       const proposedData = request.proposedData
         ? convertKeysToCamelCase(request.proposedData)
         : null

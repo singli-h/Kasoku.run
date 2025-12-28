@@ -8,11 +8,14 @@ import { cn } from "@/lib/utils"
 interface BackToTopButtonProps {
   className?: string
   threshold?: number
+  /** When true, uses relative positioning (for use inside flex containers) */
+  relative?: boolean
 }
 
-export function BackToTopButton({ 
-  className, 
-  threshold = 400 
+export function BackToTopButton({
+  className,
+  threshold = 400,
+  relative = false
 }: BackToTopButtonProps) {
   const [isVisible, setIsVisible] = useState(false)
 
@@ -46,11 +49,12 @@ export function BackToTopButton({
       onClick={scrollToTop}
       size="icon"
       className={cn(
-        "fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full shadow-lg",
-        "bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50",
-        "dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700",
+        "h-14 w-14 rounded-full shadow-md",
+        "bg-secondary text-secondary-foreground border border-border",
+        "hover:bg-secondary/90",
         "transition-all duration-200 ease-in-out",
         "hover:scale-105 active:scale-95",
+        !relative && "fixed bottom-24 right-6 z-40",
         className
       )}
       aria-label="Back to top"

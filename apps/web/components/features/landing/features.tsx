@@ -56,14 +56,14 @@ const FeatureCard = ({ icon: Icon, title, description, index }: FeatureCardProps
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
-      className="relative p-6 bg-white dark:bg-card rounded-2xl shadow-xl dark:shadow-2xl hover:shadow-2xl dark:hover:shadow-3xl transition-shadow duration-300 border border-transparent dark:border-border/50"
+      className="relative p-6 bg-card rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-border/50"
     >
-      <div className="absolute -top-4 -left-4 p-3 bg-gradient-to-br from-blue-500 to-purple-500 dark:from-blue-400 dark:to-purple-400 rounded-xl shadow-lg">
-        <Icon className="w-6 h-6 text-white" />
+      <div className="absolute -top-4 -left-4 p-3 bg-gradient-to-br from-primary to-purple-500 rounded-xl shadow-lg">
+        <Icon className="w-6 h-6 text-primary-foreground" />
       </div>
       <div className="mt-4">
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mt-2">{title}</h3>
-        <p className="mt-2 text-gray-600 dark:text-gray-300">{description}</p>
+        <h3 className="text-xl font-semibold text-foreground mt-2">{title}</h3>
+        <p className="mt-2 text-muted-foreground">{description}</p>
       </div>
     </motion.div>
   )
@@ -71,25 +71,25 @@ const FeatureCard = ({ icon: Icon, title, description, index }: FeatureCardProps
 
 export default function Features() {
   return (
-    <section id="features" className="py-20 bg-gray-50 dark:bg-background">
+    <section id="features" className="py-20 bg-muted">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-4xl font-bold text-gray-900 dark:text-gray-100"
+            className="text-4xl font-bold text-foreground"
           >
             Powerful Features for
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
               {" "}Optimal Training
             </span>
           </motion.h2>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="mt-4 text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
+            className="mt-4 text-xl text-muted-foreground max-w-2xl mx-auto"
           >
             Everything you need to optimize your training and achieve your fitness goals
           </motion.p>
@@ -103,4 +103,4 @@ export default function Features() {
       </div>
     </section>
   )
-} 
+}

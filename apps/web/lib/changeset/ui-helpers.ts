@@ -30,7 +30,7 @@ import type { ChangeRequest, OperationType, UIDisplayType } from './types'
  * // Swap an exercise (exercise_id changed)
  * deriveUIDisplayType({
  *   operationType: 'update',
- *   entityType: 'preset_exercise',
+ *   entityType: 'session_plan_exercise',
  *   currentData: { exercise_id: 1 },
  *   proposedData: { exercise_id: 2 },
  * }) // 'swap'
@@ -39,7 +39,7 @@ import type { ChangeRequest, OperationType, UIDisplayType } from './types'
  * // Update set parameters
  * deriveUIDisplayType({
  *   operationType: 'update',
- *   entityType: 'preset_set',
+ *   entityType: 'session_plan_set',
  *   proposedData: { reps: 10 },
  * }) // 'update'
  */
@@ -69,7 +69,7 @@ export function deriveUIDisplayType(request: ChangeRequest): UIDisplayType {
  * Checks if an update operation is actually a swap (changing the exercise).
  *
  * A swap is detected when:
- * 1. Entity type is 'preset_exercise'
+ * 1. Entity type is 'session_plan_exercise'
  * 2. proposedData contains 'exercise_id'
  * 3. exercise_id is different from currentData.exercise_id
  *
@@ -78,7 +78,7 @@ export function deriveUIDisplayType(request: ChangeRequest): UIDisplayType {
  */
 export function isExerciseSwap(request: ChangeRequest): boolean {
   if (request.operationType !== 'update') return false
-  if (request.entityType !== 'preset_exercise') return false
+  if (request.entityType !== 'session_plan_exercise') return false
   if (!request.proposedData) return false
 
   const newExerciseId = request.proposedData['exercise_id']

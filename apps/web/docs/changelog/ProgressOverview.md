@@ -1,7 +1,7 @@
 # 📊 Kasoku MVP Project Tracker
 
 > **Project Status**: MVP Development - Core features 88% complete, AI integration pending
-> **Last Updated**: December 22, 2025
+> **Last Updated**: December 28, 2025
 > **Next Review**: January 1, 2026
 
 ---
@@ -207,6 +207,7 @@
 - [x] Current basic sidebar with all features
 - [x] Role-based navigation structure
 - [x] Mobile responsive design
+- [x] **FIXED (Mobile UI)**: Balanced sidebar font sizes on mobile + slightly increased mobile sidebar width
 - **🔄 Role-Based Reorganization Required**:
 - [ ] **Coach Sidebar**: Athletes, Sessions, Plans, Analytics, Knowledge Base
 - [ ] **Athlete Sidebar**: Workout, Performance, Profile, Library, Knowledge Base

@@ -25,17 +25,17 @@ let tempIdCounter = 0
  *
  * Key format: "{entityType}:{entityId}"
  *
- * @param entityType - The type of entity (e.g., "preset_exercise")
+ * @param entityType - The type of entity (e.g., "session_plan_exercise")
  * @param entityId - The entity's ID (real or temporary)
  * @returns A composite key for the buffer Map
  *
  * @example
- * makeBufferKey('preset_exercise', '123')
- * // Returns: "preset_exercise:123"
+ * makeBufferKey('session_plan_exercise', '123')
+ * // Returns: "session_plan_exercise:123"
  *
  * @example
- * makeBufferKey('preset_exercise', 'temp_001')
- * // Returns: "preset_exercise:temp_001"
+ * makeBufferKey('session_plan_exercise', 'temp_001')
+ * // Returns: "session_plan_exercise:temp_001"
  */
 export function makeBufferKey(entityType: string, entityId: string): BufferKey {
   return `${entityType}:${entityId}` as BufferKey
@@ -48,8 +48,8 @@ export function makeBufferKey(entityType: string, entityId: string): BufferKey {
  * @returns Object with entityType and entityId
  *
  * @example
- * parseBufferKey('preset_exercise:123')
- * // Returns: { entityType: 'preset_exercise', entityId: '123' }
+ * parseBufferKey('session_plan_exercise:123')
+ * // Returns: { entityType: 'session_plan_exercise', entityId: '123' }
  */
 export function parseBufferKey(key: BufferKey): {
   entityType: string
@@ -144,8 +144,8 @@ export function generateChangeSetId(): string {
  * @returns The entity type portion of the key
  *
  * @example
- * getEntityTypeFromKey('preset_exercise:123')
- * // Returns: 'preset_exercise'
+ * getEntityTypeFromKey('session_plan_exercise:123')
+ * // Returns: 'session_plan_exercise'
  */
 export function getEntityTypeFromKey(key: BufferKey): string {
   return parseBufferKey(key).entityType
@@ -158,7 +158,7 @@ export function getEntityTypeFromKey(key: BufferKey): string {
  * @returns The entity ID portion of the key
  *
  * @example
- * getEntityIdFromKey('preset_exercise:123')
+ * getEntityIdFromKey('session_plan_exercise:123')
  * // Returns: '123'
  */
 export function getEntityIdFromKey(key: BufferKey): string {

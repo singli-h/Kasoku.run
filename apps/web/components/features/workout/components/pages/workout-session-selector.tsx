@@ -178,12 +178,16 @@ export function WorkoutSessionSelector({
             <p className="text-muted-foreground mb-4">
               You don't have any workout sessions assigned for today.
             </p>
-            <div className="flex gap-2 justify-center">
-              <Button variant="outline" onClick={() => refetchSessions()}>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
+              <Button 
+                variant="outline" 
+                onClick={() => refetchSessions()}
+                className="w-auto min-w-[140px] h-10"
+              >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild className="w-auto min-w-[140px] h-10">
                 <a href="/workout/history">
                   <Calendar className="h-4 w-4 mr-2" />
                   View History

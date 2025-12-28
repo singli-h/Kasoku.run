@@ -137,7 +137,7 @@ function handleProposalTool(
     const isMultiSetCreate =
       toolName === 'createSetChangeRequest' &&
       operation === 'create' &&
-      entitySnakeCase === 'preset_set' &&
+      entitySnakeCase === 'session_plan_set' &&
       setCount > 1
 
     if (isMultiSetCreate) {

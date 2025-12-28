@@ -2,8 +2,10 @@
 
 import { useState, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Undo2, Redo2, Save } from "lucide-react"
+import { ArrowLeft, Undo2, Redo2, Save, Edit2, Calendar, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import {
@@ -76,6 +78,37 @@ export function SessionPlannerV2({
   // Local UI state
   const [isSaving, setIsSaving] = useState(false)
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
+
+  // Session metadata editing state
+  const [sessionName, setSessionName] = useState(initialSession.name)
+  const [sessionDescription, setSessionDescription] = useState(initialSession.description || '')
+  const [sessionDate, setSessionDate] = useState(initialSession.date || '')
+  const [isEditingMeta, setIsEditingMeta] = useState(false)
+  const [editingName, setEditingName] = useState('')
+  const [editingDescription, setEditingDescription] = useState('')
+  const [editingDate, setEditingDate] = useState('')
+
+  // Start editing session metadata
+  const startEditingMeta = useCallback(() => {
+    setEditingName(sessionName)
+    setEditingDescription(sessionDescription)
+    setEditingDate(sessionDate)
+    setIsEditingMeta(true)
+  }, [sessionName, sessionDescription, sessionDate])
+
+  // Save session metadata edits
+  const saveMetaEdits = useCallback(() => {
+    setSessionName(editingName)
+    setSessionDescription(editingDescription)
+    setSessionDate(editingDate)
+    setIsEditingMeta(false)
+    markAsUnsaved()
+  }, [editingName, editingDescription, editingDate, markAsUnsaved])
+
+  // Cancel session metadata edits
+  const cancelMetaEdits = useCallback(() => {
+    setIsEditingMeta(false)
+  }, [])
 
   // Convert to training exercises for rendering
   const trainingExercises = useMemo(() => {
@@ -291,6 +324,48 @@ export function SessionPlannerV2({
     })
   }, [setExercises])
 
+  // Create superset from selected exercises with sequential ID
+  const handleCreateSuperset = useCallback((exerciseIds: (string | number)[]) => {
+    setExercises(prev => {
+      // Get all existing superset IDs to find next sequential ID
+      const existingIds = new Set(
+        prev
+          .filter(ex => ex.superset_id != null)
+          .map(ex => parseInt(ex.superset_id as string, 10))
+          .filter(id => !isNaN(id))
+      )
+
+      // Find next available sequential ID (1, 2, 3, ...)
+      let nextId = 1
+      while (existingIds.has(nextId)) {
+        nextId++
+      }
+
+      // Assign superset_id as string to selected exercises
+      const supersetIdStr = String(nextId)
+      return prev.map(ex =>
+        exerciseIds.includes(ex.id) ? { ...ex, superset_id: supersetIdStr } : ex
+      )
+    })
+
+    toast({
+      title: "Superset Created",
+      description: `${exerciseIds.length} exercises linked as a superset.`
+    })
+  }, [setExercises, toast])
+
+  // Unlink superset (clear superset_id for all exercises in it)
+  const handleUnlinkSuperset = useCallback((supersetId: string) => {
+    setExercises(prev => prev.map(ex =>
+      ex.superset_id === supersetId ? { ...ex, superset_id: null } : ex
+    ))
+
+    toast({
+      title: "Superset Unlinked",
+      description: "Exercises are now separate."
+    })
+  }, [setExercises, toast])
+
   // Handle save
   const handleSave = useCallback(async () => {
     setIsSaving(true)
@@ -305,9 +380,9 @@ export function SessionPlannerV2({
       const result = await saveSessionWithExercisesAction(
         sessionId,
         {
-          name: initialSession.name,
-          description: initialSession.description,
-          date: initialSession.date,
+          name: sessionName,
+          description: sessionDescription || null,
+          date: sessionDate || null,
           week: initialSession.week,
           day: initialSession.day,
           session_mode: initialSession.session_mode,
@@ -388,13 +463,74 @@ export function SessionPlannerV2({
             </Button>
           </div>
         </div>
+
+        {/* Session Metadata - Editable */}
+        <div className="px-4 pb-3">
+          {isEditingMeta ? (
+            <div className="space-y-3 bg-muted/50 p-3 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Input
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  placeholder="Session name"
+                  className="flex-1 font-semibold"
+                  autoFocus
+                />
+                <Button size="sm" onClick={saveMetaEdits}>
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={cancelMetaEdits}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <Textarea
+                value={editingDescription}
+                onChange={(e) => setEditingDescription(e.target.value)}
+                placeholder="Session description (optional)"
+                className="text-sm min-h-[60px]"
+                rows={2}
+              />
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  value={editingDate}
+                  onChange={(e) => setEditingDate(e.target.value)}
+                  className="w-auto text-sm"
+                />
+              </div>
+            </div>
+          ) : (
+            <div
+              className="flex items-start justify-between gap-2 cursor-pointer hover:bg-muted/30 p-2 -m-2 rounded-lg transition-colors"
+              onClick={startEditingMeta}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-semibold truncate">{sessionName}</h1>
+                  <Edit2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                </div>
+                {sessionDescription && (
+                  <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{sessionDescription}</p>
+                )}
+                {sessionDate && (
+                  <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    <span>{new Date(sessionDate).toLocaleDateString()}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Main workout view (coach mode) */}
+      {/* Main workout view (coach mode) - title/description handled above */}
       <div className="flex-1 overflow-auto">
         <WorkoutView
-          title={initialSession.name}
-          description={initialSession.description || undefined}
+          title=""
+          description=""
+          sessionDate={sessionDate || undefined}
           exercises={trainingExercises}
           isAthlete={false}
           sessionStatus="ongoing"
@@ -410,6 +546,8 @@ export function SessionPlannerV2({
           onReorderExercises={handleReorderExercises}
           onFinishSession={handleSave}
           onSaveSession={handleSave}
+          onCreateSuperset={handleCreateSuperset}
+          onUnlinkSuperset={handleUnlinkSuperset}
           aiChangesByExercise={aiChangesByExercise}
         />
       </div>

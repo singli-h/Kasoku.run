@@ -77,21 +77,21 @@ const FAQItemComponent = ({ faq, index, isOpen, onToggle }: FAQItemProps) => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay: index * 0.05 }}
-      className="border border-gray-200 dark:border-border/50 rounded-2xl overflow-hidden bg-white dark:bg-card"
+      className="border border-border rounded-2xl overflow-hidden bg-card"
     >
       <button
         onClick={onToggle}
-        className="w-full px-6 py-4 text-left hover:bg-gray-50 dark:hover:bg-card/50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-background"
+        className="w-full px-6 py-4 text-left hover:bg-muted transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 pr-4">
+          <h3 className="text-lg font-semibold text-foreground pr-4">
             {faq.question}
           </h3>
           <div className="flex-shrink-0">
             {isOpen ? (
-              <ChevronUp className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              <ChevronUp className="h-5 w-5 text-muted-foreground" />
             ) : (
-              <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
             )}
           </div>
         </div>
@@ -107,7 +107,7 @@ const FAQItemComponent = ({ faq, index, isOpen, onToggle }: FAQItemProps) => {
         className="overflow-hidden"
       >
         <div className="px-6 pb-4">
-          <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+          <p className="text-muted-foreground leading-relaxed">
             {faq.answer}
           </p>
         </div>
@@ -130,7 +130,7 @@ export default function FAQ() {
   }
 
   return (
-    <section className="py-20 bg-white dark:bg-background">
+    <section className="py-20 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
@@ -139,7 +139,7 @@ export default function FAQ() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="text-4xl font-bold text-gray-900 dark:text-gray-100"
+              className="text-4xl font-bold text-foreground"
             >
               Frequently Asked
               <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
@@ -150,7 +150,7 @@ export default function FAQ() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="mt-4 text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
+              className="mt-4 text-xl text-muted-foreground max-w-2xl mx-auto"
             >
               Everything you need to know about Kasoku and how it can transform your training
             </motion.p>
@@ -174,20 +174,20 @@ export default function FAQ() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="mt-16 text-center p-8 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 rounded-3xl border border-blue-100 dark:border-blue-900/50"
+            className="mt-16 text-center p-8 bg-gradient-to-r from-primary/5 to-purple-500/5 rounded-3xl border border-border"
           >
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            <h3 className="text-2xl font-bold text-foreground mb-4">
               Still have questions?
             </h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-2xl mx-auto">
+            <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
               Our support team is here to help you get the most out of Kasoku. 
               Reach out anytime for personalized assistance.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
+              <button className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold">
                 Contact Support
               </button>
-              <button className="px-6 py-3 border border-gray-300 dark:border-border text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-card/50 transition-colors font-semibold">
+              <button className="px-6 py-3 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-semibold">
                 Schedule Demo
               </button>
             </div>

@@ -5,7 +5,6 @@ import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { BackToTopButton } from "@/components/ui/back-to-top-button"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { useUnsavedChanges } from "@/lib/hooks/useUnsavedChanges"
@@ -103,12 +102,38 @@ function WorkoutSessionContentV2({
   // Populate exercises from preset group/session on mount
   useEffect(() => {
     try {
+      // Check if we have existing workout_log_exercises (athlete's actual workout data)
+      const existingWorkoutExercises = (existingSession as any)?.workout_log_exercises || []
+
+      if (existingWorkoutExercises.length > 0) {
+        // Use existing workout_log_exercises directly - these have the actual completed sets
+        const mapped: WorkoutExercise[] = existingWorkoutExercises
+          .slice()
+          .sort((a: any, b: any) => (a.exercise_order || 0) - (b.exercise_order || 0))
+          .map((wle: any) => ({
+            ...wle,
+            // Use nested workout_log_sets from workout_log_exercises
+            workout_log_sets: wle.workout_log_sets || [],
+            completed: (wle.workout_log_sets || []).every((s: any) => s.completed),
+          }))
+
+        setExercises(mapped)
+
+        // Expand first exercise by default
+        if (mapped.length > 0) {
+          setExpandedIds(new Set([mapped[0].id]))
+        }
+        return
+      }
+
+      // Fallback: Initialize from session plan (for new sessions without workout_log_exercises)
       const basePresets = (presetGroup?.session_plan_exercises
         || existingSession?.session_plan?.session_plan_exercises
         || [])
         .slice()
         .sort((a: any, b: any) => (a.exercise_order || 0) - (b.exercise_order || 0))
 
+      // Try to match workout_log_sets by session_plan_exercise_id (legacy mapping)
       const details: WorkoutLogSet[] = existingSession?.workout_log_sets || []
       const detailsByPresetId = new Map<number, WorkoutLogSet[]>()
       for (const d of details) {
@@ -158,7 +183,7 @@ function WorkoutSessionContentV2({
     } catch (err) {
       console.error("Failed to initialize workout exercises", err)
     }
-  }, [presetGroup?.session_plan_exercises, existingSession?.session_plan?.session_plan_exercises, existingSession?.workout_log_sets, setExercises])
+  }, [presetGroup?.session_plan_exercises, existingSession?.session_plan?.session_plan_exercises, existingSession?.workout_log_sets, existingSession, setExercises])
 
   // Local state for session notes
   const [sessionNotes, setSessionNotes] = useState((existingSession as any)?.notes || "")
@@ -380,9 +405,6 @@ function WorkoutSessionContentV2({
           />
         </div>
       )}
-
-      {/* Back to Top Button */}
-      <BackToTopButton />
     </div>
   )
 }

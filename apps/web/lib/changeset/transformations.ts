@@ -171,7 +171,7 @@ export function extractEntityId(
   const entityId = toolInput[idField]
 
   // For sets, support composite identification (parent exercise + set index)
-  if (entityType === 'preset_set' && (entityId === undefined || entityId === null)) {
+  if (entityType === 'session_plan_set' && (entityId === undefined || entityId === null)) {
     const parentExerciseId = toolInput['sessionPlanExerciseId']
     const setIndex = toolInput['setIndex']
     const applyToAllSets = toolInput['applyToAllSets']
@@ -230,9 +230,8 @@ export function buildProposedData(
   }
 
   // Add parent foreign key for exercises if not present
-  // Updated to use session_plan naming (post schema migration 2025-Q4)
   if (
-    entityType === 'preset_exercise' &&
+    entityType === 'session_plan_exercise' &&
     !data['sessionPlanId'] &&
     sessionId
   ) {

@@ -11,41 +11,41 @@ export default function Hero() {
   const { isSignedIn } = useAuth()
 
   return (
-    <section className="relative overflow-hidden bg-white dark:bg-background">
+    <section className="relative overflow-hidden bg-background">
       {/* Animated background elements */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute w-[500px] h-[500px] bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/10 dark:to-purple-900/10 rounded-full blur-2xl opacity-30 dark:opacity-20 -top-32 -left-32 will-change-transform" />
-        <div className="absolute w-[600px] h-[600px] bg-gradient-to-r from-pink-100 to-blue-100 dark:from-pink-900/10 dark:to-blue-900/10 rounded-full blur-2xl opacity-30 dark:opacity-20 -bottom-48 -right-48 will-change-transform" />
+        <div className="absolute w-[500px] h-[500px] bg-gradient-to-r from-primary/10 to-purple-500/10 rounded-full blur-3xl opacity-40 -top-32 -left-32 will-change-transform" />
+        <div className="absolute w-[600px] h-[600px] bg-gradient-to-r from-purple-500/10 to-primary/10 rounded-full blur-3xl opacity-40 -bottom-48 -right-48 will-change-transform" />
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-24 relative">
         <div className="grid md:grid-cols-2 gap-16 items-center">
           {/* Content */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="space-y-8"
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-gray-900 dark:text-gray-100">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-foreground">
               Transform Your Fitness Journey with
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
                 {" "}AI-Powered Insights
               </span>
             </h1>
-            
-            <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
+
+            <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
               Smart training plans, real-time performance tracking, and personalized coaching powered by artificial intelligence. Join thousands of athletes achieving their goals.
             </p>
 
             {/* Trust indicators */}
-            <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span>10,000+ Active Athletes</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-primary rounded-full"></div>
                 <span>4.9★ Rating</span>
               </div>
             </div>
@@ -78,15 +78,15 @@ export default function Hero() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
-            className="relative aspect-square bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 rounded-3xl p-8 shadow-xl dark:shadow-2xl"
+            className="relative aspect-square bg-gradient-to-br from-primary/5 to-purple-500/5 rounded-3xl p-8 shadow-xl border border-border/50"
           >
-            <div className="absolute inset-0 rounded-3xl border-2 border-white/20 dark:border-white/10" />
+            <div className="absolute inset-0 rounded-3xl border border-border/30" />
             <div className="relative h-full flex items-center justify-center">
-              <div className="w-64 h-64 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 rounded-full mix-blend-multiply dark:mix-blend-normal opacity-20 dark:opacity-30 blur-3xl" />
-              <Image 
-                src="/hero.png" 
-                alt="Kasoku Hero Image" 
-                className="absolute w-full h-full object-contain dark:brightness-110"
+              <div className="w-64 h-64 bg-gradient-to-r from-primary to-purple-500 rounded-full opacity-20 blur-3xl" />
+              <Image
+                src="/hero.png"
+                alt="Kasoku Hero Image"
+                className="absolute w-full h-full object-contain"
                 width={512}
                 height={512}
                 priority
@@ -100,4 +100,4 @@ export default function Hero() {
       </div>
     </section>
   )
-} 
+}

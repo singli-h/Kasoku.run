@@ -24,6 +24,7 @@ import { ChangeSetProvider } from '@/lib/changeset/ChangeSetContext'
 import { useChangeSet } from '@/lib/changeset/useChangeSet'
 import { handleToolCall, createApprovalResult, createExecutionFailureResult } from '@/lib/changeset/tool-handler'
 import { executeChangeSet } from '@/lib/changeset/execute'
+import { executeWorkoutChangeSet } from '@/lib/changeset/execute-workout'
 import { executeReadTool } from '@/lib/changeset/tool-implementations/read-impl'
 import { buildRejectionFollowUpPrompt, buildExecutionFailurePrompt } from '@/lib/changeset/prompts/session-planner'
 import { createClientSupabaseClient } from '@/lib/supabase-client'
@@ -89,12 +90,26 @@ function clearPersistedState(sessionId: number) {
   }
 }
 
+/**
+ * Domain type for the assistant.
+ * - 'session': Coach session planning (preset_exercise, preset_set)
+ * - 'workout': Athlete workout logging (training_exercise, training_set)
+ */
+export type AssistantDomain = 'session' | 'workout'
+
 interface SessionAssistantProps {
-  /** The session ID */
+  /** The session ID (session_plan ID for session domain, workout_log ID for workout domain) */
   sessionId: number
 
-  /** The plan ID */
-  planId: string
+  /** The plan ID (optional for workout domain) */
+  planId?: string
+
+  /**
+   * Domain for the assistant.
+   * - 'session' (default): Coach session planning
+   * - 'workout': Athlete workout logging
+   */
+  domain?: AssistantDomain
 
   /**
    * Use inline mode for proposals.
@@ -131,6 +146,7 @@ export function SessionAssistant(props: SessionAssistantProps) {
  */
 function SessionAssistantContent({
   sessionId,
+  domain = 'session',
   useInlineMode = false,
   autoCollapseChat = true,
   children,
@@ -305,16 +321,14 @@ function SessionAssistantContent({
     setExecutionError(undefined)
 
     try {
-      // Execute changes - exercises already in correct type
-      const result = await executeChangeSet(
-        changeSet.changeset,
-        exercises,
-        sessionId
-      )
+      // Execute changes using domain-specific execution function
+      const result = domain === 'workout'
+        ? await executeWorkoutChangeSet(changeSet.changeset, sessionId)
+        : await executeChangeSet(changeSet.changeset, exercises, sessionId)
 
       if (result.status === 'approved') {
-        // Success - update shared exercises context with execution result
-        if (result.updatedExercises && setExercises) {
+        // Success - update shared exercises context with execution result (session domain only)
+        if (domain === 'session' && result.updatedExercises && setExercises) {
           setExercises(result.updatedExercises as SessionPlannerExercise[])
         }
 
@@ -356,7 +370,7 @@ function SessionAssistantContent({
       setIsExecuting(false)
       setPendingToolCall(null)
     }
-  }, [changeSet, exercises, sessionId, setExercises, pendingToolCall, addToolOutput, sendMessage])
+  }, [changeSet, domain, exercises, sessionId, setExercises, pendingToolCall, addToolOutput, sendMessage])
 
   /**
    * Handle user regeneration request.

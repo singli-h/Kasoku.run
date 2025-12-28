@@ -247,6 +247,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
 
   /**
    * Save exercise performance data (sets, reps, weight, etc.)
+   * Accepts both workout_log_set field names (performing_time, rest_time) and legacy names (duration)
    */
   const saveExercisePerformance = useCallback(async (
     sessionId: number,
@@ -256,11 +257,16 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
       reps?: number
       weight?: number
       distance?: number
-      duration?: number
+      duration?: number // Legacy name
+      performing_time?: number // Database field name
+      rest_time?: number // Database field name
       power?: number
       resistance?: number
       velocity?: number
+      height?: number
+      effort?: number
       tempo?: string
+      rpe?: number
       completed?: boolean
     },
     immediate = false
@@ -404,32 +410,41 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
 
   /**
    * Perform exercise performance update
+   * Handles both legacy (duration) and database (performing_time, rest_time) field names
    */
   const performExerciseUpdate = useCallback(async (item: AutoSaveItem): Promise<boolean> => {
     try {
       const { sessionId, exerciseId, setData } = item.data
-      
+      console.log('[performExerciseUpdate] Input setData:', JSON.stringify(setData, null, 2))
+
       // Convert our workout field names to database field names
+      // Support both legacy 'duration' and database 'performing_time' field names
       const dbSetData = {
         set_index: setData.set_index,
         reps: setData.reps,
         weight: setData.weight,
         distance: setData.distance,
-        performing_time: setData.duration, // duration -> performing_time
+        performing_time: setData.performing_time ?? setData.duration, // Accept both field names
+        rest_time: setData.rest_time,
         power: setData.power,
         resistance: setData.resistance,
         velocity: setData.velocity,
+        height: setData.height,
+        effort: setData.effort,
         tempo: setData.tempo,
+        rpe: setData.rpe,
         completed: setData.completed
       }
-      
+      console.log('[performExerciseUpdate] dbSetData:', JSON.stringify(dbSetData, null, 2))
+
       const result = await addExercisePerformanceByExerciseIdAction(sessionId, exerciseId, dbSetData)
-      
+      console.log('[performExerciseUpdate] Result:', result.isSuccess, result.message)
+
       if (!result.isSuccess) {
         console.error('Exercise performance save failed:', result.message)
         return false
       }
-      
+
       return true
     } catch (error) {
       console.error('Exercise performance save error:', error)

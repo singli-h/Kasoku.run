@@ -99,6 +99,10 @@ export function SetRow({
   const showPower = visibleFields?.power ?? false
   const showVelocity = visibleFields?.velocity ?? false
   const showRPE = visibleFields?.rpe ?? false
+  const showRestTime = visibleFields?.restTime ?? false
+  const showTempo = visibleFields?.tempo ?? false
+  const showEffort = visibleFields?.effort ?? false
+  const showResistance = visibleFields?.resistance ?? false
 
   // Helper to check if a field was changed by AI (for UPDATE operations)
   const isFieldChanged = useCallback((field: string): boolean => {
@@ -309,7 +313,7 @@ export function SetRow({
     )
   }
 
-  // Athlete view - inline editable inputs with completion toggle
+  // Athlete view - inline editable inputs with completion toggle on far right
   if (isAthlete) {
     return (
       <div className={cn(
@@ -319,19 +323,14 @@ export function SetRow({
           ? AI_SET_COLORS[aiChangeType]
           : set.completed ? "bg-green-500/10" : "bg-muted/30"
       )}>
-        {/* Set number / completion toggle */}
+        {/* Set number (non-interactive) */}
         <div className="relative shrink-0">
-          <button
-            onClick={onComplete}
-            className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all",
-              set.completed
-                ? "bg-green-500 text-white"
-                : "bg-background border border-border hover:border-primary hover:bg-primary hover:text-primary-foreground"
-            )}
-          >
-            {set.completed ? <Check className="w-4 h-4" /> : set.setIndex}
-          </button>
+          <span className={cn(
+            "w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium",
+            set.completed ? "bg-green-500/20 text-green-700" : "bg-muted text-muted-foreground"
+          )}>
+            {set.setIndex}
+          </span>
           {/* AI indicator badge */}
           {hasPendingChange && (
             <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-white">
@@ -415,6 +414,21 @@ export function SetRow({
               <span className="text-muted-foreground text-xs">cm</span>
             </div>
           )}
+          {showResistance && (
+            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+              <input
+                type="number"
+                min={0}
+                max={9999}
+                step={0.5}
+                value={set.resistance ?? ""}
+                onChange={(e) => handleChange("resistance", e.target.value)}
+                className={cn(inputClass, "w-10")}
+                placeholder="--"
+              />
+              <span className="text-muted-foreground text-xs">R</span>
+            </div>
+          )}
           {showPower && (
             <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
@@ -445,6 +459,45 @@ export function SetRow({
               <span className="text-muted-foreground text-xs">m/s</span>
             </div>
           )}
+          {showRestTime && (
+            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+              <input
+                type="number"
+                min={0}
+                max={999}
+                value={set.restTime ?? ""}
+                onChange={(e) => handleChange("restTime", e.target.value)}
+                className={cn(inputClass, "w-9")}
+                placeholder="60"
+              />
+              <span className="text-muted-foreground text-xs">rest</span>
+            </div>
+          )}
+          {showTempo && (
+            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+              <input
+                type="text"
+                value={set.tempo ?? ""}
+                onChange={(e) => onUpdate?.("tempo", e.target.value || null)}
+                className={cn(inputClass, "w-16")}
+                placeholder="3-1-2-0"
+              />
+            </div>
+          )}
+          {showEffort && (
+            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={set.effort ?? ""}
+                onChange={(e) => handleChange("effort", e.target.value)}
+                className={cn(inputClass, "w-9")}
+                placeholder="80"
+              />
+              <span className="text-muted-foreground text-xs">%</span>
+            </div>
+          )}
           {showRPE && (
             <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <span className="text-muted-foreground text-xs">RPE</span>
@@ -460,6 +513,19 @@ export function SetRow({
             </div>
           )}
         </div>
+
+        {/* Completion toggle - moved to far right */}
+        <button
+          onClick={onComplete}
+          className={cn(
+            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all shrink-0",
+            set.completed
+              ? "bg-green-500 text-white"
+              : "bg-background border border-border hover:border-primary hover:bg-primary hover:text-primary-foreground"
+          )}
+        >
+          {set.completed ? <Check className="w-4 h-4" /> : <Check className="w-4 h-4 opacity-30" />}
+        </button>
       </div>
     )
   }

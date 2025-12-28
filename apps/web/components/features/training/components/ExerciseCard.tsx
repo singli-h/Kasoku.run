@@ -31,6 +31,10 @@ export interface ExerciseCardProps {
   onDragOver?: (e: React.DragEvent) => void
   onDragEnd?: () => void
   onDrop?: (e: React.DragEvent, targetExerciseId: string | number) => void
+  // Selection mode for superset creation
+  isSelectionMode?: boolean
+  isSelected?: boolean
+  onToggleSelection?: (exerciseId: string | number) => void
   // AI pending change indicators
   /** Whether this exercise has a pending AI change */
   hasPendingChange?: boolean
@@ -50,6 +54,8 @@ export interface ExerciseCardProps {
   aiCurrentData?: Record<string, unknown> | null
   /** Whether this is a ghost exercise card (pending CREATE) */
   isGhostExercise?: boolean
+  /** Whether to show all optional fields (true) or only required + filled fields (false) */
+  showAllFields?: boolean
 }
 
 /**
@@ -76,6 +82,10 @@ export function ExerciseCard({
   onDragOver,
   onDragEnd,
   onDrop,
+  // Selection mode props
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelection,
   // AI indicator props
   hasPendingChange = false,
   aiChangeType,
@@ -86,6 +96,7 @@ export function ExerciseCard({
   aiProposedData,
   aiCurrentData,
   isGhostExercise = false,
+  showAllFields = false,
 }: ExerciseCardProps) {
   // Derive AI change states
   // Enhanced swap detection: also check if proposedData has a different exercise_id
@@ -119,7 +130,7 @@ export function ExerciseCard({
   const isComplete = completedCount === totalSets && totalSets > 0
   const progress = totalSets > 0 ? (completedCount / totalSets) * 100 : 0
 
-  // Compute visible fields based on exercise type requirements + plan data
+  // Compute visible fields based on exercise type requirements + plan data + toggle state
   // Uses field-visibility utility to ensure required fields always show
   const visibleFields = useMemo((): VisibleFields => {
     // Get plan sets from exercise (session_plan_sets or workout_log_sets with plan data)
@@ -141,8 +152,11 @@ export function ExerciseCard({
     }))
 
     // Get visible field keys from utility
-    // Coach mode shows all configurable fields, athlete mode shows required + optional with values
-    const visibleFieldKeys = getVisibleFields(exercise.exerciseTypeId, planSets, { forCoach: !isAthlete })
+    // When showAllFields is true or coach mode, show all configurable fields
+    // When showAllFields is false (athlete mode), show only required + filled fields
+    const visibleFieldKeys = getVisibleFields(exercise.exerciseTypeId, planSets, {
+      forCoach: !isAthlete || showAllFields
+    })
 
     // Convert to VisibleFields object
     return {
@@ -159,7 +173,7 @@ export function ExerciseCard({
       effort: visibleFieldKeys.includes('effort'),
       resistance: visibleFieldKeys.includes('resistance'),
     }
-  }, [exercise.sets, exercise.exerciseTypeId, isAthlete])
+  }, [exercise.sets, exercise.exerciseTypeId, isAthlete, showAllFields])
 
   const handleHeaderClick = useCallback(() => {
     onToggleExpand()
@@ -251,27 +265,33 @@ export function ExerciseCard({
           )}
         >
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            {/* Selection checkbox for superset creation (coach mode only) */}
+            {!isAthlete && isSelectionMode && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleSelection?.(exercise.id)
+                }}
+                className={cn(
+                  "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors -ml-1",
+                  isSelected
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : "border-muted-foreground/40 hover:border-primary"
+                )}
+              >
+                {isSelected && <Check className="w-3 h-3" />}
+              </button>
+            )}
             {/* Drag grip for coach mode - integrated into header */}
-            {!isAthlete && (
+            {!isAthlete && !isSelectionMode && (
               <GripVertical className="w-4 h-4 text-muted-foreground/50 shrink-0 -ml-1" />
             )}
-            {/* Exercise circle - shows order number, clickable to toggle all sets (FR-051) */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onCompleteAllSets?.()
-              }}
-              className={cn(
-                "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 transition-all",
-                isAthlete && "hover:scale-110 active:scale-95",
-                isComplete
-                  ? "bg-green-500 text-white hover:bg-green-600"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-              title={isComplete ? "Mark all incomplete" : "Mark all complete"}
-            >
-              {isComplete ? <Check className="w-3.5 h-3.5" /> : exercise.exerciseOrder}
-            </button>
+            {/* Expand/collapse chevron - moved to left side */}
+            {exercise.expanded ? (
+              <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+            )}
 
             <div className="flex-1 min-w-0">
               {/* Exercise name - shows swap/delete states */}
@@ -331,7 +351,7 @@ export function ExerciseCard({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {isAthlete && (
               <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                 {completedCount}/{totalSets}
@@ -350,11 +370,23 @@ export function ExerciseCard({
               </button>
             )}
 
-            {exercise.expanded ? (
-              <ChevronUp className="w-4 h-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            )}
+            {/* Exercise completion circle - moved to far right (FR-051) */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onCompleteAllSets?.()
+              }}
+              className={cn(
+                "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 transition-all",
+                isAthlete && "hover:scale-110 active:scale-95",
+                isComplete
+                  ? "bg-green-500 text-white hover:bg-green-600"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+              title={isComplete ? "Mark all incomplete" : "Mark all complete"}
+            >
+              {isComplete ? <Check className="w-3.5 h-3.5" /> : exercise.exerciseOrder}
+            </button>
           </div>
         </div>
 

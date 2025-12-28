@@ -83,7 +83,7 @@ const TestimonialCard = ({ testimonial, index }: TestimonialCardProps) => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.5, delay: index * 0.05 }}
-      className="relative p-6 bg-white dark:bg-card rounded-2xl shadow-lg dark:shadow-xl border border-gray-100 dark:border-border/50 hover:shadow-xl dark:hover:shadow-2xl transition-shadow duration-300"
+      className="relative p-6 bg-card rounded-2xl shadow-lg border border-border/50 hover:shadow-xl transition-shadow duration-300"
     >
       <div className="absolute -top-3 -left-3 p-2 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg shadow-lg">
         <Quote className="h-4 w-4 text-white" />
@@ -95,7 +95,7 @@ const TestimonialCard = ({ testimonial, index }: TestimonialCardProps) => {
         ))}
       </div>
       
-      <p className="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
+      <p className="text-muted-foreground mb-6 leading-relaxed">
         "{testimonial.content}"
       </p>
       
@@ -108,10 +108,10 @@ const TestimonialCard = ({ testimonial, index }: TestimonialCardProps) => {
           </div>
         </div>
         <div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">
+          <div className="font-semibold text-foreground">
             {testimonial.name}
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="text-sm text-muted-foreground">
             {testimonial.role}
           </div>
           {testimonial.sport && (
@@ -127,14 +127,14 @@ const TestimonialCard = ({ testimonial, index }: TestimonialCardProps) => {
 
 export default function Testimonials() {
   return (
-    <section className="py-20 bg-gray-50 dark:bg-background">
+    <section className="py-20 bg-muted">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-4xl font-bold text-gray-900 dark:text-gray-100"
+            className="text-4xl font-bold text-foreground"
           >
             Trusted by
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
@@ -145,7 +145,7 @@ export default function Testimonials() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="mt-4 text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
+            className="mt-4 text-xl text-muted-foreground max-w-2xl mx-auto"
           >
             See how Kasoku is helping athletes and coaches achieve their goals
           </motion.p>
@@ -160,19 +160,19 @@ export default function Testimonials() {
         >
           <div className="text-center">
             <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">10k+</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Active Athletes</div>
+            <div className="text-sm text-muted-foreground">Active Athletes</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">500+</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Certified Coaches</div>
+            <div className="text-sm text-muted-foreground">Certified Coaches</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-green-600 dark:text-green-400">1M+</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Workouts Completed</div>
+            <div className="text-sm text-muted-foreground">Workouts Completed</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">4.9</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Average Rating</div>
+            <div className="text-sm text-muted-foreground">Average Rating</div>
           </div>
         </motion.div>
 

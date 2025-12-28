@@ -19,6 +19,7 @@ import {
 import {
   getTodayAndOngoingSessionsAction,
   getPastSessionsAction,
+  getWorkoutSessionByIdAction,
   startTrainingSessionAction,
   updateTrainingSessionStatusAction
 } from '@/actions/workout/workout-session-actions'
@@ -141,6 +142,61 @@ export function useSessionsHistory({
   return {
     ...query,
     refetchHistory,
+  }
+}
+
+// Options for useWorkoutSessionDetails hook
+interface UseWorkoutSessionDetailsOptions {
+  enabled?: boolean
+  initialData?: WorkoutLogWithDetails
+}
+
+// Hook for fetching individual workout session details with auto-refresh
+export function useWorkoutSessionDetails(
+  sessionId: number,
+  options?: UseWorkoutSessionDetailsOptions
+) {
+  const queryClient = useQueryClient()
+
+  const query = useQuery<WorkoutLogWithDetails>({
+    queryKey: WORKOUT_QUERY_KEYS.SESSION_DETAILS(sessionId.toString()),
+    queryFn: async () => {
+      const startTime = performance.now()
+
+      const result = await getWorkoutSessionByIdAction(sessionId)
+
+      const duration = performance.now() - startTime
+      PERFORMANCE_METRICS.trackQueryPerformance(
+        [...WORKOUT_QUERY_KEYS.SESSION_DETAILS(sessionId.toString())],
+        duration
+      )
+
+      if (!result.isSuccess) {
+        throw new Error(result.message)
+      }
+
+      return result.data
+    },
+    staleTime: STALE_TIMES.SESSION_DETAILS,
+    gcTime: CACHE_TIMES.SESSION_DETAILS,
+    retry: RETRY_CONFIG.CRITICAL.retries,
+    retryDelay: RETRY_CONFIG.CRITICAL.retryDelay,
+    enabled: options?.enabled ?? true,
+    initialData: options?.initialData,
+    refetchOnWindowFocus: true,  // Auto-refresh when tab regains focus
+    refetchOnReconnect: true,    // Auto-refresh on network reconnect
+  })
+
+  // Invalidate and refetch session details
+  const refetch = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: WORKOUT_QUERY_KEYS.SESSION_DETAILS(sessionId.toString())
+    })
+  }, [queryClient, sessionId])
+
+  return {
+    ...query,
+    refetch,
   }
 }
 
@@ -313,6 +369,7 @@ export function useWorkoutCache() {
 export default {
   useSessionsToday,
   useSessionsHistory,
+  useWorkoutSessionDetails,
   useSessionMutations,
   useWorkoutPrefetch,
   useWorkoutCache,

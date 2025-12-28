@@ -45,10 +45,10 @@ export interface AIExerciseChangeInfo {
 export const UNGROUPED_SET_CHANGES_KEY = '__ungrouped__'
 
 interface UseAIExerciseChangesOptions {
-  /** Entity type for exercises (default: 'preset_exercise') */
-  exerciseEntityType?: 'preset_exercise' | 'training_exercise'
-  /** Entity type for sets (default: 'preset_set') */
-  setEntityType?: 'preset_set' | 'training_set'
+  /** Entity type for exercises (default: 'session_plan_exercise') */
+  exerciseEntityType?: 'session_plan_exercise' | 'workout_log_exercise'
+  /** Entity type for sets (default: 'session_plan_set') */
+  setEntityType?: 'session_plan_set' | 'workout_log_set'
 }
 
 /**
@@ -72,8 +72,8 @@ export function useAIExerciseChanges(
   options: UseAIExerciseChangesOptions = {}
 ): Map<string, AIExerciseChangeInfo> {
   const {
-    exerciseEntityType = 'preset_exercise',
-    setEntityType = 'preset_set',
+    exerciseEntityType = 'session_plan_exercise',
+    setEntityType = 'session_plan_set',
   } = options
 
   const context = useChangeSetOptional()
@@ -120,13 +120,22 @@ export function useAIExerciseChanges(
       .filter(req => req.entityType === setEntityType)
       .forEach(req => {
         // Get exercise ID from the set's data
+        // Support both session planning (session_plan_exercise_id) and workout (workout_log_exercise_id) domains
         const rawExerciseId =
+          // Session planning domain
           req.currentData?.session_plan_exercise_id ??
+          req.currentData?.sessionPlanExerciseId ??
+          // Workout domain
+          req.currentData?.workout_log_exercise_id ??
+          req.currentData?.workoutLogExerciseId ??
+          // Generic
           req.currentData?.exercise_id ??
-          req.currentData?.preset_exercise_id ??
+          // Proposed data fallbacks (same order)
           req.proposedData?.session_plan_exercise_id ??
-          req.proposedData?.exercise_id ??
-          req.proposedData?.preset_exercise_id
+          req.proposedData?.sessionPlanExerciseId ??
+          req.proposedData?.workout_log_exercise_id ??
+          req.proposedData?.workoutLogExerciseId ??
+          req.proposedData?.exercise_id
 
         // Normalize to string, or use special ungrouped key if no exercise ID found
         // This handles cases like delete where only the set ID is provided
@@ -174,7 +183,11 @@ export function useAIExerciseChanges(
         let setId: string | number | null = null
 
         // Prefer the real database ID from currentData
-        const realId = req.currentData?.id ?? req.currentData?.session_plan_set_id
+        // Support both session planning (session_plan_set_id) and workout (workout_log_set_id) domains
+        const realId =
+          req.currentData?.id ??
+          req.currentData?.session_plan_set_id ??
+          req.currentData?.workout_log_set_id
         if (realId != null && (typeof realId === 'string' || typeof realId === 'number')) {
           setId = realId
         }
