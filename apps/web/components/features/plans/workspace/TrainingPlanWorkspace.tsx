@@ -324,13 +324,15 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
   }
 
   const getTransformValue = () => {
+    // With w-[300%] track and w-1/3 slides, each slide is 33.333% of the track
+    // So we translate by 33.333% per slide
     switch (mobileView) {
       case "meso":
         return "translateX(0%)"
       case "micro":
-        return "translateX(-100%)"
+        return "translateX(-33.333%)"
       case "session":
-        return "translateX(-200%)"
+        return "translateX(-66.666%)"
       default:
         return "translateX(0%)"
     }
@@ -699,7 +701,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
         </div>
 
         {/* Mobile View - Sliding Panels */}
-        <div className="lg:hidden overflow-hidden w-full relative" ref={containerRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+        <div className="lg:hidden overflow-hidden w-full max-w-full relative" ref={containerRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
           {/* Edge Arrow Indicators */}
           {/* Left Arrow - visible when can go back */}
           {mobileView !== "meso" && (
@@ -733,8 +735,8 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
 
           <div className="flex transition-transform duration-300 ease-out w-[300%]" style={{ transform: getTransformValue() }}>
             {/* Mesocycle View - Always rendered */}
-            <div className="w-full flex-shrink-0 px-1">
-              <Card className="p-4">
+            <div className="w-1/3 shrink-0 px-1">
+              <Card className="p-4 overflow-hidden">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-semibold">Training Phases</h2>
                   <Button
@@ -754,13 +756,13 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                     <div
                       key={meso.id}
                       onClick={() => handleMesoClick(meso)}
-                      className="w-full rounded-lg border-l-4 p-4 text-left transition-all hover:bg-accent cursor-pointer"
+                      className="rounded-lg border-l-4 p-4 text-left transition-all hover:bg-accent cursor-pointer"
                       style={{ borderLeftColor: meso.metadata?.color || "#10b981" }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold">{meso.name}</h3>
-                          <p className="mt-1 text-sm text-muted-foreground">{meso.description}</p>
+                          <h3 className="font-semibold break-words">{meso.name}</h3>
+                          <p className="mt-1 text-sm text-muted-foreground break-words">{meso.description}</p>
                           <div className="mt-2 flex gap-2 flex-wrap">
                             <Badge variant="outline" className="text-xs">
                               {meso.microcycles.length} weeks
@@ -815,8 +817,8 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
             </div>
 
             {/* Microcycle View - Always rendered */}
-            <div className="w-full flex-shrink-0 px-1">
-              <Card className="p-4">
+            <div className="w-1/3 shrink-0 px-1">
+              <Card className="p-4 overflow-hidden">
                 {selectedMeso ? (
                   <>
                     <div className="mb-4 flex items-center justify-between">
@@ -905,8 +907,8 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
             </div>
 
             {/* Session View - Always rendered */}
-            <div className="w-full flex-shrink-0 px-1">
-              <Card className="p-4">
+            <div className="w-1/3 shrink-0 px-1">
+              <Card className="p-4 overflow-hidden">
                 {selectedMicro ? (
                   <>
                     <div className="mb-4 flex items-center justify-between">
@@ -949,7 +951,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                             </div>
 
                             {/* Session content */}
-                            <div className="flex-1 p-4">
+                            <div className="flex-1 p-4 min-w-0">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
                                   <h3 className="font-semibold">{session.name}</h3>
