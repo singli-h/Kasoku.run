@@ -122,10 +122,26 @@ function handleProposalTool(
 
   const { operation, entitySnakeCase } = parsed
 
-  // Log proposal tool call
+  // Log proposal tool call with extra detail for set creation
   console.log(`[ProposalTool] ${toolName}`)
   console.log(`[ProposalTool] Operation: ${operation}, Entity: ${entitySnakeCase}`)
   console.log(`[ProposalTool] Args:`, JSON.stringify(args, null, 2))
+
+  // Extra logging for set creation to debug parent exercise ID issues
+  if (toolName === 'createSetChangeRequest') {
+    console.log(`[ProposalTool] 🔍 Set creation details:`)
+    console.log(`[ProposalTool]   sessionPlanExerciseId: '${args.sessionPlanExerciseId}' (type: ${typeof args.sessionPlanExerciseId})`)
+    console.log(`[ProposalTool]   setCount: ${args.setCount} (type: ${typeof args.setCount})`)
+
+    // CRITICAL: Validate sessionPlanExerciseId is provided
+    if (!args.sessionPlanExerciseId || args.sessionPlanExerciseId === '') {
+      console.error(`[ProposalTool] ❌ ERROR: sessionPlanExerciseId is required but was: '${args.sessionPlanExerciseId}'`)
+      return {
+        success: false,
+        error: 'sessionPlanExerciseId is required when creating sets. For NEW exercises you just created, use the entityId returned from createExerciseChangeRequest (e.g., "temp_001"). For EXISTING exercises, use their numeric ID from the session data.',
+      }
+    }
+  }
 
   try {
     // Get or create changeset ID for consistency

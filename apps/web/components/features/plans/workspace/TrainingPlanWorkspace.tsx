@@ -4,9 +4,8 @@ import type React from "react"
 import { useState, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, ChevronLeft, ChevronRight, Plus, Edit, Trash2 } from "lucide-react"
+import { Calendar, ChevronRight, Plus, Edit, Trash2 } from "lucide-react"
 import { EditMesocycleDialog, type MesocycleFormData } from "./components/EditMesocycleDialog"
 import { EditMicrocycleDialog, type MicrocycleFormData } from "./components/EditMicrocycleDialog"
 import { EditRaceDialog } from "./components/EditRaceDialog"
@@ -338,24 +337,37 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
     }
   }
 
+  // Get navigation label based on current view
+  const getNavLabel = () => {
+    switch (mobileView) {
+      case "meso": return "Phases"
+      case "micro": return "Weeks"
+      case "session": return "Sessions"
+      default: return ""
+    }
+  }
+
+  // Navigation handlers for header arrows
+  const handleNavBack = () => {
+    if (mobileView === "session") {
+      handleBackToMicro()
+    } else if (mobileView === "micro") {
+      handleBackToMeso()
+    }
+  }
+
+  const handleNavForward = () => {
+    if (mobileView === "meso" && selectedMeso) {
+      setSlideDirection("left")
+      setMobileView("micro")
+    } else if (mobileView === "micro" && selectedMicro) {
+      setSlideDirection("left")
+      setMobileView("session")
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile navigation helper (only visible on mobile) */}
-      <div className="lg:hidden border-b bg-card">
-        <div className="px-2 sm:px-4 py-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`${mobileView === "meso" ? "invisible" : "visible"}`}
-            onClick={mobileView === "micro" ? handleBackToMeso : handleBackToMicro}
-            disabled={mobileView === "meso"}
-          >
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            {mobileView === "session" ? "Back to Week" : "Back to Phases"}
-          </Button>
-        </div>
-      </div>
-
       {/* Header */}
       <PlanPageHeader
         title={plan.macrocycle.name || "Training Plan"}
@@ -371,6 +383,16 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
           }))
           addToHistory(plan)
         }}
+        // Mobile navigation arrows
+        showNavArrows
+        canNavBack={mobileView !== "meso"}
+        canNavForward={
+          (mobileView === "meso" && selectedMeso !== null) ||
+          (mobileView === "micro" && selectedMicro !== null)
+        }
+        onNavBack={handleNavBack}
+        onNavForward={handleNavForward}
+        navLabel={getNavLabel()}
       />
 
       {/* Main Content */}
@@ -378,7 +400,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
         {/* Desktop View - 3 Column Grid */}
         <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6">
           {/* Left Panel - Mesocycle Timeline */}
-          <Card className="p-6">
+          <div>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Training Phases</h2>
               <Button
@@ -418,7 +440,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 flex-shrink-0"
+                      className="h-8 w-8 shrink-0"
                       onClick={(e) => {
                         e.stopPropagation()
                         setEditingMeso(meso)
@@ -463,7 +485,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                     return (
                   <div key={event.id} className={`flex items-center gap-3 rounded-lg border p-3 ${isPast ? "opacity-60" : ""}`}>
                     <Calendar
-                      className={`h-5 w-5 flex-shrink-0 ${
+                      className={`h-5 w-5 shrink-0 ${
                         event.type === "primary" ? "text-red-500" : "text-blue-500"
                       }`}
                     />
@@ -471,15 +493,15 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                       <p className="text-sm font-medium truncate">{event.name}</p>
                       <p className="text-xs text-muted-foreground">{event.date || "No date"}</p>
                     </div>
-                    <Badge variant={event.type === "primary" ? "default" : "secondary"} className="flex-shrink-0">
+                    <Badge variant={event.type === "primary" ? "default" : "secondary"} className="shrink-0">
                       {event.type}
                     </Badge>
                     {isPast && (
-                      <Badge variant="secondary" className="flex-shrink-0">
+                      <Badge variant="secondary" className="shrink-0">
                         Completed
                       </Badge>
                     )}
-                    <div className="flex gap-1 flex-shrink-0">
+                    <div className="flex gap-1 shrink-0">
                       <Button
                         size="icon"
                         variant="ghost"
@@ -499,29 +521,20 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                 )})}
               </div>
             </div>
-          </Card>
+          </div>
 
           {/* Middle Panel - Microcycle Grid */}
-          <Card className="p-6">
+          <div>
             {selectedMeso ? (
               <>
                 <div className="mb-4 flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <h2 className="text-lg font-semibold truncate">{selectedMeso.name}</h2>
-                    <Badge
-                      style={{
-                        backgroundColor: selectedMeso.metadata?.color || "#10b981",
-                        color: "white",
-                      }}
-                      className="mt-1"
-                    >
-                      {selectedMeso.metadata?.phase || "Phase"}
-                    </Badge>
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-shrink-0 ml-2 bg-transparent"
+                    className="shrink-0 ml-2 bg-transparent"
                     onClick={() => {
                       setEditingMicro(null)
                       setMicroDialogOpen(true)
@@ -557,7 +570,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 flex-shrink-0"
+                          className="h-8 w-8 shrink-0"
                           onClick={(e) => {
                             e.stopPropagation()
                             setEditingMicro(micro)
@@ -600,23 +613,20 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                 Select a mesocycle to view weeks
               </div>
             )}
-          </Card>
+          </div>
 
           {/* Right Panel - Session Details */}
-          <Card className="p-6">
+          <div>
             {selectedMicro ? (
               <>
                 <div className="mb-4 flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <h2 className="text-lg font-semibold truncate">{selectedMicro.name} Sessions</h2>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedMicro.start_date} - {selectedMicro.end_date}
-                    </p>
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-shrink-0 ml-2 bg-transparent"
+                    className="shrink-0 ml-2 bg-transparent"
                     onClick={() => {
                       setEditingSession(null)
                       setSessionDialogOpen(true)
@@ -640,7 +650,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                     >
                       <div className="flex">
                         {/* Weekday sidebar */}
-                        <div className="w-16 bg-primary/10 border-r border-primary/20 flex items-center justify-center flex-shrink-0">
+                        <div className="w-16 bg-primary/10 border-r border-primary/20 flex items-center justify-center shrink-0">
                           <div className="text-center">
                             <div className="text-xs font-medium text-primary">{dayShortMap[idx]}</div>
                           </div>
@@ -677,7 +687,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 flex-shrink-0"
+                              className="h-8 w-8 shrink-0"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
@@ -697,52 +707,21 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                 Select a microcycle to view sessions
               </div>
             )}
-          </Card>
+          </div>
         </div>
 
         {/* Mobile View - Sliding Panels */}
         <div className="lg:hidden overflow-hidden w-full max-w-full relative" ref={containerRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-          {/* Edge Arrow Indicators */}
-          {/* Left Arrow - visible when can go back */}
-          {mobileView !== "meso" && (
-            <button
-              onClick={mobileView === "micro" ? handleBackToMeso : handleBackToMicro}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-8 h-16 bg-gradient-to-r from-background/90 to-transparent"
-              aria-label={mobileView === "session" ? "Back to Week" : "Back to Phases"}
-            >
-              <ChevronLeft className="h-6 w-6 text-muted-foreground" />
-            </button>
-          )}
-
-          {/* Right Arrow - visible when can go forward */}
-          {((mobileView === "meso" && selectedMeso) || (mobileView === "micro" && selectedMicro)) && (
-            <button
-              onClick={() => {
-                if (mobileView === "meso" && selectedMeso) {
-                  setSlideDirection("left")
-                  setMobileView("micro")
-                } else if (mobileView === "micro" && selectedMicro) {
-                  setSlideDirection("left")
-                  setMobileView("session")
-                }
-              }}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-8 h-16 bg-gradient-to-l from-background/90 to-transparent"
-              aria-label={mobileView === "meso" ? "View Weeks" : "View Sessions"}
-            >
-              <ChevronRight className="h-6 w-6 text-muted-foreground" />
-            </button>
-          )}
-
           <div className="flex transition-transform duration-300 ease-out w-[300%]" style={{ transform: getTransformValue() }}>
             {/* Mesocycle View - Always rendered */}
             <div className="w-1/3 shrink-0 px-1">
-              <Card className="p-4 overflow-hidden">
+              <div>
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-semibold">Training Phases</h2>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-shrink-0 bg-transparent"
+                    className="shrink-0 bg-transparent"
                     onClick={() => {
                       setEditingMeso(null)
                       setMesoDialogOpen(true)
@@ -772,7 +751,21 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                             </Badge>
                           </div>
                         </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingMeso(meso)
+                              setMesoDialogOpen(true)
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -785,7 +778,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                     <Button
                       size="sm"
                       variant="outline"
-                      className="flex-shrink-0 bg-transparent"
+                      className="shrink-0 bg-transparent"
                       onClick={() => {
                         setEditingEvent(null)
                         setEventDialogOpen(true)
@@ -798,7 +791,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                     {plan.events.map((event) => (
                       <div key={event.id} className="flex items-center gap-3 rounded-lg border p-3">
                         <Calendar
-                          className={`h-5 w-5 flex-shrink-0 ${
+                          className={`h-5 w-5 shrink-0 ${
                             event.type === "primary" ? "text-red-500" : "text-blue-500"
                           }`}
                         />
@@ -806,38 +799,29 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                           <p className="text-sm font-medium truncate">{event.name}</p>
                           <p className="text-xs text-muted-foreground">{event.date || "No date"}</p>
                         </div>
-                        <Badge variant={event.type === "primary" ? "default" : "secondary"} className="flex-shrink-0">
+                        <Badge variant={event.type === "primary" ? "default" : "secondary"} className="shrink-0">
                           {event.type}
                         </Badge>
                       </div>
                     ))}
                   </div>
                 </div>
-              </Card>
+              </div>
             </div>
 
             {/* Microcycle View - Always rendered */}
             <div className="w-1/3 shrink-0 px-1">
-              <Card className="p-4 overflow-hidden">
+              <div>
                 {selectedMeso ? (
                   <>
                     <div className="mb-4 flex items-center justify-between">
                       <div className="min-w-0 flex-1">
                         <h2 className="text-lg font-semibold truncate">{selectedMeso.name}</h2>
-                        <Badge
-                          style={{
-                            backgroundColor: selectedMeso.metadata?.color || "#10b981",
-                            color: "white",
-                          }}
-                          className="mt-1"
-                        >
-                          {selectedMeso.metadata?.phase || "Phase"}
-                        </Badge>
                       </div>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-shrink-0 ml-2 bg-transparent"
+                        className="shrink-0 ml-2 bg-transparent"
                         onClick={() => {
                           setEditingMicro(null)
                           setMicroDialogOpen(true)
@@ -892,7 +876,21 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                                 </Badge>
                               </div>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setEditingMicro(micro)
+                                  setMicroDialogOpen(true)
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -903,25 +901,22 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                     Select a mesocycle to view weeks
                   </div>
                 )}
-              </Card>
+              </div>
             </div>
 
             {/* Session View - Always rendered */}
             <div className="w-1/3 shrink-0 px-1">
-              <Card className="p-4 overflow-hidden">
+              <div>
                 {selectedMicro ? (
                   <>
                     <div className="mb-4 flex items-center justify-between">
                       <div className="min-w-0 flex-1">
                         <h2 className="text-lg font-semibold truncate">{selectedMicro.name} Sessions</h2>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedMicro.start_date} - {selectedMicro.end_date}
-                        </p>
                       </div>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-shrink-0 ml-2 bg-transparent"
+                        className="shrink-0 ml-2 bg-transparent"
                         onClick={() => {
                           setEditingSession(null)
                           setSessionDialogOpen(true)
@@ -944,7 +939,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                         >
                           <div className="flex">
                             {/* Weekday sidebar */}
-                            <div className="w-16 bg-primary/10 border-r border-primary/20 flex items-center justify-center flex-shrink-0">
+                            <div className="w-16 bg-primary/10 border-r border-primary/20 flex items-center justify-center shrink-0">
                               <div className="text-center">
                                 <div className="text-xs font-medium text-primary">{dayShortMap[idx]}</div>
                               </div>
@@ -983,7 +978,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="h-8 w-8 flex-shrink-0"
+                                  className="h-8 w-8 shrink-0"
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
@@ -1003,7 +998,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                     Select a microcycle to view sessions
                   </div>
                 )}
-              </Card>
+              </div>
             </div>
           </div>
         </div>

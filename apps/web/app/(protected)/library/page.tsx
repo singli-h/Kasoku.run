@@ -10,7 +10,7 @@ export default async function LibraryPage() {
       title="Exercise Library"
       description="Browse and manage your exercise database with detailed instructions and videos"
     >
-      <Suspense fallback={<UnifiedPageSkeleton title="Exercise Library" variant="grid" showActions={true} />}>
+      <Suspense fallback={<UnifiedPageSkeleton title="Exercise Library" variant="library" showActions={true} />}>
         <ExerciseLibraryPage />
       </Suspense>
     </PageLayout>

@@ -194,8 +194,8 @@ export function WorkoutView({
 
     // Group consecutive exercises by section
     // Superset exercises use "Superset" as their effective section
-    const groups: { section: string; exercises: TrainingExercise[]; isSuperset?: boolean }[] = []
-    let currentGroup: { section: string; exercises: TrainingExercise[]; isSuperset?: boolean } | null = null
+    const groups: { section: string; exercises: TrainingExercise[]; isSuperset?: boolean; supersetId?: string }[] = []
+    let currentGroup: { section: string; exercises: TrainingExercise[]; isSuperset?: boolean; supersetId?: string } | null = null
     let currentSupersetId: string | null = null
 
     sortedExercises.forEach((exercise) => {
@@ -215,10 +215,11 @@ export function WorkoutView({
         currentGroup = {
           section: effectiveSection,
           exercises: [exercise],
-          isSuperset: isInSuperset
+          isSuperset: isInSuperset,
+          supersetId: isInSuperset && exercise.supersetId ? exercise.supersetId : undefined
         }
         groups.push(currentGroup)
-        currentSupersetId = isInSuperset ? exercise.supersetId! : null
+        currentSupersetId = isInSuperset && exercise.supersetId ? exercise.supersetId : null
       }
     })
 
@@ -352,14 +353,14 @@ export function WorkoutView({
               ) : (
                 <>
                   <span>{stats.totalSets} sets · {stats.totalExercises} exercises</span>
-                  {/* Superset link button (coach mode only) */}
+                  {/* Superset creation button (coach mode only) */}
                   {onCreateSuperset && !isSelectionMode && exercises.length >= 2 && (
                     <button
                       onClick={toggleSelectionMode}
                       className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
                       title="Create superset"
                     >
-                      <span className="text-[10px] font-medium">🔗 Link</span>
+                      <span className="text-[10px] font-medium">🔗 Superset</span>
                     </button>
                   )}
                 </>
@@ -445,6 +446,8 @@ export function WorkoutView({
                     label={group.section}
                     showAddButton={!isAthlete && !group.isSuperset && !isCompleted}
                     onAddClick={() => handleAddToSection(group.section)}
+                    supersetId={group.supersetId}
+                    onUnlinkSuperset={!isAthlete && !isCompleted ? onUnlinkSuperset : undefined}
                   />
                   <div className="space-y-3 pl-0 sm:pl-2">
                     {grouped.map((item, idx) => {
@@ -603,7 +606,7 @@ export function WorkoutView({
                 : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
           >
-            🔗 Link Superset
+            🔗 Create Superset
           </button>
         </div>
       )}

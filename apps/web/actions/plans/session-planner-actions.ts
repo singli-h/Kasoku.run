@@ -61,14 +61,45 @@ type SessionPlanSetInsert = Database['public']['Tables']['session_plan_sets']['I
 // SESSION PLANNER - COMPREHENSIVE SAVE ACTION
 // ============================================================================
 
+// Debug logging - set to false in production
+const DEBUG_SAVE = process.env.NODE_ENV === 'development'
+
+/**
+ * Maps SessionPlannerExercise sets to database insert format
+ */
+function mapSetsToInsert(
+  sets: SessionPlannerExercise['sets'],
+  exerciseId: number
+): SessionPlanSetInsert[] {
+  return sets.map((set, idx) => ({
+    session_plan_exercise_id: exerciseId,
+    set_index: set.set_index ?? idx + 1,
+    reps: set.reps,
+    weight: set.weight,
+    distance: set.distance,
+    performing_time: set.performing_time,
+    rest_time: set.rest_time,
+    tempo: set.tempo,
+    rpe: set.rpe,
+    resistance_unit_id: set.resistance_unit_id,
+    power: set.power,
+    velocity: set.velocity,
+    effort: set.effort,
+    height: set.height,
+    resistance: set.resistance
+  }))
+}
+
 /**
  * Save complete session with all exercises and sets
  * Handles: session metadata, exercise order, supersets, and all set parameters
- * Performs atomic transaction-like operations for data consistency
  *
  * ID Format Convention:
  * - Existing records: Numeric ID as string (e.g., "123") - will be updated
- * - New items: "new_" prefix (e.g., "new_1735123456789") - will be inserted
+ * - New items: "new_" or "temp_" prefix - will be inserted
+ *
+ * Note: Not wrapped in a DB transaction - partial failures may leave inconsistent state.
+ * Consider adding transaction support if data integrity issues arise.
  */
 export async function saveSessionWithExercisesAction(
   sessionId: number,
@@ -76,6 +107,10 @@ export async function saveSessionWithExercisesAction(
   exercises: SessionPlannerExercise[]
 ): Promise<ActionState<SessionPlan>> {
   try {
+    if (DEBUG_SAVE) {
+      console.log(`[saveSession] sessionId: ${sessionId}, exercises: ${exercises.length}`)
+    }
+
     const { userId } = await auth()
 
     if (!userId) {
@@ -95,7 +130,7 @@ export async function saveSessionWithExercisesAction(
       .single()
 
     if (fetchError || !existingSession) {
-      console.error('[saveSessionWithExercisesAction] Session not found:', fetchError)
+      console.error('[saveSession] Session not found:', fetchError)
       return {
         isSuccess: false,
         message: "Session not found"
@@ -126,7 +161,7 @@ export async function saveSessionWithExercisesAction(
         .eq('user_id', dbUserId)
 
       if (updateError) {
-        console.error('[saveSessionWithExercisesAction] Error updating session metadata:', updateError)
+        console.error('[saveSession] Error updating session metadata:', updateError)
         return {
           isSuccess: false,
           message: `Failed to update session: ${updateError.message}`
@@ -141,7 +176,7 @@ export async function saveSessionWithExercisesAction(
       .eq('session_plan_id', sessionId)
 
     if (exercisesError) {
-      console.error('[saveSessionWithExercisesAction] Error fetching existing exercises:', exercisesError)
+      console.error('[saveSession] Error fetching existing exercises:', exercisesError)
       return {
         isSuccess: false,
         message: `Failed to fetch existing exercises: ${exercisesError.message}`
@@ -161,19 +196,20 @@ export async function saveSessionWithExercisesAction(
 
     for (const exercise of exercises) {
       const idStr = String(exercise.id)
-      const isNewExercise = idStr.startsWith('new_') || idStr.startsWith('new-')
+      // ID Convention:
+      // - "new_" or "temp_" prefix = new item from client/AI
+      // - Numeric string matching existing DB ID = update
+      // - Anything else = treat as new (safe fallback)
+      const isNewExercise = idStr.startsWith('new_') || idStr.startsWith('new-') || idStr.startsWith('temp_')
 
       if (isNewExercise) {
-        // New exercise - will be inserted
         exercisesToInsert.push(exercise)
       } else {
-        // Try to parse as existing database ID
         const dbId = parseInt(idStr, 10)
         if (!isNaN(dbId) && existingExerciseMap.has(dbId)) {
           exercisesToUpdate.push(exercise)
           exerciseIdsToKeep.add(dbId)
         } else {
-          // ID doesn't match existing records - treat as new
           exercisesToInsert.push(exercise)
         }
       }
@@ -190,7 +226,7 @@ export async function saveSessionWithExercisesAction(
         .in('session_plan_exercise_id', idsToDelete)
 
       if (deleteSetsError) {
-        console.error('[saveSessionWithExercisesAction] Error deleting sets:', deleteSetsError)
+        console.error('[saveSession] Error deleting sets:', deleteSetsError)
         // Continue - CASCADE might handle this
       }
 
@@ -201,7 +237,7 @@ export async function saveSessionWithExercisesAction(
         .in('id', idsToDelete)
 
       if (deleteExercisesError) {
-        console.error('[saveSessionWithExercisesAction] Error deleting exercises:', deleteExercisesError)
+        console.error('[saveSession] Error deleting exercises:', deleteExercisesError)
         return {
           isSuccess: false,
           message: `Failed to delete removed exercises: ${deleteExercisesError.message}`
@@ -225,7 +261,7 @@ export async function saveSessionWithExercisesAction(
         .eq('id', dbId)
 
       if (updateExerciseError) {
-        console.error(`[saveSessionWithExercisesAction] Error updating exercise ${dbId}:`, updateExerciseError)
+        console.error(`[saveSession] Error updating exercise ${dbId}:`, updateExerciseError)
         return {
           isSuccess: false,
           message: `Failed to update exercise: ${updateExerciseError.message}`
@@ -239,36 +275,18 @@ export async function saveSessionWithExercisesAction(
         .eq('session_plan_exercise_id', dbId)
 
       if (deleteOldSetsError) {
-        console.error(`[saveSessionWithExercisesAction] Error deleting old sets for exercise ${dbId}:`, deleteOldSetsError)
+        console.error(`[saveSession] Error deleting old sets for exercise ${dbId}:`, deleteOldSetsError)
         // Continue anyway
       }
 
       // Insert updated session_plan_sets
       if (exercise.sets && exercise.sets.length > 0) {
-        const setsData: SessionPlanSetInsert[] = exercise.sets.map((set, idx) => ({
-          session_plan_exercise_id: dbId,
-          set_index: set.set_index ?? idx + 1,
-          reps: set.reps,
-          weight: set.weight,
-          distance: set.distance,
-          performing_time: set.performing_time,
-          rest_time: set.rest_time,
-          tempo: set.tempo,
-          rpe: set.rpe,
-          resistance_unit_id: set.resistance_unit_id,
-          power: set.power,
-          velocity: set.velocity,
-          effort: set.effort,
-          height: set.height,
-          resistance: set.resistance
-        }))
-
         const { error: insertSetsError } = await supabase
           .from('session_plan_sets')
-          .insert(setsData)
+          .insert(mapSetsToInsert(exercise.sets, dbId))
 
         if (insertSetsError) {
-          console.error(`[saveSessionWithExercisesAction] Error inserting sets for exercise ${dbId}:`, insertSetsError)
+          console.error(`[saveSession] Error inserting sets for exercise ${dbId}:`, insertSetsError)
           return {
             isSuccess: false,
             message: `Failed to save exercise sets: ${insertSetsError.message}`
@@ -279,6 +297,10 @@ export async function saveSessionWithExercisesAction(
 
     // Step 6: Insert new session_plan_exercises
     for (const exercise of exercisesToInsert) {
+      if (DEBUG_SAVE) {
+        console.log(`[saveSession] New exercise: ${exercise.exercise?.name}, sets: ${exercise.sets?.length ?? 0}`)
+      }
+
       // Insert the exercise record
       const exerciseData: SessionPlanExerciseInsert = {
         session_plan_id: sessionId,
@@ -295,7 +317,7 @@ export async function saveSessionWithExercisesAction(
         .single()
 
       if (insertExerciseError || !newExercise) {
-        console.error('[saveSessionWithExercisesAction] Error inserting exercise:', insertExerciseError)
+        console.error('[saveSession] Error inserting exercise:', insertExerciseError)
         return {
           isSuccess: false,
           message: `Failed to add exercise: ${insertExerciseError?.message}`
@@ -304,35 +326,19 @@ export async function saveSessionWithExercisesAction(
 
       // Insert session_plan_sets for the new exercise
       if (exercise.sets && exercise.sets.length > 0) {
-        const setsData: SessionPlanSetInsert[] = exercise.sets.map((set, idx) => ({
-          session_plan_exercise_id: newExercise.id,
-          set_index: set.set_index ?? idx + 1,
-          reps: set.reps,
-          weight: set.weight,
-          distance: set.distance,
-          performing_time: set.performing_time,
-          rest_time: set.rest_time,
-          tempo: set.tempo,
-          rpe: set.rpe,
-          resistance_unit_id: set.resistance_unit_id,
-          power: set.power,
-          velocity: set.velocity,
-          effort: set.effort,
-          height: set.height,
-          resistance: set.resistance
-        }))
-
         const { error: insertSetsError } = await supabase
           .from('session_plan_sets')
-          .insert(setsData)
+          .insert(mapSetsToInsert(exercise.sets, newExercise.id))
 
         if (insertSetsError) {
-          console.error('[saveSessionWithExercisesAction] Error inserting sets for new exercise:', insertSetsError)
+          console.error('[saveSession] Error inserting sets for new exercise:', insertSetsError)
           return {
             isSuccess: false,
             message: `Failed to save exercise sets: ${insertSetsError.message}`
           }
         }
+      } else if (DEBUG_SAVE) {
+        console.warn(`[saveSession] No sets for new exercise ${newExercise.id}`)
       }
     }
 
@@ -344,7 +350,7 @@ export async function saveSessionWithExercisesAction(
       .single()
 
     if (finalFetchError || !updatedSession) {
-      console.error('[saveSessionWithExercisesAction] Error fetching updated session:', finalFetchError)
+      console.error('[saveSession] Error fetching updated session:', finalFetchError)
       return {
         isSuccess: false,
         message: "Session saved but failed to fetch updated data"
@@ -362,7 +368,7 @@ export async function saveSessionWithExercisesAction(
       data: updatedSession
     }
   } catch (error) {
-    console.error('[saveSessionWithExercisesAction] Unexpected error:', error)
+    console.error('[saveSession] Unexpected error:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`

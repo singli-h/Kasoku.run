@@ -74,7 +74,7 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-lg sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{microcycle ? "Edit Microcycle" : "Add Microcycle"}</DialogTitle>
           <DialogDescription>
@@ -85,7 +85,8 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
+          {/* Name and Week Number - stack on mobile */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Week Name</Label>
               <Input
@@ -117,6 +118,7 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
             />
           </div>
 
+          {/* Dates - side by side on all sizes */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">Start Date</Label>
@@ -138,6 +140,7 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
             </div>
           </div>
 
+          {/* Volume and Intensity - side by side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="volume">Volume (0-10)</Label>
@@ -149,7 +152,7 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
                 value={formData.volume ?? 5}
                 onChange={(e) => setFormData({ ...formData, volume: Number.parseInt(e.target.value) || 0 })}
               />
-              <p className="text-xs text-muted-foreground">Weekly training volume on a 0-10 scale</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Training volume scale</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="intensity">Intensity (1-10)</Label>
@@ -165,7 +168,8 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          {/* Deload toggle */}
+          <div className="flex items-center space-x-2 py-2">
             <Switch
               id="isDeload"
               checked={formData.isDeload || false}
@@ -174,19 +178,34 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
             <Label htmlFor="isDeload">Deload Week</Label>
           </div>
         </div>
-        <DialogFooter className="flex justify-between">
-          <div>
+
+        {/* Footer - mobile-friendly button layout */}
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             {microcycle?.id && onDelete && (
-              <Button variant="destructive" onClick={handleDelete}>
-                Delete Microcycle
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                className="w-full sm:w-auto order-last sm:order-first"
+              >
+                Delete
               </Button>
             )}
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-col-reverse sm:flex-row gap-2 w-full sm:w-auto sm:ml-auto">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSave}>Save Changes</Button>
+            <Button
+              onClick={handleSave}
+              className="w-full sm:w-auto"
+            >
+              Save
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>

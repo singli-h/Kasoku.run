@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { ChevronLeft, Undo, Redo, Edit2, Check, X, Calendar } from "lucide-react"
+import { ChevronLeft, ChevronRight, Undo, Redo, Edit2, Check, X, Calendar } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 
@@ -30,6 +30,13 @@ interface PlanPageHeaderProps {
   // Detail mode toggle props
   pageMode?: "simple" | "detail"
   onPageModeChange?: (mode: "simple" | "detail") => void
+  // Mobile navigation arrows (for drill-down navigation)
+  showNavArrows?: boolean
+  canNavBack?: boolean
+  canNavForward?: boolean
+  onNavBack?: () => void
+  onNavForward?: () => void
+  navLabel?: string // e.g., "Phases" / "Weeks" / "Sessions"
 }
 
 export function PlanPageHeader({
@@ -51,6 +58,12 @@ export function PlanPageHeader({
   metadata,
   pageMode,
   onPageModeChange,
+  showNavArrows = false,
+  canNavBack = false,
+  canNavForward = false,
+  onNavBack,
+  onNavForward,
+  navLabel,
 }: PlanPageHeaderProps) {
   const router = useRouter()
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -70,13 +83,49 @@ export function PlanPageHeader({
 
   return (
     <header className="border-b border-border/40">
-      <div className="flex items-center justify-between px-6 py-4 gap-6">
-        {/* Left: Back + Title + Subtitle */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+      {/* Mobile: Navigation row (separate from title) */}
+      {showNavArrows && (
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border/20 lg:hidden">
           <Button
             variant="ghost"
             size="sm"
-            className="flex-shrink-0 -ml-2"
+            className="h-8 px-2"
+            onClick={onNavBack}
+            disabled={!canNavBack}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          {navLabel && (
+            <span className="text-sm font-medium text-foreground">
+              {navLabel}
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2"
+            onClick={onNavForward}
+            disabled={!canNavForward}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      )}
+
+      {/* Main header row */}
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 gap-4 sm:gap-6">
+        {/* Left: Back button (desktop) + Title */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {/* Desktop: Back button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "shrink-0 -ml-2",
+              showNavArrows ? "hidden lg:flex" : "flex"
+            )}
             onClick={() => router.push(backPath)}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
@@ -107,17 +156,18 @@ export function PlanPageHeader({
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-semibold truncate">{title}</h1>
+                <h1 className="text-base sm:text-lg font-semibold truncate">{title}</h1>
                 {editable && onTitleChange && (
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="h-7 w-7 p-0"
                     onClick={() => {
                       setEditedTitle(title)
                       setIsEditingTitle(true)
                     }}
                   >
-                    <Edit2 className="h-4 w-4" />
+                    <Edit2 className="h-3.5 w-3.5" />
                   </Button>
                 )}
               </div>
@@ -146,8 +196,8 @@ export function PlanPageHeader({
           </div>
         </div>
 
-        {/* Right: Mode Toggle + Undo/Redo (all inline) */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Right: Status + Actions */}
+        <div className="flex items-center gap-2 shrink-0">
           {status && (
             <Badge variant={status === "active" ? "default" : "secondary"} className="hidden sm:flex">
               {status}
@@ -155,9 +205,9 @@ export function PlanPageHeader({
           )}
           {rightActions}
 
-          {/* Segmented Control (iOS-style) */}
-            {pageMode !== undefined && onPageModeChange && (
-            <div className="flex items-center rounded-lg bg-muted p-0.5">
+          {/* Segmented Control (iOS-style) - hidden on mobile */}
+          {pageMode !== undefined && onPageModeChange && (
+            <div className="hidden sm:flex items-center rounded-lg bg-muted p-0.5">
               <button
                 onClick={() => onPageModeChange("simple")}
                 className={cn(
@@ -167,7 +217,7 @@ export function PlanPageHeader({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                    Simple
+                Simple
               </button>
               <button
                 onClick={() => onPageModeChange("detail")}
@@ -178,40 +228,40 @@ export function PlanPageHeader({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                    Detail
+                Detail
               </button>
             </div>
-            )}
+          )}
 
           {/* Undo/Redo - Icon buttons only */}
-            {showUndoRedo && (
-              <>
-                <Button
+          {showUndoRedo && (
+            <>
+              <Button
                 variant="ghost"
                 size="icon"
-                  onClick={onUndo}
-                  disabled={!canUndo}
-                  title="Undo"
+                onClick={onUndo}
+                disabled={!canUndo}
+                title="Undo"
                 className="h-8 w-8"
-                >
+              >
                 <Undo className="h-4 w-4" />
                 <span className="sr-only">Undo</span>
-                </Button>
-                <Button
+              </Button>
+              <Button
                 variant="ghost"
                 size="icon"
-                  onClick={onRedo}
-                  disabled={!canRedo}
-                  title="Redo"
+                onClick={onRedo}
+                disabled={!canRedo}
+                title="Redo"
                 className="h-8 w-8"
-                >
+              >
                 <Redo className="h-4 w-4" />
                 <span className="sr-only">Redo</span>
-                </Button>
-              </>
-            )}
-          </div>
+              </Button>
+            </>
+          )}
         </div>
+      </div>
     </header>
   )
 }

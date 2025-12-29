@@ -12,9 +12,10 @@ import type { SessionPlannerExercise } from '@/components/features/training/adap
 import type { ChangeRequest, ChangeSet, ExecutionResult } from './types'
 
 import { classifyError } from './errors'
-import { isTempId } from './buffer-utils'
-import { convertKeysToCamelCase, ENTITY_REFERENCE_FIELDS } from './entity-mappings'
-import type { SessionEntityType } from './types'
+import { convertKeysToCamelCase } from './entity-mappings'
+
+// Debug logging - set to false in production
+const DEBUG_EXEC = process.env.NODE_ENV === 'development'
 
 /**
  * Session update fields for extractSessionUpdates
@@ -28,38 +29,6 @@ interface SessionUpdate {
   week?: number | null
   day?: number | null
   session_mode?: string | null
-}
-
-/**
- * Resolves temporary IDs in proposedData to their actual values.
- * During execution, parent entities are processed first (by executionOrder),
- * so their temp IDs can be mapped to real IDs for child entities.
- *
- * For in-memory building (current approach), temp IDs are used directly
- * since the matching happens in-memory before DB operations.
- */
-function resolveTemporaryIds(
-  data: Record<string, unknown>,
-  entityType: SessionEntityType,
-  idMap: Map<string, string | number>
-): Record<string, unknown> {
-  const refFields = ENTITY_REFERENCE_FIELDS[entityType]
-  if (!refFields || refFields.length === 0) return data
-
-  const resolved = { ...data }
-
-  for (const field of refFields) {
-    const value = resolved[field]
-    if (typeof value === 'string' && isTempId(value)) {
-      const realId = idMap.get(value)
-      if (realId !== undefined) {
-        console.log(`[resolveTemporaryIds] Resolved ${field}: ${value} → ${realId}`)
-        resolved[field] = realId
-      }
-    }
-  }
-
-  return resolved
 }
 
 /**
@@ -82,9 +51,9 @@ export async function executeChangeSet(
   sessionId: number
 ): Promise<ExecutionResult> {
   try {
-    console.log('[executeChangeSet] Starting execution')
-    console.log('[executeChangeSet] ChangeRequests:', JSON.stringify(changeset.changeRequests, null, 2))
-    console.log('[executeChangeSet] Current exercises count:', currentExercises.length)
+    if (DEBUG_EXEC) {
+      console.log(`[executeChangeSet] ${changeset.changeRequests.length} changes, ${currentExercises.length} existing exercises`)
+    }
 
     // Build updated exercises list by applying changes
     const updatedExercises = applyChangesToExercises(
@@ -92,13 +61,8 @@ export async function executeChangeSet(
       currentExercises
     )
 
-    console.log('[executeChangeSet] Updated exercises:', JSON.stringify(updatedExercises, null, 2))
-
     // Extract session updates if any
     const sessionUpdates = extractSessionUpdates(changeset.changeRequests)
-
-    console.log('[executeChangeSet] Session updates:', sessionUpdates)
-    console.log('[executeChangeSet] Calling saveSessionWithExercisesAction...')
 
     // Call existing server action
     const result = await saveSessionWithExercisesAction(
@@ -139,8 +103,10 @@ export async function executeChangeSet(
  * Applies ChangeRequests to the current exercises list.
  * Returns a new list with all changes applied.
  *
- * Uses an ID map to track temp ID → exercise ID mappings for
- * resolving parent references (e.g., sets referencing new exercises).
+ * NEW APPROACH (simpler and more reliable):
+ * 1. Group all set change requests by their parent exercise ID
+ * 2. When creating an exercise, look up its sets from the grouped map
+ * 3. This avoids the fragile temp ID matching that was causing sets to be lost
  */
 function applyChangesToExercises(
   changeRequests: ChangeRequest[],
@@ -149,33 +115,46 @@ function applyChangesToExercises(
   // Create a mutable copy
   let exercises = [...currentExercises]
 
-  // Map to track temp IDs → exercise IDs (for parent FK resolution)
-  // In the in-memory model, we use temp IDs directly, so this maps temp → temp
-  const idMap = new Map<string, string>()
+  // STEP 1: Pre-group all set creation requests by their parent exercise ID
+  // This allows us to attach sets directly when creating exercises
+  const setsByParentId = new Map<string, ChangeRequest[]>()
 
-  // Sort by execution order (parents before children)
-  const sortedRequests = [...changeRequests].sort(
-    (a, b) => a.executionOrder - b.executionOrder
-  )
+  for (const request of changeRequests) {
+    if (request.entityType === 'session_plan_set' && request.operationType === 'create') {
+      // Get the parent exercise ID directly from raw proposedData (stored as snake_case)
+      // We check both snake_case (from transformations) and camelCase (fallback)
+      const rawData = request.proposedData as Record<string, unknown> | null
+      const parentId = (
+        rawData?.session_plan_exercise_id ??  // Primary: snake_case from transformations
+        rawData?.sessionPlanExerciseId        // Fallback: camelCase
+      ) as string | undefined
 
-  for (const request of sortedRequests) {
-    console.log(`[applyChangesToExercises] Processing: ${request.operationType} ${request.entityType} (entityId: ${request.entityId})`)
+      if (parentId) {
+        const existing = setsByParentId.get(parentId) || []
+        existing.push(request)
+        setsByParentId.set(parentId, existing)
+      } else {
+        console.warn(`[applyChanges] Set missing session_plan_exercise_id`)
+      }
+    }
+  }
 
-    switch (request.entityType) {
-      case 'session_plan_exercise':
-        exercises = applyExerciseChange(request, exercises)
-        // Track the temp ID for this exercise so sets can reference it
-        if (request.operationType === 'create' && request.entityId) {
-          idMap.set(request.entityId, request.entityId)
-          console.log(`[applyChangesToExercises] Registered exercise ID: ${request.entityId}`)
-        }
-        break
+  if (DEBUG_EXEC) {
+    console.log(`[applyChanges] Grouped sets:`, Array.from(setsByParentId.entries()).map(([id, sets]) => `${id}:${sets.length}`).join(', '))
+  }
 
-      case 'session_plan_set':
-        exercises = applySetChange(request, exercises, idMap)
-        break
+  // STEP 2: Process exercise changes, attaching sets from the grouped map
+  for (const request of changeRequests) {
+    if (request.entityType === 'session_plan_exercise') {
+      exercises = applyExerciseChange(request, exercises, setsByParentId)
+    }
+  }
 
-      // session_plan changes are handled separately
+  // STEP 3: Process set updates/deletes for existing exercises
+  // (Set creates were already handled inline with exercise creates)
+  for (const request of changeRequests) {
+    if (request.entityType === 'session_plan_set' && request.operationType !== 'create') {
+      exercises = applySetChange(request, exercises)
     }
   }
 
@@ -184,10 +163,12 @@ function applyChangesToExercises(
 
 /**
  * Applies a single exercise change to the exercises list.
+ * For create operations, also attaches any sets from the setsByParentId map.
  */
 function applyExerciseChange(
   request: ChangeRequest,
-  exercises: SessionPlannerExercise[]
+  exercises: SessionPlannerExercise[],
+  setsByParentId: Map<string, ChangeRequest[]>
 ): SessionPlannerExercise[] {
   const proposedData = request.proposedData
     ? convertKeysToCamelCase(request.proposedData)
@@ -195,7 +176,50 @@ function applyExerciseChange(
 
   switch (request.operationType) {
     case 'create': {
-      // Add new exercise
+      // Look up sets for this exercise from the pre-grouped map
+      const setRequests = setsByParentId.get(request.entityId ?? '') || []
+
+      // Build sets array from the set requests
+      const sets: SessionPlannerExercise['sets'] = setRequests.flatMap((setReq, reqIndex) => {
+        const setData = setReq.proposedData
+          ? convertKeysToCamelCase(setReq.proposedData)
+          : null
+
+        const setCount = Number(setData?.setCount ?? 1)
+        const result: SessionPlannerExercise['sets'] = []
+
+        for (let i = 0; i < setCount; i++) {
+          result.push({
+            id: `new_set_${Date.now()}_${reqIndex}_${i}`,
+            session_plan_exercise_id: 0, // Will be set by save action
+            set_index: result.length + 1,
+            reps: (setData?.reps as number) ?? null,
+            weight: (setData?.weight as number) ?? null,
+            distance: (setData?.distance as number) ?? null,
+            performing_time: (setData?.performingTime as number) ?? null,
+            rest_time: (setData?.restTime as number) ?? null,
+            tempo: (setData?.tempo as string) ?? null,
+            rpe: (setData?.rpe as number) ?? null,
+            resistance_unit_id: null,
+            power: (setData?.power as number) ?? null,
+            velocity: (setData?.velocity as number) ?? null,
+            effort: (setData?.effort as number) ?? null,
+            height: (setData?.height as number) ?? null,
+            resistance: (setData?.resistance as number) ?? null,
+            completed: false,
+            isEditing: false,
+          })
+        }
+
+        return result
+      })
+
+      // Re-index the sets
+      sets.forEach((set, idx) => {
+        set.set_index = idx + 1
+      })
+
+      // Add new exercise with its sets
       const newExercise: SessionPlannerExercise = {
         id: request.entityId ?? `new_${Date.now()}`,
         session_plan_id: 0, // Will be set by save action
@@ -214,7 +238,7 @@ function applyExerciseChange(
               exercise_type_id: undefined,
             }
           : null,
-        sets: [],
+        sets,
       }
 
       return [...exercises, newExercise]
@@ -270,76 +294,29 @@ function applyExerciseChange(
 }
 
 /**
- * Applies a single set change to the exercises list.
+ * Applies a single set change (update/delete) to the exercises list.
+ * Note: Set creation is now handled inline with exercise creation in applyExerciseChange.
  *
- * @param request - The change request
+ * @param request - The change request (update or delete only)
  * @param exercises - Current exercises list
- * @param idMap - Map of temp IDs to resolved IDs (for parent FK resolution)
  */
 function applySetChange(
   request: ChangeRequest,
-  exercises: SessionPlannerExercise[],
-  idMap: Map<string, string>
+  exercises: SessionPlannerExercise[]
 ): SessionPlannerExercise[] {
   const proposedData = request.proposedData
     ? convertKeysToCamelCase(request.proposedData)
     : null
 
-  // Set changes need the parent exercise ID
-  // This may be a temp ID that needs to be resolved
-  // Updated to use session_plan naming (post schema migration 2025-Q4)
-  let parentExerciseId = proposedData?.sessionPlanExerciseId as string | undefined
-
-  // Try to resolve temp ID if we have a mapping
-  if (parentExerciseId && idMap.has(parentExerciseId)) {
-    const resolved = idMap.get(parentExerciseId)!
-    console.log(`[applySetChange] Resolved parent exercise ID: ${parentExerciseId} → ${resolved}`)
-    parentExerciseId = resolved
-  }
-
-  console.log(`[applySetChange] Looking for parent exercise: ${parentExerciseId}`)
+  // Get the parent exercise ID - check both snake_case (from transformations) and camelCase
+  const rawData = request.proposedData as Record<string, unknown> | null
+  const parentExerciseId = (
+    rawData?.session_plan_exercise_id ??  // Primary: snake_case from transformations
+    rawData?.sessionPlanExerciseId ??     // Fallback: camelCase
+    proposedData?.sessionPlanExerciseId   // Last resort: converted data
+  ) as string | undefined
 
   switch (request.operationType) {
-    case 'create': {
-      // Add new set(s) to exercise
-      return exercises.map((ex) => {
-        if (String(ex.id) === parentExerciseId) {
-          const setCount = Number(proposedData?.setCount ?? 1)
-          const newSets: SessionPlannerExercise['sets'] = []
-
-          for (let i = 0; i < setCount; i++) {
-            const setIndex = ex.sets.length + i + 1
-            newSets.push({
-              id: `new_set_${Date.now()}_${i}`,
-              session_plan_exercise_id: typeof ex.id === 'number' ? ex.id : 0,
-              set_index: setIndex,
-              reps: (proposedData?.reps as number) ?? null,
-              weight: (proposedData?.weight as number) ?? null,
-              distance: (proposedData?.distance as number) ?? null,
-              performing_time: (proposedData?.performingTime as number) ?? null,
-              rest_time: (proposedData?.restTime as number) ?? null,
-              tempo: (proposedData?.tempo as string) ?? null,
-              rpe: (proposedData?.rpe as number) ?? null,
-              resistance_unit_id: null,
-              power: (proposedData?.power as number) ?? null,
-              velocity: (proposedData?.velocity as number) ?? null,
-              effort: (proposedData?.effort as number) ?? null,
-              height: (proposedData?.height as number) ?? null,
-              resistance: (proposedData?.resistance as number) ?? null,
-              completed: false,
-              isEditing: false,
-            })
-          }
-
-          return {
-            ...ex,
-            sets: [...ex.sets, ...newSets],
-          }
-        }
-        return ex
-      })
-    }
-
     case 'update': {
       // Update set(s)
       const setIndex = proposedData?.setIndex as number | undefined

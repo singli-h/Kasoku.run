@@ -354,17 +354,42 @@ export function SessionPlannerV2({
     })
   }, [setExercises, toast])
 
-  // Unlink superset (clear superset_id for all exercises in it)
+  // Reindex superset IDs to sequential integers (1, 2, 3, ...)
+  const reindexSupersets = useCallback((exercises: SessionPlannerExercise[]): SessionPlannerExercise[] => {
+    const supersetMapping = new Map<string, number>()
+    let nextId = 1
+
+    // First pass: create mapping from old IDs to new sequential IDs
+    exercises.forEach(ex => {
+      if (ex.superset_id && !supersetMapping.has(ex.superset_id)) {
+        supersetMapping.set(ex.superset_id, nextId++)
+      }
+    })
+
+    // Second pass: apply new IDs
+    return exercises.map(ex => {
+      if (!ex.superset_id) return ex
+      const newId = supersetMapping.get(ex.superset_id)
+      return newId ? { ...ex, superset_id: String(newId) } : ex
+    })
+  }, [])
+
+  // Unlink superset (clear superset_id for all exercises in it) and reindex remaining
   const handleUnlinkSuperset = useCallback((supersetId: string) => {
-    setExercises(prev => prev.map(ex =>
-      ex.superset_id === supersetId ? { ...ex, superset_id: null } : ex
-    ))
+    setExercises(prev => {
+      // First, clear the superset_id for exercises in this superset
+      const withUnlinked = prev.map(ex =>
+        ex.superset_id === supersetId ? { ...ex, superset_id: null } : ex
+      )
+      // Then reindex remaining supersets to keep sequential IDs
+      return reindexSupersets(withUnlinked)
+    })
 
     toast({
       title: "Superset Unlinked",
       description: "Exercises are now separate."
     })
-  }, [setExercises, toast])
+  }, [setExercises, reindexSupersets, toast])
 
   // Handle save
   const handleSave = useCallback(async () => {

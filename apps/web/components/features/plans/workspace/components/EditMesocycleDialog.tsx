@@ -95,18 +95,19 @@ export function EditMesocycleDialog({ mesocycle, open, onOpenChange, onSave, onD
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-lg sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{mesocycle ? "Edit Mesocycle" : "Add Mesocycle"}</DialogTitle>
             <DialogDescription>
-              {mesocycle 
+              {mesocycle
                 ? "Update the mesocycle details for this training phase."
                 : "Create a new mesocycle to organize your training phases."
               }
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            {/* Name and Phase Type - stack on mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Mesocycle Name</Label>
                 <Input
@@ -149,7 +150,8 @@ export function EditMesocycleDialog({ mesocycle, open, onOpenChange, onSave, onD
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            {/* Dates and Color - stack on mobile */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date</Label>
                 <Input
@@ -168,33 +170,52 @@ export function EditMesocycleDialog({ mesocycle, open, onOpenChange, onSave, onD
                   onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 col-span-2 sm:col-span-1">
                 <Label htmlFor="color">Color</Label>
-                <Input
-                  id="color"
-                  type="color"
-                  value={formData.metadata?.color || "#10b981"}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    metadata: { ...formData.metadata, color: e.target.value }
-                  })}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="color"
+                    type="color"
+                    value={formData.metadata?.color || "#10b981"}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      metadata: { ...formData.metadata, color: e.target.value }
+                    })}
+                    className="w-12 h-9 p-1 cursor-pointer"
+                  />
+                  <span className="text-sm text-muted-foreground">{formData.metadata?.color || "#10b981"}</span>
+                </div>
               </div>
             </div>
           </div>
-          <DialogFooter className="flex justify-between">
-            <div>
+
+          {/* Footer - mobile-friendly button layout */}
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               {mesocycle?.id && onDelete && (
-                <Button variant="destructive" onClick={handleDelete}>
-                  Delete Mesocycle
+                <Button
+                  variant="destructive"
+                  onClick={handleDelete}
+                  className="w-full sm:w-auto order-last sm:order-first"
+                >
+                  Delete
                 </Button>
               )}
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 w-full sm:w-auto sm:ml-auto">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="w-full sm:w-auto"
+              >
                 Cancel
               </Button>
-              <Button onClick={handleSave}>Save Changes</Button>
+              <Button
+                onClick={handleSave}
+                className="w-full sm:w-auto"
+              >
+                Save
+              </Button>
             </div>
           </DialogFooter>
         </DialogContent>

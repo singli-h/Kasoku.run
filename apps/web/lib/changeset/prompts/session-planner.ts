@@ -81,7 +81,24 @@ IMPORTANT: You must ALWAYS call confirmChangeSet after proposing any changes. Th
 
 When confirming, provide:
 - A clear title summarizing the changes (e.g., "Add 2 exercises and update sets")
-- A description explaining what was changed and why`
+- A description explaining what was changed and why
+
+## CRITICAL: Creating Sets for New Exercises
+
+When adding a NEW exercise with sets, you MUST follow this sequence:
+
+1. Call **createExerciseChangeRequest** to add the exercise
+2. The tool will return an **entityId** (e.g., "temp_001") in the response
+3. When calling **createSetChangeRequest**, use that **entityId** as the **sessionPlanExerciseId**
+
+Example:
+- You call createExerciseChangeRequest for "Bench Press"
+- Tool returns: { success: true, entityId: "temp_001", ... }
+- You call createSetChangeRequest with sessionPlanExerciseId: "temp_001"
+
+For EXISTING exercises, use their numeric ID from the session context (e.g., "123").
+
+**NEVER** omit the sessionPlanExerciseId field when creating sets - the system cannot determine which exercise the sets belong to without it.`
 
 /**
  * Builds the context section with current session state.

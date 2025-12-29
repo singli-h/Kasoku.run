@@ -14,7 +14,7 @@ export default async function PlansPage() {
       title="Training Plans"
       description="View and manage your macrocycles with race-anchored timelines"
     >
-      <Suspense fallback={<UnifiedPageSkeleton title="Training Plans" variant="grid" />}>
+      <Suspense fallback={<UnifiedPageSkeleton title="Training Plans" variant="plans" />}>
         <PlansHome />
       </Suspense>
     </PageLayout>

@@ -9,7 +9,7 @@
 
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bot, Send, X, Loader2, Mic, MicOff, Pin, PinOff } from 'lucide-react'
+import { Bot, Send, X, Loader2, Mic, MicOff, Pin, PinOff, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,7 @@ interface ChatSidebarProps {
   onSubmit: (e: React.FormEvent) => void
   isLoading?: boolean
   onStop?: () => void
+  onClearChat?: () => void
 }
 
 const SIDEBAR_WIDTH = 400
@@ -42,6 +43,7 @@ export function ChatSidebar({
   onSubmit,
   isLoading = false,
   onStop,
+  onClearChat,
 }: ChatSidebarProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -115,6 +117,17 @@ export function ChatSidebar({
               </div>
 
               <div className="flex items-center gap-1">
+                {onClearChat && messages.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onClearChat}
+                    className="h-8 w-8"
+                    title="Start new chat"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"

@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { UnifiedPageSkeleton } from "@/components/layout"
 
 // Server Actions
 import { getRosterWithGroupCountsAction } from "@/actions/athletes/athlete-actions"
@@ -83,14 +84,7 @@ export function LeanAthleteManagementPage() {
   }, [loadData])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading athletes...</p>
-        </div>
-      </div>
-    )
+    return <UnifiedPageSkeleton title="Athletes" variant="athletes" />
   }
 
   return (

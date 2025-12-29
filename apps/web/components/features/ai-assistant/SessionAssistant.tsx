@@ -220,6 +220,7 @@ function SessionAssistantContent({
   // Vercel AI SDK useChat hook with onToolCall for client-side tools
   const {
     messages,
+    setMessages,
     sendMessage,
     status,
     stop,
@@ -421,6 +422,21 @@ function SessionAssistantContent({
     setPendingToolCall(null)
   }, [pendingToolCall, addToolOutput, changeSet])
 
+  /**
+   * Handle clearing the chat to start fresh.
+   */
+  const handleClearChat = useCallback(() => {
+    // Clear messages
+    setMessages([])
+    // Clear persisted state
+    clearPersistedState(sessionId)
+    // Clear any pending changeset
+    changeSet.clear()
+    setShowBanner(false)
+    setExecutionError(undefined)
+    setPendingToolCall(null)
+  }, [sessionId, setMessages, changeSet])
+
   // Context value for inline proposal section
   const contextValue = useMemo(
     () => ({
@@ -477,6 +493,7 @@ function SessionAssistantContent({
             onSubmit={handleSubmit}
             isLoading={isLoading}
             onStop={stop}
+            onClearChat={handleClearChat}
           />
         )}
       </div>
@@ -492,14 +509,16 @@ function SessionAssistantContent({
           onSubmit={handleSubmit}
           isLoading={isLoading}
           onStop={stop}
+          onClearChat={handleClearChat}
         />
       )}
 
-      {/* Chat trigger button */}
+      {/* Chat trigger button - hidden when chat is open */}
       <ChatTrigger
         onClick={() => setChatOpen(true)}
         hasChanges={changeSet.hasPendingChanges()}
         changeCount={changeSet.getPendingCount()}
+        hidden={chatOpen}
       />
 
       {/* Approval banner (overlay mode only) */}

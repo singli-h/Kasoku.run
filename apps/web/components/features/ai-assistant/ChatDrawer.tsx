@@ -9,7 +9,7 @@
  */
 
 import { useRef, useEffect, useCallback } from 'react'
-import { Bot, Send, X, Loader2, Mic, MicOff } from 'lucide-react'
+import { Bot, Send, X, Loader2, Mic, MicOff, RotateCcw } from 'lucide-react'
 import { Drawer } from 'vaul'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,7 @@ interface ChatDrawerProps {
   onSubmit: (e: React.FormEvent) => void
   isLoading?: boolean
   onStop?: () => void
+  onClearChat?: () => void
 }
 
 export function ChatDrawer({
@@ -38,6 +39,7 @@ export function ChatDrawer({
   onSubmit,
   isLoading = false,
   onStop,
+  onClearChat,
 }: ChatDrawerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -102,14 +104,27 @@ export function ChatDrawer({
                 </p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {onClearChat && messages.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClearChat}
+                  className="h-8 w-8"
+                  title="Start new chat"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onOpenChange(false)}
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -279,13 +294,17 @@ interface ChatTriggerProps {
   onClick: () => void
   hasChanges?: boolean
   changeCount?: number
+  hidden?: boolean
 }
 
 export function ChatTrigger({
   onClick,
   hasChanges = false,
   changeCount = 0,
+  hidden = false,
 }: ChatTriggerProps) {
+  if (hidden) return null
+
   return (
     <Button
       onClick={onClick}

@@ -7,7 +7,14 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Calendar, Users, Target, Plus, Search } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Calendar, Users, Target, Plus, Search, MoreVertical, Copy, Download, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { MacrocycleTimeline, MacrocyclePhase, RaceAnchor } from "./MacrocycleTimeline"
 import { VolumeIntensityChart, ChartDataPoint } from "./VolumeIntensityChart"
@@ -75,17 +82,17 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
               <CardTitle className="text-lg lg:text-xl">{mc.name}</CardTitle>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 flex-shrink-0" />
+                  <Calendar className="h-4 w-4 shrink-0" />
                   <span className="truncate">{mc.start} - {mc.end}</span>
                 </div>
                 {mc.group && (
                   <div className="flex items-center gap-1.5">
-                    <Users className="h-4 w-4 flex-shrink-0" />
+                    <Users className="h-4 w-4 shrink-0" />
                     <span className="truncate">{mc.group}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
-                  <Target className="h-4 w-4 flex-shrink-0" />
+                  <Target className="h-4 w-4 shrink-0" />
                   <span>{mc.phases.length} phases · {Math.max(...mc.phases.map(p => p.endWeek))} weeks</span>
                 </div>
               </div>
@@ -94,19 +101,38 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
               <Badge variant={mc.state === "Active" ? "default" : mc.state === "Draft" ? "secondary" : "outline"}>
                 {mc.state}
               </Badge>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1 sm:flex-none"
-                onClick={() => setSelectedPlanForAssignment(mc.id)}
-              >
-                Assign
-              </Button>
               <Link href={`/plans/${mc.id}`} className="flex-1 sm:flex-none">
-                <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                <Button variant="default" size="sm" className="w-full sm:w-auto">
                   Open
                 </Button>
               </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                    <span className="sr-only">More options</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setSelectedPlanForAssignment(mc.id)}>
+                    <Users className="mr-2 h-4 w-4" />
+                    Assign to Groups...
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Duplicate Plan
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" disabled>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </CardHeader>
@@ -133,18 +159,6 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
                 selectedPhaseId={selectedPhaseId}
                 mode={selectedPhaseId ? 'mesocycle' : 'macrocycle'}
               />
-            </div>
-          </div>
-
-          {/* Mobile: Stacked Layout */}
-          <div className="lg:hidden mt-4">
-            {/* Full-width chart on mobile */}
-            <div className="-mx-4 px-0 sm:mx-0 sm:px-0">
-            <VolumeIntensityChart
-              data={displayData}
-              selectedPhaseId={selectedPhaseId}
-              mode={selectedPhaseId ? 'mesocycle' : 'macrocycle'}
-            />
             </div>
           </div>
         </CardContent>
