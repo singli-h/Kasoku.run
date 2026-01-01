@@ -409,3 +409,5 @@ Add to `(auth)` route group - will get centered layout without header
 
 This architecture provides a solid foundation for consistent, maintainable, and user-friendly layouts across the entire Kasoku application.
 
+
+

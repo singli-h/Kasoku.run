@@ -8,19 +8,18 @@
 
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
-import { motion } from "framer-motion"
-import { Play, Check, Clock, AlertCircle, Video, ExternalLink } from "lucide-react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { useState, useMemo, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Check, Video, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useExerciseContext } from "../../index"
 import type { WorkoutExercise } from "../../index"
 import type { WorkoutLogSet } from "@/types/training"
-import { SetTable, getDisplayColumns, DEFAULT_FIELD_CONFIG } from "./set-row"
+// Unused: import { SetTable, getDisplayColumns, DEFAULT_FIELD_CONFIG } from "./set-row"
+import { FreeelapMetricsTable } from "./freelap-metrics-table"
+import { isFreeelapMetadata } from "@/types/freelap"
 
 interface ExerciseCardProps {
   exercise: WorkoutExercise
@@ -53,6 +52,23 @@ const EXERCISE_FIELDS: ExerciseField[] = [
 
 export function ExerciseCard({ exercise, className, isSuperset = false }: ExerciseCardProps) {
   const { showVideo, updateExercise, toggleSetComplete } = useExerciseContext()
+
+  // Track which sets are expanded for Freelap details
+  const [expandedSetIndices, setExpandedSetIndices] = useState<Set<number>>(new Set())
+
+  // Toggle expansion for a set
+  const toggleSetExpansion = useCallback((setIndex: number) => {
+    setExpandedSetIndices(prev => {
+      const next = new Set(prev)
+      if (next.has(setIndex)) {
+        next.delete(setIndex)
+      } else {
+        next.add(setIndex)
+      }
+      return next
+    })
+  }, [])
+
 
   // Determine which fields to show based on available data
   const availableFields = useMemo(() => {
@@ -146,207 +162,253 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
     updateExercise(exercise.id, { completed: !exercise.completed })
   }
 
-  // Generate sets for display
+  // Generate sets for display - sort by set_index to ensure correct order
   const sets = useMemo(() => {
     const targetSets = (exercise as any).sets || 3
     const details = exercise.workout_log_sets || []
 
-    return Array.from({ length: Math.max(targetSets, details.length) }, (_, index) => ({
+    // Sort by set_index to ensure correct ordering (database may return in insertion order)
+    const sortedDetails = [...details].sort((a, b) => (a.set_index || 0) - (b.set_index || 0))
+
+    return Array.from({ length: Math.max(targetSets, sortedDetails.length) }, (_, index) => ({
       index,
-      detail: details[index] || null,
-      isCompleted: details[index]?.completed || false
+      detail: sortedDetails[index] || null,
+      isCompleted: sortedDetails[index]?.completed || false
     }))
   }, [(exercise as any).sets, exercise.workout_log_sets])
 
   return (
-    <Card className={cn(
-      "card-enhanced transition-all duration-200",
-      exercise.completed && "border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20",
-      isSuperset && "border-l-4 border-l-blue-400",
+    <div className={cn(
+      "transition-all duration-200",
+      exercise.completed && "bg-green-50/50 dark:bg-green-900/10",
+      isSuperset && "border-l-2 border-l-primary/60 pl-3",
       className
     )}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      {/* Thin top divider - lean design */}
+      <div className="h-px bg-border/40" />
+
+      {/* Header - edge-to-edge lean design */}
+      <div className="py-2 px-1">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             {/* Exercise Name */}
             <h4 className={cn(
-              "font-semibold text-lg",
-              exercise.completed ? "text-green-700 line-through" : "text-high-contrast"
+              "font-semibold text-base truncate",
+              exercise.completed ? "text-green-700 dark:text-green-400 line-through" : "text-high-contrast"
             )}>
               {exercise.exercise?.name || "Unknown Exercise"}
             </h4>
 
-            {/* Order Badge */}
-            <Badge variant="outline" className="text-xs">
-              #{exercise.exercise_order}
-            </Badge>
-
-            {/* Completion Badge */}
+            {/* Completion Badge - compact */}
             {exercise.completed && (
-              <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white dark:bg-green-600 dark:hover:bg-green-700">
-                <Check className="h-3 w-3 mr-1" />
-                Complete
-              </Badge>
+              <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-500 text-white">
+                <Check className="h-2.5 w-2.5" />
+              </span>
             )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            {/* Video Button */}
+          {/* Action Buttons - compact */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Video Button - icon only on mobile */}
             {showVideo && ((exercise.exercise as any)?.demo_url || exercise.exercise?.video_url) && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="ghost"
                 size="sm"
-                className="flex items-center gap-1"
+                className="h-8 w-8 p-0"
                 onClick={() => {
                   const url = exercise.exercise?.video_url || (exercise.exercise as any)?.demo_url
                   if (url) window.open(url, '_blank')
                 }}
               >
-                <Video className="h-3 w-3" />
-                Video
+                <Video className="h-4 w-4" />
               </Button>
             )}
 
-            {/* Complete Toggle - Unified Style */}
-            <Button
-              variant={exercise.completed ? "outline" : "default"}
-              size="sm"
+            {/* Complete Toggle - compact circle */}
+            <button
               onClick={toggleExerciseCompletion}
-              className={exercise.completed ? "btn-outline-enhanced" : "btn-primary-enhanced"}
+              className={cn(
+                "h-8 w-8 rounded-full flex items-center justify-center text-xs font-medium transition-all",
+                exercise.completed
+                  ? "bg-green-500 text-white hover:bg-green-600"
+                  : "bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground"
+              )}
             >
-              {exercise.completed ? "Done" : "Mark Done"}
-            </Button>
+              {exercise.completed ? <Check className="h-4 w-4" /> : exercise.exercise_order}
+            </button>
           </div>
         </div>
 
-        {/* Exercise Description */}
-        {exercise.exercise?.description && (
-          <p className="text-sm text-medium-contrast mt-2">
-            {exercise.exercise.description}
-          </p>
-        )}
-
-        {/* Progress Bar */}
+        {/* Progress Bar - thinner */}
         <div className="flex items-center gap-2 mt-2">
-          <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+          <div className="flex-1 bg-muted rounded-full h-1">
             <motion.div
-              className="bg-blue-600 h-1.5 rounded-full"
+              className={cn(
+                "h-1 rounded-full",
+                exercise.completed ? "bg-green-500" : "bg-primary"
+              )}
               initial={{ width: 0 }}
               animate={{ width: `${completionStatus.percentage}%` }}
               transition={{ duration: 0.3 }}
             />
           </div>
-          <span className="text-xs text-low-contrast font-medium">
-            {completionStatus.completed}/{completionStatus.total} sets
+          <span className="text-[10px] text-muted-foreground font-medium tabular-nums">
+            {completionStatus.completed}/{completionStatus.total}
           </span>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="pt-0">
-        {/* Sets Table */}
-        {sets.length > 0 && (
-          <div className="space-y-3">
-            {/* Table Header */}
-            <div className="grid grid-cols-12 gap-2 text-xs font-medium text-medium-contrast border-b border-border pb-2">
-              <div className="col-span-2">Set</div>
-              {availableFields.map((field) => (
-                <div key={String(field.key)} className="col-span-2 text-center">
-                  {field.label}
-                  {field.unit && <span className="ml-1 text-low-contrast">({field.unit})</span>}
-                </div>
-              ))}
-              <div className="col-span-2 text-center">Done</div>
-            </div>
+      {/* Sets - edge-to-edge lean design */}
+      {sets.length > 0 && (
+        <div className="px-0 pb-2 space-y-0">
+          {sets.map((set) => {
+            const hasFreeelapData = set.detail && isFreeelapMetadata(set.detail.metadata)
+            const isExpanded = expandedSetIndices.has(set.index)
 
-            {/* Set Rows */}
-            <div className="space-y-2">
-              {sets.map((set) => (
+            return (
+              <div key={set.index}>
+                {/* Set Row - edge-to-edge lean design */}
                 <motion.div
-                  key={set.index}
                   className={cn(
-                    "grid grid-cols-12 gap-2 p-2 rounded-md border transition-colors",
-                    set.isCompleted 
-                      ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700" 
-                      : "bg-muted/50 border-border hover:border-border/80"
+                    "flex items-center gap-1 py-1.5 px-1 transition-colors",
+                    set.isCompleted
+                      ? "bg-green-500/5"
+                      : isExpanded
+                        ? "bg-primary/5 dark:bg-primary/10"
+                        : ""
                   )}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 3 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: set.index * 0.05 }}
+                  transition={{ delay: set.index * 0.02 }}
                 >
-                  {/* Set Number */}
-                  <div className="col-span-2 flex items-center">
-                    <span className="text-sm font-medium text-high-contrast">
-                      {set.index + 1}
-                    </span>
+                  {/* Expand indicator - LEFT of set number, larger icon */}
+                  <div className="w-5 flex items-center justify-center shrink-0">
+                    {hasFreeelapData ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleSetExpansion(set.index)}
+                        className="rounded transition-colors"
+                        aria-label={isExpanded ? "Collapse" : "Expand"}
+                        aria-expanded={isExpanded}
+                      >
+                        <span className={cn(
+                          "text-base font-medium leading-none",
+                          isExpanded ? "text-primary" : "text-muted-foreground"
+                        )}>
+                          {isExpanded ? "▾" : "▸"}
+                        </span>
+                      </button>
+                    ) : null}
                   </div>
 
-                  {/* Dynamic Fields */}
-                  {availableFields.map((field) => (
-                    <div key={String(field.key)} className="col-span-2">
-                      <Input
-                        type={field.type === 'time' ? 'number' : field.type}
-                        value={String(set.detail?.[field.key] ?? '')}
-                        onChange={(e) => updateSetData(set.index, field.key, e.target.value)}
-                        placeholder={field.placeholder}
-                        className="h-8 text-sm text-center"
-                        disabled={set.isCompleted}
-                      />
-                    </div>
-                  ))}
+                  {/* Set Number - always aligned */}
+                  <span className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium shrink-0",
+                    set.isCompleted
+                      ? "bg-green-500/20 text-green-700 dark:text-green-400"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    {set.index + 1}
+                  </span>
+
+                  {/* Dynamic Fields - horizontal scroll on mobile */}
+                  <div className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0">
+                    {availableFields.map((field) => {
+                      // Variable width based on field type
+                      const inputWidth = field.key === 'reps' ? 'w-7'
+                        : field.key === 'weight' ? 'w-9'
+                        : field.key === 'distance' ? 'w-8'
+                        : 'w-10' // time, power, etc.
+
+                      return (
+                        <div
+                          key={String(field.key)}
+                          className={cn(
+                            "px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5",
+                            set.isCompleted ? "bg-green-500/20" : "bg-muted"
+                          )}
+                        >
+                          <Input
+                            type={field.type === 'time' ? 'number' : field.type}
+                            value={String(set.detail?.[field.key] ?? '')}
+                            onChange={(e) => updateSetData(set.index, field.key, e.target.value)}
+                            placeholder={field.placeholder}
+                            className={cn("h-5 text-xs text-center bg-transparent border-0 p-0 focus:ring-0", inputWidth)}
+                            disabled={set.isCompleted}
+                          />
+                          {field.unit && (
+                            <span className="text-muted-foreground text-[9px]">{field.unit}</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
 
                   {/* Completion Toggle */}
-                  <div className="col-span-2 flex justify-center">
-                    <Button
-                      variant={set.isCompleted ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => toggleSetCompletion(set.index)}
-                      className={cn(
-                        "h-8 w-8 p-0",
-                        set.isCompleted && "bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
-                      )}
-                    >
-                      {set.isCompleted ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <div className="h-3 w-3 border rounded border-gray-400" />
-                      )}
-                    </Button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        )}
-
-
-        {/* Video Embed (if enabled and available) */}
-        {showVideo && exercise.exercise?.video_url && (
-          <div className="mt-4">
-            <div className="aspect-video rounded-lg overflow-hidden bg-muted">
-              {/* TODO: Implement proper video player component */}
-              <div className="w-full h-full flex items-center justify-center text-low-contrast">
-                <div className="text-center">
-                  <Video className="h-8 w-8 mx-auto mb-2" />
-                  <p className="text-sm">Video Player Component</p>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={() => {
-                      const videoUrl = exercise.exercise?.video_url
-                      if (videoUrl) window.open(videoUrl, '_blank')
-                    }}
-                    className="text-blue-600"
+                  <button
+                    onClick={() => toggleSetCompletion(set.index)}
+                    className={cn(
+                      "w-7 h-7 rounded-full flex items-center justify-center transition-all shrink-0",
+                      set.isCompleted
+                        ? "bg-green-500 text-white"
+                        : "bg-background border border-border hover:border-primary"
+                    )}
                   >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Open Video
-                  </Button>
-                </div>
+                    {set.isCompleted ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : (
+                      <Check className="h-3.5 w-3.5 opacity-20" />
+                    )}
+                  </button>
+                </motion.div>
+
+                {/* Freelap Details - Inline lean design */}
+                <AnimatePresence mode="wait">
+                  {isExpanded && hasFreeelapData && set.detail?.metadata && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      className="overflow-hidden"
+                    >
+                      {/* Lean inline sub-row - aligned with set content (skip expand col + index col) */}
+                      <div className="ml-10 pl-2 border-l border-primary/30 py-0.5">
+                        <FreeelapMetricsTable
+                          metadata={set.detail.metadata as Parameters<typeof FreeelapMetricsTable>[0]['metadata']}
+                          onMetadataChange={(newMetadata) => {
+                            updateSetData(set.index, 'metadata', newMetadata)
+                          }}
+                          readOnly={set.isCompleted}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Video Embed (if enabled and available) */}
+      {showVideo && exercise.exercise?.video_url && (
+        <div className="px-2 pb-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const videoUrl = exercise.exercise?.video_url
+              if (videoUrl) window.open(videoUrl, '_blank')
+            }}
+            className="w-full justify-center gap-2 text-muted-foreground hover:text-primary"
+          >
+            <Video className="h-4 w-4" />
+            <span className="text-xs">Watch Demo</span>
+            <ExternalLink className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+    </div>
   )
 } 

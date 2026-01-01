@@ -7,6 +7,8 @@
 
 import type { TrainingExercise, TrainingSet } from '../types'
 import type { WorkoutLogWithDetails, SessionPlanWithDetails } from '@/types/training'
+import type { Json } from '@/types/database'
+import type { SetMetadata } from '../types/set-metadata'
 
 /**
  * Legacy WorkoutExercise type from the workout feature context
@@ -61,6 +63,8 @@ export interface LegacyWorkoutExercise {
     resistance?: number | null
     effort?: number | null
     completed?: boolean | null
+    /** Freelap timing metadata */
+    metadata?: Json | null
   }>
 }
 
@@ -115,9 +119,10 @@ export function legacyToTrainingExercise(
   // Merge: use log sets if available, fill in from plan sets for remaining
   const sets: TrainingSet[] = []
 
-  // If we have log sets, use them
+  // If we have log sets, use them (sorted by set_index to ensure correct order)
   if (logSets.length > 0) {
-    logSets.forEach((logSet, idx) => {
+    const sortedLogSets = [...logSets].sort((a, b) => (a.set_index ?? 0) - (b.set_index ?? 0))
+    sortedLogSets.forEach((logSet, idx) => {
       const planSet = planSets.find(p => p.set_index === (logSet.set_index ?? idx + 1))
 
       sets.push({
@@ -135,6 +140,7 @@ export function legacyToTrainingExercise(
         height: logSet.height ?? planSet?.height ?? null,
         resistance: logSet.resistance ?? planSet?.resistance ?? null,
         effort: logSet.effort ?? planSet?.effort ?? null,
+        metadata: logSet.metadata as SetMetadata | null,
         completed: logSet.completed ?? false,
       })
     })

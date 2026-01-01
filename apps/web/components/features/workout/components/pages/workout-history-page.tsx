@@ -6,22 +6,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useSessionsHistory } from '../../hooks/use-workout-queries'
-import { Calendar, Clock, Target, TrendingUp, Filter, ChevronLeft, ChevronRight, Eye } from "lucide-react"
+import { Target, Filter, ChevronLeft, ChevronRight, Eye } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
-import { getPastSessionsAction } from "@/actions/workout/workout-session-actions"
 import { WorkoutSessionCard } from '@/components/composed'
 import { FeatureErrorBoundary } from '@/components/error-boundary'
 import { WorkoutLoadingCard } from '../error-loading'
-import { SessionDetailsDialog } from './SessionDetailsDialog'
-import type { WorkoutLogWithDetails } from "@/types/training"
 
 interface WorkoutHistoryPageProps {
   className?: string
@@ -34,9 +30,8 @@ interface SessionFilters {
 }
 
 export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
+  const router = useRouter()
   const [page, setPage] = useState(1)
-  const [selectedSession, setSelectedSession] = useState<WorkoutLogWithDetails | null>(null)
-  const [detailsOpen, setDetailsOpen] = useState(false)
   const [filters, setFilters] = useState<SessionFilters>({
     startDate: "",
     endDate: "",
@@ -173,8 +168,7 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
                   key={(session as any).id}
                   session={session}
                   onAction={(session) => {
-                    setSelectedSession(session as WorkoutLogWithDetails)
-                    setDetailsOpen(true)
+                    router.push(`/workout/${(session as any).id}`)
                   }}
                   actionLabel="View Details"
                   actionIcon={<Eye className="h-4 w-4" />}
@@ -242,12 +236,6 @@ export function WorkoutHistoryPage({ className }: WorkoutHistoryPageProps) {
         )}
       </div>
 
-      {/* Session Details Dialog */}
-      <SessionDetailsDialog
-        session={selectedSession}
-        open={detailsOpen}
-        onOpenChange={setDetailsOpen}
-      />
       </div>
     </FeatureErrorBoundary>
   )

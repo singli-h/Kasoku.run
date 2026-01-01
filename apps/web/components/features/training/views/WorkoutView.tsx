@@ -309,7 +309,7 @@ export function WorkoutView({
   const isCompleted = sessionStatus === 'completed'
 
   return (
-    <div className={cn("bg-background min-h-full relative", className)}>
+    <div className={cn("bg-background min-h-full relative min-w-0 w-full", className)}>
       {/* Header - only show if title is provided */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="px-4 py-3">
@@ -420,8 +420,8 @@ export function WorkoutView({
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-2 sm:px-4 py-4 space-y-2 pb-24">
+      {/* Content - edge-to-edge on mobile */}
+      <div className="px-0 sm:px-2 py-2 space-y-0 pb-24">
         {exercises.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-muted-foreground mb-4">No exercises yet</p>
@@ -449,7 +449,7 @@ export function WorkoutView({
                     supersetId={group.supersetId}
                     onUnlinkSuperset={!isAthlete && !isCompleted ? onUnlinkSuperset : undefined}
                   />
-                  <div className="space-y-3 pl-0 sm:pl-2">
+                  <div className="space-y-0 pl-0">
                     {grouped.map((item, idx) => {
                       if (Array.isArray(item)) {
                         // Superset group
@@ -544,7 +544,7 @@ export function WorkoutView({
             {pendingAddExercises.length > 0 && (
               <div>
                 <SectionDivider label="Pending" />
-                <div className="space-y-3 pl-0 sm:pl-2">
+                <div className="space-y-0 pl-0">
                   {pendingAddExercises.map((ghostEx) => (
                     <ExerciseCard
                       key={`ghost-ex-${ghostEx.id}`}

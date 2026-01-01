@@ -4,12 +4,13 @@ import { useState, useCallback, useMemo } from "react"
 import { ArrowRight, Bot, Check, ChevronDown, ChevronUp, GripVertical, Plus, Trash2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet } from "../types"
-import { formatShorthand, getCompletedCount } from "../types"
+import { getCompletedCount } from "../types"
 import { SetRow, type VisibleFields } from "./SetRow"
 import { getVisibleFields } from "../utils/field-visibility"
 import type { UIDisplayType } from "@/lib/changeset/types"
 import type { AISetChangeInfo } from "@/components/features/ai-assistant/hooks"
 import { UNGROUPED_SET_CHANGES_KEY } from "@/components/features/ai-assistant/hooks"
+import { isFreeelapMetadata, type FreeelapMetadata } from "@/types/freelap"
 
 export interface ExerciseCardProps {
   exercise: TrainingExercise
@@ -20,6 +21,8 @@ export interface ExerciseCardProps {
   onCompleteSet: (setId: string | number) => void
   onCompleteAllSets?: () => void
   onUpdateSet?: (setId: string | number, field: keyof TrainingSet, value: number | string | null) => void
+  /** Callback for updating Freelap metadata on a set */
+  onUpdateSetMetadata?: (setId: string | number, metadata: FreeelapMetadata) => void
   onAddSet?: () => void
   onRemoveSet?: (setId: string | number) => void
   onRemoveExercise?: () => void
@@ -73,6 +76,7 @@ export function ExerciseCard({
   onCompleteSet,
   onCompleteAllSets,
   onUpdateSet,
+  onUpdateSetMetadata,
   onAddSet,
   onRemoveSet,
   onRemoveExercise,
@@ -116,6 +120,22 @@ export function ExerciseCard({
   const swapNewName = isSwap ? (aiProposedData?.exercise_name as string | undefined) : undefined
   const [draggingSetId, setDraggingSetId] = useState<string | number | null>(null)
   const [dragOverSetId, setDragOverSetId] = useState<string | number | null>(null)
+
+  // Freelap expansion state - track which set IDs are expanded
+  const [expandedFreeelapIds, setExpandedFreeelapIds] = useState<Set<string | number>>(new Set())
+
+  // Toggle Freelap expansion for a set
+  const toggleFreeelapExpand = useCallback((setId: string | number) => {
+    setExpandedFreeelapIds(prev => {
+      const next = new Set(prev)
+      if (next.has(setId)) {
+        next.delete(setId)
+      } else {
+        next.add(setId)
+      }
+      return next
+    })
+  }, [])
 
   // AI change indicator colors - uses CSS classes from globals.css for dark mode support
   const AI_BG_COLORS: Record<UIDisplayType, string> = {
@@ -221,7 +241,7 @@ export function ExerciseCard({
   return (
     <div
       className={cn(
-        "flex transition-opacity",
+        "flex transition-opacity min-w-0",
         isDragging && "opacity-50"
       )}
       draggable={!isAthlete}
@@ -235,36 +255,38 @@ export function ExerciseCard({
       onDragEnd={() => !isAthlete && onDragEnd?.()}
       onDrop={(e) => !isAthlete && onDrop?.(e, exercise.id)}
     >
+      {/* Superset bar - lean design */}
       {showSupersetBar && (
-        <div className="w-1 bg-primary/60 rounded-full mr-3 shrink-0 relative">
+        <div className="w-0.5 bg-primary/60 rounded-full mr-2 shrink-0 relative">
           {supersetLabel && (
-            <span className="absolute -left-1 top-0 text-[10px] font-bold text-primary bg-background px-0.5">
+            <span className="absolute -left-0.5 -top-4 text-[9px] font-bold text-primary/80 bg-background px-0.5">
               {supersetLabel}
             </span>
           )}
         </div>
       )}
 
+      {/* Main card - lean borderless design */}
       <div className={cn(
-        "flex-1 bg-card border rounded-xl overflow-hidden transition-colors",
+        "flex-1 transition-colors min-w-0",
         isGhostExercise
-          ? "border-dashed border-2 border-emerald-400 bg-emerald-50/80"
+          ? "border-l-2 border-dashed border-emerald-400 bg-emerald-50/30 dark:bg-emerald-900/10 pl-2"
           : hasPendingChange && aiChangeType
             ? AI_BG_COLORS[aiChangeType]
-            : "border-border"
+            : ""
       )}>
-        {/* Header - compact to give more space to sets */}
+        {/* Header - edge-to-edge lean design */}
         <div
           role="button"
           tabIndex={0}
           onClick={handleHeaderClick}
           onKeyDown={handleKeyDown}
           className={cn(
-            "w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-muted/50 transition-colors",
+            "w-full flex items-center justify-between gap-2 px-1 py-1.5 text-left hover:bg-muted/20 transition-colors min-w-0",
             !isAthlete ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
           )}
         >
-          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0 overflow-hidden">
             {/* Selection checkbox for superset creation (coach mode only) */}
             {!isAthlete && isSelectionMode && (
               <button
@@ -342,16 +364,10 @@ export function ExerciseCard({
                   </span>
                 )}
               </div>
-              <p className={cn(
-                "text-xs text-muted-foreground truncate",
-                isRemove && "line-through opacity-60"
-              )}>
-                {formatShorthand(exercise)}
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {isAthlete && (
               <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                 {completedCount}/{totalSets}
@@ -364,7 +380,7 @@ export function ExerciseCard({
                   e.stopPropagation()
                   onRemoveExercise?.()
                 }}
-                className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                className="p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -400,7 +416,7 @@ export function ExerciseCard({
         )}
 
         {exercise.expanded && (
-          <div className="p-4 pt-2 space-y-2 border-t border-border">
+          <div className="px-0 pb-2 pt-0 space-y-0 min-w-0">
             {exercise.sets.map((set, index) => {
               // First incomplete set is active
               const firstIncompleteIndex = exercise.sets.findIndex((s) => !s.completed)
@@ -414,6 +430,10 @@ export function ExerciseCard({
                 setAIChanges?.get(set.id) ??
                 ungroupedSetChanges?.get(String(set.id)) ??
                 ungroupedSetChanges?.get(set.id)
+
+              // Check if this set has Freelap metadata
+              const hasFreeelapData = set.metadata && isFreeelapMetadata(set.metadata)
+              const isFreeelapExpanded = expandedFreeelapIds.has(set.id)
 
               return (
                 <div
@@ -441,6 +461,11 @@ export function ExerciseCard({
                     aiChangeType={setChange?.changeType}
                     aiCurrentData={setChange?.currentData}
                     aiProposedData={setChange?.proposedData}
+                    // Freelap expansion props
+                    hasFreeelapData={!!hasFreeelapData}
+                    isFreeelapExpanded={isFreeelapExpanded}
+                    onToggleFreeelapExpand={hasFreeelapData ? () => toggleFreeelapExpand(set.id) : undefined}
+                    onMetadataChange={hasFreeelapData ? (metadata) => onUpdateSetMetadata?.(set.id, metadata) : undefined}
                   />
                 </div>
               )

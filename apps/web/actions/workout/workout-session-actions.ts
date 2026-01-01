@@ -141,6 +141,7 @@ export async function getTodayAndOngoingSessionsAction(
             tempo,
             rpe,
             completed,
+            metadata,
             workout_log_exercise_id
           )
         ),
@@ -160,6 +161,7 @@ export async function getTodayAndOngoingSessionsAction(
           tempo,
           rpe,
           completed,
+          metadata,
           workout_log_exercise_id,
           session_plan_exercise_id
         )
@@ -312,6 +314,7 @@ export async function getPastSessionsAction(
             tempo,
             rpe,
             completed,
+            metadata,
             workout_log_exercise_id
           )
         ),
@@ -331,6 +334,7 @@ export async function getPastSessionsAction(
           tempo,
           rpe,
           completed,
+          metadata,
           workout_log_exercise_id,
           session_plan_exercise_id
         )
@@ -585,6 +589,7 @@ export async function getWorkoutSessionByIdAction(
             tempo,
             rpe,
             completed,
+            metadata,
             workout_log_exercise_id
           )
         ),
@@ -604,6 +609,7 @@ export async function getWorkoutSessionByIdAction(
           tempo,
           rpe,
           completed,
+          metadata,
           workout_log_exercise_id,
           session_plan_exercise_id
         )

@@ -53,12 +53,10 @@ export default async function WorkoutSessionPage({ params }: WorkoutSessionPageP
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="max-w-6xl mx-auto">
-        <Suspense fallback={<UnifiedPageSkeleton title="" variant="grid" />}>
-          <WorkoutSessionContent sessionId={sessionId} />
-        </Suspense>
-      </div>
+    <div className="w-full">
+      <Suspense fallback={<UnifiedPageSkeleton title="" variant="grid" />}>
+        <WorkoutSessionContent sessionId={sessionId} />
+      </Suspense>
     </div>
   )
 }

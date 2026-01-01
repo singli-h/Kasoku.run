@@ -1,10 +1,14 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useState, Fragment } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { Bot, Check, GripVertical, Plus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TrainingSet } from "../types"
 import type { UIDisplayType } from "@/lib/changeset/types"
+import { FreeelapMetricsTable } from "@/components/features/workout/components/exercise/freelap-metrics-table"
+import { isFreeelapMetadata, type FreeelapMetadata } from "@/types/freelap"
+import type { SetMetadata } from "../types/set-metadata"
 
 /** Visible fields computed from exercise type and plan data */
 export interface VisibleFields {
@@ -51,6 +55,15 @@ export interface SetRowProps {
   isGhostRow?: boolean
   /** Data for ghost row display (from AI proposal) */
   ghostData?: Record<string, unknown> | null
+  // Freelap data expansion
+  /** Whether this set has Freelap metadata to expand */
+  hasFreeelapData?: boolean
+  /** Whether the Freelap details are currently expanded */
+  isFreeelapExpanded?: boolean
+  /** Callback to toggle Freelap expansion */
+  onToggleFreeelapExpand?: () => void
+  /** Callback when Freelap metadata changes */
+  onMetadataChange?: (metadata: FreeelapMetadata) => void
 }
 
 /**
@@ -88,6 +101,11 @@ export function SetRow({
   // Ghost row props
   isGhostRow = false,
   ghostData,
+  // Freelap expansion props
+  hasFreeelapData = false,
+  isFreeelapExpanded = false,
+  onToggleFreeelapExpand,
+  onMetadataChange,
 }: SetRowProps) {
   // Task 10.1: Use pre-computed visible fields from ExerciseCard
   // Fall back to showing reps if no visibleFields provided
@@ -211,7 +229,7 @@ export function SetRow({
     const gShowEffort = visibleFields?.effort ?? false
     const gShowResistance = visibleFields?.resistance ?? false
 
-    const pillClass = "px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-emerald-100/80 text-emerald-700"
+    const pillClass = "px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-emerald-100/80 text-emerald-700"
 
     return (
       <div
@@ -313,36 +331,63 @@ export function SetRow({
     )
   }
 
+  // Get Freelap metadata if available
+  const freelapMetadata = set.metadata && isFreeelapMetadata(set.metadata)
+    ? set.metadata as FreeelapMetadata
+    : null
+
   // Athlete view - inline editable inputs with completion toggle on far right
   if (isAthlete) {
     return (
-      <div className={cn(
-        "flex items-center gap-2 py-2 px-2 rounded-lg transition-colors",
-        // Apply AI styling if there's a pending change, otherwise normal styling
-        hasPendingChange && aiChangeType
-          ? AI_SET_COLORS[aiChangeType]
-          : set.completed ? "bg-green-500/10" : "bg-muted/30"
-      )}>
-        {/* Set number (non-interactive) */}
-        <div className="relative shrink-0">
-          <span className={cn(
-            "w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium",
-            set.completed ? "bg-green-500/20 text-green-700" : "bg-muted text-muted-foreground"
-          )}>
-            {set.setIndex}
-          </span>
-          {/* AI indicator badge */}
-          {hasPendingChange && (
-            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-white">
-              <Bot className="h-2 w-2" />
-            </span>
-          )}
-        </div>
+      <Fragment>
+        <div className={cn(
+          "flex items-center gap-1 py-1.5 px-1 transition-colors min-w-0 w-full",
+          // Apply AI styling if there's a pending change, otherwise normal styling
+          hasPendingChange && aiChangeType
+            ? AI_SET_COLORS[aiChangeType]
+            : set.completed ? "bg-green-500/5" : "",
+          isFreeelapExpanded && hasFreeelapData && "bg-primary/5 dark:bg-primary/10"
+        )}>
+          {/* Expand indicator - LEFT of set number, larger icon */}
+          <div className="w-5 flex items-center justify-center shrink-0">
+            {hasFreeelapData && onToggleFreeelapExpand ? (
+              <button
+                type="button"
+                onClick={onToggleFreeelapExpand}
+                className="rounded transition-colors"
+                aria-label={isFreeelapExpanded ? "Collapse" : "Expand"}
+                aria-expanded={isFreeelapExpanded}
+              >
+                <span className={cn(
+                  "text-base font-medium leading-none",
+                  isFreeelapExpanded ? "text-primary" : "text-muted-foreground"
+                )}>
+                  {isFreeelapExpanded ? "▾" : "▸"}
+                </span>
+              </button>
+            ) : null}
+          </div>
 
-        {/* Inline editable inputs */}
-        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+          {/* Set number - always aligned */}
+          <div className="relative shrink-0">
+            <span className={cn(
+              "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium",
+              set.completed ? "bg-green-500/20 text-green-700 dark:text-green-400" : "bg-muted text-muted-foreground"
+            )}>
+              {set.setIndex}
+            </span>
+            {/* AI indicator badge */}
+            {hasPendingChange && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-blue-500 text-white">
+                <Bot className="h-1.5 w-1.5" />
+              </span>
+            )}
+          </div>
+
+        {/* Inline editable inputs - horizontal scroll */}
+        <div className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0">
           {showReps && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
                 type="number"
                 min={0}
@@ -356,7 +401,7 @@ export function SetRow({
             </div>
           )}
           {showWeight && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
                 type="number"
                 min={0}
@@ -371,7 +416,7 @@ export function SetRow({
             </div>
           )}
           {showDistance && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
                 type="number"
                 min={0}
@@ -385,7 +430,7 @@ export function SetRow({
             </div>
           )}
           {showTime && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
                 type="number"
                 min={0}
@@ -400,7 +445,7 @@ export function SetRow({
             </div>
           )}
           {showHeight && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
                 type="number"
                 min={0}
@@ -415,7 +460,7 @@ export function SetRow({
             </div>
           )}
           {showResistance && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
                 type="number"
                 min={0}
@@ -430,7 +475,7 @@ export function SetRow({
             </div>
           )}
           {showPower && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
                 type="number"
                 min={0}
@@ -445,7 +490,7 @@ export function SetRow({
             </div>
           )}
           {showVelocity && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
                 type="number"
                 min={0}
@@ -460,7 +505,7 @@ export function SetRow({
             </div>
           )}
           {showRestTime && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
                 type="number"
                 min={0}
@@ -474,7 +519,7 @@ export function SetRow({
             </div>
           )}
           {showTempo && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
                 type="text"
                 value={set.tempo ?? ""}
@@ -485,7 +530,7 @@ export function SetRow({
             </div>
           )}
           {showEffort && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
                 type="number"
                 min={0}
@@ -499,7 +544,7 @@ export function SetRow({
             </div>
           )}
           {showRPE && (
-            <div className={cn("px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1", set.completed ? "bg-green-500/20" : "bg-muted")}>
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <span className="text-muted-foreground text-xs">RPE</span>
               <input
                 type="number"
@@ -518,7 +563,7 @@ export function SetRow({
         <button
           onClick={onComplete}
           className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all shrink-0",
+            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all shrink-0 flex-shrink-0",
             set.completed
               ? "bg-green-500 text-white"
               : "bg-background border border-border hover:border-primary hover:bg-primary hover:text-primary-foreground"
@@ -526,7 +571,30 @@ export function SetRow({
         >
           {set.completed ? <Check className="w-4 h-4" /> : <Check className="w-4 h-4 opacity-30" />}
         </button>
-      </div>
+        </div>
+
+        {/* Freelap Data Expansion - Lean inline design */}
+        <AnimatePresence mode="wait">
+          {isFreeelapExpanded && freelapMetadata && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              {/* Lean inline sub-row - aligned with set content (skip expand col + index col) */}
+              <div className="ml-10 pl-2 border-l border-primary/30 py-0.5">
+                <FreeelapMetricsTable
+                  metadata={freelapMetadata}
+                  onMetadataChange={onMetadataChange}
+                  readOnly={set.completed}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Fragment>
     )
   }
 
@@ -591,12 +659,12 @@ export function SetRow({
 
       {/* Pill notation inputs - show only type-appropriate fields */}
       <div className={cn(
-        "flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide",
+        "flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide min-w-0",
         isRemove && "opacity-60"
       )}>
         {coachShowReps && (
           <div className={cn(
-            "px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1",
+            "px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0",
             isFieldChanged('reps') ? "ai-update-cell" : "bg-muted"
           )}>
             <input
@@ -614,7 +682,7 @@ export function SetRow({
         )}
         {coachShowWeight && (
           <div className={cn(
-            "px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1",
+            "px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0",
             isFieldChanged('weight') ? "ai-update-cell" : "bg-muted"
           )}>
             <input
@@ -632,7 +700,7 @@ export function SetRow({
           </div>
         )}
         {coachShowDistance && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <input
               type="number"
               min={0}
@@ -646,7 +714,7 @@ export function SetRow({
           </div>
         )}
         {coachShowTime && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <input
               type="number"
               min={0}
@@ -661,7 +729,7 @@ export function SetRow({
           </div>
         )}
         {coachShowHeight && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <input
               type="number"
               min={0}
@@ -676,7 +744,7 @@ export function SetRow({
           </div>
         )}
         {coachShowResistance && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <input
               type="number"
               min={0}
@@ -691,7 +759,7 @@ export function SetRow({
           </div>
         )}
         {coachShowPower && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <input
               type="number"
               min={0}
@@ -706,7 +774,7 @@ export function SetRow({
           </div>
         )}
         {coachShowVelocity && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <input
               type="number"
               min={0}
@@ -721,7 +789,7 @@ export function SetRow({
           </div>
         )}
         {coachShowRestTime && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <input
               type="number"
               min={0}
@@ -735,7 +803,7 @@ export function SetRow({
           </div>
         )}
         {coachShowTempo && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <input
               type="text"
               value={set.tempo ?? ""}
@@ -746,7 +814,7 @@ export function SetRow({
           </div>
         )}
         {coachShowEffort && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <input
               type="number"
               min={0}
@@ -760,7 +828,7 @@ export function SetRow({
           </div>
         )}
         {coachShowRPE && (
-          <div className="px-2 py-1 rounded-md text-sm font-mono flex items-center gap-1 bg-muted">
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <span className="text-muted-foreground text-xs">RPE</span>
             <input
               type="number"

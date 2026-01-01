@@ -27,7 +27,9 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
           <SidebarInset className="overflow-x-hidden">
             <ProtectedHeader />
             <main className="flex flex-1 flex-col gap-4 p-4 pt-14 md:pt-0 min-h-0 overflow-hidden">
-              {children}
+              <div className="min-w-0 w-full">
+                {children}
+              </div>
             </main>
           </SidebarInset>
         </SidebarProvider>

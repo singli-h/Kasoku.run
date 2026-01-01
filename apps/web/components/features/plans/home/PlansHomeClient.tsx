@@ -182,20 +182,20 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Filters - Compact single row on mobile: 50% search, 25% state, 25% group */}
+      <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-row sm:gap-4">
+        <div className="relative col-span-2 sm:flex-1">
+          <Search className="absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search macrocycles..."
+            placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-8 sm:pl-10 text-sm"
           />
         </div>
         <Select value={stateFilter} onValueChange={setStateFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="All States" />
+          <SelectTrigger className="col-span-1 text-xs sm:text-sm sm:w-[180px]">
+            <SelectValue placeholder="State" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All States</SelectItem>
@@ -205,8 +205,8 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
           </SelectContent>
         </Select>
         <Select value={groupFilter} onValueChange={setGroupFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="All Groups" />
+          <SelectTrigger className="col-span-1 text-xs sm:text-sm sm:w-[180px]">
+            <SelectValue placeholder="Group" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Groups</SelectItem>
