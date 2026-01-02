@@ -14,6 +14,10 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+// Reuse searchExercises from coach domain (same exercise library)
+import { executeSearchExercises } from './read-impl'
+import type { SearchExercisesInput } from '../tools'
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -411,7 +415,9 @@ export async function executeAthleteReadTool(
       return executeGetWorkoutContext(input, supabase)
     }
 
-    // searchExercises is reused from read-impl.ts (coach domain)
+    case 'searchExercises':
+      // Reuse the same exercise search from coach domain
+      return executeSearchExercises(args as SearchExercisesInput, supabase)
 
     default:
       throw new Error(`Unknown athlete read tool: ${toolName}`)

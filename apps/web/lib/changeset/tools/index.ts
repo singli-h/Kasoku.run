@@ -17,6 +17,12 @@ export {
   type GetSessionContextInput,
   type SearchExercisesInput,
   type ReadToolName,
+  // Athlete read tools
+  athleteReadTools,
+  getWorkoutContextTool,
+  getWorkoutContextSchema,
+  type GetWorkoutContextInput,
+  type AthleteReadToolName,
 } from './read-tools'
 
 export {
@@ -81,7 +87,7 @@ export {
 } from './athlete-proposal-tools'
 
 // Import for re-assembly
-import { readTools } from './read-tools'
+import { readTools, athleteReadTools } from './read-tools'
 import { proposalTools } from './proposal-tools'
 import { coordinationTools } from './coordination-tools'
 import { athleteProposalTools } from './athlete-proposal-tools'
@@ -191,6 +197,7 @@ export function getToolCategory(
  * for the athlete workout assistant.
  *
  * Key differences from coach domain:
+ * - Uses athleteReadTools (getWorkoutContext) instead of readTools (getSessionContext)
  * - Uses athlete proposal tools instead of coach proposal tools
  * - No delete operations (athletes swap or skip instead)
  * - Operates on workout_log_* entities instead of session_plan_*
@@ -208,7 +215,7 @@ export function getToolCategory(
  * ```
  */
 export const athleteDomainTools = {
-  ...readTools,
+  ...athleteReadTools,
   ...athleteProposalTools,
   ...coordinationTools,
 }
@@ -229,6 +236,16 @@ export function isAthleteProposalTool(toolName: string): boolean {
 }
 
 /**
+ * Checks if a tool name is an athlete read tool.
+ *
+ * @param toolName - The tool name to check
+ * @returns true if the tool is an athlete read-only tool
+ */
+export function isAthleteReadTool(toolName: string): boolean {
+  return toolName in athleteReadTools
+}
+
+/**
  * Gets the category of an athlete tool.
  *
  * @param toolName - The tool name
@@ -237,7 +254,7 @@ export function isAthleteProposalTool(toolName: string): boolean {
 export function getAthleteToolCategory(
   toolName: string
 ): 'read' | 'proposal' | 'coordination' | 'unknown' {
-  if (isReadTool(toolName)) return 'read'
+  if (isAthleteReadTool(toolName)) return 'read'
   if (isAthleteProposalTool(toolName)) return 'proposal'
   if (isCoordinationTool(toolName)) return 'coordination'
   return 'unknown'

@@ -95,3 +95,52 @@ export const readTools = {
  * Type-safe tool names for read tools.
  */
 export type ReadToolName = keyof typeof readTools
+
+// ============================================================================
+// Athlete Read Tools
+// ============================================================================
+
+/**
+ * Schema for getWorkoutContext tool parameters.
+ *
+ * Gets the current workout session with prescribed and actual data.
+ * Use before proposing changes to understand the athlete's workout.
+ */
+export const getWorkoutContextSchema = z.object({
+  workoutLogId: z
+    .string()
+    .describe('ID of the workout log to retrieve'),
+  includeHistory: z
+    .boolean()
+    .default(false)
+    .describe('Include previous performance data for comparison'),
+})
+
+export type GetWorkoutContextInput = z.infer<typeof getWorkoutContextSchema>
+
+/**
+ * Vercel AI SDK tool definition for getWorkoutContext.
+ */
+export const getWorkoutContextTool = tool({
+  description:
+    'Get the current workout session with all exercises and sets, including prescribed values and actual performance. Use before proposing changes.',
+  inputSchema: getWorkoutContextSchema,
+  // No execute - handled client-side
+})
+
+/**
+ * All read tools for the Athlete domain (workout logging).
+ *
+ * Key differences from coach domain:
+ * - Uses getWorkoutContext instead of getSessionContext
+ * - Provides both prescribed and actual performance data
+ */
+export const athleteReadTools = {
+  getWorkoutContext: getWorkoutContextTool,
+  searchExercises: searchExercisesTool,
+}
+
+/**
+ * Type-safe tool names for athlete read tools.
+ */
+export type AthleteReadToolName = keyof typeof athleteReadTools

@@ -10,7 +10,7 @@
  */
 
 import { useState } from 'react'
-import { Bot, Check, RefreshCw, X, Loader2, AlertCircle, ChevronDown, ChevronUp, Plus, Edit2, Minus, ArrowRightLeft } from 'lucide-react'
+import { Bot, Check, RefreshCw, Loader2, AlertCircle, ChevronDown, ChevronUp, Plus, Edit2, Minus, ArrowRightLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { ChangeSet, ChangeRequest, ExecutionError } from '@/lib/changeset/types'
@@ -250,13 +250,12 @@ export function ApprovalBanner({
             )}
           </button>
 
-          {/* Action buttons */}
+          {/* Action buttons - No dismiss/reject button per design */}
+          {/* Users should use "Change" to provide feedback or refresh page to clear */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={onDismiss} className="h-8 px-2">
-              <X className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleRegenerate} className="h-8 px-2">
-              <RefreshCw className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={handleRegenerate} className="h-8">
+              <RefreshCw className="mr-1 h-4 w-4" />
+              Change
             </Button>
             <Button size="sm" onClick={handleApprove} className="h-8">
               <Check className="mr-1 h-4 w-4" />

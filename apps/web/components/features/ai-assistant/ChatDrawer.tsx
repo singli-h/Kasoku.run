@@ -8,7 +8,7 @@
  * Consistent styling with ChatSidebar.
  */
 
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useMemo } from 'react'
 import { Bot, Send, X, Loader2, Mic, MicOff, RotateCcw } from 'lucide-react'
 import { Drawer } from 'vaul'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
@@ -42,6 +42,19 @@ export function ChatDrawer({
   onClearChat,
 }: ChatDrawerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Deduplicate messages by ID to prevent React key collision warnings
+  // This can happen when AI SDK adds messages during tool execution flow
+  const uniqueMessages = useMemo(() => {
+    const seen = new Set<string>()
+    return messages.filter((message) => {
+      if (seen.has(message.id)) {
+        return false
+      }
+      seen.add(message.id)
+      return true
+    })
+  }, [messages])
 
   const handleTranscript = useCallback(
     (transcript: string) => {
@@ -129,11 +142,11 @@ export function ChatDrawer({
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4">
-            {messages.length === 0 ? (
+            {uniqueMessages.length === 0 ? (
               <EmptyState />
             ) : (
               <div className="space-y-4">
-                {messages.map((message) => (
+                {uniqueMessages.map((message) => (
                   <ChatMessage key={message.id} message={message} />
                 ))}
                 {isLoading && (

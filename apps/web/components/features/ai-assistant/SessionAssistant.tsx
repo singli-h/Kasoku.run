@@ -128,6 +128,9 @@ function SessionAssistantContent({
     toolName: string
   } | null>(null)
 
+  // Track responded tool calls to prevent duplicate submissions (race condition guard)
+  const respondedToolCallsRef = useRef<Set<string>>(new Set())
+
   const changeSet = useChangeSet()
 
   // Auto-collapse chat when proposals are pending (inline mode only)
@@ -258,6 +261,13 @@ function SessionAssistantContent({
       return
     }
 
+    // Guard against duplicate submissions (race condition)
+    if (respondedToolCallsRef.current.has(pendingToolCall.toolCallId)) {
+      console.warn('[handleApprove] Already responded to tool call:', pendingToolCall.toolCallId)
+      return
+    }
+    respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
+
     setIsExecuting(true)
     setExecutionError(undefined)
 
@@ -340,6 +350,13 @@ function SessionAssistantContent({
     (feedback?: string) => {
       if (!pendingToolCall) return
 
+      // Guard against duplicate submissions (race condition)
+      if (respondedToolCallsRef.current.has(pendingToolCall.toolCallId)) {
+        console.warn('[handleRegenerate] Already responded to tool call:', pendingToolCall.toolCallId)
+        return
+      }
+      respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
+
       // Return rejection result to AI (no await)
       addToolOutput({
         tool: pendingToolCall.toolName,
@@ -364,9 +381,17 @@ function SessionAssistantContent({
 
   /**
    * Handle user dismissal of changes.
+   * Note: Dismiss button is removed from UI, but this handler remains for error state dismiss.
    */
   const handleDismiss = useCallback(() => {
     if (!pendingToolCall) return
+
+    // Guard against duplicate submissions (race condition)
+    if (respondedToolCallsRef.current.has(pendingToolCall.toolCallId)) {
+      console.warn('[handleDismiss] Already responded to tool call:', pendingToolCall.toolCallId)
+      return
+    }
+    respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
 
     // Return rejection result to AI (no await)
     addToolOutput({
@@ -393,6 +418,8 @@ function SessionAssistantContent({
     setShowBanner(false)
     setExecutionError(undefined)
     setPendingToolCall(null)
+    // Clear responded tool calls tracking
+    respondedToolCallsRef.current.clear()
   }, [setMessages, changeSet])
 
   // Context value for inline proposal section

@@ -7,7 +7,7 @@
  * Clean, minimal design with smooth transitions.
  */
 
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, Send, X, Loader2, Mic, MicOff, Pin, PinOff, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -48,6 +48,19 @@ export function ChatSidebar({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [localPinned, setLocalPinned] = useState(isPinned)
+
+  // Deduplicate messages by ID to prevent React key collision warnings
+  // This can happen when AI SDK adds messages during tool execution flow
+  const uniqueMessages = useMemo(() => {
+    const seen = new Set<string>()
+    return messages.filter((message) => {
+      if (seen.has(message.id)) {
+        return false
+      }
+      seen.add(message.id)
+      return true
+    })
+  }, [messages])
 
   const handleTranscript = useCallback(
     (transcript: string) => {
@@ -153,11 +166,11 @@ export function ChatSidebar({
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4">
-              {messages.length === 0 ? (
+              {uniqueMessages.length === 0 ? (
                 <EmptyState />
               ) : (
                 <div className="space-y-4">
-                  {messages.map((message) => (
+                  {uniqueMessages.map((message) => (
                     <ChatMessage key={message.id} message={message} />
                   ))}
                   {isLoading && (
