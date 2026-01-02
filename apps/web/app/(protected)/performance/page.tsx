@@ -2,33 +2,51 @@
 
 import { Suspense } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  IndividualPerformanceAnalytics, 
-  ComparativePerformanceAnalytics
+import {
+  ComparativePerformanceAnalytics,
+  SprintAnalyticsDashboard,
+  GymAnalyticsDashboard,
 } from "@/components/features/performance"
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
+import { Timer, Dumbbell, Users } from "lucide-react"
 
 export default async function PerformancePage() {
   return (
     <PageLayout
       title="Performance Analytics"
-      description="Track your progress and compare your performance with comprehensive analytics"
+      description="Track your progress with detailed sprint and gym analytics"
     >
-      <Tabs defaultValue="individual" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="individual">Individual Analytics</TabsTrigger>
-          <TabsTrigger value="comparative">Comparative Analytics</TabsTrigger>
+      <Tabs defaultValue="sprint" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 max-w-md">
+          <TabsTrigger value="sprint" className="gap-1.5 text-xs sm:text-sm">
+            <Timer className="h-4 w-4" />
+            <span className="hidden sm:inline">Sprint</span>
+          </TabsTrigger>
+          <TabsTrigger value="gym" className="gap-1.5 text-xs sm:text-sm">
+            <Dumbbell className="h-4 w-4" />
+            <span className="hidden sm:inline">Gym</span>
+          </TabsTrigger>
+          <TabsTrigger value="compare" className="gap-1.5 text-xs sm:text-sm">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Compare</span>
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="individual">
-          <Suspense fallback={<UnifiedPageSkeleton title="Performance Analytics" variant="dashboard" />}>
-            <IndividualPerformanceAnalyticsFetcher />
+        <TabsContent value="sprint">
+          <Suspense fallback={<SprintAnalyticsSkeleton />}>
+            <SprintAnalyticsFetcher />
           </Suspense>
         </TabsContent>
 
-        <TabsContent value="comparative">
-          <Suspense fallback={<UnifiedPageSkeleton title="Performance Analytics" variant="dashboard" />}>
-            <ComparativePerformanceAnalyticsFetcher />
+        <TabsContent value="gym">
+          <Suspense fallback={<UnifiedPageSkeleton title="Gym Analytics" variant="dashboard" />}>
+            <GymAnalyticsFetcher />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="compare">
+          <Suspense fallback={<UnifiedPageSkeleton title="Comparative Analytics" variant="dashboard" />}>
+            <ComparativeAnalyticsFetcher />
           </Suspense>
         </TabsContent>
       </Tabs>
@@ -36,24 +54,52 @@ export default async function PerformancePage() {
   )
 }
 
-async function IndividualPerformanceAnalyticsFetcher() {
-  // In a real implementation, this would fetch user-specific performance data
-  // For now, we'll pass the analytics component directly
-  
+async function SprintAnalyticsFetcher() {
+  // SprintAnalyticsDashboard handles its own data fetching via React Query
+  return <SprintAnalyticsDashboard />
+}
+
+async function GymAnalyticsFetcher() {
+  // GymAnalyticsDashboard handles its own data fetching via React Query
+  return <GymAnalyticsDashboard />
+}
+
+async function ComparativeAnalyticsFetcher() {
+  // In production, this would fetch comparative performance data
+  // with proper anonymization and privacy controls
+
   return (
-    <IndividualPerformanceAnalytics 
+    <ComparativePerformanceAnalytics
       className="w-full"
     />
   )
 }
 
-async function ComparativePerformanceAnalyticsFetcher() {
-  // In a real implementation, this would fetch comparative performance data
-  // with proper anonymization and privacy controls
-  
+function SprintAnalyticsSkeleton() {
   return (
-    <ComparativePerformanceAnalytics 
-      className="w-full"
-    />
+    <div className="space-y-6">
+      {/* Quick Stats Skeleton */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+        ))}
+      </div>
+
+      {/* Chart + Benchmark Grid Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 h-80 rounded-lg bg-muted animate-pulse" />
+        <div className="h-80 rounded-lg bg-muted animate-pulse" />
+      </div>
+
+      {/* Phase Cards Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-36 rounded-lg bg-muted animate-pulse" />
+        ))}
+      </div>
+
+      {/* Table Skeleton */}
+      <div className="h-64 rounded-lg bg-muted animate-pulse" />
+    </div>
   )
-} 
+}
