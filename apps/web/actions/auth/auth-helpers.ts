@@ -33,7 +33,7 @@ export async function isAuthenticatedAction(): Promise<ActionState<boolean>> {
 }
 
 /**
- * Check if the current user has a specific role (athlete, coach, admin)
+ * Check if the current user has a specific role (athlete, coach, individual)
  */
 export async function hasRoleAction(requiredRole: string): Promise<ActionState<boolean>> {
   try {
@@ -82,10 +82,10 @@ export async function hasRoleAction(requiredRole: string): Promise<ActionState<b
 }
 
 /**
- * Check if the current user has admin privileges
+ * Check if the current user is an individual (self-coaching user)
  */
-export async function isAdminAction(): Promise<ActionState<boolean>> {
-  return hasRoleAction('admin')
+export async function isIndividualAction(): Promise<ActionState<boolean>> {
+  return hasRoleAction('individual')
 }
 
 /**
@@ -150,12 +150,13 @@ export async function getUserRoleAction(): Promise<ActionState<string | null>> {
 }
 
 /**
- * Check if the current user can access athlete data (coach or admin)
+ * Check if the current user can access athlete data (coach or individual)
+ * Note: Coaches can access all their athletes' data, individuals can access their own data
  */
 export async function canAccessAthleteDataAction(): Promise<ActionState<boolean>> {
   try {
     const roleResult = await getUserRoleAction()
-    
+
     if (!roleResult.isSuccess || !roleResult.data) {
       return {
         isSuccess: true,
@@ -164,7 +165,8 @@ export async function canAccessAthleteDataAction(): Promise<ActionState<boolean>
       }
     }
 
-    const canAccess = roleResult.data === 'coach' || roleResult.data === 'admin'
+    // Coaches can access athlete data they coach, individuals can access their own
+    const canAccess = roleResult.data === 'coach' || roleResult.data === 'individual'
 
     return {
       isSuccess: true,

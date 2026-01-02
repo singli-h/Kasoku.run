@@ -8,10 +8,9 @@ import { getUserRole } from '@/lib/user-cache'
  * User role types
  * - athlete: User training under a coach
  * - coach: User managing athletes and creating training programs
- * - admin: System administrator
  * - individual: Self-coaching user (Athlete + self-planning capabilities)
  */
-export type UserRole = 'athlete' | 'coach' | 'admin' | 'individual'
+export type UserRole = 'athlete' | 'coach' | 'individual'
 
 /**
  * User role context value
@@ -21,7 +20,6 @@ interface UserRoleContextValue {
   isLoading: boolean
   isCoach: boolean
   isAthlete: boolean
-  isAdmin: boolean
   isIndividual: boolean
   hasRole: (role: UserRole | UserRole[]) => boolean
 }
@@ -91,7 +89,6 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     isCoach: role === 'coach',
     isAthlete: role === 'athlete',
-    isAdmin: role === 'admin',
     isIndividual: role === 'individual',
     hasRole: (requiredRole: UserRole | UserRole[]) => {
       if (!role) return false

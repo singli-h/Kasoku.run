@@ -189,7 +189,11 @@ async function handleUserCreated(data: UserWebhookEvent["data"]) {
     : primaryEmail.split('@')[0])
 
   // Determine role from metadata or default to 'athlete'
-  const role = data.public_metadata?.role || data.unsafe_metadata?.role || 'athlete'
+  type UserRole = 'coach' | 'athlete' | 'individual'
+  const rawRole = data.public_metadata?.role || data.unsafe_metadata?.role || 'athlete'
+  const role: UserRole = ['coach', 'athlete', 'individual'].includes(rawRole as string)
+    ? (rawRole as UserRole)
+    : 'athlete'
 
   // Check if user already exists (handles webhook retries)
   const { data: existingUser } = await supabaseService
@@ -267,7 +271,11 @@ async function handleUserUpdated(data: UserWebhookEvent["data"]) {
   }
 
   // Determine role from metadata
-  const role = data.public_metadata?.role || data.unsafe_metadata?.role
+  type UserRole = 'coach' | 'athlete' | 'individual'
+  const rawRole = data.public_metadata?.role || data.unsafe_metadata?.role
+  const role: UserRole | undefined = rawRole && ['coach', 'athlete', 'individual'].includes(rawRole as string)
+    ? (rawRole as UserRole)
+    : undefined
 
   // Try using the RPC function if available, fallback to direct update
   const { data: rpcResult, error: rpcError } = await supabaseService.rpc(

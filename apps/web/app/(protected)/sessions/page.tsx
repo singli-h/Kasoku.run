@@ -6,8 +6,8 @@ import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { SessionsListView } from "@/components/features/sessions"
 
 export default async function SessionsPage() {
-  // Protect this page - only coaches and admins can access
-  await serverProtectRoute({ allowedRoles: ['coach', 'admin'] })
+  // Protect this page - only coaches and individuals can access
+  await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
 
   return (
     <PageLayout

@@ -8,7 +8,7 @@ Auth module exports for the simplified athlete/coach role system
 export {
   isAuthenticatedAction,
   hasRoleAction,
-  isAdminAction,
+  isIndividualAction,
   isCoachAction,
   isAthleteAction,
   getUserRoleAction,

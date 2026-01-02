@@ -60,8 +60,8 @@ function calculateAverage(sessions: Array<{ volume: number; intensity: number }>
 }
 
 export default async function PlanWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
-  // Protect this page - only coaches and admins can access
-  await serverProtectRoute({ allowedRoles: ['coach', 'admin'] })
+  // Protect this page - only coaches and individuals can access
+  await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
 
   const resolvedParams = await params
   const planId = Number(resolvedParams.id)

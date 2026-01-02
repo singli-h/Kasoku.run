@@ -15,8 +15,8 @@ interface SessionPageProps {
 }
 
 export default async function SessionPage({ params }: SessionPageProps) {
-  // Protect this page - only coaches and admins can access
-  await serverProtectRoute({ allowedRoles: ['coach', 'admin'] })
+  // Protect this page - only coaches and individuals can access
+  await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
 
   const { id } = await params
   const sessionId = parseInt(id, 10)

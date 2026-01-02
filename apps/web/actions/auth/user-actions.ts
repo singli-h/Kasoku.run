@@ -375,7 +375,7 @@ export async function completeOnboardingAction(
     }
 
     if (role) {
-      updates.role = role as string
+      updates.role = role as 'coach' | 'athlete' | 'individual'
     }
 
     return await updateSupabaseUserAction(userId, updates)

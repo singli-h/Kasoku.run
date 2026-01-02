@@ -6,8 +6,8 @@ import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { MesoWizard } from "@/components/features/plans/components/mesowizard/MesoWizard"
 
 export default async function NewPlanPage() {
-  // Protect this page - only coaches and admins can access
-  await serverProtectRoute({ allowedRoles: ['coach', 'admin'] })
+  // Protect this page - only coaches and individuals can access
+  await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
 
   return (
     <PageLayout

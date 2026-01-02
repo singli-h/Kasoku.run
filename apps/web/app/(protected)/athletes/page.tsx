@@ -3,8 +3,8 @@ import { PageLayout } from "@/components/layout"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
 
 export default async function AthletesPage() {
-  // Protect this page - only coaches and admins can access
-  await serverProtectRoute({ allowedRoles: ['coach', 'admin'] })
+  // Protect this page - only coaches can access (individuals don't manage other athletes)
+  await serverProtectRoute({ allowedRoles: ['coach'] })
 
   return (
     <PageLayout

@@ -127,7 +127,7 @@ export async function getDbUserId(clerkId: string): Promise<number> {
  * 4. Handles edge cases like deleted users
  * 
  * @param clerkId - The Clerk user ID (from auth().userId)
- * @returns Promise<string> - The user role ('athlete', 'coach', 'admin')
+ * @returns Promise<string> - The user role ('athlete', 'coach', 'individual')
  * @throws Error if user not found or database error
  * 
  * @example

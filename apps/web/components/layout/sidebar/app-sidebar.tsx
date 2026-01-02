@@ -118,7 +118,7 @@ const trainingItems: TrainingItem[] = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
-  const { role, isAdmin, isLoading } = useUserRole()
+  const { role, isLoading } = useUserRole()
 
   // Filter navigation items based on user role
   const filteredNavItems = React.useMemo(() => {
@@ -127,12 +127,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return navItems.filter(item => {
       // If visibleTo is undefined, item is visible to all roles
       if (!item.visibleTo) return true
-      // Admin can see everything
-      if (isAdmin) return true
       // Check if current role is in visibleTo array
       return item.visibleTo.includes(role)
     })
-  }, [role, isAdmin, isLoading])
+  }, [role, isLoading])
 
   // Filter training items based on user role
   const filteredTrainingItems = React.useMemo(() => {
@@ -141,12 +139,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return trainingItems.filter(item => {
       // If visibleTo is undefined, item is visible to all roles
       if (!item.visibleTo) return true
-      // Admin can see everything
-      if (isAdmin) return true
       // Check if current role is in visibleTo array
       return item.visibleTo.includes(role)
     })
-  }, [role, isAdmin, isLoading])
+  }, [role, isLoading])
 
   // Add active state based on current pathname
   const navItemsWithActive = filteredNavItems.map(item => ({

@@ -6,8 +6,8 @@ import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { PersonalBestsManagement } from "@/components/features/personal-bests"
 
 export default async function PersonalBestsPage() {
-  // Protect this page - athletes and coaches can access
-  await serverProtectRoute({ allowedRoles: ['athlete', 'coach', 'admin'] })
+  // Protect this page - athletes, coaches, and individuals can access
+  await serverProtectRoute({ allowedRoles: ['athlete', 'coach', 'individual'] })
 
   return (
     <PageLayout

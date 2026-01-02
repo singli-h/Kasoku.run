@@ -67,7 +67,7 @@ import type { Database, Json } from "@/types/database"
 // Define types from database schema
 type UserInsert = Database['public']['Tables']['users']['Insert']
 
-type UserRole = 'athlete' | 'coach' | 'admin'
+type UserRole = 'athlete' | 'coach' | 'individual'
 type Gender = 'male' | 'female' | 'other'
 type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced' | 'elite'
 

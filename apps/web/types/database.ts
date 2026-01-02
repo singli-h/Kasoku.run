@@ -1084,7 +1084,7 @@ export type Database = {
           last_name: string | null
           metadata: Json | null
           onboarding_completed: boolean | null
-          role: string
+          role: Database["public"]["Enums"]["role"]
           sex: string | null
           subscription_status: string
           timezone: string
@@ -1103,7 +1103,7 @@ export type Database = {
           last_name?: string | null
           metadata?: Json | null
           onboarding_completed?: boolean | null
-          role: string
+          role?: Database["public"]["Enums"]["role"]
           sex?: string | null
           subscription_status?: string
           timezone: string
@@ -1122,7 +1122,7 @@ export type Database = {
           last_name?: string | null
           metadata?: Json | null
           onboarding_completed?: boolean | null
-          role?: string
+          role?: Database["public"]["Enums"]["role"]
           sex?: string | null
           subscription_status?: string
           timezone?: string
@@ -1393,6 +1393,7 @@ export type Database = {
         | "profile"
         | "note"
         | "session_summary"
+      role: "coach" | "athlete" | "individual"
       session_status: "assigned" | "ongoing" | "completed" | "cancelled"
     }
     CompositeTypes: {
@@ -1531,6 +1532,7 @@ export const Constants = {
         "note",
         "session_summary",
       ],
+      role: ["coach", "athlete", "individual"],
       session_status: ["assigned", "ongoing", "completed", "cancelled"],
     },
   },
