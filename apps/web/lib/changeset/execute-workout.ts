@@ -14,6 +14,11 @@ import {
   addExercisePerformanceAction,
   updateExercisePerformanceAction,
 } from '@/actions/sessions/training-session-actions'
+import {
+  addWorkoutExerciseAction,
+  updateWorkoutExerciseAction,
+  updateWorkoutNotesAction,
+} from '@/actions/workout/workout-exercise-actions'
 import type { ChangeRequest, ChangeSet, ExecutionResult } from './types'
 import { classifyError } from './errors'
 import { convertKeysToCamelCase } from './entity-mappings'
@@ -69,9 +74,7 @@ export async function executeWorkoutChangeSet(
 
       switch (request.entityType) {
         case 'workout_log_exercise':
-          // Exercise changes would require adding/removing workout_log_exercises
-          // For MVP, we'll focus on set changes which are more common during workouts
-          console.log('[executeWorkoutChangeSet] Exercise change detected (not implemented in MVP)')
+          await applyWorkoutExerciseChange(request, proposedData, idMappings, workoutLogId)
           break
 
         case 'workout_log_set':
@@ -79,8 +82,7 @@ export async function executeWorkoutChangeSet(
           break
 
         case 'workout_log':
-          // Session-level changes (notes, status) handled separately
-          console.log('[executeWorkoutChangeSet] Session change detected (handled at session level)')
+          await applyWorkoutLogChange(request, proposedData, workoutLogId)
           break
       }
     }
@@ -192,6 +194,118 @@ async function applyWorkoutSetChange(
       break
     }
   }
+}
+
+/**
+ * Applies a single workout exercise change (create or update).
+ */
+async function applyWorkoutExerciseChange(
+  request: ChangeRequest,
+  proposedData: Record<string, unknown> | null,
+  idMappings: Record<string, string>,
+  workoutLogId: number
+): Promise<void> {
+  switch (request.operationType) {
+    case 'create': {
+      // Add new exercise to workout
+      const exerciseId = proposedData?.exerciseId as number | undefined
+      const exerciseName = proposedData?.exerciseName as string | undefined
+
+      if (!exerciseId) {
+        console.warn('[applyWorkoutExerciseChange] Missing exerciseId, skipping')
+        return
+      }
+
+      const result = await addWorkoutExerciseAction(workoutLogId, {
+        exercise_id: exerciseId,
+        exercise_order: proposedData?.exerciseOrder as number | undefined,
+        notes: proposedData?.notes as string | undefined,
+      })
+
+      if (!result.isSuccess) {
+        throw new Error(`Failed to add exercise: ${result.message}`)
+      }
+
+      // Track ID mapping if we have a temp ID
+      if (request.entityId && result.data?.id) {
+        idMappings[request.entityId] = String(result.data.id)
+      }
+
+      console.log('[applyWorkoutExerciseChange] Created exercise:', result.data)
+      break
+    }
+
+    case 'update': {
+      // Update exercise (swap or update notes)
+      const entityIdNum = request.entityId ? parseInt(request.entityId, 10) : NaN
+      const workoutLogExerciseId = request.currentData?.id as number | undefined
+        ?? (isNaN(entityIdNum) ? undefined : entityIdNum)
+
+      if (!workoutLogExerciseId || isNaN(workoutLogExerciseId)) {
+        console.warn('[applyWorkoutExerciseChange] Missing workoutLogExerciseId, skipping')
+        return
+      }
+
+      const updates: Record<string, unknown> = {}
+      if (proposedData?.exerciseId) updates.exercise_id = proposedData.exerciseId
+      if (proposedData?.exerciseOrder) updates.exercise_order = proposedData.exerciseOrder
+      if (proposedData?.notes !== undefined) updates.notes = proposedData.notes
+
+      // Filter out undefined values
+      const filteredUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([, v]) => v !== undefined)
+      )
+
+      if (Object.keys(filteredUpdates).length === 0) {
+        console.log('[applyWorkoutExerciseChange] No updates to apply')
+        return
+      }
+
+      const result = await updateWorkoutExerciseAction(workoutLogExerciseId, filteredUpdates)
+
+      if (!result.isSuccess) {
+        throw new Error(`Failed to update exercise: ${result.message}`)
+      }
+
+      console.log('[applyWorkoutExerciseChange] Updated exercise:', result.data)
+      break
+    }
+
+    case 'delete': {
+      // Athletes don't delete exercises - they swap instead
+      console.log('[applyWorkoutExerciseChange] Delete not supported for athletes (use swap instead)')
+      break
+    }
+  }
+}
+
+/**
+ * Applies a workout log change (notes update).
+ */
+async function applyWorkoutLogChange(
+  request: ChangeRequest,
+  proposedData: Record<string, unknown> | null,
+  workoutLogId: number
+): Promise<void> {
+  if (request.operationType !== 'update') {
+    console.log('[applyWorkoutLogChange] Only update operation supported')
+    return
+  }
+
+  const notes = proposedData?.notes as string | undefined
+
+  if (notes === undefined) {
+    console.log('[applyWorkoutLogChange] No notes to update')
+    return
+  }
+
+  const result = await updateWorkoutNotesAction(workoutLogId, notes)
+
+  if (!result.isSuccess) {
+    throw new Error(`Failed to update workout notes: ${result.message}`)
+  }
+
+  console.log('[applyWorkoutLogChange] Updated notes:', notes)
 }
 
 /**

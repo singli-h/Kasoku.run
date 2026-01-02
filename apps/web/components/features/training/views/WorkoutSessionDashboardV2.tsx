@@ -22,6 +22,9 @@ import type { TrainingExercise, TrainingSet } from "../types"
 import { WorkoutView } from "./WorkoutView"
 import { legacyToTrainingExercises, type LegacyWorkoutExercise } from "../adapters/workout-adapter"
 
+// Import AI change detection hook for ghost row display
+import { useAIExerciseChanges } from "@/components/features/ai-assistant/hooks"
+
 // Import types
 import type {
   WorkoutLogWithDetails,
@@ -76,6 +79,13 @@ function WorkoutSessionContentV2({
     saveSession,
     isLoading
   } = useWorkoutSession(existingSession)
+
+  // Get AI change indicators for exercises (for ghost row display)
+  // Uses workout entity types: workout_log_exercise and workout_log_set
+  const aiChangesByExercise = useAIExerciseChanges({
+    exerciseEntityType: 'workout_log_exercise',
+    setEntityType: 'workout_log_set',
+  })
 
   // Timer state
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
@@ -389,6 +399,7 @@ function WorkoutSessionContentV2({
           onUpdateSet={handleUpdateSet}
           onFinishSession={handleFinishSession}
           onSaveSession={handleSaveSession}
+          aiChangesByExercise={aiChangesByExercise}
         />
       )}
 

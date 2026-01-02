@@ -26,6 +26,7 @@ import { handleToolCall, createApprovalResult, createExecutionFailureResult } fr
 import { executeChangeSet } from '@/lib/changeset/execute'
 import { executeWorkoutChangeSet } from '@/lib/changeset/execute-workout'
 import { executeReadTool } from '@/lib/changeset/tool-implementations/read-impl'
+import { executeAthleteReadTool } from '@/lib/changeset/tool-implementations/workout-read-impl'
 import { buildRejectionFollowUpPrompt, buildExecutionFailurePrompt } from '@/lib/changeset/prompts/session-planner'
 import { createClientSupabaseClient } from '@/lib/supabase-client'
 import { ChatDrawer, ChatTrigger } from './ChatDrawer'
@@ -211,11 +212,13 @@ function SessionAssistantContent({
   const getTokenRef = useRef(getToken)
   getTokenRef.current = getToken
 
-  // Create transport with API endpoint and session ID in body
+  // Create transport with API endpoint and ID in body
+  // For session domain: /api/ai/session-assistant with sessionId
+  // For workout domain: /api/ai/workout-assistant with workoutLogId
   const transport = useMemo(() => new DefaultChatTransport({
-    api: '/api/ai/session-assistant',
-    body: { sessionId },
-  }), [sessionId])
+    api: domain === 'workout' ? '/api/ai/workout-assistant' : '/api/ai/session-assistant',
+    body: domain === 'workout' ? { workoutLogId: sessionId } : { sessionId },
+  }), [sessionId, domain])
 
   // Vercel AI SDK useChat hook with onToolCall for client-side tools
   const {
@@ -255,7 +258,10 @@ function SessionAssistantContent({
               setShowBanner(true)
               setExecutionError(undefined)
             },
-            executeReadTool: (name, args) => executeReadTool(name, args, supabase),
+            executeReadTool: (name, args) =>
+              domain === 'workout'
+                ? executeAthleteReadTool(name, args, supabase)
+                : executeReadTool(name, args, supabase),
           }
         )
 

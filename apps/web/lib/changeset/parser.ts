@@ -26,17 +26,25 @@ export interface ParsedToolName {
 /**
  * Regex pattern for matching ChangeRequest tool names.
  * Captures: (operation)(EntityType)ChangeRequest
+ * Supports both coach domain (Exercise, Set, Session) and athlete domain (TrainingSet, TrainingExercise, TrainingSession)
  */
 const CHANGE_REQUEST_TOOL_PATTERN = /^(create|update|delete)(\w+)ChangeRequest$/
 
 /**
  * Maps PascalCase entity names to their snake_case database equivalents.
  * Session Planning domain (Coach): session_plan, session_plan_exercise, session_plan_set
+ * Workout Logging domain (Athlete): workout_log, workout_log_exercise, workout_log_set
  */
 const ENTITY_NAME_MAP: Record<string, string> = {
+  // Coach domain (Session Planning)
   Session: 'session_plan',
   Exercise: 'session_plan_exercise',
   Set: 'session_plan_set',
+
+  // Athlete domain (Workout Logging)
+  TrainingSession: 'workout_log',
+  TrainingExercise: 'workout_log_exercise',
+  TrainingSet: 'workout_log_set',
 }
 
 /**
@@ -105,13 +113,19 @@ export function isCoordinationTool(toolName: string): boolean {
 }
 
 /**
- * Checks if a tool name is a read tool (getSessionContext, searchExercises).
+ * Checks if a tool name is a read tool.
+ * Coach domain: getSessionContext, searchExercises
+ * Athlete domain: getWorkoutContext, searchExercises
  *
  * @param toolName - The tool name to check
  * @returns true if the tool is a read-only tool
  */
 export function isReadTool(toolName: string): boolean {
-  return toolName === 'getSessionContext' || toolName === 'searchExercises'
+  return (
+    toolName === 'getSessionContext' ||
+    toolName === 'getWorkoutContext' ||
+    toolName === 'searchExercises'
+  )
 }
 
 /**

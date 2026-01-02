@@ -7,18 +7,18 @@
  * @see specs/002-ai-session-assistant/reference/20251221-changeset-transformation-layer.md
  */
 
-import type { ChangeRequest, OperationType, SessionEntityType } from './types'
+import type { ChangeRequest, OperationType, SessionEntityType, AllEntityType } from './types'
 import {
   generateChangeRequestId,
   generateTempId,
 } from './buffer-utils'
 import {
   convertKeysToSnakeCase,
-  ENTITY_ID_FIELDS,
+  ALL_ENTITY_ID_FIELDS,
   ID_FIELDS,
-  isValidEntityType,
+  isAnyValidEntityType,
   METADATA_FIELDS,
-  PARENT_FK_FROM_TOOL_INPUT,
+  ALL_PARENT_FK_FROM_TOOL_INPUT,
 } from './entity-mappings'
 
 /**
@@ -99,8 +99,8 @@ export function transformToolInput(
   toolInput: ToolInput,
   options: TransformOptions = {}
 ): ChangeRequest {
-  // Validate entity type
-  if (!isValidEntityType(entityType)) {
+  // Validate entity type (supports both session and workout domains)
+  if (!isAnyValidEntityType(entityType)) {
     throw new Error(`Unsupported entity type: ${entityType}`)
   }
 
@@ -114,7 +114,7 @@ export function transformToolInput(
     proposedData = buildProposedData(entityType, toolInput, options.sessionId)
   } else {
     // For delete: include minimal data for UI grouping (parent FK only)
-    const parentFkMapping = PARENT_FK_FROM_TOOL_INPUT[entityType as SessionEntityType]
+    const parentFkMapping = ALL_PARENT_FK_FROM_TOOL_INPUT[entityType as AllEntityType]
     if (parentFkMapping) {
       const parentRef = toolInput[parentFkMapping.inputField]
       if (parentRef !== undefined && parentRef !== null) {
@@ -157,7 +157,7 @@ export function transformToolInput(
  * @returns The entity ID (real, temporary, or composite for sets)
  */
 export function extractEntityId(
-  entityType: SessionEntityType,
+  entityType: AllEntityType,
   operationType: OperationType,
   toolInput: ToolInput
 ): string {
@@ -167,10 +167,10 @@ export function extractEntityId(
   }
 
   // For update/delete, get the ID from the entity-specific field
-  const idField = ENTITY_ID_FIELDS[entityType]
+  const idField = ALL_ENTITY_ID_FIELDS[entityType]
   const entityId = toolInput[idField]
 
-  // For sets, support composite identification (parent exercise + set index)
+  // For session plan sets, support composite identification (parent exercise + set index)
   if (entityType === 'session_plan_set' && (entityId === undefined || entityId === null)) {
     const parentExerciseId = toolInput['sessionPlanExerciseId']
     const setIndex = toolInput['setIndex']
@@ -190,10 +190,25 @@ export function extractEntityId(
     }
   }
 
+  // For workout log sets, support composite identification (parent exercise + set index)
+  if (entityType === 'workout_log_set' && (entityId === undefined || entityId === null)) {
+    const parentExerciseId = toolInput['workoutLogExerciseId']
+    const setIndex = toolInput['setIndex']
+
+    // If we have parent exercise ID, create a composite identifier
+    if (parentExerciseId !== undefined && parentExerciseId !== null) {
+      if (setIndex !== undefined && setIndex !== null) {
+        return `workout_exercise:${parentExerciseId}:set:${setIndex}`
+      }
+      // No specific set index - error
+      throw new Error('setIndex is required for workout_log_set operations')
+    }
+  }
+
   if (entityId === undefined || entityId === null) {
     throw new Error(
       `Missing ${idField} for ${operationType} operation on ${entityType}. ` +
-      `For sets, you can also use sessionPlanExerciseId + setIndex.`
+      `For sets, you can also use the parent exercise ID + setIndex.`
     )
   }
 
@@ -214,7 +229,7 @@ export function extractEntityId(
  * @returns The proposedData object with snake_case keys
  */
 export function buildProposedData(
-  entityType: SessionEntityType,
+  entityType: AllEntityType,
   toolInput: ToolInput,
   sessionId?: number
 ): Record<string, unknown> {
@@ -229,7 +244,7 @@ export function buildProposedData(
     data[key] = value
   }
 
-  // Add parent foreign key for exercises if not present
+  // Add parent foreign key for session plan exercises if not present
   if (
     entityType === 'session_plan_exercise' &&
     !data['sessionPlanId'] &&
@@ -238,15 +253,24 @@ export function buildProposedData(
     data['sessionPlanId'] = sessionId
   }
 
+  // Add parent foreign key for workout log exercises if not present
+  if (
+    entityType === 'workout_log_exercise' &&
+    !data['workoutLogId'] &&
+    sessionId // sessionId is actually workoutLogId for workout domain
+  ) {
+    data['workoutLogId'] = sessionId
+  }
+
   // Convert to snake_case for database FIRST
   const result = convertKeysToSnakeCase(data)
 
   // Add parent foreign key from tool input for entities that specify it
-  // (e.g., sets specify their parent exercise via sessionPlanExerciseId)
+  // (e.g., sets specify their parent exercise via sessionPlanExerciseId or workoutLogExerciseId)
   // IMPORTANT: Add AFTER conversion to use correct snake_case field name.
   // This avoids the issue where sessionPlanExerciseId → 'id' (primary key mapping)
   // instead of → 'session_plan_exercise_id' (foreign key mapping)
-  const parentFkMapping = PARENT_FK_FROM_TOOL_INPUT[entityType]
+  const parentFkMapping = ALL_PARENT_FK_FROM_TOOL_INPUT[entityType]
   if (parentFkMapping) {
     const parentRef = toolInput[parentFkMapping.inputField]
     if (parentRef !== undefined && parentRef !== null) {
@@ -269,7 +293,7 @@ export function validateChangeRequest(request: ChangeRequest): boolean {
     throw new Error('ChangeRequest missing entityType')
   }
 
-  if (!isValidEntityType(request.entityType)) {
+  if (!isAnyValidEntityType(request.entityType)) {
     throw new Error(`Invalid entityType: ${request.entityType}`)
   }
 

@@ -59,10 +59,32 @@ export {
   type CoordinationToolName,
 } from './coordination-tools'
 
+export {
+  athleteProposalTools,
+  createTrainingSetChangeRequestTool,
+  createTrainingSetChangeRequestSchema,
+  updateTrainingSetChangeRequestTool,
+  updateTrainingSetChangeRequestSchema,
+  createTrainingExerciseChangeRequestTool,
+  createTrainingExerciseChangeRequestSchema,
+  updateTrainingExerciseChangeRequestTool,
+  updateTrainingExerciseChangeRequestSchema,
+  updateTrainingSessionChangeRequestTool,
+  updateTrainingSessionChangeRequestSchema,
+  athleteProposalToolNames,
+  type CreateTrainingSetInput,
+  type UpdateTrainingSetInput,
+  type CreateTrainingExerciseInput,
+  type UpdateTrainingExerciseInput,
+  type UpdateTrainingSessionInput,
+  type AthleteProposalToolName,
+} from './athlete-proposal-tools'
+
 // Import for re-assembly
 import { readTools } from './read-tools'
 import { proposalTools } from './proposal-tools'
 import { coordinationTools } from './coordination-tools'
+import { athleteProposalTools } from './athlete-proposal-tools'
 
 /**
  * All tools combined for the Coach domain (V1).
@@ -154,6 +176,69 @@ export function getToolCategory(
 ): 'read' | 'proposal' | 'coordination' | 'unknown' {
   if (isReadTool(toolName)) return 'read'
   if (isProposalTool(toolName)) return 'proposal'
+  if (isCoordinationTool(toolName)) return 'coordination'
+  return 'unknown'
+}
+
+// ============================================================================
+// Athlete Domain Tools (V1)
+// ============================================================================
+
+/**
+ * All tools combined for the Athlete domain.
+ *
+ * This is the tool set passed to the Vercel AI SDK `streamText` function
+ * for the athlete workout assistant.
+ *
+ * Key differences from coach domain:
+ * - Uses athlete proposal tools instead of coach proposal tools
+ * - No delete operations (athletes swap or skip instead)
+ * - Operates on workout_log_* entities instead of session_plan_*
+ *
+ * @example
+ * ```ts
+ * import { streamText } from 'ai'
+ * import { athleteDomainTools } from '@/lib/changeset/tools'
+ *
+ * const result = await streamText({
+ *   model: openai('gpt-4'),
+ *   tools: athleteDomainTools,
+ *   // ...
+ * })
+ * ```
+ */
+export const athleteDomainTools = {
+  ...readTools,
+  ...athleteProposalTools,
+  ...coordinationTools,
+}
+
+/**
+ * Type-safe tool name union for the Athlete domain.
+ */
+export type AthleteToolName = keyof typeof athleteDomainTools
+
+/**
+ * Checks if a tool name is an athlete proposal tool.
+ *
+ * @param toolName - The tool name to check
+ * @returns true if the tool creates/modifies athlete ChangeRequests
+ */
+export function isAthleteProposalTool(toolName: string): boolean {
+  return toolName in athleteProposalTools
+}
+
+/**
+ * Gets the category of an athlete tool.
+ *
+ * @param toolName - The tool name
+ * @returns The tool category
+ */
+export function getAthleteToolCategory(
+  toolName: string
+): 'read' | 'proposal' | 'coordination' | 'unknown' {
+  if (isReadTool(toolName)) return 'read'
+  if (isAthleteProposalTool(toolName)) return 'proposal'
   if (isCoordinationTool(toolName)) return 'coordination'
   return 'unknown'
 }
