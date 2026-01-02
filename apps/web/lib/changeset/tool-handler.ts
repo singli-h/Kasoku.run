@@ -19,6 +19,7 @@ import {
   isReadTool,
 } from './parser'
 import { transformToolInput, resetExecutionOrderCounter } from './transformations'
+import { isTempId } from './buffer-utils'
 import type { ConfirmChangeSetInput, ResetChangeSetInput } from './tools'
 
 /**
@@ -160,6 +161,30 @@ function handleProposalTool(
         error: `Invalid exerciseId: '${exerciseId}'. You must use a numeric ID from the searchExercises results (e.g., "123"), NOT a made-up string like "exercise-name-id". Please call searchExercises first to get valid exercise IDs.`,
       }
     }
+  }
+
+  // ============================================================================
+  // TEMP ID DELETION PATTERN (per changeset architecture concept doc section 2.4)
+  // ============================================================================
+  // When deleting an entity with a temp ID, we should REMOVE it from the buffer
+  // (not create a DELETE change request), because it doesn't exist in the DB yet.
+  // This allows users to say "remove that exercise I just added" before confirmation.
+  if (operation === 'delete') {
+    const tempIdToRemove = extractTempIdForDeletion(entitySnakeCase, args)
+
+    if (tempIdToRemove) {
+      console.log(`[ProposalTool] 🗑️ Removing temp entity from buffer: ${entitySnakeCase}:${tempIdToRemove}`)
+
+      // Remove from buffer instead of creating DELETE change request
+      context.changeSet.remove(entitySnakeCase, tempIdToRemove)
+
+      return {
+        success: true,
+        message: `Removed proposed ${entitySnakeCase.replace(/_/g, ' ')} from changeset (it was not yet saved to database)`,
+        entityId: tempIdToRemove,
+      }
+    }
+    // If not a temp ID, continue to create DELETE change request below
   }
 
   try {
@@ -384,4 +409,74 @@ export function createExecutionFailureResult(
     error: error instanceof Error ? error.message : 'Unknown error',
     message: 'Failed to save changes. Please review the error and try again.',
   }
+}
+
+// ============================================================================
+// HELPER: Extract Temp ID for Deletion
+// ============================================================================
+
+/**
+ * Extracts the entity ID from delete tool args and checks if it's a temp ID.
+ * Returns the temp ID if found, or null if the entity has a real database ID.
+ *
+ * This supports the temp ID deletion pattern from changeset architecture concept:
+ * - Temp ID (e.g., "temp_001") → remove from buffer (not a real DB delete)
+ * - Real ID (e.g., "123") → create DELETE change request for DB
+ *
+ * @param entityType - The entity type being deleted
+ * @param args - The tool arguments
+ * @returns The temp ID to remove, or null if it's a real database ID
+ */
+function extractTempIdForDeletion(
+  entityType: string,
+  args: Record<string, unknown>
+): string | null {
+  let entityId: string | null = null
+
+  // Extract entity ID based on entity type
+  switch (entityType) {
+    case 'session_plan_exercise': {
+      // deleteExerciseChangeRequest uses sessionPlanExerciseId
+      entityId = args.sessionPlanExerciseId as string | null
+      break
+    }
+    case 'session_plan_set': {
+      // deleteSetChangeRequest uses either:
+      // 1. sessionPlanSetId (direct set ID)
+      // 2. sessionPlanExerciseId + setIndex (composite)
+      const directSetId = args.sessionPlanSetId as string | undefined
+      const parentExerciseId = args.sessionPlanExerciseId as string | undefined
+      const setIndex = args.setIndex as number | undefined
+
+      if (directSetId) {
+        entityId = directSetId
+      } else if (parentExerciseId && isTempId(parentExerciseId)) {
+        // If parent exercise is a temp ID, construct the composite key
+        // that was used when the set was created
+        if (setIndex !== undefined) {
+          entityId = `exercise:${parentExerciseId}:set:${setIndex}`
+        } else {
+          // Removing all sets of a temp exercise
+          entityId = `exercise:${parentExerciseId}:all`
+        }
+      }
+      break
+    }
+    default:
+      // Unknown entity type - no temp ID extraction
+      return null
+  }
+
+  // Check if the extracted ID is a temp ID
+  if (entityId && isTempId(entityId)) {
+    return entityId
+  }
+
+  // For composite set keys, check if the parent exercise ID is temp
+  // The entityId might be like "exercise:temp_001:set:1"
+  if (entityId && entityId.startsWith('exercise:temp_')) {
+    return entityId
+  }
+
+  return null
 }
