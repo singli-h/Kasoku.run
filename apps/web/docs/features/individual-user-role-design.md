@@ -362,14 +362,8 @@ isIndividual: role === 'individual',
 | `components/layout/sidebar/app-sidebar.tsx` | Update visibility logic for individuals | HIGH |
 
 ```typescript
-// app-sidebar.tsx - Current
-const navItems: NavItem[] = [
-  { title: "Athletes", url: "/athletes", icon: Users, coachOnly: true },
-  { title: "Plans", url: "/plans", icon: Calendar, coachOnly: true },
-  // ...
-]
-
-// AFTER - More flexible visibility
+// app-sidebar.tsx - IMPLEMENTED (2026-01-02)
+// Old coachOnly pattern has been replaced with visibleTo array
 interface NavItem {
   title: string
   url: string

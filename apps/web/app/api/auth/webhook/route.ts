@@ -482,8 +482,9 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 async function ensureUserProfile(userId: number, role: string) {
-  // Ensure athlete record exists for both athletes and coaches
-  if (role === 'athlete' || role === 'coach') {
+  // Ensure athlete record exists for athletes, coaches, and individuals
+  // Individuals need athlete records for workout logging foreign key constraints
+  if (role === 'athlete' || role === 'coach' || role === 'individual') {
     const { data: existingAthlete } = await supabaseService
       .from('athletes')
       .select('id')

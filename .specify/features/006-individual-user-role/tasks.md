@@ -55,15 +55,15 @@
 
 ### Implementation for User Story 1
 
-- [ ] T010 [P] [US1] Add third card "Train Myself" to role selection in apps/web/components/features/onboarding/steps/role-selection-step.tsx
-- [ ] T011 [P] [US1] Update handleRoleSelect function signature to accept 'individual' in apps/web/components/features/onboarding/steps/role-selection-step.tsx
-- [ ] T012 [US1] Create individual-details-step.tsx component in apps/web/components/features/onboarding/steps/individual-details-step.tsx
-- [ ] T013 [US1] Add individual-specific fields (trainingGoals, experienceLevel, availableEquipment) to individual-details-step.tsx
-- [ ] T014 [US1] Add form validation using Zod for individual onboarding fields in individual-details-step.tsx
-- [ ] T015 [US1] Update onboarding-wizard.tsx to route to individual-details-step when role='individual' in apps/web/components/features/onboarding/onboarding-wizard.tsx
-- [ ] T016 [US1] Add individual handling to completeOnboardingAction in apps/web/actions/onboarding/onboarding-actions.ts
-- [ ] T017 [US1] Create silent athlete record for individual users in onboarding-actions.ts (enables workout logging FK)
-- [ ] T018 [US1] Add individualData fields to OnboardingActionData interface in onboarding-actions.ts
+- [x] T010 [P] [US1] Add third card "Train Myself" to role selection in apps/web/components/features/onboarding/steps/role-selection-step.tsx
+- [x] T011 [P] [US1] Update handleRoleSelect function signature to accept 'individual' in apps/web/components/features/onboarding/steps/role-selection-step.tsx
+- [x] T012 [US1] Create individual-details-step.tsx component in apps/web/components/features/onboarding/steps/individual-details-step.tsx
+- [x] T013 [US1] Add individual-specific fields (trainingGoals, experienceLevel, availableEquipment) to individual-details-step.tsx
+- [x] T014 [US1] Add form validation using Zod for individual onboarding fields in individual-details-step.tsx
+- [x] T015 [US1] Update onboarding-wizard.tsx to route to individual-details-step when role='individual' in apps/web/components/features/onboarding/onboarding-wizard.tsx
+- [x] T016 [US1] Add individual handling to completeOnboardingAction in apps/web/actions/onboarding/onboarding-actions.ts
+- [x] T017 [US1] Create silent athlete record for individual users in onboarding-actions.ts (enables workout logging FK)
+- [x] T018 [US1] Add individualData fields to OnboardingActionData interface in onboarding-actions.ts
 
 **Checkpoint**: User Story 1 complete - New users can select "Train Myself" and complete individual onboarding
 
@@ -77,14 +77,14 @@
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Replace coachOnly boolean with visibleTo array pattern in NavItem interface in apps/web/components/layout/sidebar/app-sidebar.tsx
-- [ ] T020 [US2] Replace coachOnly boolean with visibleTo array pattern in TrainingItem interface in apps/web/components/layout/sidebar/app-sidebar.tsx
-- [ ] T021 [US2] Update navItems array with visibleTo configuration per contracts/navigation.md in app-sidebar.tsx
-- [ ] T022 [US2] Update trainingItems array with visibleTo configuration per contracts/navigation.md in app-sidebar.tsx
-- [ ] T023 [US2] Update filteredNavItems logic to use visibleTo.includes(role) pattern in app-sidebar.tsx
-- [ ] T024 [US2] Update filteredTrainingItems logic to use visibleTo.includes(role) pattern in app-sidebar.tsx
-- [ ] T025 [US2] Add isIndividual check to useUserRole destructuring in app-sidebar.tsx
-- [ ] T026 [P] [US2] Update nav-main.tsx if needed for individual role handling in apps/web/components/layout/sidebar/nav-main.tsx
+- [x] T019 [US2] Replace coachOnly boolean with visibleTo array pattern in NavItem interface in apps/web/components/layout/sidebar/app-sidebar.tsx
+- [x] T020 [US2] Replace coachOnly boolean with visibleTo array pattern in TrainingItem interface in apps/web/components/layout/sidebar/app-sidebar.tsx
+- [x] T021 [US2] Update navItems array with visibleTo configuration per contracts/navigation.md in app-sidebar.tsx
+- [x] T022 [US2] Update trainingItems array with visibleTo configuration per contracts/navigation.md in app-sidebar.tsx
+- [x] T023 [US2] Update filteredNavItems logic to use visibleTo.includes(role) pattern in app-sidebar.tsx
+- [x] T024 [US2] Update filteredTrainingItems logic to use visibleTo.includes(role) pattern in app-sidebar.tsx
+- [x] T025 [US2] Add role to useUserRole destructuring in app-sidebar.tsx (uses role directly for flexibility)
+- [x] T026 [P] [US2] Update nav-main.tsx if needed for individual role handling in apps/web/components/layout/sidebar/nav-main.tsx (no changes needed - filtering done in parent)
 
 **Checkpoint**: User Story 2 complete - Individual users see correct navigation items
 
@@ -152,14 +152,23 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T046 [P] Update design document with implementation notes in apps/web/docs/features/individual-user-role-design.md
-- [ ] T047 Run type-check: npm run type-check to verify no TypeScript errors
-- [ ] T048 Run linter: npm run lint to verify no ESLint errors
-- [ ] T049 Run build: npm run build to verify production build succeeds
+- [x] T046 [P] Update design document with implementation notes in apps/web/docs/features/individual-user-role-design.md (DONE: marked coachOnly as deprecated)
+- [x] T047 Run type-check: npx tsc --noEmit to verify no TypeScript errors (PASSED)
+- [ ] T048 Run linter: npm run lint to verify no ESLint errors (BLOCKED: pre-existing ESLint config issue)
+- [x] T049 Run build: npm run build to verify production build succeeds (PASSED - Next.js 16.0.10 Turbopack)
 - [ ] T050 Manual QA: Complete full onboarding flow as individual user
 - [ ] T051 Manual QA: Verify all navigation items correct for individual role
 - [ ] T052 Manual QA: Create Training Block and verify terminology throughout
 - [ ] T053 Manual QA: Log workout and verify it appears in history
+
+### Code Review Completed (2026-01-02)
+
+**Legacy Pattern Cleanup:**
+- [x] Removed all `coachOnly` references from source code (only docs had references)
+- [x] Updated `docs/security/rbac-implementation.md` to use `visibleTo` pattern
+- [x] Updated `docs/features/individual-user-role-design.md` to mark implementation complete
+- [x] Removed unused `Input` import from `individual-details-step.tsx`
+- [x] Verified all modified files have clean imports and no legacy patterns
 
 ---
 

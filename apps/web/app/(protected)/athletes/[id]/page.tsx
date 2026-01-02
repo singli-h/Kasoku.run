@@ -33,7 +33,7 @@ function transformToCardData(profile: ProfileViewData): ProfileCardData {
     lastName: profile.lastName,
     username: profile.username || undefined,
     avatarUrl: profile.avatarUrl,
-    role: profile.role as 'athlete' | 'coach',
+    role: profile.role as 'athlete' | 'coach' | 'individual',
     birthdate: profile.birthdate,
     sex: profile.sex,
     timezone: profile.timezone,
@@ -44,7 +44,8 @@ function transformToCardData(profile: ProfileViewData): ProfileCardData {
     events: profile.events || undefined,
     trainingGoals: profile.trainingGoals,
     groupName: profile.groupName || undefined,
-    athleteStats: profile.role === 'athlete' ? {
+    // Athletes and individuals both have athlete stats (individuals have silent athlete records)
+    athleteStats: (profile.role === 'athlete' || profile.role === 'individual') ? {
       totalWorkouts: profile.stats.totalWorkouts,
       weeklyStreak: profile.stats.weeklyStreak,
       personalRecords: profile.stats.personalRecords,

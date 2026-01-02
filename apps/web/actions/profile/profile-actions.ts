@@ -32,7 +32,7 @@ export interface ProfileViewData {
   username: string | null
   avatarUrl: string | null
   email: string
-  role: 'athlete' | 'coach' | 'admin'
+  role: 'athlete' | 'coach' | 'admin' | 'individual'
 
   // Common fields
   birthdate: string | null
@@ -86,7 +86,7 @@ function transformToProfileViewData(
     username: user.username,
     avatarUrl: user.avatar_url,
     email: user.email,
-    role: user.role as 'athlete' | 'coach' | 'admin',
+    role: user.role as 'athlete' | 'coach' | 'admin' | 'individual',
     birthdate: user.birthdate,
     sex: user.sex,
     timezone: user.timezone,

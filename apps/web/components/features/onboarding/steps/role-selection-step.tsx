@@ -141,14 +141,14 @@ export function RoleSelectionStep({ userData, updateUserData, onNext, onPrev }: 
         </Card>
       </div>
 
-      <div className="flex justify-between max-w-2xl mx-auto">
+      <div className="flex justify-between max-w-4xl mx-auto">
         <Button variant="outline" onClick={onPrev}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Previous
         </Button>
-        
-        <Button 
-          onClick={onNext} 
+
+        <Button
+          onClick={onNext}
           disabled={!canProceed}
           className="min-w-[120px]"
         >

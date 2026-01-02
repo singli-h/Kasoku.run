@@ -9,7 +9,7 @@ export interface OnboardingActionData {
   email: string
   firstName: string
   lastName: string
-  role: "athlete" | "coach"
+  role: "athlete" | "coach" | "individual"
   birthdate?: string
   timezone: string
   subscription: "free" | "paid"
@@ -25,6 +25,11 @@ export interface OnboardingActionData {
     experience: string
     philosophy: string
     sportFocus: string
+  }
+  individualData?: {
+    trainingGoals: string
+    experienceLevel: string
+    availableEquipment: string[]
   }
 }
 
@@ -188,6 +193,51 @@ export async function completeOnboardingAction(
         if (athleteError) {
           console.error('Error creating default athlete profile for coach:', athleteError)
           // Don't fail the whole onboarding if this fails, but log it
+        }
+      }
+    }
+
+    // Handle individual role - create silent athlete record for workout logging FK
+    if (data.role === "individual" && data.individualData) {
+      // Check if athlete record already exists
+      const { data: existingAthlete } = await supabase
+        .from('athletes')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (!existingAthlete) {
+        console.log(`Creating silent athlete record for individual ${userId}`)
+        const { error: athleteError } = await supabase
+          .from('athletes')
+          .insert({
+            user_id: userId,
+            training_goals: data.individualData.trainingGoals,
+            experience: data.individualData.experienceLevel,
+            // Store available equipment in a metadata field or training_goals
+            // Note: athlete table doesn't have availableEquipment column, store in training_goals
+          })
+
+        if (athleteError) {
+          console.error('Error creating athlete profile for individual:', athleteError)
+          // Don't fail the whole onboarding - silent record is optional but recommended
+        } else {
+          console.log('Silent athlete record created for individual user')
+        }
+      } else {
+        // Update existing athlete record with individual data
+        const { error: athleteError } = await supabase
+          .from('athletes')
+          .update({
+            training_goals: data.individualData.trainingGoals,
+            experience: data.individualData.experienceLevel,
+          })
+          .eq('user_id', userId)
+
+        if (athleteError) {
+          console.error('Error updating athlete profile for individual:', athleteError)
+        } else {
+          console.log('Athlete record updated for individual user')
         }
       }
     }

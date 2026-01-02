@@ -16,7 +16,8 @@ import {
   Zap,
   BookOpen,
   PlayCircle,
-  FileText
+  FileText,
+  type LucideIcon
 } from "lucide-react"
 import * as React from "react"
 import { usePathname } from "next/navigation"
@@ -34,54 +35,61 @@ import {
 } from "@/components/ui/sidebar"
 import { NavMain } from "./nav-main"
 import { NavProjects } from "./nav-projects"
-import { useUserRole } from "@/contexts/user-role-context"
+import { useUserRole, type UserRole } from "@/contexts/user-role-context"
 
-// Navigation item type with optional role restriction
+// Navigation item type with role-based visibility
+// If visibleTo is undefined, the item is visible to all roles
 interface NavItem {
   title: string
   url: string
-  icon: any
-  coachOnly?: boolean
+  icon: LucideIcon
+  visibleTo?: UserRole[]
 }
 
 // Kasoku running/fitness navigation data
+// Note: Individual = Athlete + self-planning. Knowledge Base is available to all roles.
 const navItems: NavItem[] = [
   {
     title: "Overview",
     url: "/dashboard",
-    icon: LayoutDashboard
+    icon: LayoutDashboard,
+    // visibleTo: undefined → visible to all
   },
   {
     title: "Workout",
     url: "/workout",
-    icon: Dumbbell
+    icon: Dumbbell,
+    // visibleTo: undefined → visible to all (coaches also have athlete record)
   },
   {
     title: "Exercise Library",
     url: "/library",
-    icon: BookOpen
+    icon: BookOpen,
+    // visibleTo: undefined → visible to all
   },
   {
     title: "Knowledge Base",
     url: "/knowledge-base",
     icon: FileText,
-    coachOnly: true
+    // visibleTo: undefined → visible to all (updated per clarification)
   },
   {
     title: "Performance",
     url: "/performance",
-    icon: TrendingUp
+    icon: TrendingUp,
+    // visibleTo: undefined → visible to all
   },
   {
     title: "Athletes",
     url: "/athletes",
     icon: Users,
-    coachOnly: true
+    visibleTo: ['coach'], // Coach-only - managing athletes
   },
   {
     title: "Settings",
     url: "/settings",
-    icon: Settings
+    icon: Settings,
+    // visibleTo: undefined → visible to all
   }
 ]
 
@@ -89,54 +97,56 @@ const navItems: NavItem[] = [
 interface TrainingItem {
   name: string
   url: string
-  icon: any
-  coachOnly?: boolean
+  icon: LucideIcon
+  visibleTo?: UserRole[]
 }
 
 const trainingItems: TrainingItem[] = [
   {
-    name: "Plans",
+    name: "My Training", // Renamed from "Plans" for individuals
     url: "/plans",
     icon: Calendar,
-    coachOnly: true
+    visibleTo: ['coach', 'individual'], // Coaches + individuals can create plans
   },
   {
     name: "Sessions",
     url: "/sessions",
     icon: PlayCircle,
-    coachOnly: true
+    visibleTo: ['coach'], // Coach-only session management
   }
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
-  const { isCoach, isAdmin, isLoading } = useUserRole()
+  const { role, isAdmin, isLoading } = useUserRole()
 
   // Filter navigation items based on user role
   const filteredNavItems = React.useMemo(() => {
-    if (isLoading) return []
+    if (isLoading || !role) return []
 
     return navItems.filter(item => {
-      // If item is coach-only, only show to coaches and admins
-      if (item.coachOnly) {
-        return isCoach || isAdmin
-      }
-      return true
+      // If visibleTo is undefined, item is visible to all roles
+      if (!item.visibleTo) return true
+      // Admin can see everything
+      if (isAdmin) return true
+      // Check if current role is in visibleTo array
+      return item.visibleTo.includes(role)
     })
-  }, [isCoach, isAdmin, isLoading])
+  }, [role, isAdmin, isLoading])
 
   // Filter training items based on user role
   const filteredTrainingItems = React.useMemo(() => {
-    if (isLoading) return []
+    if (isLoading || !role) return []
 
     return trainingItems.filter(item => {
-      // If item is coach-only, only show to coaches and admins
-      if (item.coachOnly) {
-        return isCoach || isAdmin
-      }
-      return true
+      // If visibleTo is undefined, item is visible to all roles
+      if (!item.visibleTo) return true
+      // Admin can see everything
+      if (isAdmin) return true
+      // Check if current role is in visibleTo array
+      return item.visibleTo.includes(role)
     })
-  }, [isCoach, isAdmin, isLoading])
+  }, [role, isAdmin, isLoading])
 
   // Add active state based on current pathname
   const navItemsWithActive = filteredNavItems.map(item => ({

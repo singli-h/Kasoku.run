@@ -10,6 +10,7 @@ import { WelcomeStep } from "./steps/welcome-step"
 import { RoleSelectionStep } from "./steps/role-selection-step"
 import { AthleteDetailsStep } from "./steps/athlete-details-step"
 import { CoachDetailsStep } from "./steps/coach-details-step"
+import { IndividualDetailsStep } from "./steps/individual-details-step"
 import { SubscriptionStep } from "./steps/subscription-step"
 import { DashboardTourStep } from "./steps/dashboard-tour-step"
 import { CompletionStep } from "./steps/completion-step"
@@ -151,11 +152,11 @@ export default function OnboardingWizard() {
         email: userData.email,
         firstName: userData.firstName,
         lastName: userData.lastName,
-        role: userData.role as "athlete" | "coach",
+        role: userData.role as "athlete" | "coach" | "individual",
         birthdate: userData.birthdate,
         timezone: userData.timezone,
         subscription: userData.subscription,
-        
+
         // Role-specific fields
         ...(userData.role === "athlete" && {
           athleteData: {
@@ -166,13 +167,21 @@ export default function OnboardingWizard() {
             events: userData.events,
           }
         }),
-        
+
         ...(userData.role === "coach" && {
           coachData: {
             speciality: userData.specialization,
             experience: userData.experience,
             philosophy: userData.coachingPhilosophy,
             sportFocus: userData.sportFocus,
+          }
+        }),
+
+        ...(userData.role === "individual" && {
+          individualData: {
+            trainingGoals: userData.individualTrainingGoals,
+            experienceLevel: userData.individualExperienceLevel,
+            availableEquipment: userData.availableEquipment,
           }
         }),
       })
@@ -219,21 +228,34 @@ export default function OnboardingWizard() {
           />
         )
       case 2:
-        return userData.role === "athlete" ? (
-          <AthleteDetailsStep
-            userData={userData}
-            updateUserData={updateUserData}
-            onNext={nextStep}
-            onPrev={prevStep}
-          />
-        ) : (
-          <CoachDetailsStep
-            userData={userData}
-            updateUserData={updateUserData}
-            onNext={nextStep}
-            onPrev={prevStep}
-          />
-        )
+        if (userData.role === "athlete") {
+          return (
+            <AthleteDetailsStep
+              userData={userData}
+              updateUserData={updateUserData}
+              onNext={nextStep}
+              onPrev={prevStep}
+            />
+          )
+        } else if (userData.role === "individual") {
+          return (
+            <IndividualDetailsStep
+              userData={userData}
+              updateUserData={updateUserData}
+              onNext={nextStep}
+              onPrev={prevStep}
+            />
+          )
+        } else {
+          return (
+            <CoachDetailsStep
+              userData={userData}
+              updateUserData={updateUserData}
+              onNext={nextStep}
+              onPrev={prevStep}
+            />
+          )
+        }
       case 3:
         return (
           <SubscriptionStep

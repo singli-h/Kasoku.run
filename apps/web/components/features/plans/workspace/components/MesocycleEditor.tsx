@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Edit, Plus, Trash2, Copy } from "lucide-react"
 import { usePlanContext } from "../context/PlanContext"
+import { useTerminology } from "@/lib/terminology"
 
 interface MesocycleEditorProps {
   mesocycleId: number
@@ -13,18 +14,19 @@ interface MesocycleEditorProps {
   onViewModeChange: (mode: 'meso' | 'micro' | 'macro') => void
 }
 
-export function MesocycleEditor({ 
-  mesocycleId, 
-  onMicrocycleSelect, 
-  onViewModeChange 
+export function MesocycleEditor({
+  mesocycleId,
+  onMicrocycleSelect,
+  onViewModeChange
 }: MesocycleEditorProps) {
   const { plan } = usePlanContext()
   const [editingMode, setEditingMode] = useState<'view' | 'edit'>('view')
+  const terms = useTerminology()
 
   const mesocycle = plan?.mesocycles.find(m => m.id === mesocycleId)
-  
+
   if (!mesocycle) {
-    return <div>Mesocycle not found</div>
+    return <div>{terms.mesocycle} not found</div>
   }
 
   const totalSessions = mesocycle.microcycles.reduce((acc, micro) => acc + micro.sessions.length, 0)

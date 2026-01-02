@@ -181,19 +181,20 @@ export function FeatureToggle() {
 
 import { useUserRole } from '@/contexts/user-role-context'
 
+// Updated pattern using visibleTo array (2026-01-02)
 const navItems = [
-  { title: 'Dashboard', url: '/dashboard' },
-  { title: 'Athletes', url: '/athletes', coachOnly: true },
+  { title: 'Dashboard', url: '/dashboard' },  // visibleTo: undefined → visible to all
+  { title: 'Athletes', url: '/athletes', visibleTo: ['coach'] },
+  { title: 'My Training', url: '/plans', visibleTo: ['coach', 'individual'] },
 ]
 
 export function Sidebar() {
-  const { isCoach, isAdmin } = useUserRole()
+  const { role, isAdmin } = useUserRole()
 
   const filteredItems = navItems.filter(item => {
-    if (item.coachOnly) {
-      return isCoach || isAdmin
-    }
-    return true
+    if (!item.visibleTo) return true  // Visible to all
+    if (isAdmin) return true  // Admin sees everything
+    return role && item.visibleTo.includes(role)
   })
 
   return <NavList items={filteredItems} />

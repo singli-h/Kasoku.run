@@ -34,7 +34,7 @@ import {
 // Types
 // ============================================================================
 
-export type ProfileRole = "athlete" | "coach"
+export type ProfileRole = "athlete" | "coach" | "individual"
 export type ExperienceLevel = "beginner" | "intermediate" | "advanced" | "elite"
 
 interface AthleteStats {
@@ -508,7 +508,8 @@ export function HolographicProfileCard({
             {/* Base gradient background */}
             <div className={cn(
               "absolute inset-0",
-              profile.role === "athlete"
+              // Athletes and individuals share the same styling
+              (profile.role === "athlete" || profile.role === "individual")
                 ? "bg-gradient-to-br from-slate-950 via-slate-900 to-zinc-900"
                 : "bg-gradient-to-br from-indigo-950 via-slate-950 to-violet-950"
             )} />
@@ -530,12 +531,12 @@ export function HolographicProfileCard({
                   className={cn(
                     "px-3 py-1 text-[10px] font-black tracking-[0.2em] uppercase border-0",
                     "shadow-lg",
-                    profile.role === "athlete"
+                    (profile.role === "athlete" || profile.role === "individual")
                       ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white"
                       : "bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
                   )}
                 >
-                  {profile.role}
+                  {profile.role === "individual" ? "self-coach" : profile.role}
                 </Badge>
                 <span className="text-white/50 text-xs font-mono tracking-wider">
                   {new Date().getFullYear()}
@@ -547,7 +548,7 @@ export function HolographicProfileCard({
                 <div className="relative">
                   <div className={cn(
                     "absolute -inset-4 rounded-full blur-2xl opacity-60",
-                    profile.role === "athlete"
+                    (profile.role === "athlete" || profile.role === "individual")
                       ? "bg-gradient-to-br from-amber-500/50 via-orange-500/30 to-red-500/50"
                       : "bg-gradient-to-br from-cyan-500/50 via-blue-500/30 to-purple-500/50"
                   )} />
@@ -558,7 +559,7 @@ export function HolographicProfileCard({
                     <AvatarImage src={profile.avatarUrl || undefined} />
                     <AvatarFallback className={cn(
                       "text-2xl font-black",
-                      profile.role === "athlete"
+                      (profile.role === "athlete" || profile.role === "individual")
                         ? "bg-gradient-to-br from-amber-600 to-orange-700 text-white"
                         : "bg-gradient-to-br from-cyan-600 to-blue-700 text-white"
                     )}>
@@ -567,7 +568,7 @@ export function HolographicProfileCard({
                   </Avatar>
                 </div>
 
-                {profile.role === "athlete" && profile.experience && (
+                {(profile.role === "athlete" || profile.role === "individual") && profile.experience && (
                   <Badge className={cn(
                     "mt-4 px-3 py-0.5 text-[10px] font-bold tracking-wide",
                     getExperienceBadgeColor(profile.experience),
@@ -652,7 +653,7 @@ export function HolographicProfileCard({
           >
             <div className={cn(
               "absolute inset-0",
-              profile.role === "athlete"
+              (profile.role === "athlete" || profile.role === "individual")
                 ? "bg-gradient-to-br from-amber-50 via-white to-orange-50"
                 : "bg-gradient-to-br from-cyan-50 via-white to-blue-50"
             )} />
@@ -664,15 +665,16 @@ export function HolographicProfileCard({
                 </h4>
                 <Badge className={cn(
                   "text-[10px] font-bold",
-                  profile.role === "athlete"
+                  (profile.role === "athlete" || profile.role === "individual")
                     ? "bg-amber-100 text-amber-800"
                     : "bg-cyan-100 text-cyan-800"
                 )}>
-                  {profile.role}
+                  {profile.role === "individual" ? "Self-Coach" : profile.role}
                 </Badge>
               </div>
 
-              {profile.role === "athlete" ? (
+              {/* Athletes and individuals use the same back content */}
+              {(profile.role === "athlete" || profile.role === "individual") ? (
                 <AthleteBackContent profile={profile} size={size} />
               ) : (
                 <CoachBackContent profile={profile} size={size} />

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Plus, Edit, Trash2, Move } from "lucide-react"
 import { usePlanContext } from "../context/PlanContext"
+import { useTerminology } from "@/lib/terminology"
 
 interface MicrocycleEditorProps {
   microcycleId: number
@@ -13,13 +14,14 @@ interface MicrocycleEditorProps {
   onViewModeChange: (mode: 'meso' | 'micro' | 'macro') => void
 }
 
-export function MicrocycleEditor({ 
-  microcycleId, 
-  onSessionSelect, 
-  onViewModeChange 
+export function MicrocycleEditor({
+  microcycleId,
+  onSessionSelect,
+  onViewModeChange
 }: MicrocycleEditorProps) {
   const { plan } = usePlanContext()
   const [editingMode, setEditingMode] = useState<'view' | 'edit'>('view')
+  const terms = useTerminology()
 
   // Find the microcycle
   const microcycle = plan?.mesocycles
@@ -27,7 +29,7 @@ export function MicrocycleEditor({
     .find(micro => micro.id === microcycleId)
 
   if (!microcycle) {
-    return <div>Microcycle not found</div>
+    return <div>{terms.microcycle} not found</div>
   }
 
   const totalSessions = microcycle.sessions.length

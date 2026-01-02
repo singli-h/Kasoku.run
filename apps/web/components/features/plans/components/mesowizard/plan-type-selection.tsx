@@ -1,15 +1,16 @@
 /**
  * MesoWizard - Step 1: Plan Type Selection
  * Allows users to select between Macrocycle, Mesocycle, and Microcycle plans
+ * Individual users see simplified terminology (Training Block, Week)
  */
 
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
-import { 
-  Calendar, 
-  CalendarRange, 
+import {
+  Calendar,
+  CalendarRange,
   CalendarDays,
   Info,
   ArrowRight,
@@ -24,6 +25,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { useTerminology } from "@/lib/terminology"
+import { useUserRole } from "@/contexts/user-role-context"
 
 export type PlanType = 'macrocycle' | 'mesocycle' | 'microcycle'
 
@@ -125,6 +128,44 @@ export function PlanTypeSelection({
 }: PlanTypeSelectionProps) {
   const [selectedPlanType, setSelectedPlanType] = useState<PlanType | null>(null)
   const [hoveredType, setHoveredType] = useState<PlanType | null>(null)
+  const terms = useTerminology()
+  const { isIndividual } = useUserRole()
+
+  // Filter and transform plan options based on user role
+  const availableOptions = useMemo(() => {
+    return planTypeOptions
+      .filter(option => {
+        // Hide macrocycle for individual users
+        if (isIndividual && option.type === 'macrocycle') return false
+        return true
+      })
+      .map(option => {
+        // Apply terminology for individual users
+        if (isIndividual) {
+          if (option.type === 'mesocycle') {
+            return {
+              ...option,
+              title: terms.mesocycle, // "Training Block"
+              description: 'Create a focused training block with weekly structure',
+              bestFor: [
+                'Personal training goals',
+                'Structured progression',
+                'AI-assisted planning',
+                'Self-coaching'
+              ]
+            }
+          }
+          if (option.type === 'microcycle') {
+            return {
+              ...option,
+              title: terms.microcycle, // "Week"
+              description: 'Plan a single training week with daily workouts',
+            }
+          }
+        }
+        return option
+      })
+  }, [isIndividual, terms])
 
   const handleCardClick = (planType: PlanType) => {
     setSelectedPlanType(planType)
@@ -173,8 +214,8 @@ export function PlanTypeSelection({
       </div>
 
       {/* Plan Type Cards */}
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
-        {planTypeOptions.map((option, index) => {
+      <div className={cn("grid gap-6 md:grid-cols-1", availableOptions.length === 2 ? "lg:grid-cols-2" : "lg:grid-cols-3")}>
+        {availableOptions.map((option, index) => {
           const Icon = option.icon
           const isSelected = selectedPlanType === option.type
           const isHovered = hoveredType === option.type
