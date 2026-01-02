@@ -12,11 +12,12 @@ import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
-import { 
+import {
   WorkoutLogWithDetails,
   SessionPlanWithDetails
 } from "@/types/training"
 import { Database } from "@/types/database"
+import { processSessionForPBsAction } from "@/actions/athletes/personal-best-actions"
 
 type SessionStatus = Database["public"]["Enums"]["session_status"]
 
@@ -429,6 +430,21 @@ export async function updateTrainingSessionStatusAction(
     if (error) {
       console.error('Error updating session status:', error)
       return { isSuccess: false, message: "Failed to update session status" }
+    }
+
+    // 4. Auto-detect PBs when session is completed
+    if (status === 'completed') {
+      // Process session for personal bests asynchronously
+      // This runs in the background to avoid blocking the response
+      processSessionForPBsAction(sessionId)
+        .then((result) => {
+          if (result.isSuccess) {
+            console.log(`[updateTrainingSessionStatusAction] PB detection: ${result.message}`)
+          }
+        })
+        .catch((error) => {
+          console.error('[updateTrainingSessionStatusAction] PB detection error:', error)
+        })
     }
 
     return {
