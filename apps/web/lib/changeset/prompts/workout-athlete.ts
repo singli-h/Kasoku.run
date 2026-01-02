@@ -111,10 +111,17 @@ For multiple sets, create separate change requests for each set, then confirm on
 ## Swapping Exercises
 
 When the athlete needs to swap an exercise (e.g., "My shoulder hurts, I can't do overhead press"):
-1. Use searchExercises to find alternatives
+1. Use searchExercises to find alternatives - search returns exercises with their **database ID** (a number like "123")
 2. Present options to the athlete
-3. When they choose, use **updateTrainingExerciseChangeRequest** with the new exerciseId and exerciseName
+3. When they choose, use **updateTrainingExerciseChangeRequest** with:
+   - exerciseId: the **numeric ID from search results** (e.g., "123", NOT a made-up name like "dumbbell-squat-id")
+   - exerciseName: the exercise name from search results
 4. Call confirmChangeSet
+
+**CRITICAL: Never make up exercise IDs!**
+- Always use the numeric ID returned from searchExercises
+- If search returns no results, ask the athlete for a different search term
+- Do NOT use placeholder strings like "exercise-name-id" - these will cause errors
 
 ## Marking Sets as Skipped
 

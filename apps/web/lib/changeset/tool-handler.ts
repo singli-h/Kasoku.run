@@ -143,6 +143,25 @@ function handleProposalTool(
     }
   }
 
+  // Validate exerciseId for exercise-related tools (must be numeric, not a made-up string)
+  if (
+    (toolName.includes('Exercise') || toolName.includes('exercise')) &&
+    args.exerciseId
+  ) {
+    const exerciseId = String(args.exerciseId)
+    // Check if it's a valid numeric ID or a temp ID (temp_XXX)
+    const isNumeric = /^\d+$/.test(exerciseId)
+    const isTempId = /^temp_\d+$/.test(exerciseId)
+
+    if (!isNumeric && !isTempId) {
+      console.error(`[ProposalTool] ❌ ERROR: Invalid exerciseId: '${exerciseId}' - must be a numeric database ID or temp_XXX`)
+      return {
+        success: false,
+        error: `Invalid exerciseId: '${exerciseId}'. You must use a numeric ID from the searchExercises results (e.g., "123"), NOT a made-up string like "exercise-name-id". Please call searchExercises first to get valid exercise IDs.`,
+      }
+    }
+  }
+
   try {
     // Get or create changeset ID for consistency
     const changesetId = context.changeSet.getOrCreateChangesetId()
