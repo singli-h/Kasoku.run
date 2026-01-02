@@ -12,7 +12,7 @@ import { Plus, Trash2, GripVertical } from "lucide-react"
 import { usePlanContext } from "../context/PlanContext"
 
 interface ExercisePlanningPanelProps {
-  sessionId: number
+  sessionId: string
 }
 
 export function ExercisePlanningPanel({ sessionId }: ExercisePlanningPanelProps) {

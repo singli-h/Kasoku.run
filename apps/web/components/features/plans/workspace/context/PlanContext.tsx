@@ -33,7 +33,7 @@ interface PlanData {
       created_at: string | null
       user_id: number | null
       sessions: Array<{
-        id: number
+        id: string
         day: number
         name: string
         type: 'speed' | 'strength' | 'recovery' | 'endurance'
@@ -64,10 +64,10 @@ interface PlanContextType {
   plan: PlanData | null
   activeMesocycleId: number | null
   activeMicrocycleId: number | null
-  selectedSessionId: number | null
+  selectedSessionId: string | null
   onMesocycleChange: (id: number | null) => void
   onMicrocycleChange: (id: number | null) => void
-  onSessionChange: (id: number | null) => void
+  onSessionChange: (id: string | null) => void
 }
 
 const PlanContext = createContext<PlanContextType | undefined>(undefined)
@@ -77,10 +77,10 @@ interface PlanContextProviderProps {
   plan: PlanData | null
   activeMesocycleId: number | null
   activeMicrocycleId: number | null
-  selectedSessionId: number | null
+  selectedSessionId: string | null
   onMesocycleChange: (id: number | null) => void
   onMicrocycleChange: (id: number | null) => void
-  onSessionChange: (id: number | null) => void
+  onSessionChange: (id: string | null) => void
 }
 
 export function PlanContextProvider({

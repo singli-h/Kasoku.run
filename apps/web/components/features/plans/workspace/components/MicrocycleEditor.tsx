@@ -10,7 +10,7 @@ import { useTerminology } from "@/lib/terminology"
 
 interface MicrocycleEditorProps {
   microcycleId: number
-  onSessionSelect: (id: number) => void
+  onSessionSelect: (id: string) => void
   onViewModeChange: (mode: 'meso' | 'micro' | 'macro') => void
 }
 

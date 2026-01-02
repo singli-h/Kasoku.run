@@ -23,7 +23,7 @@ interface EditSessionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSave: (session: Session) => void
-  onDelete?: (id: number) => void
+  onDelete?: (id: string) => void
 }
 
 export function EditSessionDialog({ session, open, onOpenChange, onSave, onDelete }: EditSessionDialogProps) {
@@ -65,7 +65,7 @@ export function EditSessionDialog({ session, open, onOpenChange, onSave, onDelet
 
   const handleSave = () => {
     const newSession: Session = {
-      id: session?.id || Date.now(),
+      id: session?.id || `temp_${Date.now()}`,
       name: formData.name || "New Session",
       day: formData.day || 1,
       type: formData.type || "strength",

@@ -15,7 +15,7 @@ interface SessionData {
 }
 
 interface SessionPlan {
-  id: number
+  id: string
   day: number | null
   name: string | null
   session_mode: string | null

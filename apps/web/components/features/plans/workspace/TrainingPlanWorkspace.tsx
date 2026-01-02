@@ -14,7 +14,7 @@ import { PlanPageHeader } from "../components/PlanPageHeader"
 
 // Training plan workspace component - interfaces for data structure
 export interface Session {
-  id: number
+  id: string
   day: number
   name: string
   type: 'speed' | 'strength' | 'recovery' | 'endurance' | 'power'
@@ -256,7 +256,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
     setSelectedMicro(updatedMicro)
   }
 
-  const handleDeleteSession = (id: number) => {
+  const handleDeleteSession = (id: string) => {
     if (!selectedMeso || !selectedMicro) return
     const updatedMicro = {
       ...selectedMicro,
