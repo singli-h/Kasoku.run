@@ -143,6 +143,25 @@ function handleProposalTool(
     }
   }
 
+  // Validate exerciseId for exercise-related tools (must be numeric, not a made-up string)
+  if (
+    (toolName.includes('Exercise') || toolName.includes('exercise')) &&
+    args.exerciseId
+  ) {
+    const exerciseId = String(args.exerciseId)
+    // Check if it's a valid numeric ID or a temp ID (temp_XXX)
+    const isNumeric = /^\d+$/.test(exerciseId)
+    const isTempId = /^temp_\d+$/.test(exerciseId)
+
+    if (!isNumeric && !isTempId) {
+      console.error(`[ProposalTool] ❌ ERROR: Invalid exerciseId: '${exerciseId}' - must be a numeric database ID or temp_XXX`)
+      return {
+        success: false,
+        error: `Invalid exerciseId: '${exerciseId}'. You must use a numeric ID from the searchExercises results (e.g., "123"), NOT a made-up string like "exercise-name-id". Please call searchExercises first to get valid exercise IDs.`,
+      }
+    }
+  }
+
   try {
     // Get or create changeset ID for consistency
     const changesetId = context.changeSet.getOrCreateChangesetId()
@@ -330,12 +349,10 @@ async function handleReadTool(
  *
  * @param approved - Whether the user approved
  * @param changes - The changes that were applied (if approved)
- * @param feedback - User feedback (if rejected with feedback)
  */
 export function createApprovalResult(
   approved: boolean,
-  changes?: ChangeRequest[],
-  feedback?: string
+  changes?: ChangeRequest[]
 ): Record<string, unknown> {
   if (approved) {
     return {
@@ -345,17 +362,12 @@ export function createApprovalResult(
     }
   }
 
-  if (feedback) {
-    return {
-      status: 'rejected_with_feedback',
-      feedback,
-      message: 'User requested changes. Please revise based on the feedback.',
-    }
-  }
-
+  // User clicked "Change" button - they want to revise the proposal
+  // IMPORTANT: The changeset is PRESERVED (not cleared)
+  // AI should ask what they want to change, then modify via upsert, then confirmChangeSet again
   return {
-    status: 'rejected',
-    message: 'User dismissed all changes.',
+    status: 'revision_requested',
+    message: 'User wants to revise this proposal. Your pending changes are still preserved in the buffer. Ask them what they would like to change, then use the proposal tools to update the changes (upsert will replace existing entries), and call confirmChangeSet again when ready for review.',
   }
 }
 

@@ -103,7 +103,7 @@ export type CreateTrainingSetInput = z.infer<typeof createTrainingSetChangeReque
 
 export const createTrainingSetChangeRequestTool = tool({
   description:
-    "Log the athlete's actual performance for a set. Use this when the athlete tells you their reps, weight, or RPE for a set.",
+    "Log or ADD a set for an exercise. Use this to: (1) Log actual performance for a set, (2) ADD additional sets to an exercise by using the next setIndex. For example, if an exercise has 3 sets, add a 4th by using setIndex: 4. Requires workoutLogExerciseId from getWorkoutContext.",
   inputSchema: createTrainingSetChangeRequestSchema,
   // No execute - handled client-side
 })
@@ -212,7 +212,7 @@ export type CreateTrainingExerciseInput = z.infer<typeof createTrainingExerciseC
 
 export const createTrainingExerciseChangeRequestTool = tool({
   description:
-    'Add a new exercise to the workout. Use this when the athlete wants to add an exercise that was not in the original plan.',
+    'Add a COMPLETELY NEW exercise to the workout (not in the original plan). Do NOT use this to add sets - use createTrainingSetChangeRequest instead to add sets to an existing exercise.',
   inputSchema: createTrainingExerciseChangeRequestSchema,
   // No execute - handled client-side
 })
