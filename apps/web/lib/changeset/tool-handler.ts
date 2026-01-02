@@ -330,12 +330,10 @@ async function handleReadTool(
  *
  * @param approved - Whether the user approved
  * @param changes - The changes that were applied (if approved)
- * @param feedback - User feedback (if rejected with feedback)
  */
 export function createApprovalResult(
   approved: boolean,
-  changes?: ChangeRequest[],
-  feedback?: string
+  changes?: ChangeRequest[]
 ): Record<string, unknown> {
   if (approved) {
     return {
@@ -345,17 +343,11 @@ export function createApprovalResult(
     }
   }
 
-  if (feedback) {
-    return {
-      status: 'rejected_with_feedback',
-      feedback,
-      message: 'User requested changes. Please revise based on the feedback.',
-    }
-  }
-
+  // User clicked "Change" button - they want to revise the proposal
+  // AI should ask what they want to change (via chat, not via injected prompt)
   return {
     status: 'rejected',
-    message: 'User dismissed all changes.',
+    message: 'User wants to modify the proposal. Ask them what they would like to change.',
   }
 }
 

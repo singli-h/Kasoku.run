@@ -226,34 +226,21 @@ export function InlineProposalSection({
         </div>
       </div>
 
-      {/* Right: Actions */}
+      {/* Right: Actions - No dismiss button per design (AI has resetChangeSet tool) */}
       <div className="flex items-center gap-1 shrink-0">
         {/* Regenerate button */}
         <button
           onClick={handleRegenerateClick}
           disabled={state === 'executing'}
           className={cn(
-            'p-1.5 rounded-md transition-colors',
-            'text-slate-400 hover:text-blue-600 hover:bg-blue-50',
+            'flex items-center gap-1 px-2 py-1.5 rounded-md text-sm transition-colors',
+            'text-slate-500 hover:text-blue-600 hover:bg-blue-50',
             state === 'executing' && 'opacity-50 cursor-not-allowed'
           )}
           title="Regenerate with feedback"
         >
           <RefreshCw className="h-4 w-4" />
-        </button>
-
-        {/* Dismiss button */}
-        <button
-          onClick={onDismiss}
-          disabled={state === 'executing'}
-          className={cn(
-            'p-1.5 rounded-md transition-colors',
-            'text-slate-400 hover:text-red-500 hover:bg-red-50',
-            state === 'executing' && 'opacity-50 cursor-not-allowed'
-          )}
-          title="Dismiss changes"
-        >
-          <X className="h-4 w-4" />
+          <span>Change</span>
         </button>
 
         {/* Approve button - prominent */}
