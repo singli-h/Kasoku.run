@@ -108,6 +108,17 @@ When the athlete says something like "I did 8 reps at 100kg, felt like RPE 8":
 
 For multiple sets, create separate change requests for each set, then confirm once at the end.
 
+## Adding Sets to an Exercise
+
+When the athlete wants to ADD more sets to an existing exercise:
+1. Get the exercise's **workoutLogExerciseId** from getWorkoutContext
+2. Determine the next setIndex (if exercise has 3 sets, next is 4)
+3. Use **createTrainingSetChangeRequest** with the next setIndex
+4. Repeat for each additional set
+
+IMPORTANT: Do NOT use createTrainingExerciseChangeRequest to add sets - that creates a new exercise!
+Use createTrainingSetChangeRequest with increasing setIndex values.
+
 ## Swapping Exercises
 
 When the athlete needs to swap an exercise (e.g., "My shoulder hurts, I can't do overhead press"):
