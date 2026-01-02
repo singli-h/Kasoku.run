@@ -27,7 +27,9 @@ import { executeChangeSet } from '@/lib/changeset/execute'
 import { executeWorkoutChangeSet } from '@/lib/changeset/execute-workout'
 import { executeReadTool } from '@/lib/changeset/tool-implementations/read-impl'
 import { executeAthleteReadTool } from '@/lib/changeset/tool-implementations/workout-read-impl'
-import { buildRejectionFollowUpPrompt, buildExecutionFailurePrompt } from '@/lib/changeset/prompts/session-planner'
+// Note: Rejection prompts removed - AI naturally asks in chat what to change
+// Follow-up message injection is NOT part of the design
+// See: specs/002-ai-session-assistant/reference/20251221-session-ui-integration.md
 import { createClientSupabaseClient } from '@/lib/supabase-client'
 import { ChatDrawer, ChatTrigger } from './ChatDrawer'
 import { ChatSidebar } from './ChatSidebar'
@@ -306,16 +308,11 @@ function SessionAssistantContent({
         // Execution failed with a known error
         setExecutionError(result.error)
 
-        // Return error to AI
+        // Return error to AI - it will understand from the error result
         addToolOutput({
           tool: pendingToolCall.toolName,
           toolCallId: pendingToolCall.toolCallId,
           output: JSON.stringify(createExecutionFailureResult(result.error)),
-        })
-
-        // Add follow-up message for AI to understand what went wrong
-        sendMessage({
-          text: buildExecutionFailurePrompt(result.error?.message || 'Unknown error'),
         })
       }
     } catch (error) {
@@ -344,40 +341,36 @@ function SessionAssistantContent({
   }, [changeSet, domain, exercises, sessionId, setExercises, onWorkoutUpdated, pendingToolCall, addToolOutput, sendMessage])
 
   /**
-   * Handle user regeneration request.
+   * Handle user regeneration request (user clicked "Change" button).
+   * Simply returns rejection to AI - AI will ask in chat what to change.
+   * NO follow-up prompt injection - feedback comes from chat conversation.
+   *
+   * IMPORTANT: Changeset is PRESERVED (not cleared) so AI can modify it.
+   * Per design: "Restore keyed buffer (not cleared)" - AI corrects via upsert.
    */
-  const handleRegenerate = useCallback(
-    (feedback?: string) => {
-      if (!pendingToolCall) return
+  const handleRegenerate = useCallback(() => {
+    if (!pendingToolCall) return
 
-      // Guard against duplicate submissions (race condition)
-      if (respondedToolCallsRef.current.has(pendingToolCall.toolCallId)) {
-        console.warn('[handleRegenerate] Already responded to tool call:', pendingToolCall.toolCallId)
-        return
-      }
-      respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
+    // Guard against duplicate submissions (race condition)
+    if (respondedToolCallsRef.current.has(pendingToolCall.toolCallId)) {
+      console.warn('[handleRegenerate] Already responded to tool call:', pendingToolCall.toolCallId)
+      return
+    }
+    respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
 
-      // Return rejection result to AI (no await)
-      addToolOutput({
-        tool: pendingToolCall.toolName,
-        toolCallId: pendingToolCall.toolCallId,
-        output: JSON.stringify(createApprovalResult(false, undefined, feedback)),
-      })
+    // Return rejection result to AI - AI will naturally ask what to change
+    addToolOutput({
+      tool: pendingToolCall.toolName,
+      toolCallId: pendingToolCall.toolCallId,
+      output: JSON.stringify(createApprovalResult(false)),
+    })
 
-      // Add follow-up message
-      if (feedback) {
-        sendMessage({
-          text: buildRejectionFollowUpPrompt(feedback),
-        })
-      }
-
-      // Clear changeset but keep banner hidden until AI proposes again
-      changeSet.clear()
-      setShowBanner(false)
-      setPendingToolCall(null)
-    },
-    [pendingToolCall, addToolOutput, sendMessage, changeSet]
-  )
+    // Transition changeset back to "building" state (NOT cleared)
+    // AI can modify the existing changes via upsert operations
+    changeSet.setStatus('building')
+    setShowBanner(false)
+    setPendingToolCall(null)
+  }, [pendingToolCall, addToolOutput, changeSet])
 
   /**
    * Handle user dismissal of changes.
@@ -506,16 +499,18 @@ function SessionAssistantContent({
         hidden={chatOpen}
       />
 
-      {/* Approval banner (overlay mode only) */}
+      {/* Approval banner (overlay mode only) - fixed at bottom of viewport */}
       {!useInlineMode && showBanner && changeSet.changeset && (
-        <ApprovalBanner
-          changeset={changeSet.changeset}
-          onApprove={handleApprove}
-          onRegenerate={handleRegenerate}
-          onDismiss={handleDismiss}
-          isExecuting={isExecuting}
-          executionError={executionError}
-        />
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
+          <ApprovalBanner
+            changeset={changeSet.changeset}
+            onApprove={handleApprove}
+            onRegenerate={handleRegenerate}
+            onDismiss={handleDismiss}
+            isExecuting={isExecuting}
+            executionError={executionError}
+          />
+        </div>
       )}
     </SessionAssistantContext.Provider>
   )

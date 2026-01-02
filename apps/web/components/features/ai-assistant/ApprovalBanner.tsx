@@ -3,20 +3,46 @@
 /**
  * ApprovalBanner Component
  *
- * Minimal banner for batch approval of AI changes.
- * Design: Collapsed by default, tap to see simple change list.
+ * Ultra-compact notification bar for AI change proposals.
+ * Shows concise summary with inline approve/change actions.
  *
- * @see specs/004-feature-pattern-standard/ai-ui-proposal.md
+ * Design: Industrial/utilitarian - functional status bar aesthetic.
+ *
+ * Flow:
+ * - User clicks "Change" → addToolOutput returns rejection → AI asks in chat
+ * - User clicks "Apply" → execute changes
+ * - NO feedback input in banner - feedback comes from chat
+ *
+ * @see specs/002-ai-session-assistant/reference/20251221-session-ui-integration.md
  */
 
-import { useState } from 'react'
-import { Bot, Check, RefreshCw, Loader2, AlertCircle, ChevronDown, ChevronUp, Plus, Edit2, Minus, ArrowRightLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import type { ChangeSet, ChangeRequest, ExecutionError } from '@/lib/changeset/types'
-import { getChangeSummary } from '@/lib/changeset/ui-helpers'
-import { formatErrorForUser } from '@/lib/changeset/errors'
+import { useState, useEffect } from 'react'
+import { Bot, Check, X, RefreshCw, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { ChangeSet, ChangeRequest, ExecutionError } from '@/lib/changeset/types'
+import { formatErrorForUser } from '@/lib/changeset/errors'
+
+type BannerState = 'pending' | 'executing' | 'success' | 'error'
+
+/**
+ * Generate ultra-concise summary (e.g., "+5 sets, 2 updates")
+ */
+function getCompactSummary(changes: ChangeRequest[]): string {
+  const counts = { add: 0, update: 0, remove: 0 }
+
+  for (const change of changes) {
+    if (change.operationType === 'create') counts.add++
+    else if (change.operationType === 'update') counts.update++
+    else if (change.operationType === 'delete') counts.remove++
+  }
+
+  const parts: string[] = []
+  if (counts.add > 0) parts.push(`+${counts.add}`)
+  if (counts.update > 0) parts.push(`${counts.update} update${counts.update > 1 ? 's' : ''}`)
+  if (counts.remove > 0) parts.push(`-${counts.remove}`)
+
+  return parts.join(', ') || 'No changes'
+}
 
 interface ApprovalBannerProps {
   /** The changeset awaiting approval */
@@ -25,10 +51,10 @@ interface ApprovalBannerProps {
   /** Called when user approves all changes */
   onApprove: () => Promise<void>
 
-  /** Called when user wants AI to regenerate with feedback */
-  onRegenerate: (feedback?: string) => void
+  /** Called when user wants to revise - AI will ask in chat what to change */
+  onRegenerate: () => void
 
-  /** Called when user dismisses/rejects all changes */
+  /** Called when user dismisses/rejects all changes (for error state) */
   onDismiss: () => void
 
   /** Whether execution is in progress */
@@ -36,56 +62,9 @@ interface ApprovalBannerProps {
 
   /** Execution error if any */
   executionError?: ExecutionError
-}
 
-type BannerState = 'pending' | 'feedback' | 'executing' | 'success' | 'error'
-
-/**
- * Get icon for change type
- */
-function getChangeIcon(change: ChangeRequest) {
-  if (change.operationType === 'create') return Plus
-  if (change.operationType === 'delete') return Minus
-  // Check if it's a swap (exercise_id changed)
-  if (change.operationType === 'update' && change.proposedData?.exercise_id) {
-    return ArrowRightLeft
-  }
-  return Edit2
-}
-
-/**
- * Get simple label for a change
- */
-function getChangeLabel(change: ChangeRequest): string {
-  const entityLabels: Record<string, string> = {
-    preset_session: 'Session',
-    preset_exercise: 'Exercise',
-    preset_set: 'Set',
-  }
-  const entity = entityLabels[change.entityType] || change.entityType
-
-  // Try to get exercise name from proposed or current data
-  const name = change.proposedData?.exercise_name
-    || change.proposedData?.exerciseName
-    || change.currentData?.exercise_name
-    || change.currentData?.exerciseName
-
-  if (change.operationType === 'create') {
-    return name ? `Add ${name}` : `Add ${entity}`
-  }
-  if (change.operationType === 'delete') {
-    return name ? `Remove ${name}` : `Remove ${entity}`
-  }
-  if (change.operationType === 'update') {
-    // Check for swap
-    if (change.proposedData?.exercise_id && change.currentData?.exercise_id) {
-      const oldName = change.currentData?.exercise_name || change.currentData?.exerciseName || 'exercise'
-      const newName = change.proposedData?.exercise_name || change.proposedData?.exerciseName || 'new exercise'
-      return `Swap ${oldName} → ${newName}`
-    }
-    return name ? `Update ${name}` : `Update ${entity}`
-  }
-  return `${change.operationType} ${entity}`
+  /** Additional className for styling */
+  className?: string
 }
 
 export function ApprovalBanner({
@@ -95,199 +74,165 @@ export function ApprovalBanner({
   onDismiss,
   isExecuting = false,
   executionError,
+  className,
 }: ApprovalBannerProps) {
-  const [state, setState] = useState<BannerState>(
-    executionError ? 'error' : isExecuting ? 'executing' : 'pending'
-  )
-  const [feedback, setFeedback] = useState('')
-  const [isExpanded, setIsExpanded] = useState(false) // Collapsed by default per spec
+  const [state, setState] = useState<BannerState>('pending')
 
   const changeCount = changeset.changeRequests.length
-  const summary = getChangeSummary(changeset.changeRequests)
+  const compactSummary = getCompactSummary(changeset.changeRequests)
+
+  // Sync external state
+  useEffect(() => {
+    if (executionError) {
+      setState('error')
+    } else if (isExecuting) {
+      setState('executing')
+    }
+  }, [executionError, isExecuting])
 
   const handleApprove = async () => {
     setState('executing')
     try {
       await onApprove()
       setState('success')
-      // Note: Don't call onDismiss here - SessionAssistant.handleApprove
-      // already clears the changeset and hides the banner via setShowBanner(false)
     } catch {
       setState('error')
     }
   }
 
-  const handleRegenerate = () => {
-    if (state === 'feedback') {
-      onRegenerate(feedback || undefined)
-      setFeedback('')
-      setState('pending')
-    } else {
-      setState('feedback')
-    }
+  const handleChange = () => {
+    // Simply call onRegenerate - AI will ask in chat what to change
+    onRegenerate()
   }
 
-  const handleCancelFeedback = () => {
-    setFeedback('')
-    setState('pending')
-  }
-
-  // Success state
+  // Success state - brief flash
   if (state === 'success') {
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-green-50 p-3">
-        <div className="mx-auto flex max-w-4xl items-center justify-center gap-2 text-green-700">
-          <Check className="h-4 w-4" />
-          <span className="text-sm font-medium">Changes saved!</span>
-        </div>
-      </div>
-    )
-  }
-
-  // Error state
-  if (state === 'error' || executionError) {
-    const errorMessage = executionError
-      ? formatErrorForUser(executionError)
-      : 'Failed to save changes'
-
-    return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-red-50 p-3">
-        <div className="mx-auto flex max-w-4xl items-center justify-between">
-          <div className="flex items-center gap-2 text-red-700">
-            <AlertCircle className="h-4 w-4" />
-            <span className="text-sm">{errorMessage}</span>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={onDismiss}>
-              Dismiss
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setState('pending')}
-            >
-              Retry
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Executing state
-  if (state === 'executing' || isExecuting) {
-    return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-blue-50 p-3">
-        <div className="mx-auto flex max-w-4xl items-center justify-center gap-2 text-blue-700">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Saving...</span>
-        </div>
-      </div>
-    )
-  }
-
-  // Feedback input state
-  if (state === 'feedback') {
-    return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white p-3 shadow-lg">
-        <div className="mx-auto max-w-4xl">
-          <p className="mb-2 text-xs text-gray-500">
-            What should the AI change?
-          </p>
-          <div className="flex gap-2">
-            <Input
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              placeholder="e.g., Use lighter weights..."
-              className="flex-1 h-9 text-sm"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && feedback) {
-                  handleRegenerate()
-                }
-                if (e.key === 'Escape') {
-                  handleCancelFeedback()
-                }
-              }}
-            />
-            <Button variant="ghost" size="sm" onClick={handleCancelFeedback}>
-              Cancel
-            </Button>
-            <Button size="sm" onClick={handleRegenerate} disabled={!feedback}>
-              Send
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Default pending state - minimal banner
-  return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white shadow-lg">
-      <div className="mx-auto max-w-4xl">
-        {/* Compact header */}
-        <div className="flex items-center justify-between p-3">
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-2 text-left"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
-              <Bot className="h-4 w-4 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">
-                {changeCount} Change{changeCount !== 1 ? 's' : ''} Pending
-              </p>
-              {!isExpanded && (
-                <p className="text-xs text-gray-500">{summary}</p>
-              )}
-            </div>
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4 text-gray-400" />
-            ) : (
-              <ChevronUp className="h-4 w-4 text-gray-400" />
-            )}
-          </button>
-
-          {/* Action buttons - No dismiss/reject button per design */}
-          {/* Users should use "Change" to provide feedback or refresh page to clear */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleRegenerate} className="h-8">
-              <RefreshCw className="mr-1 h-4 w-4" />
-              Change
-            </Button>
-            <Button size="sm" onClick={handleApprove} className="h-8">
-              <Check className="mr-1 h-4 w-4" />
-              Approve
-            </Button>
-          </div>
-        </div>
-
-        {/* Simple change list when expanded */}
-        {isExpanded && (
-          <div className="border-t px-3 pb-3 pt-2">
-            <div className="space-y-1">
-              {changeset.changeRequests.map((change) => {
-                const Icon = getChangeIcon(change)
-                return (
-                  <div
-                    key={change.id}
-                    className={cn(
-                      'flex items-center gap-2 rounded px-2 py-1 text-sm',
-                      change.operationType === 'create' && 'bg-green-50 text-green-700',
-                      change.operationType === 'delete' && 'bg-red-50 text-red-700',
-                      change.operationType === 'update' && 'bg-amber-50 text-amber-700'
-                    )}
-                  >
-                    <Icon className="h-3 w-3 shrink-0" />
-                    <span>{getChangeLabel(change)}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+      <div
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-lg',
+          'bg-emerald-500/10 border border-emerald-500/20',
+          'animate-in fade-in-0 duration-200',
+          className
         )}
+      >
+        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500">
+          <Check className="h-3 w-3 text-white" />
+        </div>
+        <span className="text-sm font-medium text-emerald-700">
+          Changes applied
+        </span>
+      </div>
+    )
+  }
+
+  // Error state - inline with retry
+  if (state === 'error' && executionError) {
+    return (
+      <div
+        className={cn(
+          'flex items-center justify-between gap-3 px-3 py-2 rounded-lg',
+          'bg-red-500/10 border border-red-500/20',
+          className
+        )}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500">
+            <X className="h-3 w-3 text-white" />
+          </div>
+          <span className="text-sm text-red-700 truncate">
+            {formatErrorForUser(executionError)}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => setState('pending')}
+            className="px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-500/10 rounded transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Main compact bar - single line with everything
+  return (
+    <div
+      className={cn(
+        // Industrial status bar aesthetic
+        'flex items-center justify-between gap-3',
+        'px-3 py-2 rounded-lg',
+        'bg-gradient-to-r from-slate-50 to-slate-100/80',
+        'border border-slate-200/80',
+        'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)]',
+        'transition-all duration-200',
+        className
+      )}
+    >
+      {/* Left: AI indicator + summary */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        {/* Compact AI badge */}
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-600 shadow-sm">
+          <Bot className="h-3.5 w-3.5 text-white" />
+        </div>
+
+        {/* Concise summary - single line */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-sm font-semibold text-slate-800 tabular-nums">
+            {changeCount}
+          </span>
+          <span className="text-sm text-slate-500">
+            change{changeCount !== 1 ? 's' : ''}
+          </span>
+          <span className="text-slate-300 mx-0.5">|</span>
+          <span className="text-sm font-medium text-slate-600 truncate">
+            {compactSummary}
+          </span>
+        </div>
+      </div>
+
+      {/* Right: Actions */}
+      <div className="flex items-center gap-1 shrink-0">
+        {/* Change button - triggers rejection, AI will ask in chat */}
+        <button
+          onClick={handleChange}
+          disabled={state === 'executing'}
+          className={cn(
+            'flex items-center gap-1 px-2 py-1.5 rounded-md text-sm transition-colors',
+            'text-slate-500 hover:text-blue-600 hover:bg-blue-50',
+            state === 'executing' && 'opacity-50 cursor-not-allowed'
+          )}
+          title="Request changes - AI will ask what to modify"
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span>Change</span>
+        </button>
+
+        {/* Approve button - prominent */}
+        <button
+          onClick={handleApprove}
+          disabled={state === 'executing'}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium',
+            'bg-blue-600 text-white',
+            'hover:bg-blue-700 active:bg-blue-800',
+            'shadow-sm transition-all',
+            state === 'executing' && 'opacity-70 cursor-not-allowed'
+          )}
+        >
+          {state === 'executing' ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Applying</span>
+            </>
+          ) : (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              <span>Apply</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   )
