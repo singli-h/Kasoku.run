@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useState, useMemo, useRef, useEffect } from 'react'
-import { useChat, type UIMessage } from '@ai-sdk/react'
+import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from 'ai'
 import { useAuth } from '@clerk/nextjs'
 import { ChangeSetProvider } from '@/lib/changeset/ChangeSetContext'
@@ -37,59 +37,6 @@ import { useIsDesktop } from './hooks/useAILayoutMode'
 import { useSessionExercisesOptional } from '@/components/features/training/context'
 import type { SessionPlannerExercise } from '@/components/features/training/adapters/session-adapter'
 import type { ExecutionError, ChangeSet } from '@/lib/changeset/types'
-
-// ============================================================================
-// LocalStorage Persistence for Chat Messages
-// ============================================================================
-const STORAGE_KEY_PREFIX = 'kasoku_ai_session_'
-const getStorageKey = (sessionId: number) => `${STORAGE_KEY_PREFIX}${sessionId}`
-
-interface PersistedState {
-  messages: UIMessage[]
-  changeset: ChangeSet | null
-  showBanner: boolean
-  timestamp: number
-}
-
-// 24 hour expiry for persisted state
-const EXPIRY_MS = 24 * 60 * 60 * 1000
-
-function loadPersistedState(sessionId: number): PersistedState | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const stored = localStorage.getItem(getStorageKey(sessionId))
-    if (!stored) return null
-    const parsed = JSON.parse(stored) as PersistedState
-    // Check expiry
-    if (Date.now() - parsed.timestamp > EXPIRY_MS) {
-      localStorage.removeItem(getStorageKey(sessionId))
-      return null
-    }
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-function savePersistedState(sessionId: number, state: Partial<PersistedState>) {
-  if (typeof window === 'undefined') return
-  try {
-    const existing = loadPersistedState(sessionId) || { messages: [], changeset: null, showBanner: false, timestamp: Date.now() }
-    const updated = { ...existing, ...state, timestamp: Date.now() }
-    localStorage.setItem(getStorageKey(sessionId), JSON.stringify(updated))
-  } catch (e) {
-    console.warn('[SessionAssistant] Failed to persist state:', e)
-  }
-}
-
-function clearPersistedState(sessionId: number) {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.removeItem(getStorageKey(sessionId))
-  } catch {
-    // Ignore
-  }
-}
 
 /**
  * Domain type for the assistant.
@@ -160,12 +107,9 @@ function SessionAssistantContent({
   const exercises = exercisesContext?.exercises ?? []
   const setExercises = exercisesContext?.setExercises
 
-  // Load persisted state on mount
-  const [initialState] = useState(() => loadPersistedState(sessionId))
-
   const [chatOpen, setChatOpen] = useState(false)
   const [sidebarPinned, setSidebarPinned] = useState(false)
-  const [showBanner, setShowBanner] = useState(initialState?.showBanner ?? false)
+  const [showBanner, setShowBanner] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
   const [executionError, setExecutionError] = useState<ExecutionError | undefined>()
   const [input, setInput] = useState('')
@@ -178,30 +122,12 @@ function SessionAssistantContent({
 
   const changeSet = useChangeSet()
 
-  // Restore changeset from localStorage on mount
-  useEffect(() => {
-    if (initialState?.changeset && !changeSet.changeset) {
-      // Restore each change request
-      initialState.changeset.changeRequests.forEach(req => {
-        changeSet.upsert(req)
-      })
-    }
-  }, []) // Only on mount
-
   // Auto-collapse chat when proposals are pending (inline mode only)
   useEffect(() => {
     if (useInlineMode && autoCollapseChat && showBanner) {
       setChatOpen(false)
     }
   }, [useInlineMode, autoCollapseChat, showBanner])
-
-  // Persist showBanner and changeset state
-  useEffect(() => {
-    savePersistedState(sessionId, {
-      showBanner,
-      changeset: changeSet.changeset,
-    })
-  }, [sessionId, showBanner, changeSet.changeset])
 
   // Get Clerk auth for Supabase client
   const { getToken } = useAuth()
@@ -230,8 +156,6 @@ function SessionAssistantContent({
     addToolOutput,
   } = useChat({
     transport,
-    // Restore messages from localStorage
-    messages: initialState?.messages,
     // Automatically send when all tool calls have results
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     // Handle tool calls from the AI
@@ -296,13 +220,6 @@ function SessionAssistantContent({
       }
     },
   })
-
-  // Persist messages when they change
-  useEffect(() => {
-    if (messages.length > 0) {
-      savePersistedState(sessionId, { messages })
-    }
-  }, [sessionId, messages])
 
   // Derived state
   const isLoading = status === 'submitted' || status === 'streaming'
@@ -434,14 +351,12 @@ function SessionAssistantContent({
   const handleClearChat = useCallback(() => {
     // Clear messages
     setMessages([])
-    // Clear persisted state
-    clearPersistedState(sessionId)
     // Clear any pending changeset
     changeSet.clear()
     setShowBanner(false)
     setExecutionError(undefined)
     setPendingToolCall(null)
-  }, [sessionId, setMessages, changeSet])
+  }, [setMessages, changeSet])
 
   // Context value for inline proposal section
   const contextValue = useMemo(
