@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Sparkles } from 'lucide-react'
+import { ArrowRight, Sparkles, User, Users, Dumbbell } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
 
@@ -28,25 +28,29 @@ export default function Hero() {
             className="space-y-8"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-foreground">
-              Transform Your Fitness Journey with
+              Your AI Training Partner for
               <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-                {" "}AI-Powered Insights
+                {" "}Smarter Workouts
               </span>
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-              Smart training plans, real-time performance tracking, and personalized coaching powered by artificial intelligence. Join thousands of athletes achieving their goals.
+              Log workouts, build training plans, and get real-time AI coaching. Whether you're self-coaching or working with a trainer, Kasoku adapts to you.
             </p>
 
-            {/* Trust indicators */}
-            <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>10,000+ Active Athletes</span>
+            {/* User type pills */}
+            <div className="flex flex-wrap gap-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 dark:bg-primary/20 text-sm font-medium text-foreground">
+                <User className="w-4 h-4 text-primary" />
+                <span>Self-Coaching</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-primary rounded-full"></div>
-                <span>4.9★ Rating</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/10 dark:bg-purple-500/20 text-sm font-medium text-foreground">
+                <Users className="w-4 h-4 text-purple-500" />
+                <span>Coach & Athletes</span>
+              </div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 dark:bg-green-500/20 text-sm font-medium text-foreground">
+                <Dumbbell className="w-4 h-4 text-green-500" />
+                <span>Any Sport</span>
               </div>
             </div>
 
@@ -66,10 +70,28 @@ export default function Hero() {
                   </Button>
                 </Link>
               )}
-              <Button variant="outline" className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                See Features
-              </Button>
+              <Link href="#features">
+                <Button variant="outline" className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  See Features
+                </Button>
+              </Link>
+            </div>
+
+            {/* Trust indicators */}
+            <div className="flex items-center gap-6 text-sm text-muted-foreground pt-4 border-t border-border/50">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span>Free to start</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-primary rounded-full"></div>
+                <span>AI-powered</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <span>No credit card</span>
+              </div>
             </div>
           </motion.div>
 
@@ -85,7 +107,7 @@ export default function Hero() {
               <div className="w-64 h-64 bg-gradient-to-r from-primary to-purple-500 rounded-full opacity-20 blur-3xl" />
               <Image
                 src="/hero.png"
-                alt="Kasoku Hero Image"
+                alt="Kasoku - AI Training Platform"
                 className="absolute w-full h-full object-contain"
                 width={512}
                 height={512}
