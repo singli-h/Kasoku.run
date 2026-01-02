@@ -72,6 +72,13 @@ interface SessionAssistantProps {
    */
   autoCollapseChat?: boolean
 
+  /**
+   * Callback triggered after workout domain execution completes successfully.
+   * Use this to invalidate React Query cache and refresh UI.
+   * Only called for domain='workout'.
+   */
+  onWorkoutUpdated?: () => void | Promise<void>
+
   /** Children to render inside the context provider */
   children?: React.ReactNode
 }
@@ -97,6 +104,7 @@ function SessionAssistantContent({
   domain = 'session',
   useInlineMode = false,
   autoCollapseChat = true,
+  onWorkoutUpdated,
   children,
 }: SessionAssistantProps) {
   // Responsive layout detection
@@ -237,9 +245,18 @@ function SessionAssistantContent({
 
   /**
    * Handle user approval of changes.
+   *
+   * State management:
+   * - Sets isExecuting=true at start, false in finally (always)
+   * - Clears pendingToolCall in finally (always)
+   * - Reports results back to AI (success or failure)
+   * - Calls onWorkoutUpdated for workout domain to refresh React Query cache
    */
   const handleApprove = useCallback(async () => {
-    if (!changeSet.changeset || !pendingToolCall) return
+    if (!changeSet.changeset || !pendingToolCall) {
+      console.warn('[handleApprove] Missing changeset or pendingToolCall, aborting')
+      return
+    }
 
     setIsExecuting(true)
     setExecutionError(undefined)
@@ -251,9 +268,18 @@ function SessionAssistantContent({
         : await executeChangeSet(changeSet.changeset, exercises, sessionId)
 
       if (result.status === 'approved') {
-        // Success - update shared exercises context with execution result (session domain only)
+        // Success - update UI based on domain
         if (domain === 'session' && result.updatedExercises && setExercises) {
+          // Session domain: Update shared exercises context directly
           setExercises(result.updatedExercises as SessionPlannerExercise[])
+        } else if (domain === 'workout' && onWorkoutUpdated) {
+          // Workout domain: Trigger React Query cache invalidation
+          try {
+            await Promise.resolve(onWorkoutUpdated())
+          } catch (refreshError) {
+            // Don't fail the operation if refresh fails - data was saved
+            console.warn('[handleApprove] onWorkoutUpdated callback error:', refreshError)
+          }
         }
 
         // Return result to AI (no await to avoid deadlocks)
@@ -263,11 +289,11 @@ function SessionAssistantContent({
           output: JSON.stringify(createApprovalResult(true, changeSet.changeset.changeRequests)),
         })
 
-        // Clear changeset
+        // Clear changeset and hide banner
         changeSet.clear()
         setShowBanner(false)
       } else {
-        // Execution failed
+        // Execution failed with a known error
         setExecutionError(result.error)
 
         // Return error to AI
@@ -277,24 +303,35 @@ function SessionAssistantContent({
           output: JSON.stringify(createExecutionFailureResult(result.error)),
         })
 
-        // Add follow-up message for AI
+        // Add follow-up message for AI to understand what went wrong
         sendMessage({
           text: buildExecutionFailurePrompt(result.error?.message || 'Unknown error'),
         })
       }
     } catch (error) {
-      console.error('[handleApprove] Error:', error)
-      setExecutionError({
-        type: 'CRITICAL',
+      // Unexpected error - ensure we still report back to AI
+      console.error('[handleApprove] Unexpected error:', error)
+
+      const executionErr = {
+        type: 'CRITICAL' as const,
         code: 'UNKNOWN',
         message: error instanceof Error ? error.message : 'Unknown error',
         failedRequestIndex: 0,
+      }
+      setExecutionError(executionErr)
+
+      // Report error back to AI so it doesn't get stuck
+      addToolOutput({
+        tool: pendingToolCall.toolName,
+        toolCallId: pendingToolCall.toolCallId,
+        output: JSON.stringify(createExecutionFailureResult(executionErr)),
       })
     } finally {
+      // ALWAYS reset state to prevent stuck UI
       setIsExecuting(false)
       setPendingToolCall(null)
     }
-  }, [changeSet, domain, exercises, sessionId, setExercises, pendingToolCall, addToolOutput, sendMessage])
+  }, [changeSet, domain, exercises, sessionId, setExercises, onWorkoutUpdated, pendingToolCall, addToolOutput, sendMessage])
 
   /**
    * Handle user regeneration request.
