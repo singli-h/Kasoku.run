@@ -19,24 +19,29 @@ export interface OnboardingData {
   firstName: string
   lastName: string
   email: string
-  role: "athlete" | "coach" | ""
+  role: "athlete" | "coach" | "individual" | ""
   profilePicture: File | null
   birthdate: string
   timezone: string
-  
+
   // Athlete-specific fields
   height: string
   weight: string
   trainingHistory: string
   trainingGoals: string
   events: string[]
-  
+
   // Coach-specific fields
   specialization: string
   experience: string
   coachingPhilosophy: string
   sportFocus: string
-  
+
+  // Individual-specific fields (self-coaching)
+  individualTrainingGoals: string
+  individualExperienceLevel: string
+  availableEquipment: string[]
+
   // Common fields
   subscription: "free" | "paid"
 }
@@ -55,20 +60,25 @@ export default function OnboardingWizard() {
     profilePicture: null,
     birthdate: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-    
+
     // Athlete-specific fields
     height: "",
     weight: "",
     trainingHistory: "",
     trainingGoals: "",
     events: [],
-    
+
     // Coach-specific fields
     specialization: "",
     experience: "",
     coachingPhilosophy: "",
     sportFocus: "",
-    
+
+    // Individual-specific fields (self-coaching)
+    individualTrainingGoals: "",
+    individualExperienceLevel: "",
+    availableEquipment: [],
+
     // Common fields
     subscription: "free",
   })
