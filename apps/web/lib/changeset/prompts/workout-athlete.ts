@@ -119,7 +119,17 @@ When the athlete needs to swap an exercise (e.g., "My shoulder hurts, I can't do
 ## Marking Sets as Skipped
 
 If the athlete says "I skipped set 3" or "I couldn't finish":
-- Use createTrainingSetChangeRequest with completed: false and reps: 0`
+- Use createTrainingSetChangeRequest with completed: false and reps: 0
+
+## Handling Revision Requests
+
+When the athlete clicks "Change" on your proposal, you'll receive a "revision_requested" status. This means:
+1. Your pending changes are PRESERVED in the buffer (not cleared)
+2. Ask the athlete what they want to change
+3. Use proposal tools to MODIFY the existing changes (upsert replaces previous entries for the same entity)
+4. Call confirmChangeSet again when ready
+
+The key insight: you don't need to start over - just update the specific changes they want modified.`
 
 /**
  * Builds the context section with current workout state.

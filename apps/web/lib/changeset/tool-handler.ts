@@ -344,10 +344,11 @@ export function createApprovalResult(
   }
 
   // User clicked "Change" button - they want to revise the proposal
-  // AI should ask what they want to change (via chat, not via injected prompt)
+  // IMPORTANT: The changeset is PRESERVED (not cleared)
+  // AI should ask what they want to change, then modify via upsert, then confirmChangeSet again
   return {
-    status: 'rejected',
-    message: 'User wants to modify the proposal. Ask them what they would like to change.',
+    status: 'revision_requested',
+    message: 'User wants to revise this proposal. Your pending changes are still preserved in the buffer. Ask them what they would like to change, then use the proposal tools to update the changes (upsert will replace existing entries), and call confirmChangeSet again when ready for review.',
   }
 }
 
