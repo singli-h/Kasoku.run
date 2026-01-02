@@ -26,7 +26,7 @@ interface ProtectRouteProps {
  * // Protect a page for coaches only
  * export default function AthletesPage() {
  *   return (
- *     <ProtectRoute allowedRoles={['coach', 'admin']}>
+ *     <ProtectRoute allowedRoles={['coach', 'individual']}>
  *       <AthletesList />
  *     </ProtectRoute>
  *   )

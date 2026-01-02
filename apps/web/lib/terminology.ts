@@ -51,7 +51,7 @@ export function getTerminology(role: UserRole | null): Terminology {
     }
   }
 
-  // Default for coach, admin, athlete
+  // Default for coach and athlete
   return {
     mesocycle: 'Mesocycle',
     microcycle: 'Microcycle',

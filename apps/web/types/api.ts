@@ -43,7 +43,7 @@ export interface SessionClaims {
   email: string
   name?: string
   image?: string
-  role?: UserRole // User's role (athlete/coach/admin)
+  role?: UserRole // User's role (athlete/coach/individual)
 }
 
 // User management API types

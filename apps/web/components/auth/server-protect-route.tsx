@@ -21,7 +21,7 @@ interface ServerProtectRouteProps {
  * ```tsx
  * // In a server component or page
  * export default async function AthletesPage() {
- *   await serverProtectRoute({ allowedRoles: ['coach', 'admin'] })
+ *   await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
  *
  *   // Rest of your page code - only executes if authorized
  *   return <AthletesList />
@@ -100,7 +100,7 @@ export async function getCurrentUserRole(): Promise<UserRole | null> {
  * @example
  * ```tsx
  * export default async function MyPage() {
- *   const isCoach = await hasRole(['coach', 'admin'])
+ *   const isCoach = await hasRole(['coach', 'individual'])
  *
  *   return (
  *     <div>
