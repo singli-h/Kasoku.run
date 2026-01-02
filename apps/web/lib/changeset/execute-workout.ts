@@ -7,6 +7,10 @@
  * Unlike session planning which uses bulk save, workout execution uses
  * individual set/exercise mutations.
  *
+ * IMPORTANT: proposedData is stored in snake_case format (matching database columns).
+ * We use snake_case directly in execution to avoid conversion bugs between
+ * camelCase field names (e.g., workoutLogExerciseId vs workoutLogExerciseId_fk).
+ *
  * @see specs/002-ai-session-assistant/reference/20251221-changeset-execution-flow.md
  */
 
@@ -21,7 +25,6 @@ import {
 } from '@/actions/workout/workout-exercise-actions'
 import type { ChangeRequest, ChangeSet, ExecutionResult } from './types'
 import { classifyError } from './errors'
-import { convertKeysToCamelCase } from './entity-mappings'
 
 /**
  * Workout update fields for extractWorkoutUpdates
@@ -65,12 +68,13 @@ export async function executeWorkoutChangeSet(
     )
 
     // Process each change request
+    // NOTE: proposedData is already in snake_case format from transformations
+    // We use it directly to avoid conversion bugs with field name mappings
     for (const request of sortedRequests) {
       console.log(`[executeWorkoutChangeSet] Processing: ${request.operationType} ${request.entityType} (entityId: ${request.entityId})`)
 
+      // Use snake_case data directly - no conversion needed
       const proposedData = request.proposedData
-        ? convertKeysToCamelCase(request.proposedData)
-        : null
 
       switch (request.entityType) {
         case 'workout_log_exercise':
@@ -108,29 +112,33 @@ export async function executeWorkoutChangeSet(
 
 /**
  * Applies a single workout set change.
+ *
+ * NOTE: proposedData uses snake_case field names (e.g., workout_log_exercise_id, set_index)
+ * to match the database column names and avoid conversion bugs.
  */
 async function applyWorkoutSetChange(
   request: ChangeRequest,
   proposedData: Record<string, unknown> | null,
   idMappings: Record<string, string>
 ): Promise<void> {
-  const workoutLogExerciseId = proposedData?.workoutLogExerciseId as number | undefined
+  // Use snake_case field name directly (workout_log_exercise_id)
+  const workoutLogExerciseId = proposedData?.workout_log_exercise_id as number | undefined
 
   if (!workoutLogExerciseId) {
-    console.warn('[applyWorkoutSetChange] Missing workoutLogExerciseId, skipping')
+    console.warn('[applyWorkoutSetChange] Missing workout_log_exercise_id, skipping. proposedData:', proposedData)
     return
   }
 
   switch (request.operationType) {
     case 'create': {
-      // Add new set to exercise
+      // Add new set to exercise - use snake_case field names
       const setData = {
-        set_index: (proposedData?.setIndex as number) ?? 1,
+        set_index: (proposedData?.set_index as number) ?? 1,
         reps: proposedData?.reps as number | undefined,
         weight: proposedData?.weight as number | undefined,
         distance: proposedData?.distance as number | undefined,
-        performing_time: proposedData?.performingTime as number | undefined,
-        rest_time: proposedData?.restTime as number | undefined,
+        performing_time: proposedData?.performing_time as number | undefined,
+        rest_time: proposedData?.rest_time as number | undefined,
         rpe: proposedData?.rpe as number | undefined,
         tempo: proposedData?.tempo as string | undefined,
         resistance: proposedData?.resistance as number | undefined,
@@ -160,12 +168,13 @@ async function applyWorkoutSetChange(
         return
       }
 
+      // Use snake_case field names
       const updates = {
         reps: proposedData?.reps as number | undefined,
         weight: proposedData?.weight as number | undefined,
         distance: proposedData?.distance as number | undefined,
-        performing_time: proposedData?.performingTime as number | undefined,
-        rest_time: proposedData?.restTime as number | undefined,
+        performing_time: proposedData?.performing_time as number | undefined,
+        rest_time: proposedData?.rest_time as number | undefined,
         rpe: proposedData?.rpe as number | undefined,
         tempo: proposedData?.tempo as string | undefined,
         resistance: proposedData?.resistance as number | undefined,
@@ -198,6 +207,9 @@ async function applyWorkoutSetChange(
 
 /**
  * Applies a single workout exercise change (create or update).
+ *
+ * NOTE: proposedData uses snake_case field names (e.g., exercise_id, exercise_order)
+ * to match the database column names and avoid conversion bugs.
  */
 async function applyWorkoutExerciseChange(
   request: ChangeRequest,
@@ -207,18 +219,17 @@ async function applyWorkoutExerciseChange(
 ): Promise<void> {
   switch (request.operationType) {
     case 'create': {
-      // Add new exercise to workout
-      const exerciseId = proposedData?.exerciseId as number | undefined
-      const exerciseName = proposedData?.exerciseName as string | undefined
+      // Add new exercise to workout - use snake_case field names
+      const exerciseId = proposedData?.exercise_id as number | undefined
 
       if (!exerciseId) {
-        console.warn('[applyWorkoutExerciseChange] Missing exerciseId, skipping')
+        console.warn('[applyWorkoutExerciseChange] Missing exercise_id, skipping. proposedData:', proposedData)
         return
       }
 
       const result = await addWorkoutExerciseAction(workoutLogId, {
         exercise_id: exerciseId,
-        exercise_order: proposedData?.exerciseOrder as number | undefined,
+        exercise_order: proposedData?.exercise_order as number | undefined,
         notes: proposedData?.notes as string | undefined,
       })
 
@@ -246,9 +257,10 @@ async function applyWorkoutExerciseChange(
         return
       }
 
+      // Use snake_case field names
       const updates: Record<string, unknown> = {}
-      if (proposedData?.exerciseId) updates.exercise_id = proposedData.exerciseId
-      if (proposedData?.exerciseOrder) updates.exercise_order = proposedData.exerciseOrder
+      if (proposedData?.exercise_id) updates.exercise_id = proposedData.exercise_id
+      if (proposedData?.exercise_order) updates.exercise_order = proposedData.exercise_order
       if (proposedData?.notes !== undefined) updates.notes = proposedData.notes
 
       // Filter out undefined values
@@ -281,6 +293,8 @@ async function applyWorkoutExerciseChange(
 
 /**
  * Applies a workout log change (notes update).
+ *
+ * NOTE: proposedData uses snake_case field names to match the database.
  */
 async function applyWorkoutLogChange(
   request: ChangeRequest,
@@ -292,6 +306,7 @@ async function applyWorkoutLogChange(
     return
   }
 
+  // Use snake_case field name directly
   const notes = proposedData?.notes as string | undefined
 
   if (notes === undefined) {
@@ -310,6 +325,8 @@ async function applyWorkoutLogChange(
 
 /**
  * Extracts workout-level updates from change requests.
+ *
+ * NOTE: proposedData uses snake_case field names to match the database.
  */
 export function extractWorkoutUpdates(
   changeRequests: ChangeRequest[]
@@ -318,13 +335,12 @@ export function extractWorkoutUpdates(
 
   for (const request of changeRequests) {
     if (request.entityType === 'workout_log' && request.operationType === 'update') {
+      // Use snake_case field names directly - no conversion needed
       const proposedData = request.proposedData
-        ? convertKeysToCamelCase(request.proposedData)
-        : null
 
       if (proposedData?.notes) workoutUpdates.notes = proposedData.notes as string
-      if (proposedData?.sessionStatus)
-        workoutUpdates.session_status = proposedData.sessionStatus as string
+      if (proposedData?.session_status)
+        workoutUpdates.session_status = proposedData.session_status as string
     }
   }
 
