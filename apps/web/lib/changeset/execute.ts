@@ -48,7 +48,7 @@ interface SessionUpdate {
 export async function executeChangeSet(
   changeset: ChangeSet,
   currentExercises: SessionPlannerExercise[],
-  sessionId: number
+  sessionId: string
 ): Promise<ExecutionResult> {
   try {
     if (DEBUG_EXEC) {
@@ -222,7 +222,7 @@ function applyExerciseChange(
       // Add new exercise with its sets
       const newExercise: SessionPlannerExercise = {
         id: request.entityId ?? `new_${Date.now()}`,
-        session_plan_id: 0, // Will be set by save action
+        session_plan_id: '', // Will be set by save action
         exercise_id: Number(proposedData?.exerciseId ?? 0),
         exercise_order: Number(proposedData?.exerciseOrder ?? exercises.length + 1),
         superset_id: (proposedData?.supersetId as string | null) ?? null,

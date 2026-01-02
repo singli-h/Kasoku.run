@@ -66,7 +66,7 @@ export function EnhancedSupersetIndicator({
 }: EnhancedSupersetIndicatorProps) {
   const { updateExercise } = useExerciseContext()
   const [isExpanded, setIsExpanded] = useState(true)
-  const [activeExercise, setActiveExercise] = useState<number | null>(null)
+  const [activeExercise, setActiveExercise] = useState<string | null>(null)
 
   // Sort exercises by their position in superset
   const sortedExercises = useMemo(() => {

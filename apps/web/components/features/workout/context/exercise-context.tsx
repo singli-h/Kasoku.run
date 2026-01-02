@@ -18,7 +18,7 @@ export interface WorkoutExercise extends SessionPlanExerciseWithDetails {
   workout_log_sets: WorkoutLogSet[]
   completed?: boolean
   // Explicit fields from session_plan_exercises table
-  id: number
+  id: string
   exercise_order: number | null
   superset_id: number | null
 }
@@ -31,8 +31,8 @@ interface ExerciseContextValue {
   exercises: WorkoutExercise[]
   showVideo: boolean
   saveStatus: SaveStatus
-  updateExercise: (id: number, updates: Partial<WorkoutExercise>) => void
-  toggleSetComplete: (exerciseId: number, detailId: number) => void
+  updateExercise: (id: string, updates: Partial<WorkoutExercise>) => void
+  toggleSetComplete: (exerciseId: string, detailId: string) => void
   toggleVideo: () => void
   setExercises: (exercises: WorkoutExercise[]) => void
   /** Force immediate save of all pending changes - MUST call before completing session */
@@ -71,7 +71,7 @@ export const useExerciseContext = (): ExerciseContextValue => {
 interface ExerciseProviderProps {
   children: ReactNode
   initialData?: WorkoutExercise[]
-  sessionId?: number
+  sessionId?: string
 }
 
 export const ExerciseProvider = ({ children, initialData = [], sessionId }: ExerciseProviderProps) => {
@@ -165,7 +165,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
    * @param {number} id - Exercise ID to update
    * @param {Partial<WorkoutExercise>} updates - New properties to merge with existing exercise data
    */
-  const updateExercise = useCallback((id: number, updates: Partial<WorkoutExercise>) => {
+  const updateExercise = useCallback((id: string, updates: Partial<WorkoutExercise>) => {
     console.log('[ExerciseProvider] updateExercise called', { id, sessionId, hasWorkoutLogSets: !!updates.workout_log_sets })
     setExercises((prevExercises) => {
       const exerciseData = prevExercises.find(e => e.id === id)
@@ -231,7 +231,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
    * @param {number} exerciseId - Exercise preset ID
    * @param {number} detailId - Training detail ID to toggle
    */
-  const toggleSetComplete = useCallback((exerciseId: number, detailId: number) => {
+  const toggleSetComplete = useCallback((exerciseId: string, detailId: string) => {
     setExercises((prevExercises) => {
       // Update state and get the updated exercises
       const updatedExercises = prevExercises.map((exercise) => {

@@ -129,7 +129,7 @@ export function ExerciseTypeSection({ group, className, defaultCollapsed = false
   }
 
   // Handle individual exercise toggle
-  const handleExerciseToggle = (exerciseId: number) => {
+  const handleExerciseToggle = (exerciseId: string) => {
     const exercise = group.exercises.find(ex => ex.id === exerciseId)
     if (exercise) {
       updateExercise(exerciseId, { completed: !exercise.completed })
@@ -290,7 +290,7 @@ export function ExerciseTypeSection({ group, className, defaultCollapsed = false
 // Exercise Item Component for consistent rendering
 interface ExerciseItemProps {
   exercise: WorkoutExercise
-  onToggle: (id: number) => void
+  onToggle: (id: string) => void
   isSuperset?: boolean
 }
 

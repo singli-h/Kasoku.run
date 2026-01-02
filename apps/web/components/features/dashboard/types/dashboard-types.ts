@@ -4,7 +4,7 @@ export interface DashboardData {
 }
 
 export interface RecentSession {
-  id: number
+  id: string
   title: string
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled'
   date: Date

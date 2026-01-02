@@ -153,7 +153,7 @@ interface UseWorkoutSessionDetailsOptions {
 
 // Hook for fetching individual workout session details with auto-refresh
 export function useWorkoutSessionDetails(
-  sessionId: number,
+  sessionId: string,
   options?: UseWorkoutSessionDetailsOptions
 ) {
   const queryClient = useQueryClient()
@@ -207,7 +207,7 @@ export function useSessionMutations() {
   // Start session mutation
   const startSessionMutation = useMutation({
     mutationFn: async (sessionId: string) => {
-      const result = await startTrainingSessionAction(parseInt(sessionId, 10))
+      const result = await startTrainingSessionAction(sessionId)
       if (!result.isSuccess) {
         throw new Error(result.message)
       }
@@ -239,7 +239,7 @@ export function useSessionMutations() {
   // Complete session mutation
   const completeSessionMutation = useMutation({
     mutationFn: async (sessionId: string) => {
-      const result = await completeTrainingSessionAction(parseInt(sessionId, 10))
+      const result = await completeTrainingSessionAction(sessionId)
       if (!result.isSuccess) {
         throw new Error(result.message)
       }
@@ -268,7 +268,7 @@ export function useSessionMutations() {
   // Update session status mutation
   const updateSessionStatusMutation = useMutation({
     mutationFn: async ({ sessionId, status }: { sessionId: string; status: string }) => {
-      const result = await updateTrainingSessionStatusAction(parseInt(sessionId, 10), status as SessionStatus)
+      const result = await updateTrainingSessionStatusAction(sessionId, status as SessionStatus)
       if (!result.isSuccess) {
         throw new Error(result.message)
       }

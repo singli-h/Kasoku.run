@@ -299,7 +299,7 @@ export async function deletePBAction(id: number): Promise<ActionState<void>> {
  * @param timeSeconds - Time in seconds (e.g., 12.63 for 12.63s)
  */
 export async function autoDetectPBAction(
-  sessionId: number,
+  sessionId: string,
   athleteId: number,
   exerciseId: number,
   timeSeconds: number
@@ -367,7 +367,7 @@ export async function autoDetectPBAction(
  * Called when processing Freelap CSV upload or session completion
  */
 export async function autoDetectSprintPBAction(
-  sessionId: number,
+  sessionId: string,
   athleteId: number,
   distanceMeters: number,
   timeSeconds: number,
@@ -530,7 +530,7 @@ function isSprintMetadata(metadata: unknown): metadata is {
  * Detects sprint data by presence of time/speed/splits in metadata
  */
 export async function processSessionForPBsAction(
-  sessionId: number
+  sessionId: string
 ): Promise<ActionState<{ detected: number; updated: number }>> {
   try {
     const { userId } = await auth()
@@ -581,15 +581,15 @@ export async function processSessionForPBsAction(
 
     // Filter to sprint sets (metadata shape check only - session filtering done in DB)
     interface SetWithDetails {
-      id: number
+      id: string
       distance: number | null
       performing_time: number | null
       metadata: Record<string, unknown> | null
       workout_log_exercise: {
-        id: number
+        id: string
         exercise_id: number | null
         exercise: { id: number; name: string } | null
-        workout_log: { id: number; athlete_id: number | null } | null
+        workout_log: { id: string; athlete_id: number | null } | null
       } | null
     }
 
@@ -671,7 +671,7 @@ export async function processSessionForPBsAction(
  * This avoids redundant auth() calls when processing multiple sets in a loop
  */
 async function detectSprintPBInternal(
-  sessionId: number,
+  sessionId: string,
   athleteId: number,
   exerciseId: number,
   distanceMeters: number,
@@ -775,7 +775,7 @@ async function detectSprintPBInternal(
  * Public action with auth check - use detectSprintPBInternal for batch operations
  */
 export async function autoDetectSprintPBWithExerciseAction(
-  sessionId: number,
+  sessionId: string,
   athleteId: number,
   exerciseId: number,
   distanceMeters: number,

@@ -142,7 +142,7 @@ export function TemplatesPage() {
   }, [templates, searchTerm, selectedCategory, selectedDifficulty, selectedTab])
 
   // Handle template actions
-  const handleUseTemplate = async (templateId: number) => {
+  const handleUseTemplate = async (templateId: string) => {
     try {
       const result = await createPlanFromTemplateAction(templateId, {
         name: `New Plan from Template ${templateId}`,
@@ -172,7 +172,7 @@ export function TemplatesPage() {
     }
   }
 
-  const handleDeleteTemplate = async (templateId: number) => {
+  const handleDeleteTemplate = async (templateId: string) => {
     if (!confirm("Are you sure you want to delete this template?")) return
 
     try {

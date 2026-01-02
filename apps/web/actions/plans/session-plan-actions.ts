@@ -367,7 +367,7 @@ export async function getSessionPlansByMicrocycleAction(
  * Update a specific session plan
  */
 export async function updateSessionPlanAction(
-  sessionId: number,
+  sessionId: string,
   sessionData: Partial<SessionPlanData>
 ): Promise<ActionState<SessionPlan>> {
   try {
@@ -424,7 +424,7 @@ export async function updateSessionPlanAction(
  * Delete a session plan
  */
 export async function deleteSessionPlanAction(
-  sessionId: number
+  sessionId: string
 ): Promise<ActionState<boolean>> {
   try {
     const { userId } = await auth()
@@ -630,7 +630,7 @@ export async function getTemplatesAction(): Promise<ActionState<SessionPlan[]>> 
  * Create a new plan from a template
  */
 export async function createPlanFromTemplateAction(
-  templateId: number,
+  templateId: string,
   newPlanData: {
     name: string
     description?: string
@@ -768,7 +768,7 @@ export async function createPlanFromTemplateAction(
 /**
  * Delete a template
  */
-export async function deleteTemplateAction(templateId: number): Promise<ActionState<boolean>> {
+export async function deleteTemplateAction(templateId: string): Promise<ActionState<boolean>> {
   try {
     const { userId } = await auth()
     

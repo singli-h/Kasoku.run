@@ -219,7 +219,7 @@ function WorkoutSessionContentV2({
   // Handle complete set
   const handleCompleteSet = useCallback((exerciseId: number | string, setId: number | string) => {
     // Use toggleSetComplete from context - it handles both state update and auto-save
-    if (typeof exerciseId === 'number' && typeof setId === 'number') {
+    if (typeof exerciseId === 'string' && typeof setId === 'string') {
       toggleSetComplete(exerciseId, setId)
     } else {
       console.warn('[WorkoutSessionDashboardV2] Cannot complete set - invalid IDs', { exerciseId, setId })
@@ -240,7 +240,7 @@ function WorkoutSessionContentV2({
       completed: newCompleted
     }))
 
-    updateExercise(exerciseId as number, { workout_log_sets: updatedSets })
+    updateExercise(exerciseId as string, { workout_log_sets: updatedSets })
   }, [exercises, updateExercise])
 
   // Handle update set
@@ -266,7 +266,7 @@ function WorkoutSessionContentV2({
       idx === setIndex ? { ...set, [dbField]: value } : set
     )
 
-    updateExercise(exerciseId as number, { workout_log_sets: updatedSets })
+    updateExercise(exerciseId as string, { workout_log_sets: updatedSets })
   }, [exercises, updateExercise])
 
   // Handle session start

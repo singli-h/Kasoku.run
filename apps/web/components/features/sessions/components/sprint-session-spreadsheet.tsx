@@ -21,7 +21,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 
 interface SprintSessionSpreadsheetProps {
-  sessionId: number
+  sessionId: string
   effort?: number // Default effort level for target calculation (0-1)
 }
 

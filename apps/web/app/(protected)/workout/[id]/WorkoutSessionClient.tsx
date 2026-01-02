@@ -23,7 +23,7 @@ import { WorkoutLogWithDetails, SessionPlanWithDetails } from '@/types/training'
 
 interface WorkoutSessionClientProps {
   initialSession: WorkoutLogWithDetails
-  sessionId: number
+  sessionId: string
 }
 
 export function WorkoutSessionClient({

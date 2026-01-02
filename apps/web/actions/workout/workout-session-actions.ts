@@ -403,7 +403,7 @@ export async function getPastSessionsAction(
  * Update training session status
  */
 export async function updateTrainingSessionStatusAction(
-  sessionId: number,
+  sessionId: string,
   status: SessionStatus
 ): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
@@ -462,7 +462,7 @@ export async function updateTrainingSessionStatusAction(
  * Start a training session (transition from assigned to ongoing)
  */
 export async function startTrainingSessionAction(
-  sessionId: number
+  sessionId: string
 ): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
     // 1. Authentication check
@@ -505,7 +505,7 @@ export async function startTrainingSessionAction(
  * Get a specific workout session by ID with all details
  */
 export async function getWorkoutSessionByIdAction(
-  sessionId: number
+  sessionId: string
 ): Promise<ActionState<WorkoutLogWithDetails>> {
   try {
     // 1. Authentication check

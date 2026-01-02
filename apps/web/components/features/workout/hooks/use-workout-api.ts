@@ -66,7 +66,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
    * Create a new training session from a plan
    */
   const createSession = useCallback(async (
-    sessionPlanId: number,
+    sessionPlanId: string,
     athleteId?: number
   ): Promise<Database["public"]["Tables"]["workout_logs"]["Row"] | null> => {
     setIsLoading(true)
@@ -110,7 +110,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
    * Start an existing assigned session
    */
   const startSession = useCallback(async (
-    sessionId: number
+    sessionId: string
   ): Promise<Database["public"]["Tables"]["workout_logs"]["Row"] | null> => {
     setIsLoading(true)
     setError(null)
@@ -153,7 +153,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
    * Get session details with exercises and training data
    */
   const getSession = useCallback(async (
-    sessionId: number
+    sessionId: string
   ): Promise<WorkoutLogWithDetails | null> => {
     setIsLoading(true)
     setError(null)
@@ -180,7 +180,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
    * Update session (status, notes, etc.) with auto-save
    */
   const updateSession = useCallback(async (
-    sessionId: number,
+    sessionId: string,
     updates: Partial<Database["public"]["Tables"]["workout_logs"]["Update"]>,
     immediate = false
   ): Promise<boolean> => {
@@ -205,7 +205,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
    * Complete session
    */
   const completeSession = useCallback(async (
-    sessionId: number,
+    sessionId: string,
     notes?: string
   ): Promise<boolean> => {
     setIsLoading(true)
@@ -250,7 +250,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
    * Accepts both workout_log_set field names (performing_time, rest_time) and legacy names (duration)
    */
   const saveExercisePerformance = useCallback(async (
-    sessionId: number,
+    sessionId: string,
     exerciseId: number,
     setData: {
       set_index: number
@@ -292,7 +292,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
    * Update existing exercise performance data
    */
   const updateExercisePerformance = useCallback(async (
-    detailId: number,
+    detailId: string,
     updates: Partial<ExerciseTrainingDetail>,
     immediate = false
   ): Promise<boolean> => {

@@ -36,7 +36,7 @@ export interface ToolInput {
  */
 export interface TransformOptions {
   /** Parent session ID (for creates that need it) */
-  sessionId?: number
+  sessionId?: string
   /** Execution order for this change (optional, auto-incremented if not provided) */
   executionOrder?: number
   /** Current data for update/delete operations */
@@ -231,7 +231,7 @@ export function extractEntityId(
 export function buildProposedData(
   entityType: AllEntityType,
   toolInput: ToolInput,
-  sessionId?: number
+  sessionId?: string
 ): Record<string, unknown> {
   const data: Record<string, unknown> = {}
 

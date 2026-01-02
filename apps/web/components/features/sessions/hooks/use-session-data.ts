@@ -13,7 +13,7 @@ import { getGroupSessionDataAction } from "@/actions/sessions"
 
 export interface SessionData {
   session: {
-    id: number
+    id: string
     name: string
     date: string
     status: string
@@ -54,7 +54,7 @@ export interface SessionData {
 }
 
 interface UseSessionDataOptions {
-  sessionId: number
+  sessionId: string
   enableRealtime?: boolean // Phase 4 feature
   pollingInterval?: number // Fallback polling if realtime disabled
 }

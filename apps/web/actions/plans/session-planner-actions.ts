@@ -69,7 +69,7 @@ const DEBUG_SAVE = process.env.NODE_ENV === 'development'
  */
 function mapSetsToInsert(
   sets: SessionPlannerExercise['sets'],
-  exerciseId: number
+  exerciseId: string
 ): SessionPlanSetInsert[] {
   return sets.map((set, idx) => ({
     session_plan_exercise_id: exerciseId,
@@ -102,7 +102,7 @@ function mapSetsToInsert(
  * Consider adding transaction support if data integrity issues arise.
  */
 export async function saveSessionWithExercisesAction(
-  sessionId: number,
+  sessionId: string,
   sessionUpdates: Partial<SessionUpdate>,
   exercises: SessionPlannerExercise[]
 ): Promise<ActionState<SessionPlan>> {
@@ -189,26 +189,26 @@ export async function saveSessionWithExercisesAction(
     )
 
     // Separate exercises into: existing (to update) vs new (to insert)
-    // ID Convention: "new_" prefix = new item, numeric string = existing item
+    // ID Convention: "new_" or "temp_" prefix = new item, UUID string = existing item
     const exercisesToUpdate: SessionPlannerExercise[] = []
     const exercisesToInsert: SessionPlannerExercise[] = []
-    const exerciseIdsToKeep = new Set<number>()
+    const exerciseIdsToKeep = new Set<string>()
 
     for (const exercise of exercises) {
       const idStr = String(exercise.id)
       // ID Convention:
       // - "new_" or "temp_" prefix = new item from client/AI
-      // - Numeric string matching existing DB ID = update
+      // - UUID string matching existing DB ID = update
       // - Anything else = treat as new (safe fallback)
       const isNewExercise = idStr.startsWith('new_') || idStr.startsWith('new-') || idStr.startsWith('temp_')
 
       if (isNewExercise) {
         exercisesToInsert.push(exercise)
       } else {
-        const dbId = parseInt(idStr, 10)
-        if (!isNaN(dbId) && existingExerciseMap.has(dbId)) {
+        // Check if ID exists in database (UUID format)
+        if (existingExerciseMap.has(idStr)) {
           exercisesToUpdate.push(exercise)
-          exerciseIdsToKeep.add(dbId)
+          exerciseIdsToKeep.add(idStr)
         } else {
           exercisesToInsert.push(exercise)
         }
@@ -216,7 +216,7 @@ export async function saveSessionWithExercisesAction(
     }
 
     // Step 4: Delete session_plan_exercises that are no longer in the list
-    const idsToDelete = Array.from(existingExerciseMap.keys()).filter(id => !exerciseIdsToKeep.has(id))
+    const idsToDelete = Array.from(existingExerciseMap.keys()).filter(id => !exerciseIdsToKeep.has(String(id)))
 
     if (idsToDelete.length > 0) {
       // First delete session_plan_sets for these exercises (CASCADE should handle but be explicit)
@@ -247,7 +247,7 @@ export async function saveSessionWithExercisesAction(
 
     // Step 5: Update existing session_plan_exercises
     for (const exercise of exercisesToUpdate) {
-      const dbId = parseInt(String(exercise.id), 10)
+      const dbId = String(exercise.id)
 
       // Update the exercise record
       const { error: updateExerciseError } = await supabase
@@ -345,7 +345,7 @@ export async function saveSessionWithExercisesAction(
     // Step 7: Fetch and return the updated session
     const { data: updatedSession, error: finalFetchError } = await supabase
       .from('session_plans')
-      .select('id, athlete_group_id, user_id, microcycle_id, name, description, session_mode, week, day, date, updated_at, created_at, deleted, is_template')
+      .select('id, athlete_group_id, user_id, microcycle_id, name, description, session_mode, week, day, date, updated_at, created_at, deleted, is_template, old_id')
       .eq('id', sessionId)
       .single()
 

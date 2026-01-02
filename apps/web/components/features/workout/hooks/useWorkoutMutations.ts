@@ -51,7 +51,7 @@ export function useSaveWorkoutSet() {
       exerciseId,
       setData
     }: {
-      sessionId: number
+      sessionId: string
       exerciseId: number
       setData: SetData
     }) => {
@@ -154,9 +154,9 @@ export function useUpdateWorkoutSet() {
       setId,
       updates
     }: {
-      setId: number
+      setId: string
       updates: Partial<WorkoutLogSet>
-      sessionId?: number
+      sessionId?: string
     }) => {
       const result = await updateExercisePerformanceAction(setId, updates)
       if (!result.isSuccess) {
@@ -196,7 +196,7 @@ export function useStartSession() {
   return useMutation({
     mutationKey: ['workout', 'startSession'],
 
-    mutationFn: async (sessionId: number) => {
+    mutationFn: async (sessionId: string) => {
       const result = await startTrainingSessionAction(sessionId)
       if (!result.isSuccess) {
         throw new Error(result.message)
@@ -241,7 +241,7 @@ export function useCompleteSession() {
       sessionId,
       notes
     }: {
-      sessionId: number
+      sessionId: string
       notes?: string
     }) => {
       const result = await completeTrainingSessionAction(sessionId, notes)
@@ -319,7 +319,7 @@ export function useUpdateSessionNotes() {
       sessionId,
       notes
     }: {
-      sessionId: number
+      sessionId: string
       notes: string
     }) => {
       const result = await updateTrainingSessionAction(sessionId, { notes })

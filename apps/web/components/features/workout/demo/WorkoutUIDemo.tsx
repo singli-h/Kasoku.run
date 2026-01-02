@@ -71,8 +71,8 @@ const EXERCISE_LIBRARY: ExerciseLibraryItem[] = [
 
 const createInitialExercises = (): SessionPlannerExercise[] => [
   {
-    id: 137,
-    session_plan_id: 1,
+    id: '137',
+    session_plan_id: '1',
     exercise_id: 13,
     exercise_order: 1,
     notes: "Posterior chain development",
@@ -91,8 +91,8 @@ const createInitialExercises = (): SessionPlannerExercise[] => [
     ],
   },
   {
-    id: 138,
-    session_plan_id: 1,
+    id: '138',
+    session_plan_id: '1',
     exercise_id: 14,
     exercise_order: 2,
     notes: "Unilateral strength - superset A",
@@ -112,8 +112,8 @@ const createInitialExercises = (): SessionPlannerExercise[] => [
     ],
   },
   {
-    id: 139,
-    session_plan_id: 1,
+    id: '139',
+    session_plan_id: '1',
     exercise_id: 15,
     exercise_order: 3,
     notes: "Superset pair A",
@@ -132,8 +132,8 @@ const createInitialExercises = (): SessionPlannerExercise[] => [
     ],
   },
   {
-    id: 140,
-    session_plan_id: 1,
+    id: '140',
+    session_plan_id: '1',
     exercise_id: 20,
     exercise_order: 4,
     notes: "Reactive strength",
@@ -784,7 +784,7 @@ function DemoContent({
       const timestamp = Date.now()
       const newExercise: SessionPlannerExercise = {
         id: `new_${timestamp}`,
-        session_plan_id: 1,
+        session_plan_id: '1',
         exercise_id: exerciseId,
         exercise_order: maxOrder + 1,
         notes: null,

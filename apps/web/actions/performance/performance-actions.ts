@@ -373,15 +373,15 @@ function extractMaxVelocityMetrics(splits: FreeelapMetadata['splits']): {
 }
 
 interface WorkoutLogSetWithRelations {
-  id: number
+  id: string
   created_at: string | null
   distance: number | null
   performing_time: number | null
   metadata: FreeelapMetadata | null
   workout_log_exercise: {
-    id: number
+    id: string
     workout_log: {
-      id: number
+      id: string
       athlete_id: number | null
       date_time: string | null
     } | null
@@ -389,15 +389,15 @@ interface WorkoutLogSetWithRelations {
 }
 
 interface WorkoutLogWithExercises {
-  id: number
+  id: string
   date_time: string | null
   notes: string | null
   workout_log_exercises: Array<{
-    id: number
+    id: string
     exercise_id: number
     exercise: { id: number; name: string } | null
     workout_log_sets: Array<{
-      id: number
+      id: string
       weight: number | null
       reps: number | null
       rpe: number | null

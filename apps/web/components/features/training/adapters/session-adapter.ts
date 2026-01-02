@@ -16,7 +16,7 @@ import type { TrainingExercise, TrainingSet } from '../types'
  */
 export interface SessionPlannerExercise {
   id: string | number
-  session_plan_id: number
+  session_plan_id: string
   exercise_id: number
   exercise_order: number
   superset_id?: string | null
@@ -151,7 +151,7 @@ export function sessionExercisesToTraining(
  */
 export function trainingToSessionExercise(
   exercise: TrainingExercise,
-  sessionPlanId: number,
+  sessionPlanId: string,
   originalExercise?: SessionPlannerExercise
 ): SessionPlannerExercise {
   return {

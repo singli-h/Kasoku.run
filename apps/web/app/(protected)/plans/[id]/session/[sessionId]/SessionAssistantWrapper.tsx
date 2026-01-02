@@ -23,7 +23,7 @@ import type { SessionPlannerExercise } from '@/components/features/training/adap
 
 interface SessionAssistantWrapperProps {
   /** The session ID */
-  sessionId: number
+  sessionId: string
 
   /** The plan ID */
   planId: string

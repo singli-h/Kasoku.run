@@ -28,12 +28,12 @@ import {
 
 // Types
 interface UseSessionOptions {
-  sessionId: number
+  sessionId: string
   enabled?: boolean
 }
 
 interface UseGroupSessionDataOptions {
-  sessionId: number
+  sessionId: string
   enabled?: boolean
   /** Enable polling for live updates (default: false) */
   enablePolling?: boolean
@@ -76,7 +76,7 @@ export function useSession({ sessionId, enabled = true }: UseSessionOptions) {
     gcTime: CACHE_TIMES.SESSION,
     retry: RETRY_CONFIG.CRITICAL.retries,
     retryDelay: RETRY_CONFIG.CRITICAL.retryDelay,
-    enabled: enabled && sessionId > 0,
+    enabled: enabled && !!sessionId,
     refetchOnWindowFocus: true,
   })
 
@@ -127,7 +127,7 @@ export function useGroupSessionData({
     gcTime: CACHE_TIMES.GROUP_SESSION_DATA,
     retry: RETRY_CONFIG.CRITICAL.retries,
     retryDelay: RETRY_CONFIG.CRITICAL.retryDelay,
-    enabled: enabled && sessionId > 0,
+    enabled: enabled && !!sessionId,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     // Enable polling for live updates during active sessions
@@ -255,7 +255,7 @@ export function useSessionMutations() {
       detailId,
       updates,
     }: {
-      detailId: number
+      detailId: string
       updates: {
         reps?: number
         weight?: number
@@ -286,7 +286,7 @@ export function useSessionMutations() {
 
   // Complete session mutation
   const completeSessionMutation = useMutation({
-    mutationFn: async (sessionId: number) => {
+    mutationFn: async (sessionId: string) => {
       const result = await completeTrainingSessionAction(sessionId)
       if (!result.isSuccess) {
         throw new Error(result.message)
@@ -324,7 +324,7 @@ export function useSessionMutations() {
 export function useSessionPrefetch() {
   const queryClient = useQueryClient()
 
-  const prefetchSession = useCallback((sessionId: number) => {
+  const prefetchSession = useCallback((sessionId: string) => {
     queryClient.prefetchQuery({
       queryKey: SESSIONS_QUERY_KEYS.SESSION(sessionId),
       queryFn: async () => {
@@ -336,7 +336,7 @@ export function useSessionPrefetch() {
     })
   }, [queryClient])
 
-  const prefetchGroupSessionData = useCallback((sessionId: number) => {
+  const prefetchGroupSessionData = useCallback((sessionId: string) => {
     queryClient.prefetchQuery({
       queryKey: SESSIONS_QUERY_KEYS.GROUP_SESSION_DATA(sessionId),
       queryFn: async () => {
@@ -360,7 +360,7 @@ export function useSessionPrefetch() {
 export function useSessionCache() {
   const queryClient = useQueryClient()
 
-  const invalidateSession = useCallback((sessionId: number) => {
+  const invalidateSession = useCallback((sessionId: string) => {
     queryClient.invalidateQueries({
       queryKey: SESSIONS_QUERY_KEYS.SESSION(sessionId)
     })
@@ -375,13 +375,13 @@ export function useSessionCache() {
     })
   }, [queryClient])
 
-  const getSessionFromCache = useCallback((sessionId: number) => {
+  const getSessionFromCache = useCallback((sessionId: string) => {
     return queryClient.getQueryData(
       SESSIONS_QUERY_KEYS.SESSION(sessionId)
     )
   }, [queryClient])
 
-  const setSessionData = useCallback((sessionId: number, data: unknown) => {
+  const setSessionData = useCallback((sessionId: string, data: unknown) => {
     queryClient.setQueryData(
       SESSIONS_QUERY_KEYS.SESSION(sessionId),
       data

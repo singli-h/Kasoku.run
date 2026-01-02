@@ -119,7 +119,7 @@ function WorkoutSessionContent({
   } | null>(null)
 
   // Get session ID for draft operations
-  const sessionId = (existingSession as any)?.id as number | undefined
+  const sessionId = (existingSession as any)?.id as string | undefined
 
   // T015: Check for draft on mount
   useEffect(() => {

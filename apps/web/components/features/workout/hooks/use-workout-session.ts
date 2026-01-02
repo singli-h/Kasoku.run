@@ -33,7 +33,7 @@ interface UseWorkoutSessionReturn extends WorkoutSessionState {
   startSession: () => Promise<{ success: boolean; error?: Error }>
   saveSession: () => Promise<{ success: boolean; error?: Error }>
   completeSession: () => Promise<{ success: boolean; error?: Error }>
-  updateTrainingDetail: (detailId: number, updates: Partial<WorkoutLogSet>) => void
+  updateTrainingDetail: (detailId: string, updates: Partial<WorkoutLogSet>) => void
   updateWorkoutLogSets: (exerciseId: number, updatedDetails: WorkoutLogSet[]) => void
   refreshSessionData: () => Promise<void>
 }
@@ -239,11 +239,11 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
   }, [saveSession, (state.session as any)?.id, workoutApi, refreshSessionData])
 
   // Update a single training detail
-  const updateTrainingDetail = useCallback((detailId: number, updates: Partial<WorkoutLogSet>) => {
+  const updateTrainingDetail = useCallback((detailId: string, updates: Partial<WorkoutLogSet>) => {
     setTrainingDetails(prev => {
-      const updated = prev.map(detail => 
-        detail.id === detailId 
-          ? { ...detail, ...updates } 
+      const updated = prev.map(detail =>
+        detail.id === detailId
+          ? { ...detail, ...updates }
           : detail
       )
       return updated

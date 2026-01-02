@@ -31,7 +31,7 @@ import { autoDetectPBAction } from "@/actions/athletes/personal-best-actions"
  * Sets status to 'ongoing' immediately as this is an explicit start action
  */
 export async function createTrainingSessionAction(
-  sessionPlanId: number,
+  sessionPlanId: string,
   athleteId?: number
 ): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
@@ -261,7 +261,7 @@ export async function getTrainingSessionsAction(
  * Now includes workout_log_exercises with nested workout_log_sets
  */
 export async function getTrainingSessionByIdAction(
-  sessionId: number
+  sessionId: string
 ): Promise<ActionState<WorkoutLogWithDetails>> {
   try {
     const { userId } = await auth()
@@ -347,7 +347,7 @@ export async function getTrainingSessionByIdAction(
  * Update training session (e.g., add notes, update completion status)
  */
 export async function updateTrainingSessionAction(
-  sessionId: number,
+  sessionId: string,
   updates: Partial<Database["public"]["Tables"]["workout_logs"]["Update"]>
 ): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
@@ -396,7 +396,7 @@ export async function updateTrainingSessionAction(
  * Now uses workout_log_exercises to access exercise data
  */
 export async function completeTrainingSessionAction(
-  sessionId: number,
+  sessionId: string,
   notes?: string
 ): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
@@ -519,7 +519,7 @@ export async function completeTrainingSessionAction(
  * Now uses workout_log_exercise_id to properly link sets to exercises in the workout
  */
 export async function addExercisePerformanceAction(
-  workoutLogExerciseId: number,
+  workoutLogExerciseId: string,
   setData: {
     set_index: number
     reps?: number
@@ -670,7 +670,7 @@ export async function addExercisePerformanceAction(
  * @deprecated Use addExercisePerformanceAction with workoutLogExerciseId instead
  */
 export async function addExercisePerformanceByExerciseIdAction(
-  sessionId: number,
+  sessionId: string,
   exerciseId: number,
   setData: {
     set_index: number
@@ -717,8 +717,8 @@ export async function addExercisePerformanceByExerciseIdAction(
         .eq('id', sessionId)
         .single()
       
-      let sessionPlanExerciseId: number | null = null
-      
+      let sessionPlanExerciseId: string | null = null
+
       if (workoutLog?.session_plan_id) {
         // Try to find matching session_plan_exercise
         const { data: spe } = await supabase
@@ -727,7 +727,7 @@ export async function addExercisePerformanceByExerciseIdAction(
           .eq('session_plan_id', workoutLog.session_plan_id)
           .eq('exercise_id', exerciseId)
           .maybeSingle()
-          
+
         if (spe) {
           sessionPlanExerciseId = spe.id
         }
@@ -781,7 +781,7 @@ export async function addExercisePerformanceByExerciseIdAction(
  * Update exercise performance data
  */
 export async function updateExercisePerformanceAction(
-  detailId: number,
+  detailId: string,
   updates: Partial<ExerciseTrainingDetail>
 ): Promise<ActionState<ExerciseTrainingDetail>> {
   try {
@@ -1226,9 +1226,9 @@ export async function getGroupSessionsAction(): Promise<ActionState<{
  * Get detailed session data for coach's spreadsheet view
  * Includes athletes, exercises, performance data, and PBs
  */
-export async function getGroupSessionDataAction(sessionId: number): Promise<ActionState<{
+export async function getGroupSessionDataAction(sessionId: string): Promise<ActionState<{
   session: {
-    id: number
+    id: string
     name: string
     date: string
     status: string
@@ -1518,7 +1518,7 @@ export async function getGroupSessionDataAction(sessionId: number): Promise<Acti
  * Called when coach enters time in spreadsheet cell
  */
 export async function updateSessionDetailAction(
-  sessionId: number,
+  sessionId: string,
   athleteId: number,
   exerciseId: number,
   setIndex: number,
@@ -1665,15 +1665,15 @@ export async function updateSessionDetailAction(
       }
     } else {
       // Ensure workout_log_exercise exists
-      let workoutLogExerciseId: number | null = null
-      
+      let workoutLogExerciseId: string | null = null
+
       const { data: wle } = await supabase
         .from('workout_log_exercises')
         .select('id')
         .eq('workout_log_id', athleteSessionId)
         .eq('session_plan_exercise_id', presetData.id)
         .maybeSingle()
-        
+
       if (wle) {
         workoutLogExerciseId = wle.id
       } else {
@@ -1688,7 +1688,7 @@ export async function updateSessionDetailAction(
           })
           .select('id')
           .single()
-          
+
         if (!wleError && newWle) {
           workoutLogExerciseId = newWle.id
         }

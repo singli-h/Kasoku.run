@@ -53,7 +53,7 @@ interface WorkoutUpdate {
  */
 export async function executeWorkoutChangeSet(
   changeset: ChangeSet,
-  workoutLogId: number
+  workoutLogId: string
 ): Promise<ExecutionResult> {
   try {
     console.log('[executeWorkoutChangeSet] Starting execution')
@@ -122,7 +122,7 @@ async function applyWorkoutSetChange(
   idMappings: Record<string, string>
 ): Promise<void> {
   // Use snake_case field name directly (workout_log_exercise_id)
-  const workoutLogExerciseId = proposedData?.workout_log_exercise_id as number | undefined
+  const workoutLogExerciseId = proposedData?.workout_log_exercise_id as string | undefined
 
   if (!workoutLogExerciseId) {
     console.warn('[applyWorkoutSetChange] Missing workout_log_exercise_id, skipping. proposedData:', proposedData)
@@ -161,7 +161,7 @@ async function applyWorkoutSetChange(
 
     case 'update': {
       // Update existing set
-      const setId = request.currentData?.id as number | undefined
+      const setId = request.currentData?.id as string | undefined
 
       if (!setId) {
         console.warn('[applyWorkoutSetChange] Missing set ID for update, skipping')
@@ -215,7 +215,7 @@ async function applyWorkoutExerciseChange(
   request: ChangeRequest,
   proposedData: Record<string, unknown> | null,
   idMappings: Record<string, string>,
-  workoutLogId: number
+  workoutLogId: string
 ): Promise<void> {
   switch (request.operationType) {
     case 'create': {
@@ -248,11 +248,10 @@ async function applyWorkoutExerciseChange(
 
     case 'update': {
       // Update exercise (swap or update notes)
-      const entityIdNum = request.entityId ? parseInt(request.entityId, 10) : NaN
-      const workoutLogExerciseId = request.currentData?.id as number | undefined
-        ?? (isNaN(entityIdNum) ? undefined : entityIdNum)
+      const workoutLogExerciseId = (request.currentData?.id as string | undefined)
+        ?? request.entityId
 
-      if (!workoutLogExerciseId || isNaN(workoutLogExerciseId)) {
+      if (!workoutLogExerciseId) {
         console.warn('[applyWorkoutExerciseChange] Missing workoutLogExerciseId, skipping')
         return
       }
@@ -299,7 +298,7 @@ async function applyWorkoutExerciseChange(
 async function applyWorkoutLogChange(
   request: ChangeRequest,
   proposedData: Record<string, unknown> | null,
-  workoutLogId: number
+  workoutLogId: string
 ): Promise<void> {
   if (request.operationType !== 'update') {
     console.log('[applyWorkoutLogChange] Only update operation supported')

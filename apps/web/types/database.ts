@@ -211,7 +211,8 @@ export type Database = {
           id: number
           metadata: Json | null
           notes: string | null
-          session_id: number | null
+          old_session_id: number | null
+          session_id: string | null
           unit_id: number
           updated_at: string | null
           value: number
@@ -226,7 +227,8 @@ export type Database = {
           id?: number
           metadata?: Json | null
           notes?: string | null
-          session_id?: number | null
+          old_session_id?: number | null
+          session_id?: string | null
           unit_id: number
           updated_at?: string | null
           value: number
@@ -241,7 +243,8 @@ export type Database = {
           id?: number
           metadata?: Json | null
           notes?: string | null
-          session_id?: number | null
+          old_session_id?: number | null
+          session_id?: string | null
           unit_id?: number
           updated_at?: string | null
           value?: number
@@ -838,9 +841,11 @@ export type Database = {
           created_at: string | null
           exercise_id: number | null
           exercise_order: number | null
-          id: number
+          id: string
           notes: string | null
-          session_plan_id: number | null
+          old_id: number | null
+          old_session_plan_id: number | null
+          session_plan_id: string | null
           superset_id: number | null
           updated_at: string | null
         }
@@ -848,9 +853,11 @@ export type Database = {
           created_at?: string | null
           exercise_id?: number | null
           exercise_order?: number | null
-          id?: number
+          id?: string
           notes?: string | null
-          session_plan_id?: number | null
+          old_id?: number | null
+          old_session_plan_id?: number | null
+          session_plan_id?: string | null
           superset_id?: number | null
           updated_at?: string | null
         }
@@ -858,9 +865,11 @@ export type Database = {
           created_at?: string | null
           exercise_id?: number | null
           exercise_order?: number | null
-          id?: number
+          id?: string
           notes?: string | null
-          session_plan_id?: number | null
+          old_id?: number | null
+          old_session_plan_id?: number | null
+          session_plan_id?: string | null
           superset_id?: number | null
           updated_at?: string | null
         }
@@ -887,8 +896,10 @@ export type Database = {
           distance: number | null
           effort: number | null
           height: number | null
-          id: number
+          id: string
           metadata: Json | null
+          old_id: number | null
+          old_session_plan_exercise_id: number | null
           performing_time: number | null
           power: number | null
           reps: number | null
@@ -896,7 +907,7 @@ export type Database = {
           resistance_unit_id: number | null
           rest_time: number | null
           rpe: number | null
-          session_plan_exercise_id: number | null
+          session_plan_exercise_id: string | null
           set_index: number | null
           tempo: string | null
           updated_at: string | null
@@ -908,8 +919,10 @@ export type Database = {
           distance?: number | null
           effort?: number | null
           height?: number | null
-          id?: number
+          id?: string
           metadata?: Json | null
+          old_id?: number | null
+          old_session_plan_exercise_id?: number | null
           performing_time?: number | null
           power?: number | null
           reps?: number | null
@@ -917,7 +930,7 @@ export type Database = {
           resistance_unit_id?: number | null
           rest_time?: number | null
           rpe?: number | null
-          session_plan_exercise_id?: number | null
+          session_plan_exercise_id?: string | null
           set_index?: number | null
           tempo?: string | null
           updated_at?: string | null
@@ -929,8 +942,10 @@ export type Database = {
           distance?: number | null
           effort?: number | null
           height?: number | null
-          id?: number
+          id?: string
           metadata?: Json | null
+          old_id?: number | null
+          old_session_plan_exercise_id?: number | null
           performing_time?: number | null
           power?: number | null
           reps?: number | null
@@ -938,7 +953,7 @@ export type Database = {
           resistance_unit_id?: number | null
           rest_time?: number | null
           rpe?: number | null
-          session_plan_exercise_id?: number | null
+          session_plan_exercise_id?: string | null
           set_index?: number | null
           tempo?: string | null
           updated_at?: string | null
@@ -970,10 +985,11 @@ export type Database = {
           day: number | null
           deleted: boolean | null
           description: string | null
-          id: number
+          id: string
           is_template: boolean | null
           microcycle_id: number | null
           name: string | null
+          old_id: number | null
           session_mode: string | null
           updated_at: string | null
           user_id: number | null
@@ -986,10 +1002,11 @@ export type Database = {
           day?: number | null
           deleted?: boolean | null
           description?: string | null
-          id?: number
+          id?: string
           is_template?: boolean | null
           microcycle_id?: number | null
           name?: string | null
+          old_id?: number | null
           session_mode?: string | null
           updated_at?: string | null
           user_id?: number | null
@@ -1002,10 +1019,11 @@ export type Database = {
           day?: number | null
           deleted?: boolean | null
           description?: string | null
-          id?: number
+          id?: string
           is_template?: boolean | null
           microcycle_id?: number | null
           name?: string | null
+          old_id?: number | null
           session_mode?: string | null
           updated_at?: string | null
           user_id?: number | null
@@ -1136,34 +1154,43 @@ export type Database = {
           created_at: string
           exercise_id: number
           exercise_order: number
-          id: number
+          id: string
           notes: string | null
-          session_plan_exercise_id: number | null
+          old_id: number | null
+          old_session_plan_exercise_id: number | null
+          old_workout_log_id: number | null
+          session_plan_exercise_id: string | null
           superset_id: number | null
           updated_at: string
-          workout_log_id: number
+          workout_log_id: string | null
         }
         Insert: {
           created_at?: string
           exercise_id: number
           exercise_order: number
-          id?: number
+          id?: string
           notes?: string | null
-          session_plan_exercise_id?: number | null
+          old_id?: number | null
+          old_session_plan_exercise_id?: number | null
+          old_workout_log_id?: number | null
+          session_plan_exercise_id?: string | null
           superset_id?: number | null
           updated_at?: string
-          workout_log_id: number
+          workout_log_id?: string | null
         }
         Update: {
           created_at?: string
           exercise_id?: number
           exercise_order?: number
-          id?: number
+          id?: string
           notes?: string | null
-          session_plan_exercise_id?: number | null
+          old_id?: number | null
+          old_session_plan_exercise_id?: number | null
+          old_workout_log_id?: number | null
+          session_plan_exercise_id?: string | null
           superset_id?: number | null
           updated_at?: string
-          workout_log_id?: number
+          workout_log_id?: string | null
         }
         Relationships: [
           {
@@ -1196,8 +1223,12 @@ export type Database = {
           distance: number | null
           effort: number | null
           height: number | null
-          id: number
+          id: string
           metadata: Json | null
+          old_id: number | null
+          old_session_plan_exercise_id: number | null
+          old_workout_log_exercise_id: number | null
+          old_workout_log_id: number | null
           performing_time: number | null
           power: number | null
           reps: number | null
@@ -1205,14 +1236,14 @@ export type Database = {
           resistance_unit_id: number | null
           rest_time: number | null
           rpe: number | null
-          session_plan_exercise_id: number | null
+          session_plan_exercise_id: string | null
           set_index: number | null
           tempo: string | null
           updated_at: string | null
           velocity: number | null
           weight: number | null
-          workout_log_exercise_id: number | null
-          workout_log_id: number | null
+          workout_log_exercise_id: string | null
+          workout_log_id: string | null
         }
         Insert: {
           completed?: boolean | null
@@ -1220,8 +1251,12 @@ export type Database = {
           distance?: number | null
           effort?: number | null
           height?: number | null
-          id?: number
+          id?: string
           metadata?: Json | null
+          old_id?: number | null
+          old_session_plan_exercise_id?: number | null
+          old_workout_log_exercise_id?: number | null
+          old_workout_log_id?: number | null
           performing_time?: number | null
           power?: number | null
           reps?: number | null
@@ -1229,14 +1264,14 @@ export type Database = {
           resistance_unit_id?: number | null
           rest_time?: number | null
           rpe?: number | null
-          session_plan_exercise_id?: number | null
+          session_plan_exercise_id?: string | null
           set_index?: number | null
           tempo?: string | null
           updated_at?: string | null
           velocity?: number | null
           weight?: number | null
-          workout_log_exercise_id?: number | null
-          workout_log_id?: number | null
+          workout_log_exercise_id?: string | null
+          workout_log_id?: string | null
         }
         Update: {
           completed?: boolean | null
@@ -1244,8 +1279,12 @@ export type Database = {
           distance?: number | null
           effort?: number | null
           height?: number | null
-          id?: number
+          id?: string
           metadata?: Json | null
+          old_id?: number | null
+          old_session_plan_exercise_id?: number | null
+          old_workout_log_exercise_id?: number | null
+          old_workout_log_id?: number | null
           performing_time?: number | null
           power?: number | null
           reps?: number | null
@@ -1253,14 +1292,14 @@ export type Database = {
           resistance_unit_id?: number | null
           rest_time?: number | null
           rpe?: number | null
-          session_plan_exercise_id?: number | null
+          session_plan_exercise_id?: string | null
           set_index?: number | null
           tempo?: string | null
           updated_at?: string | null
           velocity?: number | null
           weight?: number | null
-          workout_log_exercise_id?: number | null
-          workout_log_id?: number | null
+          workout_log_exercise_id?: string | null
+          workout_log_id?: string | null
         }
         Relationships: [
           {
@@ -1300,10 +1339,12 @@ export type Database = {
           created_at: string | null
           date_time: string | null
           description: string | null
-          id: number
+          id: string
           notes: string | null
+          old_id: number | null
+          old_session_plan_id: number | null
           session_mode: string | null
-          session_plan_id: number | null
+          session_plan_id: string | null
           session_status: Database["public"]["Enums"]["session_status"]
           updated_at: string | null
         }
@@ -1313,10 +1354,12 @@ export type Database = {
           created_at?: string | null
           date_time?: string | null
           description?: string | null
-          id?: number
+          id?: string
           notes?: string | null
+          old_id?: number | null
+          old_session_plan_id?: number | null
           session_mode?: string | null
-          session_plan_id?: number | null
+          session_plan_id?: string | null
           session_status: Database["public"]["Enums"]["session_status"]
           updated_at?: string | null
         }
@@ -1326,10 +1369,12 @@ export type Database = {
           created_at?: string | null
           date_time?: string | null
           description?: string | null
-          id?: number
+          id?: string
           notes?: string | null
+          old_id?: number | null
+          old_session_plan_id?: number | null
           session_mode?: string | null
-          session_plan_id?: number | null
+          session_plan_id?: string | null
           session_status?: Database["public"]["Enums"]["session_status"]
           updated_at?: string | null
         }
@@ -1362,6 +1407,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      athlete_in_group: { Args: { group_id: number }; Returns: boolean }
+      auth_athlete_group_id: { Args: never; Returns: number }
+      auth_athlete_id: { Args: never; Returns: number }
+      auth_coach_id: { Args: never; Returns: number }
+      auth_coached_group_ids: { Args: never; Returns: number[] }
+      auth_user_id: { Args: never; Returns: number }
+      can_access_group: { Args: { group_id: number }; Returns: boolean }
+      can_access_session_exercise: {
+        Args: { spe_id: number }
+        Returns: boolean
+      }
+      can_access_session_plan: { Args: { sp_id: number }; Returns: boolean }
+      can_view_workout_log: { Args: { wl_id: number }; Returns: boolean }
+      coaches_athlete: { Args: { athlete_id: number }; Returns: boolean }
+      coaches_group: { Args: { group_id: number }; Returns: boolean }
       get_user_role_data: {
         Args: { p_clerk_id: string }
         Returns: {
@@ -1371,6 +1431,10 @@ export type Database = {
           user_id: number
         }[]
       }
+      owns_resource: { Args: { resource_user_id: number }; Returns: boolean }
+      owns_session_exercise: { Args: { spe_id: number }; Returns: boolean }
+      owns_session_plan: { Args: { sp_id: number }; Returns: boolean }
+      owns_workout_log: { Args: { wl_id: number }; Returns: boolean }
       unuse: { Args: never; Returns: undefined }
       update_user_from_webhook: {
         Args: {
@@ -1538,97 +1602,70 @@ export const Constants = {
   },
 } as const
 
-// ============================================================================
-// Type Aliases for Convenience
-// ============================================================================
+// Convenience type exports for common table types
+export type WorkoutLogExercise = Database["public"]["Tables"]["workout_log_exercises"]["Row"]
+export type WorkoutLogExerciseInsert = Database["public"]["Tables"]["workout_log_exercises"]["Insert"]
+export type WorkoutLogExerciseUpdate = Database["public"]["Tables"]["workout_log_exercises"]["Update"]
 
-// Core entities
-export type Macrocycle = Tables<"macrocycles">
-export type MacrocycleInsert = TablesInsert<"macrocycles">
-export type MacrocycleUpdate = TablesUpdate<"macrocycles">
+export type WorkoutLog = Database["public"]["Tables"]["workout_logs"]["Row"]
+export type WorkoutLogInsert = Database["public"]["Tables"]["workout_logs"]["Insert"]
+export type WorkoutLogUpdate = Database["public"]["Tables"]["workout_logs"]["Update"]
 
-export type Mesocycle = Tables<"mesocycles">
-export type MesocycleInsert = TablesInsert<"mesocycles">
-export type MesocycleUpdate = TablesUpdate<"mesocycles">
+export type WorkoutLogSet = Database["public"]["Tables"]["workout_log_sets"]["Row"]
+export type WorkoutLogSetInsert = Database["public"]["Tables"]["workout_log_sets"]["Insert"]
+export type WorkoutLogSetUpdate = Database["public"]["Tables"]["workout_log_sets"]["Update"]
 
-export type Microcycle = Tables<"microcycles">
-export type MicrocycleInsert = TablesInsert<"microcycles">
-export type MicrocycleUpdate = TablesUpdate<"microcycles">
+export type SessionPlan = Database["public"]["Tables"]["session_plans"]["Row"]
+export type SessionPlanInsert = Database["public"]["Tables"]["session_plans"]["Insert"]
+export type SessionPlanUpdate = Database["public"]["Tables"]["session_plans"]["Update"]
 
-export type Exercise = Tables<"exercises">
-export type ExerciseInsert = TablesInsert<"exercises">
-export type ExerciseUpdate = TablesUpdate<"exercises">
+export type SessionPlanExercise = Database["public"]["Tables"]["session_plan_exercises"]["Row"]
+export type SessionPlanExerciseInsert = Database["public"]["Tables"]["session_plan_exercises"]["Insert"]
+export type SessionPlanExerciseUpdate = Database["public"]["Tables"]["session_plan_exercises"]["Update"]
 
-export type ExerciseType = Tables<"exercise_types">
-export type Unit = Tables<"units">
+export type SessionPlanSet = Database["public"]["Tables"]["session_plan_sets"]["Row"]
+export type SessionPlanSetInsert = Database["public"]["Tables"]["session_plan_sets"]["Insert"]
+export type SessionPlanSetUpdate = Database["public"]["Tables"]["session_plan_sets"]["Update"]
 
-// Session Plans (coach domain)
-export type SessionPlan = Tables<"session_plans">
-export type SessionPlanInsert = TablesInsert<"session_plans">
-export type SessionPlanUpdate = TablesUpdate<"session_plans">
+// Exercise types
+export type Exercise = Database["public"]["Tables"]["exercises"]["Row"]
+export type ExerciseInsert = Database["public"]["Tables"]["exercises"]["Insert"]
+export type ExerciseUpdate = Database["public"]["Tables"]["exercises"]["Update"]
+export type ExerciseType = Database["public"]["Tables"]["exercise_types"]["Row"]
+export type Unit = Database["public"]["Tables"]["units"]["Row"]
 
-export type SessionPlanExercise = Tables<"session_plan_exercises">
-export type SessionPlanExerciseInsert = TablesInsert<"session_plan_exercises">
-export type SessionPlanExerciseUpdate = TablesUpdate<"session_plan_exercises">
+// Periodization types
+export type Macrocycle = Database["public"]["Tables"]["macrocycles"]["Row"]
+export type MacrocycleInsert = Database["public"]["Tables"]["macrocycles"]["Insert"]
+export type MacrocycleUpdate = Database["public"]["Tables"]["macrocycles"]["Update"]
+export type Mesocycle = Database["public"]["Tables"]["mesocycles"]["Row"]
+export type MesocycleInsert = Database["public"]["Tables"]["mesocycles"]["Insert"]
+export type MesocycleUpdate = Database["public"]["Tables"]["mesocycles"]["Update"]
+export type Microcycle = Database["public"]["Tables"]["microcycles"]["Row"]
+export type MicrocycleInsert = Database["public"]["Tables"]["microcycles"]["Insert"]
+export type MicrocycleUpdate = Database["public"]["Tables"]["microcycles"]["Update"]
 
-export type SessionPlanSet = Tables<"session_plan_sets">
-export type SessionPlanSetInsert = TablesInsert<"session_plan_sets">
-export type SessionPlanSetUpdate = TablesUpdate<"session_plan_sets">
+// User types
+export type User = Database["public"]["Tables"]["users"]["Row"]
+export type UserInsert = Database["public"]["Tables"]["users"]["Insert"]
+export type UserUpdate = Database["public"]["Tables"]["users"]["Update"]
+export type UserRole = Database["public"]["Enums"]["role"]
+export type Athlete = Database["public"]["Tables"]["athletes"]["Row"]
+export type AthleteInsert = Database["public"]["Tables"]["athletes"]["Insert"]
+export type AthleteUpdate = Database["public"]["Tables"]["athletes"]["Update"]
+export type AthleteGroup = Database["public"]["Tables"]["athlete_groups"]["Row"]
+export type AthleteGroupInsert = Database["public"]["Tables"]["athlete_groups"]["Insert"]
+export type AthleteGroupUpdate = Database["public"]["Tables"]["athlete_groups"]["Update"]
 
-// Workout Logs (athlete domain)
-export type WorkoutLog = Tables<"workout_logs">
-export type WorkoutLogInsert = TablesInsert<"workout_logs">
-export type WorkoutLogUpdate = TablesUpdate<"workout_logs">
-
-export type WorkoutLogExercise = Tables<"workout_log_exercises">
-export type WorkoutLogExerciseInsert = TablesInsert<"workout_log_exercises">
-export type WorkoutLogExerciseUpdate = TablesUpdate<"workout_log_exercises">
-
-export type WorkoutLogSet = Tables<"workout_log_sets">
-export type WorkoutLogSetInsert = TablesInsert<"workout_log_sets">
-export type WorkoutLogSetUpdate = TablesUpdate<"workout_log_sets">
-
-// Athletes and Groups
-export type Athlete = Tables<"athletes">
-export type AthleteInsert = TablesInsert<"athletes">
-export type AthleteUpdate = TablesUpdate<"athletes">
-
-export type AthleteGroup = Tables<"athlete_groups">
-export type AthleteGroupInsert = TablesInsert<"athlete_groups">
-export type AthleteGroupUpdate = TablesUpdate<"athlete_groups">
-
-// Users
-export type User = Tables<"users">
-export type UserInsert = TablesInsert<"users">
-export type UserUpdate = TablesUpdate<"users">
-
-// User role type from the users table
-export type UserRole = User["role"]
-
-// Legacy aliases (deprecated - use new names above)
-/** @deprecated Use SessionPlan instead */
+// Legacy aliases (deprecated - use SessionPlan, SessionPlanExercise, SessionPlanSet instead)
 export type ExercisePresetGroup = SessionPlan
-/** @deprecated Use SessionPlanInsert instead */
 export type ExercisePresetGroupInsert = SessionPlanInsert
-/** @deprecated Use SessionPlanUpdate instead */
 export type ExercisePresetGroupUpdate = SessionPlanUpdate
-
-/** @deprecated Use SessionPlanExercise instead */
 export type ExercisePreset = SessionPlanExercise
-/** @deprecated Use SessionPlanExerciseInsert instead */
 export type ExercisePresetInsert = SessionPlanExerciseInsert
-/** @deprecated Use SessionPlanExerciseUpdate instead */
 export type ExercisePresetUpdate = SessionPlanExerciseUpdate
-
-/** @deprecated Use SessionPlanSet instead */
 export type ExercisePresetDetail = SessionPlanSet
-
-/** @deprecated Use WorkoutLog instead */
-export type ExerciseTrainingSession = WorkoutLog
-/** @deprecated Use WorkoutLogInsert instead */
-export type ExerciseTrainingSessionInsert = WorkoutLogInsert
-/** @deprecated Use WorkoutLogUpdate instead */
-export type ExerciseTrainingSessionUpdate = WorkoutLogUpdate
-
-/** @deprecated Use WorkoutLogSet instead */
 export type ExerciseTrainingDetail = WorkoutLogSet
+export type ExerciseTrainingSession = WorkoutLog
+export type ExerciseTrainingSessionInsert = WorkoutLogInsert
+export type ExerciseTrainingSessionUpdate = WorkoutLogUpdate

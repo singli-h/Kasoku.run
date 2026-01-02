@@ -47,13 +47,13 @@ interface WorkoutSessionSelectorProps {
   hideOngoing?: boolean
 }
 
-export function WorkoutSessionSelector({ 
-  onSessionSelected, 
+export function WorkoutSessionSelector({
+  onSessionSelected,
   className,
   hideOngoing = false
 }: WorkoutSessionSelectorProps) {
   const { toast } = useToast()
-  const [startingSessionId, setStartingSessionId] = useState<number | null>(null)
+  const [startingSessionId, setStartingSessionId] = useState<string | null>(null)
 
   // Fetch today's and ongoing sessions with optimized query
   const { data: sessions, isLoading, error, refetchSessions } = useSessionsToday()

@@ -24,7 +24,7 @@ import type { WorkoutLogExercise, WorkoutLog } from '@/types/database'
  * @returns The created workout log exercise
  */
 export async function addWorkoutExerciseAction(
-  workoutLogId: number,
+  workoutLogId: string,
   exerciseData: {
     exercise_id: number
     exercise_order?: number
@@ -129,7 +129,7 @@ export async function addWorkoutExerciseAction(
  * @returns The updated workout log exercise
  */
 export async function updateWorkoutExerciseAction(
-  workoutLogExerciseId: number,
+  workoutLogExerciseId: string,
   updates: {
     exercise_id?: number
     exercise_order?: number
@@ -223,7 +223,7 @@ export async function updateWorkoutExerciseAction(
  * @returns The updated workout log
  */
 export async function updateWorkoutNotesAction(
-  workoutLogId: number,
+  workoutLogId: string,
   notes: string
 ): Promise<ActionState<WorkoutLog>> {
   try {

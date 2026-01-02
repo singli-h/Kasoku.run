@@ -106,9 +106,9 @@ export interface TrainingExercise {
  */
 export interface WorkoutExercise extends TrainingExercise {
   /** Foreign key to workout_logs */
-  workoutLogId: number
+  workoutLogId: string
   /** Reference to the template exercise (if from a session plan) */
-  sessionPlanExerciseId?: number | null
+  sessionPlanExerciseId?: string | null
 }
 
 /**
@@ -117,7 +117,7 @@ export interface WorkoutExercise extends TrainingExercise {
  */
 export interface SessionPlanExercise extends TrainingExercise {
   /** Foreign key to session_plans */
-  sessionPlanId: number
+  sessionPlanId: string
 }
 
 // =============================================================================
@@ -231,12 +231,12 @@ export function dbPlanSetToTrainingSet(dbSet: DBSessionPlanSet): TrainingSet {
  */
 export function trainingSetToDbSet(
   set: TrainingSet,
-  workoutLogId: number,
-  workoutLogExerciseId: number,
-  sessionPlanExerciseId?: number | null
-): Omit<DBWorkoutLogSet, 'id' | 'created_at' | 'updated_at'> & { id?: number } {
+  workoutLogId: string,
+  workoutLogExerciseId: string,
+  sessionPlanExerciseId?: string | null
+): Omit<DBWorkoutLogSet, 'id' | 'created_at' | 'updated_at' | 'old_id' | 'old_session_plan_exercise_id' | 'old_workout_log_id' | 'old_workout_log_exercise_id'> & { id?: string } {
   return {
-    id: typeof set.id === 'number' ? set.id : undefined,
+    id: typeof set.id === 'string' ? set.id : undefined,
     workout_log_id: workoutLogId,
     workout_log_exercise_id: workoutLogExerciseId,
     session_plan_exercise_id: sessionPlanExerciseId ?? null,
@@ -264,10 +264,10 @@ export function trainingSetToDbSet(
  */
 export function trainingSetToDbPlanSet(
   set: TrainingSet,
-  sessionPlanExerciseId: number
-): Omit<DBSessionPlanSet, 'id' | 'created_at' | 'updated_at'> & { id?: number } {
+  sessionPlanExerciseId: string
+): Omit<DBSessionPlanSet, 'id' | 'created_at' | 'updated_at' | 'old_id' | 'old_session_plan_exercise_id'> & { id?: string } {
   return {
-    id: typeof set.id === 'number' ? set.id : undefined,
+    id: typeof set.id === 'string' ? set.id : undefined,
     session_plan_exercise_id: sessionPlanExerciseId,
     set_index: set.setIndex,
     reps: set.reps ?? null,

@@ -21,9 +21,9 @@ const memoryDrafts = new Map<string, WorkoutDraft>()
  */
 export interface WorkoutDraft {
   /** Session ID this draft belongs to */
-  sessionId: number
+  sessionId: string
   /** Map of exercise ID to set data */
-  exercises: Record<number, WorkoutExerciseDraft>
+  exercises: Record<string, WorkoutExerciseDraft>
   /** Session-level notes */
   notes?: string
   /** When the draft was last modified */
@@ -34,7 +34,7 @@ export interface WorkoutDraft {
 
 export interface WorkoutExerciseDraft {
   /** Session plan exercise ID */
-  exerciseId: number
+  exerciseId: string
   /** Set data array */
   sets: WorkoutSetDraft[]
   /** Exercise-level notes */
@@ -63,14 +63,14 @@ export interface WorkoutSetDraft {
  * @param notes - Optional session notes
  */
 export function saveDraft(
-  sessionId: number,
-  exercises: Array<{ id: number; workout_log_sets?: WorkoutLogSet[]; notes?: string }>,
+  sessionId: string,
+  exercises: Array<{ id: string; workout_log_sets?: WorkoutLogSet[]; notes?: string }>,
   notes?: string
 ): void {
   const key = `${DRAFT_KEY_PREFIX}${sessionId}`
 
   // Transform exercises to draft format
-  const exerciseDrafts: Record<number, WorkoutExerciseDraft> = {}
+  const exerciseDrafts: Record<string, WorkoutExerciseDraft> = {}
 
   for (const exercise of exercises) {
     if (!exercise.workout_log_sets?.length) continue
@@ -112,7 +112,7 @@ export function saveDraft(
  * @param sessionId - Workout session ID
  * @returns Draft data or null
  */
-export function getDraft(sessionId: number): WorkoutDraft | null {
+export function getDraft(sessionId: string): WorkoutDraft | null {
   const key = `${DRAFT_KEY_PREFIX}${sessionId}`
 
   try {
@@ -144,7 +144,7 @@ export function getDraft(sessionId: number): WorkoutDraft | null {
  *
  * @param sessionId - Workout session ID
  */
-export function clearDraft(sessionId: number): void {
+export function clearDraft(sessionId: string): void {
   const key = `${DRAFT_KEY_PREFIX}${sessionId}`
 
   try {
@@ -163,7 +163,7 @@ export function clearDraft(sessionId: number): void {
  * @param sessionId - Workout session ID
  * @returns true if draft exists and is not expired
  */
-export function hasDraft(sessionId: number): boolean {
+export function hasDraft(sessionId: string): boolean {
   return getDraft(sessionId) !== null
 }
 
@@ -173,7 +173,7 @@ export function hasDraft(sessionId: number): boolean {
  * @param sessionId - Workout session ID
  * @returns Human-readable age string or null if no draft
  */
-export function getDraftAge(sessionId: number): string | null {
+export function getDraftAge(sessionId: string): string | null {
   const draft = getDraft(sessionId)
   if (!draft) return null
 

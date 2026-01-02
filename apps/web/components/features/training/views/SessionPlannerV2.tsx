@@ -38,9 +38,9 @@ import { useSessionExercises } from "../context"
 
 interface SessionPlannerV2Props {
   planId: string
-  sessionId: number
+  sessionId: string
   initialSession: {
-    id: number
+    id: string
     name: string
     description?: string | null
     date?: string | null

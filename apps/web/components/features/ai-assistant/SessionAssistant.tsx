@@ -49,7 +49,7 @@ export type AssistantDomain = 'session' | 'workout'
 
 interface SessionAssistantProps {
   /** The session ID (session_plan ID for session domain, workout_log ID for workout domain) */
-  sessionId: number
+  sessionId: string
 
   /** The plan ID (optional for workout domain) */
   planId?: string

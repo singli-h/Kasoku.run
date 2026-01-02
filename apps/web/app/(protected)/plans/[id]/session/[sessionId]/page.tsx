@@ -37,7 +37,7 @@ interface PageProps {
  */
 function transformSessionData(backendData: any): {
   session: {
-    id: number
+    id: string
     name: string
     description?: string | null
     date?: string | null
@@ -48,7 +48,7 @@ function transformSessionData(backendData: any): {
   exercises: SessionPlannerExercise[]
 } {
   const session = {
-    id: backendData.id,
+    id: String(backendData.id),
     name: backendData.name || `Session ${backendData.id}`,
     description: backendData.description,
     date: backendData.date,
@@ -104,7 +104,7 @@ function transformSessionData(backendData: any): {
 export default async function SessionPlannerRoute({ params }: PageProps) {
   const resolvedParams = await params
   const planId = resolvedParams.id
-  const sessionId = Number(resolvedParams.sessionId)
+  const sessionId = resolvedParams.sessionId
 
   // Load session data only - exercise library is loaded on-demand via server-side search
   const sessionResult = await getSessionPlanByIdAction(sessionId)

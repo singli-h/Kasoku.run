@@ -36,14 +36,14 @@ interface PerformanceUpdate {
 
 interface SessionContextValue {
   // Session data
-  sessionId: number
+  sessionId: string
   isLoading: boolean
   error: string | null
 
   // Session state
   data: {
     session: {
-      id: number
+      id: string
       name: string
       date: string
       status: string
@@ -104,7 +104,7 @@ export function useSessionContext(): SessionContextValue {
  */
 interface SessionProviderProps {
   children: ReactNode
-  sessionId: number
+  sessionId: string
   /** Enable polling for live updates (default: true for active sessions) */
   enablePolling?: boolean
   /** Polling interval in ms (default: 30000) */
@@ -132,7 +132,7 @@ export function SessionProvider({
     refetchData,
   } = useGroupSessionData({
     sessionId,
-    enabled: sessionId > 0,
+    enabled: !!sessionId,
     enablePolling,
     pollingInterval,
   })

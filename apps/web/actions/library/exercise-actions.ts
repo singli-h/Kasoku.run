@@ -931,7 +931,7 @@ export async function createSessionPlanAction(
  * Get a specific exercise preset group with all details
  */
 export async function getSessionPlanByIdAction(
-  id: number
+  id: string
 ): Promise<ActionState<SessionPlanWithDetails>> {
   try {
     const { userId } = await auth()
@@ -1070,7 +1070,7 @@ export async function getSessionPlanByIdAction(
  * Add an exercise to a preset group
  */
 export async function addExerciseToPresetGroupAction(
-  presetGroupId: number,
+  presetGroupId: string,
   exerciseId: number,
   presetOrder: number,
   notes?: string,
@@ -1132,7 +1132,7 @@ export async function addExerciseToPresetGroupAction(
  * Add exercise preset details (sets/reps specifications) to an exercise preset
  */
 export async function addSessionPlanSetsAction(
-  presetId: number,
+  presetId: string,
   details: SessionPlanSet[]
 ): Promise<ActionState<SessionPlanSet[]>> {
   try {
@@ -1198,7 +1198,7 @@ export async function addSessionPlanSetsAction(
  * Update exercise preset details
  */
 export async function updateSessionPlanSetsAction(
-  detailId: number,
+  detailId: string,
   updates: Partial<SessionPlanSet>
 ): Promise<ActionState<SessionPlanSet>> {
   try {
@@ -1246,7 +1246,7 @@ export async function updateSessionPlanSetsAction(
  * Remove exercise preset details
  */
 export async function removeSessionPlanSetsAction(
-  presetId: number
+  presetId: string
 ): Promise<ActionState<boolean>> {
   try {
     const { userId } = await auth()
@@ -1295,7 +1295,7 @@ export async function removeSessionPlanSetsAction(
  * Apply automatic progression to exercise preset details based on performance
  */
 export async function applyProgressionToPresetAction(
-  presetId: number,
+  presetId: string,
   progressionType: 'weight' | 'reps' | 'volume',
   progressionValue: number,
   targetSets?: number[]
@@ -1414,7 +1414,7 @@ export async function applyProgressionToPresetAction(
  * Copy a session template with automatic adaptations
  */
 export async function copySessionWithAdaptationsAction(
-  originalSessionId: number,
+  originalSessionId: string,
   newDate: string,
   adaptations?: {
     weightIncrease?: number

@@ -19,9 +19,9 @@ export default async function SessionPage({ params }: SessionPageProps) {
   await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
 
   const { id } = await params
-  const sessionId = parseInt(id, 10)
+  const sessionId = id
 
-  if (isNaN(sessionId)) {
+  if (!sessionId) {
     return (
       <PageLayout
         title="Invalid Session"

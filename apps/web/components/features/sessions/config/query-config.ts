@@ -9,7 +9,7 @@
 // Query keys for sessions-related data
 export const SESSIONS_QUERY_KEYS = {
   // Session queries
-  SESSION: (sessionId: number) => ['session', sessionId] as const,
+  SESSION: (sessionId: string) => ['session', sessionId] as const,
   SESSIONS_TODAY: ['sessions-today'] as const,
   SESSIONS_BY_GROUP: (groupId: number) => ['sessions', 'group', groupId] as const,
   SESSIONS_BY_DATE: (date: string) => ['sessions', 'date', date] as const,
@@ -17,12 +17,12 @@ export const SESSIONS_QUERY_KEYS = {
     ['sessions', 'history', page, filters] as const,
 
   // Group session data (athletes, exercises, performance)
-  GROUP_SESSION_DATA: (sessionId: number) => ['group-session-data', sessionId] as const,
+  GROUP_SESSION_DATA: (sessionId: string) => ['group-session-data', sessionId] as const,
 
   // Performance queries
-  ATHLETE_PERFORMANCE: (sessionId: number, athleteId: number) =>
+  ATHLETE_PERFORMANCE: (sessionId: string, athleteId: number) =>
     ['athlete-performance', sessionId, athleteId] as const,
-  EXERCISE_PERFORMANCE: (sessionId: number, exerciseId: number) =>
+  EXERCISE_PERFORMANCE: (sessionId: string, exerciseId: number) =>
     ['exercise-performance', sessionId, exerciseId] as const,
 
   // Personal bests
@@ -93,7 +93,7 @@ export const RETRY_CONFIG = {
 // Query invalidation helpers
 export const INVALIDATION_PATTERNS = {
   // Invalidate single session
-  SESSION: (sessionId: number) => [
+  SESSION: (sessionId: string) => [
     SESSIONS_QUERY_KEYS.SESSION(sessionId),
     SESSIONS_QUERY_KEYS.GROUP_SESSION_DATA(sessionId),
   ],
@@ -104,7 +104,7 @@ export const INVALIDATION_PATTERNS = {
   ],
 
   // Invalidate performance data for a session
-  PERFORMANCE: (sessionId: number) => [
+  PERFORMANCE: (sessionId: string) => [
     SESSIONS_QUERY_KEYS.GROUP_SESSION_DATA(sessionId),
   ],
 
@@ -117,13 +117,13 @@ export const INVALIDATION_PATTERNS = {
 // Prefetch strategies
 export const PREFETCH_STRATEGIES = {
   // Prefetch session details when hovering over session card
-  SESSION: (sessionId: number) => ({
+  SESSION: (sessionId: string) => ({
     queryKey: SESSIONS_QUERY_KEYS.SESSION(sessionId),
     staleTime: STALE_TIMES.SESSION,
   }),
 
   // Prefetch group session data when session is about to start
-  GROUP_SESSION_DATA: (sessionId: number) => ({
+  GROUP_SESSION_DATA: (sessionId: string) => ({
     queryKey: SESSIONS_QUERY_KEYS.GROUP_SESSION_DATA(sessionId),
     staleTime: STALE_TIMES.GROUP_SESSION_DATA,
   }),

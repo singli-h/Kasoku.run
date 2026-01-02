@@ -31,7 +31,7 @@ export interface ToolHandlerContext {
   changeSet: ChangeSetContextValue
 
   /** Current session ID for context */
-  sessionId: number
+  sessionId: string
 
   /** Callback to show the approval widget */
   showApprovalWidget: (title: string, description: string) => void

@@ -19,7 +19,7 @@ interface WorkoutSessionPageProps {
   params: Promise<{ id: string }>
 }
 
-async function WorkoutSessionContent({ sessionId }: { sessionId: number }) {
+async function WorkoutSessionContent({ sessionId }: { sessionId: string }) {
   // Server-side fetch for fast initial render
   const result = await getWorkoutSessionByIdAction(sessionId)
 
@@ -46,9 +46,9 @@ async function WorkoutSessionContent({ sessionId }: { sessionId: number }) {
 
 export default async function WorkoutSessionPage({ params }: WorkoutSessionPageProps) {
   const { id } = await params
-  const sessionId = parseInt(id, 10)
+  const sessionId = id
 
-  if (isNaN(sessionId)) {
+  if (!sessionId) {
     notFound()
   }
 

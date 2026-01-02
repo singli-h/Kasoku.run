@@ -13,7 +13,7 @@ import { toast } from "sonner"
 import { updateSessionDetailAction } from "@/actions/sessions"
 
 interface PendingUpdate {
-  sessionId: number
+  sessionId: string
   athleteId: number
   exerciseId: number
   setIndex: number
@@ -116,7 +116,7 @@ export function useAutoSave(options: UseAutoSaveOptions = {}) {
    * Queue an update for auto-save
    */
   const queueUpdate = useCallback((
-    sessionId: number,
+    sessionId: string,
     athleteId: number,
     exerciseId: number,
     setIndex: number,
