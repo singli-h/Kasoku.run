@@ -344,6 +344,9 @@ function SessionAssistantContent({
    * Handle user regeneration request (user clicked "Change" button).
    * Simply returns rejection to AI - AI will ask in chat what to change.
    * NO follow-up prompt injection - feedback comes from chat conversation.
+   *
+   * IMPORTANT: Changeset is PRESERVED (not cleared) so AI can modify it.
+   * Per design: "Restore keyed buffer (not cleared)" - AI corrects via upsert.
    */
   const handleRegenerate = useCallback(() => {
     if (!pendingToolCall) return
@@ -362,8 +365,9 @@ function SessionAssistantContent({
       output: JSON.stringify(createApprovalResult(false)),
     })
 
-    // Clear changeset but keep banner hidden until AI proposes again
-    changeSet.clear()
+    // Transition changeset back to "building" state (NOT cleared)
+    // AI can modify the existing changes via upsert operations
+    changeSet.setStatus('building')
     setShowBanner(false)
     setPendingToolCall(null)
   }, [pendingToolCall, addToolOutput, changeSet])
