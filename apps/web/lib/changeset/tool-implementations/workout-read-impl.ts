@@ -146,7 +146,7 @@ export async function executeGetWorkoutContext(
 
   // Type assertion for nested join
   const sessionPlan = workoutLog.session_plans as unknown as {
-    id: number
+    id: string
     name: string
   } | null
 
@@ -177,11 +177,11 @@ export async function executeGetWorkoutContext(
   // Get all session_plan_exercise_ids to fetch prescribed sets
   const sessionPlanExerciseIds = (workoutExercises ?? [])
     .map((e) => e.session_plan_exercise_id)
-    .filter((id): id is number => id !== null)
+    .filter((id): id is string => id !== null)
 
   // Fetch prescribed sets from session_plan_sets
   let prescribedSetsMap = new Map<
-    number,
+    string,
     Array<{
       set_index: number
       reps: number | null
@@ -235,9 +235,9 @@ export async function executeGetWorkoutContext(
   const workoutExerciseIds = (workoutExercises ?? []).map((e) => e.id)
 
   let actualSetsMap = new Map<
-    number,
+    string,
     Array<{
-      id: number
+      id: string
       set_index: number | null
       reps: number | null
       weight: number | null

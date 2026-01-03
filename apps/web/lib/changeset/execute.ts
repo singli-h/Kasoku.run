@@ -191,7 +191,7 @@ function applyExerciseChange(
         for (let i = 0; i < setCount; i++) {
           result.push({
             id: `new_set_${Date.now()}_${reqIndex}_${i}`,
-            session_plan_exercise_id: 0, // Will be set by save action
+            session_plan_exercise_id: '', // Will be set by save action
             set_index: result.length + 1,
             reps: (setData?.reps as number) ?? null,
             weight: (setData?.weight as number) ?? null,

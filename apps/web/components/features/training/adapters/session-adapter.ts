@@ -36,7 +36,7 @@ export interface SessionPlannerExercise {
   } | null
   sets: Array<{
     id: number | string
-    session_plan_exercise_id: number
+    session_plan_exercise_id: string
     set_index: number
     reps?: number | null
     weight?: number | null
@@ -167,7 +167,7 @@ export function trainingToSessionExercise(
     exercise: originalExercise?.exercise,
     sets: exercise.sets.map(set => ({
       id: set.id,
-      session_plan_exercise_id: typeof exercise.id === 'number' ? exercise.id : 0,
+      session_plan_exercise_id: String(exercise.id),
       set_index: set.setIndex,
       reps: set.reps,
       weight: set.weight,
@@ -206,7 +206,7 @@ export function mergeTrainingUpdate(
       return {
         ...(originalSet || {}),
         id: set.id,
-        session_plan_exercise_id: typeof original.id === 'number' ? original.id : 0,
+        session_plan_exercise_id: String(original.id),
         set_index: set.setIndex,
         reps: set.reps,
         weight: set.weight,

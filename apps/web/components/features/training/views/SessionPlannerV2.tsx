@@ -171,7 +171,7 @@ export function SessionPlannerV2({
         const newSetIndex = ex.sets.length + 1
         const newSet = {
           id: `new_set_${Date.now()}`,
-          session_plan_exercise_id: typeof ex.id === 'number' ? ex.id : 0,
+          session_plan_exercise_id: String(ex.id),
           set_index: newSetIndex,
           reps: lastSet?.reps ?? null,
           weight: lastSet?.weight ?? null,
@@ -247,7 +247,7 @@ export function SessionPlannerV2({
         },
         sets: [{
           id: `new_set_${timestamp}`,
-          session_plan_exercise_id: 0,
+          session_plan_exercise_id: '',
           set_index: 1,
           reps: null,
           weight: null,

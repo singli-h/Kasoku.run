@@ -115,7 +115,7 @@ export async function executeGetSessionContext(
       // Type assertion for nested data
       const exercise = preset.exercises as unknown as { id: number; name: string }
       const details = preset.session_plan_sets as Array<{
-        id: number
+        id: string
         set_index: number
         reps: number | null
         weight: number | null

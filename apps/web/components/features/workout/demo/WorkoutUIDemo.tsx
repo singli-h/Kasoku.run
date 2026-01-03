@@ -86,8 +86,8 @@ const createInitialExercises = (): SessionPlannerExercise[] => [
       exercise_type: { type: "Gym" }
     },
     sets: [
-      { id: 301, session_plan_exercise_id: 137, set_index: 1, reps: 8, weight: 100, rest_time: 180, tempo: "2-1-1-0", rpe: 7, completed: false, isEditing: false },
-      { id: 302, session_plan_exercise_id: 137, set_index: 2, reps: 8, weight: 100, rest_time: 180, tempo: "2-1-1-0", rpe: 8, completed: false, isEditing: false },
+      { id: '301', session_plan_exercise_id: '137', set_index: 1, reps: 8, weight: 100, rest_time: 180, tempo: "2-1-1-0", rpe: 7, completed: false, isEditing: false },
+      { id: '302', session_plan_exercise_id: '137', set_index: 2, reps: 8, weight: 100, rest_time: 180, tempo: "2-1-1-0", rpe: 8, completed: false, isEditing: false },
     ],
   },
   {
@@ -107,8 +107,8 @@ const createInitialExercises = (): SessionPlannerExercise[] => [
       exercise_type: { type: "Gym" }
     },
     sets: [
-      { id: 303, session_plan_exercise_id: 138, set_index: 1, reps: 10, weight: 40, rest_time: 120, rpe: 7, completed: false, isEditing: false },
-      { id: 304, session_plan_exercise_id: 138, set_index: 2, reps: 10, weight: 45, rest_time: 120, rpe: 8, completed: false, isEditing: false },
+      { id: '303', session_plan_exercise_id: '138', set_index: 1, reps: 10, weight: 40, rest_time: 120, rpe: 7, completed: false, isEditing: false },
+      { id: '304', session_plan_exercise_id: '138', set_index: 2, reps: 10, weight: 45, rest_time: 120, rpe: 8, completed: false, isEditing: false },
     ],
   },
   {
@@ -128,7 +128,7 @@ const createInitialExercises = (): SessionPlannerExercise[] => [
       exercise_type: { type: "Gym" }
     },
     sets: [
-      { id: 305, session_plan_exercise_id: 139, set_index: 1, reps: 12, weight: 60, rest_time: 60, completed: false, isEditing: false },
+      { id: '305', session_plan_exercise_id: '139', set_index: 1, reps: 12, weight: 60, rest_time: 60, completed: false, isEditing: false },
     ],
   },
   {
@@ -147,7 +147,7 @@ const createInitialExercises = (): SessionPlannerExercise[] => [
       exercise_type: { type: "Plyometric" }
     },
     sets: [
-      { id: 306, session_plan_exercise_id: 140, set_index: 1, reps: 6, height: 45, rest_time: 120, completed: false, isEditing: false },
+      { id: '306', session_plan_exercise_id: '140', set_index: 1, reps: 6, height: 45, rest_time: 120, completed: false, isEditing: false },
     ],
   },
 ]
@@ -753,7 +753,7 @@ function DemoContent({
           ...e,
           sets: [...e.sets, {
             id: `new_set_${Date.now()}`,
-            session_plan_exercise_id: typeof e.id === 'number' ? e.id : 0,
+            session_plan_exercise_id: String(e.id),
             set_index: newSetIndex,
             reps: lastSet?.reps ?? null,
             weight: lastSet?.weight ?? null,
@@ -799,7 +799,7 @@ function DemoContent({
         },
         sets: [{
           id: `new_set_${timestamp}`,
-          session_plan_exercise_id: 0,
+          session_plan_exercise_id: '',
           set_index: 1,
           reps: null,
           weight: null,
