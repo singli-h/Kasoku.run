@@ -16,6 +16,11 @@ import {
   type SprintAnalyticsData,
   type GymAnalyticsData,
 } from "@/actions/performance/performance-actions"
+import {
+  getRaceResultsAction,
+  type RaceResult,
+} from "@/actions/performance/race-result-actions"
+import type { ActionState } from "@/types/api"
 
 /**
  * Hook for fetching sprint analytics data
@@ -95,6 +100,47 @@ export function useGymAnalytics(
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: PERFORMANCE_QUERY_KEYS.GYM,
+    })
+  }, [queryClient])
+
+  return {
+    ...query,
+    invalidate,
+    invalidateAll,
+  }
+}
+
+/**
+ * Hook for fetching race results data
+ */
+export function useRaceResults(options?: { enabled?: boolean }) {
+  const queryClient = useQueryClient()
+
+  const query = useQuery({
+    queryKey: PERFORMANCE_QUERY_KEYS.RACE_RESULTS(),
+    queryFn: async (): Promise<ActionState<RaceResult[]>> => {
+      const result = await getRaceResultsAction()
+      if (!result.isSuccess) {
+        throw new Error(result.message)
+      }
+      return result
+    },
+    staleTime: STALE_TIMES.RACE_RESULTS,
+    gcTime: CACHE_TIMES.RACE_RESULTS,
+    retry: RETRY_CONFIG.ANALYTICS.retries,
+    retryDelay: RETRY_CONFIG.ANALYTICS.retryDelay,
+    enabled: options?.enabled ?? true,
+  })
+
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: PERFORMANCE_QUERY_KEYS.RACE_RESULTS(),
+    })
+  }, [queryClient])
+
+  const invalidateAll = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: PERFORMANCE_QUERY_KEYS.RACE,
     })
   }, [queryClient])
 

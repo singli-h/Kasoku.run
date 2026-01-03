@@ -204,6 +204,7 @@ export function PhaseAnalysisCards({
                     {target && (
                       <span className="text-xs text-muted-foreground">
                         target: {formatSprintTime((target.min + target.max) / 2)}
+                        <span className="text-[9px] opacity-60 ml-0.5" title="Includes reaction time">(+RT)</span>
                       </span>
                     )}
                   </div>

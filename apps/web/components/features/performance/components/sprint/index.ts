@@ -18,4 +18,7 @@ export type { SprintSessionData } from "./SprintSessionsTable"
 export { BenchmarkReferenceCard } from "./BenchmarkReferenceCard"
 export type { AthleteMetrics } from "./BenchmarkReferenceCard"
 
+export { RaceProgressionChart } from "./RaceProgressionChart"
+export type { RaceResult as RaceProgressionResult } from "./RaceProgressionChart"
+
 export { SprintAnalyticsDashboard } from "./SprintAnalyticsDashboard"

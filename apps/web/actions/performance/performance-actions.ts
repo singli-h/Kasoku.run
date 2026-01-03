@@ -13,6 +13,8 @@ export interface SprintAnalyticsData {
   quickStats: SprintQuickStats
   phaseAnalysis: PhaseAnalysis[]
   athleteMetrics: AthleteSprintMetrics
+  // Competition PBs for overlay (wind-legal only)
+  competitionPBs: CompetitionPB[]
 }
 
 export interface SprintSessionRecord {
@@ -61,6 +63,40 @@ export interface AthleteSprintMetrics {
   bestDistance?: number
   time40m?: number
   time100m?: number
+}
+
+/**
+ * Competition PB data for overlay on charts
+ */
+export interface CompetitionPB {
+  eventId: number
+  eventName: string
+  distance: number         // in meters (60, 100, 200, etc.)
+  value: number            // time in seconds
+  date: string             // ISO date
+  isWindLegal: boolean
+  isIndoor: boolean
+  wind?: number            // wind reading if outdoor
+}
+
+// Sprint event ID to distance mapping
+const SPRINT_EVENT_DISTANCES: Record<number, number> = {
+  24: 60,   // 60m
+  1: 100,   // 100m
+  27: 150,  // 150m
+  2: 200,   // 200m
+  28: 300,  // 300m
+  3: 400,   // 400m
+}
+
+// Reverse mapping: distance to event ID
+const DISTANCE_TO_EVENT_ID: Record<number, number> = {
+  60: 24,
+  100: 1,
+  150: 27,
+  200: 2,
+  300: 28,
+  400: 3,
 }
 
 /**
@@ -446,6 +482,7 @@ export async function getSprintAnalyticsAction(
           },
           phaseAnalysis: [],
           athleteMetrics: {},
+          competitionPBs: [],
         }
       }
     }
@@ -526,6 +563,57 @@ export async function getSprintAnalyticsAction(
         .filter(pb => pb.session_id)
         .map(pb => String(pb.session_id))
     )
+
+    // Query competition PBs (race results) for sprint events
+    // Filter for wind-legal results only (indoor or wind <= 2.0 m/s)
+    const sprintEventIds = Object.keys(SPRINT_EVENT_DISTANCES).map(Number)
+    const { data: raceResults } = await supabase
+      .from('athlete_personal_bests')
+      .select(`
+        id,
+        value,
+        achieved_date,
+        metadata,
+        event_id,
+        event:events(id, name, type)
+      `)
+      .eq('athlete_id', athlete.id)
+      .in('event_id', sprintEventIds)
+      .order('achieved_date', { ascending: false })
+
+    // Process race results into competition PBs (wind-legal only)
+    interface RaceMetadata {
+      indoor?: boolean
+      wind?: number
+    }
+
+    const competitionPBs: CompetitionPB[] = (raceResults || [])
+      .filter(result => {
+        if (!result.event_id || !result.value) return false
+        const metadata = result.metadata as RaceMetadata | null
+        // Indoor is always legal
+        if (metadata?.indoor) return true
+        // Outdoor: wind must be <= 2.0 m/s (or not recorded)
+        const wind = metadata?.wind
+        return wind === undefined || wind === null || wind <= 2.0
+      })
+      .map(result => {
+        const metadata = result.metadata as RaceMetadata | null
+        const event = result.event as { id: number; name: string; type: string } | null
+        return {
+          eventId: result.event_id!,
+          eventName: event?.name || `Event ${result.event_id}`,
+          distance: SPRINT_EVENT_DISTANCES[result.event_id!] || 0,
+          value: result.value!,
+          date: result.achieved_date || '',
+          isWindLegal: true, // Already filtered above
+          isIndoor: metadata?.indoor ?? false,
+          wind: metadata?.wind,
+        }
+      })
+      .filter(pb => pb.distance > 0) // Only include known sprint distances
+
+    console.log(`[getSprintAnalyticsAction] Found ${competitionPBs.length} wind-legal competition PBs`)
 
     // Process sets into sessions and sort by time (best first)
     const sessions: SprintSessionRecord[] = sprintSets
@@ -687,6 +775,7 @@ export async function getSprintAnalyticsAction(
         quickStats,
         phaseAnalysis,
         athleteMetrics,
+        competitionPBs,
       }
     }
   } catch (error) {

@@ -28,10 +28,14 @@ export const PERFORMANCE_QUERY_KEYS = {
   COMPARATIVE_ANALYTICS: () =>
     ['performance', 'comparative'] as const,
 
+  // Race Results
+  RACE_RESULTS: () => ['performance', 'race', 'results'] as const,
+
   // Base keys for invalidation
   ALL: ['performance'] as const,
   SPRINT: ['performance', 'sprint'] as const,
   GYM: ['performance', 'gym'] as const,
+  RACE: ['performance', 'race'] as const,
 } as const
 
 /**
@@ -50,6 +54,9 @@ export const CACHE_TIMES = {
 
   // Exercise progress - moderate
   EXERCISE_PROGRESS: 10 * 60 * 1000, // 10 minutes
+
+  // Race results - moderate cache
+  RACE_RESULTS: 15 * 60 * 1000, // 15 minutes
 } as const
 
 /**
@@ -68,6 +75,9 @@ export const STALE_TIMES = {
 
   // Exercise progress - moderate
   EXERCISE_PROGRESS: 5 * 60 * 1000, // 5 minutes
+
+  // Race results - moderate
+  RACE_RESULTS: 5 * 60 * 1000, // 5 minutes
 } as const
 
 /**

@@ -38,6 +38,13 @@ export type {
   LiftStats,
 } from "./components/gym"
 
+// Race Results
+export {
+  RaceResultsDashboard,
+  RaceResultsTable,
+  AddRaceResultDialog,
+} from "./components/race"
+
 // Benchmark Data
 export * from "./data/sprint-benchmarks"
-export * from "./data/gym-benchmarks" 
+export * from "./data/gym-benchmarks"
