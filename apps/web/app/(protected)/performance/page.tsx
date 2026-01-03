@@ -6,9 +6,10 @@ import {
   ComparativePerformanceAnalytics,
   SprintAnalyticsDashboard,
   GymAnalyticsDashboard,
+  RaceResultsDashboard,
 } from "@/components/features/performance"
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
-import { Timer, Dumbbell, Users } from "lucide-react"
+import { Timer, Dumbbell, Users, Trophy } from "lucide-react"
 
 export default async function PerformancePage() {
   return (
@@ -17,7 +18,7 @@ export default async function PerformancePage() {
       description="Track your progress with detailed sprint and gym analytics"
     >
       <Tabs defaultValue="sprint" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-4 max-w-lg">
           <TabsTrigger value="sprint" className="gap-1.5 text-xs sm:text-sm">
             <Timer className="h-4 w-4" />
             <span className="hidden sm:inline">Sprint</span>
@@ -25,6 +26,10 @@ export default async function PerformancePage() {
           <TabsTrigger value="gym" className="gap-1.5 text-xs sm:text-sm">
             <Dumbbell className="h-4 w-4" />
             <span className="hidden sm:inline">Gym</span>
+          </TabsTrigger>
+          <TabsTrigger value="race" className="gap-1.5 text-xs sm:text-sm">
+            <Trophy className="h-4 w-4" />
+            <span className="hidden sm:inline">Races</span>
           </TabsTrigger>
           <TabsTrigger value="compare" className="gap-1.5 text-xs sm:text-sm">
             <Users className="h-4 w-4" />
@@ -41,6 +46,12 @@ export default async function PerformancePage() {
         <TabsContent value="gym">
           <Suspense fallback={<UnifiedPageSkeleton title="Gym Analytics" variant="dashboard" />}>
             <GymAnalyticsFetcher />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="race">
+          <Suspense fallback={<UnifiedPageSkeleton title="Race Results" variant="dashboard" />}>
+            <RaceResultsFetcher />
           </Suspense>
         </TabsContent>
 
@@ -62,6 +73,11 @@ async function SprintAnalyticsFetcher() {
 async function GymAnalyticsFetcher() {
   // GymAnalyticsDashboard handles its own data fetching via React Query
   return <GymAnalyticsDashboard />
+}
+
+async function RaceResultsFetcher() {
+  // RaceResultsDashboard handles its own data fetching via React Query
+  return <RaceResultsDashboard />
 }
 
 async function ComparativeAnalyticsFetcher() {

@@ -63,54 +63,73 @@ export interface RunnerStandard {
 /**
  * Cumulative split standards for reference runners
  * Times are cumulative (total time to reach each distance)
+ *
+ * ⚠️ INCLUDES REACTION TIME (~0.14s for elites, ~0.16s for sub-elite)
+ * These are competition/race times. For training comparisons (e.g., Freelap),
+ * athlete times typically do NOT include reaction time since they self-trigger.
+ *
+ * Sources:
+ * - 10.00s profile: World Athletics 2017 Men's 100m Final biomechanics report
+ *   Midpoint of Yohan Blake (9.99) and Akani Simbine (10.01)
+ *   https://qazathletics.kz
+ *
+ * - 11.00s profile: Athlete First split datasets with multiple 11.00 races
+ *   Range represents min-max across 3 different measured 11.00 performances
+ *   https://athletefirst.org
+ *
+ * Key insight: The gap is NOT evenly distributed. By 60m you're typically
+ * already ~0.5-0.6s down, and it continues to leak out to 100m.
  */
 export const CUMULATIVE_SPLIT_STANDARDS: Record<string, RunnerStandard> = {
   '10.00': {
     label: '10.00s Runner',
     color: '#22c55e',
+    // Based on Blake 9.99 & Simbine 10.01 midpoint (WC 2017)
     splits: {
-      10: { min: 1.80, max: 1.83 },
-      20: { min: 3.00, max: 3.05 },
-      30: { min: 3.95, max: 4.05 },
-      40: { min: 5.05, max: 5.15 },
-      50: { min: 6.05, max: 6.15 },
-      60: { min: 6.85, max: 6.95 },
-      70: { min: 7.95, max: 8.05 },
-      80: { min: 8.85, max: 8.95 },
-      90: { min: 9.55, max: 9.65 },
-      100: { min: 10.00, max: 10.00 },
+      10: { min: 1.88, max: 1.92 },
+      20: { min: 2.92, max: 2.96 },
+      30: { min: 3.83, max: 3.87 },
+      40: { min: 4.74, max: 4.78 },
+      50: { min: 5.62, max: 5.66 },
+      60: { min: 6.48, max: 6.52 },
+      70: { min: 7.34, max: 7.38 },
+      80: { min: 8.22, max: 8.26 },
+      90: { min: 9.09, max: 9.13 },
+      100: { min: 9.98, max: 10.02 },
     },
   },
   '11.00': {
     label: '11.00s Runner',
     color: '#f97316',
+    // Range from 3 different measured 11.00 races (Athlete First dataset)
     splits: {
-      10: { min: 1.85, max: 1.90 },
-      20: { min: 3.10, max: 3.20 },
-      30: { min: 4.15, max: 4.25 },
-      40: { min: 5.30, max: 5.40 },
-      50: { min: 6.40, max: 6.55 },
-      60: { min: 7.45, max: 7.60 },
-      70: { min: 8.55, max: 8.70 },
-      80: { min: 9.65, max: 9.80 },
-      90: { min: 10.35, max: 10.50 },
-      100: { min: 11.00, max: 11.00 },
+      10: { min: 1.95, max: 2.09 },
+      20: { min: 3.05, max: 3.22 },
+      30: { min: 4.06, max: 4.24 },
+      40: { min: 5.03, max: 5.22 },
+      50: { min: 5.99, max: 6.20 },
+      60: { min: 6.96, max: 7.12 },
+      70: { min: 7.93, max: 8.07 },
+      80: { min: 8.93, max: 9.03 },
+      90: { min: 9.95, max: 10.01 },
+      100: { min: 10.98, max: 11.02 },
     },
   },
   '12.00': {
     label: '12.00s Runner',
     color: '#6b7280',
+    // Extrapolated from 11.00 pattern with proportional gap increase
     splits: {
-      10: { min: 1.95, max: 2.05 },
-      20: { min: 3.35, max: 3.50 },
-      30: { min: 4.55, max: 4.75 },
-      40: { min: 5.80, max: 6.00 },
-      50: { min: 7.00, max: 7.25 },
-      60: { min: 8.20, max: 8.50 },
-      70: { min: 9.40, max: 9.70 },
-      80: { min: 10.55, max: 10.90 },
-      90: { min: 11.70, max: 12.00 },
-      100: { min: 12.00, max: 12.00 },
+      10: { min: 2.10, max: 2.25 },
+      20: { min: 3.35, max: 3.55 },
+      30: { min: 4.50, max: 4.75 },
+      40: { min: 5.60, max: 5.90 },
+      50: { min: 6.70, max: 7.05 },
+      60: { min: 7.80, max: 8.15 },
+      70: { min: 8.90, max: 9.25 },
+      80: { min: 10.00, max: 10.35 },
+      90: { min: 11.05, max: 11.40 },
+      100: { min: 11.95, max: 12.05 },
     },
   },
 }
@@ -218,59 +237,65 @@ export interface DistanceStandard {
   }
 }
 
+/**
+ * DISTANCE_STANDARDS aligned with CUMULATIVE_SPLIT_STANDARDS
+ * Based on World Athletics 2017 biomechanics (10s) and Athlete First datasets (11s)
+ *
+ * ⚠️ INCLUDES REACTION TIME - these are competition/race times
+ */
 export const DISTANCE_STANDARDS: DistanceStandard[] = [
   {
     distance: 20,
     label: '20m',
     standards: {
-      '10.00': { min: 3.00, max: 3.05 },
-      '11.00': { min: 3.10, max: 3.20 },
-      '12.00': { min: 3.35, max: 3.50 },
+      '10.00': { min: 2.92, max: 2.96 },
+      '11.00': { min: 3.05, max: 3.22 },
+      '12.00': { min: 3.35, max: 3.55 },
     },
   },
   {
     distance: 30,
     label: '30m',
     standards: {
-      '10.00': { min: 3.95, max: 4.05 },
-      '11.00': { min: 4.15, max: 4.25 },
-      '12.00': { min: 4.55, max: 4.75 },
+      '10.00': { min: 3.83, max: 3.87 },
+      '11.00': { min: 4.06, max: 4.24 },
+      '12.00': { min: 4.50, max: 4.75 },
     },
   },
   {
     distance: 40,
     label: '40m',
     standards: {
-      '10.00': { min: 5.05, max: 5.15 },
-      '11.00': { min: 5.30, max: 5.40 },
-      '12.00': { min: 5.80, max: 6.00 },
+      '10.00': { min: 4.74, max: 4.78 },
+      '11.00': { min: 5.03, max: 5.22 },
+      '12.00': { min: 5.60, max: 5.90 },
     },
   },
   {
     distance: 60,
     label: '60m',
     standards: {
-      '10.00': { min: 6.85, max: 6.95 },
-      '11.00': { min: 7.45, max: 7.60 },
-      '12.00': { min: 8.20, max: 8.50 },
+      '10.00': { min: 6.48, max: 6.52 },
+      '11.00': { min: 6.96, max: 7.12 },
+      '12.00': { min: 7.80, max: 8.15 },
     },
   },
   {
     distance: 80,
     label: '80m',
     standards: {
-      '10.00': { min: 8.85, max: 8.95 },
-      '11.00': { min: 9.65, max: 9.80 },
-      '12.00': { min: 10.55, max: 10.90 },
+      '10.00': { min: 8.22, max: 8.26 },
+      '11.00': { min: 8.93, max: 9.03 },
+      '12.00': { min: 10.00, max: 10.35 },
     },
   },
   {
     distance: 100,
     label: '100m',
     standards: {
-      '10.00': { min: 9.90, max: 10.10 },
-      '11.00': { min: 10.90, max: 11.10 },
-      '12.00': { min: 11.90, max: 12.10 },
+      '10.00': { min: 9.98, max: 10.02 },
+      '11.00': { min: 10.98, max: 11.02 },
+      '12.00': { min: 11.95, max: 12.05 },
     },
   },
   {
@@ -352,6 +377,12 @@ export function getPhaseStrideStandards(
 /**
  * Detailed performance parameters for sprint analysis
  * Note: Stride metrics shown are for max velocity phase by default
+ *
+ * ⚠️ Phase times INCLUDE REACTION TIME (derived from competition splits)
+ *
+ * Phase times derived from CUMULATIVE_SPLIT_STANDARDS:
+ * 10.00s: 20m=2.94, 40m=4.76, 60m=6.50, 80m=8.24, 100m=10.00
+ * 11.00s: 20m=3.14, 40m=5.13, 60m=7.04, 80m=8.98, 100m=11.00
  */
 export const PERFORMANCE_PARAMETERS: Record<string, PerformanceParameter> = {
   reactionTime: {
@@ -371,8 +402,8 @@ export const PERFORMANCE_PARAMETERS: Record<string, PerformanceParameter> = {
     unit: 's',
     description: 'Full acceleration phase from blocks',
     standards: {
-      '10.00': { min: 5.05, max: 5.15 },  // From cumulative split standards
-      '11.00': { min: 5.30, max: 5.40 },
+      '10.00': { min: 4.74, max: 4.78 },  // From cumulative split at 40m
+      '11.00': { min: 5.03, max: 5.22 },
     },
     higherIsBetter: false,
   },
@@ -381,8 +412,8 @@ export const PERFORMANCE_PARAMETERS: Record<string, PerformanceParameter> = {
     unit: 's',
     description: 'Peak velocity phase',
     standards: {
-      '10.00': { min: 3.75, max: 3.85 },  // 8.95 - 5.15 = 3.80
-      '11.00': { min: 4.30, max: 4.45 },  // 9.80 - 5.40 = 4.40
+      '10.00': { min: 3.44, max: 3.52 },  // 8.24 - 4.76 = 3.48
+      '11.00': { min: 3.71, max: 3.99 },  // 8.98 - 5.13 = 3.85
     },
     higherIsBetter: false,
   },
@@ -391,8 +422,8 @@ export const PERFORMANCE_PARAMETERS: Record<string, PerformanceParameter> = {
     unit: 's',
     description: 'Speed maintenance phase',
     standards: {
-      '10.00': { min: 1.00, max: 1.10 },  // 10.00 - 8.95 = 1.05
-      '11.00': { min: 1.15, max: 1.25 },  // 11.00 - 9.80 = 1.20
+      '10.00': { min: 1.72, max: 1.80 },  // 10.00 - 8.24 = 1.76
+      '11.00': { min: 1.95, max: 2.09 },  // 11.00 - 8.98 = 2.02
     },
     higherIsBetter: false,
   },
@@ -402,8 +433,8 @@ export const PERFORMANCE_PARAMETERS: Record<string, PerformanceParameter> = {
     unit: 's',
     description: 'Block start and initial drive',
     standards: {
-      '10.00': { min: 3.00, max: 3.05 },
-      '11.00': { min: 3.10, max: 3.20 },
+      '10.00': { min: 2.92, max: 2.96 },  // From cumulative split at 20m
+      '11.00': { min: 3.05, max: 3.22 },
     },
     higherIsBetter: false,
   },
@@ -412,8 +443,8 @@ export const PERFORMANCE_PARAMETERS: Record<string, PerformanceParameter> = {
     unit: 's',
     description: 'Transition and continued acceleration',
     standards: {
-      '10.00': { min: 2.00, max: 2.15 },  // 5.15 - 3.05 = 2.10
-      '11.00': { min: 2.15, max: 2.25 },  // 5.40 - 3.20 = 2.20
+      '10.00': { min: 1.78, max: 1.86 },  // 4.76 - 2.94 = 1.82
+      '11.00': { min: 1.81, max: 2.17 },  // 5.13 - 3.14 = 1.99
     },
     higherIsBetter: false,
   },
@@ -423,8 +454,8 @@ export const PERFORMANCE_PARAMETERS: Record<string, PerformanceParameter> = {
     unit: 's',
     description: 'Acceleration phase (legacy)',
     standards: {
-      '10.00': { min: 3.95, max: 4.05 },
-      '11.00': { min: 4.15, max: 4.25 },
+      '10.00': { min: 3.83, max: 3.87 },  // From cumulative split at 30m
+      '11.00': { min: 4.06, max: 4.24 },
     },
     higherIsBetter: false,
   },
@@ -433,8 +464,8 @@ export const PERFORMANCE_PARAMETERS: Record<string, PerformanceParameter> = {
     unit: 's',
     description: 'Max velocity phase (legacy)',
     standards: {
-      '10.00': { min: 2.85, max: 2.95 },
-      '11.00': { min: 3.25, max: 3.35 },
+      '10.00': { min: 2.61, max: 2.69 },  // 6.50 - 3.85 = 2.65
+      '11.00': { min: 2.72, max: 3.06 },  // 7.04 - 4.15 = 2.89
     },
     higherIsBetter: false,
   },
@@ -443,8 +474,8 @@ export const PERFORMANCE_PARAMETERS: Record<string, PerformanceParameter> = {
     unit: 's',
     description: 'Speed maintenance phase (legacy)',
     standards: {
-      '10.00': { min: 3.05, max: 3.15 },
-      '11.00': { min: 3.45, max: 3.55 },
+      '10.00': { min: 3.46, max: 3.54 },  // 10.00 - 6.50 = 3.50
+      '11.00': { min: 3.86, max: 4.06 },  // 11.00 - 7.04 = 3.96
     },
     higherIsBetter: false,
   },

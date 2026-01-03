@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo } from "react"
 import { Download, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,7 +17,7 @@ import { SplitTimeChart, type SprintSession } from "./SplitTimeChart"
 import { PhaseAnalysisCards, type PhaseData } from "./PhaseAnalysisCards"
 import { SprintSessionsTable, type SprintSessionData } from "./SprintSessionsTable"
 import { BenchmarkReferenceCard, type AthleteMetrics } from "./BenchmarkReferenceCard"
-import { useSprintAnalytics } from "../../hooks"
+import { useSprintAnalytics, useSprintPreferences } from "../../hooks"
 import type { SprintTimeRange } from "../../config/query-config"
 
 interface SprintAnalyticsDashboardProps {
@@ -92,8 +92,9 @@ function buildQuickStats(data: {
     reactionTimeChange: number | null
     sessionsThisMonth: number
   }
+  competitionPBs?: Array<{ distance: number; value: number }>
 }): SprintStat[] {
-  const { quickStats, sessions } = data
+  const { quickStats, sessions, competitionPBs = [] } = data
 
   // Find the best session for any distance
   const bestSession = sessions.length > 0
@@ -101,6 +102,24 @@ function buildQuickStats(data: {
         curr.totalTime < best.totalTime ? curr : best
       , sessions[0])
     : null
+
+  // Find matching competition PB for comparison
+  const matchingCompetitionPB = bestSession
+    ? competitionPBs.find(pb => pb.distance === bestSession.distance)
+    : null
+
+  // Calculate training vs competition comparison
+  let comparisonSubtitle: string | undefined
+  if (matchingCompetitionPB && quickStats.bestTime40m !== null) {
+    const diff = quickStats.bestTime40m - matchingCompetitionPB.value
+    if (Math.abs(diff) < 0.01) {
+      comparisonSubtitle = `= Race PB`
+    } else if (diff > 0) {
+      comparisonSubtitle = `+${diff.toFixed(2)}s vs Race PB`
+    } else {
+      comparisonSubtitle = `${diff.toFixed(2)}s vs Race PB`
+    }
+  }
 
   return [
     {
@@ -115,6 +134,7 @@ function buildQuickStats(data: {
             isPositive: quickStats.bestTimeChange < 0, // Lower time is better
           }
         : undefined,
+      subtitle: comparisonSubtitle,
     },
     {
       id: 'top-speed',
@@ -197,8 +217,15 @@ function buildAthleteMetrics(data: {
 export function SprintAnalyticsDashboard({
   className,
 }: SprintAnalyticsDashboardProps) {
-  const [targetStandard, setTargetStandard] = useState<'10.00' | '11.00'>('11.00')
-  const [timeRange, setTimeRange] = useState<SprintTimeRange>('30d')
+  // Load user preferences from localStorage
+  const {
+    timeRange,
+    targetStandard,
+    showCompetitionPBs,
+    isLoaded: preferencesLoaded,
+    setTimeRange,
+    setTargetStandard,
+  } = useSprintPreferences()
 
   // Fetch sprint analytics data
   const { data, isLoading, error } = useSprintAnalytics(timeRange)
@@ -300,6 +327,8 @@ export function SprintAnalyticsDashboard({
           <SplitTimeChart
             sessions={displaySessions}
             showBenchmarks={['10.00', '11.00']}
+            competitionPBs={data?.competitionPBs}
+            showCompetitionPBs={showCompetitionPBs}
           />
         </div>
 

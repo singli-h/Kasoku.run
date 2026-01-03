@@ -12,11 +12,14 @@ import {
   ReferenceLine,
   Area,
   ComposedChart,
+  Scatter,
+  ZAxis,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { CUMULATIVE_SPLIT_STANDARDS, type RunnerStandard } from "../../data/sprint-benchmarks"
+import type { CompetitionPB } from "@/actions/performance/performance-actions"
 
 export interface AthleteSpilt {
   distance: number
@@ -36,6 +39,8 @@ export interface SprintSession {
 interface SplitTimeChartProps {
   sessions: SprintSession[]
   showBenchmarks?: ('10.00' | '11.00' | '12.00')[]
+  competitionPBs?: CompetitionPB[]
+  showCompetitionPBs?: boolean
   highlightSessionId?: string
   className?: string
 }
@@ -45,17 +50,30 @@ interface ChartDataPoint {
   distanceLabel: string
   athleteBest?: number
   athleteLatest?: number
-  benchmark10?: number
-  benchmark11?: number
+  competitionPB?: number
+  competitionPBLabel?: string
+  // For area visualization between 10s and 11s
+  benchmark10Mid?: number      // 10s midpoint (for reference line)
+  benchmark11Mid?: number      // 11s midpoint (for reference line)
+  performanceZone?: [number, number]  // [10s, 11s] for area range
   benchmark12?: number
 }
 
 export function SplitTimeChart({
   sessions,
   showBenchmarks = ['10.00', '11.00'],
+  competitionPBs = [],
+  showCompetitionPBs = true,
   highlightSessionId,
   className,
 }: SplitTimeChartProps) {
+  // Find competition PBs that match chart distances
+  const relevantCompetitionPBs = useMemo(() => {
+    if (!showCompetitionPBs || competitionPBs.length === 0) return []
+    // Only include PBs for distances we show on the chart (60, 100m especially)
+    return competitionPBs.filter(pb => [60, 100].includes(pb.distance))
+  }, [competitionPBs, showCompetitionPBs])
+
   const chartData = useMemo(() => {
     const distances = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     const bestSession = sessions.find(s => s.isPB) || sessions[0]
@@ -82,31 +100,45 @@ export function SplitTimeChart({
         }
       }
 
-      // Add benchmark lines
-      if (showBenchmarks.includes('10.00')) {
-        const standard = CUMULATIVE_SPLIT_STANDARDS['10.00']
-        if (standard?.splits[distance]) {
-          point.benchmark10 = (standard.splits[distance].min + standard.splits[distance].max) / 2
-        }
+      // Add competition PB if exists for this distance
+      const competitionPB = relevantCompetitionPBs.find(pb => pb.distance === distance)
+      if (competitionPB) {
+        point.competitionPB = competitionPB.value
+        point.competitionPBLabel = competitionPB.isIndoor
+          ? `${competitionPB.eventName} (Indoor)`
+          : competitionPB.wind !== undefined
+            ? `${competitionPB.eventName} (${competitionPB.wind > 0 ? '+' : ''}${competitionPB.wind}m/s)`
+            : competitionPB.eventName
       }
 
-      if (showBenchmarks.includes('11.00')) {
-        const standard = CUMULATIVE_SPLIT_STANDARDS['11.00']
-        if (standard?.splits[distance]) {
-          point.benchmark11 = (standard.splits[distance].min + standard.splits[distance].max) / 2
-        }
+      // Add benchmark data for area visualization
+      const standard10 = CUMULATIVE_SPLIT_STANDARDS['10.00']
+      const standard11 = CUMULATIVE_SPLIT_STANDARDS['11.00']
+      const standard12 = CUMULATIVE_SPLIT_STANDARDS['12.00']
+
+      if (showBenchmarks.includes('10.00') && standard10?.splits[distance]) {
+        point.benchmark10Mid = (standard10.splits[distance].min + standard10.splits[distance].max) / 2
       }
 
-      if (showBenchmarks.includes('12.00')) {
-        const standard = CUMULATIVE_SPLIT_STANDARDS['12.00']
-        if (standard?.splits[distance]) {
-          point.benchmark12 = (standard.splits[distance].min + standard.splits[distance].max) / 2
-        }
+      if (showBenchmarks.includes('11.00') && standard11?.splits[distance]) {
+        point.benchmark11Mid = (standard11.splits[distance].min + standard11.splits[distance].max) / 2
+      }
+
+      // Create performance zone array [10s, 11s] for area rendering
+      if (showBenchmarks.includes('10.00') && showBenchmarks.includes('11.00') &&
+          standard10?.splits[distance] && standard11?.splits[distance]) {
+        const upper = (standard10.splits[distance].min + standard10.splits[distance].max) / 2
+        const lower = (standard11.splits[distance].min + standard11.splits[distance].max) / 2
+        point.performanceZone = [upper, lower]
+      }
+
+      if (showBenchmarks.includes('12.00') && standard12?.splits[distance]) {
+        point.benchmark12 = (standard12.splits[distance].min + standard12.splits[distance].max) / 2
       }
 
       return point
     })
-  }, [sessions, showBenchmarks])
+  }, [sessions, showBenchmarks, relevantCompetitionPBs])
 
   // Filter to only show distances that have data
   const filteredData = useMemo(() => {
@@ -120,30 +152,106 @@ export function SplitTimeChart({
     return chartData.filter(d => d.distance <= maxDistance)
   }, [chartData, sessions, showBenchmarks])
 
+  // Calculate dynamic Y-axis range based on actual data
+  const yAxisConfig = useMemo(() => {
+    let maxTime = 0
+    let minTime = Infinity
+    let hasAthleteData = false
+
+    filteredData.forEach(point => {
+      // Check athlete data
+      if (point.athleteBest) {
+        maxTime = Math.max(maxTime, point.athleteBest)
+        minTime = Math.min(minTime, point.athleteBest)
+        hasAthleteData = true
+      }
+      if (point.athleteLatest) {
+        maxTime = Math.max(maxTime, point.athleteLatest)
+        minTime = Math.min(minTime, point.athleteLatest)
+        hasAthleteData = true
+      }
+      // Always include 11s benchmark as potential max (slower reference line)
+      if (point.benchmark11Mid) {
+        maxTime = Math.max(maxTime, point.benchmark11Mid)
+      }
+      // Use 10s benchmark for min bound
+      if (point.benchmark10Mid) {
+        minTime = Math.min(minTime, point.benchmark10Mid)
+      }
+    })
+
+    // Fallback: if no data at all, use sensible defaults
+    if (maxTime === 0) maxTime = 11
+    if (minTime === Infinity) minTime = 1
+
+    // If athlete's slowest time is faster than 11s benchmark, use 11s as max
+    // This ensures the full benchmark zone is always visible
+    const last11sBenchmark = filteredData[filteredData.length - 1]?.benchmark11Mid
+    if (last11sBenchmark && hasAthleteData) {
+      maxTime = Math.max(maxTime, last11sBenchmark)
+    }
+
+    // Add small buffer and round to nice values
+    const roundedMax = Math.ceil(maxTime) + 0.5
+    const roundedMin = Math.max(0, Math.floor(minTime) - 0.5)
+
+    // Generate ticks - use 1s intervals for <8s range, 2s for larger
+    const range = roundedMax - roundedMin
+    const interval = range > 6 ? 2 : 1
+    const ticks: number[] = []
+    const tickStart = Math.ceil(roundedMin / interval) * interval
+    for (let i = tickStart; i <= roundedMax; i += interval) {
+      ticks.push(i)
+    }
+
+    return { min: roundedMin, max: roundedMax, ticks }
+  }, [filteredData])
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null
 
+    // Get competition PB label from the data point if available
+    const dataPoint = filteredData.find(d => d.distanceLabel === label)
+
     return (
-      <div className="bg-popover border border-border rounded-lg shadow-lg p-3 min-w-[160px]">
+      <div className="bg-popover border border-border rounded-lg shadow-lg p-3 min-w-[180px]">
         <p className="font-semibold text-sm mb-2">{label}</p>
         <div className="space-y-1.5">
           {payload.map((entry: any, index: number) => {
-            const name = entry.dataKey === 'athleteBest'
-              ? 'Your Best'
-              : entry.dataKey === 'athleteLatest'
-                ? 'Latest'
-                : entry.dataKey === 'benchmark10'
-                  ? '10.00s Standard'
-                  : entry.dataKey === 'benchmark11'
-                    ? '11.00s Standard'
-                    : '12.00s Standard'
+            let name = ''
+            let color: string = entry.stroke || entry.color
+
+            if (entry.dataKey === 'athleteBest') {
+              name = 'Training Best'
+            } else if (entry.dataKey === 'athleteLatest') {
+              name = 'Latest'
+            } else if (entry.dataKey === 'competitionPB') {
+              name = dataPoint?.competitionPBLabel || 'Competition PB'
+              color = '#eab308' // amber-500
+            } else if (entry.dataKey === 'benchmark10Mid') {
+              name = '10.00s Reference'
+              color = '#22c55e'
+            } else if (entry.dataKey === 'benchmark11Mid') {
+              name = '11.00s Reference'
+              color = '#f97316'
+            } else if (entry.dataKey === 'benchmark12') {
+              name = '12.00s Standard'
+            } else {
+              // Hide internal data from tooltip
+              return null
+            }
+
+            if (!name) return null
 
             return (
               <div key={index} className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <div
-                    className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: entry.stroke || entry.color }}
+                    className={cn(
+                      "w-2.5 h-2.5",
+                      entry.dataKey === 'competitionPB' ? "rotate-45" : "rounded-full"
+                    )}
+                    style={{ backgroundColor: color }}
                   />
                   <span className="text-xs text-muted-foreground">{name}</span>
                 </div>
@@ -183,19 +291,28 @@ export function SplitTimeChart({
         <div className="flex flex-wrap items-center gap-4 mt-3 text-xs">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-0.5 rounded-full bg-primary" />
-            <span className="text-muted-foreground">Your Best</span>
+            <span className="text-muted-foreground">Training Best</span>
           </div>
+          {relevantCompetitionPBs.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rotate-45 bg-amber-500" />
+              <span className="text-muted-foreground">Competition PB</span>
+            </div>
+          )}
           {showBenchmarks.includes('10.00') && (
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-0.5 rounded-full bg-green-500 opacity-60" style={{ borderStyle: 'dashed' }} />
-              <span className="text-muted-foreground">10.00s Ref</span>
+              <div className="w-3 h-0.5 rounded-full bg-green-500" />
+              <span className="text-muted-foreground">10.00s</span>
             </div>
           )}
           {showBenchmarks.includes('11.00') && (
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-0.5 rounded-full bg-orange-500 opacity-60" />
-              <span className="text-muted-foreground">11.00s Ref</span>
+              <div className="w-3 h-0.5 rounded-full bg-orange-500" />
+              <span className="text-muted-foreground">11.00s</span>
             </div>
+          )}
+          {(showBenchmarks.includes('10.00') || showBenchmarks.includes('11.00')) && (
+            <span className="text-[10px] text-muted-foreground/60 italic">incl. RT</span>
           )}
         </div>
       </CardHeader>
@@ -233,47 +350,54 @@ export function SplitTimeChart({
                   tickLine={false}
                   tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   tickFormatter={(value) => `${Number(value).toFixed(0)}s`}
-                  domain={[
-                    (dataMin: number) => Math.floor(dataMin),
-                    (dataMax: number) => Math.ceil(dataMax) + 1
-                  ]}
-                  ticks={(() => {
-                    // Generate nice round tick values (every 1s for short sprints, 2s for 100m)
-                    const maxTime = showBenchmarks.length > 0 ? 12 : 6
-                    const interval = maxTime > 8 ? 2 : 1
-                    const ticks = []
-                    for (let i = 0; i <= maxTime; i += interval) {
-                      ticks.push(i)
-                    }
-                    return ticks
-                  })()}
+                  domain={[yAxisConfig.min, yAxisConfig.max]}
+                  ticks={yAxisConfig.ticks}
                   width={45}
                 />
 
                 <Tooltip content={<CustomTooltip />} />
 
-                {/* Benchmark lines - dashed, subtle */}
+                {/* Gradient definition for performance zone */}
+                <defs>
+                  <linearGradient id="performanceZoneGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22c55e" stopOpacity={0.25} />
+                    <stop offset="40%" stopColor="#84cc16" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#f97316" stopOpacity={0.25} />
+                  </linearGradient>
+                </defs>
+
+                {/* Performance zone area between 10s and 11s */}
+                {showBenchmarks.includes('10.00') && showBenchmarks.includes('11.00') && (
+                  <Area
+                    type="monotone"
+                    dataKey="performanceZone"
+                    stroke="none"
+                    fill="url(#performanceZoneGradient)"
+                    fillOpacity={1}
+                  />
+                )}
+
+                {/* 10s reference line (upper bound - elite) */}
                 {showBenchmarks.includes('10.00') && (
                   <Line
                     type="monotone"
-                    dataKey="benchmark10"
+                    dataKey="benchmark10Mid"
                     stroke="#22c55e"
-                    strokeWidth={1.5}
-                    strokeDasharray="4 4"
-                    strokeOpacity={0.6}
+                    strokeWidth={2}
+                    strokeOpacity={0.8}
                     dot={false}
                     activeDot={false}
                   />
                 )}
 
+                {/* 11s reference line (lower bound) */}
                 {showBenchmarks.includes('11.00') && (
                   <Line
                     type="monotone"
-                    dataKey="benchmark11"
+                    dataKey="benchmark11Mid"
                     stroke="#f97316"
-                    strokeWidth={1.5}
-                    strokeDasharray="4 4"
-                    strokeOpacity={0.6}
+                    strokeWidth={2}
+                    strokeOpacity={0.8}
                     dot={false}
                     activeDot={false}
                   />
@@ -329,6 +453,54 @@ export function SplitTimeChart({
                       fill: 'hsl(var(--muted-foreground))',
                       strokeWidth: 0,
                       r: 5,
+                    }}
+                  />
+                )}
+
+                {/* Competition PB markers - diamond shaped, amber color */}
+                {relevantCompetitionPBs.length > 0 && (
+                  <Line
+                    type="monotone"
+                    dataKey="competitionPB"
+                    stroke="#eab308"
+                    strokeWidth={0}
+                    connectNulls={false}
+                    dot={(props: any) => {
+                      const { cx, cy, payload } = props
+                      if (!payload?.competitionPB) return <g />
+                      return (
+                        <g>
+                          {/* Diamond marker */}
+                          <rect
+                            x={cx - 5}
+                            y={cy - 5}
+                            width={10}
+                            height={10}
+                            fill="#eab308"
+                            stroke="#fef3c7"
+                            strokeWidth={2}
+                            transform={`rotate(45, ${cx}, ${cy})`}
+                          />
+                        </g>
+                      )
+                    }}
+                    activeDot={(props: any) => {
+                      const { cx, cy, payload } = props
+                      if (!payload?.competitionPB) return <g />
+                      return (
+                        <g>
+                          <rect
+                            x={cx - 7}
+                            y={cy - 7}
+                            width={14}
+                            height={14}
+                            fill="#eab308"
+                            stroke="#fef3c7"
+                            strokeWidth={2}
+                            transform={`rotate(45, ${cx}, ${cy})`}
+                          />
+                        </g>
+                      )
                     }}
                   />
                 )}
