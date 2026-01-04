@@ -152,7 +152,7 @@ export function AthleteRosterSection({
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <CardTitle>Athlete Roster</CardTitle>
+            <CardTitle>Athletes</CardTitle>
             <CardDescription>
               {filteredAthletes.length} athlete{filteredAthletes.length !== 1 ? 's' : ''}
               {selectedGroupFilter && (
@@ -327,21 +327,24 @@ export function AthleteRosterSection({
                             View Profile
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => onBulkOperation({ 
-                            isOpen: true, 
-                            type: 'assign' 
+                          <DropdownMenuItem onClick={() => onBulkOperation({
+                            isOpen: true,
+                            type: 'assign',
+                            athleteIds: [athlete.id]
                           })}>
                             Add to Group
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onBulkOperation({ 
-                            isOpen: true, 
-                            type: 'move' 
+                          <DropdownMenuItem onClick={() => onBulkOperation({
+                            isOpen: true,
+                            type: 'move',
+                            athleteIds: [athlete.id]
                           })}>
                             Move to Group
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onBulkOperation({ 
-                            isOpen: true, 
-                            type: 'remove' 
+                          <DropdownMenuItem onClick={() => onBulkOperation({
+                            isOpen: true,
+                            type: 'remove',
+                            athleteIds: [athlete.id]
                           })}>
                             Remove from Group
                           </DropdownMenuItem>

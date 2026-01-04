@@ -132,11 +132,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
         rpe: null,
         rest_time: null,
         created_at: null,
-        updated_at: null,
-        old_id: null,
-        old_session_plan_exercise_id: null,
-        old_workout_log_id: null,
-        old_workout_log_exercise_id: null
+        updated_at: null
       })
     }
 

@@ -997,19 +997,13 @@ export async function inviteOrAttachAthleteAction(
       }
     }
 
-    // Check if user exists by email
-    const { data: existingUser, error: lookupError } = await supabase
-      .from('users')
-      .select(`
-        id,
-        clerk_id,
-        email,
-        athletes(*)
-      `)
-      .eq('email', email)
-      .single()
+    // Use secure function for email lookup (prevents user enumeration)
+    // This function only returns user_id, athlete_id, current_group_id - no email data
+    const { data: lookupResult, error: lookupError } = await supabase
+      .rpc('lookup_user_for_invite', { email_input: email })
+      .maybeSingle()
 
-    if (lookupError && lookupError.code !== 'PGRST116') {
+    if (lookupError) {
       console.error('Error looking up user:', lookupError)
       return {
         isSuccess: false,
@@ -1017,16 +1011,16 @@ export async function inviteOrAttachAthleteAction(
       }
     }
 
-    if (existingUser) {
+    if (lookupResult) {
       // User exists - ensure they have an athlete profile and assign to group
-      let athleteProfile = existingUser.athletes?.[0]
+      const { user_id, athlete_id, current_group_id } = lookupResult
 
-      if (!athleteProfile) {
+      if (!athlete_id) {
         // Create athlete profile
         const { data: newAthlete, error: athleteError } = await supabase
           .from('athletes')
           .insert({
-            user_id: existingUser.id,
+            user_id: user_id,
             athlete_group_id: groupId
           })
           .select()
@@ -1040,8 +1034,6 @@ export async function inviteOrAttachAthleteAction(
           }
         }
 
-        athleteProfile = newAthlete
-        
         // Log the group assignment in history
         const historyResult = await createGroupHistoryEntryAction(
           newAthlete.id,
@@ -1052,17 +1044,19 @@ export async function inviteOrAttachAthleteAction(
 
         if (!historyResult.isSuccess) {
           console.warn('Failed to log group history for new athlete:', historyResult.message)
-          // Don't fail the main operation if history logging fails
+        }
+
+        return {
+          isSuccess: true,
+          message: "Athlete profile created and assigned to group successfully",
+          data: { type: 'attached', athlete: newAthlete }
         }
       } else {
-        // Get current group before updating
-        const currentGroupId = athleteProfile.athlete_group_id
-        
-        // Update existing athlete profile to assign to group
+        // Athlete profile exists - update group assignment
         const { data: updatedAthlete, error: updateError } = await supabase
           .from('athletes')
           .update({ athlete_group_id: groupId })
-          .eq('id', athleteProfile.id)
+          .eq('id', athlete_id)
           .select()
           .single()
 
@@ -1074,26 +1068,25 @@ export async function inviteOrAttachAthleteAction(
           }
         }
 
-        athleteProfile = updatedAthlete
-        
         // Log the group change in history
         const historyResult = await createGroupHistoryEntryAction(
-          athleteProfile.id,
-          currentGroupId,
+          athlete_id,
+          current_group_id,
           groupId,
           `Invited and assigned to group by coach`
         )
 
         if (!historyResult.isSuccess) {
           console.warn('Failed to log group history for existing athlete:', historyResult.message)
-          // Don't fail the main operation if history logging fails
         }
-      }
 
-      return {
-        isSuccess: true,
-        message: "Existing athlete assigned to group successfully",
-        data: { type: 'attached', athlete: athleteProfile }
+        return {
+          isSuccess: true,
+          message: current_group_id
+            ? "Athlete moved to new group successfully"
+            : "Athlete re-added to group successfully",
+          data: { type: 'attached', athlete: updatedAthlete }
+        }
       }
     } else {
       // User doesn't exist - send Clerk invitation
@@ -1513,13 +1506,14 @@ export async function bulkRemoveAthletesAction(
       }
 
       try {
-        const { error: removeError } = await supabase
-          .from('athletes')
-          .update({ athlete_group_id: null })
-          .eq('id', athlete.id)
+        // Use SECURITY DEFINER function to bypass RLS while maintaining authorization
+        const { data: removeResult, error: removeError } = await supabase
+          .rpc('remove_athlete_from_group', { athlete_id_param: athlete.id })
 
         if (removeError) {
           errors.push(`Failed to remove athlete ${athlete.id} from group: ${removeError.message}`)
+        } else if (!removeResult?.success) {
+          errors.push(`Failed to remove athlete ${athlete.id}: ${removeResult?.error || 'Unknown error'}`)
         } else {
           removed.push(athlete.id)
           

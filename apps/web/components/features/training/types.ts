@@ -234,7 +234,7 @@ export function trainingSetToDbSet(
   workoutLogId: string,
   workoutLogExerciseId: string,
   sessionPlanExerciseId?: string | null
-): Omit<DBWorkoutLogSet, 'id' | 'created_at' | 'updated_at' | 'old_id' | 'old_session_plan_exercise_id' | 'old_workout_log_id' | 'old_workout_log_exercise_id'> & { id?: string } {
+): Omit<DBWorkoutLogSet, 'id' | 'created_at' | 'updated_at'> & { id?: string } {
   return {
     id: typeof set.id === 'string' ? set.id : undefined,
     workout_log_id: workoutLogId,
@@ -265,7 +265,7 @@ export function trainingSetToDbSet(
 export function trainingSetToDbPlanSet(
   set: TrainingSet,
   sessionPlanExerciseId: string
-): Omit<DBSessionPlanSet, 'id' | 'created_at' | 'updated_at' | 'old_id' | 'old_session_plan_exercise_id'> & { id?: string } {
+): Omit<DBSessionPlanSet, 'id' | 'created_at' | 'updated_at'> & { id?: string } {
   return {
     id: typeof set.id === 'string' ? set.id : undefined,
     session_plan_exercise_id: sessionPlanExerciseId,

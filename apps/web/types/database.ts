@@ -843,8 +843,6 @@ export type Database = {
           exercise_order: number | null
           id: string
           notes: string | null
-          old_id: number | null
-          old_session_plan_id: number | null
           session_plan_id: string | null
           superset_id: number | null
           updated_at: string | null
@@ -855,8 +853,6 @@ export type Database = {
           exercise_order?: number | null
           id?: string
           notes?: string | null
-          old_id?: number | null
-          old_session_plan_id?: number | null
           session_plan_id?: string | null
           superset_id?: number | null
           updated_at?: string | null
@@ -867,8 +863,6 @@ export type Database = {
           exercise_order?: number | null
           id?: string
           notes?: string | null
-          old_id?: number | null
-          old_session_plan_id?: number | null
           session_plan_id?: string | null
           superset_id?: number | null
           updated_at?: string | null
@@ -898,8 +892,6 @@ export type Database = {
           height: number | null
           id: string
           metadata: Json | null
-          old_id: number | null
-          old_session_plan_exercise_id: number | null
           performing_time: number | null
           power: number | null
           reps: number | null
@@ -921,8 +913,6 @@ export type Database = {
           height?: number | null
           id?: string
           metadata?: Json | null
-          old_id?: number | null
-          old_session_plan_exercise_id?: number | null
           performing_time?: number | null
           power?: number | null
           reps?: number | null
@@ -944,8 +934,6 @@ export type Database = {
           height?: number | null
           id?: string
           metadata?: Json | null
-          old_id?: number | null
-          old_session_plan_exercise_id?: number | null
           performing_time?: number | null
           power?: number | null
           reps?: number | null
@@ -989,7 +977,6 @@ export type Database = {
           is_template: boolean | null
           microcycle_id: number | null
           name: string | null
-          old_id: number | null
           session_mode: string | null
           updated_at: string | null
           user_id: number | null
@@ -1006,7 +993,6 @@ export type Database = {
           is_template?: boolean | null
           microcycle_id?: number | null
           name?: string | null
-          old_id?: number | null
           session_mode?: string | null
           updated_at?: string | null
           user_id?: number | null
@@ -1023,7 +1009,6 @@ export type Database = {
           is_template?: boolean | null
           microcycle_id?: number | null
           name?: string | null
-          old_id?: number | null
           session_mode?: string | null
           updated_at?: string | null
           user_id?: number | null
@@ -1156,9 +1141,6 @@ export type Database = {
           exercise_order: number
           id: string
           notes: string | null
-          old_id: number | null
-          old_session_plan_exercise_id: number | null
-          old_workout_log_id: number | null
           session_plan_exercise_id: string | null
           superset_id: number | null
           updated_at: string
@@ -1170,9 +1152,6 @@ export type Database = {
           exercise_order: number
           id?: string
           notes?: string | null
-          old_id?: number | null
-          old_session_plan_exercise_id?: number | null
-          old_workout_log_id?: number | null
           session_plan_exercise_id?: string | null
           superset_id?: number | null
           updated_at?: string
@@ -1184,9 +1163,6 @@ export type Database = {
           exercise_order?: number
           id?: string
           notes?: string | null
-          old_id?: number | null
-          old_session_plan_exercise_id?: number | null
-          old_workout_log_id?: number | null
           session_plan_exercise_id?: string | null
           superset_id?: number | null
           updated_at?: string
@@ -1225,10 +1201,6 @@ export type Database = {
           height: number | null
           id: string
           metadata: Json | null
-          old_id: number | null
-          old_session_plan_exercise_id: number | null
-          old_workout_log_exercise_id: number | null
-          old_workout_log_id: number | null
           performing_time: number | null
           power: number | null
           reps: number | null
@@ -1253,10 +1225,6 @@ export type Database = {
           height?: number | null
           id?: string
           metadata?: Json | null
-          old_id?: number | null
-          old_session_plan_exercise_id?: number | null
-          old_workout_log_exercise_id?: number | null
-          old_workout_log_id?: number | null
           performing_time?: number | null
           power?: number | null
           reps?: number | null
@@ -1281,10 +1249,6 @@ export type Database = {
           height?: number | null
           id?: string
           metadata?: Json | null
-          old_id?: number | null
-          old_session_plan_exercise_id?: number | null
-          old_workout_log_exercise_id?: number | null
-          old_workout_log_id?: number | null
           performing_time?: number | null
           power?: number | null
           reps?: number | null
@@ -1341,8 +1305,6 @@ export type Database = {
           description: string | null
           id: string
           notes: string | null
-          old_id: number | null
-          old_session_plan_id: number | null
           session_mode: string | null
           session_plan_id: string | null
           session_status: Database["public"]["Enums"]["session_status"]
@@ -1356,8 +1318,6 @@ export type Database = {
           description?: string | null
           id?: string
           notes?: string | null
-          old_id?: number | null
-          old_session_plan_id?: number | null
           session_mode?: string | null
           session_plan_id?: string | null
           session_status: Database["public"]["Enums"]["session_status"]
@@ -1371,8 +1331,6 @@ export type Database = {
           description?: string | null
           id?: string
           notes?: string | null
-          old_id?: number | null
-          old_session_plan_id?: number | null
           session_mode?: string | null
           session_plan_id?: string | null
           session_status?: Database["public"]["Enums"]["session_status"]
@@ -1408,18 +1366,18 @@ export type Database = {
     }
     Functions: {
       athlete_in_group: { Args: { group_id: number }; Returns: boolean }
-      auth_athlete_group_id: { Args: never; Returns: number }
-      auth_athlete_id: { Args: never; Returns: number }
-      auth_coach_id: { Args: never; Returns: number }
-      auth_coached_group_ids: { Args: never; Returns: number[] }
-      auth_user_id: { Args: never; Returns: number }
+      auth_athlete_group_id: { Args: Record<PropertyKey, never>; Returns: number }
+      auth_athlete_id: { Args: Record<PropertyKey, never>; Returns: number }
+      auth_coach_id: { Args: Record<PropertyKey, never>; Returns: number }
+      auth_coached_group_ids: { Args: Record<PropertyKey, never>; Returns: number[] }
+      auth_user_id: { Args: Record<PropertyKey, never>; Returns: number }
       can_access_group: { Args: { group_id: number }; Returns: boolean }
       can_access_session_exercise: {
-        Args: { spe_id: number }
+        Args: { spe_id: string }
         Returns: boolean
       }
-      can_access_session_plan: { Args: { sp_id: number }; Returns: boolean }
-      can_view_workout_log: { Args: { wl_id: number }; Returns: boolean }
+      can_access_session_plan: { Args: { sp_id: string }; Returns: boolean }
+      can_view_workout_log: { Args: { wl_id: string }; Returns: boolean }
       coaches_athlete: { Args: { athlete_id: number }; Returns: boolean }
       coaches_group: { Args: { group_id: number }; Returns: boolean }
       get_user_role_data: {
@@ -1431,11 +1389,19 @@ export type Database = {
           user_id: number
         }[]
       }
+      lookup_user_for_invite: {
+        Args: { email_input: string }
+        Returns: {
+          athlete_id: number
+          current_group_id: number
+          user_id: number
+        }[]
+      }
       owns_resource: { Args: { resource_user_id: number }; Returns: boolean }
-      owns_session_exercise: { Args: { spe_id: number }; Returns: boolean }
-      owns_session_plan: { Args: { sp_id: number }; Returns: boolean }
-      owns_workout_log: { Args: { wl_id: number }; Returns: boolean }
-      unuse: { Args: never; Returns: undefined }
+      owns_session_exercise: { Args: { spe_id: string }; Returns: boolean }
+      owns_session_plan: { Args: { sp_id: string }; Returns: boolean }
+      owns_workout_log: { Args: { wl_id: string }; Returns: boolean }
+      unuse: { Args: Record<PropertyKey, never>; Returns: undefined }
       update_user_from_webhook: {
         Args: {
           p_avatar_url: string

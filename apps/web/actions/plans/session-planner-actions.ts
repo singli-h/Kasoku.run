@@ -345,7 +345,7 @@ export async function saveSessionWithExercisesAction(
     // Step 7: Fetch and return the updated session
     const { data: updatedSession, error: finalFetchError } = await supabase
       .from('session_plans')
-      .select('id, athlete_group_id, user_id, microcycle_id, name, description, session_mode, week, day, date, updated_at, created_at, deleted, is_template, old_id')
+      .select('id, athlete_group_id, user_id, microcycle_id, name, description, session_mode, week, day, date, updated_at, created_at, deleted, is_template')
       .eq('id', sessionId)
       .single()
 

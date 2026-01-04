@@ -41,6 +41,8 @@ export interface BulkOperationState {
   isOpen: boolean
   type: 'assign' | 'move' | 'remove' | null
   targetGroupId?: number
+  // When set, overrides selectedAthletes - used for single-athlete operations from dropdown
+  athleteIds?: number[]
 }
 
 export interface AthleteManagementData {
