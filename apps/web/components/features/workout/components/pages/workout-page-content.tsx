@@ -4,13 +4,15 @@
  * Prioritizes ongoing sessions, then next scheduled session, with history in a separate view
  *
  * Updated: Now uses URL-based routing (/workout/[id]) for session views
+ * Fix: No longer auto-redirects when user intentionally navigates back
  */
 
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { WorkoutSessionSelector } from "./workout-session-selector"
 import { NextSessionCard } from "./next-session-card"
+import { OngoingSessionBanner } from "./ongoing-session-banner"
 import { FeatureErrorBoundary } from '@/components/error-boundary'
 import { useSessionsToday } from '../../hooks/use-workout-queries'
 import { useRouter } from "next/navigation"
@@ -22,6 +24,7 @@ import type {
 
 export function WorkoutPageContent() {
   const router = useRouter()
+  const [skipAutoRedirect, setSkipAutoRedirect] = useState(false)
 
   // Fetch today's and ongoing sessions
   const { data: sessions, isLoading: sessionsLoading } = useSessionsToday()
@@ -41,12 +44,14 @@ export function WorkoutPageContent() {
     }
   }
 
-  // Auto-redirect to ongoing session if it exists
+  // Check for intentional return flag on mount
   useEffect(() => {
-    if (ongoingSession?.id) {
-      router.push(`/workout/${ongoingSession.id}`)
+    const intentionalReturn = sessionStorage.getItem('workout-intentional-return')
+    if (intentionalReturn) {
+      sessionStorage.removeItem('workout-intentional-return')
+      setSkipAutoRedirect(true)
     }
-  }, [ongoingSession?.id, router])
+  }, [])
 
   // Render session selection view
   return (
@@ -63,6 +68,14 @@ export function WorkoutPageContent() {
               <h1 className="text-2xl font-bold">My Workouts</h1>
               <p className="text-muted-foreground">Continue your workout or start a new session</p>
             </div>
+
+            {/* Ongoing Session Banner - shown instead of auto-redirect */}
+            {ongoingSession && (
+              <OngoingSessionBanner
+                session={ongoingSession}
+                onResume={() => router.push(`/workout/${ongoingSession.id}`)}
+              />
+            )}
 
             {/* Next Session Card (if no ongoing session) */}
             {nextSession && !ongoingSession && (

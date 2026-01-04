@@ -123,9 +123,9 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
           id: micro.id,
           mesocycle_id: meso.id,
           name: micro.name,
-          description: null,
-          start_date: null,
-          end_date: null,
+          description: micro.description ?? null,
+          start_date: micro.start_date ?? null,
+          end_date: micro.end_date ?? null,
           sessions,
           // Use microcycle volume/intensity directly from database instead of calculating from sessions
           volume: micro.volume ?? 0,

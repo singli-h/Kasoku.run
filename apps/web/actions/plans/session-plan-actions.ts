@@ -806,4 +806,141 @@ export async function deleteTemplateAction(templateId: string): Promise<ActionSt
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
   }
+}
+
+/**
+ * Copy a session to a different microcycle and/or day
+ */
+export async function copySessionAction(
+  sessionId: string,
+  targetMicrocycleId: number,
+  targetDay: number
+): Promise<ActionState<SessionPlan>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Get the source session with all its details
+    const { data: sourceSession, error: fetchError } = await supabase
+      .from('session_plans')
+      .select(`
+        *,
+        session_plan_exercises(
+          *,
+          session_plan_sets(*)
+        )
+      `)
+      .eq('id', sessionId)
+      .single()
+
+    if (fetchError || !sourceSession) {
+      console.error('Error fetching source session:', fetchError)
+      return {
+        isSuccess: false,
+        message: "Session not found"
+      }
+    }
+
+    // Create new session copy
+    const newSessionData: SessionPlanInsert = {
+      name: `${sourceSession.name} (Copy)`,
+      description: sourceSession.description,
+      date: sourceSession.date, // Keep the same date or calculate from target microcycle
+      day: targetDay,
+      week: sourceSession.week,
+      session_mode: sourceSession.session_mode,
+      microcycle_id: targetMicrocycleId,
+      athlete_group_id: sourceSession.athlete_group_id,
+      user_id: dbUserId,
+      is_template: false
+    }
+
+    const { data: newSession, error: insertError } = await supabase
+      .from('session_plans')
+      .insert(newSessionData)
+      .select()
+      .single()
+
+    if (insertError || !newSession) {
+      console.error('Error creating session copy:', insertError)
+      return {
+        isSuccess: false,
+        message: `Failed to copy session: ${insertError?.message}`
+      }
+    }
+
+    // Copy exercises from source to new session
+    if (sourceSession.session_plan_exercises && sourceSession.session_plan_exercises.length > 0) {
+      for (const sourceExercise of sourceSession.session_plan_exercises) {
+        const newExerciseData: ExercisePresetInsert = {
+          session_plan_id: newSession.id,
+          exercise_id: sourceExercise.exercise_id,
+          exercise_order: sourceExercise.exercise_order,
+          notes: sourceExercise.notes,
+          superset_id: sourceExercise.superset_id
+        }
+
+        const { data: newExercise, error: exerciseError } = await supabase
+          .from('session_plan_exercises')
+          .insert(newExerciseData)
+          .select()
+          .single()
+
+        if (exerciseError || !newExercise) {
+          console.error('Error copying exercise:', exerciseError)
+          continue
+        }
+
+        // Copy sets from source exercise
+        if (sourceExercise.session_plan_sets && sourceExercise.session_plan_sets.length > 0) {
+          const setsData = sourceExercise.session_plan_sets.map((set: SessionPlanSet) => ({
+            session_plan_exercise_id: newExercise.id,
+            set_index: set.set_index,
+            reps: set.reps,
+            weight: set.weight,
+            distance: set.distance,
+            performing_time: set.performing_time,
+            power: set.power,
+            velocity: set.velocity,
+            resistance: set.resistance,
+            resistance_unit_id: set.resistance_unit_id,
+            tempo: set.tempo,
+            effort: set.effort,
+            height: set.height,
+            rpe: set.rpe,
+            rest_time: set.rest_time,
+            metadata: set.metadata
+          }))
+
+          const { error: setsError } = await supabase
+            .from('session_plan_sets')
+            .insert(setsData)
+
+          if (setsError) {
+            console.error('Error copying sets:', setsError)
+          }
+        }
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Session copied successfully",
+      data: newSession
+    }
+  } catch (error) {
+    console.error('Error in copySessionAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
 } 

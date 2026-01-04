@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
@@ -59,6 +59,7 @@ function WorkoutSessionContentV2({
   existingSession,
   className
 }: WorkoutSessionDashboardV2Props) {
+  const router = useRouter()
   const { toast } = useToast()
   const { exercises, setExercises, updateExercise, toggleSetComplete, forceSave, hasPendingChanges, saveStatus } = useExerciseContext()
 
@@ -358,11 +359,17 @@ function WorkoutSessionContentV2({
     <div className={cn("space-y-4", className)}>
       {/* Back Button */}
       <div className="mb-2">
-        <Button variant="ghost" asChild className="flex items-center gap-2">
-          <Link href="/workout">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Workouts
-          </Link>
+        <Button
+          variant="ghost"
+          className="flex items-center gap-2"
+          onClick={() => {
+            // Set flag to prevent auto-redirect back to this session
+            sessionStorage.setItem('workout-intentional-return', 'true')
+            router.push('/workout')
+          }}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Workouts
         </Button>
       </div>
 

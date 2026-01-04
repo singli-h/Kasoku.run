@@ -101,9 +101,10 @@ interface TrainingItem {
   visibleTo?: UserRole[]
 }
 
-const trainingItems: TrainingItem[] = [
+// Training items with role-specific labels
+const getTrainingItems = (role: UserRole | null): TrainingItem[] => [
   {
-    name: "My Training", // Renamed from "Plans" for individuals
+    name: role === 'coach' ? "Plans" : "My Training",
     url: "/plans",
     icon: Calendar,
     visibleTo: ['coach', 'individual'], // Coaches + individuals can create plans
@@ -132,11 +133,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     })
   }, [role, isLoading])
 
-  // Filter training items based on user role
+  // Filter training items based on user role (with role-specific labels)
   const filteredTrainingItems = React.useMemo(() => {
     if (isLoading || !role) return []
 
-    return trainingItems.filter(item => {
+    return getTrainingItems(role).filter(item => {
       // If visibleTo is undefined, item is visible to all roles
       if (!item.visibleTo) return true
       // Check if current role is in visibleTo array

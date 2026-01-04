@@ -10,7 +10,11 @@ import { EditMesocycleDialog, type MesocycleFormData } from "./components/EditMe
 import { EditMicrocycleDialog, type MicrocycleFormData } from "./components/EditMicrocycleDialog"
 import { EditRaceDialog } from "./components/EditRaceDialog"
 import { EditSessionDialog } from "./components/EditSessionDialog"
+import { CopySessionDialog } from "./components/CopySessionDialog"
 import { PlanPageHeader } from "../components/PlanPageHeader"
+import { copySessionAction } from "@/actions/plans/session-plan-actions"
+import { Copy } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 // Training plan workspace component - interfaces for data structure
 export interface Session {
@@ -90,13 +94,80 @@ interface TrainingPlanWorkspaceProps {
   onPlanUpdate?: (plan: TrainingPlan) => void
 }
 
+/**
+ * Find the current mesocycle and microcycle based on today's date
+ * Falls back to first mesocycle if no current week is found
+ */
+function findCurrentPeriod(plan: TrainingPlan): { meso: Mesocycle | null; micro: Microcycle | null } {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // First, try to find by microcycle dates (most specific)
+  for (const meso of plan.mesocycles) {
+    for (const micro of meso.microcycles) {
+      if (micro.start_date && micro.end_date) {
+        const startDate = new Date(micro.start_date)
+        const endDate = new Date(micro.end_date)
+        startDate.setHours(0, 0, 0, 0)
+        endDate.setHours(23, 59, 59, 999)
+
+        if (today >= startDate && today <= endDate) {
+          return { meso, micro }
+        }
+      }
+    }
+  }
+
+  // Fallback: find by mesocycle dates
+  for (const meso of plan.mesocycles) {
+    if (meso.start_date && meso.end_date) {
+      const startDate = new Date(meso.start_date)
+      const endDate = new Date(meso.end_date)
+      startDate.setHours(0, 0, 0, 0)
+      endDate.setHours(23, 59, 59, 999)
+
+      if (today >= startDate && today <= endDate) {
+        // Found current mesocycle, try to find microcycle by position
+        // Calculate which week we're in based on start date
+        const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+        const weekIndex = Math.floor(daysSinceStart / 7)
+        const micro = meso.microcycles[weekIndex] || meso.microcycles[0] || null
+        return { meso, micro }
+      }
+    }
+  }
+
+  // Final fallback: first mesocycle, no microcycle selected
+  return {
+    meso: plan.mesocycles.length > 0 ? plan.mesocycles[0] : null,
+    micro: null
+  }
+}
+
+/**
+ * Check if a microcycle is the current week
+ */
+function isCurrentWeek(micro: Microcycle): boolean {
+  if (!micro.start_date || !micro.end_date) return false
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const startDate = new Date(micro.start_date)
+  const endDate = new Date(micro.end_date)
+  startDate.setHours(0, 0, 0, 0)
+  endDate.setHours(23, 59, 59, 999)
+
+  return today >= startDate && today <= endDate
+}
+
 export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPlanWorkspaceProps) {
   const router = useRouter()
   const [plan, setPlan] = useState(initialPlan)
-  const [selectedMeso, setSelectedMeso] = useState<Mesocycle | null>(
-    initialPlan.mesocycles.length > 0 ? initialPlan.mesocycles[0] : null
-  )
-  const [selectedMicro, setSelectedMicro] = useState<Microcycle | null>(null)
+
+  // Auto-navigate to current week on initial load
+  const initialPeriod = useMemo(() => findCurrentPeriod(initialPlan), [initialPlan])
+  const [selectedMeso, setSelectedMeso] = useState<Mesocycle | null>(initialPeriod.meso)
+  const [selectedMicro, setSelectedMicro] = useState<Microcycle | null>(initialPeriod.micro)
 
   const [mobileView, setMobileView] = useState<"meso" | "micro" | "session">("meso")
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("left")
@@ -113,6 +184,10 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<Session | null>(null)
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false)
+  const [copyingSession, setCopyingSession] = useState<Session | null>(null)
+
+  const { toast } = useToast()
 
   const touchStartX = useRef<number>(0)
   const touchEndX = useRef<number>(0)
@@ -273,6 +348,25 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
     addToHistory(newPlan)
     setSelectedMeso(updatedMeso)
     setSelectedMicro(updatedMicro)
+  }
+
+  const handleCopySession = async (sessionId: string, targetMicrocycleId: number, targetDay: number) => {
+    const result = await copySessionAction(sessionId, targetMicrocycleId, targetDay)
+
+    if (result.isSuccess) {
+      toast({
+        title: "Session copied",
+        description: result.message,
+      })
+      // Refresh the page to show the new session
+      router.refresh()
+    } else {
+      toast({
+        title: "Error",
+        description: result.message,
+        variant: "destructive",
+      })
+    }
   }
 
   const handleMesoClick = (meso: Mesocycle) => {
@@ -550,12 +644,17 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                       onClick={() => setSelectedMicro(micro)}
                       className={`w-full rounded-lg border p-4 text-left transition-all hover:bg-accent cursor-pointer ${
                         selectedMicro?.id === micro.id ? "bg-accent ring-2 ring-primary" : "bg-card"
-                      }`}
+                      } ${isCurrentWeek(micro) ? "border-primary/50" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-semibold">{micro.name}</h3>
+                            {isCurrentWeek(micro) && (
+                              <Badge variant="default" className="text-xs">
+                                This Week
+                              </Badge>
+                            )}
                             {micro.isDeload && (
                               <Badge variant="secondary" className="text-xs">
                                 Deload
@@ -684,17 +783,32 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                                 </Badge>
                               </div>
                             </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-1 shrink-0">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setCopyingSession(session)
+                                  setCopyDialogOpen(true)
+                                }}
+                                title="Copy session"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -835,12 +949,17 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                         <div
                           key={micro.id}
                           onClick={() => handleMicroClick(micro)}
-                          className="w-full rounded-lg border p-4 text-left transition-all hover:bg-accent cursor-pointer"
+                          className={`w-full rounded-lg border p-4 text-left transition-all hover:bg-accent cursor-pointer ${isCurrentWeek(micro) ? "border-primary/50" : ""}`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="font-semibold">{micro.name}</h3>
+                                {isCurrentWeek(micro) && (
+                                  <Badge variant="default" className="text-xs">
+                                    This Week
+                                  </Badge>
+                                )}
                                 {micro.isDeload && (
                                   <Badge variant="secondary" className="text-xs">
                                     Deload
@@ -975,17 +1094,32 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                                     </Badge>
                                   </div>
                                 </div>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-8 w-8 shrink-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+                                <div className="flex gap-1 shrink-0">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setCopyingSession(session)
+                                      setCopyDialogOpen(true)
+                                    }}
+                                    title="Copy session"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      router.push(`/plans/${plan.macrocycle.id}/session/${session.id}`)
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1035,6 +1169,15 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
         onOpenChange={setSessionDialogOpen}
         onSave={handleSaveSession}
         onDelete={handleDeleteSession}
+      />
+
+      <CopySessionDialog
+        session={copyingSession}
+        mesocycles={plan.mesocycles}
+        currentMicrocycleId={selectedMicro?.id || null}
+        open={copyDialogOpen}
+        onOpenChange={setCopyDialogOpen}
+        onCopy={handleCopySession}
       />
     </div>
   )
