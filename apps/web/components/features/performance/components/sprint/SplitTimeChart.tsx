@@ -38,7 +38,7 @@ export interface SprintSession {
 
 interface SplitTimeChartProps {
   sessions: SprintSession[]
-  showBenchmarks?: ('10.00' | '11.00' | '12.00')[]
+  showBenchmarks?: ('9.58' | '10.00' | '11.00' | '12.00')[]
   competitionPBs?: CompetitionPB[]
   showCompetitionPBs?: boolean
   highlightSessionId?: string
@@ -53,6 +53,7 @@ interface ChartDataPoint {
   competitionPB?: number
   competitionPBLabel?: string
   // For area visualization between 10s and 11s
+  benchmarkWR?: number         // 9.58 WR (Bolt)
   benchmark10Mid?: number      // 10s midpoint (for reference line)
   benchmark11Mid?: number      // 11s midpoint (for reference line)
   performanceZone?: [number, number]  // [10s, 11s] for area range
@@ -112,9 +113,15 @@ export function SplitTimeChart({
       }
 
       // Add benchmark data for area visualization
+      const standardWR = CUMULATIVE_SPLIT_STANDARDS['9.58']
       const standard10 = CUMULATIVE_SPLIT_STANDARDS['10.00']
       const standard11 = CUMULATIVE_SPLIT_STANDARDS['11.00']
       const standard12 = CUMULATIVE_SPLIT_STANDARDS['12.00']
+
+      // 9.58 World Record (Bolt)
+      if (showBenchmarks.includes('9.58') && standardWR?.splits[distance]) {
+        point.benchmarkWR = standardWR.splits[distance].min // Exact value, no range
+      }
 
       if (showBenchmarks.includes('10.00') && standard10?.splits[distance]) {
         point.benchmark10Mid = (standard10.splits[distance].min + standard10.splits[distance].max) / 2
@@ -174,7 +181,10 @@ export function SplitTimeChart({
       if (point.benchmark11Mid) {
         maxTime = Math.max(maxTime, point.benchmark11Mid)
       }
-      // Use 10s benchmark for min bound
+      // Use WR or 10s benchmark for min bound (fastest visible reference)
+      if (point.benchmarkWR) {
+        minTime = Math.min(minTime, point.benchmarkWR)
+      }
       if (point.benchmark10Mid) {
         minTime = Math.min(minTime, point.benchmark10Mid)
       }
@@ -191,9 +201,9 @@ export function SplitTimeChart({
       maxTime = Math.max(maxTime, last11sBenchmark)
     }
 
-    // Add small buffer and round to nice values
-    const roundedMax = Math.ceil(maxTime) + 0.5
-    const roundedMin = Math.max(0, Math.floor(minTime) - 0.5)
+    // Tighter buffer to exaggerate time differences
+    const roundedMax = Math.ceil(maxTime * 2) / 2  // Round up to nearest 0.5
+    const roundedMin = Math.max(0, Math.floor(minTime * 2) / 2)  // Round down to nearest 0.5
 
     // Generate ticks - use 1s intervals for <8s range, 2s for larger
     const range = roundedMax - roundedMin
@@ -228,6 +238,9 @@ export function SplitTimeChart({
             } else if (entry.dataKey === 'competitionPB') {
               name = dataPoint?.competitionPBLabel || 'Competition PB'
               color = '#eab308' // amber-500
+            } else if (entry.dataKey === 'benchmarkWR') {
+              name = '9.58s WR (Bolt)'
+              color = '#94a3b8' // slate for WR
             } else if (entry.dataKey === 'benchmark10Mid') {
               name = '10.00s Reference'
               color = '#22c55e'
@@ -284,6 +297,11 @@ export function SplitTimeChart({
                 11.00s
               </Badge>
             )}
+            {showBenchmarks.includes('9.58') && (
+              <Badge variant="outline" className="text-xs bg-slate-400/10 text-slate-400 border-slate-400/20">
+                9.58s WR
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -299,6 +317,12 @@ export function SplitTimeChart({
               <span className="text-muted-foreground">Competition PB</span>
             </div>
           )}
+          {showBenchmarks.includes('9.58') && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-0.5 rounded-full bg-slate-400" />
+              <span className="text-muted-foreground">9.58s WR</span>
+            </div>
+          )}
           {showBenchmarks.includes('10.00') && (
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-0.5 rounded-full bg-green-500" />
@@ -311,7 +335,7 @@ export function SplitTimeChart({
               <span className="text-muted-foreground">11.00s</span>
             </div>
           )}
-          {(showBenchmarks.includes('10.00') || showBenchmarks.includes('11.00')) && (
+          {(showBenchmarks.includes('9.58') || showBenchmarks.includes('10.00') || showBenchmarks.includes('11.00')) && (
             <span className="text-[10px] text-muted-foreground/60 italic">incl. RT</span>
           )}
         </div>
@@ -319,11 +343,11 @@ export function SplitTimeChart({
 
       <CardContent className="pt-2 pb-4">
         {!hasData ? (
-          <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
+          <div className="h-72 md:h-80 lg:h-96 flex items-center justify-center text-muted-foreground text-sm">
             No sprint data available. Upload a Freelap CSV to get started.
           </div>
         ) : (
-          <div className="h-64 w-full">
+          <div className="h-72 md:h-80 lg:h-96 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={filteredData}
@@ -366,14 +390,17 @@ export function SplitTimeChart({
                   </linearGradient>
                 </defs>
 
-                {/* Performance zone area between 10s and 11s */}
-                {showBenchmarks.includes('10.00') && showBenchmarks.includes('11.00') && (
-                  <Area
+                {/* 9.58 World Record line (Bolt) */}
+                {showBenchmarks.includes('9.58') && (
+                  <Line
                     type="monotone"
-                    dataKey="performanceZone"
-                    stroke="none"
-                    fill="url(#performanceZoneGradient)"
-                    fillOpacity={1}
+                    dataKey="benchmarkWR"
+                    stroke="#94a3b8"
+                    strokeWidth={2}
+                    strokeOpacity={0.7}
+                    strokeDasharray="6 3"
+                    dot={false}
+                    activeDot={false}
                   />
                 )}
 
@@ -466,10 +493,10 @@ export function SplitTimeChart({
                     strokeWidth={0}
                     connectNulls={false}
                     dot={(props: any) => {
-                      const { cx, cy, payload } = props
-                      if (!payload?.competitionPB) return <g />
+                      const { cx, cy, payload, index } = props
+                      if (!payload?.competitionPB) return <g key={`empty-dot-${index}`} />
                       return (
-                        <g>
+                        <g key={`pb-dot-${index}`}>
                           {/* Diamond marker */}
                           <rect
                             x={cx - 5}
@@ -485,10 +512,10 @@ export function SplitTimeChart({
                       )
                     }}
                     activeDot={(props: any) => {
-                      const { cx, cy, payload } = props
-                      if (!payload?.competitionPB) return <g />
+                      const { cx, cy, payload, index } = props
+                      if (!payload?.competitionPB) return <g key={`empty-active-${index}`} />
                       return (
-                        <g>
+                        <g key={`pb-active-${index}`}>
                           <rect
                             x={cx - 7}
                             y={cy - 7}

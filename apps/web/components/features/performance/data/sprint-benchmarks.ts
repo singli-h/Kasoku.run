@@ -69,6 +69,9 @@ export interface RunnerStandard {
  * athlete times typically do NOT include reaction time since they self-trigger.
  *
  * Sources:
+ * - 9.58s WR: Usain Bolt, 2009 Berlin World Championships
+ *   Official IAAF/World Athletics biomechanics report (RT: 0.146s)
+ *
  * - 10.00s profile: World Athletics 2017 Men's 100m Final biomechanics report
  *   Midpoint of Yohan Blake (9.99) and Akani Simbine (10.01)
  *   https://qazathletics.kz
@@ -81,6 +84,23 @@ export interface RunnerStandard {
  * already ~0.5-0.6s down, and it continues to leak out to 100m.
  */
 export const CUMULATIVE_SPLIT_STANDARDS: Record<string, RunnerStandard> = {
+  '9.58': {
+    label: '9.58s WR (Bolt)',
+    color: '#94a3b8', // slate for World Record
+    // Usain Bolt, Berlin 2009 - Official IAAF splits (RT: 0.146s)
+    splits: {
+      10: { min: 1.89, max: 1.89 },
+      20: { min: 2.88, max: 2.88 },
+      30: { min: 3.78, max: 3.78 },
+      40: { min: 4.64, max: 4.64 },
+      50: { min: 5.47, max: 5.47 },
+      60: { min: 6.29, max: 6.29 },
+      70: { min: 7.10, max: 7.10 },
+      80: { min: 7.92, max: 7.92 },
+      90: { min: 8.75, max: 8.75 },
+      100: { min: 9.58, max: 9.58 },
+    },
+  },
   '10.00': {
     label: '10.00s Runner',
     color: '#22c55e',
@@ -476,6 +496,27 @@ export const PERFORMANCE_PARAMETERS: Record<string, PerformanceParameter> = {
     standards: {
       '10.00': { min: 3.46, max: 3.54 },  // 10.00 - 6.50 = 3.50
       '11.00': { min: 3.86, max: 4.06 },  // 11.00 - 7.04 = 3.96
+    },
+    higherIsBetter: false,
+  },
+  // Distance time benchmarks
+  time60m: {
+    label: '60m Time',
+    unit: 's',
+    description: 'Time to complete 60 meters',
+    standards: {
+      '10.00': { min: 6.48, max: 6.52 },  // From CUMULATIVE_SPLIT_STANDARDS
+      '11.00': { min: 6.96, max: 7.12 },
+    },
+    higherIsBetter: false,
+  },
+  time100m: {
+    label: '100m Time',
+    unit: 's',
+    description: 'Time to complete 100 meters',
+    standards: {
+      '10.00': { min: 9.98, max: 10.02 },  // From CUMULATIVE_SPLIT_STANDARDS
+      '11.00': { min: 10.98, max: 11.02 },
     },
     higherIsBetter: false,
   },

@@ -22,9 +22,11 @@ import {
   formatSpeed,
   type SprintLevel,
 } from "../../data/sprint-benchmarks"
+import type { CompetitionPB } from "@/actions/performance/performance-actions"
 
 export interface AthleteMetrics {
-  time100m?: number
+  time60m?: number               // 60m time
+  time100m?: number              // 100m time
   reactionTime?: number
   topSpeed?: number
   // Phase-specific stride metrics (should not be averaged across phases)
@@ -42,6 +44,7 @@ export interface AthleteMetrics {
 
 interface BenchmarkReferenceCardProps {
   athleteMetrics: AthleteMetrics
+  competitionPBs?: CompetitionPB[]
   gender?: 'male' | 'female'
   targetStandard?: '10.00' | '11.00'
   className?: string
@@ -58,6 +61,7 @@ interface MetricRow {
 
 export function BenchmarkReferenceCard({
   athleteMetrics,
+  competitionPBs = [],
   gender = 'male',
   targetStandard = '11.00',
   className,
@@ -153,6 +157,26 @@ export function BenchmarkReferenceCard({
         : 'none',
     })
 
+    // 60m Time - at bottom of table (prefer competition PB over training time)
+    const time60mParam = PERFORMANCE_PARAMETERS.time60m
+    const competition60mPB = competitionPBs.find(pb => pb.distance === 60)
+    const time60mValue = competition60mPB?.value ?? athleteMetrics.time60m
+    const time60mLabel = competition60mPB
+      ? `60m PB${competition60mPB.isIndoor ? ' (I)' : ''}`
+      : time60mParam.label
+    rows.push({
+      key: 'time60m',
+      label: time60mLabel,
+      athleteValue: time60mValue !== undefined
+        ? formatSprintTime(time60mValue)
+        : NA_VALUE,
+      standard11: `${time60mParam.standards['11.00'].min.toFixed(2)}-${time60mParam.standards['11.00'].max.toFixed(2)}s`,
+      standard10: `${time60mParam.standards['10.00'].min.toFixed(2)}-${time60mParam.standards['10.00'].max.toFixed(2)}s`,
+      status: time60mValue !== undefined
+        ? getComparisonStatus(time60mValue, 'time60m', targetStandard)
+        : 'none',
+    })
+
     // Best Time - dynamic distance support
     if (athleteMetrics.bestTime !== undefined && athleteMetrics.bestDistance !== undefined) {
       const distStandard = getDistanceStandard(athleteMetrics.bestDistance)
@@ -180,15 +204,16 @@ export function BenchmarkReferenceCard({
   const levelPosition = calculateLevelPosition()
 
   const StatusIcon = ({ status }: { status: MetricRow['status'] }) => {
+    const iconClass = "h-3.5 w-3.5 shrink-0"
     switch (status) {
       case 'ahead':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />
+        return <CheckCircle2 className={cn(iconClass, "text-green-500")} />
       case 'on-track':
-        return <MinusCircle className="h-4 w-4 text-blue-500" />
+        return <MinusCircle className={cn(iconClass, "text-blue-500")} />
       case 'behind':
-        return <AlertCircle className="h-4 w-4 text-orange-500" />
+        return <AlertCircle className={cn(iconClass, "text-orange-500")} />
       default:
-        return null
+        return <div className={iconClass} /> // Placeholder for alignment
     }
   }
 
@@ -274,9 +299,9 @@ export function BenchmarkReferenceCard({
 
             {/* Metrics Comparison Table */}
             {metricRows.length > 0 && (
-              <div className="border border-border/50 rounded-lg overflow-hidden">
+              <div className="-mx-2 sm:mx-0">
                 {/* Header */}
-                <div className="grid grid-cols-4 gap-2 px-3 py-2 bg-muted/30 border-b border-border/50">
+                <div className="grid grid-cols-[1fr_minmax(50px,auto)_minmax(70px,auto)_minmax(70px,auto)] gap-x-2 sm:gap-x-3 px-2 sm:px-0 py-2 border-b border-border/30">
                   <div className="text-xs font-medium text-muted-foreground">Parameter</div>
                   <div className="text-xs font-medium text-muted-foreground text-right">You</div>
                   <div className="text-xs font-medium text-orange-500/80 text-right">11.00s</div>
@@ -291,21 +316,21 @@ export function BenchmarkReferenceCard({
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
                     className={cn(
-                      "grid grid-cols-4 gap-2 px-3 py-2.5 items-center",
-                      index < metricRows.length - 1 && "border-b border-border/30"
+                      "grid grid-cols-[1fr_minmax(50px,auto)_minmax(70px,auto)_minmax(70px,auto)] gap-x-2 sm:gap-x-3 px-2 sm:px-0 py-2.5 items-center",
+                      index < metricRows.length - 1 && "border-b border-border/20"
                     )}
                   >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <StatusIcon status={row.status} />
-                      <span className="text-xs font-medium truncate">{row.label}</span>
+                      <span className="text-xs font-medium">{row.label}</span>
                     </div>
-                    <div className="text-xs font-semibold tabular-nums text-right">
+                    <div className="text-xs font-semibold tabular-nums text-right whitespace-nowrap">
                       {row.athleteValue}
                     </div>
-                    <div className="text-xs text-muted-foreground tabular-nums text-right">
+                    <div className="text-xs text-muted-foreground tabular-nums text-right whitespace-nowrap">
                       {row.standard11}
                     </div>
-                    <div className="text-xs text-muted-foreground tabular-nums text-right">
+                    <div className="text-xs text-muted-foreground tabular-nums text-right whitespace-nowrap">
                       {row.standard10}
                     </div>
                   </motion.div>
@@ -314,17 +339,17 @@ export function BenchmarkReferenceCard({
             )}
 
             {/* Legend */}
-            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground pt-1">
-              <div className="flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3 text-green-500" />
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground pt-2">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
                 <span>Ahead</span>
               </div>
-              <div className="flex items-center gap-1">
-                <MinusCircle className="h-3 w-3 text-blue-500" />
+              <div className="flex items-center gap-1.5">
+                <MinusCircle className="h-3.5 w-3.5 shrink-0 text-blue-500" />
                 <span>On Track</span>
               </div>
-              <div className="flex items-center gap-1">
-                <AlertCircle className="h-3 w-3 text-orange-500" />
+              <div className="flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 text-orange-500" />
                 <span>Needs Work</span>
               </div>
             </div>

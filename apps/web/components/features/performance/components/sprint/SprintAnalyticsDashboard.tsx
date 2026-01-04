@@ -326,7 +326,7 @@ export function SprintAnalyticsDashboard({
         <div className="lg:col-span-2">
           <SplitTimeChart
             sessions={displaySessions}
-            showBenchmarks={['10.00', '11.00']}
+            showBenchmarks={['9.58', '10.00', '11.00']}
             competitionPBs={data?.competitionPBs}
             showCompetitionPBs={showCompetitionPBs}
           />
@@ -336,6 +336,7 @@ export function SprintAnalyticsDashboard({
         <div className="lg:col-span-1">
           <BenchmarkReferenceCard
             athleteMetrics={displayMetrics}
+            competitionPBs={data?.competitionPBs}
             targetStandard={targetStandard}
           />
         </div>
