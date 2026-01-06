@@ -437,7 +437,8 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
       }
       console.log('[performExerciseUpdate] dbSetData:', JSON.stringify(dbSetData, null, 2))
 
-      const result = await addExercisePerformanceByExerciseIdAction(sessionId, exerciseId, dbSetData)
+      // Skip cache revalidation during auto-save to prevent race conditions
+      const result = await addExercisePerformanceByExerciseIdAction(sessionId, exerciseId, dbSetData, true)
       console.log('[performExerciseUpdate] Result:', result.isSuccess, result.message)
 
       if (!result.isSuccess) {

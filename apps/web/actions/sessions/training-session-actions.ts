@@ -536,7 +536,8 @@ export async function addExercisePerformanceAction(
     effort?: number
     completed?: boolean
     notes?: string
-  }
+  },
+  skipRevalidation = false // Skip cache revalidation during auto-save to prevent race conditions
 ): Promise<ActionState<ExerciseTrainingDetail>> {
   try {
     const { userId } = await auth()
@@ -648,7 +649,10 @@ export async function addExercisePerformanceAction(
     }
 
     // Revalidate workout page for seamless React Query refresh
-    revalidatePath(`/workout/${workoutLogExercise.workout_log_id}`, 'page')
+    // Skip during auto-save to prevent race conditions where server response overwrites local changes
+    if (!skipRevalidation) {
+      revalidatePath(`/workout/${workoutLogExercise.workout_log_id}`, 'page')
+    }
 
     return {
       isSuccess: true,
@@ -688,7 +692,8 @@ export async function addExercisePerformanceByExerciseIdAction(
     effort?: number
     completed?: boolean
     notes?: string
-  }
+  },
+  skipRevalidation = false // Skip cache revalidation during auto-save to prevent race conditions
 ): Promise<ActionState<ExerciseTrainingDetail>> {
   try {
     const { userId } = await auth()
@@ -766,8 +771,8 @@ export async function addExercisePerformanceByExerciseIdAction(
       workoutLogExercise = newExercise
     }
 
-    // Now call the main function
-    return addExercisePerformanceAction(workoutLogExercise.id, setData)
+    // Now call the main function, passing through skipRevalidation
+    return addExercisePerformanceAction(workoutLogExercise.id, setData, skipRevalidation)
   } catch (error) {
     console.error('[addExercisePerformanceByExerciseIdAction]:', error)
     return {

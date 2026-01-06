@@ -43,7 +43,12 @@ export async function getDashboardDataAction(): Promise<
       }
     }
 
-    // Get recent training sessions
+    // Get today's date range for filtering
+    const today = new Date()
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+
+    // Get recent training sessions - prioritize ongoing and today's assigned sessions
     const { data: sessions, error: sessionsError } = await supabase
       .from('workout_logs')
       .select(`
@@ -56,8 +61,10 @@ export async function getDashboardDataAction(): Promise<
         )
       `)
       .eq('athlete_id', athlete.id)
+      .or(`session_status.eq.ongoing,session_status.eq.completed,and(date_time.gte.${startOfDay.toISOString()},date_time.lt.${endOfDay.toISOString()},session_status.eq.assigned)`)
+      .order('session_status', { ascending: false }) // ongoing first, then assigned, then completed
       .order('date_time', { ascending: false })
-      .limit(5)
+      .limit(10)
 
     if (sessionsError) {
       console.error("Error fetching recent sessions:", sessionsError)

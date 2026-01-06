@@ -153,10 +153,11 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       clearTimeout(saveTimeoutRef.current)
     }
 
-    // Schedule new save after 800ms delay (reduced from 2000ms for better responsiveness)
+    // Schedule new save after 2500ms delay (best practice for auto-save to prevent race conditions)
+    // This balances responsiveness vs server load and prevents save-during-typing data loss
     saveTimeoutRef.current = setTimeout(() => {
       processSaveQueue()
-    }, 800)
+    }, 2500)
   }, [processSaveQueue])
 
   /**
