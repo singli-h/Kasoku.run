@@ -28,6 +28,10 @@ ${AVAILABLE_TOOLS}
 
 ${WORKFLOW_INSTRUCTIONS}
 
+${EXERCISE_GROUPING}
+
+${SUPERSET_INSTRUCTIONS}
+
 ${contextSection}
 
 ${FINAL_INSTRUCTIONS}`
@@ -99,6 +103,77 @@ Example:
 For EXISTING exercises, use their numeric ID from the session context (e.g., "123").
 
 **NEVER** omit the sessionPlanExerciseId field when creating sets - the system cannot determine which exercise the sets belong to without it.`
+
+const SUPERSET_INSTRUCTIONS = `## Supersets
+
+Group 2+ exercises by assigning the same supersetId to perform them back-to-back.
+
+**Rules:**
+- Use numeric IDs only: "1", "2", "3" (NOT "A", "B", "temp_ss", etc.)
+- ALWAYS check context first to see which IDs are already used
+- NEW superset = use next available number (if "1" exists, use "2")
+- ADD to existing = use same ID from context
+- REMOVE = set to null
+
+**Example (session currently has Bench+Rows with supersetId "1"):**
+\`\`\`
+// Add Dips to existing superset "1"
+updateExerciseChangeRequest({ sessionPlanExerciseId: "456", supersetId: "1" })
+
+// Create NEW superset "2" (next available - don't reuse "1"!)
+updateExerciseChangeRequest({ sessionPlanExerciseId: "789", supersetId: "2" })
+updateExerciseChangeRequest({ sessionPlanExerciseId: "101", supersetId: "2" })
+
+// Remove from superset
+updateExerciseChangeRequest({ sessionPlanExerciseId: "123", supersetId: null })
+\`\`\`
+
+**Critical: Same ID = same superset. Different unrelated exercises must use different IDs to avoid accidental grouping.**`
+
+const EXERCISE_GROUPING = `## Exercise Grouping
+
+**PRIORITY: If the coach explicitly specifies how to group/structure exercises, ALWAYS follow their instructions. These guidelines are defaults when intent is unclear.**
+
+**Core principle:** Ask "Is this a different STIMULUS or a training METHOD?"
+- Different stimulus → SEPARATE exercises (trackable, different adaptations)
+- Training method → SAME exercise (methodology within sets)
+
+### Separate Exercises When:
+
+**Sprints - Different stimulus:**
+- ✅ Different distances: "60m Sprint" + "100m Sprint" (different energy systems)
+- ✅ Different types: "30m Acceleration" + "30m Flying" (different biomechanics)
+- ✅ Different loading: "40m Sled Sprint" + "40m Sprint" (can use superset for contrast)
+- ✅ Different starts: "30m Blocks" + "30m Standing" (different mechanics)
+- ✅ Different recovery: "60m Quality" (4min rest) + "60m RSA" (45s rest) (if both in session)
+
+**Strength - Different stimulus:**
+- ✅ Different intensity zones: "Squat 5RM @ 80%" + "Squat 1RM @ 95%" (strength vs max effort)
+- ✅ Different tempos: "Bench Press" + "Bench Press 4-0-1-0" (speed vs control)
+
+### Same Exercise When (Method):
+
+**Training methodologies:**
+- ✅ Drop sets: "Bench Drop Set" (100→80→60kg, no rest between)
+- ✅ Wave loading: "Squat Wave" (90%→80%→90%→80%, potentiation pattern)
+- ✅ Build-ups: "Deadlift Build" (60→80→100→120kg, warm-up progression)
+- ✅ Pyramids: "Sprint Pyramid" (60→80→100→80→60m, structured progression)
+- ✅ In-and-Outs: "150m In-Out" (50 easy/50 hard/50 easy, internal variation)
+
+**Rule of thumb:** If you'd explain it as "one workout with a specific method" → same exercise. If you'd track them separately → different exercises.
+
+### Examples of User Intent Overriding Guidelines:
+
+**User says:** "Add 60m, 80m, 100m sprints as ONE exercise called 'Sprint Ladder'"
+→ ✅ Create ONE exercise, even though guideline suggests separate distances
+
+**User says:** "Break this drop set into separate exercises for each weight"
+→ ✅ Create separate exercises, even though guideline suggests keeping together
+
+**User says:** "Combine these into a superset"
+→ ✅ Use superset grouping, regardless of stimulus differences
+
+**When unclear, ask:** "Should I create these as separate exercises or group them together?"`
 
 /**
  * Builds the context section with current session state.

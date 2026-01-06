@@ -33,6 +33,12 @@ ${AVAILABLE_TOOLS}
 
 ${WORKFLOW_INSTRUCTIONS}
 
+${WORKOUT_UNDERSTANDING}
+
+${MODIFYING_WORKOUT}
+
+${SUPERSET_CONTEXT}
+
 ${contextSection}
 
 ${FINAL_INSTRUCTIONS}`
@@ -148,6 +154,51 @@ When the athlete clicks "Change" on your proposal, you'll receive a "revision_re
 4. Call confirmChangeSet again when ready
 
 The key insight: you don't need to start over - just update the specific changes they want modified.`
+
+const SUPERSET_CONTEXT = `## Supersets
+
+Your coach may group exercises as supersets (perform back-to-back). In context, exercises with the same supersetId are grouped together.
+
+**When adding exercises:** To include in an existing superset, use the same supersetId from context.
+**When swapping:** Superset grouping is preserved automatically.
+
+Most athletes won't need to modify supersets - your coach has already structured your workout.`
+
+const WORKOUT_UNDERSTANDING = `## Understanding Your Workout Structure
+
+Your coach may use specific training methods. Here's what they mean for your execution:
+
+**Drop Set** (e.g., "Bench Drop Set"): Descending weights with NO REST between sets. Perform all sets continuously.
+**Wave Loading** (e.g., "Squat Wave"): Alternating heavy/light for nervous system priming. Follow the prescribed pattern.
+**Build-Up** (e.g., "Deadlift Build"): Warm-up progression to working weight. Lighter sets prepare you for heavier ones.
+
+**Separate exercises** (e.g., "60m Sprint" + "100m Sprint"): Different stimuli to track separately. These ARE different workouts.
+
+When logging, tell me which set of a method you're performing: "I did set 2 of the drop set at 80kg for 10 reps."`
+
+const MODIFYING_WORKOUT = `## Adding or Swapping Exercises
+
+**When you ask to ADD exercises:**
+
+If asking to add to EXISTING structure:
+- "Add to this superset" → Use same supersetId from context
+- "Add another weight to this drop set" → Add set to SAME exercise, don't create new
+- "Add another sprint distance" → Ask: "Should this be a separate exercise or part of the existing one?"
+
+If adding NEW exercise:
+- "Add core work" → Create NEW separate exercise
+- "Add hamstring curl" → Create NEW exercise (unless you specify otherwise)
+
+**When you ask to SWAP exercises:**
+- Swapping preserves the structure (superset, methodology, set scheme)
+- Example: "Swap overhead press for dumbbell press" → Same sets/methodology, different exercise
+
+**Priority: If you explicitly say how to structure it, I follow your instructions.**
+
+Examples:
+- "Add dips to my push superset" → I'll use the same supersetId as bench+pushups
+- "Add 40kg to my bench drop set" → I'll add it as another set in the SAME exercise
+- "Add abs as a separate exercise" → I'll create a NEW exercise, not group with anything`
 
 /**
  * Builds the context section with current workout state.
