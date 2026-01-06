@@ -9,15 +9,17 @@ Includes hierarchical operations for the periodization model.
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
+import { revalidatePath } from "next/cache"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
-import { 
+import {
   Macrocycle, MacrocycleInsert, MacrocycleUpdate,
   Mesocycle, MesocycleInsert, MesocycleUpdate,
   Microcycle, MicrocycleInsert, MicrocycleUpdate,
   MacrocycleWithDetails, MesocycleWithDetails, MicrocycleWithDetails,
-  CreateMacrocycleForm, CreateMesocycleForm, CreateMicrocycleForm
+  CreateMacrocycleForm, CreateMesocycleForm, CreateMicrocycleForm,
+  SessionPlanInsert
 } from "@/types/training"
 
 // ============================================================================
@@ -1211,6 +1213,365 @@ export async function copyMacrocycleAsTemplateAction(
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+// ============================================================================
+// INDIVIDUAL USER ACTIONS (Training Blocks)
+// ============================================================================
+
+/**
+ * Get all mesocycles (Training Blocks) for an individual user
+ * Individual users don't use macrocycles - they work directly with mesocycles
+ * Filters to only return mesocycles where athlete_group_id is NULL (personal blocks)
+ */
+export async function getUserMesocyclesAction(): Promise<ActionState<MesocycleWithDetails[]>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    const { data: mesocycles, error } = await supabase
+      .from('mesocycles')
+      .select(`
+        *,
+        microcycles (
+          *,
+          session_plans (
+            id,
+            name,
+            description,
+            day,
+            week,
+            session_mode,
+            session_plan_exercises (
+              id,
+              exercise_id
+            )
+          )
+        )
+      `)
+      .eq('user_id', dbUserId)
+      .is('macrocycle_id', null)  // Individual's personal blocks only (no parent macrocycle)
+      .order('start_date', { ascending: false })
+
+    if (error) {
+      console.error('[getUserMesocyclesAction] DB error:', error)
+      return {
+        isSuccess: false,
+        message: "Failed to fetch training blocks"
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Training blocks fetched successfully",
+      data: (mesocycles || []) as unknown as MesocycleWithDetails[]
+    }
+  } catch (error) {
+    console.error('[getUserMesocyclesAction]:', error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to fetch training blocks"
+    }
+  }
+}
+
+/**
+ * Get the currently active mesocycle (Training Block) for an individual user
+ * Returns the block where current date is between start_date and end_date
+ */
+export async function getActiveMesocycleForUserAction(): Promise<ActionState<MesocycleWithDetails | null>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+    const today = new Date().toISOString().split('T')[0]
+
+    const { data: mesocycle, error } = await supabase
+      .from('mesocycles')
+      .select(`
+        *,
+        microcycles (
+          *,
+          session_plans (
+            id,
+            name,
+            description,
+            day,
+            week,
+            session_mode,
+            session_plan_exercises (
+              id,
+              exercise_id,
+              exercise_order,
+              exercises (
+                id,
+                name
+              )
+            )
+          )
+        )
+      `)
+      .eq('user_id', dbUserId)
+      .is('macrocycle_id', null)  // Individual's personal blocks only
+      .lte('start_date', today)
+      .gte('end_date', today)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('[getActiveMesocycleForUserAction] DB error:', error)
+      return {
+        isSuccess: false,
+        message: "Failed to fetch active training block"
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: mesocycle ? "Active training block found" : "No active training block",
+      data: mesocycle as unknown as MesocycleWithDetails | null
+    }
+  } catch (error) {
+    console.error('[getActiveMesocycleForUserAction]:', error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to fetch active training block"
+    }
+  }
+}
+
+/**
+ * Check if individual user already has an active training block
+ * Used to enforce one-active-block limit for individuals
+ */
+export async function hasActiveTrainingBlockAction(): Promise<ActionState<boolean>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+    const today = new Date().toISOString().split('T')[0]
+
+    const { count, error } = await supabase
+      .from('mesocycles')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', dbUserId)
+      .is('athlete_group_id', null)
+      .lte('start_date', today)
+      .gte('end_date', today)
+
+    if (error) {
+      console.error('[hasActiveTrainingBlockAction] DB error:', error)
+      return {
+        isSuccess: false,
+        message: "Failed to check for active training block"
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: (count ?? 0) > 0 ? "Active training block exists" : "No active training block",
+      data: (count ?? 0) > 0
+    }
+  } catch (error) {
+    console.error('[hasActiveTrainingBlockAction]:', error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to check for active training block"
+    }
+  }
+}
+
+/**
+ * Quick create a training block for individual users
+ * Creates mesocycle + microcycles (weeks) + session_plans (workouts)
+ * Simplified flow from QuickStartWizard
+ */
+export interface QuickTrainingBlockInput {
+  name: string
+  startDate: string  // ISO date string
+  endDate: string    // ISO date string
+  focus: 'strength' | 'endurance' | 'general'
+  trainingDays: number[]  // Array of day numbers (0=Sun, 1=Mon, etc.)
+}
+
+export async function createQuickTrainingBlockAction(
+  input: QuickTrainingBlockInput
+): Promise<ActionState<Mesocycle>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // P0 Fix: Enforce one-block limit (FR-007)
+    const activeCheck = await hasActiveTrainingBlockAction()
+    if (activeCheck.isSuccess && activeCheck.data === true) {
+      return {
+        isSuccess: false,
+        message: "You already have an active training block. Complete or delete it before creating a new one."
+      }
+    }
+
+    // 1. Create the mesocycle (Training Block)
+    // Note: mesocycles don't have athlete_group_id - that's on macrocycles
+    // Individual users create standalone mesocycles without parent macrocycle
+    const mesocycleData: MesocycleInsert = {
+      name: input.name,
+      description: `${input.focus.charAt(0).toUpperCase() + input.focus.slice(1)} focused training block`,
+      start_date: input.startDate,
+      end_date: input.endDate,
+      macrocycle_id: null,  // Individual users don't use macrocycles
+      user_id: dbUserId,
+      metadata: { focus: input.focus, createdVia: 'quick-start' }
+    }
+
+    const { data: mesocycle, error: mesoError } = await supabase
+      .from('mesocycles')
+      .insert(mesocycleData)
+      .select()
+      .single()
+
+    if (mesoError) {
+      console.error('[createQuickTrainingBlockAction] Mesocycle error:', mesoError)
+      return {
+        isSuccess: false,
+        message: "Failed to create training block"
+      }
+    }
+
+    // 2. Calculate number of weeks
+    const startDate = new Date(input.startDate)
+    const endDate = new Date(input.endDate)
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000
+    const numWeeks = Math.ceil((endDate.getTime() - startDate.getTime()) / msPerWeek)
+
+    // 3. Create microcycles (weeks)
+    const microcycleInserts: MicrocycleInsert[] = []
+    for (let week = 0; week < numWeeks; week++) {
+      const weekStart = new Date(startDate)
+      weekStart.setDate(weekStart.getDate() + (week * 7))
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekEnd.getDate() + 6)
+
+      microcycleInserts.push({
+        name: `Week ${week + 1}`,
+        description: null,
+        start_date: weekStart.toISOString().split('T')[0],
+        end_date: weekEnd.toISOString().split('T')[0],
+        mesocycle_id: mesocycle.id,
+        user_id: dbUserId
+      })
+    }
+
+    const { data: microcycles, error: microError } = await supabase
+      .from('microcycles')
+      .insert(microcycleInserts)
+      .select()
+
+    if (microError) {
+      console.error('[createQuickTrainingBlockAction] Microcycle error:', microError)
+      // P2 Fix: Rollback with error handling
+      const { error: rollbackError } = await supabase.from('mesocycles').delete().eq('id', mesocycle.id)
+      if (rollbackError) {
+        console.error('[createQuickTrainingBlockAction] Rollback failed:', rollbackError)
+      }
+      return {
+        isSuccess: false,
+        message: "Failed to create training weeks"
+      }
+    }
+
+    // 4. Create session_plans (workouts) for each training day in each week
+    const sessionPlanInserts: SessionPlanInsert[] = []
+    const workoutNames = ['Workout A', 'Workout B', 'Workout C', 'Workout D', 'Workout E', 'Workout F', 'Workout G']
+    // P0 Fix: Don't mutate original array - create sorted copy
+    const sortedTrainingDays = [...input.trainingDays].sort((a, b) => a - b)
+
+    for (const microcycle of microcycles || []) {
+      let workoutIndex = 0
+      for (const dayNum of sortedTrainingDays) {
+        sessionPlanInserts.push({
+          name: workoutNames[workoutIndex % workoutNames.length],
+          description: null,
+          day: dayNum,
+          week: microcycles.indexOf(microcycle) + 1,
+          microcycle_id: microcycle.id,
+          user_id: dbUserId,
+          session_mode: 'individual',
+          is_template: false,
+          deleted: false
+        })
+        workoutIndex++
+      }
+    }
+
+    if (sessionPlanInserts.length > 0) {
+      const { error: sessionError } = await supabase
+        .from('session_plans')
+        .insert(sessionPlanInserts)
+
+      if (sessionError) {
+        console.error('[createQuickTrainingBlockAction] Session plans error:', sessionError)
+        // P2 Fix: Rollback with error handling - delete microcycles and mesocycle
+        const { error: microRollbackError } = await supabase.from('microcycles').delete().eq('mesocycle_id', mesocycle.id)
+        if (microRollbackError) {
+          console.error('[createQuickTrainingBlockAction] Microcycle rollback failed:', microRollbackError)
+        }
+        const { error: mesoRollbackError } = await supabase.from('mesocycles').delete().eq('id', mesocycle.id)
+        if (mesoRollbackError) {
+          console.error('[createQuickTrainingBlockAction] Mesocycle rollback failed:', mesoRollbackError)
+        }
+        return {
+          isSuccess: false,
+          message: "Failed to create workouts"
+        }
+      }
+    }
+
+    // P0 Fix: Revalidate cache after successful creation
+    revalidatePath('/plans')
+
+    return {
+      isSuccess: true,
+      message: "Training block created successfully",
+      data: mesocycle
+    }
+  } catch (error) {
+    console.error('[createQuickTrainingBlockAction]:', error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : "Failed to create training block"
     }
   }
 } 

@@ -100,13 +100,34 @@ export async function getDashboardDataAction(): Promise<
       activeAthletes: 1 // For now, just the current user as athlete
     }
 
-    const recentSessions: RecentSession[] = (sessions || []).map(session => ({
-      id: session.id,
-      title: session.session_plan?.name || 'Untitled Session', 
-      date: session.date_time ? new Date(session.date_time) : new Date(),
-      status: session.session_status as 'pending' | 'in-progress' | 'completed' | 'cancelled',
-      notes: session.notes || undefined
-    }))
+    const recentSessions: RecentSession[] = (sessions || []).map(session => {
+      // Map database status values to UI status values
+      let uiStatus: 'pending' | 'in-progress' | 'completed' | 'cancelled'
+      switch (session.session_status) {
+        case 'assigned':
+          uiStatus = 'pending'
+          break
+        case 'ongoing':
+          uiStatus = 'in-progress'
+          break
+        case 'completed':
+          uiStatus = 'completed'
+          break
+        case 'cancelled':
+          uiStatus = 'cancelled'
+          break
+        default:
+          uiStatus = 'pending'
+      }
+
+      return {
+        id: session.id,
+        title: session.session_plan?.name || 'Untitled Session',
+        date: session.date_time ? new Date(session.date_time) : new Date(),
+        status: uiStatus,
+        notes: session.notes || undefined
+      }
+    })
 
     const dashboardData: DashboardData = {
       stats,

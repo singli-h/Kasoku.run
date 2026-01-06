@@ -1,6 +1,7 @@
 /**
  * Lean Athlete Management Page - MVP Implementation
- * Single-page workspace for coaches to invite and manage athletes with minimal UI
+ * Single-page workspace for coaches to invite and manage athletes
+ * Responsive: Mobile-first with FAB + bottom sheets, desktop with inline forms
  */
 
 "use client"
@@ -9,6 +10,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { UnifiedPageSkeleton } from "@/components/layout"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 // Server Actions
 import { getRosterWithGroupCountsAction } from "@/actions/athletes/athlete-actions"
@@ -18,16 +20,19 @@ import { InviteAthleteForm } from "./invite-athlete-form"
 import { AthleteRosterSection } from "./athlete-roster-section"
 import { GroupDirectorySection } from "./group-directory-section"
 import { BulkOperationsDialog } from "./bulk-operations-dialog"
+import { MobileInviteFAB } from "./mobile-invite-fab"
+import { MobileBulkActionBar } from "./mobile-bulk-action-bar"
 
 // Types
-import type { 
-  AthleteWithDetails, 
-  GroupWithCount, 
+import type {
+  AthleteWithDetails,
+  GroupWithCount,
   BulkOperationState
 } from "../types"
 
 export function LeanAthleteManagementPage() {
   const { toast } = useToast()
+  const isMobile = useMediaQuery("(max-width: 768px)")
 
   // Data state
   const [athletes, setAthletes] = useState<AthleteWithDetails[]>([])
@@ -49,7 +54,7 @@ export function LeanAthleteManagementPage() {
     try {
       setLoading(true)
       const result = await getRosterWithGroupCountsAction()
-      
+
       if (result.isSuccess && result.data) {
         setAthletes(result.data.athletes)
         setGroups(result.data.groups)
@@ -83,28 +88,53 @@ export function LeanAthleteManagementPage() {
     loadData()
   }, [loadData])
 
+  // Handle select all for mobile bulk action bar
+  const handleSelectAll = useCallback(() => {
+    const filteredAthletes = selectedGroupFilter !== null
+      ? athletes.filter(a => a.athlete_group_id === selectedGroupFilter)
+      : athletes
+
+    if (selectedAthletes.length === filteredAthletes.length) {
+      setSelectedAthletes([])
+    } else {
+      setSelectedAthletes(filteredAthletes.map(a => a.id))
+    }
+  }, [athletes, selectedAthletes, selectedGroupFilter])
+
+  // Handle clear selection
+  const handleClearSelection = useCallback(() => {
+    setSelectedAthletes([])
+  }, [])
+
   if (loading) {
     return <UnifiedPageSkeleton title="Athletes" variant="athletes" />
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Coach-Only Badge and Invite Form */}
-      <div className="flex flex-col md:flex-row md:items-start gap-4 p-6 bg-muted/30 rounded-lg">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="secondary" className="text-xs">
-              Coach Only
-            </Badge>
-          </div>
-        </div>
+  // Get filtered count for mobile bulk action bar
+  const filteredAthleteCount = selectedGroupFilter !== null
+    ? athletes.filter(a => a.athlete_group_id === selectedGroupFilter).length
+    : athletes.length
 
-        {/* Quick Invite Form */}
-        <InviteAthleteForm 
-          groups={groups}
-          onSuccess={loadData}
-        />
-      </div>
+  return (
+    <div className={`space-y-6 ${isMobile && selectedAthletes.length > 0 ? 'pb-32' : ''}`}>
+      {/* Desktop: Coach-Only Badge and Invite Form */}
+      {!isMobile && (
+        <div className="flex flex-col md:flex-row md:items-start gap-4 p-6 bg-muted/30 rounded-lg">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="secondary" className="text-xs">
+                Coach Only
+              </Badge>
+            </div>
+          </div>
+
+          {/* Quick Invite Form */}
+          <InviteAthleteForm
+            groups={groups}
+            onSuccess={loadData}
+          />
+        </div>
+      )}
 
       {/* Section 1: Roster & Bulk Actions */}
       <AthleteRosterSection
@@ -115,15 +145,18 @@ export function LeanAthleteManagementPage() {
         onBulkOperation={setBulkOperation}
         selectedGroupFilter={selectedGroupFilter}
         onGroupFilterChange={setSelectedGroupFilter}
-      />
-
-      {/* Section 2: Group Directory */}
-      <GroupDirectorySection
-        groups={groups}
-        selectedGroupFilter={selectedGroupFilter}
-        onGroupFilterChange={setSelectedGroupFilter}
         onDataReload={loadData}
       />
+
+      {/* Desktop: Section 2: Group Directory */}
+      {!isMobile && (
+        <GroupDirectorySection
+          groups={groups}
+          selectedGroupFilter={selectedGroupFilter}
+          onGroupFilterChange={setSelectedGroupFilter}
+          onDataReload={loadData}
+        />
+      )}
 
       {/* Bulk Operations Dialog */}
       <BulkOperationsDialog
@@ -133,6 +166,26 @@ export function LeanAthleteManagementPage() {
         groups={groups}
         onSuccess={handleBulkOperationSuccess}
       />
+
+      {/* Mobile: Floating Action Button for Invite */}
+      {isMobile && (
+        <MobileInviteFAB
+          groups={groups}
+          onSuccess={loadData}
+          isHidden={selectedAthletes.length > 0}
+        />
+      )}
+
+      {/* Mobile: Bulk Action Bar */}
+      {isMobile && (
+        <MobileBulkActionBar
+          selectedCount={selectedAthletes.length}
+          totalCount={filteredAthleteCount}
+          onSelectAll={handleSelectAll}
+          onClearSelection={handleClearSelection}
+          onBulkOperation={setBulkOperation}
+        />
+      )}
     </div>
   )
 }

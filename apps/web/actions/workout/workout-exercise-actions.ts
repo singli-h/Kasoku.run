@@ -14,7 +14,10 @@ import { revalidatePath } from 'next/cache'
 import supabase from '@/lib/supabase-server'
 import { getDbUserId } from '@/lib/user-cache'
 import type { ActionState } from '@/types'
-import type { WorkoutLogExercise, WorkoutLog } from '@/types/database'
+import type { Database } from '@/types/database'
+
+type WorkoutLogExercise = Database['public']['Tables']['workout_log_exercises']['Row']
+type WorkoutLog = Database['public']['Tables']['workout_logs']['Row']
 
 /**
  * Add a new exercise to a workout.

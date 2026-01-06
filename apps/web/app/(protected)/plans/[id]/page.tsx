@@ -1,11 +1,14 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { TrainingPlanWorkspace } from "@/components/features/plans/workspace/TrainingPlanWorkspace"
-import { UnifiedPageSkeleton } from "@/components/layout"
-import { getMacrocycleByIdAction } from "@/actions/plans/plan-actions"
+import { IndividualWorkspace } from "@/components/features/plans/workspace/IndividualWorkspace"
+import { UnifiedPageSkeleton, PageLayout } from "@/components/layout"
+import { getMacrocycleByIdAction, getMesocycleByIdAction } from "@/actions/plans/plan-actions"
 import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
+import { getUserRoleAction } from "@/actions/auth/auth-helpers"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { FeatureErrorBoundary } from "@/components/error-boundary"
+import type { MesocycleWithDetails } from "@/types/training"
 
 // Type definitions for better type safety
 interface SessionData {
@@ -66,7 +69,32 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
   const resolvedParams = await params
   const planId = Number(resolvedParams.id)
 
-  // Fetch plan data from Supabase
+  // Get user role to determine which workspace to show
+  const roleResult = await getUserRoleAction()
+  const role = roleResult.isSuccess ? roleResult.data : null
+  const isIndividual = role === 'individual'
+
+  // For individual users, fetch mesocycle (Training Block) directly
+  if (isIndividual) {
+    const mesocycleResult = await getMesocycleByIdAction(planId)
+
+    if (!mesocycleResult.isSuccess || !mesocycleResult.data) {
+      console.error('Failed to fetch training block:', mesocycleResult.message)
+      notFound()
+    }
+
+    return (
+      <FeatureErrorBoundary featureName="Training Block" customMessage="Something went wrong while loading your training block. Please try again.">
+        <PageLayout title="Training Block" description="">
+          <Suspense fallback={<UnifiedPageSkeleton title="Training Block" variant="grid" />}>
+            <IndividualWorkspace trainingBlock={mesocycleResult.data as MesocycleWithDetails} />
+          </Suspense>
+        </PageLayout>
+      </FeatureErrorBoundary>
+    )
+  }
+
+  // For coaches, fetch macrocycle with full hierarchy
   const [macrocycleResult, racesResult] = await Promise.all([
     getMacrocycleByIdAction(planId),
     getRacesByMacrocycleAction(planId)

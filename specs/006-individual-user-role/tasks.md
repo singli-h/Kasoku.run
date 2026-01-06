@@ -315,4 +315,407 @@ With multiple developers:
 
 ---
 
-*Tasks generated: 2026-01-02*
+---
+
+## Phase 9: "My Training" UI Implementation (Priority: P2)
+
+**Purpose**: Implement the simplified, individual-focused "My Training" UI experience
+
+**Related Docs**:
+- [Lo-Fi Wireframes](../../../apps/web/docs/design/individual-my-training-lofi.md)
+- [Implementation Plan](./individual-my-training-implementation-plan.md)
+
+### 9.1 Foundation & Utilities
+
+- [ ] T054 [P] [UI] Create terminology hook usage pattern in apps/web/lib/terminology.ts (add useTerminology export)
+- [ ] T055 [P] [UI] Create getActiveMesocycleForUserAction in apps/web/actions/plans/plan-actions.ts
+- [ ] T056 [P] [UI] Create getUserMesocyclesAction in apps/web/actions/plans/plan-actions.ts (individual's Training Blocks)
+
+### 9.2 Home Page Adaptation
+
+- [ ] T057 [UI] Create TrainingBlockCard component in apps/web/components/features/plans/home/TrainingBlockCard.tsx
+- [ ] T058 [UI] Create IndividualPlansHome component in apps/web/components/features/plans/home/IndividualPlansHome.tsx
+- [ ] T059 [UI] Create EmptyTrainingState component in apps/web/components/features/plans/home/EmptyTrainingState.tsx
+- [ ] T060 [UI] Add role detection to plans page in apps/web/app/(protected)/plans/page.tsx
+- [ ] T061 [UI] Hide group filter for individuals in apps/web/components/features/plans/home/PlansHomeClient.tsx
+- [ ] T062 [UI] Update page header to use terminology in apps/web/components/features/plans/components/PlanPageHeader.tsx
+
+### 9.3 Quick Start Wizard (2-Step)
+
+- [ ] T063 [UI] Create QuickStartWizard container in apps/web/components/features/plans/components/quickstart/QuickStartWizard.tsx
+- [ ] T064 [UI] Create BlockSetupStep (Step 1) in apps/web/components/features/plans/components/quickstart/BlockSetupStep.tsx
+- [ ] T065 [UI] Create WeekTemplateStep (Step 2) in apps/web/components/features/plans/components/quickstart/WeekTemplateStep.tsx
+- [ ] T066 [UI] Create TemplateQuickSelect component in apps/web/components/features/plans/components/quickstart/TemplateQuickSelect.tsx
+- [ ] T067 [UI] Add quick-setup presets (Upper/Lower, PPL, Full Body) to WeekTemplateStep
+- [ ] T068 [UI] Route individuals to QuickStartWizard in apps/web/app/(protected)/plans/new/page.tsx
+- [ ] T069 [UI] Create block creation action that creates mesocycle + microcycles + sessions in one transaction
+
+### 9.4 Simplified Workspace (2-Column)
+
+- [ ] T070 [UI] Create IndividualWorkspace component in apps/web/components/features/plans/workspace/IndividualWorkspace.tsx
+- [ ] T071 [UI] Create WeeksList panel in apps/web/components/features/plans/workspace/components/WeeksList.tsx
+- [ ] T072 [UI] Create WeekDetailPanel in apps/web/components/features/plans/workspace/components/WeekDetailPanel.tsx
+- [ ] T073 [UI] Create WorkoutCard (simplified session) in apps/web/components/features/plans/workspace/components/WorkoutCard.tsx
+- [ ] T074 [UI] Add role detection to workspace page in apps/web/app/(protected)/plans/[id]/page.tsx
+- [ ] T075 [UI] Implement mobile slide navigation in IndividualWorkspace (reuse pattern from TrainingPlanWorkspace)
+- [ ] T076 [UI] Add "Today" badge to current day's workout
+
+### 9.5 Workout Editor Simplification
+
+- [ ] T077 [UI] Create IndividualWorkoutEditor in apps/web/components/features/plans/session-planner/IndividualWorkoutEditor.tsx
+- [ ] T078 [UI] Route to individual editor in apps/web/app/(protected)/plans/[id]/session/[sessionId]/page.tsx
+- [ ] T079 [UI] Add "Save as Template" shortcut button to workout editor footer
+- [ ] T080 [UI] Simplify exercise add flow (hide superset for individuals by default)
+
+### 9.6 Edge Cases & Polish
+
+- [ ] T081 [UI] Handle "no active block" empty state with template suggestions
+- [ ] T082 [UI] Handle Training Block completion flow (mark complete, suggest next block)
+- [ ] T083 [UI] Add deep link to today's workout from dashboard
+- [ ] T084 [UI] Add week completion celebration animation
+- [ ] T085 [UI] Add block completion summary view
+
+### 9.7 Testing
+
+- [ ] T086 [UI] Unit tests for terminology hook in apps/web/lib/__tests__/terminology.test.ts
+- [ ] T087 [UI] Integration test: create Training Block flow
+- [ ] T088 [UI] E2E test: individual creates block → edits workout → completes workout
+- [ ] T089 [UI] E2E test: verify coach experience unchanged
+
+---
+
+## Analysis: Best Practices & Pitfalls
+
+### Patterns to Follow (from existing Plans implementation)
+
+#### 1. ActionState<T> Pattern (REQUIRED)
+```typescript
+// ✅ CORRECT: All server actions return ActionState<T>
+export async function createTrainingBlockAction(
+  data: CreateBlockData
+): Promise<ActionState<Mesocycle>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) return { isSuccess: false, message: 'Not authenticated' }
+
+    const dbUserId = await getDbUserId(userId)
+    // ... implementation
+
+    revalidatePath('/plans')
+    return { isSuccess: true, message: 'Training Block created', data }
+  } catch (error) {
+    console.error('[createTrainingBlockAction]:', error)
+    return { isSuccess: false, message: 'Failed to create Training Block' }
+  }
+}
+```
+
+#### 2. Authentication Flow (REQUIRED)
+```typescript
+// ✅ CORRECT: Always start with auth check + DB user lookup
+const { userId } = await auth()
+if (!userId) return { isSuccess: false, message: 'Not authenticated' }
+const dbUserId = await getDbUserId(userId)  // Cached via LRU
+```
+
+#### 3. Server Component → Client Component Pattern
+```typescript
+// ✅ CORRECT: Fetch on server, pass to client
+// page.tsx (Server)
+export default async function PlansPage() {
+  const result = await getMesocyclesAction()
+  return <PlansClient initialData={result.data} />
+}
+
+// PlansClient.tsx (Client)
+'use client'
+export function PlansClient({ initialData }: { initialData: Mesocycle[] }) {
+  // Use for interactivity
+}
+```
+
+#### 4. Role-Based Conditional Rendering
+```typescript
+// ✅ CORRECT: Use role context for UI decisions
+const { isIndividual, isCoach } = useUserRole()
+
+if (isIndividual) {
+  return <IndividualPlansHome />
+}
+return <PlansHome />  // Coach view
+```
+
+#### 5. Terminology Hook Usage
+```typescript
+// ✅ CORRECT: Use terminology hook for role-based labels
+const { mesocycle, microcycle, sessionPlan } = useTerminology()
+
+return <h1>Create {mesocycle}</h1>  // "Training Block" or "Mesocycle"
+```
+
+#### 6. Explicit Authorization Filters
+```typescript
+// ✅ CORRECT: Even with RLS, add explicit filters for clarity
+const { data } = await supabase
+  .from('mesocycles')
+  .select('*')
+  .eq('user_id', dbUserId)  // Explicit filter
+  .is('athlete_group_id', null)  // Individual-specific
+```
+
+#### 7. Cache Revalidation After Mutations
+```typescript
+// ✅ CORRECT: Always revalidate affected paths
+await supabase.from('mesocycles').insert(data)
+revalidatePath('/plans')
+revalidatePath(`/plans/${id}`)
+```
+
+---
+
+### Pitfalls to Avoid
+
+#### 1. ❌ Over-Fetching Data
+```typescript
+// ❌ BAD: Fetches all columns
+.select('*')
+
+// ✅ GOOD: Select specific fields
+.select('id, name, start_date, end_date, user_id')
+```
+
+#### 2. ❌ Skipping Auth Checks
+```typescript
+// ❌ BAD: No auth verification
+export async function deleteBlock(id: string) {
+  await supabase.from('mesocycles').delete().eq('id', id)
+}
+
+// ✅ GOOD: Always verify auth + ownership
+export async function deleteBlockAction(id: string): Promise<ActionState<void>> {
+  const { userId } = await auth()
+  if (!userId) return { isSuccess: false, message: 'Not authenticated' }
+
+  const dbUserId = await getDbUserId(userId)
+
+  // Verify ownership
+  const { data: block } = await supabase
+    .from('mesocycles')
+    .select('user_id')
+    .eq('id', id)
+    .single()
+
+  if (block?.user_id !== dbUserId) {
+    return { isSuccess: false, message: 'Not authorized' }
+  }
+
+  // Now safe to delete
+  await supabase.from('mesocycles').delete().eq('id', id)
+  revalidatePath('/plans')
+  return { isSuccess: true, message: 'Deleted' }
+}
+```
+
+#### 3. ❌ Hardcoded Mock Data
+```typescript
+// ❌ BAD: Fallback to mock data hides bugs
+const volume = data?.volume || [5, 6, 7, 5]
+
+// ✅ GOOD: Proper empty state handling
+if (!data?.volume?.length) {
+  return <EmptyState message="No volume data yet" />
+}
+```
+
+#### 4. ❌ Missing Error Context in Logs
+```typescript
+// ❌ BAD: No context for debugging
+catch (error) {
+  return { isSuccess: false, message: 'Failed' }
+}
+
+// ✅ GOOD: Log with action name and context
+catch (error) {
+  console.error('[createTrainingBlockAction]:', error)
+  return {
+    isSuccess: false,
+    message: error instanceof Error ? error.message : 'Failed to create Training Block'
+  }
+}
+```
+
+#### 5. ❌ Type Casting to `any`
+```typescript
+// ❌ BAD: Hides type errors
+const blocks = data as any
+
+// ✅ GOOD: Proper type assertion with unknown intermediate
+const blocks = (data || []) as unknown as MesocycleWithDetails[]
+```
+
+#### 6. ❌ Client-Side Fetching for Initial Load
+```typescript
+// ❌ BAD: Unnecessary client fetch for initial data
+'use client'
+useEffect(() => {
+  async function load() {
+    const data = await getBlocksAction()
+    setBlocks(data)
+  }
+  load()
+}, [])
+
+// ✅ GOOD: Server-side fetch, pass as prop
+// page.tsx (Server)
+const blocks = await getBlocksAction()
+return <BlocksList initialBlocks={blocks.data} />
+```
+
+#### 7. ❌ Forgetting Soft-Delete Filter
+```typescript
+// ❌ BAD: May return deleted records
+const { data } = await supabase.from('session_plans').select()
+
+// ✅ GOOD: Filter out deleted records
+const { data } = await supabase
+  .from('session_plans')
+  .select()
+  .eq('deleted', false)
+```
+
+#### 8. ❌ Mixing Terminology
+```typescript
+// ❌ BAD: Hardcoded coach terminology for individuals
+<h1>Create Mesocycle</h1>
+
+// ✅ GOOD: Use terminology hook
+const terms = useTerminology()
+<h1>Create {terms.mesocycle}</h1>
+```
+
+---
+
+### Performance Optimizations
+
+#### 1. Parallel Data Fetching
+```typescript
+// ✅ GOOD: Fetch independent data in parallel
+const [blocksResult, templatesResult] = await Promise.all([
+  getUserMesocyclesAction(),
+  getTemplatesAction()
+])
+```
+
+#### 2. Selective Field Loading
+```typescript
+// ✅ GOOD: Only load needed relationship data
+const { data } = await supabase
+  .from('mesocycles')
+  .select(`
+    id, name, start_date, end_date,
+    microcycles(id, name, week_number)
+  `)
+```
+
+#### 3. Lazy Loading Heavy Components
+```typescript
+// ✅ GOOD: Lazy load workspace components
+const IndividualWorkspace = dynamic(
+  () => import('./IndividualWorkspace'),
+  { loading: () => <WorkspaceSkeleton /> }
+)
+```
+
+#### 4. Optimistic Updates for Better UX
+```typescript
+// ✅ GOOD: Optimistic update for workout completion
+const handleComplete = async () => {
+  setStatus('completed')  // Optimistic
+  const result = await completeWorkoutAction(id)
+  if (!result.isSuccess) {
+    setStatus('pending')  // Rollback
+    toast.error(result.message)
+  }
+}
+```
+
+---
+
+### Component Reuse Strategy
+
+| Existing Component | Reuse in Individual UI | Notes |
+|--------------------|----------------------|-------|
+| Exercise Library Modal | ✅ As-is | Same exercise database |
+| Set Configuration | ✅ As-is | Same set editor |
+| VolumeIntensityChart | ✅ As-is (collapsible) | Add collapse toggle |
+| EditSessionDialog | ✅ With terminology | Rename labels only |
+| CopySessionDialog | ✅ Simplified | Hide advanced options |
+| ExercisePlanningPanel | ✅ As-is | Same exercise flow |
+| Template selector | ✅ As-is | Same templates |
+
+---
+
+### Database Considerations
+
+#### No Schema Changes Required
+
+The existing schema supports individuals:
+- `mesocycles.athlete_group_id` is **nullable** ✅
+- `session_plans.user_id` is **nullable** ✅
+- `exercise_preset_groups.user_id` is **nullable** ✅
+
+#### Query Pattern for Individuals
+```sql
+-- Individual's Training Blocks (mesocycles without group)
+SELECT * FROM mesocycles
+WHERE user_id = $1
+  AND athlete_group_id IS NULL
+ORDER BY start_date DESC;
+```
+
+---
+
+## Updated Summary
+
+| Phase | Tasks | Status | Description |
+|-------|-------|--------|-------------|
+| Phase 1: Setup | 4 | ✅ Complete | Verify branch, read existing files |
+| Phase 2: Foundational | 5 | ✅ Complete | Type extensions, terminology utility |
+| Phase 3: US1 | 9 | ✅ Complete | Role selection onboarding |
+| Phase 4: US2 | 8 | ✅ Complete | Navigation visibility |
+| Phase 5: US3 | 8 | 🔲 Pending | Terminology mapping |
+| Phase 6: US4 | 5 | 🔲 Pending | Workout logging |
+| Phase 7: US5 | 6 | 🔲 Pending | Upgrade path |
+| Phase 8: Polish | 8 | 🔲 Partial | QA and verification |
+| **Phase 9: UI** | **36** | 🔲 **NEW** | **My Training UI implementation** |
+| **Total** | **89** | | |
+
+---
+
+## Implementation Priority
+
+### MVP (Individual can create and use Training Blocks)
+
+1. **Phase 5** (T027-T034): Terminology mapping - REQUIRED first
+2. **Phase 9.1** (T054-T056): Foundation utilities
+3. **Phase 9.2** (T057-T062): Home page adaptation
+4. **Phase 9.3** (T063-T069): Quick Start wizard
+5. **Phase 9.4** (T070-T076): Simplified workspace
+
+### Post-MVP
+
+6. **Phase 9.5** (T077-T080): Workout editor simplification
+7. **Phase 9.6** (T081-T085): Edge cases & polish
+8. **Phase 6** (T035-T039): Workout logging verification
+9. **Phase 9.7** (T086-T089): Testing
+
+### Future
+
+10. **Phase 7** (T040-T045): Upgrade path
+11. **Phase 8** remaining: Final QA
+
+---
+
+*Tasks updated: 2026-01-04*
+*Added Phase 9 with 36 tasks for My Training UI implementation*
+*Added Analysis section with patterns, pitfalls, and optimizations*

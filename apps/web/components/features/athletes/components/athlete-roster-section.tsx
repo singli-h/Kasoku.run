@@ -1,6 +1,6 @@
 /**
  * Athlete Roster Section Component
- * Displays the athlete roster table with search, filtering, and bulk operations
+ * Responsive layout: Cards on mobile, Table on desktop
  */
 
 "use client"
@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { 
+import {
   Table,
   TableBody,
   TableCell,
@@ -29,13 +29,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import { useMediaQuery } from "@/hooks/use-media-query"
+import { cn } from "@/lib/utils"
+
+import { AthleteCard } from "./athlete-card"
+import { GroupFilterChips } from "./group-filter-chips"
 import type { AthleteWithDetails, GroupWithCount, BulkOperationState } from "../types"
 
 interface AthleteRosterSectionProps {
@@ -46,6 +51,7 @@ interface AthleteRosterSectionProps {
   onBulkOperation: (operation: BulkOperationState) => void
   selectedGroupFilter: number | null
   onGroupFilterChange: (groupId: number | null) => void
+  onDataReload?: () => void
   className?: string
 }
 
@@ -57,16 +63,18 @@ export function AthleteRosterSection({
   onBulkOperation,
   selectedGroupFilter,
   onGroupFilterChange,
+  onDataReload,
   className
 }: AthleteRosterSectionProps) {
   const router = useRouter()
+  const isMobile = useMediaQuery("(max-width: 768px)")
   const [searchTerm, setSearchTerm] = useState("")
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
 
   // Filter athletes
   const filteredAthletes = useMemo(() => {
     let filtered = [...athletes]
 
-    // Search filter
     if (searchTerm) {
       const search = searchTerm.toLowerCase()
       filtered = filtered.filter(athlete => {
@@ -76,9 +84,8 @@ export function AthleteRosterSection({
       })
     }
 
-    // Group filter
     if (selectedGroupFilter !== null) {
-      filtered = filtered.filter(athlete => 
+      filtered = filtered.filter(athlete =>
         athlete.athlete_group_id === selectedGroupFilter
       )
     }
@@ -86,7 +93,7 @@ export function AthleteRosterSection({
     return filtered
   }, [athletes, searchTerm, selectedGroupFilter])
 
-  // Handle select all athletes
+  // Handle select all
   const handleSelectAll = useCallback(() => {
     if (selectedAthletes.length === filteredAthletes.length) {
       onSelectAthletes([])
@@ -95,7 +102,7 @@ export function AthleteRosterSection({
     }
   }, [selectedAthletes.length, filteredAthletes, onSelectAthletes])
 
-  // Handle individual athlete selection
+  // Handle individual selection
   const handleSelectAthlete = useCallback((athleteId: number) => {
     onSelectAthletes(
       selectedAthletes.includes(athleteId)
@@ -104,7 +111,18 @@ export function AthleteRosterSection({
     )
   }, [selectedAthletes, onSelectAthletes])
 
-  // Calculate age from birthdate
+  // Enter selection mode (long press on mobile)
+  const handleEnterSelectionMode = useCallback(() => {
+    setIsSelectionMode(true)
+  }, [])
+
+  // Exit selection mode
+  const handleExitSelectionMode = useCallback(() => {
+    setIsSelectionMode(false)
+    onSelectAthletes([])
+  }, [onSelectAthletes])
+
+  // Calculate age
   const calculateAge = useCallback((birthdate: string | null | undefined): number | null => {
     if (!birthdate) return null
     const birth = new Date(birthdate)
@@ -117,12 +135,10 @@ export function AthleteRosterSection({
     return age
   }, [])
 
-  // Parse events from JSON - handles both string arrays and object arrays with {id, name}
+  // Parse events
   const parseEvents = useCallback((events: unknown): string[] => {
     if (!events) return []
-
     let parsedEvents: unknown[]
-
     if (typeof events === 'string') {
       try {
         parsedEvents = JSON.parse(events)
@@ -134,12 +150,8 @@ export function AthleteRosterSection({
     } else {
       return []
     }
-
-    // Convert array items to strings, handling objects with {id, name} structure
     return parsedEvents.map((event) => {
-      if (typeof event === 'string') {
-        return event
-      }
+      if (typeof event === 'string') return event
       if (event && typeof event === 'object' && 'name' in event) {
         return String((event as { name: unknown }).name)
       }
@@ -149,91 +161,156 @@ export function AthleteRosterSection({
 
   return (
     <Card className={className}>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <CardHeader className="pb-4">
+        {/* Title and count */}
+        <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Athletes</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-lg">Athletes</CardTitle>
+            <CardDescription className="flex items-center gap-2 mt-1 flex-wrap">
               {filteredAthletes.length} athlete{filteredAthletes.length !== 1 ? 's' : ''}
-              {selectedGroupFilter && (
-                <>
-                  {' '}in{' '}
-                  <Badge variant="outline" className="ml-1">
-                    {groups.find(g => g.id === selectedGroupFilter)?.group_name}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-4 w-4 p-0 ml-1"
-                      onClick={() => onGroupFilterChange(null)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </Badge>
-                </>
+              {selectedGroupFilter !== null && (
+                <Badge variant="outline" className="gap-1">
+                  {groups.find(g => g.id === selectedGroupFilter)?.group_name}
+                  <button
+                    onClick={() => onGroupFilterChange(null)}
+                    className="ml-0.5 hover:bg-muted rounded-full"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
               )}
             </CardDescription>
           </div>
 
-          {/* Search and Bulk Actions */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search athletes..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 w-full sm:w-64"
-              />
+          {/* Desktop bulk actions */}
+          {!isMobile && selectedAthletes.length > 0 && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onBulkOperation({ isOpen: true, type: 'assign' })}
+              >
+                Add to Group ({selectedAthletes.length})
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onBulkOperation({ isOpen: true, type: 'move' })}
+              >
+                Move
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onBulkOperation({ isOpen: true, type: 'remove' })}
+              >
+                Remove
+              </Button>
             </div>
+          )}
+        </div>
 
-            {selectedAthletes.length > 0 && (
-              <div className="flex gap-1">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onBulkOperation({ isOpen: true, type: 'assign' })}
-                >
-                  Add to Group ({selectedAthletes.length})
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onBulkOperation({ isOpen: true, type: 'move' })}
-                >
-                  Move
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onBulkOperation({ isOpen: true, type: 'remove' })}
-                >
-                  Remove
-                </Button>
-              </div>
+        {/* Group filter chips (mobile) */}
+        {isMobile && (
+          <GroupFilterChips
+            groups={groups}
+            selectedGroupId={selectedGroupFilter}
+            onGroupChange={onGroupFilterChange}
+            onGroupCreated={onDataReload || (() => {})}
+            className="mt-4 -mx-2"
+          />
+        )}
+
+        {/* Search bar */}
+        <div className="relative mt-4">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search athletes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={cn(
+              "pl-9",
+              isMobile ? "h-11 text-base" : "h-9"
             )}
-          </div>
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2"
+            >
+              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            </button>
+          )}
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className={isMobile ? "px-3" : ""}>
         {filteredAthletes.length === 0 ? (
           <div className="text-center py-12">
             <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
             <p className="text-lg font-medium mb-2">No athletes found</p>
             <p className="text-muted-foreground text-sm">
-              {searchTerm || selectedGroupFilter ? 
-                "Try adjusting your search or filter" : 
+              {searchTerm || selectedGroupFilter ?
+                "Try adjusting your search or filter" :
                 "Invite athletes to get started"
               }
             </p>
           </div>
+        ) : isMobile ? (
+          /* Mobile: Card-based layout */
+          <div className="space-y-2">
+            {/* Selection mode toggle */}
+            {isSelectionMode && (
+              <div className="flex items-center justify-between py-2 px-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleExitSelectionMode}
+                  className="text-xs"
+                >
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Cancel
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSelectAll}
+                  className="text-xs"
+                >
+                  {selectedAthletes.length === filteredAthletes.length ? 'Deselect All' : 'Select All'}
+                </Button>
+              </div>
+            )}
+
+            {/* Athlete cards */}
+            {filteredAthletes.map((athlete) => (
+              <AthleteCard
+                key={athlete.id}
+                athlete={athlete}
+                isSelected={selectedAthletes.includes(athlete.id)}
+                isSelectionMode={isSelectionMode}
+                onSelect={handleSelectAthlete}
+                onLongPress={handleEnterSelectionMode}
+                onBulkOperation={onBulkOperation}
+                onGroupFilter={onGroupFilterChange}
+              />
+            ))}
+
+            {/* Tip for long-press */}
+            {!isSelectionMode && filteredAthletes.length > 0 && (
+              <p className="text-xs text-center text-muted-foreground pt-4 pb-2">
+                Long-press an athlete to select multiple
+              </p>
+            )}
+          </div>
         ) : (
+          /* Desktop: Table layout */
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
                   <Checkbox
-                    checked={selectedAthletes.length === filteredAthletes.length}
+                    checked={selectedAthletes.length === filteredAthletes.length && filteredAthletes.length > 0}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
@@ -280,7 +357,7 @@ export function AthleteRosterSection({
                     </TableCell>
                     <TableCell>
                       {athlete.athlete_group?.group_name ? (
-                        <Badge 
+                        <Badge
                           variant="outline"
                           className="cursor-pointer"
                           onClick={() => onGroupFilterChange(athlete.athlete_group?.id || null)}

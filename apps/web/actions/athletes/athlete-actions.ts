@@ -781,13 +781,14 @@ export async function assignAthleteToGroupAction(
 
 /**
  * Remove an athlete from a group
+ * Uses SECURITY DEFINER function to bypass RLS while maintaining authorization checks
  */
 export async function removeAthleteFromGroupAction(
   athleteId: number
 ): Promise<ActionState<Athlete>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -797,41 +798,67 @@ export async function removeAthleteFromGroupAction(
 
     // Using singleton supabase client
 
-    // Get current athlete group before updating
+    // Get current athlete info before updating (for history logging)
     const { data: currentAthlete, error: currentError } = await supabase
       .from('athletes')
-      .select('athlete_group_id')
+      .select('id, athlete_group_id')
       .eq('id', athleteId)
       .single()
 
     if (currentError) {
-      console.error('Error fetching current athlete group:', currentError)
+      console.error('Error fetching current athlete:', currentError)
       return {
         isSuccess: false,
         message: `Failed to fetch athlete information: ${currentError.message}`
       }
     }
 
-    // Remove the athlete's group assignment
-    const { data: athlete, error } = await supabase
-      .from('athletes')
-      .update({ athlete_group_id: null })
-      .eq('id', athleteId)
-      .select()
-      .single()
+    const previousGroupId = currentAthlete.athlete_group_id
 
-    if (error) {
-      console.error('Error removing athlete from group:', error)
+    // Use SECURITY DEFINER function to bypass RLS while maintaining authorization
+    const { data: removeResult, error: removeError } = await supabase
+      .rpc('remove_athlete_from_group', { athlete_id_param: athleteId })
+
+    // Type guard for the RPC result
+    const result = removeResult as { success: boolean; error?: string; athlete_id?: number; previous_group_id?: number } | null
+
+    if (removeError) {
+      console.error('Error removing athlete from group:', removeError)
       return {
         isSuccess: false,
-        message: `Failed to remove athlete from group: ${error.message}`
+        message: `Failed to remove athlete from group: ${removeError.message}`
+      }
+    }
+
+    if (!result?.success) {
+      console.error('Error removing athlete from group:', result?.error)
+      return {
+        isSuccess: false,
+        message: result?.error || 'Failed to remove athlete from group'
+      }
+    }
+
+    // Fetch the updated athlete data to return
+    const { data: updatedAthlete, error: fetchError } = await supabase
+      .from('athletes')
+      .select('*')
+      .eq('id', athleteId)
+      .single()
+
+    if (fetchError) {
+      // The removal succeeded, but we couldn't fetch the updated data
+      console.warn('Removal succeeded but could not fetch updated athlete:', fetchError)
+      return {
+        isSuccess: true,
+        message: "Athlete removed from group successfully",
+        data: { ...currentAthlete, athlete_group_id: null } as Athlete
       }
     }
 
     // Log the group change in history
     const historyResult = await createGroupHistoryEntryAction(
       athleteId,
-      currentAthlete.athlete_group_id,
+      previousGroupId,
       null,
       `Removed from group by coach`
     )
@@ -844,7 +871,7 @@ export async function removeAthleteFromGroupAction(
     return {
       isSuccess: true,
       message: "Athlete removed from group successfully",
-      data: athlete
+      data: updatedAthlete
     }
   } catch (error) {
     console.error('Error in removeAthleteFromGroupAction:', error)
@@ -1510,10 +1537,13 @@ export async function bulkRemoveAthletesAction(
         const { data: removeResult, error: removeError } = await supabase
           .rpc('remove_athlete_from_group', { athlete_id_param: athlete.id })
 
+        // Type guard for the RPC result
+        const result = removeResult as { success: boolean; error?: string; athlete_id?: number; previous_group_id?: number } | null
+
         if (removeError) {
           errors.push(`Failed to remove athlete ${athlete.id} from group: ${removeError.message}`)
-        } else if (!removeResult?.success) {
-          errors.push(`Failed to remove athlete ${athlete.id}: ${removeResult?.error || 'Unknown error'}`)
+        } else if (!result?.success) {
+          errors.push(`Failed to remove athlete ${athlete.id}: ${result?.error || 'Unknown error'}`)
         } else {
           removed.push(athlete.id)
           

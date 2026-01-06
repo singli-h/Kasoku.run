@@ -1,0 +1,448 @@
+/**
+ * QuickStartWizard - Simplified Training Block Creation for Individuals
+ * 2-step wizard: Block Settings → Week Setup
+ */
+
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { addWeeks } from "date-fns"
+import { ArrowLeft, ArrowRight, Calendar, Clock, Dumbbell, Loader2, Target, Zap } from "lucide-react"
+
+// UI Components
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Progress } from "@/components/ui/progress"
+import { useToast } from "@/hooks/use-toast"
+
+// Server Actions
+import { createQuickTrainingBlockAction } from "@/actions/plans/plan-actions"
+
+// Duration presets in weeks
+const DURATION_PRESETS = [
+  { value: 4, label: "4 weeks", description: "Quick focus" },
+  { value: 6, label: "6 weeks", description: "Standard block" },
+  { value: 8, label: "8 weeks", description: "Extended training" },
+] as const
+
+// Training focus options
+const FOCUS_OPTIONS = [
+  { value: "strength", label: "Strength", icon: Dumbbell, description: "Build raw power" },
+  { value: "endurance", label: "Endurance", icon: Zap, description: "Improve stamina" },
+  { value: "general", label: "General Fitness", icon: Target, description: "All-around training" },
+] as const
+
+// Days of the week
+const DAYS_OF_WEEK = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 0, label: "Sun" },
+] as const
+
+// Step 1 Schema
+const blockSettingsSchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  durationWeeks: z.number().min(1).max(12),
+  focus: z.enum(["strength", "endurance", "general"]),
+})
+
+// Step 2 Schema
+const weekSetupSchema = z.object({
+  trainingDays: z.array(z.number()).min(1, "Select at least one training day"),
+})
+
+type BlockSettingsData = z.infer<typeof blockSettingsSchema>
+type WeekSetupData = z.infer<typeof weekSetupSchema>
+
+type WizardStep = "settings" | "week"
+
+interface QuickStartWizardProps {
+  onComplete?: () => void
+}
+
+export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [currentStep, setCurrentStep] = useState<WizardStep>("settings")
+  const [blockSettings, setBlockSettings] = useState<BlockSettingsData | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+
+  const steps: WizardStep[] = ["settings", "week"]
+  const currentStepIndex = steps.indexOf(currentStep)
+  const progress = ((currentStepIndex + 1) / steps.length) * 100
+
+  const handleSettingsComplete = (data: BlockSettingsData) => {
+    setBlockSettings(data)
+    setCurrentStep("week")
+  }
+
+  const handleWeekComplete = async (data: WeekSetupData) => {
+    if (!blockSettings) return
+
+    setIsCreating(true)
+    try {
+      const startDate = new Date()
+      startDate.setHours(0, 0, 0, 0)
+      // P2 Fix: Start from today if Monday, otherwise next Monday for cleaner week alignment
+      const dayOfWeek = startDate.getDay()
+      // Sunday(0) -> 1 day to Monday, Monday(1) -> 0 (today), Tue-Sat(2-6) -> days until next Monday
+      const daysUntilMonday = dayOfWeek === 1 ? 0 : dayOfWeek === 0 ? 1 : 8 - dayOfWeek
+      startDate.setDate(startDate.getDate() + daysUntilMonday)
+
+      const endDate = addWeeks(startDate, blockSettings.durationWeeks)
+
+      // P1 Fix: Use date-only strings (YYYY-MM-DD) to match database format
+      const formatDateOnly = (date: Date) => date.toISOString().split('T')[0]
+
+      const result = await createQuickTrainingBlockAction({
+        name: blockSettings.name,
+        startDate: formatDateOnly(startDate),
+        endDate: formatDateOnly(endDate),
+        focus: blockSettings.focus,
+        trainingDays: data.trainingDays,
+      })
+
+      if (result.isSuccess) {
+        toast({
+          title: "Training Block Created!",
+          description: `"${blockSettings.name}" is ready. Let's start training!`,
+        })
+        if (onComplete) {
+          onComplete()
+        } else {
+          router.push(`/plans/${result.data?.id}`)
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: result.message || "Failed to create training block",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("[QuickStartWizard] Error creating block:", error)
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleBack = () => {
+    if (currentStep === "week") {
+      setCurrentStep("settings")
+    }
+  }
+
+  const handleCancel = () => {
+    router.push("/plans")
+  }
+
+  return (
+    <div className="w-full max-w-2xl mx-auto">
+      {/* Progress Bar */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Step {currentStepIndex + 1} of {steps.length}
+          </h2>
+          <span className="text-sm font-medium">{Math.round(progress)}%</span>
+        </div>
+        <Progress value={progress} className="h-2" />
+      </div>
+
+      {/* Navigation */}
+      {currentStep !== "settings" && (
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </div>
+      )}
+
+      {/* Step Content */}
+      {currentStep === "settings" && (
+        <BlockSettingsStep
+          onComplete={handleSettingsComplete}
+          onCancel={handleCancel}
+          initialData={blockSettings || undefined}
+        />
+      )}
+
+      {currentStep === "week" && (
+        <WeekSetupStep
+          onComplete={handleWeekComplete}
+          onBack={handleBack}
+          isCreating={isCreating}
+          blockName={blockSettings?.name || "Training Block"}
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Step 1: Block Settings
+ */
+function BlockSettingsStep({
+  onComplete,
+  onCancel,
+  initialData,
+}: {
+  onComplete: (data: BlockSettingsData) => void
+  onCancel: () => void
+  initialData?: BlockSettingsData
+}) {
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<BlockSettingsData>({
+    resolver: zodResolver(blockSettingsSchema),
+    defaultValues: initialData || {
+      durationWeeks: 6,
+      focus: "general",
+    },
+  })
+
+  const durationWeeks = watch("durationWeeks")
+  const focus = watch("focus")
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-primary" />
+          Create Training Block
+        </CardTitle>
+        <CardDescription>
+          Set up your new training block in just a few steps
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onComplete)} className="space-y-6">
+          {/* Block Name */}
+          <div className="space-y-2">
+            <Label htmlFor="name">
+              Block Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="name"
+              placeholder="e.g., Spring Strength Block"
+              {...register("name")}
+            />
+            {errors.name && (
+              <p className="text-sm text-destructive">{errors.name.message}</p>
+            )}
+          </div>
+
+          {/* Duration Presets */}
+          <div className="space-y-3">
+            <Label>Duration</Label>
+            <RadioGroup
+              value={durationWeeks?.toString()}
+              onValueChange={(value) => setValue("durationWeeks", parseInt(value))}
+              className="grid grid-cols-3 gap-3"
+            >
+              {DURATION_PRESETS.map((preset) => (
+                <div key={preset.value}>
+                  <RadioGroupItem
+                    value={preset.value.toString()}
+                    id={`duration-${preset.value}`}
+                    className="peer sr-only"
+                  />
+                  <Label
+                    htmlFor={`duration-${preset.value}`}
+                    className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                  >
+                    <span className="text-lg font-semibold">{preset.label}</span>
+                    <span className="text-xs text-muted-foreground">{preset.description}</span>
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+
+          {/* Training Focus */}
+          <div className="space-y-3">
+            <Label>Training Focus</Label>
+            <RadioGroup
+              value={focus}
+              onValueChange={(value) => setValue("focus", value as BlockSettingsData["focus"])}
+              className="grid grid-cols-3 gap-3"
+            >
+              {FOCUS_OPTIONS.map((option) => {
+                const Icon = option.icon
+                return (
+                  <div key={option.value}>
+                    <RadioGroupItem
+                      value={option.value}
+                      id={`focus-${option.value}`}
+                      className="peer sr-only"
+                    />
+                    <Label
+                      htmlFor={`focus-${option.value}`}
+                      className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    >
+                      <Icon className="h-6 w-6 mb-2" />
+                      <span className="font-semibold">{option.label}</span>
+                      <span className="text-xs text-muted-foreground text-center">{option.description}</span>
+                    </Label>
+                  </div>
+                )
+              })}
+            </RadioGroup>
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex justify-between pt-4">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="submit" className="gap-2">
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
+ * Step 2: Week Setup
+ */
+function WeekSetupStep({
+  onComplete,
+  onBack,
+  isCreating,
+  blockName,
+}: {
+  onComplete: (data: WeekSetupData) => void
+  onBack: () => void
+  isCreating: boolean
+  blockName: string
+}) {
+  const {
+    setValue,
+    watch,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<WeekSetupData>({
+    resolver: zodResolver(weekSetupSchema),
+    defaultValues: {
+      trainingDays: [1, 3, 5], // Mon, Wed, Fri default
+    },
+  })
+
+  const trainingDays = watch("trainingDays") || []
+
+  const toggleDay = (day: number) => {
+    const newDays = trainingDays.includes(day)
+      ? trainingDays.filter((d) => d !== day)
+      : [...trainingDays, day]
+    setValue("trainingDays", newDays, { shouldValidate: true })
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Clock className="h-5 w-5 text-primary" />
+          Set Your Schedule
+        </CardTitle>
+        <CardDescription>
+          Choose which days you&apos;ll train each week
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onComplete)} className="space-y-6">
+          {/* Training Days Selection */}
+          <div className="space-y-3">
+            <Label>Training Days</Label>
+            <div className="grid grid-cols-7 gap-2">
+              {DAYS_OF_WEEK.map((day) => {
+                const isSelected = trainingDays.includes(day.value)
+                return (
+                  <button
+                    key={day.value}
+                    type="button"
+                    onClick={() => toggleDay(day.value)}
+                    className={`
+                      flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-colors
+                      ${isSelected
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-muted hover:border-muted-foreground/50 hover:bg-muted/50"
+                      }
+                    `}
+                  >
+                    <span className="font-semibold">{day.label}</span>
+                    {isSelected && <Dumbbell className="h-4 w-4 mt-1" />}
+                  </button>
+                )
+              })}
+            </div>
+            {errors.trainingDays && (
+              <p className="text-sm text-destructive">{errors.trainingDays.message}</p>
+            )}
+            <p className="text-sm text-muted-foreground">
+              {trainingDays.length} workout{trainingDays.length !== 1 ? "s" : ""} per week selected
+            </p>
+          </div>
+
+          {/* Summary */}
+          <Card className="bg-muted/50">
+            <CardContent className="pt-4">
+              <h4 className="font-medium mb-2">Your Training Block Summary</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Block: {blockName}</li>
+                <li>• {trainingDays.length} workout{trainingDays.length !== 1 ? "s" : ""} per week</li>
+                <li>• Starting next Monday</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Form Actions */}
+          <div className="flex justify-between pt-4">
+            <Button type="button" variant="outline" onClick={onBack} disabled={isCreating}>
+              Back
+            </Button>
+            <Button type="submit" disabled={isCreating}>
+              {isCreating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Training Block"
+              )}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}

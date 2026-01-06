@@ -450,17 +450,18 @@ export function SessionPlannerV2({
       {/* Header with back, undo/redo, save */}
       <div className="sticky top-0 z-20 bg-background border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={handleBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button variant="ghost" size="sm" onClick={handleBack} className="px-2 sm:px-3">
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Back</span>
             </Button>
-            <div className="h-4 w-px bg-border" />
+            <div className="h-4 w-px bg-border hidden sm:block" />
             <Button
               variant="ghost"
               size="sm"
               onClick={undo}
               disabled={!canUndo}
+              className="px-2"
             >
               <Undo2 className="h-4 w-4" />
             </Button>
@@ -469,6 +470,7 @@ export function SessionPlannerV2({
               size="sm"
               onClick={redo}
               disabled={!canRedo}
+              className="px-2"
             >
               <Redo2 className="h-4 w-4" />
             </Button>
@@ -476,15 +478,21 @@ export function SessionPlannerV2({
 
           <div className="flex items-center gap-2">
             {hasUnsavedChanges && (
-              <span className="text-xs text-muted-foreground">Unsaved changes</span>
+              <>
+                {/* Mobile: colored dot indicator */}
+                <span className="sm:hidden w-2 h-2 rounded-full bg-amber-500" />
+                {/* Desktop: text label */}
+                <span className="hidden sm:inline text-xs text-muted-foreground">Unsaved changes</span>
+              </>
             )}
             <Button
               onClick={handleSave}
               disabled={isSaving || !hasUnsavedChanges}
               size="sm"
+              className="px-2 sm:px-3"
             >
-              <Save className="h-4 w-4 mr-2" />
-              {isSaving ? "Saving..." : "Save"}
+              <Save className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save"}</span>
             </Button>
           </div>
         </div>

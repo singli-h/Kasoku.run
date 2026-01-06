@@ -373,56 +373,38 @@ function WorkoutSessionContentV2({
         </Button>
       </div>
 
-      {/* Start Button for Assigned Sessions */}
-      {sessionStatus === 'assigned' && (
-        <div className="flex justify-center py-4">
-          <Button
-            onClick={handleStartSession}
-            disabled={isLoading}
-            size="lg"
-            className="px-8"
-          >
-            Start Workout
-          </Button>
-        </div>
-      )}
-
-      {/* Main Workout View */}
-      {sessionStatus !== 'assigned' && (
-        <WorkoutView
-          title={(presetGroup as any).name || "Workout Session"}
-          description={(presetGroup as any).description}
-          sessionDate={existingSession?.date_time || (presetGroup as any)?.date}
-          exercises={trainingExercises}
-          isAthlete={true}
-          elapsedSeconds={elapsedSeconds}
-          isTimerRunning={isTimerRunning}
-          sessionStatus={sessionStatus === 'cancelled' ? 'completed' : sessionStatus}
-          saveStatus={saveStatus}
-          onToggleTimer={() => setIsTimerRunning(prev => !prev)}
-          onToggleExpand={handleToggleExpand}
-          onCompleteSet={handleCompleteSet}
-          onCompleteAllSets={handleCompleteAllSets}
-          onUpdateSet={handleUpdateSet}
-          onFinishSession={handleFinishSession}
-          onSaveSession={handleSaveSession}
-          aiChangesByExercise={aiChangesByExercise}
-        />
-      )}
+      {/* Main Workout View - session is started before navigation, so always show workout */}
+      <WorkoutView
+        title={(presetGroup as any).name || "Workout Session"}
+        description={(presetGroup as any).description}
+        sessionDate={existingSession?.date_time || (presetGroup as any)?.date}
+        exercises={trainingExercises}
+        isAthlete={true}
+        elapsedSeconds={elapsedSeconds}
+        isTimerRunning={isTimerRunning}
+        sessionStatus={sessionStatus === 'cancelled' ? 'completed' : sessionStatus}
+        saveStatus={saveStatus}
+        onToggleTimer={() => setIsTimerRunning(prev => !prev)}
+        onToggleExpand={handleToggleExpand}
+        onCompleteSet={handleCompleteSet}
+        onCompleteAllSets={handleCompleteAllSets}
+        onUpdateSet={handleUpdateSet}
+        onFinishSession={handleFinishSession}
+        onSaveSession={handleSaveSession}
+        aiChangesByExercise={aiChangesByExercise}
+      />
 
       {/* Session Notes */}
-      {sessionStatus !== 'assigned' && (
-        <div className="space-y-2 px-4">
-          <h3 className="text-sm font-medium">Notes</h3>
-          <Textarea
-            placeholder="Add notes about your workout session..."
-            value={sessionNotes}
-            onChange={(e) => setSessionNotes(e.target.value)}
-            className="min-h-20"
-            disabled={sessionStatus === 'completed'}
-          />
-        </div>
-      )}
+      <div className="space-y-2 px-4">
+        <h3 className="text-sm font-medium">Notes</h3>
+        <Textarea
+          placeholder="Add notes about your workout session..."
+          value={sessionNotes}
+          onChange={(e) => setSessionNotes(e.target.value)}
+          className="min-h-20"
+          disabled={sessionStatus === 'completed'}
+        />
+      </div>
     </div>
   )
 }

@@ -7,10 +7,16 @@ export { AthleteRosterSection } from './components/athlete-roster-section'
 export { GroupDirectorySection } from './components/group-directory-section'
 export { BulkOperationsDialog } from './components/bulk-operations-dialog'
 
+// Mobile-optimized components
+export { AthleteCard } from './components/athlete-card'
+export { MobileInviteFAB } from './components/mobile-invite-fab'
+export { MobileBulkActionBar } from './components/mobile-bulk-action-bar'
+export { GroupFilterChips } from './components/group-filter-chips'
+
 // Types
-export type { 
-  AthleteWithDetails, 
-  GroupWithCount, 
+export type {
+  AthleteWithDetails,
+  GroupWithCount,
   BulkOperationState,
-  AthleteManagementData 
+  AthleteManagementData
 } from './types' 

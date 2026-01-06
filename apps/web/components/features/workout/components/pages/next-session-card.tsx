@@ -15,9 +15,10 @@ import type { SessionPlanWithDetails, WorkoutLogWithDetails } from "@/types/trai
 interface NextSessionCardProps {
   session: WorkoutLogWithDetails
   onStart: (session: WorkoutLogWithDetails) => void
+  isLoading?: boolean
 }
 
-export function NextSessionCard({ session, onStart }: NextSessionCardProps) {
+export function NextSessionCard({ session, onStart, isLoading = false }: NextSessionCardProps) {
   const presetGroup = session.session_plan
   if (!presetGroup) return null
 
@@ -57,13 +58,14 @@ export function NextSessionCard({ session, onStart }: NextSessionCardProps) {
           </div>
 
           {/* Start Button */}
-          <Button 
-            onClick={() => onStart(session)} 
+          <Button
+            onClick={() => onStart(session)}
             className="w-full"
             size="lg"
+            disabled={isLoading}
           >
             <Play className="h-4 w-4 mr-2" />
-            Start Workout
+            {isLoading ? "Starting..." : "Start Workout"}
           </Button>
         </div>
       </CardContent>

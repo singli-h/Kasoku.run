@@ -16,6 +16,8 @@ import { OngoingSessionBanner } from "./ongoing-session-banner"
 import { FeatureErrorBoundary } from '@/components/error-boundary'
 import { useSessionsToday } from '../../hooks/use-workout-queries'
 import { useRouter } from "next/navigation"
+import { startTrainingSessionAction } from '@/actions/workout/workout-session-actions'
+import { useToast } from '@/hooks/use-toast'
 
 // Import types
 import type {
@@ -24,7 +26,9 @@ import type {
 
 export function WorkoutPageContent() {
   const router = useRouter()
+  const { toast } = useToast()
   const [skipAutoRedirect, setSkipAutoRedirect] = useState(false)
+  const [isStarting, setIsStarting] = useState(false)
 
   // Fetch today's and ongoing sessions
   const { data: sessions, isLoading: sessionsLoading } = useSessionsToday()
@@ -37,11 +41,34 @@ export function WorkoutPageContent() {
     ? sessions?.find((s: any) => s.session_status === 'assigned')
     : null
 
-  // Navigate to session page when selected
-  const handleSessionSelected = (session: WorkoutLogWithDetails) => {
-    if (session?.id) {
-      router.push(`/workout/${session.id}`)
+  // Navigate to session page when selected - starts session if not already started
+  const handleSessionSelected = async (session: WorkoutLogWithDetails) => {
+    if (!session?.id) return
+
+    // If session is assigned (not started), start it first
+    if (session.session_status === 'assigned') {
+      setIsStarting(true)
+      const result = await startTrainingSessionAction(session.id)
+      setIsStarting(false)
+
+      if (!result.isSuccess) {
+        toast({
+          title: "Error",
+          description: result.message || "Failed to start workout",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Success - navigate to the session
+      toast({
+        title: "Workout Started",
+        description: "Your workout session has begun",
+      })
     }
+
+    // Navigate to session page
+    router.push(`/workout/${session.id}`)
   }
 
   // Check for intentional return flag on mount
@@ -84,6 +111,7 @@ export function WorkoutPageContent() {
                 <NextSessionCard
                   session={nextSession}
                   onStart={handleSessionSelected}
+                  isLoading={isStarting}
                 />
               </div>
             )}
