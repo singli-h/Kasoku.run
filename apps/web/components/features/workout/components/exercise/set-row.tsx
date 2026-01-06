@@ -31,12 +31,13 @@ interface FieldConfig {
 }
 
 // Training detail interface matching our exercise data structure
+// Uses database field names directly (snake_case) since data comes from DB
 interface TrainingDetail {
   id: string
   reps?: number | null
   weight?: number | null
   distance?: number | null
-  duration?: number | null
+  performing_time?: number | null // Database field name
   resistance?: number | null
   power?: number | null
   velocity?: number | null
@@ -102,10 +103,10 @@ export const DEFAULT_FIELD_CONFIG: FieldConfig[] = [
     min: 0,
     placeholder: '0'
   },
-  { 
-    key: 'duration', 
-    label: 'Duration', 
-    unit: 's', 
+  {
+    key: 'performing_time',
+    label: 'Duration',
+    unit: 's',
     type: 'number',
     min: 0,
     placeholder: '0'
