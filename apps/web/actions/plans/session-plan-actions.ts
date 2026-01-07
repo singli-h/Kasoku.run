@@ -52,10 +52,10 @@ export interface SessionSetData {
   weight?: number
   rpe?: number
   restTime?: number
-  
+
   // Advanced parameters from database
   distance?: number
-  duration?: number // seconds
+  performing_time?: number // seconds
   power?: number
   velocity?: number
   effort?: number
@@ -65,7 +65,7 @@ export interface SessionSetData {
   tempo?: string
   metadata?: any
   notes?: string
-  
+
   // UI-specific fields
   completed?: boolean
 }
@@ -196,7 +196,7 @@ export async function saveSessionPlanAction(
             reps: set.reps || null,
             weight: set.weight || null,
             distance: set.distance || null,
-            performing_time: set.duration || null, // Use correct database field name
+            performing_time: set.performing_time || null,
             power: set.power || null,
             velocity: set.velocity || null,
             resistance: set.resistance || null,
@@ -330,7 +330,7 @@ export async function getSessionPlansByMicrocycleAction(
            rpe: detail.effort, // Map effort back to RPE
            restTime: 90, // Default rest time
            distance: detail.distance,
-           duration: detail.performing_time, // Use correct database field name
+           performing_time: detail.performing_time,
            power: detail.power,
            velocity: detail.velocity,
            effort: detail.effort,
@@ -547,7 +547,7 @@ export async function saveAsTemplateAction(
             reps: set.reps || null,
             weight: set.weight || null,
             distance: set.distance || null,
-            performing_time: set.duration || null,
+            performing_time: set.performing_time || null,
             power: set.power || null,
             velocity: set.velocity || null,
             resistance: set.resistance || null,

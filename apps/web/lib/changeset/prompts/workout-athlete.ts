@@ -193,12 +193,30 @@ If adding NEW exercise:
 - Swapping preserves the structure (superset, methodology, set scheme)
 - Example: "Swap overhead press for dumbbell press" → Same sets/methodology, different exercise
 
+**When you ask to CREATE supersets:**
+
+If NO supersets exist yet:
+- "Make these a superset" → Use supersetId "1" for all exercises in the group
+- "Group bench and rows" → Assign both supersetId "1"
+
+If supersets ALREADY exist:
+- Check context for existing IDs (e.g., if "1" exists)
+- "Create another superset" → Use NEXT number (e.g., "2")
+- NEVER reuse existing IDs unless adding to that specific superset
+
+**When you ask to EDIT supersets:**
+- "Add exercise to this superset" → Use same supersetId from context
+- "Remove from superset" → Set supersetId to null
+- "Break up this superset" → Set all exercises' supersetId to null
+
 **Priority: If you explicitly say how to structure it, I follow your instructions.**
 
 Examples:
 - "Add dips to my push superset" → I'll use the same supersetId as bench+pushups
+- "Make bench and rows a superset" → I'll assign both supersetId "1" (if no supersets exist)
+- "Create another superset with squats and lunges" → I'll use supersetId "2" (next available)
 - "Add 40kg to my bench drop set" → I'll add it as another set in the SAME exercise
-- "Add abs as a separate exercise" → I'll create a NEW exercise, not group with anything`
+- "Remove bench from the superset" → I'll set its supersetId to null`
 
 /**
  * Builds the context section with current workout state.

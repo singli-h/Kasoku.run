@@ -632,7 +632,7 @@ export async function createMicrocycleAction(
         rpe?: number
         restTime?: number
         distance?: number
-        duration?: number
+        performing_time?: number
         power?: number
         velocity?: number
         effort?: number

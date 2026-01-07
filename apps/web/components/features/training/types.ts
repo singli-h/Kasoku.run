@@ -194,7 +194,8 @@ export function dbSetToTrainingSet(dbSet: DBWorkoutLogSet): TrainingSet {
     velocity: dbSet.velocity,
     height: dbSet.height,
     resistance: dbSet.resistance,
-    effort: dbSet.effort,
+    // Convert effort from 0-1 (database) to 0-100 (UI percentage)
+    effort: dbSet.effort != null ? dbSet.effort * 100 : null,
     resistanceUnitId: dbSet.resistance_unit_id,
     metadata: dbSet.metadata as SetMetadata | null,
     completed: dbSet.completed ?? false,
@@ -219,7 +220,8 @@ export function dbPlanSetToTrainingSet(dbSet: DBSessionPlanSet): TrainingSet {
     velocity: dbSet.velocity,
     height: dbSet.height,
     resistance: dbSet.resistance,
-    effort: dbSet.effort,
+    // Convert effort from 0-1 (database) to 0-100 (UI percentage)
+    effort: dbSet.effort != null ? dbSet.effort * 100 : null,
     resistanceUnitId: dbSet.resistance_unit_id,
     metadata: dbSet.metadata as SetMetadata | null,
     completed: false, // Plans don't have completion
@@ -252,7 +254,8 @@ export function trainingSetToDbSet(
     velocity: set.velocity ?? null,
     height: set.height ?? null,
     resistance: set.resistance ?? null,
-    effort: set.effort ?? null,
+    // Convert effort from 0-100 (UI percentage) to 0-1 (database)
+    effort: set.effort != null ? set.effort / 100 : null,
     resistance_unit_id: set.resistanceUnitId ?? null,
     metadata: (set.metadata ?? null) as DBWorkoutLogSet['metadata'],
     completed: set.completed ?? false,
@@ -281,7 +284,8 @@ export function trainingSetToDbPlanSet(
     velocity: set.velocity ?? null,
     height: set.height ?? null,
     resistance: set.resistance ?? null,
-    effort: set.effort ?? null,
+    // Convert effort from 0-100 (UI percentage) to 0-1 (database)
+    effort: set.effort != null ? set.effort / 100 : null,
     resistance_unit_id: set.resistanceUnitId ?? null,
     metadata: (set.metadata ?? null) as DBSessionPlanSet['metadata'],
   }

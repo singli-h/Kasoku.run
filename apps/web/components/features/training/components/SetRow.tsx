@@ -180,6 +180,9 @@ export function SetRow({
       case "velocity":
         // Real, non-negative (m/s)
         return value <= 99 ? Math.round(value * 100) / 100 : null
+      case "effort":
+        // Percentage (0-100), stored as 0-100 in UI, converted to 0-1 for database
+        return value >= 0 && value <= 100 ? Math.round(value * 100) / 100 : null
       default:
         return value
     }

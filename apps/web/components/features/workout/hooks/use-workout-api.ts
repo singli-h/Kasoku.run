@@ -247,26 +247,25 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
 
   /**
    * Save exercise performance data (sets, reps, weight, etc.)
-   * Accepts both workout_log_set field names (performing_time, rest_time) and legacy names (duration)
+   * Uses database field names (performing_time, rest_time)
    */
   const saveExercisePerformance = useCallback(async (
     sessionId: string,
     exerciseId: number,
     setData: {
       set_index: number
-      reps?: number
-      weight?: number
-      distance?: number
-      duration?: number // Legacy name
-      performing_time?: number // Database field name
-      rest_time?: number // Database field name
-      power?: number
-      resistance?: number
-      velocity?: number
-      height?: number
-      effort?: number
-      tempo?: string
-      rpe?: number
+      reps?: number | null
+      weight?: number | null
+      distance?: number | null
+      performing_time?: number | null
+      rest_time?: number | null
+      power?: number | null
+      resistance?: number | null
+      velocity?: number | null
+      height?: number | null
+      effort?: number | null
+      tempo?: string | null
+      rpe?: number | null
       completed?: boolean
     },
     immediate = false
@@ -410,27 +409,27 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
 
   /**
    * Perform exercise performance update
-   * Handles both legacy (duration) and database (performing_time, rest_time) field names
+   * Maps UI field names to database field names
    */
   const performExerciseUpdate = useCallback(async (item: AutoSaveItem): Promise<boolean> => {
     try {
       const { sessionId, exerciseId, setData } = item.data
       console.log('[performExerciseUpdate] Input setData:', JSON.stringify(setData, null, 2))
 
-      // Convert our workout field names to database field names
-      // Support both legacy 'duration' and database 'performing_time' field names
+      // Pass values directly to server action (including null for cleared fields)
+      // Convert effort from 0-100 (UI percentage) to 0-1 (database)
       const dbSetData = {
         set_index: setData.set_index,
         reps: setData.reps,
         weight: setData.weight,
         distance: setData.distance,
-        performing_time: setData.performing_time ?? setData.duration, // Accept both field names
+        performing_time: setData.performing_time,
         rest_time: setData.rest_time,
         power: setData.power,
         resistance: setData.resistance,
         velocity: setData.velocity,
         height: setData.height,
-        effort: setData.effort,
+        effort: setData.effort != null ? setData.effort / 100 : null, // Convert percentage to decimal
         tempo: setData.tempo,
         rpe: setData.rpe,
         completed: setData.completed

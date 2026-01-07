@@ -522,20 +522,20 @@ export async function addExercisePerformanceAction(
   workoutLogExerciseId: string,
   setData: {
     set_index: number
-    reps?: number
-    weight?: number
-    rest_time?: number
-    rpe?: number
-    tempo?: string
-    resistance?: number
-    distance?: number
-    performing_time?: number
-    velocity?: number
-    power?: number
-    height?: number
-    effort?: number
+    reps?: number | null
+    weight?: number | null
+    rest_time?: number | null
+    rpe?: number | null
+    tempo?: string | null
+    resistance?: number | null
+    distance?: number | null
+    performing_time?: number | null
+    velocity?: number | null
+    power?: number | null
+    height?: number | null
+    effort?: number | null
     completed?: boolean
-    notes?: string
+    notes?: string | null
   },
   skipRevalidation = false // Skip cache revalidation during auto-save to prevent race conditions
 ): Promise<ActionState<ExerciseTrainingDetail>> {
@@ -678,20 +678,20 @@ export async function addExercisePerformanceByExerciseIdAction(
   exerciseId: number,
   setData: {
     set_index: number
-    reps?: number
-    weight?: number
-    rest_time?: number
-    rpe?: number
-    tempo?: string
-    resistance?: number
-    distance?: number
-    performing_time?: number
-    velocity?: number
-    power?: number
-    height?: number
-    effort?: number
+    reps?: number | null
+    weight?: number | null
+    rest_time?: number | null
+    rpe?: number | null
+    tempo?: string | null
+    resistance?: number | null
+    distance?: number | null
+    performing_time?: number | null
+    velocity?: number | null
+    power?: number | null
+    height?: number | null
+    effort?: number | null
     completed?: boolean
-    notes?: string
+    notes?: string | null
   },
   skipRevalidation = false // Skip cache revalidation during auto-save to prevent race conditions
 ): Promise<ActionState<ExerciseTrainingDetail>> {
