@@ -245,21 +245,13 @@ export function buildProposedData(
   }
 
   // Add parent foreign key for session plan exercises if not present
+  // Note: workout_log_exercise parent FK is handled via ALL_PARENT_FK_FROM_TOOL_INPUT
   if (
     entityType === 'session_plan_exercise' &&
     !data['sessionPlanId'] &&
     sessionId
   ) {
     data['sessionPlanId'] = sessionId
-  }
-
-  // Add parent foreign key for workout log exercises if not present
-  if (
-    entityType === 'workout_log_exercise' &&
-    !data['workoutLogId'] &&
-    sessionId // sessionId is actually workoutLogId for workout domain
-  ) {
-    data['workoutLogId'] = sessionId
   }
 
   // Convert to snake_case for database FIRST

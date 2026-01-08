@@ -13,7 +13,7 @@ import { auth } from '@clerk/nextjs/server'
 import supabase from '@/lib/supabase-server'
 import { getDbUserId } from '@/lib/user-cache'
 import { coachDomainTools } from '@/lib/changeset/tools'
-import { buildSystemPrompt } from '@/lib/changeset/prompts/session-planner'
+import { buildCoachSystemPrompt } from '@/lib/changeset/prompts/session-planner'
 import { executeGetSessionContext } from '@/lib/changeset/tool-implementations/read-impl'
 
 export const maxDuration = 30
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     }
 
     // Build system prompt with context
-    const systemPrompt = buildSystemPrompt(sessionContext)
+    const systemPrompt = buildCoachSystemPrompt(sessionContext)
 
     // Convert UI messages to model messages format
     // UIMessage format (from useChat): { role, parts: [{ type: 'text', text }] }

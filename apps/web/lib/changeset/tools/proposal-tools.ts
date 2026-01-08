@@ -35,11 +35,14 @@ export const createSessionChangeRequestSchema = z.object({
 
 export type CreateSessionInput = z.infer<typeof createSessionChangeRequestSchema>
 
-export const createSessionChangeRequestTool = tool({
+export const createSessionPlanChangeRequestTool = tool({
   description: 'Create a new session template for a training plan.',
   inputSchema: createSessionChangeRequestSchema,
   // No execute - handled client-side
 })
+
+// DEPRECATED: Legacy alias for backwards compatibility
+export const createSessionChangeRequestTool = createSessionPlanChangeRequestTool
 
 /**
  * Schema for updateSessionChangeRequest.
@@ -56,11 +59,14 @@ export const updateSessionChangeRequestSchema = z.object({
 
 export type UpdateSessionInput = z.infer<typeof updateSessionChangeRequestSchema>
 
-export const updateSessionChangeRequestTool = tool({
+export const updateSessionPlanChangeRequestTool = tool({
   description: "Update a session template's name, description, or notes.",
   inputSchema: updateSessionChangeRequestSchema,
   // No execute - handled client-side
 })
+
+// DEPRECATED: Legacy alias for backwards compatibility
+export const updateSessionChangeRequestTool = updateSessionPlanChangeRequestTool
 
 // ============================================================================
 // Exercise Tools (preset_exercise)
@@ -97,11 +103,14 @@ export const createExerciseChangeRequestSchema = z.object({
 
 export type CreateExerciseInput = z.infer<typeof createExerciseChangeRequestSchema>
 
-export const createExerciseChangeRequestTool = tool({
+export const createSessionPlanExerciseChangeRequestTool = tool({
   description: 'Add a new exercise to the session template.',
   inputSchema: createExerciseChangeRequestSchema,
   // No execute - handled client-side
 })
+
+// DEPRECATED: Legacy alias for backwards compatibility
+export const createExerciseChangeRequestTool = createSessionPlanExerciseChangeRequestTool
 
 /**
  * Schema for updateExerciseChangeRequest.
@@ -129,12 +138,15 @@ export const updateExerciseChangeRequestSchema = z.object({
 
 export type UpdateExerciseInput = z.infer<typeof updateExerciseChangeRequestSchema>
 
-export const updateExerciseChangeRequestTool = tool({
+export const updateSessionPlanExerciseChangeRequestTool = tool({
   description:
     "Update an exercise's settings in the session template. To swap exercises, provide a new exerciseId.",
   inputSchema: updateExerciseChangeRequestSchema,
   // No execute - handled client-side
 })
+
+// DEPRECATED: Legacy alias for backwards compatibility
+export const updateExerciseChangeRequestTool = updateSessionPlanExerciseChangeRequestTool
 
 /**
  * Schema for deleteExerciseChangeRequest.
@@ -149,11 +161,14 @@ export const deleteExerciseChangeRequestSchema = z.object({
 
 export type DeleteExerciseInput = z.infer<typeof deleteExerciseChangeRequestSchema>
 
-export const deleteExerciseChangeRequestTool = tool({
+export const deleteSessionPlanExerciseChangeRequestTool = tool({
   description: 'Remove an exercise from the session template.',
   inputSchema: deleteExerciseChangeRequestSchema,
   // No execute - handled client-side
 })
+
+// DEPRECATED: Legacy alias for backwards compatibility
+export const deleteExerciseChangeRequestTool = deleteSessionPlanExerciseChangeRequestTool
 
 // ============================================================================
 // Set Tools (preset_set)
@@ -169,7 +184,7 @@ export const createSetChangeRequestSchema = z.object({
   sessionPlanExerciseId: z
     .string()
     .describe(
-      'Parent exercise ID. For NEW exercises created in this changeset, use the entityId returned from createExerciseChangeRequest (e.g., "temp_001"). For EXISTING exercises, use their id from the session data.'
+      'Parent exercise ID. For NEW exercises created in this changeset, use the entityId returned from createExerciseChangeRequest (e.g., "temp-550e8400-..."). For EXISTING exercises, use their id from the session data.'
     ),
   setCount: z
     .number()
@@ -194,12 +209,15 @@ export const createSetChangeRequestSchema = z.object({
 
 export type CreateSetInput = z.infer<typeof createSetChangeRequestSchema>
 
-export const createSetChangeRequestTool = tool({
+export const createSessionPlanSetChangeRequestTool = tool({
   description:
-    'Add one or more sets to an exercise in the template. Use setCount to add multiple sets with the same parameters. For newly created exercises, use the entityId returned from createExerciseChangeRequest.',
+    'Add one or more sets to an exercise in the template. Use setCount to add multiple sets with the same parameters. For newly created exercises, use the entityId returned from createSessionPlanExerciseChangeRequest.',
   inputSchema: createSetChangeRequestSchema,
   // No execute - handled client-side
 })
+
+// DEPRECATED: Legacy alias for backwards compatibility
+export const createSetChangeRequestTool = createSessionPlanSetChangeRequestTool
 
 /**
  * Schema for updateSetChangeRequest.
@@ -247,12 +265,15 @@ export const updateSetChangeRequestSchema = z.object({
 
 export type UpdateSetInput = z.infer<typeof updateSetChangeRequestSchema>
 
-export const updateSetChangeRequestTool = tool({
+export const updateSessionPlanSetChangeRequestTool = tool({
   description:
     'Update parameters for a specific set or all sets of an exercise. Use setIndex for a specific set, or applyToAllSets=true for all sets.',
   inputSchema: updateSetChangeRequestSchema,
   // No execute - handled client-side
 })
+
+// DEPRECATED: Legacy alias for backwards compatibility
+export const updateSetChangeRequestTool = updateSessionPlanSetChangeRequestTool
 
 /**
  * Schema for deleteSetChangeRequest.
@@ -294,11 +315,14 @@ export const deleteSetChangeRequestSchema = z.object({
 
 export type DeleteSetInput = z.infer<typeof deleteSetChangeRequestSchema>
 
-export const deleteSetChangeRequestTool = tool({
+export const deleteSessionPlanSetChangeRequestTool = tool({
   description: 'Remove sets from an exercise in the template. Use setIndex to remove a specific set, or removeCount to remove from the end.',
   inputSchema: deleteSetChangeRequestSchema,
   // No execute - handled client-side
 })
+
+// DEPRECATED: Legacy alias for backwards compatibility
+export const deleteSetChangeRequestTool = deleteSessionPlanSetChangeRequestTool
 
 // ============================================================================
 // Export All Proposal Tools
@@ -306,22 +330,27 @@ export const deleteSetChangeRequestTool = tool({
 
 /**
  * All proposal tools for the Coach domain (V1).
+ *
+ * Uses SessionPlan prefix to align with database entity names:
+ * - session_plans → SessionPlan*
+ * - session_plan_exercises → SessionPlanExercise*
+ * - session_plan_sets → SessionPlanSet*
  */
 export const proposalTools = {
-  // Session tools
-  createSessionChangeRequest: createSessionChangeRequestTool,
-  updateSessionChangeRequest: updateSessionChangeRequestTool,
-  // Note: No deleteSessionChangeRequest - too destructive for AI
+  // Session tools (session_plan)
+  createSessionPlanChangeRequest: createSessionPlanChangeRequestTool,
+  updateSessionPlanChangeRequest: updateSessionPlanChangeRequestTool,
+  // Note: No deleteSessionPlanChangeRequest - too destructive for AI
 
-  // Exercise tools
-  createExerciseChangeRequest: createExerciseChangeRequestTool,
-  updateExerciseChangeRequest: updateExerciseChangeRequestTool,
-  deleteExerciseChangeRequest: deleteExerciseChangeRequestTool,
+  // Exercise tools (session_plan_exercise)
+  createSessionPlanExerciseChangeRequest: createSessionPlanExerciseChangeRequestTool,
+  updateSessionPlanExerciseChangeRequest: updateSessionPlanExerciseChangeRequestTool,
+  deleteSessionPlanExerciseChangeRequest: deleteSessionPlanExerciseChangeRequestTool,
 
-  // Set tools
-  createSetChangeRequest: createSetChangeRequestTool,
-  updateSetChangeRequest: updateSetChangeRequestTool,
-  deleteSetChangeRequest: deleteSetChangeRequestTool,
+  // Set tools (session_plan_set)
+  createSessionPlanSetChangeRequest: createSessionPlanSetChangeRequestTool,
+  updateSessionPlanSetChangeRequest: updateSessionPlanSetChangeRequestTool,
+  deleteSessionPlanSetChangeRequest: deleteSessionPlanSetChangeRequestTool,
 }
 
 /**

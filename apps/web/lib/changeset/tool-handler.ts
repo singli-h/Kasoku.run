@@ -139,26 +139,26 @@ function handleProposalTool(
       console.error(`[ProposalTool] ❌ ERROR: sessionPlanExerciseId is required but was: '${args.sessionPlanExerciseId}'`)
       return {
         success: false,
-        error: 'sessionPlanExerciseId is required when creating sets. For NEW exercises you just created, use the entityId returned from createExerciseChangeRequest (e.g., "temp_001"). For EXISTING exercises, use their numeric ID from the session data.',
+        error: 'sessionPlanExerciseId is required when creating sets. For NEW exercises you just created, use the entityId returned from createExerciseChangeRequest (e.g., "temp-550e8400-..."). For EXISTING exercises, use their ID from the session data.',
       }
     }
   }
 
-  // Validate exerciseId for exercise-related tools (must be numeric, not a made-up string)
+  // Validate exerciseId for exercise-related tools (must be numeric from searchExercises)
+  // Note: exerciseId is the LIBRARY exercise ID, not a temp ID - temp IDs are for entities created in the session
   if (
     (toolName.includes('Exercise') || toolName.includes('exercise')) &&
     args.exerciseId
   ) {
     const exerciseId = String(args.exerciseId)
-    // Check if it's a valid numeric ID or a temp ID (temp_XXX)
+    // exerciseId must be a numeric ID from the exercise library
     const isNumeric = /^\d+$/.test(exerciseId)
-    const isTempId = /^temp_\d+$/.test(exerciseId)
 
-    if (!isNumeric && !isTempId) {
-      console.error(`[ProposalTool] ❌ ERROR: Invalid exerciseId: '${exerciseId}' - must be a numeric database ID or temp_XXX`)
+    if (!isNumeric) {
+      console.error(`[ProposalTool] ❌ ERROR: Invalid exerciseId: '${exerciseId}' - must be a numeric database ID`)
       return {
         success: false,
-        error: `Invalid exerciseId: '${exerciseId}'. You must use a numeric ID from the searchExercises results (e.g., "123"), NOT a made-up string like "exercise-name-id". Please call searchExercises first to get valid exercise IDs.`,
+        error: `Invalid exerciseId: '${exerciseId}'. You must use a numeric ID from the searchExercises results (e.g., "123"), NOT a made-up string. Please call searchExercises first to get valid exercise IDs.`,
       }
     }
   }
@@ -184,7 +184,18 @@ function handleProposalTool(
         entityId: tempIdToRemove,
       }
     }
-    // If not a temp ID, continue to create DELETE change request below
+
+    // For athlete domain (workout_log_*), real IDs cannot be deleted
+    // Athletes should mark sets as incomplete instead
+    if (entitySnakeCase.startsWith('workout_log_')) {
+      console.log(`[ProposalTool] ❌ Attempted to delete real workout data: ${entitySnakeCase}`)
+      return {
+        success: false,
+        error: ATHLETE_DELETE_REAL_DATA_ERROR,
+      }
+    }
+
+    // For coach domain (session_plan_*), continue to create DELETE change request below
   }
 
   try {
@@ -253,7 +264,7 @@ function handleProposalTool(
     // (e.g., when creating sets for a newly created exercise)
     return {
       success: true,
-      entityId: changeRequest.entityId ?? undefined, // temp_001, temp_002, etc. for creates
+      entityId: changeRequest.entityId ?? undefined, // temp-{uuid} for creates
       changeId: changeRequest.id,
       message: `${operation} ${entitySnakeCase} added to changeset`,
     }
@@ -420,8 +431,11 @@ export function createExecutionFailureResult(
  * Returns the temp ID if found, or null if the entity has a real database ID.
  *
  * This supports the temp ID deletion pattern from changeset architecture concept:
- * - Temp ID (e.g., "temp_001") → remove from buffer (not a real DB delete)
- * - Real ID (e.g., "123") → create DELETE change request for DB
+ * - Temp ID (e.g., "temp-550e8400-...") → remove from buffer (not a real DB delete)
+ * - Real ID (e.g., "550e8400-...") → create DELETE change request for DB
+ *
+ * For athlete domain, real IDs are NEVER deletable - we return a special error
+ * message guiding the athlete to use updateWorkoutLogSetChangeRequest instead.
  *
  * @param entityType - The entity type being deleted
  * @param args - The tool arguments
@@ -435,13 +449,14 @@ function extractTempIdForDeletion(
 
   // Extract entity ID based on entity type
   switch (entityType) {
+    // Coach domain (session_plan_*)
     case 'session_plan_exercise': {
-      // deleteExerciseChangeRequest uses sessionPlanExerciseId
+      // deleteSessionPlanExerciseChangeRequest uses sessionPlanExerciseId
       entityId = args.sessionPlanExerciseId as string | null
       break
     }
     case 'session_plan_set': {
-      // deleteSetChangeRequest uses either:
+      // deleteSessionPlanSetChangeRequest uses either:
       // 1. sessionPlanSetId (direct set ID)
       // 2. sessionPlanExerciseId + setIndex (composite)
       const directSetId = args.sessionPlanSetId as string | undefined
@@ -462,6 +477,36 @@ function extractTempIdForDeletion(
       }
       break
     }
+
+    // Athlete domain (workout_log_*)
+    case 'workout_log_exercise': {
+      // deleteWorkoutLogExerciseChangeRequest uses workoutLogExerciseId
+      entityId = args.workoutLogExerciseId as string | null
+      break
+    }
+    case 'workout_log_set': {
+      // deleteWorkoutLogSetChangeRequest uses either:
+      // 1. workoutLogSetId (direct set ID)
+      // 2. workoutLogExerciseId + setIndex (composite)
+      const directSetId = args.workoutLogSetId as string | undefined
+      const parentExerciseId = args.workoutLogExerciseId as string | undefined
+      const setIndex = args.setIndex as number | undefined
+
+      if (directSetId) {
+        entityId = directSetId
+      } else if (parentExerciseId && isTempId(parentExerciseId)) {
+        // If parent exercise is a temp ID, construct the composite key
+        // that was used when the set was created
+        if (setIndex !== undefined) {
+          entityId = `exercise:${parentExerciseId}:set:${setIndex}`
+        } else {
+          // Removing all sets of a temp exercise
+          entityId = `exercise:${parentExerciseId}:all`
+        }
+      }
+      break
+    }
+
     default:
       // Unknown entity type - no temp ID extraction
       return null
@@ -473,10 +518,17 @@ function extractTempIdForDeletion(
   }
 
   // For composite set keys, check if the parent exercise ID is temp
-  // The entityId might be like "exercise:temp_001:set:1"
-  if (entityId && entityId.startsWith('exercise:temp_')) {
+  // The entityId might be like "exercise:temp-550e8400-...:set:1"
+  if (entityId && entityId.startsWith('exercise:temp-')) {
     return entityId
   }
 
   return null
 }
+
+/**
+ * Error message for athlete domain when trying to delete real workout data.
+ * Athletes cannot delete saved data - they should mark sets as incomplete instead.
+ */
+const ATHLETE_DELETE_REAL_DATA_ERROR =
+  'Deleting logged workout data is not allowed. To mark as incomplete, use updateWorkoutLogSetChangeRequest with completed: false instead.'

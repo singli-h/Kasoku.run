@@ -4,6 +4,11 @@
  * Tools that create ChangeRequests for workout modifications.
  * Athletes can log set performance, swap exercises, and add session notes.
  *
+ * Uses WorkoutLog prefix to align with database entity names:
+ * - workout_logs → WorkoutLog*
+ * - workout_log_exercises → WorkoutLogExercise*
+ * - workout_log_sets → WorkoutLogSet*
+ *
  * Key differences from Coach domain:
  * - No delete operations (athletes swap or skip instead)
  * - Uses workout_log_* entities instead of session_plan_*
@@ -29,10 +34,12 @@ const emptyNumToUndefined = (v: number | undefined) =>
 // ============================================================================
 
 /**
- * Schema for createTrainingSetChangeRequest.
+ * Schema for createWorkoutLogSetChangeRequest.
  * Logs the athlete's actual performance for a set.
+ *
+ * Updated to use workout_log naming (post schema migration 2025-Q4).
  */
-export const createTrainingSetChangeRequestSchema = z.object({
+export const createWorkoutLogSetChangeRequestSchema = z.object({
   workoutLogExerciseId: z
     .string()
     .describe('ID of the workout log exercise this set belongs to'),
@@ -99,20 +106,30 @@ export const createTrainingSetChangeRequestSchema = z.object({
   reasoning: z.string().describe('Why this performance is being logged'),
 })
 
-export type CreateTrainingSetInput = z.infer<typeof createTrainingSetChangeRequestSchema>
+export type CreateWorkoutLogSetInput = z.infer<typeof createWorkoutLogSetChangeRequestSchema>
 
-export const createTrainingSetChangeRequestTool = tool({
+// DEPRECATED: Legacy type alias
+export type CreateTrainingSetInput = CreateWorkoutLogSetInput
+
+export const createWorkoutLogSetChangeRequestTool = tool({
   description:
     "Log or ADD a set for an exercise. Use this to: (1) Log actual performance for a set, (2) ADD additional sets to an exercise by using the next setIndex. For example, if an exercise has 3 sets, add a 4th by using setIndex: 4. Requires workoutLogExerciseId from getWorkoutContext.",
-  inputSchema: createTrainingSetChangeRequestSchema,
+  inputSchema: createWorkoutLogSetChangeRequestSchema,
   // No execute - handled client-side
 })
 
+// DEPRECATED: Legacy alias for backwards compatibility
+export const createTrainingSetChangeRequestTool = createWorkoutLogSetChangeRequestTool
+// DEPRECATED: Legacy schema alias
+export const createTrainingSetChangeRequestSchema = createWorkoutLogSetChangeRequestSchema
+
 /**
- * Schema for updateTrainingSetChangeRequest.
+ * Schema for updateWorkoutLogSetChangeRequest.
  * Updates performance data that was already logged.
+ *
+ * Updated to use workout_log naming (post schema migration 2025-Q4).
  */
-export const updateTrainingSetChangeRequestSchema = z.object({
+export const updateWorkoutLogSetChangeRequestSchema = z.object({
   workoutLogSetId: z
     .string()
     .describe('ID of the workout log set to update'),
@@ -167,24 +184,34 @@ export const updateTrainingSetChangeRequestSchema = z.object({
   reasoning: z.string().describe('Why this correction is being made'),
 })
 
-export type UpdateTrainingSetInput = z.infer<typeof updateTrainingSetChangeRequestSchema>
+export type UpdateWorkoutLogSetInput = z.infer<typeof updateWorkoutLogSetChangeRequestSchema>
 
-export const updateTrainingSetChangeRequestTool = tool({
+// DEPRECATED: Legacy type alias
+export type UpdateTrainingSetInput = UpdateWorkoutLogSetInput
+
+export const updateWorkoutLogSetChangeRequestTool = tool({
   description:
     'Update performance data that was already logged. Use this when the athlete wants to correct a mistake.',
-  inputSchema: updateTrainingSetChangeRequestSchema,
+  inputSchema: updateWorkoutLogSetChangeRequestSchema,
   // No execute - handled client-side
 })
+
+// DEPRECATED: Legacy alias for backwards compatibility
+export const updateTrainingSetChangeRequestTool = updateWorkoutLogSetChangeRequestTool
+// DEPRECATED: Legacy schema alias
+export const updateTrainingSetChangeRequestSchema = updateWorkoutLogSetChangeRequestSchema
 
 // ============================================================================
 // Exercise Tools (workout_log_exercise) - T003, T019
 // ============================================================================
 
 /**
- * Schema for createTrainingExerciseChangeRequest.
+ * Schema for createWorkoutLogExerciseChangeRequest.
  * Adds a new exercise to the workout.
+ *
+ * Updated to use workout_log naming (post schema migration 2025-Q4).
  */
-export const createTrainingExerciseChangeRequestSchema = z.object({
+export const createWorkoutLogExerciseChangeRequestSchema = z.object({
   workoutLogId: z
     .string()
     .describe('Parent workout log ID'),
@@ -208,21 +235,31 @@ export const createTrainingExerciseChangeRequestSchema = z.object({
   reasoning: z.string().describe('Why this exercise is being added'),
 })
 
-export type CreateTrainingExerciseInput = z.infer<typeof createTrainingExerciseChangeRequestSchema>
+export type CreateWorkoutLogExerciseInput = z.infer<typeof createWorkoutLogExerciseChangeRequestSchema>
 
-export const createTrainingExerciseChangeRequestTool = tool({
+// DEPRECATED: Legacy type alias
+export type CreateTrainingExerciseInput = CreateWorkoutLogExerciseInput
+
+export const createWorkoutLogExerciseChangeRequestTool = tool({
   description:
-    'Add a COMPLETELY NEW exercise to the workout (not in the original plan). Do NOT use this to add sets - use createTrainingSetChangeRequest instead to add sets to an existing exercise.',
-  inputSchema: createTrainingExerciseChangeRequestSchema,
+    'Add a COMPLETELY NEW exercise to the workout (not in the original plan). Do NOT use this to add sets - use createWorkoutLogSetChangeRequest instead to add sets to an existing exercise.',
+  inputSchema: createWorkoutLogExerciseChangeRequestSchema,
   // No execute - handled client-side
 })
 
+// DEPRECATED: Legacy alias for backwards compatibility
+export const createTrainingExerciseChangeRequestTool = createWorkoutLogExerciseChangeRequestTool
+// DEPRECATED: Legacy schema alias
+export const createTrainingExerciseChangeRequestSchema = createWorkoutLogExerciseChangeRequestSchema
+
 /**
- * Schema for updateTrainingExerciseChangeRequest.
+ * Schema for updateWorkoutLogExerciseChangeRequest.
  * Updates an exercise in the workout (swap, reorder, notes).
  * To swap an exercise, provide a new exerciseId and exerciseName.
+ *
+ * Updated to use workout_log naming (post schema migration 2025-Q4).
  */
-export const updateTrainingExerciseChangeRequestSchema = z.object({
+export const updateWorkoutLogExerciseChangeRequestSchema = z.object({
   workoutLogExerciseId: z
     .string()
     .describe('ID of the workout log exercise to update'),
@@ -250,25 +287,35 @@ export const updateTrainingExerciseChangeRequestSchema = z.object({
   reasoning: z.string().describe('Why this change is being made'),
 })
 
-export type UpdateTrainingExerciseInput = z.infer<typeof updateTrainingExerciseChangeRequestSchema>
+export type UpdateWorkoutLogExerciseInput = z.infer<typeof updateWorkoutLogExerciseChangeRequestSchema>
 
-export const updateTrainingExerciseChangeRequestTool = tool({
+// DEPRECATED: Legacy type alias
+export type UpdateTrainingExerciseInput = UpdateWorkoutLogExerciseInput
+
+export const updateWorkoutLogExerciseChangeRequestTool = tool({
   description:
     'Update an exercise in the workout. To swap exercises, provide a new exerciseId. To reorder, provide exerciseOrder.',
-  inputSchema: updateTrainingExerciseChangeRequestSchema,
+  inputSchema: updateWorkoutLogExerciseChangeRequestSchema,
   // No execute - handled client-side
 })
+
+// DEPRECATED: Legacy alias for backwards compatibility
+export const updateTrainingExerciseChangeRequestTool = updateWorkoutLogExerciseChangeRequestTool
+// DEPRECATED: Legacy schema alias
+export const updateTrainingExerciseChangeRequestSchema = updateWorkoutLogExerciseChangeRequestSchema
 
 // ============================================================================
 // Session Tools (workout_log) - T004
 // ============================================================================
 
 /**
- * Schema for updateTrainingSessionChangeRequest.
+ * Schema for updateWorkoutLogChangeRequest.
  * Updates the athlete's workout session notes.
  * Athletes cannot change session status or other properties.
+ *
+ * Updated to use workout_log naming (post schema migration 2025-Q4).
  */
-export const updateTrainingSessionChangeRequestSchema = z.object({
+export const updateWorkoutLogChangeRequestSchema = z.object({
   workoutLogId: z
     .string()
     .describe('ID of the workout log'),
@@ -280,12 +327,91 @@ export const updateTrainingSessionChangeRequestSchema = z.object({
   reasoning: z.string().describe('Why this note is being added'),
 })
 
-export type UpdateTrainingSessionInput = z.infer<typeof updateTrainingSessionChangeRequestSchema>
+export type UpdateWorkoutLogInput = z.infer<typeof updateWorkoutLogChangeRequestSchema>
 
-export const updateTrainingSessionChangeRequestTool = tool({
+// DEPRECATED: Legacy type alias
+export type UpdateTrainingSessionInput = UpdateWorkoutLogInput
+
+export const updateWorkoutLogChangeRequestTool = tool({
   description:
     "Update the athlete's workout session notes. Use this to capture feedback about the session.",
-  inputSchema: updateTrainingSessionChangeRequestSchema,
+  inputSchema: updateWorkoutLogChangeRequestSchema,
+  // No execute - handled client-side
+})
+
+// DEPRECATED: Legacy alias for backwards compatibility
+export const updateTrainingSessionChangeRequestTool = updateWorkoutLogChangeRequestTool
+// DEPRECATED: Legacy schema alias
+export const updateTrainingSessionChangeRequestSchema = updateWorkoutLogChangeRequestSchema
+
+// ============================================================================
+// Delete Tools (for removing proposals from buffer)
+// ============================================================================
+
+/**
+ * Schema for deleteWorkoutLogExerciseChangeRequest.
+ * Removes an exercise proposal from the changeset buffer.
+ *
+ * IMPORTANT: Only temp-ID proposals can be deleted (e.g., "temp-550e8400-...").
+ * Attempts to delete real workout data (numeric IDs) will be rejected.
+ * Athletes should use updateWorkoutLogSetChangeRequest with completed: false instead.
+ */
+export const deleteWorkoutLogExerciseChangeRequestSchema = z.object({
+  workoutLogExerciseId: z
+    .string()
+    .describe(
+      'ID of the exercise to remove from the proposal. Only temp-IDs (e.g., "temp-550e8400-...") can be deleted. Real workout data cannot be deleted - mark sets as skipped instead.'
+    ),
+  reasoning: z.string().describe('Why this exercise proposal is being removed'),
+})
+
+export type DeleteWorkoutLogExerciseInput = z.infer<typeof deleteWorkoutLogExerciseChangeRequestSchema>
+
+export const deleteWorkoutLogExerciseChangeRequestTool = tool({
+  description:
+    'Remove an exercise proposal from the changeset buffer. Only works for proposals (temp-IDs), not saved workout data. To undo saved data, use updateWorkoutLogSetChangeRequest with completed: false.',
+  inputSchema: deleteWorkoutLogExerciseChangeRequestSchema,
+  // No execute - handled client-side
+})
+
+/**
+ * Schema for deleteWorkoutLogSetChangeRequest.
+ * Removes a set proposal from the changeset buffer.
+ *
+ * IMPORTANT: Only temp-ID proposals can be deleted (e.g., "temp-550e8400-...").
+ * Attempts to delete real workout data (numeric IDs) will be rejected.
+ * Athletes should use updateWorkoutLogSetChangeRequest with completed: false instead.
+ */
+export const deleteWorkoutLogSetChangeRequestSchema = z.object({
+  workoutLogSetId: z
+    .string()
+    .optional()
+    .transform(emptyToUndefined)
+    .describe(
+      'Direct ID of the set to remove. Only temp-IDs can be deleted. Real workout data cannot be deleted - mark as skipped instead.'
+    ),
+  workoutLogExerciseId: z
+    .string()
+    .optional()
+    .transform(emptyToUndefined)
+    .describe(
+      'Parent exercise ID. Required when using setIndex to identify the set.'
+    ),
+  setIndex: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe('Which set to remove (1-based). Used with workoutLogExerciseId.'),
+  reasoning: z.string().describe('Why this set proposal is being removed'),
+})
+
+export type DeleteWorkoutLogSetInput = z.infer<typeof deleteWorkoutLogSetChangeRequestSchema>
+
+export const deleteWorkoutLogSetChangeRequestTool = tool({
+  description:
+    'Remove a set proposal from the changeset buffer. Only works for proposals (temp-IDs), not saved workout data. To undo saved data, use updateWorkoutLogSetChangeRequest with completed: false.',
+  inputSchema: deleteWorkoutLogSetChangeRequestSchema,
   // No execute - handled client-side
 })
 
@@ -296,19 +422,27 @@ export const updateTrainingSessionChangeRequestTool = tool({
 /**
  * All proposal tools for the Athlete domain.
  *
- * Note: No delete tools - athletes swap exercises or mark sets as skipped.
+ * Uses WorkoutLog prefix to align with database entity names:
+ * - workout_logs → WorkoutLog*
+ * - workout_log_exercises → WorkoutLogExercise*
+ * - workout_log_sets → WorkoutLogSet*
+ *
+ * Delete tools allow removing proposals from the buffer (temp-IDs only).
+ * Real workout data cannot be deleted - athletes should mark sets as skipped instead.
  */
 export const athleteProposalTools = {
-  // Set tools
-  createTrainingSetChangeRequest: createTrainingSetChangeRequestTool,
-  updateTrainingSetChangeRequest: updateTrainingSetChangeRequestTool,
+  // Set tools (workout_log_set)
+  createWorkoutLogSetChangeRequest: createWorkoutLogSetChangeRequestTool,
+  updateWorkoutLogSetChangeRequest: updateWorkoutLogSetChangeRequestTool,
+  deleteWorkoutLogSetChangeRequest: deleteWorkoutLogSetChangeRequestTool,
 
-  // Exercise tools
-  createTrainingExerciseChangeRequest: createTrainingExerciseChangeRequestTool,
-  updateTrainingExerciseChangeRequest: updateTrainingExerciseChangeRequestTool,
+  // Exercise tools (workout_log_exercise)
+  createWorkoutLogExerciseChangeRequest: createWorkoutLogExerciseChangeRequestTool,
+  updateWorkoutLogExerciseChangeRequest: updateWorkoutLogExerciseChangeRequestTool,
+  deleteWorkoutLogExerciseChangeRequest: deleteWorkoutLogExerciseChangeRequestTool,
 
-  // Session tools
-  updateTrainingSessionChangeRequest: updateTrainingSessionChangeRequestTool,
+  // Session tools (workout_log)
+  updateWorkoutLogChangeRequest: updateWorkoutLogChangeRequestTool,
 }
 
 /**

@@ -142,7 +142,7 @@ export const PARENT_FK_FROM_TOOL_INPUT: Record<SessionEntityType, { inputField: 
  */
 export const WORKOUT_PARENT_FK_FROM_TOOL_INPUT: Record<WorkoutEntityType, { inputField: string; dbField: string } | null> = {
   workout_log: null, // Session's parent (athlete) comes from context
-  workout_log_exercise: null, // Exercise's parent (workout log) comes from workoutLogId context
+  workout_log_exercise: { inputField: 'workoutLogId', dbField: 'workout_log_id' }, // Exercise's parent workout log
   workout_log_set: { inputField: 'workoutLogExerciseId', dbField: 'workout_log_exercise_id' },
 }
 

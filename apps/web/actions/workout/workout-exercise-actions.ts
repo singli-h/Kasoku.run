@@ -24,11 +24,15 @@ type WorkoutLog = Database['public']['Tables']['workout_logs']['Row']
  *
  * @param workoutLogId - The workout log ID
  * @param exerciseData - The exercise data to add
+ * @param exerciseData.id - Optional pre-generated UUID for the exercise. If provided,
+ *                          this ID will be used instead of letting the database generate one.
+ *                          Used by ChangeSet execution to maintain ID consistency.
  * @returns The created workout log exercise
  */
 export async function addWorkoutExerciseAction(
   workoutLogId: string,
   exerciseData: {
+    id?: string
     exercise_id: number
     exercise_order?: number
     notes?: string
@@ -89,9 +93,11 @@ export async function addWorkoutExerciseAction(
     }
 
     // Insert the new exercise
+    // If id is provided (from ChangeSet execution), use it; otherwise let DB generate
     const { data: exercise, error: insertError } = await supabase
       .from('workout_log_exercises')
       .insert({
+        ...(exerciseData.id ? { id: exerciseData.id } : {}),
         workout_log_id: workoutLogId,
         exercise_id: exerciseData.exercise_id,
         exercise_order: exerciseOrder,
