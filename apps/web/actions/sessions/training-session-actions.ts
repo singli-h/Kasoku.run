@@ -705,23 +705,57 @@ export async function addExercisePerformanceByExerciseIdAction(
       }
     }
 
+    // Validate inputs - exerciseId must be a valid number
+    const numericExerciseId = typeof exerciseId === 'string' ? parseInt(exerciseId, 10) : exerciseId
+    if (isNaN(numericExerciseId) || numericExerciseId <= 0) {
+      console.error('[addExercisePerformanceByExerciseIdAction] Invalid exerciseId:', exerciseId)
+      return {
+        isSuccess: false,
+        message: `Invalid exercise ID: ${exerciseId}`
+      }
+    }
+
     // Find the workout_log_exercise for this session and exercise
-    let { data: workoutLogExercise, error: fetchError } = await supabase
+    // Use .limit(1) instead of .maybeSingle() to handle duplicate entries gracefully
+    // (duplicates can occur from previous bugs - we should use the first one, not create more)
+    const { data: existingExercises, error: fetchError } = await supabase
       .from('workout_log_exercises')
       .select('id')
       .eq('workout_log_id', sessionId)
-      .eq('exercise_id', exerciseId)
-      .maybeSingle()
+      .eq('exercise_id', numericExerciseId)
+      .order('created_at', { ascending: true }) // Use oldest entry if duplicates exist
+      .limit(1)
+
+    if (fetchError) {
+      console.error('[addExercisePerformanceByExerciseIdAction] Error finding workout_log_exercise:', {
+        error: fetchError,
+        sessionId,
+        exerciseId: numericExerciseId
+      })
+      return {
+        isSuccess: false,
+        message: `Failed to find exercise: ${fetchError.message}`
+      }
+    }
+
+    // Use the first match if found, otherwise create new
+    let workoutLogExercise = existingExercises?.[0] ?? null
 
     // If not found, create it (for backwards compatibility)
     if (!workoutLogExercise) {
+      console.log('[addExercisePerformanceByExerciseIdAction] No existing workout_log_exercise found, creating new one:', {
+        sessionId,
+        exerciseId: numericExerciseId,
+        setIndex: setData.set_index
+      })
+
       // Look up session_plan_id from workout_log to help find the correct session_plan_exercise
       const { data: workoutLog } = await supabase
         .from('workout_logs')
         .select('session_plan_id')
         .eq('id', sessionId)
         .single()
-      
+
       let sessionPlanExerciseId: string | null = null
 
       if (workoutLog?.session_plan_id) {
@@ -730,7 +764,7 @@ export async function addExercisePerformanceByExerciseIdAction(
           .from('session_plan_exercises')
           .select('id')
           .eq('session_plan_id', workoutLog.session_plan_id)
-          .eq('exercise_id', exerciseId)
+          .eq('exercise_id', numericExerciseId)
           .maybeSingle()
 
         if (spe) {
@@ -753,7 +787,7 @@ export async function addExercisePerformanceByExerciseIdAction(
         .from('workout_log_exercises')
         .insert({
           workout_log_id: sessionId,
-          exercise_id: exerciseId,
+          exercise_id: numericExerciseId,
           session_plan_exercise_id: sessionPlanExerciseId, // Linked correctly
           exercise_order: nextOrder
         })
@@ -1531,11 +1565,31 @@ export async function updateSessionDetailAction(
 ): Promise<ActionState<void>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
         message: "User not authenticated"
+      }
+    }
+
+    // Validate inputs - exerciseId and athleteId must be valid numbers
+    const numericExerciseId = typeof exerciseId === 'string' ? parseInt(exerciseId, 10) : exerciseId
+    const numericAthleteId = typeof athleteId === 'string' ? parseInt(athleteId, 10) : athleteId
+
+    if (isNaN(numericExerciseId) || numericExerciseId <= 0) {
+      console.error('[updateSessionDetailAction] Invalid exerciseId:', exerciseId)
+      return {
+        isSuccess: false,
+        message: `Invalid exercise ID: ${exerciseId}`
+      }
+    }
+
+    if (isNaN(numericAthleteId) || numericAthleteId <= 0) {
+      console.error('[updateSessionDetailAction] Invalid athleteId:', athleteId)
+      return {
+        isSuccess: false,
+        message: `Invalid athlete ID: ${athleteId}`
       }
     }
 
@@ -1598,18 +1652,24 @@ export async function updateSessionDetailAction(
       .from('workout_logs')
       .select('id')
       .eq('session_plan_id', sessionPresetGroupId)
-      .eq('athlete_id', athleteId)
+      .eq('athlete_id', numericAthleteId)
       .maybeSingle()
 
     let athleteSessionId = athleteSession?.id
 
     // If no session exists for this athlete, we need to create one
     if (!athleteSessionId) {
+      console.log('[updateSessionDetailAction] Creating new athlete session:', {
+        sessionPlanId: sessionPresetGroupId,
+        athleteId: numericAthleteId,
+        athleteGroupId: session.athlete_group_id
+      })
+
       const { data: newSession, error: createSessionError } = await supabase
         .from('workout_logs')
         .insert({
           session_plan_id: sessionPresetGroupId,
-          athlete_id: athleteId,
+          athlete_id: numericAthleteId,
           athlete_group_id: session.athlete_group_id,
           session_status: 'ongoing',
           date_time: new Date().toISOString()
@@ -1632,7 +1692,7 @@ export async function updateSessionDetailAction(
       .from('session_plan_exercises')
       .select('id')
       .eq('session_plan_id', sessionPresetGroupId)
-      .eq('exercise_id', exerciseId)
+      .eq('exercise_id', numericExerciseId)
       .maybeSingle()
 
     if (!presetData) {
@@ -1683,16 +1743,26 @@ export async function updateSessionDetailAction(
         workoutLogExerciseId = wle.id
       } else {
         // Create it if missing
+        console.log('[updateSessionDetailAction] Creating new workout_log_exercise:', {
+          workoutLogId: athleteSessionId,
+          exerciseId: numericExerciseId,
+          sessionPlanExerciseId: presetData.id
+        })
+
         const { data: newWle, error: wleError } = await supabase
           .from('workout_log_exercises')
           .insert({
             workout_log_id: athleteSessionId,
-            exercise_id: exerciseId,
+            exercise_id: numericExerciseId,
             session_plan_exercise_id: presetData.id,
             exercise_order: 999 // fallback order
           })
           .select('id')
           .single()
+
+        if (wleError) {
+          console.error('[updateSessionDetailAction] Error creating workout_log_exercise:', wleError)
+        }
 
         if (!wleError && newWle) {
           workoutLogExerciseId = newWle.id

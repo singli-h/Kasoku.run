@@ -369,35 +369,36 @@ export function WorkoutView({
 
             {/* Save/Finish Buttons */}
             <div className="flex items-center gap-2">
-              {!isCompleted && isAthlete && (
-                <>
-                  {onSaveSession && (
-                    <button
-                      onClick={onSaveSession}
-                      disabled={saveStatus === 'saving'}
-                      className={cn(
-                        "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5",
-                        saveStatus === 'saving' && "opacity-70 cursor-not-allowed",
-                        saveStatus === 'saved' ? "bg-green-100 text-green-700" : "bg-muted text-foreground hover:bg-muted/80"
-                      )}
-                    >
-                      {saveStatus === 'saving' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                      {saveStatus === 'saved' && <Check className="w-3.5 h-3.5" />}
-                      {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
-                    </button>
+              {/* Save button - shown for both ongoing and completed sessions */}
+              {isAthlete && onSaveSession && (
+                <button
+                  onClick={onSaveSession}
+                  disabled={saveStatus === 'saving'}
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5",
+                    saveStatus === 'saving' && "opacity-70 cursor-not-allowed",
+                    saveStatus === 'saved' ? "bg-green-100 text-green-700" : "bg-muted text-foreground hover:bg-muted/80"
                   )}
-                  <button
-                    onClick={handleFinishClick}
-                    className={cn(
-                      "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
-                      stats.progress === 100
-                        ? "bg-green-500 text-white hover:bg-green-600"
-                        : "bg-muted text-foreground hover:bg-muted/80"
-                    )}
-                  >
-                    Finish
-                  </button>
-                </>
+                >
+                  {saveStatus === 'saving' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {saveStatus === 'saved' && <Check className="w-3.5 h-3.5" />}
+                  {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
+                </button>
+              )}
+
+              {/* Finish button - only shown for ongoing sessions */}
+              {!isCompleted && isAthlete && (
+                <button
+                  onClick={handleFinishClick}
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
+                    stats.progress === 100
+                      ? "bg-green-500 text-white hover:bg-green-600"
+                      : "bg-muted text-foreground hover:bg-muted/80"
+                  )}
+                >
+                  Finish
+                </button>
               )}
 
               {isCompleted && (

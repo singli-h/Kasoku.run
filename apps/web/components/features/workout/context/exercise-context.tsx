@@ -83,7 +83,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
   // Auto-save queue and timer
   const saveQueueRef = useRef<Map<string, any>>(new Map())
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
+  const isSavingRef = useRef<boolean>(false)
 
   // Workout API for saving data
   const { saveExercisePerformance } = useWorkoutApi()
@@ -92,15 +92,24 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
    * Process the auto-save queue
    * Debounced to avoid excessive database writes
    * Properly handles individual save failures
+   * Uses lock to prevent concurrent saves
    */
   const processSaveQueue = useCallback(async () => {
-    console.log('[ExerciseProvider] processSaveQueue called', { queueSize: saveQueueRef.current.size, sessionId })
+    console.log('[ExerciseProvider] processSaveQueue called', { queueSize: saveQueueRef.current.size, sessionId, isSaving: isSavingRef.current })
+
+    // Prevent concurrent saves - if already saving, the next scheduled save will pick up remaining items
+    if (isSavingRef.current) {
+      console.log('[ExerciseProvider] Save already in progress, skipping')
+      return
+    }
+
     if (saveQueueRef.current.size === 0 || !sessionId) return
 
+    isSavingRef.current = true
     setSaveStatus('saving')
 
     try {
-      // Process all pending saves and track success/failure per item
+      // Snapshot the queue at start of processing - new items added during save will be processed next time
       const entries = Array.from(saveQueueRef.current.entries())
       const results = await Promise.all(
         entries.map(async ([key, data]) => {
@@ -141,6 +150,8 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       setSaveStatus('error')
       // Keep items in queue for retry
       setTimeout(() => setSaveStatus('idle'), 3000)
+    } finally {
+      isSavingRef.current = false
     }
   }, [sessionId, saveExercisePerformance])
 
@@ -200,10 +211,25 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
 
           if (hasChanged) {
             // Get exercise ID from nested object or direct field (workout_log_exercises has exercise_id)
-            const exId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
-            console.log('[ExerciseProvider] Change detected for set', { index, exId, exerciseDataId: exerciseData.id, hasExercise: !!exerciseData.exercise })
-            if (!exId) {
-              console.error('[ExerciseProvider] Cannot save - no exercise ID found for exercise:', exerciseData.id)
+            // Priority: exercise.id (from nested exercise object) > exercise_id (direct field)
+            const rawExId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
+            // Ensure it's a valid number for the server action
+            const exId = typeof rawExId === 'string' ? parseInt(rawExId, 10) : rawExId
+            console.log('[ExerciseProvider] Change detected for set', {
+              index,
+              rawExId,
+              exId,
+              exerciseDataId: exerciseData.id,
+              hasExercise: !!exerciseData.exercise,
+              exerciseIdType: typeof rawExId
+            })
+            if (!exId || isNaN(exId)) {
+              console.error('[ExerciseProvider] Cannot save - invalid exercise ID for exercise:', {
+                exerciseDataId: exerciseData.id,
+                rawExId,
+                exId,
+                exerciseData: JSON.stringify(exerciseData, null, 2).slice(0, 500)
+              })
               return
             }
             const queueKey = `${sessionId}-${exId}-${index}`
@@ -255,9 +281,15 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
         if (detailIndex === -1) return updatedExercises
 
         // Get exercise ID from nested object or direct field
-        const exId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
-        if (!exId) {
-          console.error('[ExerciseProvider] Cannot save completion - no exercise ID found')
+        const rawExId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
+        // Ensure it's a valid number for the server action
+        const exId = typeof rawExId === 'string' ? parseInt(rawExId, 10) : rawExId
+        if (!exId || isNaN(exId)) {
+          console.error('[ExerciseProvider] Cannot save completion - invalid exercise ID:', {
+            exerciseId,
+            rawExId,
+            exId
+          })
           return updatedExercises
         }
 
@@ -288,6 +320,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
   /**
    * Force immediate save of all pending changes
    * MUST be called before completing/finishing a workout session
+   * Waits for any ongoing save to complete before processing
    * @returns Promise<boolean> - true if ALL saves succeeded, false if any failed
    */
   const forceSave = useCallback(async (): Promise<boolean> => {
@@ -297,11 +330,25 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       saveTimeoutRef.current = null
     }
 
+    // Wait for any ongoing save to complete (poll with backoff)
+    let waitAttempts = 0
+    const maxWaitAttempts = 20 // 2 seconds max wait (20 * 100ms)
+    while (isSavingRef.current && waitAttempts < maxWaitAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      waitAttempts++
+    }
+
+    if (isSavingRef.current) {
+      console.error('[ExerciseProvider] forceSave: Timeout waiting for ongoing save')
+      return false
+    }
+
     // If nothing to save, return success
     if (saveQueueRef.current.size === 0) {
       return true
     }
 
+    isSavingRef.current = true
     setSaveStatus('saving')
 
     try {
@@ -342,6 +389,8 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       console.error('[ExerciseProvider] Force save failed:', error)
       setSaveStatus('error')
       return false
+    } finally {
+      isSavingRef.current = false
     }
   }, [sessionId, saveExercisePerformance])
 

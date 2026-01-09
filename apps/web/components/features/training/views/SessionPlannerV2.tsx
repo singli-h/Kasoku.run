@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Undo2, Redo2, Save, Edit2, Calendar, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -78,6 +78,9 @@ export function SessionPlannerV2({
   // Local UI state
   const [isSaving, setIsSaving] = useState(false)
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
+
+  // Counter for generating unique IDs (prevents race condition with Date.now())
+  const idCounterRef = useRef(0)
 
   // Session metadata editing state
   const [sessionName, setSessionName] = useState(initialSession.name)
@@ -163,6 +166,9 @@ export function SessionPlannerV2({
 
   // Handle add set
   const handleAddSet = useCallback((exerciseId: number | string) => {
+    // Generate unique ID using counter + timestamp to prevent collisions
+    const uniqueId = `new_set_${Date.now()}_${++idCounterRef.current}`
+
     setExercises(prev => {
       return prev.map(ex => {
         if (ex.id !== exerciseId) return ex
@@ -170,7 +176,7 @@ export function SessionPlannerV2({
         const lastSet = ex.sets[ex.sets.length - 1]
         const newSetIndex = ex.sets.length + 1
         const newSet = {
-          id: `new_set_${Date.now()}`,
+          id: uniqueId,
           session_plan_exercise_id: String(ex.id),
           set_index: newSetIndex,
           reps: lastSet?.reps ?? null,
@@ -224,11 +230,16 @@ export function SessionPlannerV2({
       return
     }
 
+    // Generate unique IDs using counter + timestamp to prevent collisions
+    const counter = ++idCounterRef.current
+    const timestamp = Date.now()
+    const newExerciseId = `new_${timestamp}_${counter}`
+    const newSetId = `new_set_${timestamp}_${counter}`
+
     setExercises(prev => {
       const maxOrder = Math.max(0, ...prev.map(e => e.exercise_order))
-      const timestamp = Date.now()
       const newExercise: SessionPlannerExercise = {
-        id: `new_${timestamp}`, // Use new_ prefix for consistency with save action
+        id: newExerciseId, // Use new_ prefix for consistency with save action
         session_plan_id: sessionId,
         exercise_id: exerciseId,
         exercise_order: maxOrder + 1,
@@ -246,7 +257,7 @@ export function SessionPlannerV2({
           }
         },
         sets: [{
-          id: `new_set_${timestamp}`,
+          id: newSetId,
           session_plan_exercise_id: '',
           set_index: 1,
           reps: null,

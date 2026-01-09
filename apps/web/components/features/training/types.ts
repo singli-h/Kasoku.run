@@ -387,11 +387,19 @@ export function getCompletedCount(exercise: TrainingExercise): number {
 
 /**
  * Group exercises by superset
+ *
+ * Exercises with the same supersetId are grouped into arrays.
+ * Non-superset exercises remain as single items.
+ * The superset array is inserted at the position of the first member.
+ *
+ * Example: [A1(ss:X), B, A2(ss:X)] → [[A1, A2], B]
  */
 export function groupBySupersets(exercises: TrainingExercise[]): (TrainingExercise | TrainingExercise[])[] {
   const result: (TrainingExercise | TrainingExercise[])[] = []
   const supersetGroups: Record<string, TrainingExercise[]> = {}
+  const processedSupersets = new Set<string>()
 
+  // First pass: collect all exercises into superset groups
   exercises.forEach((ex) => {
     if (ex.supersetId) {
       if (!supersetGroups[ex.supersetId]) {
@@ -401,16 +409,17 @@ export function groupBySupersets(exercises: TrainingExercise[]): (TrainingExerci
     }
   })
 
-  let lastSupersetId: string | null = null
+  // Second pass: build result array, inserting superset groups at first occurrence
   exercises.forEach((ex) => {
     if (ex.supersetId) {
-      if (ex.supersetId !== lastSupersetId) {
+      // Only add the superset group the first time we encounter it
+      if (!processedSupersets.has(ex.supersetId)) {
         result.push(supersetGroups[ex.supersetId])
-        lastSupersetId = ex.supersetId
+        processedSupersets.add(ex.supersetId)
       }
+      // Skip subsequent members - already included in the superset group
     } else {
       result.push(ex)
-      lastSupersetId = null
     }
   })
 

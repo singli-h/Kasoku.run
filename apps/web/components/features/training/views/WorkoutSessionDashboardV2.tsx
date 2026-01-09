@@ -173,6 +173,13 @@ function WorkoutSessionContentV2({
             performing_time: planSet.performing_time ?? null,
             rest_time: planSet.rest_time ?? null,
             rpe: planSet.rpe ?? null,
+            // Include effort - database stores 0-1, will be converted to 0-100 by adapter
+            effort: planSet.effort ?? null,
+            tempo: planSet.tempo ?? null,
+            power: planSet.power ?? null,
+            velocity: planSet.velocity ?? null,
+            height: planSet.height ?? null,
+            resistance: planSet.resistance ?? null,
             completed: false,
             session_plan_exercise_id: preset.id,
           }))

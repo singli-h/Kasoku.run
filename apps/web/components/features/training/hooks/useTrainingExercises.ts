@@ -56,13 +56,43 @@ export function useTrainingExercises({
   }, [])
 
   const addExerciseFromLibrary = useCallback((exercise: ExerciseLibraryItem, section: string) => {
+    // Parse exercise ID - expect either numeric string or string with numeric prefix
+    // exercise.id could be: "123", "ex-123", "new-123", or just a numeric ID
+    const rawId = exercise.id
+    let exerciseId: number
+
+    if (typeof rawId === 'number') {
+      exerciseId = rawId
+    } else {
+      // Try to parse as number first
+      const parsed = parseInt(rawId, 10)
+      if (!isNaN(parsed) && parsed > 0) {
+        exerciseId = parsed
+      } else {
+        // Try to extract numeric portion (e.g., from "ex-123" get 123)
+        const numericMatch = rawId.match(/(\d+)/)
+        if (numericMatch) {
+          exerciseId = parseInt(numericMatch[1], 10)
+        } else {
+          // Cannot extract valid exercise ID - log error and reject
+          console.error('[useTrainingExercises] Cannot extract valid exercise ID from:', rawId)
+          return // Don't add exercise with invalid ID
+        }
+      }
+    }
+
+    if (isNaN(exerciseId) || exerciseId <= 0) {
+      console.error('[useTrainingExercises] Invalid exercise ID extracted:', { rawId, exerciseId })
+      return
+    }
+
     const newId = `new-${Date.now()}`
     const sectionExercises = exercises.filter(e => e.section === section)
     const maxOrder = Math.max(0, ...sectionExercises.map(e => e.exerciseOrder))
 
     const newExercise: TrainingExercise = {
       id: newId,
-      exerciseId: parseInt(exercise.id.replace(/\D/g, '')) || Date.now(), // Extract numeric ID or use timestamp
+      exerciseId,
       name: exercise.name,
       section,
       exerciseOrder: maxOrder + 1,
