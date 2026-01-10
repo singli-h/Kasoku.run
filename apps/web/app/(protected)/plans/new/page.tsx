@@ -1,19 +1,12 @@
-"use server"
-
 import { Suspense } from "react"
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { MesoWizard } from "@/components/features/plans/components/mesowizard/MesoWizard"
 import { QuickStartWizard } from "@/components/features/plans/components/mesowizard/QuickStartWizard"
-import { getUserRoleAction } from "@/actions/auth/auth-helpers"
 
 export default async function NewPlanPage() {
-  // Protect this page - only coaches and individuals can access
-  await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
-
-  // Get user role to determine which wizard to show
-  const roleResult = await getUserRoleAction()
-  const role = roleResult.isSuccess ? roleResult.data : null
+  // Protect this page and get user role in a single call
+  const role = await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
   const isIndividual = role === 'individual'
 
   // Terminology based on role

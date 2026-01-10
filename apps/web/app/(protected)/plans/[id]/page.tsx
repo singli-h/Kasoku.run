@@ -5,7 +5,6 @@ import { IndividualWorkspace } from "@/components/features/plans/workspace/Indiv
 import { UnifiedPageSkeleton, PageLayout } from "@/components/layout"
 import { getMacrocycleByIdAction, getMesocycleByIdAction } from "@/actions/plans/plan-actions"
 import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
-import { getUserRoleAction } from "@/actions/auth/auth-helpers"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { FeatureErrorBoundary } from "@/components/error-boundary"
 import type { MesocycleWithDetails } from "@/types/training"
@@ -63,15 +62,11 @@ function calculateAverage(sessions: Array<{ volume: number; intensity: number }>
 }
 
 export default async function PlanWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
-  // Protect this page - only coaches and individuals can access
-  await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
+  // Protect this page and get user role in a single call
+  const role = await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
 
   const resolvedParams = await params
   const planId = Number(resolvedParams.id)
-
-  // Get user role to determine which workspace to show
-  const roleResult = await getUserRoleAction()
-  const role = roleResult.isSuccess ? roleResult.data : null
   const isIndividual = role === 'individual'
 
   // For individual users, fetch mesocycle (Training Block) directly

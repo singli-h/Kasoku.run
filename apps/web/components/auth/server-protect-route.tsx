@@ -15,23 +15,24 @@ interface ServerProtectRouteProps {
  * 1. Runs on the server (async server component)
  * 2. Checks user role before rendering
  * 3. Redirects immediately if unauthorized (no client-side flash)
- * 4. Returns null if authorized (acts as a guard)
+ * 4. Returns the user's role if authorized (can be used for conditional rendering)
  *
  * @example
  * ```tsx
  * // In a server component or page
  * export default async function AthletesPage() {
- *   await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
+ *   const role = await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
  *
- *   // Rest of your page code - only executes if authorized
- *   return <AthletesList />
+ *   // Use role for conditional rendering - no duplicate fetch needed
+ *   if (role === 'individual') return <IndividualView />
+ *   return <CoachView />
  * }
  * ```
  */
 export async function serverProtectRoute({
   allowedRoles,
   redirectTo = '/dashboard'
-}: ServerProtectRouteProps): Promise<void> {
+}: ServerProtectRouteProps): Promise<UserRole> {
   const { userId } = await auth()
 
   // If not authenticated, this shouldn't happen as middleware should catch it
@@ -49,7 +50,8 @@ export async function serverProtectRoute({
       redirect(redirectTo)
     }
 
-    // User is authorized, function returns normally
+    // User is authorized, return their role
+    return role as UserRole
   } catch (error) {
     console.error('[ServerProtectRoute] Error checking user role:', error)
     // On error, redirect to dashboard for safety

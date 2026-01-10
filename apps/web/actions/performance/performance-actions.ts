@@ -612,6 +612,15 @@ export async function getSprintAnalyticsAction(
         }
       })
       .filter(pb => pb.distance > 0) // Only include known sprint distances
+      // Aggregate to keep only the best (fastest) time per distance
+      .reduce((acc, pb) => {
+        const existing = acc.find(p => p.distance === pb.distance)
+        if (!existing || pb.value < existing.value) {
+          // Replace with faster time or add new distance
+          return [...acc.filter(p => p.distance !== pb.distance), pb]
+        }
+        return acc
+      }, [] as CompetitionPB[])
 
     console.log(`[getSprintAnalyticsAction] Found ${competitionPBs.length} wind-legal competition PBs`)
 
