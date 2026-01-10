@@ -8,6 +8,9 @@ import { redirect } from "next/navigation"
 import { DashboardLayout } from "@/components/features/dashboard/components"
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 
+// Dashboard needs real-time data - disable caching for this page
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
   return (
     <Suspense fallback={<UnifiedPageSkeleton title="Dashboard" variant="dashboard" />}>

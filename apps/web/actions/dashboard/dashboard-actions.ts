@@ -48,23 +48,35 @@ export async function getDashboardDataAction(): Promise<
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
 
-    // Get recent training sessions - prioritize ongoing and today's assigned sessions
-    const { data: sessions, error: sessionsError } = await supabase
-      .from('workout_logs')
-      .select(`
-        id,
-        date_time,
-        session_status,
-        notes,
-        session_plan:session_plans(
-          name
-        )
-      `)
-      .eq('athlete_id', athlete.id)
-      .or(`session_status.eq.ongoing,session_status.eq.completed,and(date_time.gte.${startOfDay.toISOString()},date_time.lt.${endOfDay.toISOString()},session_status.eq.assigned)`)
-      .order('session_status', { ascending: false }) // ongoing first, then assigned, then completed
-      .order('date_time', { ascending: false })
-      .limit(10)
+    // Parallelize both queries - they both depend on athlete.id but not on each other
+    const [sessionsResult, statsResult] = await Promise.all([
+      // Get recent training sessions - prioritize ongoing and today's assigned sessions
+      supabase
+        .from('workout_logs')
+        .select(`
+          id,
+          date_time,
+          session_status,
+          notes,
+          session_plan:session_plans(
+            name
+          )
+        `)
+        .eq('athlete_id', athlete.id)
+        .or(`session_status.eq.ongoing,session_status.eq.completed,and(date_time.gte.${startOfDay.toISOString()},date_time.lt.${endOfDay.toISOString()},session_status.eq.assigned)`)
+        .order('session_status', { ascending: false }) // ongoing first, then assigned, then completed
+        .order('date_time', { ascending: false })
+        .limit(10),
+
+      // Get dashboard stats
+      supabase
+        .from('workout_logs')
+        .select('session_status, date_time')
+        .eq('athlete_id', athlete.id)
+    ])
+
+    const { data: sessions, error: sessionsError } = sessionsResult
+    const { data: statsData, error: statsError } = statsResult
 
     if (sessionsError) {
       console.error("Error fetching recent sessions:", sessionsError)
@@ -73,12 +85,6 @@ export async function getDashboardDataAction(): Promise<
         message: "Failed to fetch recent sessions"
       }
     }
-
-    // Get dashboard stats
-    const { data: statsData, error: statsError } = await supabase
-      .from('workout_logs')
-      .select('session_status, date_time')
-      .eq('athlete_id', athlete.id)
 
     if (statsError) {
       console.error("Error fetching stats:", statsError)

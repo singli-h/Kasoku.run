@@ -102,46 +102,63 @@ export async function saveSessionPlanAction(
 
     const dbUserId = await getDbUserId(userId)
 
-    const savedSessions: SessionPlan[] = []
     const errors: string[] = []
 
-    // Save each session as an session_plan
-    for (const session of planData.sessions) {
-      // Validate session data
+    // Validate all sessions first
+    const validSessions = planData.sessions.filter(session => {
       if (!session.exercises || session.exercises.length === 0) {
         errors.push(`Session "${session.name}" has no exercises`)
-        continue
+        return false
       }
+      return true
+    })
 
-      // Create the session (session_plan)
-      const sessionData: SessionPlanInsert = {
-        name: session.name,
-        description: session.description,
-        date: new Date().toISOString().split('T')[0], // Current date, can be updated later
-        day: session.day,
-        week: session.week,
-        session_mode: planData.isTemplate ? 'template' : (planData.athleteGroupId ? 'group' : 'individual'),
-        microcycle_id: planData.microcycleId || null,
-        athlete_group_id: planData.isTemplate ? null : (planData.athleteGroupId || null),
-        user_id: planData.isTemplate ? null : dbUserId,
-        is_template: planData.isTemplate || false
+    if (validSessions.length === 0) {
+      return {
+        isSuccess: false,
+        message: errors.length > 0 ? errors.join('; ') : "No valid sessions to save"
       }
+    }
 
-      const { data: savedSession, error: sessionError } = await supabase
-        .from('session_plans')
-        .insert(sessionData)
-        .select()
-        .single()
+    // Step 1: Batch insert all sessions
+    const sessionInserts: SessionPlanInsert[] = validSessions.map(session => ({
+      name: session.name,
+      description: session.description,
+      date: new Date().toISOString().split('T')[0],
+      day: session.day,
+      week: session.week,
+      session_mode: planData.isTemplate ? 'template' : (planData.athleteGroupId ? 'group' : 'individual'),
+      microcycle_id: planData.microcycleId || null,
+      athlete_group_id: planData.isTemplate ? null : (planData.athleteGroupId || null),
+      user_id: planData.isTemplate ? null : dbUserId,
+      is_template: planData.isTemplate || false
+    }))
 
-      if (sessionError || !savedSession) {
-        console.error('Error saving session:', sessionError)
-        errors.push(`Failed to save session "${session.name}": ${sessionError?.message}`)
-        continue
+    const { data: savedSessions, error: sessionError } = await supabase
+      .from('session_plans')
+      .insert(sessionInserts)
+      .select()
+
+    if (sessionError || !savedSessions || savedSessions.length === 0) {
+      console.error('Error batch saving sessions:', sessionError)
+      return {
+        isSuccess: false,
+        message: `Failed to save sessions: ${sessionError?.message}`
       }
+    }
 
-      // Save exercises for this session
-      for (const exercise of session.exercises) {
-        // Validate exercise data
+    // Step 2: Prepare and batch insert all exercises
+    const exerciseInserts: ExercisePresetInsert[] = []
+    // Map to track which exercises belong to which session (by index)
+    const exerciseToSessionMap: { sessionIdx: number; exerciseIdx: number }[] = []
+
+    for (let sessionIdx = 0; sessionIdx < validSessions.length; sessionIdx++) {
+      const session = validSessions[sessionIdx]
+      const savedSession = savedSessions[sessionIdx]
+
+      for (let exerciseIdx = 0; exerciseIdx < session.exercises.length; exerciseIdx++) {
+        const exercise = session.exercises[exerciseIdx]
+
         if (!exercise.exerciseId) {
           errors.push(`Exercise in session "${session.name}" is missing exerciseId`)
           continue
@@ -152,77 +169,105 @@ export async function saveSessionPlanAction(
           continue
         }
 
-        // Parse superset_id correctly - handle the string format properly
+        // Parse superset_id
         let supersetId: number | null = null
         if (exercise.supersetId && exercise.supersetId !== 'superset-0') {
           const parsed = parseInt(exercise.supersetId.replace('superset-', ''))
-          // Only set if it's a valid positive integer
           if (!isNaN(parsed) && parsed > 0) {
             supersetId = parsed
           }
         }
 
-        // Create the exercise preset
-        const exercisePresetData: ExercisePresetInsert = {
+        exerciseInserts.push({
           session_plan_id: savedSession.id,
           exercise_id: exercise.exerciseId,
           exercise_order: exercise.order,
           notes: exercise.notes,
           superset_id: supersetId
-        }
+        })
 
-        const { data: savedExercisePreset, error: exerciseError } = await supabase
-          .from('session_plan_exercises')
-          .insert(exercisePresetData)
-          .select()
-          .single()
-
-        if (exerciseError || !savedExercisePreset) {
-          console.error('Error saving exercise preset:', exerciseError)
-          errors.push(`Failed to save exercise ${exercise.exerciseId} in session "${session.name}": ${exerciseError?.message}`)
-          continue
-        }
-
-        // Save exercise preset details (sets) - ensure set_index is properly set
-        for (let i = 0; i < exercise.sets.length; i++) {
-          const set = exercise.sets[i]
-          
-          // Ensure set_index is properly set (1-based indexing)
-          const setIndex = set.setIndex || (i + 1)
-          
-          const setDetailData = {
-            session_plan_exercise_id: savedExercisePreset.id,
-            set_index: setIndex,
-            reps: set.reps || null,
-            weight: set.weight || null,
-            distance: set.distance || null,
-            performing_time: set.performing_time || null,
-            power: set.power || null,
-            velocity: set.velocity || null,
-            resistance: set.resistance || null,
-            resistance_unit_id: set.resistance_unit_id || null,
-            tempo: set.tempo || null,
-            effort: set.rpe || null, // Map RPE to effort field
-            height: set.height || null,
-            metadata: set.metadata ? JSON.stringify(set.metadata) : null
-          }
-
-          const { error: detailError } = await supabase
-            .from('session_plan_sets')
-            .insert(setDetailData)
-
-          if (detailError) {
-            console.error('Error saving exercise preset detail:', detailError)
-            errors.push(`Failed to save set ${setIndex} for exercise ${exercise.exerciseId} in session "${session.name}": ${detailError.message}`)
-            // Continue with other sets but track the error
-          }
-        }
+        exerciseToSessionMap.push({ sessionIdx, exerciseIdx })
       }
-
-      savedSessions.push(savedSession)
     }
 
-    // If we have errors, return them
+    if (exerciseInserts.length === 0) {
+      return {
+        isSuccess: false,
+        message: errors.length > 0 ? errors.join('; ') : "No valid exercises to save"
+      }
+    }
+
+    const { data: savedExercises, error: exerciseError } = await supabase
+      .from('session_plan_exercises')
+      .insert(exerciseInserts)
+      .select()
+
+    if (exerciseError || !savedExercises) {
+      console.error('Error batch saving exercises:', exerciseError)
+      return {
+        isSuccess: false,
+        message: `Failed to save exercises: ${exerciseError?.message}`
+      }
+    }
+
+    // Step 3: Prepare and batch insert all sets
+    const setInserts: Array<{
+      session_plan_exercise_id: string
+      set_index: number
+      reps: number | null
+      weight: number | null
+      distance: number | null
+      performing_time: number | null
+      power: number | null
+      velocity: number | null
+      resistance: number | null
+      resistance_unit_id: number | null
+      tempo: string | null
+      effort: number | null
+      height: number | null
+      metadata: string | null
+    }> = []
+
+    for (let i = 0; i < savedExercises.length; i++) {
+      const savedExercise = savedExercises[i]
+      const { sessionIdx, exerciseIdx } = exerciseToSessionMap[i]
+      const exercise = validSessions[sessionIdx].exercises[exerciseIdx]
+
+      for (let setIdx = 0; setIdx < exercise.sets.length; setIdx++) {
+        const set = exercise.sets[setIdx]
+        const setIndex = set.setIndex || (setIdx + 1)
+
+        setInserts.push({
+          session_plan_exercise_id: savedExercise.id,
+          set_index: setIndex,
+          reps: set.reps || null,
+          weight: set.weight || null,
+          distance: set.distance || null,
+          performing_time: set.performing_time || null,
+          power: set.power || null,
+          velocity: set.velocity || null,
+          resistance: set.resistance || null,
+          resistance_unit_id: set.resistance_unit_id || null,
+          tempo: set.tempo || null,
+          effort: set.rpe || null,
+          height: set.height || null,
+          metadata: set.metadata ? JSON.stringify(set.metadata) : null
+        })
+      }
+    }
+
+    if (setInserts.length > 0) {
+      const { error: setsError } = await supabase
+        .from('session_plan_sets')
+        .insert(setInserts)
+
+      if (setsError) {
+        console.error('Error batch saving sets:', setsError)
+        errors.push(`Failed to save some sets: ${setsError.message}`)
+      }
+    }
+
+    // If we have errors, return them (but sessions were saved)
     if (errors.length > 0) {
       return {
         isSuccess: false,
@@ -230,26 +275,26 @@ export async function saveSessionPlanAction(
       }
     }
 
-    // Create workout_logs for individual assignments
+    // Create workout_logs for individual assignments (batch insert)
     if (planData.athleteIds && planData.athleteIds.length > 0 && !planData.isTemplate) {
-      for (const athleteId of planData.athleteIds) {
-        for (const savedSession of savedSessions) {
-          const trainingSessionData = {
-            session_plan_id: savedSession.id,
-            athlete_id: athleteId,
-            date_time: new Date().toISOString(),
-            notes: null,
-            session_status: 'assigned' as const
-          }
+      const workoutLogInserts = planData.athleteIds.flatMap(athleteId =>
+        savedSessions.map(savedSession => ({
+          session_plan_id: savedSession.id,
+          athlete_id: athleteId,
+          date_time: new Date().toISOString(),
+          notes: null,
+          session_status: 'assigned' as const
+        }))
+      )
 
-          const { error: trainingSessionError } = await supabase
-            .from('workout_logs')
-            .insert(trainingSessionData)
+      if (workoutLogInserts.length > 0) {
+        const { error: workoutLogError } = await supabase
+          .from('workout_logs')
+          .insert(workoutLogInserts)
 
-          if (trainingSessionError) {
-            console.error('Error creating training session:', trainingSessionError)
-            // Continue with other assignments instead of failing completely
-          }
+        if (workoutLogError) {
+          console.error('Error batch creating workout logs:', workoutLogError)
+          // Don't fail the whole operation, just log it
         }
       }
     }

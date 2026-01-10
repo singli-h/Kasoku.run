@@ -1,6 +1,7 @@
 /*
 <ai_context>
 This client component provides a list of training projects for the sidebar.
+Next.js Link handles prefetching automatically when links enter viewport.
 </ai_context>
 */
 
