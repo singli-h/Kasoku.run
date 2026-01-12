@@ -206,6 +206,7 @@ export type Database = {
           achieved_date: string
           athlete_id: number
           created_at: string | null
+          distance: number | null
           event_id: number | null
           exercise_id: number | null
           id: number
@@ -222,6 +223,7 @@ export type Database = {
           achieved_date?: string
           athlete_id: number
           created_at?: string | null
+          distance?: number | null
           event_id?: number | null
           exercise_id?: number | null
           id?: number
@@ -238,6 +240,7 @@ export type Database = {
           achieved_date?: string
           athlete_id?: number
           created_at?: string | null
+          distance?: number | null
           event_id?: number | null
           exercise_id?: number | null
           id?: number
