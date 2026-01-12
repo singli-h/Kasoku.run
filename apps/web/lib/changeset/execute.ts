@@ -118,6 +118,7 @@ function applyChangesToExercises(
   // STEP 1: Pre-group all set creation requests by their parent exercise ID
   // This allows us to attach sets directly when creating exercises
   const setsByParentId = new Map<string, ChangeRequest[]>()
+  const orphanedSets: ChangeRequest[] = []
 
   for (const request of changeRequests) {
     if (request.entityType === 'session_plan_set' && request.operationType === 'create') {
@@ -134,9 +135,19 @@ function applyChangesToExercises(
         existing.push(request)
         setsByParentId.set(parentId, existing)
       } else {
-        console.warn(`[applyChanges] Set missing session_plan_exercise_id`)
+        // Track orphaned sets for error reporting instead of silently dropping
+        orphanedSets.push(request)
+        console.warn(`[applyChanges] Set missing session_plan_exercise_id:`, {
+          entityId: request.entityId,
+          proposedData: request.proposedData,
+        })
       }
     }
+  }
+
+  // Report orphaned sets as warnings (but don't fail the execution)
+  if (orphanedSets.length > 0) {
+    console.error(`[applyChanges] ${orphanedSets.length} set(s) could not be grouped with exercises. These sets will be lost.`)
   }
 
   if (DEBUG_EXEC) {

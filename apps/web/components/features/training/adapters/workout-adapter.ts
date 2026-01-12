@@ -125,6 +125,10 @@ export function legacyToTrainingExercise(
     sortedLogSets.forEach((logSet, idx) => {
       const planSet = planSets.find(p => p.set_index === (logSet.set_index ?? idx + 1))
 
+      // Get effort value and convert from database (0-1) to UI (0-100)
+      const dbEffort = logSet.effort ?? planSet?.effort ?? null
+      const uiEffort = dbEffort != null ? dbEffort * 100 : null
+
       sets.push({
         id: logSet.id,
         setIndex: logSet.set_index ?? idx + 1,
@@ -139,7 +143,7 @@ export function legacyToTrainingExercise(
         velocity: logSet.velocity ?? planSet?.velocity ?? null,
         height: logSet.height ?? planSet?.height ?? null,
         resistance: logSet.resistance ?? planSet?.resistance ?? null,
-        effort: logSet.effort ?? planSet?.effort ?? null,
+        effort: uiEffort,
         metadata: logSet.metadata as SetMetadata | null,
         completed: logSet.completed ?? false,
       })
@@ -148,6 +152,9 @@ export function legacyToTrainingExercise(
     // No log sets yet - use plan sets as template
     // Use negative IDs to indicate new sets (will be created on save)
     planSets.forEach((planSet, idx) => {
+      // Convert effort from database (0-1) to UI (0-100)
+      const uiEffort = planSet.effort != null ? planSet.effort * 100 : null
+
       sets.push({
         id: -(exercise.id * 1000 + idx + 1), // Negative numeric ID for non-persisted sets
         setIndex: planSet.set_index ?? idx + 1,
@@ -162,7 +169,7 @@ export function legacyToTrainingExercise(
         velocity: planSet.velocity,
         height: planSet.height,
         resistance: planSet.resistance,
-        effort: planSet.effort,
+        effort: uiEffort,
         completed: false,
       })
     })
@@ -241,7 +248,8 @@ export function trainingSetToUpdate(
     velocity: set.velocity ?? null,
     height: set.height ?? null,
     resistance: set.resistance ?? null,
-    effort: set.effort ?? null,
+    // Convert effort from UI (0-100) to database (0-1)
+    effort: set.effort != null ? set.effort / 100 : null,
     completed: set.completed ?? false,
   }
 }

@@ -147,8 +147,10 @@ export const viewport: Viewport = {
   ],
 }
 
-// Force dynamic rendering for all pages - fitness app needs real-time data
-export const dynamic = 'force-dynamic'
+// REMOVED: force-dynamic was here but it causes ALL pages to skip caching
+// This should be applied selectively to pages that need real-time data
+// (e.g., dashboard, active workout sessions) - not to the entire app
+// Individual pages can add: export const dynamic = 'force-dynamic'
 
 export default function RootLayout({
   children

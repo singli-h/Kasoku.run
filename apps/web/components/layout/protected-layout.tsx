@@ -1,7 +1,8 @@
 /*
 <ai_context>
 Reusable protected layout component for all authenticated pages.
-Includes sidebar navigation, protected header, and error boundary for robust error handling.
+Includes sidebar navigation, protected header, and error boundary.
+Next.js Link in sidebar auto-prefetches routes when in viewport.
 </ai_context>
 */
 

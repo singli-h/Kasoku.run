@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { getUserRole } from '@/lib/user-cache'
 
@@ -84,20 +84,24 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     fetchUserRole()
   }, [user, isLoaded])
 
-  const value: UserRoleContextValue = {
+  // Memoize hasRole function to prevent recreation on every render
+  const hasRole = useCallback((requiredRole: UserRole | UserRole[]) => {
+    if (!role) return false
+    if (Array.isArray(requiredRole)) {
+      return requiredRole.includes(role)
+    }
+    return role === requiredRole
+  }, [role])
+
+  // Memoize the entire context value to prevent unnecessary re-renders in consumers
+  const value = useMemo<UserRoleContextValue>(() => ({
     role,
     isLoading,
     isCoach: role === 'coach',
     isAthlete: role === 'athlete',
     isIndividual: role === 'individual',
-    hasRole: (requiredRole: UserRole | UserRole[]) => {
-      if (!role) return false
-      if (Array.isArray(requiredRole)) {
-        return requiredRole.includes(role)
-      }
-      return role === requiredRole
-    }
-  }
+    hasRole
+  }), [role, isLoading, hasRole])
 
   return (
     <UserRoleContext.Provider value={value}>

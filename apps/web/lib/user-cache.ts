@@ -42,20 +42,34 @@ const userIdCache = new LRUCache<string, number>(cacheOptions)
 const userRoleCache = new LRUCache<string, string>(cacheOptions)
 
 /**
+ * Store interval ID to prevent multiple intervals on hot reload
+ * Using globalThis to persist across module reloads
+ */
+const CACHE_INTERVAL_KEY = Symbol.for('kasoku.user-cache.interval')
+
+/**
  * Clear cache in test environments to prevent cross-test contamination
  * This runs once when the module is first imported
  */
 if (process.env.NODE_ENV !== "production") {
   userIdCache.clear()
   userRoleCache.clear()
-  
+
   // Also clear cache on hot reload in development
   if (typeof window === 'undefined' && process.env.NODE_ENV === 'development') {
-    // In development, clear cache periodically to ensure fresh data
-    setInterval(() => {
+    // Clear any existing interval from previous hot reload
+    const existingInterval = (globalThis as any)[CACHE_INTERVAL_KEY]
+    if (existingInterval) {
+      clearInterval(existingInterval)
+    }
+
+    // Set new interval and store the ID
+    const intervalId = setInterval(() => {
       userIdCache.clear()
       userRoleCache.clear()
     }, 1000 * 60 * 5) // Clear every 5 minutes in dev
+
+    ;(globalThis as any)[CACHE_INTERVAL_KEY] = intervalId
   }
 }
 

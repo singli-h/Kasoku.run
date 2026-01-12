@@ -1240,46 +1240,65 @@ export async function bulkAssignAthletesAction(
       }
     }
 
-    const assigned: number[] = []
     const skipped: number[] = []
     const errors: string[] = []
 
-    // Process each athlete
-    for (const athlete of athletes || []) {
+    // Separate athletes into those to assign and those to skip
+    const athletesToAssign = (athletes || []).filter(athlete => {
       if (athlete.athlete_group_id !== null) {
-        // Already assigned to a group, skip
         skipped.push(athlete.id)
-        continue
+        return false
       }
+      return true
+    })
 
-      try {
-        const { error: assignError } = await supabase
-          .from('athletes')
-          .update({ athlete_group_id: groupId })
-          .eq('id', athlete.id)
-
-        if (assignError) {
-          errors.push(`Failed to assign athlete ${athlete.id}: ${assignError.message}`)
-        } else {
-          assigned.push(athlete.id)
-          
-          // Log the group assignment in history
-          const historyResult = await createGroupHistoryEntryAction(
-            athlete.id,
-            athlete.athlete_group_id,
-            groupId,
-            `Assigned to group by coach (bulk operation)`
-          )
-
-          if (!historyResult.isSuccess) {
-            console.warn(`Failed to log group history for athlete ${athlete.id}:`, historyResult.message)
-            // Don't fail the main operation if history logging fails
-          }
+    // If no athletes to assign, return early
+    if (athletesToAssign.length === 0) {
+      if (skipped.length > 0) {
+        return {
+          isSuccess: true,
+          message: "All selected athletes are already assigned to groups",
+          data: { assigned: [], skipped, errors }
         }
-      } catch (error) {
-        errors.push(`Error processing athlete ${athlete.id}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+      return {
+        isSuccess: false,
+        message: "No athletes could be assigned"
       }
     }
+
+    // Batch update all athletes at once
+    const athleteIdsToAssign = athletesToAssign.map(a => a.id)
+    const { error: batchUpdateError } = await supabase
+      .from('athletes')
+      .update({ athlete_group_id: groupId })
+      .in('id', athleteIdsToAssign)
+
+    if (batchUpdateError) {
+      console.error('Error batch assigning athletes:', batchUpdateError)
+      return {
+        isSuccess: false,
+        message: `Failed to assign athletes: ${batchUpdateError.message}`
+      }
+    }
+
+    const assigned = athleteIdsToAssign
+
+    // Create history entries in parallel (non-blocking, don't fail main operation)
+    Promise.all(
+      athletesToAssign.map(athlete =>
+        createGroupHistoryEntryAction(
+          athlete.id,
+          athlete.athlete_group_id,
+          groupId,
+          `Assigned to group by coach (bulk operation)`
+        ).catch(err => {
+          console.warn(`Failed to log group history for athlete ${athlete.id}:`, err)
+        })
+      )
+    ).catch(err => {
+      console.warn('Some history entries failed:', err)
+    })
 
     const success = assigned.length > 0
     const message = success 
@@ -1382,11 +1401,11 @@ export async function bulkMoveAthletesAction(
       }
     }
 
-    const moved: number[] = []
     const skipped: number[] = []
     const errors: string[] = []
 
-    // Process each athlete
+    // Separate athletes into categories
+    const athletesToMove: typeof athletes = []
     for (const athlete of athletes || []) {
       // Verify athlete belongs to coach's group (or has no group)
       if (athlete.athlete_group?.coach_id && athlete.athlete_group.coach_id !== coachId) {
@@ -1400,34 +1419,58 @@ export async function bulkMoveAthletesAction(
         continue
       }
 
-      try {
-        const { error: moveError } = await supabase
-          .from('athletes')
-          .update({ athlete_group_id: targetGroupId })
-          .eq('id', athlete.id)
+      athletesToMove.push(athlete)
+    }
 
-        if (moveError) {
-          errors.push(`Failed to move athlete ${athlete.id}: ${moveError.message}`)
-        } else {
-          moved.push(athlete.id)
-          
-          // Log the group change in history
-          const historyResult = await createGroupHistoryEntryAction(
-            athlete.id,
-            athlete.athlete_group_id,
-            targetGroupId,
-            `Moved to group by coach (bulk operation)`
-          )
-
-          if (!historyResult.isSuccess) {
-            console.warn(`Failed to log group history for athlete ${athlete.id}:`, historyResult.message)
-            // Don't fail the main operation if history logging fails
-          }
+    // If no athletes to move, return early
+    if (athletesToMove.length === 0) {
+      if (skipped.length > 0) {
+        return {
+          isSuccess: true,
+          message: "All selected athletes are already in the target group",
+          data: { moved: [], skipped, errors }
         }
-      } catch (error) {
-        errors.push(`Error processing athlete ${athlete.id}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+      return {
+        isSuccess: false,
+        message: errors.length > 0
+          ? `No athletes could be moved: ${errors.join(', ')}`
+          : "No athletes could be moved"
       }
     }
+
+    // Batch update all athletes at once
+    const athleteIdsToMove = athletesToMove.map(a => a.id)
+    const { error: batchMoveError } = await supabase
+      .from('athletes')
+      .update({ athlete_group_id: targetGroupId })
+      .in('id', athleteIdsToMove)
+
+    if (batchMoveError) {
+      console.error('Error batch moving athletes:', batchMoveError)
+      return {
+        isSuccess: false,
+        message: `Failed to move athletes: ${batchMoveError.message}`
+      }
+    }
+
+    const moved = athleteIdsToMove
+
+    // Create history entries in parallel (non-blocking, don't fail main operation)
+    Promise.all(
+      athletesToMove.map(athlete =>
+        createGroupHistoryEntryAction(
+          athlete.id,
+          athlete.athlete_group_id,
+          targetGroupId,
+          `Moved to group by coach (bulk operation)`
+        ).catch(err => {
+          console.warn(`Failed to log group history for athlete ${athlete.id}:`, err)
+        })
+      )
+    ).catch(err => {
+      console.warn('Some history entries failed:', err)
+    })
 
     const success = moved.length > 0
     const message = success 
@@ -1514,11 +1557,11 @@ export async function bulkRemoveAthletesAction(
       }
     }
 
-    const removed: number[] = []
     const skipped: number[] = []
     const errors: string[] = []
 
-    // Process each athlete
+    // Separate athletes into categories
+    const athletesToRemove: typeof athletes = []
     for (const athlete of athletes || []) {
       // Verify athlete belongs to coach's group
       if (athlete.athlete_group?.coach_id && athlete.athlete_group.coach_id !== coachId) {
@@ -1532,38 +1575,76 @@ export async function bulkRemoveAthletesAction(
         continue
       }
 
-      try {
-        // Use SECURITY DEFINER function to bypass RLS while maintaining authorization
-        const { data: removeResult, error: removeError } = await supabase
-          .rpc('remove_athlete_from_group', { athlete_id_param: athlete.id })
+      athletesToRemove.push(athlete)
+    }
 
-        // Type guard for the RPC result
-        const result = removeResult as { success: boolean; error?: string; athlete_id?: number; previous_group_id?: number } | null
-
-        if (removeError) {
-          errors.push(`Failed to remove athlete ${athlete.id} from group: ${removeError.message}`)
-        } else if (!result?.success) {
-          errors.push(`Failed to remove athlete ${athlete.id}: ${result?.error || 'Unknown error'}`)
-        } else {
-          removed.push(athlete.id)
-          
-          // Log the group change in history
-          const historyResult = await createGroupHistoryEntryAction(
-            athlete.id,
-            athlete.athlete_group_id,
-            null,
-            `Removed from group by coach (bulk operation)`
-          )
-
-          if (!historyResult.isSuccess) {
-            console.warn(`Failed to log group history for athlete ${athlete.id}:`, historyResult.message)
-            // Don't fail the main operation if history logging fails
-          }
+    // If no athletes to remove, return early
+    if (athletesToRemove.length === 0) {
+      if (skipped.length > 0) {
+        return {
+          isSuccess: true,
+          message: "All selected athletes are already not in any group",
+          data: { removed: [], skipped, errors }
         }
-      } catch (error) {
-        errors.push(`Error processing athlete ${athlete.id}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+      return {
+        isSuccess: false,
+        message: errors.length > 0
+          ? `No athletes could be removed: ${errors.join(', ')}`
+          : "No athletes could be removed"
       }
     }
+
+    // Execute all RPC calls in parallel
+    const removeResults = await Promise.all(
+      athletesToRemove.map(async (athlete) => {
+        try {
+          const { data: removeResult, error: removeError } = await supabase
+            .rpc('remove_athlete_from_group', { athlete_id_param: athlete.id })
+
+          const result = removeResult as { success: boolean; error?: string; athlete_id?: number; previous_group_id?: number } | null
+
+          if (removeError) {
+            return { athleteId: athlete.id, success: false, error: removeError.message, previousGroupId: athlete.athlete_group_id }
+          } else if (!result?.success) {
+            return { athleteId: athlete.id, success: false, error: result?.error || 'Unknown error', previousGroupId: athlete.athlete_group_id }
+          } else {
+            return { athleteId: athlete.id, success: true, previousGroupId: athlete.athlete_group_id }
+          }
+        } catch (error) {
+          return { athleteId: athlete.id, success: false, error: error instanceof Error ? error.message : 'Unknown error', previousGroupId: athlete.athlete_group_id }
+        }
+      })
+    )
+
+    // Process results
+    const removed: number[] = []
+    const successfulRemovals: { athleteId: number; previousGroupId: number | null }[] = []
+
+    for (const result of removeResults) {
+      if (result.success) {
+        removed.push(result.athleteId)
+        successfulRemovals.push({ athleteId: result.athleteId, previousGroupId: result.previousGroupId })
+      } else {
+        errors.push(`Failed to remove athlete ${result.athleteId}: ${result.error}`)
+      }
+    }
+
+    // Create history entries in parallel (non-blocking, don't fail main operation)
+    Promise.all(
+      successfulRemovals.map(({ athleteId, previousGroupId }) =>
+        createGroupHistoryEntryAction(
+          athleteId,
+          previousGroupId,
+          null,
+          `Removed from group by coach (bulk operation)`
+        ).catch(err => {
+          console.warn(`Failed to log group history for athlete ${athleteId}:`, err)
+        })
+      )
+    ).catch(err => {
+      console.warn('Some history entries failed:', err)
+    })
 
     const success = removed.length > 0
     const message = success 
@@ -1644,14 +1725,41 @@ export async function getRosterWithGroupCountsAction(): Promise<ActionState<{
 
     const coachId = user.coach[0]?.id
 
-    // Get coach's groups with athlete counts
-    const { data: groups, error: groupsError } = await supabase
-      .from('athlete_groups')
-      .select(`
-        *,
-        athletes(count)
-      `)
-      .eq('coach_id', coachId)
+    // Parallelize both queries - they both depend on coachId but not on each other
+    const [groupsResult, athletesResult] = await Promise.all([
+      // Get coach's groups with athlete counts
+      supabase
+        .from('athlete_groups')
+        .select(`
+          *,
+          athletes(count)
+        `)
+        .eq('coach_id', coachId),
+
+      // Get all athletes in coach's groups
+      supabase
+        .from('athletes')
+        .select(`
+          *,
+          user:users(
+            id,
+            first_name,
+            last_name,
+            email,
+            avatar_url,
+            birthdate,
+            sex
+          ),
+          athlete_group:athlete_groups!inner(
+            *,
+            coach_id
+          )
+        `)
+        .eq('athlete_group.coach_id', coachId)
+    ])
+
+    const { data: groups, error: groupsError } = groupsResult
+    const { data: athletes, error: athletesError } = athletesResult
 
     if (groupsError) {
       console.error('Error fetching groups:', groupsError)
@@ -1660,27 +1768,6 @@ export async function getRosterWithGroupCountsAction(): Promise<ActionState<{
         message: `Failed to fetch groups: ${groupsError.message}`
       }
     }
-
-    // Get all athletes in coach's groups
-    const { data: athletes, error: athletesError } = await supabase
-      .from('athletes')
-      .select(`
-        *,
-        user:users(
-          id,
-          first_name,
-          last_name,
-          email,
-          avatar_url,
-          birthdate,
-          sex
-        ),
-        athlete_group:athlete_groups!inner(
-          *,
-          coach_id
-        )
-      `)
-      .eq('athlete_group.coach_id', coachId)
 
     if (athletesError) {
       console.error('Error fetching athletes:', athletesError)

@@ -105,7 +105,11 @@ export function ExerciseCard({
   // Derive AI change states
   // Enhanced swap detection: also check if proposedData has a different exercise_id
   // This handles cases where currentData is null but we can compare with exercise.exerciseId
-  const proposedExerciseId = aiProposedData?.exercise_id as number | string | undefined
+  // Check both snake_case (from transformations) and camelCase (fallback) for consistency
+  const proposedExerciseId = (
+    aiProposedData?.exercise_id ??     // Primary: snake_case from transformations
+    aiProposedData?.exerciseId         // Fallback: camelCase
+  ) as number | string | undefined
   const isSwapByExerciseId = (
     hasPendingChange &&
     aiChangeType === 'update' && // Updates that change exercise_id are swaps
@@ -116,8 +120,11 @@ export function ExerciseCard({
   const isRemove = aiChangeType === 'remove'
   const isAdd = aiChangeType === 'add'
 
-  // For swap: get new exercise name from proposed data
-  const swapNewName = isSwap ? (aiProposedData?.exercise_name as string | undefined) : undefined
+  // For swap: get new exercise name from proposed data (check both naming conventions)
+  const swapNewName = isSwap ? (
+    aiProposedData?.exercise_name ??    // Primary: snake_case from transformations
+    aiProposedData?.exerciseName        // Fallback: camelCase
+  ) as string | undefined : undefined
   const [draggingSetId, setDraggingSetId] = useState<string | number | null>(null)
   const [dragOverSetId, setDragOverSetId] = useState<string | number | null>(null)
 

@@ -1,6 +1,7 @@
 /*
 <ai_context>
 This client component provides a main navigation for the sidebar.
+Next.js Link handles prefetching automatically when links enter viewport.
 </ai_context>
 */
 
@@ -32,8 +33,8 @@ export function NavMain({
       <SidebarMenu>
         {items.map(item => (
           <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton 
-              tooltip={item.title} 
+            <SidebarMenuButton
+              tooltip={item.title}
               asChild
               isActive={item.isActive}
             >
