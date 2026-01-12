@@ -1696,6 +1696,7 @@ export type AthleteGroupUpdate = TablesUpdate<'athlete_groups'>
 export type User = Tables<'users'>
 export type UserInsert = TablesInsert<'users'>
 export type UserUpdate = TablesUpdate<'users'>
+export type UserRole = Database['public']['Enums']['role']
 
 // Coach types
 export type Coach = Tables<'coaches'>

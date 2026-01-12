@@ -113,8 +113,8 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
       updatedDetails.push({
         id: '', // Will be set by backend
         workout_log_id: '', // Will be set by backend
-        workout_log_exercise_id: null, // Links to workout_log_exercises table
-        session_plan_exercise_id: null, // Links to original session plan exercise
+        workout_log_exercise_id: '', // Links to workout_log_exercises table
+        session_plan_exercise_id: '', // Links to original session plan exercise
         set_index: updatedDetails.length + 1,
         completed: false,
         reps: null,

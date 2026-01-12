@@ -607,6 +607,13 @@ export async function addExercisePerformanceAction(
       }
     }
 
+    if (!workoutLogExercise.workout_log_id) {
+      return {
+        isSuccess: false,
+        message: "Workout log ID not found for this exercise"
+      }
+    }
+
     // Verify user has access to this session (owner or coach)
     const { authorized } = await verifySessionAccess(dbUserId, workoutLogExercise.workout_log_id)
     if (!authorized) {
@@ -1742,6 +1749,14 @@ export async function updateSessionDetailAction(
       athleteSessionId = newSession.id
     }
 
+    // At this point athleteSessionId is guaranteed to be set
+    if (!athleteSessionId) {
+      return {
+        isSuccess: false,
+        message: 'Failed to get athlete session ID'
+      }
+    }
+
     // Find the session_plan_exercise_id for this exercise
     const { data: presetData } = await supabase
       .from('session_plan_exercises')
@@ -1824,13 +1839,20 @@ export async function updateSessionDetailAction(
         }
       }
 
+      if (!workoutLogExerciseId) {
+        return {
+          isSuccess: false,
+          message: 'Failed to get or create workout log exercise'
+        }
+      }
+
       // Create new - use session_plan_exercise_id AND workout_log_exercise_id
       const { error: insertError } = await supabase
         .from('workout_log_sets')
         .insert({
           workout_log_id: athleteSessionId,
           session_plan_exercise_id: presetData.id,
-          workout_log_exercise_id: workoutLogExerciseId, // Linked correctly
+          workout_log_exercise_id: workoutLogExerciseId,
           set_index: setIndex,
           performing_time: performingTime,
           completed: performingTime !== null
