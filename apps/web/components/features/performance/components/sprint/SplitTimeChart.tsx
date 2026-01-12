@@ -77,7 +77,10 @@ export function SplitTimeChart({
 
   const chartData = useMemo(() => {
     const distances = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    const bestSession = sessions.find(s => s.isPB) || sessions[0]
+    // Get ALL sessions marked as PB (one per distance)
+    const pbSessions = sessions.filter(s => s.isPB)
+    // Fallback to best by time if no isPB flag
+    const fallbackBest = pbSessions.length === 0 ? sessions[0] : null
     const latestSession = sessions[0]
 
     return distances.map(distance => {
@@ -86,15 +89,33 @@ export function SplitTimeChart({
         distanceLabel: `${distance}m`,
       }
 
-      // Find athlete times at this distance
-      if (bestSession?.splits) {
-        const split = bestSession.splits.find(s => s.distance === distance)
-        if (split?.cumulativeTime) {
-          point.athleteBest = split.cumulativeTime
+      // Find athlete best time at this distance from ALL PB sessions
+      // Each PB session may have splits at different distances
+      let bestTimeAtDistance: number | undefined
+      for (const session of pbSessions) {
+        if (session.splits) {
+          const split = session.splits.find(s => s.distance === distance)
+          if (split?.cumulativeTime) {
+            if (bestTimeAtDistance === undefined || split.cumulativeTime < bestTimeAtDistance) {
+              bestTimeAtDistance = split.cumulativeTime
+            }
+          }
         }
       }
+      // Fallback to first session if no PBs found
+      if (bestTimeAtDistance === undefined && fallbackBest?.splits) {
+        const split = fallbackBest.splits.find(s => s.distance === distance)
+        if (split?.cumulativeTime) {
+          bestTimeAtDistance = split.cumulativeTime
+        }
+      }
+      if (bestTimeAtDistance !== undefined) {
+        point.athleteBest = bestTimeAtDistance
+      }
 
-      if (latestSession?.splits && latestSession.id !== bestSession?.id) {
+      // Show latest session if different from best
+      const latestHasBestTime = pbSessions.some(s => s.id === latestSession?.id)
+      if (latestSession?.splits && !latestHasBestTime) {
         const split = latestSession.splits.find(s => s.distance === distance)
         if (split?.cumulativeTime) {
           point.athleteLatest = split.cumulativeTime
