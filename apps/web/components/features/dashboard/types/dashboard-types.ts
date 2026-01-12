@@ -1,6 +1,10 @@
+import type { WorkoutLogWithDetails } from "@/types/training"
+
 export interface DashboardData {
   recentSessions: RecentSession[]
   stats: DashboardStats
+  /** Pre-fetched data for the active (ongoing/assigned) workout for instant navigation */
+  activeWorkout?: WorkoutLogWithDetails
 }
 
 export interface RecentSession {

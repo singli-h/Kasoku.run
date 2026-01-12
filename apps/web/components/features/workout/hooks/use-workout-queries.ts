@@ -358,11 +358,21 @@ export function useWorkoutCache() {
     return queryClient.getQueryCache().getAll().length
   }, [queryClient])
 
+  // Hydrate session details cache with pre-fetched data
+  // This enables instant navigation from dashboard to workout page
+  const hydrateSessionDetails = useCallback((sessionId: string, data: WorkoutLogWithDetails) => {
+    queryClient.setQueryData(
+      WORKOUT_QUERY_KEYS.SESSION_DETAILS(sessionId),
+      data
+    )
+  }, [queryClient])
+
   return {
     invalidateAllSessions,
     invalidateSession,
     clearAllCache,
     getCacheSize,
+    hydrateSessionDetails,
   }
 }
 

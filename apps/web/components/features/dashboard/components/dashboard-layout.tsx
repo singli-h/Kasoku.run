@@ -2,15 +2,18 @@
 <ai_context>
 Lean dashboard layout following utility minimalism principles.
 Single column, text-based stats, no heavy card patterns.
+Pre-fetches active workout data for instant navigation.
 </ai_context>
 */
 
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { ChevronRight, Dumbbell, TrendingUp, Flame, BookOpen, Calendar } from "lucide-react"
 import type { DashboardData, RecentSession } from "../types/dashboard-types"
+import { useWorkoutCache } from "@/components/features/workout/hooks/use-workout-queries"
 
 interface DashboardLayoutProps {
   data: DashboardData
@@ -19,6 +22,15 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ data }: DashboardLayoutProps) {
+  const { hydrateSessionDetails } = useWorkoutCache()
+
+  // Hydrate React Query cache with pre-fetched workout data for instant navigation
+  useEffect(() => {
+    if (data.activeWorkout) {
+      hydrateSessionDetails(data.activeWorkout.id, data.activeWorkout)
+    }
+  }, [data.activeWorkout, hydrateSessionDetails])
+
   // Lean athlete dashboard view - single column, minimal
   return <AthleteDashboardView data={data} />
 }

@@ -9,6 +9,7 @@ import type {
   RecentSession,
   DashboardStats
 } from "@/components/features/dashboard/types/dashboard-types"
+import type { WorkoutLogWithDetails, SessionPlanWithDetails } from "@/types/training"
 
 /**
  * Get all dashboard data for the current user using direct queries
@@ -142,9 +143,133 @@ export async function getDashboardDataAction(): Promise<
       }
     })
 
+    // Find active session (ongoing first, then assigned for today)
+    const activeSession = (sessions || []).find(
+      s => s.session_status === 'ongoing' || s.session_status === 'assigned'
+    )
+
+    // Pre-fetch full workout data for active session to enable instant navigation
+    let activeWorkout: WorkoutLogWithDetails | undefined = undefined
+    if (activeSession) {
+      const { data: fullSession, error: fullSessionError } = await supabase
+        .from('workout_logs')
+        .select(`
+          id,
+          date_time,
+          session_status,
+          notes,
+          athlete_id,
+          session_plan_id,
+          session_plan:session_plans(
+            id,
+            name,
+            description,
+            date,
+            session_plan_exercises(
+              id,
+              exercise_order,
+              notes,
+              exercise_id,
+              superset_id,
+              exercise:exercises(
+                id,
+                name,
+                description,
+                video_url,
+                exercise_type:exercise_types(id, type),
+                unit:units(id, name)
+              ),
+              session_plan_sets(
+                id,
+                set_index,
+                reps,
+                weight,
+                distance,
+                performing_time,
+                rest_time,
+                rpe
+              )
+            )
+          ),
+          athlete:athletes(
+            id,
+            user_id,
+            athlete_group_id
+          ),
+          workout_log_exercises(
+            id,
+            exercise_id,
+            exercise_order,
+            superset_id,
+            notes,
+            session_plan_exercise_id,
+            exercise:exercises(
+              id,
+              name,
+              description,
+              video_url,
+              exercise_type:exercise_types(id, type),
+              unit:units(id, name)
+            ),
+            workout_log_sets(
+              id,
+              set_index,
+              reps,
+              weight,
+              distance,
+              performing_time,
+              rest_time,
+              velocity,
+              power,
+              height,
+              effort,
+              resistance,
+              tempo,
+              rpe,
+              completed,
+              metadata,
+              workout_log_exercise_id
+            )
+          ),
+          workout_log_sets(
+            id,
+            set_index,
+            reps,
+            weight,
+            distance,
+            performing_time,
+            rest_time,
+            velocity,
+            power,
+            height,
+            effort,
+            resistance,
+            tempo,
+            rpe,
+            completed,
+            metadata,
+            workout_log_exercise_id,
+            session_plan_exercise_id
+          )
+        `)
+        .eq('id', activeSession.id)
+        .single()
+
+      if (!fullSessionError && fullSession) {
+        activeWorkout = {
+          ...fullSession,
+          session_plan: fullSession.session_plan as SessionPlanWithDetails,
+          athlete: fullSession.athlete,
+          workout_log_exercises: fullSession.workout_log_exercises || [],
+          workout_log_sets: fullSession.workout_log_sets || []
+        } as unknown as WorkoutLogWithDetails
+      }
+    }
+
     const dashboardData: DashboardData = {
       stats,
-      recentSessions
+      recentSessions,
+      activeWorkout
     }
 
     return {
