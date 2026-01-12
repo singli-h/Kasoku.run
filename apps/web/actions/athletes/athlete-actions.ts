@@ -476,7 +476,7 @@ export async function getCoachAthleteGroupsAction(): Promise<ActionState<Athlete
           )
         )
       `)
-      .eq('coach_id', user.coach[0]?.id)
+      .eq('coach_id', (user.coach as { id: number }).id)
 
     if (error) {
       console.error('Error fetching coach athlete groups:', error)
@@ -546,7 +546,7 @@ export async function createAthleteGroupAction(
 
     const groupData: AthleteGroupInsert = {
       group_name: groupName,
-      coach_id: user.coach[0]?.id
+      coach_id: (user.coach as { id: number }).id
     }
 
     const { data: group, error } = await supabase
@@ -626,7 +626,7 @@ export async function updateAthleteGroupAction(
       .from('athlete_groups')
       .update(updates)
       .eq('id', groupId)
-      .eq('coach_id', user.coach[0]?.id)
+      .eq('coach_id', (user.coach as { id: number }).id)
       .select()
       .maybeSingle()
 
@@ -711,7 +711,7 @@ export async function assignAthleteToGroupAction(
       .from('athlete_groups')
       .select('id')
       .eq('id', groupId)
-      .eq('coach_id', user.coach[0]?.id)
+      .eq('coach_id', (user.coach as { id: number }).id)
       .single()
 
     if (groupError || !group) {
@@ -935,7 +935,7 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
       .from('athlete_groups')
       .delete()
       .eq('id', groupId)
-      .eq('coach_id', user.coach[0]?.id)
+      .eq('coach_id', (user.coach as { id: number }).id)
 
     if (error) {
       console.error('Error deleting athlete group:', error)
@@ -1014,7 +1014,7 @@ export async function inviteOrAttachAthleteAction(
       .from('athlete_groups')
       .select('id')
       .eq('id', groupId)
-      .eq('coach_id', user.coach[0]?.id)
+      .eq('coach_id', (user.coach as { id: number }).id)
       .single()
 
     if (groupError || !group) {
@@ -1216,7 +1216,7 @@ export async function bulkAssignAthletesAction(
       .from('athlete_groups')
       .select('id')
       .eq('id', groupId)
-      .eq('coach_id', user.coach[0]?.id)
+      .eq('coach_id', (user.coach as { id: number }).id)
       .single()
 
     if (groupError || !group) {
@@ -1366,7 +1366,7 @@ export async function bulkMoveAthletesAction(
       }
     }
 
-    const coachId = user.coach[0]?.id
+    const coachId = (user.coach as { id: number }).id
 
     // Verify the target group belongs to this coach
     const { data: targetGroup, error: groupError } = await supabase
@@ -1537,7 +1537,7 @@ export async function bulkRemoveAthletesAction(
       }
     }
 
-    const coachId = user.coach[0]?.id
+    const coachId = (user.coach as { id: number }).id
 
     // Get athletes and verify they belong to coach's groups
     const { data: athletes, error: athletesError } = await supabase
@@ -1723,7 +1723,7 @@ export async function getRosterWithGroupCountsAction(): Promise<ActionState<{
       }
     }
 
-    const coachId = user.coach[0]?.id
+    const coachId = (user.coach as { id: number }).id
 
     // Parallelize both queries - they both depend on coachId but not on each other
     const [groupsResult, athletesResult] = await Promise.all([
@@ -1951,7 +1951,7 @@ export async function getAthleteGroupHistoryAction(
         )
       `)
       .eq('athlete_id', athleteId)
-      .eq('athlete_groups.coach_id', user.coach[0]?.id)
+      .eq('athlete_groups.coach_id', (user.coach as { id: number }).id)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -2042,7 +2042,7 @@ export async function getGroupHistoryAction(
       .from('athlete_groups')
       .select('id')
       .eq('id', groupId)
-      .eq('coach_id', user.coach[0]?.id)
+      .eq('coach_id', (user.coach as { id: number }).id)
       .single()
 
     if (groupError || !group) {
