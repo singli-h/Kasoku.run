@@ -694,6 +694,9 @@ export async function processSessionForPBsAction(
 /**
  * Internal helper for PB detection - no auth check (caller must verify)
  * This avoids redundant auth() calls when processing multiple sets in a loop
+ *
+ * Now tracks PBs by exercise_id + distance combination, allowing separate PBs
+ * for different distances within the same exercise (e.g., 20m vs 40m Block Start Sprint)
  */
 async function detectSprintPBInternal(
   sessionId: string,
@@ -703,12 +706,14 @@ async function detectSprintPBInternal(
   timeSeconds: number,
   metadata?: Record<string, unknown>
 ): Promise<ActionState<PersonalBest | null>> {
-  // Get existing PB for this athlete-exercise combination
+  // Get existing PB for this athlete-exercise-distance combination
+  // This allows separate PBs for 20m, 40m, 60m etc. of the same exercise
   const { data: existingPB, error: pbError } = await supabase
     .from("athlete_personal_bests")
     .select("*")
     .eq("athlete_id", athleteId)
     .eq("exercise_id", exerciseId)
+    .eq("distance", distanceMeters)
     .maybeSingle()
 
   if (pbError) {
@@ -716,17 +721,18 @@ async function detectSprintPBInternal(
     return { isSuccess: false, message: "Failed to lookup existing PB" }
   }
 
-  // Store distance in metadata for reference
+  // Store distance in metadata for reference (backward compatibility)
   const enrichedMetadata = {
     ...(metadata || {}),
     distance_meters: distanceMeters,
   }
 
   // If no existing PB or new time is better (lower), create/update PB
-  if (!existingPB || timeSeconds < existingPB.value) {
+  if (!existingPB || timeSeconds < Number(existingPB.value)) {
     const pbData = {
       athlete_id: athleteId,
       exercise_id: exerciseId,
+      distance: distanceMeters, // Store in dedicated column for efficient queries
       value: timeSeconds,
       unit_id: 5, // seconds (from units table)
       achieved_date: new Date().toISOString().split("T")[0],
@@ -737,7 +743,7 @@ async function detectSprintPBInternal(
     }
 
     if (!existingPB) {
-      // Create new PB
+      // Create new PB for this distance
       const { data, error } = await supabase
         .from("athlete_personal_bests")
         .insert(pbData)
@@ -756,11 +762,12 @@ async function detectSprintPBInternal(
         data,
       }
     } else {
-      // Update existing PB
+      // Update existing PB for this distance
       const { data, error } = await supabase
         .from("athlete_personal_bests")
         .update({
           value: timeSeconds,
+          distance: distanceMeters, // Ensure distance is set on update
           unit_id: 5,
           achieved_date: new Date().toISOString().split("T")[0],
           session_id: sessionId,
