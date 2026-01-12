@@ -430,12 +430,14 @@ export async function autoDetectSprintPBAction(
       }
     }
 
-    // Get existing PB for this athlete-exercise (distance)
+    // Get existing PB for this athlete-exercise-distance combination
+    // This allows separate PBs for 20m, 40m, 60m etc. of the same exercise
     const { data: existingPB, error: pbError } = await supabase
       .from("athlete_personal_bests")
       .select("*")
       .eq("athlete_id", athleteId)
       .eq("exercise_id", exercise.id)
+      .eq("distance", distanceMeters)
       .maybeSingle()
 
     if (pbError) {
@@ -444,10 +446,11 @@ export async function autoDetectSprintPBAction(
     }
 
     // If no existing PB or new time is better (lower), create/update PB
-    if (!existingPB || timeSeconds < existingPB.value) {
+    if (!existingPB || timeSeconds < Number(existingPB.value)) {
       const pbData = {
         athlete_id: athleteId,
         exercise_id: exercise.id,
+        distance: distanceMeters, // Store distance for unique constraint
         value: timeSeconds,
         unit_id: 5, // seconds (from units table)
         achieved_date: new Date().toISOString().split("T")[0],
@@ -484,6 +487,7 @@ export async function autoDetectSprintPBAction(
           .from("athlete_personal_bests")
           .update({
             value: timeSeconds,
+            distance: distanceMeters, // Ensure distance is set on update
             unit_id: 5,
             achieved_date: new Date().toISOString().split("T")[0],
             session_id: sessionId,
