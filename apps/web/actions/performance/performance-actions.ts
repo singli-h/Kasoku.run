@@ -626,34 +626,46 @@ export async function getSprintAnalyticsAction(
           : undefined
         const topSpeed = maxSpeedFromSplits ?? metadata.speed ?? metadata.top_speed
 
-        // For splits, calculate cumulative time AND distance
-        // Splits contain segment distances (20, 20) not cumulative (20, 40)
-        // The chart expects cumulative distances to plot correctly
-        let cumulativeTime = 0
-        let cumulativeDistance = 0
-        const processedSplits = metadata.splits?.map(s => {
-          // If cumulative time is provided, use it; otherwise accumulate
-          const splitCumulative = s.cumulativeTime ?? s.cumulative_time
-          if (splitCumulative !== undefined) {
-            cumulativeTime = splitCumulative
-          } else {
-            cumulativeTime += s.time
-          }
-          // Always accumulate distance (splits have segment distances)
-          cumulativeDistance += s.distance
-          return {
-            distance: cumulativeDistance,  // Use cumulative distance for chart
-            time: s.time,
-            cumulativeTime: cumulativeTime,
-          }
-        })
-
         // Get distance from set column, metadata, or sum of splits (splits have segment distances)
         const distance = (set as WorkoutLogSetWithRelations).distance
           ?? metadata.distance
           ?? (metadata.splits?.length
             ? metadata.splits.reduce((sum, s) => sum + s.distance, 0)
             : 40)
+
+        // For splits, calculate cumulative time AND distance
+        // Splits contain segment distances (20, 20) not cumulative (20, 40)
+        // The chart expects cumulative distances to plot correctly
+        let processedSplits: Array<{ distance: number; time: number; cumulativeTime: number }> | undefined
+
+        if (metadata.splits?.length) {
+          let cumulativeTime = 0
+          let cumulativeDistance = 0
+          processedSplits = metadata.splits.map(s => {
+            // If cumulative time is provided, use it; otherwise accumulate
+            const splitCumulative = s.cumulativeTime ?? s.cumulative_time
+            if (splitCumulative !== undefined) {
+              cumulativeTime = splitCumulative
+            } else {
+              cumulativeTime += s.time
+            }
+            // Always accumulate distance (splits have segment distances)
+            cumulativeDistance += s.distance
+            return {
+              distance: cumulativeDistance,  // Use cumulative distance for chart
+              time: s.time,
+              cumulativeTime: cumulativeTime,
+            }
+          })
+        } else if (totalTime > 0 && distance > 0) {
+          // Create a virtual split when no split data exists
+          // This allows sessions without splits (like 20m standalone) to appear on the chart
+          processedSplits = [{
+            distance: distance,
+            time: totalTime,
+            cumulativeTime: totalTime,
+          }]
+        }
 
         return {
           id: String(set.id),
