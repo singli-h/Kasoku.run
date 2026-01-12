@@ -12,6 +12,7 @@
 import { createContext, useContext, useState, ReactNode, useCallback, useRef, useEffect } from "react"
 import type { SessionPlanExerciseWithDetails, WorkoutLogSet } from "@/types/training"
 import { useWorkoutApi } from "@/components/features/workout/hooks/use-workout-api"
+import { saveDraft, clearDraft } from "@/lib/workout-persistence"
 
 // Extended exercise type with training details for workout execution
 export interface WorkoutExercise extends SessionPlanExerciseWithDetails {
@@ -83,7 +84,10 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
   // Auto-save queue and timer
   const saveQueueRef = useRef<Map<string, any>>(new Map())
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const draftTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isSavingRef = useRef<boolean>(false)
+  // Track latest exercises for draft save (Phase 3)
+  const exercisesRef = useRef<WorkoutExercise[]>(initialData)
 
   // Workout API for saving data
   const { saveExercisePerformance } = useWorkoutApi()
@@ -156,6 +160,34 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
   }, [sessionId, saveExercisePerformance])
 
   /**
+   * Schedule draft save to localStorage (faster, more frequent)
+   * Phase 3: Added as safety net - localStorage draft saved every 500ms
+   */
+  const scheduleDraftSave = useCallback(() => {
+    if (!sessionId) return
+
+    // Clear existing draft timeout
+    if (draftTimeoutRef.current) {
+      clearTimeout(draftTimeoutRef.current)
+    }
+
+    // Save draft to localStorage after 500ms (FR-027 recommendation)
+    // Uses exercisesRef to get latest state without re-triggering effect
+    draftTimeoutRef.current = setTimeout(() => {
+      const currentExercises = exercisesRef.current
+      if (currentExercises.length > 0) {
+        // Map to expected format, converting null notes to undefined
+        const draftExercises = currentExercises.map(ex => ({
+          id: ex.id,
+          workout_log_sets: ex.workout_log_sets,
+          notes: ex.notes ?? undefined
+        }))
+        saveDraft(sessionId, draftExercises)
+      }
+    }, 500)
+  }, [sessionId])
+
+  /**
    * Schedule auto-save with debounce
    */
   const scheduleAutoSave = useCallback(() => {
@@ -164,12 +196,15 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       clearTimeout(saveTimeoutRef.current)
     }
 
-    // Schedule new save after 2500ms delay (best practice for auto-save to prevent race conditions)
+    // Schedule draft save first (faster, localStorage)
+    scheduleDraftSave()
+
+    // Schedule server save after 2500ms delay (best practice for auto-save to prevent race conditions)
     // This balances responsiveness vs server load and prevents save-during-typing data loss
     saveTimeoutRef.current = setTimeout(() => {
       processSaveQueue()
     }, 2500)
-  }, [processSaveQueue])
+  }, [processSaveQueue, scheduleDraftSave])
 
   /**
    * Updates a specific exercise's data and triggers auto-save
@@ -330,16 +365,20 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       saveTimeoutRef.current = null
     }
 
-    // Wait for any ongoing save to complete (poll with backoff)
+    // Wait for any ongoing save to complete (poll with exponential backoff)
+    // Increased from 2s to 8s max wait time to handle slow networks (Phase 3 fix)
     let waitAttempts = 0
-    const maxWaitAttempts = 20 // 2 seconds max wait (20 * 100ms)
+    const maxWaitAttempts = 15 // ~8 seconds max wait with exponential backoff
+    let waitMs = 100
     while (isSavingRef.current && waitAttempts < maxWaitAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, waitMs))
       waitAttempts++
+      // Exponential backoff: 100ms, 150ms, 225ms, 337ms, 506ms, 759ms, 1138ms, etc.
+      waitMs = Math.min(waitMs * 1.5, 2000)
     }
 
     if (isSavingRef.current) {
-      console.error('[ExerciseProvider] forceSave: Timeout waiting for ongoing save')
+      console.error('[ExerciseProvider] forceSave: Timeout waiting for ongoing save after ~8s')
       return false
     }
 
@@ -380,6 +419,10 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
 
       if (allSucceeded) {
         setSaveStatus('saved')
+        // Clear draft on successful save (Phase 3)
+        if (sessionId) {
+          clearDraft(sessionId)
+        }
         return true
       } else {
         setSaveStatus('error')
@@ -402,11 +445,19 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
     return saveQueueRef.current.size > 0 || saveStatus === 'saving'
   }, [saveStatus])
 
-  // Cleanup timeout on unmount
+  // Keep exercisesRef in sync with state (Phase 3: for draft save)
+  useEffect(() => {
+    exercisesRef.current = exercises
+  }, [exercises])
+
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
+      }
+      if (draftTimeoutRef.current) {
+        clearTimeout(draftTimeoutRef.current)
       }
     }
   }, [])

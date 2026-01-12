@@ -20,6 +20,7 @@ import { UnifiedPageSkeleton } from "@/components/layout"
 import { SessionPlannerV2 } from "@/components/features/training"
 import { SessionAssistantWrapper, InlineProposalSlot } from "./SessionAssistantWrapper"
 import { getSessionPlanByIdAction } from "@/actions/library/exercise-actions"
+import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import type { SessionPlannerExercise } from "@/components/features/training/adapters/session-adapter"
 
 interface PageProps {
@@ -102,6 +103,9 @@ function transformSessionData(backendData: any): {
 }
 
 export default async function SessionPlannerRoute({ params }: PageProps) {
+  // Protect this page - only authenticated users with valid roles can access
+  await serverProtectRoute({ allowedRoles: ['coach', 'individual', 'athlete'] })
+
   const resolvedParams = await params
   const planId = resolvedParams.id
   const sessionId = resolvedParams.sessionId

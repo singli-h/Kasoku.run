@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server"
 import { revalidatePath } from "next/cache"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
+import { verifyAthleteAccess, logAuthFailure } from "@/lib/auth-utils"
 import type { ActionState } from "@/types/api"
 import type { Database } from "@/types/database"
 
@@ -24,6 +25,18 @@ export async function getAthletePBsAction(
     }
 
     const dbUserId = await getDbUserId(userId)
+
+    // Verify user has access to this athlete's data
+    const { authorized } = await verifyAthleteAccess(dbUserId, athleteId)
+    if (!authorized) {
+      logAuthFailure("getAthletePBsAction", {
+        userId: dbUserId,
+        resourceType: "athlete",
+        resourceId: athleteId,
+        reason: "User does not own this athlete and is not their coach"
+      })
+      return { isSuccess: false, message: "Not authorized to access this athlete's data" }
+    }
 
     const { data, error } = await supabase
       .from("athlete_personal_bests")
@@ -75,6 +88,18 @@ export async function getSpecificPBAction(
     }
 
     const dbUserId = await getDbUserId(userId)
+
+    // Verify user has access to this athlete's data
+    const { authorized } = await verifyAthleteAccess(dbUserId, athleteId)
+    if (!authorized) {
+      logAuthFailure("getSpecificPBAction", {
+        userId: dbUserId,
+        resourceType: "athlete",
+        resourceId: athleteId,
+        reason: "User does not own this athlete and is not their coach"
+      })
+      return { isSuccess: false, message: "Not authorized to access this athlete's data" }
+    }
 
     const { data, error } = await supabase
       .from("athlete_personal_bests")

@@ -291,6 +291,7 @@ export type Database = {
       athletes: {
         Row: {
           athlete_group_id: number | null
+          available_equipment: Json | null
           created_at: string | null
           events: Json | null
           experience: string | null
@@ -303,6 +304,7 @@ export type Database = {
         }
         Insert: {
           athlete_group_id?: number | null
+          available_equipment?: Json | null
           created_at?: string | null
           events?: Json | null
           experience?: string | null
@@ -315,6 +317,7 @@ export type Database = {
         }
         Update: {
           athlete_group_id?: number | null
+          available_equipment?: Json | null
           created_at?: string | null
           events?: Json | null
           experience?: string | null
@@ -329,7 +332,7 @@ export type Database = {
           {
             foreignKeyName: "athletes_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -377,7 +380,7 @@ export type Database = {
           {
             foreignKeyName: "coaches_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1214,7 +1217,7 @@ export type Database = {
           updated_at: string | null
           velocity: number | null
           weight: number | null
-          workout_log_exercise_id: string | null
+          workout_log_exercise_id: string
           workout_log_id: string | null
         }
         Insert: {
@@ -1238,7 +1241,7 @@ export type Database = {
           updated_at?: string | null
           velocity?: number | null
           weight?: number | null
-          workout_log_exercise_id?: string | null
+          workout_log_exercise_id: string
           workout_log_id?: string | null
         }
         Update: {
@@ -1262,7 +1265,7 @@ export type Database = {
           updated_at?: string | null
           velocity?: number | null
           weight?: number | null
-          workout_log_exercise_id?: string | null
+          workout_log_exercise_id?: string
           workout_log_id?: string | null
         }
         Relationships: [
@@ -1380,6 +1383,33 @@ export type Database = {
       can_view_workout_log: { Args: { wl_id: string }; Returns: boolean }
       coaches_athlete: { Args: { athlete_id: number }; Returns: boolean }
       coaches_group: { Args: { group_id: number }; Returns: boolean }
+      complete_onboarding: {
+        Args: {
+          p_available_equipment?: Json
+          p_birthdate?: string
+          p_clerk_id: string
+          p_email: string
+          p_events?: Json
+          p_experience?: string
+          p_first_name: string
+          p_height?: number
+          p_last_name: string
+          p_philosophy?: string
+          p_role: string
+          p_speciality?: string
+          p_sport_focus?: string
+          p_subscription?: string
+          p_timezone?: string
+          p_training_goals?: string
+          p_username: string
+          p_weight?: number
+        }
+        Returns: {
+          message: string
+          success: boolean
+          user_id: number
+        }[]
+      }
       debug_auth_jwt: { Args: Record<PropertyKey, never>; Returns: Json }
       get_user_role_data: {
         Args: { p_clerk_id: string }
@@ -1574,148 +1604,58 @@ export const Constants = {
 } as const
 
 // ============================================================================
-// Convenience Type Aliases
-// These map table names to their Row, Insert, and Update types for easier use
+// Custom Type Aliases
+// These convenience aliases use the Tables helper type to create simpler type names
 // ============================================================================
 
-// AI Memories
-export type AiMemory = Tables<'ai_memories'>
-export type AiMemoryInsert = TablesInsert<'ai_memories'>
-export type AiMemoryUpdate = TablesUpdate<'ai_memories'>
-
-// Athlete Cycles
-export type AthleteCycle = Tables<'athlete_cycles'>
-export type AthleteCycleInsert = TablesInsert<'athlete_cycles'>
-export type AthleteCycleUpdate = TablesUpdate<'athlete_cycles'>
-
-// Athlete Group Histories
-export type AthleteGroupHistory = Tables<'athlete_group_histories'>
-export type AthleteGroupHistoryInsert = TablesInsert<'athlete_group_histories'>
-export type AthleteGroupHistoryUpdate = TablesUpdate<'athlete_group_histories'>
-
-// Athlete Groups
-export type AthleteGroup = Tables<'athlete_groups'>
-export type AthleteGroupInsert = TablesInsert<'athlete_groups'>
-export type AthleteGroupUpdate = TablesUpdate<'athlete_groups'>
-
-// Athlete Personal Bests
-export type AthletePersonalBest = Tables<'athlete_personal_bests'>
-export type AthletePersonalBestInsert = TablesInsert<'athlete_personal_bests'>
-export type AthletePersonalBestUpdate = TablesUpdate<'athlete_personal_bests'>
-
-// Athletes
-export type Athlete = Tables<'athletes'>
-export type AthleteInsert = TablesInsert<'athletes'>
-export type AthleteUpdate = TablesUpdate<'athletes'>
-
-// Coaches
-export type Coach = Tables<'coaches'>
-export type CoachInsert = TablesInsert<'coaches'>
-export type CoachUpdate = TablesUpdate<'coaches'>
-
-// Events
-export type Event = Tables<'events'>
-export type EventInsert = TablesInsert<'events'>
-export type EventUpdate = TablesUpdate<'events'>
-
-// Exercise Tags
-export type ExerciseTag = Tables<'exercise_tags'>
-export type ExerciseTagInsert = TablesInsert<'exercise_tags'>
-export type ExerciseTagUpdate = TablesUpdate<'exercise_tags'>
-
-// Exercise Types
-export type ExerciseType = Tables<'exercise_types'>
-export type ExerciseTypeInsert = TablesInsert<'exercise_types'>
-export type ExerciseTypeUpdate = TablesUpdate<'exercise_types'>
-
-// Exercises
-export type Exercise = Tables<'exercises'>
-export type ExerciseInsert = TablesInsert<'exercises'>
-export type ExerciseUpdate = TablesUpdate<'exercises'>
-
-// Knowledge Base Articles
-export type KnowledgeBaseArticle = Tables<'knowledge_base_articles'>
-export type KnowledgeBaseArticleInsert = TablesInsert<'knowledge_base_articles'>
-export type KnowledgeBaseArticleUpdate = TablesUpdate<'knowledge_base_articles'>
-
-// Knowledge Base Categories
-export type KnowledgeBaseCategory = Tables<'knowledge_base_categories'>
-export type KnowledgeBaseCategoryInsert = TablesInsert<'knowledge_base_categories'>
-export type KnowledgeBaseCategoryUpdate = TablesUpdate<'knowledge_base_categories'>
-
-// Macrocycles
+// Periodization types
 export type Macrocycle = Tables<'macrocycles'>
 export type MacrocycleInsert = TablesInsert<'macrocycles'>
 export type MacrocycleUpdate = TablesUpdate<'macrocycles'>
 
-// Mesocycles
 export type Mesocycle = Tables<'mesocycles'>
 export type MesocycleInsert = TablesInsert<'mesocycles'>
 export type MesocycleUpdate = TablesUpdate<'mesocycles'>
 
-// Microcycles
 export type Microcycle = Tables<'microcycles'>
 export type MicrocycleInsert = TablesInsert<'microcycles'>
 export type MicrocycleUpdate = TablesUpdate<'microcycles'>
 
-// Races
-export type Race = Tables<'races'>
-export type RaceInsert = TablesInsert<'races'>
-export type RaceUpdate = TablesUpdate<'races'>
+// Exercise types
+export type Exercise = Tables<'exercises'>
+export type ExerciseInsert = TablesInsert<'exercises'>
+export type ExerciseUpdate = TablesUpdate<'exercises'>
 
-// Session Plan Exercises
-export type SessionPlanExercise = Tables<'session_plan_exercises'>
-export type SessionPlanExerciseInsert = TablesInsert<'session_plan_exercises'>
-export type SessionPlanExerciseUpdate = TablesUpdate<'session_plan_exercises'>
+export type ExerciseType = Tables<'exercise_types'>
+export type Unit = Tables<'units'>
 
-// Session Plan Sets
-export type SessionPlanSet = Tables<'session_plan_sets'>
-export type SessionPlanSetInsert = TablesInsert<'session_plan_sets'>
-export type SessionPlanSetUpdate = TablesUpdate<'session_plan_sets'>
-
-// Session Plans
+// Session plan types (new naming convention)
 export type SessionPlan = Tables<'session_plans'>
 export type SessionPlanInsert = TablesInsert<'session_plans'>
 export type SessionPlanUpdate = TablesUpdate<'session_plans'>
 
-// Tags
-export type Tag = Tables<'tags'>
-export type TagInsert = TablesInsert<'tags'>
-export type TagUpdate = TablesUpdate<'tags'>
+export type SessionPlanExercise = Tables<'session_plan_exercises'>
+export type SessionPlanExerciseInsert = TablesInsert<'session_plan_exercises'>
+export type SessionPlanExerciseUpdate = TablesUpdate<'session_plan_exercises'>
 
-// Units
-export type Unit = Tables<'units'>
-export type UnitInsert = TablesInsert<'units'>
-export type UnitUpdate = TablesUpdate<'units'>
+export type SessionPlanSet = Tables<'session_plan_sets'>
+export type SessionPlanSetInsert = TablesInsert<'session_plan_sets'>
+export type SessionPlanSetUpdate = TablesUpdate<'session_plan_sets'>
 
-// Users
-export type User = Tables<'users'>
-export type UserInsert = TablesInsert<'users'>
-export type UserUpdate = TablesUpdate<'users'>
-
-// User Role (enum type)
-export type UserRole = Enums<'role'>
-
-// Workout Log Exercises
-export type WorkoutLogExercise = Tables<'workout_log_exercises'>
-export type WorkoutLogExerciseInsert = TablesInsert<'workout_log_exercises'>
-export type WorkoutLogExerciseUpdate = TablesUpdate<'workout_log_exercises'>
-
-// Workout Log Sets
-export type WorkoutLogSet = Tables<'workout_log_sets'>
-export type WorkoutLogSetInsert = TablesInsert<'workout_log_sets'>
-export type WorkoutLogSetUpdate = TablesUpdate<'workout_log_sets'>
-
-// Workout Logs
+// Workout log types
 export type WorkoutLog = Tables<'workout_logs'>
 export type WorkoutLogInsert = TablesInsert<'workout_logs'>
 export type WorkoutLogUpdate = TablesUpdate<'workout_logs'>
 
-// ============================================================================
-// Legacy Type Aliases (Deprecated - Use New Names Above)
-// These are kept for backward compatibility with existing code
-// ============================================================================
+export type WorkoutLogExercise = Tables<'workout_log_exercises'>
+export type WorkoutLogExerciseInsert = TablesInsert<'workout_log_exercises'>
+export type WorkoutLogExerciseUpdate = TablesUpdate<'workout_log_exercises'>
 
+export type WorkoutLogSet = Tables<'workout_log_sets'>
+export type WorkoutLogSetInsert = TablesInsert<'workout_log_sets'>
+export type WorkoutLogSetUpdate = TablesUpdate<'workout_log_sets'>
+
+// Legacy aliases (deprecated - maps to new naming convention)
 /** @deprecated Use SessionPlan instead */
 export type ExercisePresetGroup = Tables<'session_plans'>
 /** @deprecated Use SessionPlanInsert instead */
@@ -1742,3 +1682,22 @@ export type ExerciseTrainingSession = Tables<'workout_logs'>
 export type ExerciseTrainingSessionInsert = TablesInsert<'workout_logs'>
 /** @deprecated Use WorkoutLogUpdate instead */
 export type ExerciseTrainingSessionUpdate = TablesUpdate<'workout_logs'>
+
+// Athlete and group types
+export type Athlete = Tables<'athletes'>
+export type AthleteInsert = TablesInsert<'athletes'>
+export type AthleteUpdate = TablesUpdate<'athletes'>
+
+export type AthleteGroup = Tables<'athlete_groups'>
+export type AthleteGroupInsert = TablesInsert<'athlete_groups'>
+export type AthleteGroupUpdate = TablesUpdate<'athlete_groups'>
+
+// User types
+export type User = Tables<'users'>
+export type UserInsert = TablesInsert<'users'>
+export type UserUpdate = TablesUpdate<'users'>
+
+// Coach types
+export type Coach = Tables<'coaches'>
+export type CoachInsert = TablesInsert<'coaches'>
+export type CoachUpdate = TablesUpdate<'coaches'>

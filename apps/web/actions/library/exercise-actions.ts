@@ -990,13 +990,67 @@ export async function getSessionPlanByIdAction(
       }
     }
 
-    // RLS policy handles access control - if we get here, user has access
-    // (owner, template, coach of group, or athlete in group)
     if (!presetGroup) {
       console.error('[getSessionPlanByIdAction] No data returned from query')
       return {
         isSuccess: false,
         message: "Training session not found"
+      }
+    }
+
+    // Explicit ownership check (defense in depth alongside RLS)
+    // Allow access if: user owns the plan OR it's a template
+    const isOwner = presetGroup.user_id === dbUserId
+    const isTemplate = presetGroup.is_template === true
+
+    if (!isOwner && !isTemplate) {
+      // For non-owners of non-templates, verify they have group-based access
+      // (athlete in the group or coach of the group)
+      let hasGroupAccess = false
+
+      if (presetGroup.athlete_group_id) {
+        // Check if user is an athlete in this group
+        const { data: athleteInGroup } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('user_id', dbUserId)
+          .eq('athlete_group_id', presetGroup.athlete_group_id)
+          .maybeSingle()
+
+        if (athleteInGroup) {
+          hasGroupAccess = true
+        } else {
+          // Check if user is a coach of this group
+          const { data: coachOfGroup } = await supabase
+            .from('coaches')
+            .select('id')
+            .eq('user_id', dbUserId)
+            .maybeSingle()
+
+          if (coachOfGroup) {
+            const { data: groupCoach } = await supabase
+              .from('athlete_groups')
+              .select('id')
+              .eq('id', presetGroup.athlete_group_id)
+              .eq('coach_id', coachOfGroup.id)
+              .maybeSingle()
+
+            hasGroupAccess = !!groupCoach
+          }
+        }
+      }
+
+      if (!hasGroupAccess) {
+        console.warn('[getSessionPlanByIdAction] User does not have access:', {
+          userId: dbUserId,
+          sessionUserId: presetGroup.user_id,
+          isTemplate,
+          athleteGroupId: presetGroup.athlete_group_id
+        })
+        return {
+          isSuccess: false,
+          message: "Not authorized to access this training session"
+        }
       }
     }
 

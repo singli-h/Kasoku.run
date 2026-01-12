@@ -11,6 +11,7 @@ history pagination, and status updates following 2025 best practices.
 import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
+import { verifySessionOwnership, verifyAthleteAccess, logAuthFailure } from "@/lib/auth-utils"
 import { ActionState } from "@/types"
 import {
   WorkoutLogWithDetails,
@@ -42,20 +43,32 @@ export async function getTodayAndOngoingSessionsAction(
     // 2. Get database user ID
     const dbUserId = await getDbUserId(userId)
 
-    // 3. Get athlete ID if not provided
+    // 3. Get athlete ID if not provided, verify access if provided externally
     let targetAthleteId = athleteId
     if (!targetAthleteId) {
-      // Get athlete ID from user
+      // Get athlete ID from user (self-access)
       const { data: athlete } = await supabase
         .from('athletes')
         .select('id')
         .eq('user_id', dbUserId)
         .single()
-      
+
       if (!athlete) {
         return { isSuccess: false, message: "Athlete profile not found" }
       }
       targetAthleteId = athlete.id
+    } else {
+      // Phase 3: Verify user has access to this athlete when ID is provided externally
+      const { authorized } = await verifyAthleteAccess(dbUserId, targetAthleteId)
+      if (!authorized) {
+        logAuthFailure("getTodayAndOngoingSessionsAction", {
+          userId: dbUserId,
+          resourceType: "athlete",
+          resourceId: targetAthleteId,
+          reason: "User does not have access to this athlete's sessions"
+        })
+        return { isSuccess: false, message: "Not authorized to view this athlete's sessions" }
+      }
     }
 
     // 4. Get today's date range
@@ -221,7 +234,7 @@ export async function getPastSessionsAction(
     // 2. Get database user ID
     const dbUserId = await getDbUserId(userId)
 
-    // 3. Get athlete ID if not provided
+    // 3. Get athlete ID if not provided, verify access if provided externally
     let targetAthleteId = athleteId
     if (!targetAthleteId) {
       const { data: athlete } = await supabase
@@ -229,11 +242,23 @@ export async function getPastSessionsAction(
         .select('id')
         .eq('user_id', dbUserId)
         .single()
-      
+
       if (!athlete) {
         return { isSuccess: false, message: "Athlete profile not found" }
       }
       targetAthleteId = athlete.id
+    } else {
+      // Phase 3: Verify user has access to this athlete when ID is provided externally
+      const { authorized } = await verifyAthleteAccess(dbUserId, targetAthleteId)
+      if (!authorized) {
+        logAuthFailure("getPastSessionsAction", {
+          userId: dbUserId,
+          resourceType: "athlete",
+          resourceId: targetAthleteId,
+          reason: "User does not have access to this athlete's sessions"
+        })
+        return { isSuccess: false, message: "Not authorized to view this athlete's sessions" }
+      }
     }
 
     // 4. Build date filter
@@ -416,10 +441,22 @@ export async function updateTrainingSessionStatusAction(
     // 2. Get database user ID
     const dbUserId = await getDbUserId(userId)
 
-    // 3. Update session status
+    // 3. Verify user owns this session
+    const isOwner = await verifySessionOwnership(dbUserId, sessionId)
+    if (!isOwner) {
+      logAuthFailure("updateTrainingSessionStatusAction", {
+        userId: dbUserId,
+        resourceType: "workout_log",
+        resourceId: sessionId,
+        reason: "User does not own this workout session"
+      })
+      return { isSuccess: false, message: "Not authorized to modify this session" }
+    }
+
+    // 4. Update session status
     const { data: session, error } = await supabase
       .from('workout_logs')
-      .update({ 
+      .update({
         session_status: status,
         updated_at: new Date().toISOString()
       })
@@ -432,7 +469,7 @@ export async function updateTrainingSessionStatusAction(
       return { isSuccess: false, message: "Failed to update session status" }
     }
 
-    // 4. Auto-detect PBs when session is completed
+    // 5. Auto-detect PBs when session is completed
     if (status === 'completed') {
       // Process session for personal bests asynchronously
       // This runs in the background to avoid blocking the response
@@ -474,10 +511,22 @@ export async function startTrainingSessionAction(
     // 2. Get database user ID
     const dbUserId = await getDbUserId(userId)
 
-    // 3. Update session to ongoing
+    // 3. Verify user owns this session
+    const isOwner = await verifySessionOwnership(dbUserId, sessionId)
+    if (!isOwner) {
+      logAuthFailure("startTrainingSessionAction", {
+        userId: dbUserId,
+        resourceType: "workout_log",
+        resourceId: sessionId,
+        reason: "User does not own this workout session"
+      })
+      return { isSuccess: false, message: "Not authorized to start this session" }
+    }
+
+    // 4. Update session to ongoing
     const { data: session, error } = await supabase
       .from('workout_logs')
-      .update({ 
+      .update({
         session_status: 'ongoing',
         updated_at: new Date().toISOString()
       })

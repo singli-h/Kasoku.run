@@ -11,8 +11,8 @@ const OnboardingSchema = z.object({
   email: z.string().email("Valid email is required"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  role: z.enum(["athlete", "coach"], {
-    message: "Role must be either 'athlete' or 'coach'",
+  role: z.enum(["athlete", "coach", "individual"], {
+    message: "Role must be 'athlete', 'coach', or 'individual'",
   }),
   birthdate: z.string().optional(),
   timezone: z.string().default("UTC"),
@@ -33,6 +33,13 @@ const OnboardingSchema = z.object({
     experience: z.string().default(""),
     philosophy: z.string().default(""),
     sportFocus: z.string().default(""),
+  }).optional(),
+
+  // Optional individual-specific data
+  individualData: z.object({
+    trainingGoals: z.string().default(""),
+    experienceLevel: z.string().default(""),
+    availableEquipment: z.array(z.string()).default([]),
   }).optional(),
 })
 

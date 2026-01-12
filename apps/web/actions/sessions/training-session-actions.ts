@@ -11,6 +11,7 @@ import { auth } from "@clerk/nextjs/server"
 import { revalidatePath } from "next/cache"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
+import { verifySessionAccess, verifyAthleteAccess, logAuthFailure } from "@/lib/auth-utils"
 import { ActionState } from "@/types"
 import {
   ExerciseTrainingDetail,
@@ -273,6 +274,20 @@ export async function getTrainingSessionByIdAction(
       }
     }
 
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify user has access to this session (owner or coach)
+    const { authorized } = await verifySessionAccess(dbUserId, sessionId)
+    if (!authorized) {
+      logAuthFailure("getTrainingSessionByIdAction", {
+        userId: dbUserId,
+        resourceType: "workout_log",
+        resourceId: sessionId,
+        reason: "User does not have access to this workout session"
+      })
+      return { isSuccess: false, message: "Not authorized to access this session" }
+    }
+
     const { data: session, error } = await supabase
       .from('workout_logs')
       .select(`
@@ -352,7 +367,7 @@ export async function updateTrainingSessionAction(
 ): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -360,7 +375,19 @@ export async function updateTrainingSessionAction(
       }
     }
 
-    // Using singleton supabase client
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify user has access to this session (owner or coach)
+    const { authorized } = await verifySessionAccess(dbUserId, sessionId)
+    if (!authorized) {
+      logAuthFailure("updateTrainingSessionAction", {
+        userId: dbUserId,
+        resourceType: "workout_log",
+        resourceId: sessionId,
+        reason: "User does not have access to this workout session"
+      })
+      return { isSuccess: false, message: "Not authorized to modify this session" }
+    }
 
     const { data: session, error } = await supabase
       .from('workout_logs')
@@ -407,6 +434,20 @@ export async function completeTrainingSessionAction(
         isSuccess: false,
         message: "User not authenticated"
       }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify user has access to this session (owner or coach)
+    const { authorized } = await verifySessionAccess(dbUserId, sessionId)
+    if (!authorized) {
+      logAuthFailure("completeTrainingSessionAction", {
+        userId: dbUserId,
+        resourceType: "workout_log",
+        resourceId: sessionId,
+        reason: "User does not have access to this workout session"
+      })
+      return { isSuccess: false, message: "Not authorized to complete this session" }
     }
 
     // First, get the session with athlete_id and exercise details for PB detection
@@ -549,6 +590,8 @@ export async function addExercisePerformanceAction(
       }
     }
 
+    const dbUserId = await getDbUserId(userId)
+
     // First, get the workout_log_exercise to verify it exists and get workout_log_id
     const { data: workoutLogExercise, error: fetchError } = await supabase
       .from('workout_log_exercises')
@@ -562,6 +605,18 @@ export async function addExercisePerformanceAction(
         isSuccess: false,
         message: "Workout exercise not found"
       }
+    }
+
+    // Verify user has access to this session (owner or coach)
+    const { authorized } = await verifySessionAccess(dbUserId, workoutLogExercise.workout_log_id)
+    if (!authorized) {
+      logAuthFailure("addExercisePerformanceAction", {
+        userId: dbUserId,
+        resourceType: "workout_log",
+        resourceId: workoutLogExercise.workout_log_id,
+        reason: "User does not have access to this workout session"
+      })
+      return { isSuccess: false, message: "Not authorized to add data to this session" }
     }
 
     // Use ?? null to preserve 0 values (|| null treats 0 as falsy)

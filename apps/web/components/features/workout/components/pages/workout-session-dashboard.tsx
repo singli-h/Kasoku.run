@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { getDraft, getDraftAge, clearDraft, type WorkoutDraft } from "@/lib/workout-persistence"
+import { getDraft, getDraftAge, clearDraft, saveDraft, type WorkoutDraft } from "@/lib/workout-persistence"
 import { useUnsavedChanges } from "@/lib/hooks/useUnsavedChanges"
 
 // Import workout feature components
@@ -83,12 +83,29 @@ function WorkoutSessionContent({
   const { exercises, setExercises, forceSave, hasPendingChanges } = useExerciseContext()
 
   // T018: Warn users when leaving with unsaved changes (FR-029)
+  // Phase 3: Enhanced with both sync (beforeunload) and async (visibilitychange) handlers
   useUnsavedChanges({
     hasUnsavedChanges: hasPendingChanges(),
+    // Sync handler for beforeunload - save to localStorage as last resort
     onBeforeUnload: () => {
-      // Attempt to save draft before leaving
-      // Note: forceSave() is async but beforeunload can't wait for it
-      // The draft persistence (T014) already saves on every change
+      if (sessionId && exercises.length > 0) {
+        // Save draft to localStorage synchronously - this WILL complete before page closes
+        // Map to expected format, converting null notes to undefined
+        const draftExercises = exercises.map(ex => ({
+          id: ex.id,
+          workout_log_sets: ex.workout_log_sets,
+          notes: ex.notes ?? undefined
+        }))
+        saveDraft(sessionId, draftExercises)
+        console.log('[WorkoutSession] Emergency draft saved on beforeunload')
+      }
+    },
+    // Async handler for visibilitychange - fires BEFORE beforeunload and can wait for async
+    onVisibilityHidden: async () => {
+      if (hasPendingChanges()) {
+        console.log('[WorkoutSession] Attempting async save on visibility hidden')
+        await forceSave()
+      }
     }
   })
 
@@ -344,8 +361,8 @@ function WorkoutSessionContent({
         return
       }
 
-      // Now complete the session
-      const result = await completeSession()
+      // Now complete the session with notes
+      const result = await completeSession(sessionNotes)
       if (result.success) {
         // Close dialog if open
         setShowFinishConfirm(false)
@@ -380,8 +397,8 @@ function WorkoutSessionContent({
         return
       }
 
-      // Now update session status
-      const result = await saveSession()
+      // Now update session status with notes
+      const result = await saveSession(sessionNotes)
       if (result.success) {
         toast({
           title: "Session Saved",
@@ -529,13 +546,26 @@ function WorkoutSessionContent({
 
       {/* Session Notes */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-high-contrast">Notes</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-high-contrast">Notes</h3>
+          {sessionStatus === 'completed' && (
+            <Button
+              onClick={handleSaveSession}
+              disabled={isLoading}
+              size="sm"
+              variant="outline"
+              className="text-xs"
+            >
+              <Save className="h-3 w-3 mr-1" />
+              Update Notes
+            </Button>
+          )}
+        </div>
         <Textarea
           placeholder="Add notes about your workout session..."
           value={sessionNotes}
           onChange={(e) => setSessionNotes(e.target.value)}
           className="input-enhanced min-h-20"
-          disabled={sessionStatus === 'completed'}
         />
       </div>
 

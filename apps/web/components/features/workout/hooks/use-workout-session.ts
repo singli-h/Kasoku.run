@@ -31,8 +31,8 @@ interface WorkoutSessionState {
 // Hook return interface
 interface UseWorkoutSessionReturn extends WorkoutSessionState {
   startSession: () => Promise<{ success: boolean; error?: Error }>
-  saveSession: () => Promise<{ success: boolean; error?: Error }>
-  completeSession: () => Promise<{ success: boolean; error?: Error }>
+  saveSession: (notes?: string) => Promise<{ success: boolean; error?: Error }>
+  completeSession: (notes?: string) => Promise<{ success: boolean; error?: Error }>
   updateTrainingDetail: (detailId: string, updates: Partial<WorkoutLogSet>) => void
   updateWorkoutLogSets: (exerciseId: number, updatedDetails: WorkoutLogSet[]) => void
   refreshSessionData: () => Promise<void>
@@ -181,21 +181,26 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
   }, [(state.session as any)?.id, state.session?.session_plan?.id, workoutApi])
 
   // Save session progress
-  const saveSession = useCallback(async () => {
+  const saveSession = useCallback(async (notes?: string) => {
     if (!(state.session as any)?.id) {
       return { success: false, error: new Error('No session available') }
     }
 
     try {
-      // Use the workout API to update session status
-      const success = await workoutApi.updateSession((state.session as any).id, {
+      // Use the workout API to update session status and notes
+      const updates: { session_status: SessionStatus; notes?: string } = {
         session_status: 'ongoing'
-      }, true) // immediate save
-      
+      }
+      if (notes !== undefined) {
+        updates.notes = notes
+      }
+
+      const success = await workoutApi.updateSession((state.session as any).id, updates, true) // immediate save
+
       if (!success) {
         throw new Error('Failed to save session')
       }
-      
+
       return { success: true }
     } catch (error) {
       console.error("Error saving session:", error)
@@ -205,10 +210,10 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
   }, [(state.session as any)?.id, workoutApi])
 
   // Complete session
-  const completeSession = useCallback(async () => {
+  const completeSession = useCallback(async (notes?: string) => {
     try {
-      // First save the current state
-      const saveResult = await saveSession()
+      // First save the current state with notes
+      const saveResult = await saveSession(notes)
       if (!saveResult.success) {
         return saveResult
       }
@@ -217,22 +222,22 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
         return { success: false, error: new Error('No session available') }
       }
 
-      // Use the workout API to complete the session
-      const success = await workoutApi.completeSession((state.session as any).id)
-      
+      // Use the workout API to complete the session (notes already saved above)
+      const success = await workoutApi.completeSession((state.session as any).id, notes)
+
       if (!success) {
         throw new Error('Failed to complete session')
       }
-      
+
       await refreshSessionData()
       return { success: true }
     } catch (error) {
       console.error("Error completing session:", error)
       const err = error instanceof Error ? error : new Error('Failed to complete session')
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         error: err,
-        isLoading: false 
+        isLoading: false
       }))
       return { success: false, error: err }
     }
