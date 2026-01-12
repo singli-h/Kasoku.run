@@ -632,26 +632,18 @@ export async function processSessionForPBsAction(
     let detected = 0
     let updated = 0
 
-    // Process each sprint set
+    // Process each sprint set - check BOTH total time AND split times for PBs
+    // A 40m session might have a 20m split that's faster than any standalone 20m time
     for (const set of sprintSets) {
       const metadata = set.metadata as {
         time?: number
         speed?: number
-        splits?: Array<{ distance: number; time: number }>
-      }
-
-      // Get distance from set column, or sum of splits (splits have segment distances, not cumulative)
-      const distance = set.distance ||
-        (metadata?.splits?.length
-          ? metadata.splits.reduce((sum, s) => sum + s.distance, 0)
-          : null)
-
-      // Get time from metadata.time or performing_time
-      const time = metadata?.time || set.performing_time
-
-      if (!distance || !time) {
-        console.log(`[processSessionForPBsAction] Skipping set ${set.id} - missing distance (${distance}) or time (${time})`)
-        continue
+        splits?: Array<{
+          distance: number
+          time: number
+          cumulative_time?: number
+          cumulativeTime?: number
+        }>
       }
 
       // Use the actual exercise from the workout_log_exercise
@@ -661,20 +653,80 @@ export async function processSessionForPBsAction(
         continue
       }
 
-      // Use internal helper to avoid redundant auth() calls in loop
-      const result = await detectSprintPBInternal(
-        sessionId,
-        athlete.id,
-        exerciseId,
-        distance,
-        time,
-        set.metadata as Record<string, unknown>
-      )
+      // Track which distances we've checked to avoid duplicates
+      const checkedDistances = new Set<number>()
 
-      if (result.isSuccess && result.data) {
-        detected++
-        if (result.message.includes("updated")) {
-          updated++
+      // 1. Check total time at total distance (main result)
+      const totalDistance = set.distance ||
+        (metadata?.splits?.length
+          ? metadata.splits.reduce((sum, s) => sum + s.distance, 0)
+          : null)
+      const totalTime = metadata?.time || set.performing_time
+
+      if (totalDistance && totalTime && totalTime > 0) {
+        checkedDistances.add(totalDistance)
+        const result = await detectSprintPBInternal(
+          sessionId,
+          athlete.id,
+          exerciseId,
+          totalDistance,
+          totalTime,
+          set.metadata as Record<string, unknown>
+        )
+
+        if (result.isSuccess && result.data) {
+          detected++
+          if (result.message.includes("updated")) {
+            updated++
+          }
+        }
+      }
+
+      // 2. Check each split's cumulative time for potential PBs at intermediate distances
+      // E.g., a 40m session's 20m split (3.31s) might be faster than any 20m standalone (3.34s)
+      if (metadata?.splits?.length) {
+        let cumulativeDistance = 0
+        let cumulativeTime = 0
+
+        for (const split of metadata.splits) {
+          // Calculate cumulative values
+          cumulativeDistance += split.distance
+          const splitCumulativeTime = split.cumulative_time ?? split.cumulativeTime
+          if (splitCumulativeTime !== undefined) {
+            cumulativeTime = splitCumulativeTime
+          } else {
+            cumulativeTime += split.time
+          }
+
+          // Skip if we already checked this distance (e.g., total distance)
+          if (checkedDistances.has(cumulativeDistance)) {
+            continue
+          }
+          checkedDistances.add(cumulativeDistance)
+
+          // Only check standard sprint distances for split PBs
+          const standardDistances = [10, 20, 30, 40, 50, 60, 80, 100]
+          if (!standardDistances.includes(cumulativeDistance)) {
+            continue
+          }
+
+          // Check if this split time is a PB for this distance
+          const splitResult = await detectSprintPBInternal(
+            sessionId,
+            athlete.id,
+            exerciseId,
+            cumulativeDistance,
+            cumulativeTime,
+            { ...set.metadata as Record<string, unknown>, split_pb: true }
+          )
+
+          if (splitResult.isSuccess && splitResult.data) {
+            detected++
+            if (splitResult.message.includes("updated")) {
+              updated++
+            }
+            console.log(`[processSessionForPBsAction] Found split PB: ${cumulativeDistance}m in ${cumulativeTime.toFixed(2)}s`)
+          }
         }
       }
     }
