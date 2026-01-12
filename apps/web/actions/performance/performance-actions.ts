@@ -550,20 +550,6 @@ export async function getSprintAnalyticsAction(
 
     console.log(`[getSprintAnalyticsAction] Found ${sprintSets.length} sprint sets for athlete ${athlete.id}`)
 
-    // Query personal bests for sprint events
-    const { data: personalBests } = await supabase
-      .from('athlete_personal_bests')
-      .select('id, value, achieved_date, metadata, session_id, exercise_id')
-      .eq('athlete_id', athlete.id)
-      .order('achieved_date', { ascending: false })
-
-    // Create a map of session_id to PB status
-    const pbSessionIds = new Set(
-      (personalBests || [])
-        .filter(pb => pb.session_id)
-        .map(pb => String(pb.session_id))
-    )
-
     // Query competition PBs (race results) for sprint events
     // Filter for wind-legal results only (indoor or wind <= 2.0 m/s)
     const sprintEventIds = Object.keys(SPRINT_EVENT_DISTANCES).map(Number)
@@ -629,7 +615,6 @@ export async function getSprintAnalyticsAction(
       .map((set) => {
         const metadata = set.metadata as FreeelapMetadata
         const workoutLog = set.workout_log_exercise?.workout_log
-        const workoutLogId = workoutLog?.id
 
         // Handle both field name variants (time/total_time, speed/top_speed)
         const totalTime = metadata.time ?? metadata.total_time ?? 0
@@ -679,17 +664,21 @@ export async function getSprintAnalyticsAction(
           topSpeed,
           frequency: metadata.frequency,
           strideLength: metadata.stride_length,
-          // Mark as PB if the workout_log matches a PB record
-          isPB: workoutLogId ? pbSessionIds.has(String(workoutLogId)) : false,
+          isPB: false, // Will be set below based on best time per distance
           splits: processedSplits,
         }
       })
       .filter(s => s.totalTime > 0)
       .sort((a, b) => a.totalTime - b.totalTime) // Sort by best time
 
-    // If no session is marked as PB from database, mark the best one
-    if (sessions.length > 0 && !sessions.some(s => s.isPB)) {
-      sessions[0].isPB = true
+    // Mark the best time for each distance as PB
+    // Group by distance, find the fastest for each, mark as PB
+    const bestTimeByDistance = new Map<number, string>()
+    for (const session of sessions) {
+      if (!bestTimeByDistance.has(session.distance)) {
+        bestTimeByDistance.set(session.distance, session.id)
+        session.isPB = true
+      }
     }
 
     // Calculate time ranges for comparison
