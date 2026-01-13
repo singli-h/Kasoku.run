@@ -484,6 +484,7 @@ export async function updateSessionPlanAction(
 /**
  * Delete a session plan
  * P4: Also cancels associated workout_logs that haven't been started
+ * Prevents deletion if there are ongoing workouts to avoid data loss
  */
 export async function deleteSessionPlanAction(
   sessionId: string
@@ -499,6 +500,36 @@ export async function deleteSessionPlanAction(
     }
 
     const dbUserId = await getDbUserId(userId)
+
+    // Check for ongoing workouts - prevent deletion if athletes are actively working out
+    const { data: ongoingWorkouts, error: checkError } = await supabase
+      .from('workout_logs')
+      .select('id, athlete:athletes(id, user_id, user:users(first_name, last_name))')
+      .eq('session_plan_id', sessionId)
+      .eq('session_status', 'ongoing')
+
+    if (checkError) {
+      console.error('Error checking ongoing workouts:', checkError)
+      return {
+        isSuccess: false,
+        message: `Failed to check ongoing workouts: ${checkError.message}`
+      }
+    }
+
+    if (ongoingWorkouts && ongoingWorkouts.length > 0) {
+      // Get athlete names for error message
+      const athleteNames = ongoingWorkouts
+        .map(w => {
+          const user = (w.athlete as any)?.user
+          return user ? `${user.first_name} ${user.last_name}` : 'Unknown athlete'
+        })
+        .join(', ')
+
+      return {
+        isSuccess: false,
+        message: `Cannot delete: ${ongoingWorkouts.length} athlete(s) are currently doing this workout (${athleteNames}). Wait for them to finish or ask them to cancel.`
+      }
+    }
 
     // Soft delete by setting deleted flag
     const { error } = await supabase
@@ -533,9 +564,13 @@ export async function deleteSessionPlanAction(
       console.log(`Cancelled ${cancelledCount} assigned workout_logs for deleted session plan ${sessionId}`)
     }
 
+    const cancelledMessage = cancelledCount && cancelledCount > 0
+      ? ` (${cancelledCount} pending assignments cancelled)`
+      : ''
+
     return {
       isSuccess: true,
-      message: "Session plan deleted successfully",
+      message: `Session plan deleted successfully${cancelledMessage}`,
       data: true
     }
   } catch (error) {

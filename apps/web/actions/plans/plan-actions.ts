@@ -27,6 +27,57 @@ import {
 } from "@/types/training"
 
 // ============================================================================
+// DATE VALIDATION UTILITIES
+// ============================================================================
+
+/**
+ * Validates that start_date is before end_date
+ * Returns error message if invalid, null if valid
+ */
+function validateDateRange(startDate: string | null | undefined, endDate: string | null | undefined): string | null {
+  if (!startDate || !endDate) return null // Allow null dates (optional)
+
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+
+  if (isNaN(start.getTime())) return "Invalid start date format"
+  if (isNaN(end.getTime())) return "Invalid end date format"
+  if (start >= end) return "Start date must be before end date"
+
+  return null
+}
+
+/**
+ * Validates that child dates fall within parent date boundaries
+ * Returns error message if invalid, null if valid
+ */
+function validateDateBoundaries(
+  childStart: string | null | undefined,
+  childEnd: string | null | undefined,
+  parentStart: string | null | undefined,
+  parentEnd: string | null | undefined,
+  childName: string = "Child",
+  parentName: string = "parent"
+): string | null {
+  // Skip if any dates are missing
+  if (!childStart || !childEnd || !parentStart || !parentEnd) return null
+
+  const cStart = new Date(childStart)
+  const cEnd = new Date(childEnd)
+  const pStart = new Date(parentStart)
+  const pEnd = new Date(parentEnd)
+
+  if (cStart < pStart) {
+    return `${childName} start date cannot be before ${parentName} start date`
+  }
+  if (cEnd > pEnd) {
+    return `${childName} end date cannot be after ${parentName} end date`
+  }
+
+  return null
+}
+
+// ============================================================================
 // MACROCYCLE ACTIONS
 // ============================================================================
 
@@ -48,6 +99,12 @@ export async function createMacrocycleAction(
 
     // Using singleton supabase client and cached user lookup
     const dbUserId = await getDbUserId(userId)
+
+    // Validate date range
+    const dateError = validateDateRange(formData.start_date, formData.end_date)
+    if (dateError) {
+      return { isSuccess: false, message: dateError }
+    }
 
     const macrocycleData: MacrocycleInsert = {
       name: formData.name,
@@ -328,6 +385,32 @@ export async function createMesocycleAction(
 
     // Using singleton supabase client and cached user lookup
     const dbUserId = await getDbUserId(userId)
+
+    // Validate date range
+    const dateError = validateDateRange(formData.start_date, formData.end_date)
+    if (dateError) {
+      return { isSuccess: false, message: dateError }
+    }
+
+    // Validate dates are within parent macrocycle if specified
+    if (formData.macrocycle_id) {
+      const { data: parentMacrocycle } = await supabase
+        .from('macrocycles')
+        .select('start_date, end_date')
+        .eq('id', formData.macrocycle_id)
+        .single()
+
+      if (parentMacrocycle) {
+        const boundaryError = validateDateBoundaries(
+          formData.start_date, formData.end_date,
+          parentMacrocycle.start_date, parentMacrocycle.end_date,
+          "Mesocycle", "macrocycle"
+        )
+        if (boundaryError) {
+          return { isSuccess: false, message: boundaryError }
+        }
+      }
+    }
 
     const mesocycleData: MesocycleInsert = {
       name: formData.name,
@@ -663,6 +746,32 @@ export async function createMicrocycleAction(
 
     // Using singleton supabase client and cached user lookup
     const dbUserId = await getDbUserId(userId)
+
+    // Validate date range
+    const dateError = validateDateRange(formData.start_date, formData.end_date)
+    if (dateError) {
+      return { isSuccess: false, message: dateError }
+    }
+
+    // Validate dates are within parent mesocycle if specified
+    if (formData.mesocycle_id) {
+      const { data: parentMesocycle } = await supabase
+        .from('mesocycles')
+        .select('start_date, end_date')
+        .eq('id', formData.mesocycle_id)
+        .single()
+
+      if (parentMesocycle) {
+        const boundaryError = validateDateBoundaries(
+          formData.start_date, formData.end_date,
+          parentMesocycle.start_date, parentMesocycle.end_date,
+          "Microcycle", "mesocycle"
+        )
+        if (boundaryError) {
+          return { isSuccess: false, message: boundaryError }
+        }
+      }
+    }
 
     const microcycleData: MicrocycleInsert = {
       name: formData.name,

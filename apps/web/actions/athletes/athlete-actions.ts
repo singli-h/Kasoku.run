@@ -916,7 +916,7 @@ async function assignExistingGroupWorkoutsToAthleteAction(
 
 /**
  * Remove an athlete from a group
- * Uses SECURITY DEFINER function to bypass RLS while maintaining authorization checks
+ * Also cancels any assigned (not started) workouts that came from group assignment
  */
 export async function removeAthleteFromGroupAction(
   athleteId: number
@@ -931,9 +931,7 @@ export async function removeAthleteFromGroupAction(
       }
     }
 
-    // Using singleton supabase client
-
-    // Get current athlete info before updating (for history logging)
+    // Get current athlete info before updating (for history logging and workout cancellation)
     const { data: currentAthlete, error: currentError } = await supabase
       .from('athletes')
       .select('id, athlete_group_id')
@@ -950,30 +948,67 @@ export async function removeAthleteFromGroupAction(
 
     const previousGroupId = currentAthlete.athlete_group_id
 
-    // Use SECURITY DEFINER function to bypass RLS while maintaining authorization
-    const { data: removeResult, error: removeError } = await supabase
-      .rpc('remove_athlete_from_group', { athlete_id_param: athleteId })
-
-    // Type guard for the RPC result
-    const result = removeResult as { success: boolean; error?: string; athlete_id?: number; previous_group_id?: number } | null
-
-    if (removeError) {
-      console.error('Error removing athlete from group:', removeError)
+    if (!previousGroupId) {
       return {
         isSuccess: false,
-        message: `Failed to remove athlete from group: ${removeError.message}`
+        message: "Athlete is not in any group"
       }
     }
 
-    if (!result?.success) {
-      console.error('Error removing athlete from group:', result?.error)
+    // Step 1: Handle assigned workouts from this group
+    // Strategy: Cancel PAST workouts (audit trail), DELETE FUTURE workouts (avoid bloat)
+    // This prevents database bloat when coach has a year-long plan
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayISO = today.toISOString()
+
+    // 1a: Cancel past/overdue workouts (scheduled before today) - keeps audit trail
+    const { error: cancelError, count: cancelledCount } = await supabase
+      .from('workout_logs')
+      .update({
+        session_status: 'cancelled',
+        notes: 'Cancelled: Athlete removed from group'
+      })
+      .eq('athlete_id', athleteId)
+      .eq('athlete_group_id', previousGroupId)
+      .eq('session_status', 'assigned')
+      .lt('date_time', todayISO) // Only past/overdue workouts
+
+    if (cancelError) {
+      console.warn('Failed to cancel past group workouts:', cancelError)
+    }
+
+    // 1b: Delete future workouts (scheduled today or later) - avoids bloat
+    // No need to keep cancelled records for workouts that never came due
+    const { error: deleteError, count: deletedCount } = await supabase
+      .from('workout_logs')
+      .delete()
+      .eq('athlete_id', athleteId)
+      .eq('athlete_group_id', previousGroupId)
+      .eq('session_status', 'assigned')
+      .gte('date_time', todayISO) // Future workouts (including today)
+
+    if (deleteError) {
+      console.warn('Failed to delete future group workouts:', deleteError)
+    }
+
+    console.log(`[removeAthleteFromGroupAction] Athlete ${athleteId}: cancelled ${cancelledCount || 0} past workouts, deleted ${deletedCount || 0} future workouts`)
+
+    // Step 2: Remove athlete from group
+    const { error: updateError } = await supabase
+      .from('athletes')
+      .update({ athlete_group_id: null })
+      .eq('id', athleteId)
+
+    if (updateError) {
+      console.error('Error removing athlete from group:', updateError)
       return {
         isSuccess: false,
-        message: result?.error || 'Failed to remove athlete from group'
+        message: `Failed to remove athlete from group: ${updateError.message}`
       }
     }
 
-    // Fetch the updated athlete data to return
+    // Step 3: Fetch the updated athlete data to return
     const { data: updatedAthlete, error: fetchError } = await supabase
       .from('athletes')
       .select('*')
@@ -990,7 +1025,7 @@ export async function removeAthleteFromGroupAction(
       }
     }
 
-    // Log the group change in history
+    // Step 4: Log the group change in history
     const historyResult = await createGroupHistoryEntryAction(
       athleteId,
       previousGroupId,
@@ -1003,9 +1038,19 @@ export async function removeAthleteFromGroupAction(
       // Don't fail the main operation if history logging fails
     }
 
+    // Build cleanup summary message
+    const cleanupParts: string[] = []
+    if (cancelledCount && cancelledCount > 0) {
+      cleanupParts.push(`${cancelledCount} overdue workout${cancelledCount > 1 ? 's' : ''} cancelled`)
+    }
+    if (deletedCount && deletedCount > 0) {
+      cleanupParts.push(`${deletedCount} future workout${deletedCount > 1 ? 's' : ''} removed`)
+    }
+    const cleanupMessage = cleanupParts.length > 0 ? ` (${cleanupParts.join(', ')})` : ''
+
     return {
       isSuccess: true,
-      message: "Athlete removed from group successfully",
+      message: `Athlete removed from group successfully${cleanupMessage}`,
       data: updatedAthlete
     }
   } catch (error) {
@@ -1059,13 +1104,53 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
       }
     }
 
-    // First, remove all athletes from this group
-    await supabase
+    // Step 1: Handle assigned workouts for this group
+    // Strategy: Cancel PAST workouts (audit trail), DELETE FUTURE workouts (avoid bloat)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayISO = today.toISOString()
+
+    // 1a: Cancel past/overdue workouts - keeps audit trail for athletes
+    const { error: cancelError, count: cancelledCount } = await supabase
+      .from('workout_logs')
+      .update({
+        session_status: 'cancelled',
+        notes: 'Cancelled: Group was deleted'
+      })
+      .eq('athlete_group_id', groupId)
+      .eq('session_status', 'assigned')
+      .lt('date_time', todayISO)
+
+    if (cancelError) {
+      console.warn('Failed to cancel past group workouts:', cancelError)
+    }
+
+    // 1b: Delete future workouts - no need to keep cancelled records
+    const { error: deleteError, count: deletedCount } = await supabase
+      .from('workout_logs')
+      .delete()
+      .eq('athlete_group_id', groupId)
+      .eq('session_status', 'assigned')
+      .gte('date_time', todayISO)
+
+    if (deleteError) {
+      console.warn('Failed to delete future group workouts:', deleteError)
+    }
+
+    console.log(`[deleteAthleteGroupAction] Group ${groupId}: cancelled ${cancelledCount || 0} past workouts, deleted ${deletedCount || 0} future workouts`)
+
+    // Step 2: Remove all athletes from this group
+    const { error: removeError } = await supabase
       .from('athletes')
       .update({ athlete_group_id: null })
       .eq('athlete_group_id', groupId)
 
-    // Then delete the group
+    if (removeError) {
+      console.warn('Failed to remove athletes from group:', removeError)
+      // Don't fail - continue with deletion
+    }
+
+    // Step 3: Delete the group
     const { error } = await supabase
       .from('athlete_groups')
       .delete()
@@ -1080,9 +1165,19 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
       }
     }
 
+    // Build cleanup summary message
+    const cleanupParts: string[] = []
+    if (cancelledCount && cancelledCount > 0) {
+      cleanupParts.push(`${cancelledCount} overdue workout${cancelledCount > 1 ? 's' : ''} cancelled`)
+    }
+    if (deletedCount && deletedCount > 0) {
+      cleanupParts.push(`${deletedCount} future workout${deletedCount > 1 ? 's' : ''} removed`)
+    }
+    const cleanupMessage = cleanupParts.length > 0 ? ` (${cleanupParts.join(', ')})` : ''
+
     return {
       isSuccess: true,
-      message: "Athlete group deleted successfully",
+      message: `Athlete group deleted successfully${cleanupMessage}`,
       data: true
     }
   } catch (error) {
