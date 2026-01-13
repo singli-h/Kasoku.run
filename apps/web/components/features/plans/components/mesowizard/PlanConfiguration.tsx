@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -40,7 +40,8 @@ import { getMacrocyclesAction } from "@/actions/plans/plan-actions"
 import { getMesocyclesByMacrocycleAction } from "@/actions/plans/plan-actions"
 import { getCoachAthleteGroupsAction } from "@/actions/athletes/athlete-actions"
 
-const configSchema = z.object({
+// Base schema - validation will be enhanced based on plan type
+const baseConfigSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   description: z.string().optional(),
   startDate: z.date({ message: "Start date is required" }),
@@ -48,12 +49,44 @@ const configSchema = z.object({
   macrocycleId: z.number().optional(),
   mesocycleId: z.number().optional(),
   athleteGroupId: z.number().optional(),
-}).refine((data) => data.endDate > data.startDate, {
-  message: "End date must be after start date",
-  path: ["endDate"],
 })
 
-type ConfigFormData = z.infer<typeof configSchema>
+// Create schema with plan-type-specific validation
+function createConfigSchema(planType: PlanType) {
+  return baseConfigSchema
+    .refine((data) => data.endDate > data.startDate, {
+      message: "End date must be after start date",
+      path: ["endDate"],
+    })
+    .refine(
+      (data) => {
+        // Mesocycle requires a parent macrocycle
+        if (planType === 'mesocycle') {
+          return data.macrocycleId !== undefined && data.macrocycleId > 0
+        }
+        return true
+      },
+      {
+        message: "Please select a parent macrocycle",
+        path: ["macrocycleId"],
+      }
+    )
+    .refine(
+      (data) => {
+        // Microcycle requires a parent mesocycle
+        if (planType === 'microcycle') {
+          return data.mesocycleId !== undefined && data.mesocycleId > 0
+        }
+        return true
+      },
+      {
+        message: "Please select a parent mesocycle",
+        path: ["mesocycleId"],
+      }
+    )
+}
+
+type ConfigFormData = z.infer<typeof baseConfigSchema>
 
 interface PlanConfigurationProps {
   planType: PlanType
@@ -68,6 +101,9 @@ export function PlanConfiguration({ planType, onComplete, onBack }: PlanConfigur
   const [athleteGroups, setAthleteGroups] = useState<any[]>([])
   const [selectedMacrocycleId, setSelectedMacrocycleId] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  // Create schema dynamically based on plan type (memoized)
+  const configSchema = useMemo(() => createConfigSchema(planType), [planType])
 
   const {
     register,

@@ -65,7 +65,7 @@ const planTypeOptions: PlanTypeOption[] = [
     ],
     complexity: 'Advanced',
     timeCommitment: 'High',
-    color: 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+    color: 'bg-blue-50 border-blue-200 hover:bg-blue-100 dark:bg-blue-950 dark:border-blue-800 dark:hover:bg-blue-900'
   },
   {
     type: 'mesocycle',
@@ -88,7 +88,7 @@ const planTypeOptions: PlanTypeOption[] = [
     ],
     complexity: 'Intermediate',
     timeCommitment: 'Medium',
-    color: 'bg-green-50 border-green-200 hover:bg-green-100'
+    color: 'bg-green-50 border-green-200 hover:bg-green-100 dark:bg-green-950 dark:border-green-800 dark:hover:bg-green-900'
   },
   {
     type: 'microcycle',
@@ -111,7 +111,7 @@ const planTypeOptions: PlanTypeOption[] = [
     ],
     complexity: 'Beginner',
     timeCommitment: 'Low',
-    color: 'bg-purple-50 border-purple-200 hover:bg-purple-100'
+    color: 'bg-purple-50 border-purple-200 hover:bg-purple-100 dark:bg-purple-950 dark:border-purple-800 dark:hover:bg-purple-900'
   }
 ]
 
@@ -174,10 +174,10 @@ export function PlanTypeSelection({
 
   const getComplexityColor = (complexity: string) => {
     switch (complexity) {
-      case 'Beginner': return 'bg-green-100 text-green-800'
-      case 'Intermediate': return 'bg-yellow-100 text-yellow-800'
-      case 'Advanced': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'Beginner': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+      case 'Intermediate': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+      case 'Advanced': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
     }
   }
 

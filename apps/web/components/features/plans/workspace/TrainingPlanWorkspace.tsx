@@ -13,6 +13,14 @@ import { EditSessionDialog } from "./components/EditSessionDialog"
 import { CopySessionDialog } from "./components/CopySessionDialog"
 import { PlanPageHeader } from "../components/PlanPageHeader"
 import { copySessionAction } from "@/actions/plans/session-plan-actions"
+import {
+  createMesocycleAction,
+  updateMesocycleAction,
+  deleteMesocycleAction,
+  createMicrocycleAction,
+  updateMicrocycleAction,
+  deleteMicrocycleAction,
+} from "@/actions/plans/plan-actions"
 import { Copy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -237,57 +245,235 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
     }
   }, [historyIndex, history, onPlanUpdate])
 
-  const handleSaveMesocycle = useCallback((mesocycle: MesocycleFormData) => {
-    const newPlan = {
-      ...plan,
-      mesocycles: mesocycle.id
-        ? plan.mesocycles.map((m) => (m.id === mesocycle.id ? { ...m, ...mesocycle } as Mesocycle : m))
-        : [...plan.mesocycles, { ...mesocycle, microcycles: [] } as Mesocycle],
-    }
-    addToHistory(newPlan)
-  }, [plan, addToHistory])
+  const handleSaveMesocycle = useCallback(async (mesocycle: MesocycleFormData) => {
+    try {
+      if (mesocycle.id) {
+        // Update existing mesocycle
+        const result = await updateMesocycleAction(mesocycle.id, {
+          name: mesocycle.name,
+          description: mesocycle.description,
+          start_date: mesocycle.start_date,
+          end_date: mesocycle.end_date,
+          metadata: mesocycle.metadata,
+        })
 
-  const handleDeleteMesocycle = useCallback((id: number) => {
-    const newPlan = {
-      ...plan,
-      mesocycles: plan.mesocycles.filter((m) => m.id !== id),
-    }
-    addToHistory(newPlan)
-    if (selectedMeso?.id === id) {
-      setSelectedMeso(null)
-    }
-  }, [plan, addToHistory, selectedMeso])
+        if (!result.isSuccess) {
+          toast({
+            title: "Error",
+            description: result.message,
+            variant: "destructive",
+          })
+          return
+        }
 
-  const handleSaveMicrocycle = (microcycle: MicrocycleFormData) => {
+        toast({
+          title: "Mesocycle updated",
+          description: "Your changes have been saved.",
+        })
+      } else {
+        // Create new mesocycle
+        const result = await createMesocycleAction({
+          name: mesocycle.name || "New Mesocycle",
+          description: mesocycle.description || undefined,
+          start_date: mesocycle.start_date || new Date().toISOString().split('T')[0],
+          end_date: mesocycle.end_date || new Date().toISOString().split('T')[0],
+          macrocycle_id: plan.macrocycle.id,
+          metadata: mesocycle.metadata,
+        })
+
+        if (!result.isSuccess) {
+          toast({
+            title: "Error",
+            description: result.message,
+            variant: "destructive",
+          })
+          return
+        }
+
+        // Update the mesocycle with the new ID from the server
+        mesocycle.id = result.data?.id
+
+        toast({
+          title: "Mesocycle created",
+          description: "New training phase added.",
+        })
+      }
+
+      // Update local state
+      const newPlan = {
+        ...plan,
+        mesocycles: mesocycle.id
+          ? plan.mesocycles.map((m) => (m.id === mesocycle.id ? { ...m, ...mesocycle } as Mesocycle : m))
+          : [...plan.mesocycles, { ...mesocycle, microcycles: [] } as Mesocycle],
+      }
+      addToHistory(newPlan)
+      router.refresh()
+    } catch (error) {
+      console.error("Error saving mesocycle:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save mesocycle. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }, [plan, addToHistory, toast, router])
+
+  const handleDeleteMesocycle = useCallback(async (id: number) => {
+    try {
+      const result = await deleteMesocycleAction(id)
+
+      if (!result.isSuccess) {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Mesocycle deleted",
+        description: "Training phase has been removed.",
+      })
+
+      const newPlan = {
+        ...plan,
+        mesocycles: plan.mesocycles.filter((m) => m.id !== id),
+      }
+      addToHistory(newPlan)
+      if (selectedMeso?.id === id) {
+        setSelectedMeso(null)
+      }
+      router.refresh()
+    } catch (error) {
+      console.error("Error deleting mesocycle:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete mesocycle. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }, [plan, addToHistory, selectedMeso, toast, router])
+
+  const handleSaveMicrocycle = async (microcycle: MicrocycleFormData) => {
     if (!selectedMeso) return
-    const updatedMeso = {
-      ...selectedMeso,
-      microcycles: microcycle.id
-        ? selectedMeso.microcycles.map((m) => (m.id === microcycle.id ? { ...m, ...microcycle } as Microcycle : m))
-        : [...selectedMeso.microcycles, { ...microcycle, sessions: [] } as Microcycle],
+
+    try {
+      if (microcycle.id) {
+        // Update existing microcycle
+        const result = await updateMicrocycleAction(microcycle.id, {
+          name: microcycle.name,
+          description: microcycle.description,
+          start_date: microcycle.start_date,
+          end_date: microcycle.end_date,
+        })
+
+        if (!result.isSuccess) {
+          toast({
+            title: "Error",
+            description: result.message,
+            variant: "destructive",
+          })
+          return
+        }
+
+        toast({
+          title: "Microcycle updated",
+          description: "Your changes have been saved.",
+        })
+      } else {
+        // Create new microcycle
+        const result = await createMicrocycleAction({
+          name: microcycle.name || "New Week",
+          description: microcycle.description || undefined,
+          start_date: microcycle.start_date || new Date().toISOString().split('T')[0],
+          end_date: microcycle.end_date || new Date().toISOString().split('T')[0],
+          mesocycle_id: selectedMeso.id,
+        })
+
+        if (!result.isSuccess) {
+          toast({
+            title: "Error",
+            description: result.message,
+            variant: "destructive",
+          })
+          return
+        }
+
+        // Update the microcycle with the new ID from the server
+        microcycle.id = result.data?.id
+
+        toast({
+          title: "Microcycle created",
+          description: "New training week added.",
+        })
+      }
+
+      // Update local state
+      const updatedMeso = {
+        ...selectedMeso,
+        microcycles: microcycle.id
+          ? selectedMeso.microcycles.map((m) => (m.id === microcycle.id ? { ...m, ...microcycle } as Microcycle : m))
+          : [...selectedMeso.microcycles, { ...microcycle, sessions: [] } as Microcycle],
+      }
+      const newPlan = {
+        ...plan,
+        mesocycles: plan.mesocycles.map((m) => (m.id === selectedMeso.id ? updatedMeso : m)),
+      }
+      addToHistory(newPlan)
+      setSelectedMeso(updatedMeso)
+      router.refresh()
+    } catch (error) {
+      console.error("Error saving microcycle:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save microcycle. Please try again.",
+        variant: "destructive",
+      })
     }
-    const newPlan = {
-      ...plan,
-      mesocycles: plan.mesocycles.map((m) => (m.id === selectedMeso.id ? updatedMeso : m)),
-    }
-    addToHistory(newPlan)
-    setSelectedMeso(updatedMeso)
   }
 
-  const handleDeleteMicrocycle = (id: number) => {
+  const handleDeleteMicrocycle = async (id: number) => {
     if (!selectedMeso) return
-    const updatedMeso = {
-      ...selectedMeso,
-      microcycles: selectedMeso.microcycles.filter((m) => m.id !== id),
-    }
-    const newPlan = {
-      ...plan,
-      mesocycles: plan.mesocycles.map((m) => (m.id === selectedMeso.id ? updatedMeso : m)),
-    }
-    addToHistory(newPlan)
-    setSelectedMeso(updatedMeso)
-    if (selectedMicro?.id === id) {
-      setSelectedMicro(null)
+
+    try {
+      const result = await deleteMicrocycleAction(id)
+
+      if (!result.isSuccess) {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Microcycle deleted",
+        description: "Training week has been removed.",
+      })
+
+      const updatedMeso = {
+        ...selectedMeso,
+        microcycles: selectedMeso.microcycles.filter((m) => m.id !== id),
+      }
+      const newPlan = {
+        ...plan,
+        mesocycles: plan.mesocycles.map((m) => (m.id === selectedMeso.id ? updatedMeso : m)),
+      }
+      addToHistory(newPlan)
+      setSelectedMeso(updatedMeso)
+      if (selectedMicro?.id === id) {
+        setSelectedMicro(null)
+      }
+      router.refresh()
+    } catch (error) {
+      console.error("Error deleting microcycle:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete microcycle. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
