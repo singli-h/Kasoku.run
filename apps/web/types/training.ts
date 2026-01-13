@@ -57,6 +57,91 @@ export type {
 }
 
 // ============================================================================
+// Equipment Category Types
+// ============================================================================
+
+/**
+ * Valid equipment categories for training plan generation
+ */
+export const VALID_EQUIPMENT_CATEGORIES = [
+  "bodyweight",
+  "dumbbells",
+  "barbell",
+  "kettlebells",
+  "cables",
+  "machines",
+  "bench",
+] as const
+
+export type EquipmentCategory = typeof VALID_EQUIPMENT_CATEGORIES[number]
+
+/**
+ * Valid training focus types
+ */
+export const VALID_TRAINING_FOCUS = ["strength", "endurance", "general"] as const
+export type TrainingFocus = typeof VALID_TRAINING_FOCUS[number]
+
+// ============================================================================
+// Mesocycle Metadata Schema
+// ============================================================================
+
+/**
+ * Typed metadata for mesocycles (Training Blocks)
+ * Used by QuickStartWizard and AI plan generation
+ */
+export interface MesocycleMetadata {
+  /** Training focus: strength, endurance, or general */
+  focus?: TrainingFocus
+  /** Available equipment categories */
+  equipment?: EquipmentCategory[]
+  /** How this block was created */
+  createdVia?: "quick-start" | "ai-generator" | "manual" | "template"
+  /** AI generation context (if applicable) */
+  aiContext?: {
+    model?: string
+    generatedAt?: string
+  }
+}
+
+/**
+ * Type guard to validate equipment categories
+ */
+export function isValidEquipmentCategory(value: unknown): value is EquipmentCategory {
+  return typeof value === "string" && VALID_EQUIPMENT_CATEGORIES.includes(value as EquipmentCategory)
+}
+
+/**
+ * Type guard to validate training focus
+ */
+export function isValidTrainingFocus(value: unknown): value is TrainingFocus {
+  return typeof value === "string" && VALID_TRAINING_FOCUS.includes(value as TrainingFocus)
+}
+
+/**
+ * Validate and sanitize equipment array
+ * Returns only valid equipment categories, defaults to ["bodyweight"] if empty
+ */
+export function sanitizeEquipment(equipment: unknown): EquipmentCategory[] {
+  if (!Array.isArray(equipment)) {
+    return ["bodyweight"]
+  }
+  const valid = equipment.filter(isValidEquipmentCategory)
+  return valid.length > 0 ? valid : ["bodyweight"]
+}
+
+/**
+ * Validate and create mesocycle metadata
+ */
+export function createMesocycleMetadata(input: Partial<MesocycleMetadata>): MesocycleMetadata {
+  return {
+    focus: isValidTrainingFocus(input.focus) ? input.focus : undefined,
+    equipment: sanitizeEquipment(input.equipment),
+    createdVia: input.createdVia,
+    aiContext: input.aiContext,
+  }
+}
+
+// ============================================================================
 // Extended Types with Relationships
 // ============================================================================
 

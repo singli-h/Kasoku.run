@@ -634,6 +634,7 @@ export type Database = {
           end_date: string | null
           id: number
           name: string | null
+          notes: string | null
           start_date: string | null
           updated_at: string | null
           user_id: number | null
@@ -645,6 +646,7 @@ export type Database = {
           end_date?: string | null
           id?: number
           name?: string | null
+          notes?: string | null
           start_date?: string | null
           updated_at?: string | null
           user_id?: number | null
@@ -656,6 +658,7 @@ export type Database = {
           end_date?: string | null
           id?: number
           name?: string | null
+          notes?: string | null
           start_date?: string | null
           updated_at?: string | null
           user_id?: number | null
@@ -686,6 +689,7 @@ export type Database = {
           macrocycle_id: number | null
           metadata: Json | null
           name: string | null
+          notes: string | null
           start_date: string | null
           updated_at: string | null
           user_id: number | null
@@ -698,6 +702,7 @@ export type Database = {
           macrocycle_id?: number | null
           metadata?: Json | null
           name?: string | null
+          notes?: string | null
           start_date?: string | null
           updated_at?: string | null
           user_id?: number | null
@@ -710,6 +715,7 @@ export type Database = {
           macrocycle_id?: number | null
           metadata?: Json | null
           name?: string | null
+          notes?: string | null
           start_date?: string | null
           updated_at?: string | null
           user_id?: number | null
@@ -740,6 +746,7 @@ export type Database = {
           intensity: number | null
           mesocycle_id: number | null
           name: string | null
+          notes: string | null
           start_date: string | null
           updated_at: string | null
           user_id: number | null
@@ -753,6 +760,7 @@ export type Database = {
           intensity?: number | null
           mesocycle_id?: number | null
           name?: string | null
+          notes?: string | null
           start_date?: string | null
           updated_at?: string | null
           user_id?: number | null
@@ -766,6 +774,7 @@ export type Database = {
           intensity?: number | null
           mesocycle_id?: number | null
           name?: string | null
+          notes?: string | null
           start_date?: string | null
           updated_at?: string | null
           user_id?: number | null

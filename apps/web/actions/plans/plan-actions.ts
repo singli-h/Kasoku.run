@@ -13,13 +13,17 @@ import { revalidatePath } from "next/cache"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
+import { type Json } from "@/types/database"
 import {
   Macrocycle, MacrocycleInsert, MacrocycleUpdate,
   Mesocycle, MesocycleInsert, MesocycleUpdate,
   Microcycle, MicrocycleInsert, MicrocycleUpdate,
   MacrocycleWithDetails, MesocycleWithDetails, MicrocycleWithDetails,
   CreateMacrocycleForm, CreateMesocycleForm, CreateMicrocycleForm,
-  SessionPlanInsert
+  SessionPlanInsert,
+  createMesocycleMetadata,
+  type MesocycleMetadata,
+  type EquipmentCategory
 } from "@/types/training"
 
 // ============================================================================
@@ -1418,6 +1422,7 @@ export interface QuickTrainingBlockInput {
   focus: 'strength' | 'endurance' | 'general'
   trainingDays: number[]  // Array of day numbers (0=Sun, 1=Mon, etc.)
   equipment?: string[]  // Equipment categories (bodyweight, dumbbells, etc.)
+  notes?: string  // User-provided training context/guidelines for AI
 }
 
 export async function createQuickTrainingBlockAction(
@@ -1454,11 +1459,13 @@ export async function createQuickTrainingBlockAction(
       end_date: input.endDate,
       macrocycle_id: null,  // Individual users don't use macrocycles
       user_id: dbUserId,
-      metadata: {
+      notes: input.notes || null,  // User-provided context/guidelines for AI
+      // Validate and sanitize metadata before storing
+      metadata: createMesocycleMetadata({
         focus: input.focus,
-        equipment: input.equipment || ['bodyweight'],
+        equipment: input.equipment as EquipmentCategory[] | undefined,
         createdVia: 'quick-start'
-      }
+      }) as unknown as Record<string, Json>
     }
 
     const { data: mesocycle, error: mesoError } = await supabase

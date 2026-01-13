@@ -21,15 +21,11 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-// Equipment category definitions
-export type EquipmentCategory =
-  | "bodyweight"
-  | "dumbbells"
-  | "barbell"
-  | "kettlebells"
-  | "cables"
-  | "machines"
-  | "bench"
+// Import the canonical type from training types (single source of truth)
+import { type EquipmentCategory } from "@/types/training"
+
+// Re-export for convenience
+export type { EquipmentCategory }
 
 export interface EquipmentCategoryDef {
   id: EquipmentCategory

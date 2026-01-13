@@ -17,8 +17,8 @@ import { ArrowLeft, ArrowRight, Calendar, Clock, Dumbbell, Loader2, Target, Zap 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 
@@ -80,6 +80,7 @@ const blockSettingsSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   durationWeeks: z.number().min(1).max(12),
   focus: z.enum(["strength", "endurance", "general"]),
+  notes: z.string().optional(),  // User-provided context/guidelines for AI
 })
 
 // Step 2 Schema
@@ -146,6 +147,7 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
         focus: blockSettings.focus,
         trainingDays: data.trainingDays,
         equipment: data.equipment,
+        notes: blockSettings.notes,
       })
 
       if (result.isSuccess) {
@@ -314,59 +316,80 @@ function BlockSettingsStep({
           {/* Duration Presets */}
           <div className="space-y-3">
             <Label>Duration</Label>
-            <RadioGroup
-              value={durationWeeks?.toString()}
-              onValueChange={(value) => setValue("durationWeeks", parseInt(value))}
-              className="grid grid-cols-3 gap-3"
-            >
-              {DURATION_PRESETS.map((preset) => (
-                <div key={preset.value}>
-                  <RadioGroupItem
-                    value={preset.value.toString()}
-                    id={`duration-${preset.value}`}
-                    className="peer sr-only"
-                  />
-                  <Label
-                    htmlFor={`duration-${preset.value}`}
-                    className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+            <div className="grid grid-cols-3 gap-3">
+              {DURATION_PRESETS.map((preset) => {
+                const isSelected = durationWeeks === preset.value
+                return (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setValue("durationWeeks", preset.value)}
+                    className={`
+                      flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-colors cursor-pointer
+                      ${isSelected
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-muted bg-popover hover:bg-accent hover:text-accent-foreground"
+                      }
+                    `}
                   >
                     <span className="text-lg font-semibold">{preset.label}</span>
-                    <span className="text-xs text-muted-foreground">{preset.description}</span>
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
+                    <span className={`text-xs ${isSelected ? "text-primary/70" : "text-muted-foreground"}`}>
+                      {preset.description}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           {/* Training Focus */}
           <div className="space-y-3">
             <Label>Training Focus</Label>
-            <RadioGroup
-              value={focus}
-              onValueChange={(value) => setValue("focus", value as BlockSettingsData["focus"])}
-              className="grid grid-cols-3 gap-3"
-            >
+            <div className="grid grid-cols-3 gap-3">
               {FOCUS_OPTIONS.map((option) => {
                 const Icon = option.icon
+                const isSelected = focus === option.value
                 return (
-                  <div key={option.value}>
-                    <RadioGroupItem
-                      value={option.value}
-                      id={`focus-${option.value}`}
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor={`focus-${option.value}`}
-                      className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                    >
-                      <Icon className="h-6 w-6 mb-2" />
-                      <span className="font-semibold">{option.label}</span>
-                      <span className="text-xs text-muted-foreground text-center">{option.description}</span>
-                    </Label>
-                  </div>
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setValue("focus", option.value as BlockSettingsData["focus"])}
+                    className={`
+                      flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-colors cursor-pointer
+                      ${isSelected
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-muted bg-popover hover:bg-accent hover:text-accent-foreground"
+                      }
+                    `}
+                  >
+                    <Icon className={`h-6 w-6 mb-2 ${isSelected ? "text-primary" : ""}`} />
+                    <span className="font-semibold">{option.label}</span>
+                    <span className={`text-xs text-center ${isSelected ? "text-primary/70" : "text-muted-foreground"}`}>
+                      {option.description}
+                    </span>
+                  </button>
                 )
               })}
-            </RadioGroup>
+            </div>
+          </div>
+
+          {/* Notes - Training Context */}
+          <div className="space-y-2">
+            <Label htmlFor="notes">
+              Training Notes <span className="text-muted-foreground text-xs">(optional)</span>
+            </Label>
+            <Textarea
+              id="notes"
+              placeholder="• Injuries: e.g., 'Bad lower back - avoid heavy deadlifts'
+• Goals: e.g., 'Training for a marathon in 6 months'
+• Focus: e.g., 'Prioritize upper body this block'
+• Preferences: e.g., 'No burpees, prefer supersets'"
+              className="min-h-[100px] resize-none"
+              {...register("notes")}
+            />
+            <p className="text-xs text-muted-foreground">
+              This helps personalize your workout recommendations
+            </p>
           </div>
 
           {/* Form Actions */}
