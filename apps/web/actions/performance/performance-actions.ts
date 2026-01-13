@@ -720,6 +720,10 @@ export async function getSprintAnalyticsAction(
     const previousTopSpeed = previousPeriodSessions.length > 0
       ? Math.max(...previousPeriodSessions.filter(s => s.topSpeed).map(s => s.topSpeed!))
       : null
+    // All-time max top speed for benchmark reference (athlete's best capability)
+    const allTimeMaxTopSpeed = sessions.filter(s => s.topSpeed).length > 0
+      ? Math.max(...sessions.filter(s => s.topSpeed).map(s => s.topSpeed!))
+      : null
 
     // Calculate reaction times
     const currentReactionSessions = currentPeriodSessions.filter(s => s.reactionTime !== undefined)
@@ -763,7 +767,8 @@ export async function getSprintAnalyticsAction(
     // Build athlete metrics with phase-specific data
     const athleteMetrics: AthleteSprintMetrics = bestSession ? {
       reactionTime: bestSession.reactionTime,
-      topSpeed: bestSession.topSpeed,
+      // Use all-time max top speed for benchmark comparison (highest from any session)
+      topSpeed: allTimeMaxTopSpeed ?? bestSession.topSpeed,
       // Phase-specific stride metrics from max velocity phase
       strideLengthMaxV: maxVMetrics.strideLengthMaxV,
       strideFrequencyMaxV: maxVMetrics.strideFrequencyMaxV,
