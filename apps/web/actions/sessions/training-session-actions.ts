@@ -780,29 +780,31 @@ export async function addExercisePerformanceByExerciseIdAction(
       }
     }
 
-    // CRITICAL FIX: Use session_plan_exercise_id when available for unique exercise instance lookup
+    // CRITICAL FIX: Use workoutLogExerciseId when available for unique exercise instance lookup
     // This prevents data drift when same exercise appears multiple times (e.g., Sprinting 20m, Sprinting 40m)
+    // Note: The parameter is named sessionPlanExerciseId but actually contains workout_log_exercises.id
+    // which is already unique per exercise instance in the workout
     let workoutLogExercise: { id: string; session_plan_exercise_id?: string | null } | null = null
 
     if (sessionPlanExerciseId) {
-      // PREFERRED: Look up by session_plan_exercise_id (unique per exercise instance)
-      console.log('[addExercisePerformanceByExerciseIdAction] Looking up by session_plan_exercise_id:', sessionPlanExerciseId)
-      const { data: wleBySpExId, error: speLookupError } = await supabase
+      // PREFERRED: Look up by workout_log_exercises.id directly (unique per exercise instance)
+      console.log('[addExercisePerformanceByExerciseIdAction] Looking up by workout_log_exercise.id:', sessionPlanExerciseId)
+      const { data: wleById, error: idLookupError } = await supabase
         .from('workout_log_exercises')
         .select('id, session_plan_exercise_id')
         .eq('workout_log_id', sessionId)
-        .eq('session_plan_exercise_id', sessionPlanExerciseId)
+        .eq('id', sessionPlanExerciseId)
         .limit(1)
 
-      if (speLookupError) {
-        console.error('[addExercisePerformanceByExerciseIdAction] Error finding workout_log_exercise by session_plan_exercise_id:', {
-          error: speLookupError,
+      if (idLookupError) {
+        console.error('[addExercisePerformanceByExerciseIdAction] Error finding workout_log_exercise by id:', {
+          error: idLookupError,
           sessionId,
-          sessionPlanExerciseId
+          workoutLogExerciseId: sessionPlanExerciseId
         })
-      } else if (wleBySpExId && wleBySpExId.length > 0) {
-        workoutLogExercise = wleBySpExId[0]
-        console.log('[addExercisePerformanceByExerciseIdAction] Found by session_plan_exercise_id:', workoutLogExercise.id)
+      } else if (wleById && wleById.length > 0) {
+        workoutLogExercise = wleById[0]
+        console.log('[addExercisePerformanceByExerciseIdAction] Found by workout_log_exercise.id:', workoutLogExercise.id)
       }
     }
 

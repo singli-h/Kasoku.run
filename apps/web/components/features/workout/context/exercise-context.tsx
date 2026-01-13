@@ -260,9 +260,10 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
             prevSet.rpe !== newSet.rpe
 
           if (hasChanged) {
-            // CRITICAL FIX: Use session_plan_exercise_id (exerciseData.id) for unique identification
+            // CRITICAL FIX: Use workout_log_exercises.id for unique identification
             // This prevents collisions when same exercise appears multiple times (e.g., Sprinting 20m, Sprinting 40m)
-            const sessionPlanExerciseId = exerciseData.id // UUID from session_plan_exercises table
+            // Note: Variable is named sessionPlanExerciseId for backward compatibility but contains workout_log_exercises.id
+            const sessionPlanExerciseId = exerciseData.id // UUID from workout_log_exercises table
 
             // Also get template exercise ID for backward compatibility
             const rawExId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
@@ -332,8 +333,9 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
         const detailIndex = exerciseData.workout_log_sets.findIndex(d => d.id === detailId)
         if (detailIndex === -1) return updatedExercises
 
-        // CRITICAL FIX: Use session_plan_exercise_id for unique identification
-        const sessionPlanExerciseId = exerciseData.id // UUID from session_plan_exercises table
+        // CRITICAL FIX: Use workout_log_exercises.id for unique identification
+        // Note: Variable is named sessionPlanExerciseId for backward compatibility but contains workout_log_exercises.id
+        const sessionPlanExerciseId = exerciseData.id // UUID from workout_log_exercises table
 
         // Also get template exercise ID for backward compatibility
         const rawExId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
