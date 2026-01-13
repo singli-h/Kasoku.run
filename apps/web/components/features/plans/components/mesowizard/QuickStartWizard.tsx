@@ -1,11 +1,13 @@
 /**
  * QuickStartWizard - Simplified Training Block Creation for Individuals
  * 2-step wizard: Block Settings → Week Setup
+ *
+ * Features localStorage persistence to preserve user input across refreshes
  */
 
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -94,6 +96,76 @@ type WeekSetupData = z.infer<typeof weekSetupSchema>
 
 type WizardStep = "settings" | "week"
 
+// ============================================================================
+// LocalStorage Persistence
+// ============================================================================
+
+const STORAGE_KEY = "kasoku:quick-start-wizard"
+const STORAGE_EXPIRY_HOURS = 24 // Clear stale data after 24 hours
+
+interface WizardPersistedState {
+  currentStep: WizardStep
+  blockSettings: BlockSettingsData | null
+  weekSetup: Partial<WeekSetupData> | null
+  savedAt: number // timestamp for expiry check
+}
+
+/**
+ * Load wizard state from localStorage
+ * Returns null if no data, expired, or invalid
+ */
+function loadWizardState(): WizardPersistedState | null {
+  if (typeof window === "undefined") return null
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) return null
+
+    const state: WizardPersistedState = JSON.parse(stored)
+
+    // Check expiry
+    const expiryMs = STORAGE_EXPIRY_HOURS * 60 * 60 * 1000
+    if (Date.now() - state.savedAt > expiryMs) {
+      localStorage.removeItem(STORAGE_KEY)
+      return null
+    }
+
+    return state
+  } catch {
+    // Invalid JSON or other error - clear and return null
+    localStorage.removeItem(STORAGE_KEY)
+    return null
+  }
+}
+
+/**
+ * Save wizard state to localStorage
+ */
+function saveWizardState(state: Omit<WizardPersistedState, "savedAt">): void {
+  if (typeof window === "undefined") return
+
+  try {
+    const persistedState: WizardPersistedState = {
+      ...state,
+      savedAt: Date.now(),
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState))
+  } catch {
+    // Storage full or other error - silently fail
+    console.warn("[QuickStartWizard] Failed to save state to localStorage")
+  }
+}
+
+/**
+ * Clear wizard state from localStorage
+ */
+function clearWizardState(): void {
+  if (typeof window === "undefined") return
+  localStorage.removeItem(STORAGE_KEY)
+}
+
+// ============================================================================
+
 interface QuickStartWizardProps {
   onComplete?: () => void
 }
@@ -102,8 +174,10 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const [isHydrated, setIsHydrated] = useState(false)
   const [currentStep, setCurrentStep] = useState<WizardStep>("settings")
   const [blockSettings, setBlockSettings] = useState<BlockSettingsData | null>(null)
+  const [weekSetup, setWeekSetup] = useState<Partial<WeekSetupData> | null>(null)
   const [isCreating, setIsCreating] = useState(false)
 
   // Get template from URL params and resolve config
@@ -113,6 +187,34 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
     return TEMPLATE_CONFIGS[templateParam] || null
   }, [templateParam])
 
+  // Load persisted state on mount (client-side only)
+  useEffect(() => {
+    const savedState = loadWizardState()
+    if (savedState) {
+      // Only restore if no template is being applied (template takes priority)
+      if (!templateParam) {
+        setCurrentStep(savedState.currentStep)
+        setBlockSettings(savedState.blockSettings)
+        setWeekSetup(savedState.weekSetup)
+      }
+    }
+    setIsHydrated(true)
+  }, [templateParam])
+
+  // Save state to localStorage whenever it changes
+  const persistState = useCallback(() => {
+    if (!isHydrated) return // Don't save during hydration
+    saveWizardState({
+      currentStep,
+      blockSettings,
+      weekSetup,
+    })
+  }, [isHydrated, currentStep, blockSettings, weekSetup])
+
+  useEffect(() => {
+    persistState()
+  }, [persistState])
+
   const steps: WizardStep[] = ["settings", "week"]
   const currentStepIndex = steps.indexOf(currentStep)
   const progress = ((currentStepIndex + 1) / steps.length) * 100
@@ -121,6 +223,15 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
     setBlockSettings(data)
     setCurrentStep("week")
   }
+
+  const handleBlockSettingsChange = useCallback((data: Partial<BlockSettingsData>) => {
+    // Persist partial block settings as user types (before they click Next)
+    setBlockSettings(prev => prev ? { ...prev, ...data } : data as BlockSettingsData)
+  }, [])
+
+  const handleWeekSetupChange = useCallback((data: Partial<WeekSetupData>) => {
+    setWeekSetup(data)
+  }, [])
 
   const handleWeekComplete = async (data: WeekSetupData) => {
     if (!blockSettings) return
@@ -151,6 +262,9 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
       })
 
       if (result.isSuccess) {
+        // Clear persisted state on successful creation
+        clearWizardState()
+
         toast({
           title: "Training Block Created!",
           description: `"${blockSettings.name}" is ready. Let's start training!`,
@@ -186,6 +300,8 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
   }
 
   const handleCancel = () => {
+    // Clear persisted state when user explicitly cancels
+    clearWizardState()
     router.push("/plans")
   }
 
@@ -222,6 +338,7 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
         <BlockSettingsStep
           onComplete={handleSettingsComplete}
           onCancel={handleCancel}
+          onChange={handleBlockSettingsChange}
           initialData={blockSettings || undefined}
           templateConfig={templateConfig}
         />
@@ -231,9 +348,11 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
         <WeekSetupStep
           onComplete={handleWeekComplete}
           onBack={handleBack}
+          onChange={handleWeekSetupChange}
           isCreating={isCreating}
           blockName={blockSettings?.name || "Training Block"}
           defaultTrainingDays={templateConfig?.trainingDays}
+          initialData={weekSetup || undefined}
         />
       )}
     </div>
@@ -246,11 +365,13 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
 function BlockSettingsStep({
   onComplete,
   onCancel,
+  onChange,
   initialData,
   templateConfig,
 }: {
   onComplete: (data: BlockSettingsData) => void
   onCancel: () => void
+  onChange?: (data: Partial<BlockSettingsData>) => void
   initialData?: BlockSettingsData
   templateConfig?: { name: string; focus: "strength" | "endurance" | "general"; durationWeeks: number; trainingDays: number[] } | null
 }) {
@@ -284,6 +405,13 @@ function BlockSettingsStep({
 
   const durationWeeks = watch("durationWeeks")
   const focus = watch("focus")
+  const name = watch("name")
+  const notes = watch("notes")
+
+  // Notify parent of changes for persistence
+  useEffect(() => {
+    onChange?.({ name, durationWeeks, focus, notes })
+  }, [name, durationWeeks, focus, notes, onChange])
 
   return (
     <Card>
@@ -414,16 +542,26 @@ function BlockSettingsStep({
 function WeekSetupStep({
   onComplete,
   onBack,
+  onChange,
   isCreating,
   blockName,
   defaultTrainingDays,
+  initialData,
 }: {
   onComplete: (data: WeekSetupData) => void
   onBack: () => void
+  onChange?: (data: Partial<WeekSetupData>) => void
   isCreating: boolean
   blockName: string
   defaultTrainingDays?: number[]
+  initialData?: Partial<WeekSetupData>
 }) {
+  // Determine default values: prioritize saved data, then template, then fallback
+  const resolvedDefaults = useMemo(() => ({
+    trainingDays: initialData?.trainingDays || defaultTrainingDays || [1, 3, 5],
+    equipment: initialData?.equipment || ["bodyweight", "dumbbells", "bench"],
+  }), [initialData, defaultTrainingDays])
+
   const {
     setValue,
     watch,
@@ -431,14 +569,16 @@ function WeekSetupStep({
     formState: { errors },
   } = useForm<WeekSetupData>({
     resolver: zodResolver(weekSetupSchema),
-    defaultValues: {
-      trainingDays: defaultTrainingDays || [1, 3, 5], // Mon, Wed, Fri default
-      equipment: ["bodyweight", "dumbbells", "bench"], // Home gym default
-    },
+    defaultValues: resolvedDefaults,
   })
 
   const trainingDays = watch("trainingDays") || []
   const equipment = watch("equipment") || []
+
+  // Notify parent of changes for persistence
+  useEffect(() => {
+    onChange?.({ trainingDays, equipment })
+  }, [trainingDays, equipment, onChange])
 
   const toggleDay = (day: number) => {
     const newDays = trainingDays.includes(day)
