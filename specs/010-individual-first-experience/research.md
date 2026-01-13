@@ -1,6 +1,6 @@
 # Research: Individual User First Experience
 
-**Feature Branch**: `009-individual-first-experience`
+**Feature Branch**: `010-individual-first-experience`
 **Created**: 2026-01-12
 
 ---

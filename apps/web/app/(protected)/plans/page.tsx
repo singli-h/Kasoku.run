@@ -9,7 +9,8 @@ export default async function PlansPage() {
   const isIndividual = role === 'individual'
 
   // Role-based terminology is handled inline
-  const pageTitle = isIndividual ? "My Training" : "Training Plans"
+  // Note: Keep "Plans" to avoid confusion with "Training" nav group
+  const pageTitle = isIndividual ? "Plans" : "Training Plans"
   const pageDescription = isIndividual
     ? "Manage your training blocks and workouts"
     : "View and manage your macrocycles with race-anchored timelines"

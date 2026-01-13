@@ -5,8 +5,8 @@
 
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useMemo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -50,6 +50,28 @@ const DAYS_OF_WEEK = [
   { value: 0, label: "Sun" },
 ] as const
 
+// Template configurations matching EmptyTrainingState
+const TEMPLATE_CONFIGS: Record<string, { name: string; focus: "strength" | "endurance" | "general"; durationWeeks: number; trainingDays: number[] }> = {
+  "strength-foundation": {
+    name: "Strength Foundation",
+    focus: "strength",
+    durationWeeks: 4,
+    trainingDays: [1, 2, 4, 5], // Mon, Tue, Thu, Fri
+  },
+  "ppl-split": {
+    name: "PPL Split",
+    focus: "general",
+    durationWeeks: 6,
+    trainingDays: [1, 2, 3, 4, 5, 6], // Mon-Sat
+  },
+  "upper/lower": {
+    name: "Upper/Lower",
+    focus: "strength",
+    durationWeeks: 4,
+    trainingDays: [1, 2, 4, 5], // Mon, Tue, Thu, Fri
+  },
+}
+
 // Step 1 Schema
 const blockSettingsSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
@@ -73,10 +95,18 @@ interface QuickStartWizardProps {
 
 export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState<WizardStep>("settings")
   const [blockSettings, setBlockSettings] = useState<BlockSettingsData | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+
+  // Get template from URL params and resolve config
+  const templateParam = searchParams.get("template")
+  const templateConfig = useMemo(() => {
+    if (!templateParam) return null
+    return TEMPLATE_CONFIGS[templateParam] || null
+  }, [templateParam])
 
   const steps: WizardStep[] = ["settings", "week"]
   const currentStepIndex = steps.indexOf(currentStep)
@@ -186,6 +216,7 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
           onComplete={handleSettingsComplete}
           onCancel={handleCancel}
           initialData={blockSettings || undefined}
+          templateConfig={templateConfig}
         />
       )}
 
@@ -195,6 +226,7 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
           onBack={handleBack}
           isCreating={isCreating}
           blockName={blockSettings?.name || "Training Block"}
+          defaultTrainingDays={templateConfig?.trainingDays}
         />
       )}
     </div>
@@ -208,11 +240,30 @@ function BlockSettingsStep({
   onComplete,
   onCancel,
   initialData,
+  templateConfig,
 }: {
   onComplete: (data: BlockSettingsData) => void
   onCancel: () => void
   initialData?: BlockSettingsData
+  templateConfig?: { name: string; focus: "strength" | "endurance" | "general"; durationWeeks: number; trainingDays: number[] } | null
 }) {
+  // Merge template config with initial data, prioritizing initialData if user already edited
+  const defaultValues = useMemo(() => {
+    if (initialData) return initialData
+    if (templateConfig) {
+      return {
+        name: templateConfig.name,
+        durationWeeks: templateConfig.durationWeeks,
+        focus: templateConfig.focus,
+      }
+    }
+    return {
+      name: "",
+      durationWeeks: 6,
+      focus: "general" as const,
+    }
+  }, [initialData, templateConfig])
+
   const {
     register,
     handleSubmit,
@@ -221,10 +272,7 @@ function BlockSettingsStep({
     formState: { errors },
   } = useForm<BlockSettingsData>({
     resolver: zodResolver(blockSettingsSchema),
-    defaultValues: initialData || {
-      durationWeeks: 6,
-      focus: "general",
-    },
+    defaultValues,
   })
 
   const durationWeeks = watch("durationWeeks")
@@ -340,11 +388,13 @@ function WeekSetupStep({
   onBack,
   isCreating,
   blockName,
+  defaultTrainingDays,
 }: {
   onComplete: (data: WeekSetupData) => void
   onBack: () => void
   isCreating: boolean
   blockName: string
+  defaultTrainingDays?: number[]
 }) {
   const {
     setValue,
@@ -354,7 +404,7 @@ function WeekSetupStep({
   } = useForm<WeekSetupData>({
     resolver: zodResolver(weekSetupSchema),
     defaultValues: {
-      trainingDays: [1, 3, 5], // Mon, Wed, Fri default
+      trainingDays: defaultTrainingDays || [1, 3, 5], // Mon, Wed, Fri default
     },
   })
 

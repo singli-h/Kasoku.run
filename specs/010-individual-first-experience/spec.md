@@ -1,6 +1,6 @@
 # Feature Specification: Individual User First Experience with AI Workout Planning
 
-**Feature Branch**: `009-individual-first-experience`
+**Feature Branch**: `010-individual-first-experience`
 **Created**: 2026-01-12
 **Status**: Draft
 **Parent Features**:

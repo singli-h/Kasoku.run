@@ -2,9 +2,9 @@
 <ai_context>
 This client component provides the sidebar for the Kasoku running/fitness app.
 Navigation is organized by user role with session-focused grouping:
-- Individual: Training (Workout, My Training, Performance) + Resources
+- Individual: Training (Workout, Plans, Performance) + Resources
 - Athlete: Training (Workout, Performance) + Resources
-- Coach: Overview + Coaching + My Training + Resources
+- Coach: Overview + Coaching + Plans + Resources
 </ai_context>
 */
 
@@ -61,7 +61,7 @@ const allNavItems: Record<string, NavItemDef> = {
     icon: Dumbbell,
   },
   myTraining: {
-    title: "My Training",
+    title: "Plans",
     url: "/plans",
     icon: Calendar,
     visibleTo: ['individual'],
