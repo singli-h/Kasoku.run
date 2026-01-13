@@ -44,10 +44,10 @@ export async function getDashboardDataAction(): Promise<
       }
     }
 
-    // Parallelize both queries - they both depend on athlete.id but not on each other
-    const [sessionsResult, statsResult] = await Promise.all([
-      // Get recent training sessions - prioritize ongoing and all assigned sessions
-      // Note: We show ALL assigned workouts (not filtered by date) so athletes always see their pending workouts
+    // Parallelize queries - fetch active sessions and completed sessions separately
+    // This ensures assigned workouts are always shown (not pushed out by completed sessions)
+    const [activeSessionsResult, completedSessionsResult, statsResult] = await Promise.all([
+      // Get ongoing and assigned sessions (no limit - show all pending work)
       supabase
         .from('workout_logs')
         .select(`
@@ -60,8 +60,24 @@ export async function getDashboardDataAction(): Promise<
           )
         `)
         .eq('athlete_id', athlete.id)
-        .or(`session_status.eq.ongoing,session_status.eq.assigned,session_status.eq.completed`)
-        .order('session_status', { ascending: false }) // ongoing first, then assigned, then completed
+        .or(`session_status.eq.ongoing,session_status.eq.assigned`)
+        .order('session_status', { ascending: false }) // ongoing first, then assigned
+        .order('date_time', { ascending: true }), // oldest first (for overdue priority)
+
+      // Get recent completed sessions for activity list
+      supabase
+        .from('workout_logs')
+        .select(`
+          id,
+          date_time,
+          session_status,
+          notes,
+          session_plan:session_plans(
+            name
+          )
+        `)
+        .eq('athlete_id', athlete.id)
+        .eq('session_status', 'completed')
         .order('date_time', { ascending: false })
         .limit(10),
 
@@ -72,14 +88,23 @@ export async function getDashboardDataAction(): Promise<
         .eq('athlete_id', athlete.id)
     ])
 
-    const { data: sessions, error: sessionsError } = sessionsResult
+    const { data: activeSessions, error: activeSessionsError } = activeSessionsResult
+    const { data: completedSessions, error: completedSessionsError } = completedSessionsResult
     const { data: statsData, error: statsError } = statsResult
 
-    if (sessionsError) {
-      console.error("Error fetching recent sessions:", sessionsError)
+    if (activeSessionsError) {
+      console.error("Error fetching active sessions:", activeSessionsError)
       return {
         isSuccess: false,
-        message: "Failed to fetch recent sessions"
+        message: "Failed to fetch active sessions"
+      }
+    }
+
+    if (completedSessionsError) {
+      console.error("Error fetching completed sessions:", completedSessionsError)
+      return {
+        isSuccess: false,
+        message: "Failed to fetch completed sessions"
       }
     }
 
@@ -91,21 +116,24 @@ export async function getDashboardDataAction(): Promise<
       }
     }
 
+    // Combine sessions: active sessions first, then completed (maintaining proper priority)
+    const sessions = [...(activeSessions || []), ...(completedSessions || [])]
+
     // Calculate stats
     const totalSessions = statsData?.length || 0
-    const completedSessions = statsData?.filter(s => s.session_status === 'completed').length || 0
-    const completionRate = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0
+    const completedSessionsCount = statsData?.filter(s => s.session_status === 'completed').length || 0
+    const completionRate = totalSessions > 0 ? (completedSessionsCount / totalSessions) * 100 : 0
 
     // Get this week's sessions
     const oneWeekAgo = new Date()
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-    const thisWeekSessions = statsData?.filter(s => 
+    const thisWeekSessions = statsData?.filter(s =>
       s.date_time && new Date(s.date_time) >= oneWeekAgo
     ).length || 0
 
     const stats: DashboardStats = {
       totalSessions,
-      completedSessions,
+      completedSessions: completedSessionsCount,
       upcomingSessions: statsData?.filter(s => s.session_status === 'assigned').length || 0,
       activeAthletes: 1 // For now, just the current user as athlete
     }
@@ -139,8 +167,8 @@ export async function getDashboardDataAction(): Promise<
       }
     })
 
-    // Find active session (ongoing first, then assigned for today)
-    const activeSession = (sessions || []).find(
+    // Find active session (ongoing first, then oldest assigned - prioritizes overdue)
+    const activeSession = (activeSessions || []).find(
       s => s.session_status === 'ongoing' || s.session_status === 'assigned'
     )
 
