@@ -187,12 +187,23 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
     }
 
     try {
-      // Use the workout API to update session status and notes
-      const updates: { session_status: SessionStatus; notes?: string } = {
-        session_status: 'ongoing'
+      // CRITICAL FIX: Only update status if session is not already completed
+      // This prevents completed sessions from reverting to ongoing when saving data
+      const currentStatus = state.session?.session_status || (state.session as any)?.session_status
+      const updates: { session_status?: SessionStatus; notes?: string } = {}
+
+      // Only set to 'ongoing' if not already completed (prevents status regression)
+      if (currentStatus !== 'completed') {
+        updates.session_status = 'ongoing'
       }
+
       if (notes !== undefined) {
         updates.notes = notes
+      }
+
+      // Only call update if we have something to update
+      if (Object.keys(updates).length === 0) {
+        return { success: true }
       }
 
       const success = await workoutApi.updateSession((state.session as any).id, updates, true) // immediate save
@@ -207,7 +218,7 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
       const err = error instanceof Error ? error : new Error('Failed to save session')
       return { success: false, error: err }
     }
-  }, [(state.session as any)?.id, workoutApi])
+  }, [(state.session as any)?.id, state.session?.session_status, workoutApi])
 
   // Complete session
   const completeSession = useCallback(async (notes?: string) => {

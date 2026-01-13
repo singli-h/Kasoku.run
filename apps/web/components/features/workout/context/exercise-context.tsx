@@ -117,13 +117,15 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       const entries = Array.from(saveQueueRef.current.entries())
       const results = await Promise.all(
         entries.map(async ([key, data]) => {
-          const { exerciseId, setIndex, updates } = data
+          const { sessionPlanExerciseId, exerciseId, setIndex, updates } = data
 
+          // Pass sessionPlanExerciseId for precise exercise instance identification
           const success = await saveExercisePerformance(
             sessionId,
             exerciseId,
             { set_index: setIndex, ...updates },
-            true // immediate save
+            true, // immediate save
+            sessionPlanExerciseId // CRITICAL: Pass session_plan_exercise_id for unique lookup
           )
 
           return { key, success }
@@ -156,6 +158,19 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       setTimeout(() => setSaveStatus('idle'), 3000)
     } finally {
       isSavingRef.current = false
+
+      // CRITICAL FIX: If new items were added during save, schedule another save
+      // This prevents data loss when user continues editing during a save operation
+      if (saveQueueRef.current.size > 0) {
+        console.log('[ExerciseProvider] New items added during save, scheduling follow-up save')
+        // Use setTimeout to schedule follow-up save (avoids circular dependency with scheduleAutoSave)
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current)
+        }
+        saveTimeoutRef.current = setTimeout(() => {
+          processSaveQueue()
+        }, 2500)
+      }
     }
   }, [sessionId, saveExercisePerformance])
 
@@ -245,32 +260,34 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
             prevSet.rpe !== newSet.rpe
 
           if (hasChanged) {
-            // Get exercise ID from nested object or direct field (workout_log_exercises has exercise_id)
-            // Priority: exercise.id (from nested exercise object) > exercise_id (direct field)
+            // CRITICAL FIX: Use session_plan_exercise_id (exerciseData.id) for unique identification
+            // This prevents collisions when same exercise appears multiple times (e.g., Sprinting 20m, Sprinting 40m)
+            const sessionPlanExerciseId = exerciseData.id // UUID from session_plan_exercises table
+
+            // Also get template exercise ID for backward compatibility
             const rawExId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
-            // Ensure it's a valid number for the server action
-            const exId = typeof rawExId === 'string' ? parseInt(rawExId, 10) : rawExId
+            const exerciseTemplateId = typeof rawExId === 'string' ? parseInt(rawExId, 10) : rawExId
+
             console.log('[ExerciseProvider] Change detected for set', {
               index,
-              rawExId,
-              exId,
-              exerciseDataId: exerciseData.id,
-              hasExercise: !!exerciseData.exercise,
-              exerciseIdType: typeof rawExId
+              sessionPlanExerciseId,
+              exerciseTemplateId,
+              hasExercise: !!exerciseData.exercise
             })
-            if (!exId || isNaN(exId)) {
-              console.error('[ExerciseProvider] Cannot save - invalid exercise ID for exercise:', {
-                exerciseDataId: exerciseData.id,
-                rawExId,
-                exId,
+
+            if (!sessionPlanExerciseId) {
+              console.error('[ExerciseProvider] Cannot save - missing session_plan_exercise_id:', {
                 exerciseData: JSON.stringify(exerciseData, null, 2).slice(0, 500)
               })
               return
             }
-            const queueKey = `${sessionId}-${exId}-${index}`
-            console.log('[ExerciseProvider] Queueing save', { queueKey, setIndex: index + 1, newSet })
+
+            // Use session_plan_exercise_id as queue key to prevent collisions
+            const queueKey = `${sessionId}-${sessionPlanExerciseId}-${index}`
+            console.log('[ExerciseProvider] Queueing save', { queueKey, setIndex: index + 1, sessionPlanExerciseId })
             saveQueueRef.current.set(queueKey, {
-              exerciseId: exId,
+              sessionPlanExerciseId, // Primary identifier - unique per exercise instance
+              exerciseId: exerciseTemplateId, // Kept for backward compatibility
               setIndex: index + 1,
               updates: newSet
             })
@@ -315,24 +332,27 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
         const detailIndex = exerciseData.workout_log_sets.findIndex(d => d.id === detailId)
         if (detailIndex === -1) return updatedExercises
 
-        // Get exercise ID from nested object or direct field
+        // CRITICAL FIX: Use session_plan_exercise_id for unique identification
+        const sessionPlanExerciseId = exerciseData.id // UUID from session_plan_exercises table
+
+        // Also get template exercise ID for backward compatibility
         const rawExId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
-        // Ensure it's a valid number for the server action
-        const exId = typeof rawExId === 'string' ? parseInt(rawExId, 10) : rawExId
-        if (!exId || isNaN(exId)) {
-          console.error('[ExerciseProvider] Cannot save completion - invalid exercise ID:', {
-            exerciseId,
-            rawExId,
-            exId
+        const exerciseTemplateId = typeof rawExId === 'string' ? parseInt(rawExId, 10) : rawExId
+
+        if (!sessionPlanExerciseId) {
+          console.error('[ExerciseProvider] Cannot save completion - missing session_plan_exercise_id:', {
+            exerciseId
           })
           return updatedExercises
         }
 
         const detail = exerciseData.workout_log_sets[detailIndex]
-        const queueKey = `${sessionId}-${exId}-${detailIndex}-completion`
+        // Use session_plan_exercise_id as queue key to prevent collisions
+        const queueKey = `${sessionId}-${sessionPlanExerciseId}-${detailIndex}-completion`
 
         saveQueueRef.current.set(queueKey, {
-          exerciseId: exId,
+          sessionPlanExerciseId, // Primary identifier - unique per exercise instance
+          exerciseId: exerciseTemplateId, // Kept for backward compatibility
           setIndex: detailIndex + 1,
           updates: { completed: detail.completed } // Now using the NEW toggled value
         })
@@ -395,12 +415,14 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
       const entries = Array.from(saveQueueRef.current.entries())
       const results = await Promise.all(
         entries.map(async ([key, data]) => {
-          const { exerciseId, setIndex, updates } = data
+          const { sessionPlanExerciseId, exerciseId, setIndex, updates } = data
+          // Pass sessionPlanExerciseId for precise exercise instance identification
           const success = await saveExercisePerformance(
             sessionId!,
             exerciseId,
             { set_index: setIndex, ...updates },
-            true // immediate save
+            true, // immediate save
+            sessionPlanExerciseId // CRITICAL: Pass session_plan_exercise_id for unique lookup
           )
           return { key, success }
         })

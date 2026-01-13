@@ -731,9 +731,11 @@ export async function addExercisePerformanceAction(
 }
 
 /**
- * Legacy: Add performance data by session ID and exercise ID
- * This will find or create the workout_log_exercise first
- * @deprecated Use addExercisePerformanceAction with workoutLogExerciseId instead
+ * Add performance data by session ID and exercise ID
+ * CRITICAL FIX: Now accepts sessionPlanExerciseId for unique exercise instance lookup
+ * This prevents data drift when same exercise appears multiple times (e.g., Sprinting 20m, Sprinting 40m)
+ *
+ * @param sessionPlanExerciseId - CRITICAL: Unique identifier from session_plan_exercises table
  */
 export async function addExercisePerformanceByExerciseIdAction(
   sessionId: string,
@@ -755,7 +757,8 @@ export async function addExercisePerformanceByExerciseIdAction(
     completed?: boolean
     notes?: string | null
   },
-  skipRevalidation = false // Skip cache revalidation during auto-save to prevent race conditions
+  skipRevalidation = false, // Skip cache revalidation during auto-save to prevent race conditions
+  sessionPlanExerciseId?: string // CRITICAL: Unique identifier for this specific exercise instance
 ): Promise<ActionState<ExerciseTrainingDetail>> {
   try {
     const { userId } = await auth()
@@ -777,60 +780,90 @@ export async function addExercisePerformanceByExerciseIdAction(
       }
     }
 
-    // Find the workout_log_exercise for this session and exercise
-    // Use .limit(1) instead of .maybeSingle() to handle duplicate entries gracefully
-    // (duplicates can occur from previous bugs - we should use the first one, not create more)
-    const { data: existingExercises, error: fetchError } = await supabase
-      .from('workout_log_exercises')
-      .select('id')
-      .eq('workout_log_id', sessionId)
-      .eq('exercise_id', numericExerciseId)
-      .order('created_at', { ascending: true }) // Use oldest entry if duplicates exist
-      .limit(1)
+    // CRITICAL FIX: Use session_plan_exercise_id when available for unique exercise instance lookup
+    // This prevents data drift when same exercise appears multiple times (e.g., Sprinting 20m, Sprinting 40m)
+    let workoutLogExercise: { id: string; session_plan_exercise_id?: string | null } | null = null
 
-    if (fetchError) {
-      console.error('[addExercisePerformanceByExerciseIdAction] Error finding workout_log_exercise:', {
-        error: fetchError,
-        sessionId,
-        exerciseId: numericExerciseId
-      })
-      return {
-        isSuccess: false,
-        message: `Failed to find exercise: ${fetchError.message}`
+    if (sessionPlanExerciseId) {
+      // PREFERRED: Look up by session_plan_exercise_id (unique per exercise instance)
+      console.log('[addExercisePerformanceByExerciseIdAction] Looking up by session_plan_exercise_id:', sessionPlanExerciseId)
+      const { data: wleBySpExId, error: speLookupError } = await supabase
+        .from('workout_log_exercises')
+        .select('id, session_plan_exercise_id')
+        .eq('workout_log_id', sessionId)
+        .eq('session_plan_exercise_id', sessionPlanExerciseId)
+        .limit(1)
+
+      if (speLookupError) {
+        console.error('[addExercisePerformanceByExerciseIdAction] Error finding workout_log_exercise by session_plan_exercise_id:', {
+          error: speLookupError,
+          sessionId,
+          sessionPlanExerciseId
+        })
+      } else if (wleBySpExId && wleBySpExId.length > 0) {
+        workoutLogExercise = wleBySpExId[0]
+        console.log('[addExercisePerformanceByExerciseIdAction] Found by session_plan_exercise_id:', workoutLogExercise.id)
       }
     }
 
-    // Use the first match if found, otherwise create new
-    let workoutLogExercise = existingExercises?.[0] ?? null
+    // Fallback: Look up by exercise_id (legacy behavior, may cause collisions)
+    if (!workoutLogExercise) {
+      console.log('[addExercisePerformanceByExerciseIdAction] Falling back to exercise_id lookup:', numericExerciseId)
+      const { data: existingExercises, error: fetchError } = await supabase
+        .from('workout_log_exercises')
+        .select('id, session_plan_exercise_id')
+        .eq('workout_log_id', sessionId)
+        .eq('exercise_id', numericExerciseId)
+        .order('created_at', { ascending: true }) // Use oldest entry if duplicates exist
+        .limit(1)
+
+      if (fetchError) {
+        console.error('[addExercisePerformanceByExerciseIdAction] Error finding workout_log_exercise:', {
+          error: fetchError,
+          sessionId,
+          exerciseId: numericExerciseId
+        })
+        return {
+          isSuccess: false,
+          message: `Failed to find exercise: ${fetchError.message}`
+        }
+      }
+
+      workoutLogExercise = existingExercises?.[0] ?? null
+    }
 
     // If not found, create it (for backwards compatibility)
     if (!workoutLogExercise) {
       console.log('[addExercisePerformanceByExerciseIdAction] No existing workout_log_exercise found, creating new one:', {
         sessionId,
         exerciseId: numericExerciseId,
+        sessionPlanExerciseId,
         setIndex: setData.set_index
       })
 
-      // Look up session_plan_id from workout_log to help find the correct session_plan_exercise
-      const { data: workoutLog } = await supabase
-        .from('workout_logs')
-        .select('session_plan_id')
-        .eq('id', sessionId)
-        .single()
+      // Use the provided sessionPlanExerciseId if available, otherwise look it up
+      let resolvedSessionPlanExerciseId: string | null = sessionPlanExerciseId || null
 
-      let sessionPlanExerciseId: string | null = null
+      if (!resolvedSessionPlanExerciseId) {
+        // Look up session_plan_id from workout_log to help find the correct session_plan_exercise
+        const { data: workoutLog } = await supabase
+          .from('workout_logs')
+          .select('session_plan_id')
+          .eq('id', sessionId)
+          .single()
 
-      if (workoutLog?.session_plan_id) {
-        // Try to find matching session_plan_exercise
-        const { data: spe } = await supabase
-          .from('session_plan_exercises')
-          .select('id')
-          .eq('session_plan_id', workoutLog.session_plan_id)
-          .eq('exercise_id', numericExerciseId)
-          .maybeSingle()
+        if (workoutLog?.session_plan_id) {
+          // Try to find matching session_plan_exercise
+          const { data: spe } = await supabase
+            .from('session_plan_exercises')
+            .select('id')
+            .eq('session_plan_id', workoutLog.session_plan_id)
+            .eq('exercise_id', numericExerciseId)
+            .maybeSingle()
 
-        if (spe) {
-          sessionPlanExerciseId = spe.id
+          if (spe) {
+            resolvedSessionPlanExerciseId = spe.id
+          }
         }
       }
 
@@ -850,7 +883,7 @@ export async function addExercisePerformanceByExerciseIdAction(
         .insert({
           workout_log_id: sessionId,
           exercise_id: numericExerciseId,
-          session_plan_exercise_id: sessionPlanExerciseId, // Linked correctly
+          session_plan_exercise_id: resolvedSessionPlanExerciseId, // Use resolved ID
           exercise_order: nextOrder
         })
         .select('id, session_plan_exercise_id')

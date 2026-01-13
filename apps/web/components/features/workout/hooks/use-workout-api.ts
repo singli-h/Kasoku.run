@@ -248,6 +248,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
   /**
    * Save exercise performance data (sets, reps, weight, etc.)
    * Uses database field names (performing_time, rest_time)
+   * @param sessionPlanExerciseId - CRITICAL: Unique identifier for exercise instance (prevents collisions)
    */
   const saveExercisePerformance = useCallback(async (
     sessionId: string,
@@ -268,12 +269,15 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
       rpe?: number | null
       completed?: boolean
     },
-    immediate = false
+    immediate = false,
+    sessionPlanExerciseId?: string // CRITICAL: Unique identifier for exercise instance
   ): Promise<boolean> => {
+    // Use sessionPlanExerciseId for queue key if available (prevents collisions for same exercise type)
+    const queueKeyId = sessionPlanExerciseId || exerciseId
     const saveItem: AutoSaveItem = {
-      id: `exercise-${sessionId}-${exerciseId}-${setData.set_index}`,
+      id: `exercise-${sessionId}-${queueKeyId}-${setData.set_index}`,
       type: 'exercise_detail',
-      data: { sessionId, exerciseId, setData },
+      data: { sessionId, exerciseId, setData, sessionPlanExerciseId },
       retryCount: 0
     }
 
@@ -410,11 +414,17 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
   /**
    * Perform exercise performance update
    * Maps UI field names to database field names
+   * CRITICAL FIX: Uses sessionPlanExerciseId for precise exercise lookup
    */
   const performExerciseUpdate = useCallback(async (item: AutoSaveItem): Promise<boolean> => {
     try {
-      const { sessionId, exerciseId, setData } = item.data
-      console.log('[performExerciseUpdate] Input setData:', JSON.stringify(setData, null, 2))
+      const { sessionId, exerciseId, setData, sessionPlanExerciseId } = item.data
+      console.log('[performExerciseUpdate] Input:', {
+        sessionId,
+        exerciseId,
+        sessionPlanExerciseId,
+        setIndex: setData?.set_index
+      })
 
       // Pass values directly to server action (including null for cleared fields)
       // Convert effort from 0-100 (UI percentage) to 0-1 (database)
@@ -434,10 +444,16 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
         rpe: setData.rpe,
         completed: setData.completed
       }
-      console.log('[performExerciseUpdate] dbSetData:', JSON.stringify(dbSetData, null, 2))
 
       // Skip cache revalidation during auto-save to prevent race conditions
-      const result = await addExercisePerformanceByExerciseIdAction(sessionId, exerciseId, dbSetData, true)
+      // CRITICAL: Pass sessionPlanExerciseId for unique exercise instance lookup
+      const result = await addExercisePerformanceByExerciseIdAction(
+        sessionId,
+        exerciseId,
+        dbSetData,
+        true, // skipRevalidation
+        sessionPlanExerciseId // CRITICAL: Unique identifier for this exercise instance
+      )
       console.log('[performExerciseUpdate] Result:', result.isSuccess, result.message)
 
       if (!result.isSuccess) {
