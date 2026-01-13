@@ -25,6 +25,7 @@ import {
 } from '@/actions/workout/workout-exercise-actions'
 import type { ChangeRequest, ChangeSet, ExecutionResult } from './types'
 import { classifyError } from './errors'
+import { isTempId, stripTempPrefix } from './buffer-utils'
 
 /**
  * Workout update fields for extractWorkoutUpdates
@@ -119,18 +120,25 @@ export async function executeWorkoutChangeSet(
 async function applyWorkoutSetChange(
   request: ChangeRequest,
   proposedData: Record<string, unknown> | null,
-  idMappings: Record<string, string>
+  _idMappings: Record<string, string> // Kept for API compatibility, not needed with UUID approach
 ): Promise<void> {
-  // Use snake_case field name directly (workout_log_exercise_id)
-  const workoutLogExerciseId = proposedData?.workout_log_exercise_id as string | undefined
-
-  if (!workoutLogExerciseId) {
-    console.warn('[applyWorkoutSetChange] Missing workout_log_exercise_id, skipping. proposedData:', proposedData)
-    return
-  }
-
   switch (request.operationType) {
     case 'create': {
+      // For CREATE, we need the parent exercise ID
+      let workoutLogExerciseId = proposedData?.workout_log_exercise_id as string | undefined
+
+      if (!workoutLogExerciseId) {
+        console.warn('[applyWorkoutSetChange] Missing workout_log_exercise_id for create, skipping. proposedData:', proposedData)
+        return
+      }
+
+      // For temp IDs (e.g., "temp-550e8400-..."), strip prefix to get real UUID
+      // This handles sets referencing newly created exercises in the same changeset
+      if (isTempId(workoutLogExerciseId)) {
+        console.log(`[applyWorkoutSetChange] Stripping temp prefix: ${workoutLogExerciseId}`)
+        workoutLogExerciseId = stripTempPrefix(workoutLogExerciseId)
+      }
+
       // Add new set to exercise - use snake_case field names
       const setData = {
         set_index: (proposedData?.set_index as number) ?? 1,
@@ -150,18 +158,16 @@ async function applyWorkoutSetChange(
         throw new Error(`Failed to add set: ${result.message}`)
       }
 
-      // Track ID mapping if we have a temp ID
-      if (request.entityId && result.data?.id) {
-        idMappings[request.entityId] = String(result.data.id)
-      }
-
+      // Note: With UUID approach, sets don't need ID mapping - the exercise ID
+      // is resolved by stripping the temp prefix, not by mapping lookup
       console.log('[applyWorkoutSetChange] Created set:', result.data)
       break
     }
 
     case 'update': {
-      // Update existing set
-      const setId = request.currentData?.id as string | undefined
+      // Update existing set - use entityId (which contains the set ID for updates)
+      // Note: currentData may be null if not provided by the transformation layer
+      const setId = request.entityId ?? (request.currentData?.id as string | undefined)
 
       if (!setId) {
         console.warn('[applyWorkoutSetChange] Missing set ID for update, skipping')
@@ -227,7 +233,14 @@ async function applyWorkoutExerciseChange(
         return
       }
 
+      // For temp IDs (e.g., "temp-550e8400-..."), strip prefix to get real UUID
+      // This UUID will be used as the actual database ID
+      const realId = request.entityId && isTempId(request.entityId)
+        ? stripTempPrefix(request.entityId)
+        : undefined
+
       const result = await addWorkoutExerciseAction(workoutLogId, {
+        id: realId, // Pass pre-generated UUID for ChangeSet consistency
         exercise_id: exerciseId,
         exercise_order: proposedData?.exercise_order as number | undefined,
         notes: proposedData?.notes as string | undefined,
@@ -237,7 +250,7 @@ async function applyWorkoutExerciseChange(
         throw new Error(`Failed to add exercise: ${result.message}`)
       }
 
-      // Track ID mapping if we have a temp ID
+      // Track ID mapping for backward compatibility with any code using idMappings
       if (request.entityId && result.data?.id) {
         idMappings[request.entityId] = String(result.data.id)
       }

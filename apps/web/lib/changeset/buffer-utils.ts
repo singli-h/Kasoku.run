@@ -11,14 +11,11 @@ import type { BufferKey } from './types'
 
 /**
  * Prefix used for temporary IDs assigned to new entities before database insertion.
+ * Format: "temp-{uuid}" where the UUID portion IS the real database ID.
+ *
+ * @see specs/009-changeset-prompt-alignment/references/20260107-concept-changeset-transformation-layer.md
  */
-const TEMP_ID_PREFIX = 'temp_'
-
-/**
- * Counter for generating unique temporary IDs within a session.
- * Reset when the buffer is cleared.
- */
-let tempIdCounter = 0
+const TEMP_ID_PREFIX = 'temp-'
 
 /**
  * Creates a buffer key for storing a ChangeRequest.
@@ -34,8 +31,8 @@ let tempIdCounter = 0
  * // Returns: "session_plan_exercise:123"
  *
  * @example
- * makeBufferKey('session_plan_exercise', 'temp_001')
- * // Returns: "session_plan_exercise:temp_001"
+ * makeBufferKey('session_plan_exercise', 'temp-550e8400-e29b-41d4-a716-446655440000')
+ * // Returns: "session_plan_exercise:temp-550e8400-e29b-41d4-a716-446655440000"
  */
 export function makeBufferKey(entityType: string, entityId: string): BufferKey {
   return `${entityType}:${entityId}` as BufferKey
@@ -68,28 +65,30 @@ export function parseBufferKey(key: BufferKey): {
 
 /**
  * Generates a temporary ID for new entities.
- * Temp IDs are used in the buffer before the entity is persisted to the database.
  *
- * @returns A unique temporary ID (e.g., "temp_001", "temp_002")
+ * Format: "temp-{uuid}" where the UUID portion IS the real database ID.
+ * During execution, strip the "temp-" prefix to get the actual ID to use.
+ *
+ * @returns A unique temporary ID (e.g., "temp-550e8400-e29b-41d4-a716-446655440000")
  *
  * @example
- * generateTempId() // "temp_001"
- * generateTempId() // "temp_002"
+ * generateTempId() // "temp-550e8400-e29b-41d4-a716-446655440000"
+ *
+ * @see specs/009-changeset-prompt-alignment/references/20260107-concept-changeset-transformation-layer.md
  */
 export function generateTempId(): string {
-  tempIdCounter += 1
-  return `${TEMP_ID_PREFIX}${tempIdCounter.toString().padStart(3, '0')}`
+  return `${TEMP_ID_PREFIX}${crypto.randomUUID()}`
 }
 
 /**
  * Checks if an ID is a temporary ID (not yet persisted to database).
  *
  * @param id - The ID to check
- * @returns true if the ID is a temporary ID
+ * @returns true if the ID is a temporary ID (starts with "temp-")
  *
  * @example
- * isTempId('temp_001') // true
- * isTempId('123') // false
+ * isTempId('temp-550e8400-e29b-41d4-a716-446655440000') // true
+ * isTempId('550e8400-e29b-41d4-a716-446655440000') // false
  * isTempId(null) // false
  */
 export function isTempId(id: string | null | undefined): boolean {
@@ -97,20 +96,35 @@ export function isTempId(id: string | null | undefined): boolean {
 }
 
 /**
- * Resets the temporary ID counter.
- * Should be called when the buffer is completely cleared.
+ * Strips the temp- prefix from a temporary ID to get the real database ID.
+ *
+ * @param tempId - The temporary ID (e.g., "temp-550e8400-...")
+ * @returns The real ID (e.g., "550e8400-...")
+ *
+ * @example
+ * stripTempPrefix('temp-550e8400-e29b-41d4-a716-446655440000')
+ * // Returns: '550e8400-e29b-41d4-a716-446655440000'
+ *
+ * @see specs/009-changeset-prompt-alignment/references/20260107-concept-changeset-transformation-layer.md
  */
-export function resetTempIdCounter(): void {
-  tempIdCounter = 0
+export function stripTempPrefix(tempId: string): string {
+  return tempId.replace(/^temp-/, '')
 }
 
 /**
- * Gets the current temp ID counter value (for debugging/testing).
- *
- * @returns The current counter value
+ * @deprecated No longer needed - temp IDs are now UUID-based and don't use a counter.
+ * Kept for backward compatibility.
+ */
+export function resetTempIdCounter(): void {
+  // No-op: UUID-based temp IDs don't require counter reset
+}
+
+/**
+ * @deprecated No longer needed - temp IDs are now UUID-based and don't use a counter.
+ * Kept for backward compatibility.
  */
 export function getTempIdCounter(): number {
-  return tempIdCounter
+  return 0 // Always returns 0 as counter is no longer used
 }
 
 /**

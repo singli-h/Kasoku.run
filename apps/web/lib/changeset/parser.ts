@@ -34,14 +34,27 @@ const CHANGE_REQUEST_TOOL_PATTERN = /^(create|update|delete)(\w+)ChangeRequest$/
  * Maps PascalCase entity names to their snake_case database equivalents.
  * Session Planning domain (Coach): session_plan, session_plan_exercise, session_plan_set
  * Workout Logging domain (Athlete): workout_log, workout_log_exercise, workout_log_set
+ *
+ * Tool naming convention: {operation}{EntityType}ChangeRequest
+ * - Coach: createSessionPlanExerciseChangeRequest, updateSessionPlanSetChangeRequest, etc.
+ * - Athlete: createWorkoutLogExerciseChangeRequest, updateWorkoutLogSetChangeRequest, etc.
  */
 const ENTITY_NAME_MAP: Record<string, string> = {
-  // Coach domain (Session Planning)
+  // Coach domain (Session Planning) - New aligned naming
+  SessionPlan: 'session_plan',
+  SessionPlanExercise: 'session_plan_exercise',
+  SessionPlanSet: 'session_plan_set',
+
+  // Athlete domain (Workout Logging) - New aligned naming
+  WorkoutLog: 'workout_log',
+  WorkoutLogExercise: 'workout_log_exercise',
+  WorkoutLogSet: 'workout_log_set',
+
+  // DEPRECATED: Legacy names for backwards compatibility during migration
+  // TODO: Remove after migration complete
   Session: 'session_plan',
   Exercise: 'session_plan_exercise',
   Set: 'session_plan_set',
-
-  // Athlete domain (Workout Logging)
   TrainingSession: 'workout_log',
   TrainingExercise: 'workout_log_exercise',
   TrainingSet: 'workout_log_set',

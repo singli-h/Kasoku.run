@@ -36,7 +36,7 @@ import type { ChangeSetContextValue } from './types'
  *     id: 'cr_123',
  *     operationType: 'create',
  *     entityType: 'session_plan_exercise',
- *     entityId: 'temp_001',
+ *     entityId: 'temp-550e8400-e29b-41d4-a716-446655440000',
  *     currentData: null,
  *     proposedData: { exercise_id: 456 },
  *     executionOrder: 1,

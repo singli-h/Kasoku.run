@@ -53,7 +53,8 @@ export interface ChangeRequest {
    * ID of the entity being modified.
    * - null for creates (assigned after insertion)
    * - Required for updates and deletes
-   * - Temp IDs (e.g., "temp_abc123") used for creates in the buffer
+   * - Temp IDs (e.g., "temp-550e8400-...") used for creates in the buffer.
+   *   The UUID portion IS the real database ID - strip "temp-" prefix at execution.
    */
   entityId: string | null
 
