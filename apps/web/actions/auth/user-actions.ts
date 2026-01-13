@@ -351,44 +351,6 @@ export async function checkUserNeedsOnboardingAction(providedUserId?: string): P
 }
 
 /**
- * Complete user onboarding
- */
-export async function completeOnboardingAction(
-  firstName: string,
-  lastName: string,
-  role?: string
-): Promise<ActionState<User>> {
-  try {
-    const { userId } = await auth()
-    
-    if (!userId) {
-      return {
-        isSuccess: false,
-        message: "User not authenticated"
-      }
-    }
-
-    const updates: Partial<UserInsert> = {
-      first_name: firstName,
-      last_name: lastName,
-      onboarding_completed: true
-    }
-
-    if (role) {
-      updates.role = role as 'coach' | 'athlete' | 'individual'
-    }
-
-    return await updateSupabaseUserAction(userId, updates)
-  } catch (error) {
-    console.error('Error in completeOnboardingAction:', error)
-    return {
-      isSuccess: false,
-      message: "Failed to complete onboarding"
-    }
-  }
-}
-
-/**
  * Update user from webhook (used by Clerk webhooks)
  */
 export async function updateSupabaseUserFromWebhookAction(

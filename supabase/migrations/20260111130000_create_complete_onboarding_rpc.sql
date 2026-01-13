@@ -1,5 +1,6 @@
 -- Migration: Create atomic onboarding RPC function
 -- This ensures all onboarding operations succeed or fail together
+-- Note: Return column is 'created_user_id' to avoid ambiguity with table columns
 
 CREATE OR REPLACE FUNCTION complete_onboarding(
   p_clerk_id TEXT,
@@ -23,7 +24,7 @@ CREATE OR REPLACE FUNCTION complete_onboarding(
   p_philosophy TEXT DEFAULT '',
   p_sport_focus TEXT DEFAULT ''
 )
-RETURNS TABLE (success BOOLEAN, user_id INTEGER, message TEXT)
+RETURNS TABLE (success BOOLEAN, created_user_id INTEGER, message TEXT)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
@@ -171,6 +172,5 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- Add comment for documentation
 COMMENT ON FUNCTION complete_onboarding IS
-  'Atomic onboarding function that creates/updates user and role-specific profile in a single transaction. Used by the onboarding flow to ensure data consistency.';
+  'Atomic onboarding function that creates/updates user and role-specific profile in a single transaction.';

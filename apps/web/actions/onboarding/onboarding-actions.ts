@@ -38,6 +38,72 @@ export interface OnboardingActionData {
 }
 
 /**
+ * Generate a unique username by checking if it exists and adding a suffix if needed.
+ */
+async function generateUniqueUsername(baseUsername: string): Promise<string> {
+  // Sanitize the username: lowercase, remove special chars, limit length
+  let username = baseUsername
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 20)
+
+  // Ensure minimum length
+  if (username.length < 3) {
+    username = username.padEnd(3, '0')
+  }
+
+  // Check if username exists
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('username', username)
+    .maybeSingle()
+
+  if (!existingUser) {
+    return username
+  }
+
+  // Username exists, try adding numeric suffix
+  for (let i = 1; i <= 999; i++) {
+    const candidateUsername = `${username.slice(0, 17)}${i}`
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', candidateUsername)
+      .maybeSingle()
+
+    if (!existing) {
+      return candidateUsername
+    }
+  }
+
+  // Fallback: use timestamp
+  return `${username.slice(0, 10)}${Date.now().toString(36)}`
+}
+
+/**
+ * Validate onboarding input data.
+ */
+function validateOnboardingData(data: OnboardingActionData): { valid: boolean; error?: string } {
+  if (!data.clerkId || data.clerkId.trim().length === 0) {
+    return { valid: false, error: 'Clerk ID is required' }
+  }
+  if (!data.email || !data.email.includes('@')) {
+    return { valid: false, error: 'Valid email is required' }
+  }
+  if (!data.firstName || data.firstName.trim().length === 0) {
+    return { valid: false, error: 'First name is required' }
+  }
+  if (!data.lastName || data.lastName.trim().length === 0) {
+    return { valid: false, error: 'Last name is required' }
+  }
+  if (!['athlete', 'coach', 'individual'].includes(data.role)) {
+    return { valid: false, error: 'Invalid role specified' }
+  }
+  return { valid: true }
+}
+
+/**
  * Complete user onboarding using an atomic database transaction.
  *
  * This function uses the `complete_onboarding` RPC function which:
@@ -53,17 +119,32 @@ export async function completeOnboardingAction(
   try {
     console.log('Starting atomic onboarding for:', data.clerkId, 'role:', data.role)
 
+    // Validate input data
+    const validation = validateOnboardingData(data)
+    if (!validation.valid) {
+      console.error('Validation failed:', validation.error)
+      return {
+        isSuccess: false,
+        message: validation.error || 'Validation failed'
+      }
+    }
+
+    // Generate unique username to avoid conflicts
+    const uniqueUsername = await generateUniqueUsername(data.username)
+    console.log('Generated unique username:', uniqueUsername, 'from base:', data.username)
+
     // Prepare RPC parameters based on role
     // Start with required base params, then add optional role-specific params
     const rpcParams: CompleteOnboardingArgs = {
       p_clerk_id: data.clerkId,
-      p_username: data.username,
+      p_username: uniqueUsername,
       p_email: data.email,
-      p_first_name: data.firstName,
-      p_last_name: data.lastName,
+      p_first_name: data.firstName.trim(),
+      p_last_name: data.lastName.trim(),
       p_role: data.role,
-      p_birthdate: data.birthdate || undefined,
-      p_timezone: data.timezone,
+      // Only pass birthdate if it's a non-empty string (empty string would fail DATE cast)
+      p_birthdate: data.birthdate && data.birthdate.trim() ? data.birthdate.trim() : undefined,
+      p_timezone: data.timezone || 'UTC',
       p_subscription: data.subscription,
     }
 
@@ -107,9 +188,9 @@ export async function completeOnboardingAction(
       }
     }
 
-    const { success, user_id, message } = result as { success: boolean; user_id: number | null; message: string }
+    const { success, created_user_id, message } = result as { success: boolean; created_user_id: number | null; message: string }
 
-    if (!success || !user_id) {
+    if (!success || !created_user_id) {
       console.error('Onboarding RPC returned failure:', message)
       return {
         isSuccess: false,
@@ -117,12 +198,12 @@ export async function completeOnboardingAction(
       }
     }
 
-    console.log('Onboarding completed successfully for user:', user_id)
+    console.log('Onboarding completed successfully for user:', created_user_id)
 
     return {
       isSuccess: true,
       message: "Onboarding completed successfully",
-      data: { userId: user_id.toString() }
+      data: { userId: created_user_id.toString() }
     }
 
   } catch (error: any) {

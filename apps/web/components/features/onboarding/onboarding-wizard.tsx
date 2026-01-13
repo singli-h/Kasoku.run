@@ -16,8 +16,9 @@ import { DashboardTourStep } from "./steps/dashboard-tour-step"
 import { CompletionStep } from "./steps/completion-step"
 import { completeOnboardingAction } from "@/actions/onboarding/onboarding-actions"
 
-const ONBOARDING_STORAGE_KEY = "kasoku_onboarding_data"
-const ONBOARDING_STEP_KEY = "kasoku_onboarding_step"
+// Versioned localStorage keys - increment version when OnboardingData interface changes
+const ONBOARDING_STORAGE_KEY = "kasoku_onboarding_data_v2"
+const ONBOARDING_STEP_KEY = "kasoku_onboarding_step_v2"
 
 export interface OnboardingData {
   firstName: string
@@ -126,7 +127,9 @@ export default function OnboardingWizard() {
 
       if (savedStep) {
         const step = parseInt(savedStep, 10)
-        if (!isNaN(step) && step >= 0 && step < 6) {
+        // Use steps array length for validation instead of hard-coded value
+        const maxStep = 6 // Must match steps.length defined below
+        if (!isNaN(step) && step >= 0 && step < maxStep) {
           setCurrentStep(step)
         }
       }
@@ -302,9 +305,21 @@ export default function OnboardingWizard() {
               onPrev={prevStep}
             />
           )
-        } else {
+        } else if (userData.role === "coach") {
           return (
             <CoachDetailsStep
+              userData={userData}
+              updateUserData={updateUserData}
+              onNext={nextStep}
+              onPrev={prevStep}
+            />
+          )
+        } else {
+          // Edge case: role is empty (e.g., corrupted localStorage)
+          // Redirect back to role selection step
+          setCurrentStep(1)
+          return (
+            <RoleSelectionStep
               userData={userData}
               updateUserData={updateUserData}
               onNext={nextStep}

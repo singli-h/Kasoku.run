@@ -26,7 +26,6 @@ export {
   updateSupabaseUserAction,
   getUserByClerkIdAction,
   checkUserNeedsOnboardingAction,
-  completeOnboardingAction,
   updateSupabaseUserFromWebhookAction,
   createCurrentUserAction
 } from './user-actions' 

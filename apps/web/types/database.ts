@@ -1408,9 +1408,9 @@ export type Database = {
           p_weight?: number
         }
         Returns: {
+          created_user_id: number
           message: string
           success: boolean
-          user_id: number
         }[]
       }
       debug_auth_jwt: { Args: Record<PropertyKey, never>; Returns: Json }
