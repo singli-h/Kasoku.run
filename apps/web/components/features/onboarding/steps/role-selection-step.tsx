@@ -44,7 +44,7 @@ export function RoleSelectionStep({ userData, updateUserData, onNext, onPrev }: 
     <div className="space-y-8">
       <div className="text-center space-y-3">
         <h2 className="text-2xl font-bold text-foreground">
-          What's your role?
+          Select Your Role
         </h2>
         <p className="text-muted-foreground">
           Choose how you'll use Kasoku. You can change this later.

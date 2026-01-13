@@ -64,7 +64,7 @@ const allNavItems: Record<string, NavItemDef> = {
     title: "Plans",
     url: "/plans",
     icon: Calendar,
-    visibleTo: ['individual'],
+    visibleTo: ['individual', 'coach'],
   },
   plans: {
     title: "Plans",
@@ -150,7 +150,7 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
     },
     {
       label: "My Training",
-      items: ["workout", "performance"],
+      items: ["workout", "myTraining", "performance"],
     },
     {
       label: "Resources",
