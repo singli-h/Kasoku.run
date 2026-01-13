@@ -44,14 +44,10 @@ export async function getDashboardDataAction(): Promise<
       }
     }
 
-    // Get today's date range for filtering
-    const today = new Date()
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-
     // Parallelize both queries - they both depend on athlete.id but not on each other
     const [sessionsResult, statsResult] = await Promise.all([
-      // Get recent training sessions - prioritize ongoing and today's assigned sessions
+      // Get recent training sessions - prioritize ongoing and all assigned sessions
+      // Note: We show ALL assigned workouts (not filtered by date) so athletes always see their pending workouts
       supabase
         .from('workout_logs')
         .select(`
@@ -64,7 +60,7 @@ export async function getDashboardDataAction(): Promise<
           )
         `)
         .eq('athlete_id', athlete.id)
-        .or(`session_status.eq.ongoing,session_status.eq.completed,and(date_time.gte.${startOfDay.toISOString()},date_time.lt.${endOfDay.toISOString()},session_status.eq.assigned)`)
+        .or(`session_status.eq.ongoing,session_status.eq.assigned,session_status.eq.completed`)
         .order('session_status', { ascending: false }) // ongoing first, then assigned, then completed
         .order('date_time', { ascending: false })
         .limit(10),
