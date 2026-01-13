@@ -153,26 +153,6 @@ export async function getTodayAndOngoingSessionsAction(
             metadata,
             workout_log_exercise_id
           )
-        ),
-        workout_log_sets(
-          id,
-          set_index,
-          reps,
-          weight,
-          distance,
-          performing_time,
-          rest_time,
-          velocity,
-          power,
-          height,
-          effort,
-          resistance,
-          tempo,
-          rpe,
-          completed,
-          metadata,
-          workout_log_exercise_id,
-          session_plan_exercise_id
         )
       `)
       .eq('athlete_id', targetAthleteId)
@@ -186,12 +166,12 @@ export async function getTodayAndOngoingSessionsAction(
     }
 
     // 6. Transform and return data
+    // Note: workout_log_sets are accessed via workout_log_exercises relationship (not duplicated at top level)
     const transformedSessions: WorkoutLogWithDetails[] = (sessions || []).map((session: any) => ({
       ...session,
       session_plan: session.session_plan as SessionPlanWithDetails,
       athlete: session.athlete,
-      workout_log_exercises: session.workout_log_exercises || [],
-      workout_log_sets: session.workout_log_sets || []
+      workout_log_exercises: session.workout_log_exercises || []
     }))
 
     return {
@@ -340,26 +320,6 @@ export async function getPastSessionsAction(
             metadata,
             workout_log_exercise_id
           )
-        ),
-        workout_log_sets(
-          id,
-          set_index,
-          reps,
-          weight,
-          distance,
-          performing_time,
-          rest_time,
-          velocity,
-          power,
-          height,
-          effort,
-          resistance,
-          tempo,
-          rpe,
-          completed,
-          metadata,
-          workout_log_exercise_id,
-          session_plan_exercise_id
         )
       `)
       .eq('athlete_id', targetAthleteId)
@@ -409,12 +369,12 @@ export async function getPastSessionsAction(
     }
 
     // 7. Transform and return data
+    // Note: workout_log_sets are accessed via workout_log_exercises relationship (not duplicated at top level)
     const transformedSessions: WorkoutLogWithDetails[] = (sessions || []).map((session: any) => ({
       ...session,
       session_plan: session.session_plan as SessionPlanWithDetails,
       athlete: session.athlete,
-      workout_log_exercises: session.workout_log_exercises || [],
-      workout_log_sets: session.workout_log_sets || []
+      workout_log_exercises: session.workout_log_exercises || []
     }))
 
     const totalCount = count || 0
@@ -751,26 +711,6 @@ export async function getWorkoutSessionByIdAction(
             metadata,
             workout_log_exercise_id
           )
-        ),
-        workout_log_sets(
-          id,
-          set_index,
-          reps,
-          weight,
-          distance,
-          performing_time,
-          rest_time,
-          velocity,
-          power,
-          height,
-          effort,
-          resistance,
-          tempo,
-          rpe,
-          completed,
-          metadata,
-          workout_log_exercise_id,
-          session_plan_exercise_id
         )
       `)
       .eq('id', sessionId)
@@ -787,12 +727,12 @@ export async function getWorkoutSessionByIdAction(
 
     // 5. Transform and return data
     // Use type assertion - the select includes all fields needed for the UI
+    // Note: workout_log_sets are accessed via workout_log_exercises relationship (not duplicated at top level)
     const transformedSession = {
       ...session,
       session_plan: session.session_plan,
       athlete: session.athlete,
-      workout_log_exercises: session.workout_log_exercises || [],
-      workout_log_sets: session.workout_log_sets || []
+      workout_log_exercises: session.workout_log_exercises || []
     } as unknown as WorkoutLogWithDetails
 
     return {

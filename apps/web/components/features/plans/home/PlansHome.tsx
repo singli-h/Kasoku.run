@@ -1,5 +1,4 @@
 import { getMacrocyclesAction } from "@/actions/plans/plan-actions"
-import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
 import { PlansHomeClient } from "./PlansHomeClient"
 import { MacrocyclePhase } from "./MacrocycleTimeline"
 import type { MacrocycleWithDetails } from "@/types/training"
@@ -43,21 +42,8 @@ export async function PlansHome() {
     )
   }
 
-  // Fetch races for all macrocycles in parallel
-  const racesPromises = result.data.map((macro: MacrocycleWithDetails) => 
-    getRacesByMacrocycleAction(macro.id!)
-  )
-  const racesResults = await Promise.all(racesPromises)
-  
-  // Create a map of macrocycle ID to races
-  const racesByMacrocycleId = new Map<number, Array<{ id: number; name: string | null; date: string | null; type: string | null }>>()
-  racesResults.forEach((racesResult, index) => {
-    if (racesResult.isSuccess && racesResult.data) {
-      racesByMacrocycleId.set(result.data[index].id!, racesResult.data)
-    }
-  })
-
   // Transform the data to match the expected format
+  // Note: races are now fetched in getMacrocyclesAction (no N+1 queries)
   const transformedMacrocycles: TransformedMacrocycle[] = result.data.map((macro: MacrocycleWithDetails) => {
     // Calculate weeks from start date
     const startDate = new Date(macro.start_date!)
@@ -99,10 +85,11 @@ export async function PlansHome() {
       ? allIntensities.reduce((sum, int) => sum + int, 0) / allIntensities.length
       : 0
 
-    // Populate race anchors from races data
+    // Populate race anchors from races data (included in getMacrocyclesAction query)
     // Calculate exact position based on date ratio, not week approximation
-    const races = racesByMacrocycleId.get(macro.id!) || []
-    const raceAnchors = races.map(race => {
+    type RaceData = { id: number; name: string | null; date: string | null; type: string | null }
+    const races: RaceData[] = (macro as any).races || []
+    const raceAnchors = races.map((race: RaceData) => {
       if (!race.date) return null
       const raceDate = new Date(race.date)
       const totalDays = endDate.getTime() - startDate.getTime()

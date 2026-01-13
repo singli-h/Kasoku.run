@@ -171,6 +171,12 @@ export async function getMacrocyclesAction(): Promise<ActionState<MacrocycleWith
             *,
             session_plans(*)
           )
+        ),
+        races(
+          id,
+          name,
+          date,
+          type
         )
       `)
       .eq('user_id', dbUserId)
@@ -215,20 +221,37 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
     // Using singleton supabase client and cached user lookup
     const dbUserId = await getDbUserId(userId)
 
+    // Optimized query: removed !inner (allows empty mesocycles/microcycles),
+    // and selected only required exercise fields instead of exercises(*)
     const { data: macrocycle, error } = await supabase
       .from('macrocycles')
       .select(`
         *,
         athlete_group:athlete_groups(*),
-        mesocycles!inner(
+        races(
+          id,
+          name,
+          date,
+          type
+        ),
+        mesocycles(
           *,
-          microcycles!inner(
+          microcycles(
             *,
             session_plans(
               *,
               session_plan_exercises(
-                *,
-                exercise:exercises(*)
+                id,
+                exercise_order,
+                notes,
+                exercise_id,
+                superset_id,
+                exercise:exercises(
+                  id,
+                  name,
+                  description,
+                  video_url
+                )
               )
             )
           )
