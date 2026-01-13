@@ -16,6 +16,9 @@ import { DashboardTourStep } from "./steps/dashboard-tour-step"
 import { CompletionStep } from "./steps/completion-step"
 import { completeOnboardingAction } from "@/actions/onboarding/onboarding-actions"
 
+const ONBOARDING_STORAGE_KEY = "kasoku_onboarding_data"
+const ONBOARDING_STEP_KEY = "kasoku_onboarding_step"
+
 export interface OnboardingData {
   firstName: string
   lastName: string
@@ -107,6 +110,55 @@ export default function OnboardingWizard() {
 
   const [currentStep, setCurrentStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  // Load saved onboarding data from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem(ONBOARDING_STORAGE_KEY)
+      const savedStep = localStorage.getItem(ONBOARDING_STEP_KEY)
+
+      if (savedData) {
+        const parsed = JSON.parse(savedData)
+        // Don't restore profilePicture as File objects can't be serialized
+        setUserData(prev => ({ ...prev, ...parsed, profilePicture: null }))
+      }
+
+      if (savedStep) {
+        const step = parseInt(savedStep, 10)
+        if (!isNaN(step) && step >= 0 && step < 6) {
+          setCurrentStep(step)
+        }
+      }
+    } catch (error) {
+      console.error("Error loading onboarding data from localStorage:", error)
+    }
+    setIsHydrated(true)
+  }, [])
+
+  // Save onboarding data to localStorage when it changes
+  useEffect(() => {
+    if (!isHydrated) return
+
+    try {
+      // Don't save profilePicture as File objects can't be serialized
+      const dataToSave = { ...userData, profilePicture: null }
+      localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(dataToSave))
+    } catch (error) {
+      console.error("Error saving onboarding data to localStorage:", error)
+    }
+  }, [userData, isHydrated])
+
+  // Save current step to localStorage when it changes
+  useEffect(() => {
+    if (!isHydrated) return
+
+    try {
+      localStorage.setItem(ONBOARDING_STEP_KEY, currentStep.toString())
+    } catch (error) {
+      console.error("Error saving onboarding step to localStorage:", error)
+    }
+  }, [currentStep, isHydrated])
 
   const steps = [
     { id: "welcome", label: "Welcome" },
@@ -187,6 +239,10 @@ export default function OnboardingWizard() {
       })
 
       if (result.isSuccess) {
+        // Clear localStorage on successful onboarding
+        localStorage.removeItem(ONBOARDING_STORAGE_KEY)
+        localStorage.removeItem(ONBOARDING_STEP_KEY)
+
         toast({
           title: "Welcome to Kasoku!",
           description: "Your profile has been set up successfully.",
@@ -266,7 +322,7 @@ export default function OnboardingWizard() {
           />
         )
       case 4:
-        return <DashboardTourStep onNext={nextStep} onPrev={prevStep} />
+        return <DashboardTourStep role={userData.role} onNext={nextStep} onPrev={prevStep} />
       case 5:
         return (
           <CompletionStep 

@@ -62,7 +62,7 @@ export async function completeOnboardingAction(
       p_first_name: data.firstName,
       p_last_name: data.lastName,
       p_role: data.role,
-      p_birthdate: data.birthdate,
+      p_birthdate: data.birthdate || undefined,
       p_timezone: data.timezone,
       p_subscription: data.subscription,
     }

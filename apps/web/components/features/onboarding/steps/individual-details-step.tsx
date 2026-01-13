@@ -1,55 +1,45 @@
 "use client"
 
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, ArrowRight } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ArrowLeft, ArrowRight, Check } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { OnboardingData } from "../onboarding-wizard"
 
-const equipmentOptions = [
-  { id: "barbell", label: "Barbell & Plates" },
-  { id: "dumbbells", label: "Dumbbells" },
-  { id: "kettlebells", label: "Kettlebells" },
-  { id: "pullup-bar", label: "Pull-up Bar" },
-  { id: "resistance-bands", label: "Resistance Bands" },
-  { id: "cardio-machines", label: "Cardio Machines" },
-  { id: "cable-machines", label: "Cable Machines" },
-  { id: "bodyweight", label: "Bodyweight Only" },
+// Training goal options for individual users
+const TRAINING_GOALS = [
+  { id: "build-strength", label: "Build Strength" },
+  { id: "lose-weight", label: "Lose Weight" },
+  { id: "improve-endurance", label: "Improve Endurance" },
+  { id: "build-muscle", label: "Build Muscle" },
+  { id: "improve-flexibility", label: "Improve Flexibility" },
+  { id: "general-fitness", label: "General Fitness" },
+  { id: "train-for-event", label: "Train for an Event" },
+  { id: "improve-speed", label: "Improve Speed" },
+  { id: "recover-from-injury", label: "Recover from Injury" },
+  { id: "maintain-fitness", label: "Maintain Fitness" },
 ] as const
 
-const individualFormSchema = z.object({
-  trainingGoals: z
-    .string()
-    .min(10, "Please describe your training goals (at least 10 characters)")
-    .max(500, "Training goals must be less than 500 characters"),
-  experienceLevel: z.enum(["beginner", "intermediate", "advanced"], {
-    message: "Please select your experience level",
-  }),
-  availableEquipment: z
-    .array(z.string())
-    .min(1, "Please select at least one equipment option"),
-})
-
-type IndividualFormValues = z.infer<typeof individualFormSchema>
+// Experience level options
+const EXPERIENCE_LEVELS = [
+  {
+    id: "beginner",
+    label: "Beginner",
+    description: "New to structured training (0-1 years)",
+  },
+  {
+    id: "intermediate",
+    label: "Intermediate",
+    description: "Consistent training experience (1-3 years)",
+  },
+  {
+    id: "advanced",
+    label: "Advanced",
+    description: "Extensive training background (3+ years)",
+  },
+] as const
 
 interface IndividualDetailsStepProps {
   userData: OnboardingData
@@ -64,23 +54,51 @@ export function IndividualDetailsStep({
   onNext,
   onPrev,
 }: IndividualDetailsStepProps) {
-  const form = useForm<IndividualFormValues>({
-    resolver: zodResolver(individualFormSchema),
-    defaultValues: {
-      trainingGoals: userData.individualTrainingGoals || "",
-      experienceLevel: (userData.individualExperienceLevel as "beginner" | "intermediate" | "advanced") || undefined,
-      availableEquipment: userData.availableEquipment || [],
-    },
-  })
+  // Parse existing goals from comma-separated string
+  const parseGoals = (goalsString: string): string[] => {
+    if (!goalsString) return []
+    return goalsString.split(",").map((g) => g.trim()).filter(Boolean)
+  }
 
-  function onSubmit(values: IndividualFormValues) {
+  const [selectedGoals, setSelectedGoals] = useState<string[]>(
+    parseGoals(userData.individualTrainingGoals)
+  )
+  const [selectedExperience, setSelectedExperience] = useState<string>(
+    userData.individualExperienceLevel || ""
+  )
+  const [birthdate, setBirthdate] = useState(userData.birthdate || "")
+
+  const handleGoalToggle = (goalId: string) => {
+    setSelectedGoals((prev) =>
+      prev.includes(goalId)
+        ? prev.filter((g) => g !== goalId)
+        : [...prev, goalId]
+    )
+  }
+
+  const handleSubmit = () => {
+    if (selectedGoals.length === 0 || !selectedExperience) {
+      return
+    }
+
+    // Convert selected goal IDs to labels for storage
+    const goalLabels = selectedGoals
+      .map((id) => TRAINING_GOALS.find((g) => g.id === id)?.label)
+      .filter(Boolean)
+      .join(", ")
+
     updateUserData({
-      individualTrainingGoals: values.trainingGoals,
-      individualExperienceLevel: values.experienceLevel,
-      availableEquipment: values.availableEquipment,
+      birthdate,
+      individualTrainingGoals: goalLabels,
+      individualExperienceLevel: selectedExperience,
+      // TODO: Available equipment will be collected during first plan creation
+      // This provides better context and doesn't overwhelm the onboarding flow
+      availableEquipment: [],
     })
     onNext()
   }
+
+  const canProceed = selectedGoals.length > 0 && selectedExperience
 
   return (
     <div className="space-y-8">
@@ -89,146 +107,121 @@ export function IndividualDetailsStep({
           Tell us about your training
         </h2>
         <p className="text-muted-foreground max-w-md mx-auto">
-          This helps us personalize your experience and provide better AI assistance
-          for your training plans.
+          This helps us personalize your experience and provide better AI
+          assistance for your training plans.
         </p>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-xl mx-auto">
-          {/* Training Goals */}
-          <FormField
-            control={form.control}
-            name="trainingGoals"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>What are your training goals?</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="e.g., Build strength, improve endurance, lose weight, train for a 5K..."
-                    className="min-h-[100px] resize-none"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription>
-                  Describe what you want to achieve with your training
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
+      <div className="max-w-2xl mx-auto space-y-8">
+        {/* Date of Birth */}
+        <div className="space-y-2">
+          <Label htmlFor="birthdate">Date of Birth</Label>
+          <Input
+            id="birthdate"
+            type="date"
+            value={birthdate}
+            onChange={(e) => setBirthdate(e.target.value)}
+            className="max-w-xs"
           />
+          <p className="text-sm text-muted-foreground">
+            Used to calculate age categories and personalize training
+          </p>
+        </div>
 
-          {/* Experience Level */}
-          <FormField
-            control={form.control}
-            name="experienceLevel"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>What's your experience level?</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your experience level" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="beginner">
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium">Beginner</span>
-                        <span className="text-xs text-muted-foreground">
-                          New to structured training (0-1 years)
-                        </span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="intermediate">
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium">Intermediate</span>
-                        <span className="text-xs text-muted-foreground">
-                          Consistent training experience (1-3 years)
-                        </span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="advanced">
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium">Advanced</span>
-                        <span className="text-xs text-muted-foreground">
-                          Extensive training background (3+ years)
-                        </span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Available Equipment */}
-          <FormField
-            control={form.control}
-            name="availableEquipment"
-            render={() => (
-              <FormItem>
-                <div className="mb-4">
-                  <FormLabel className="text-base">Available Equipment</FormLabel>
-                  <FormDescription>
-                    Select all the equipment you have access to
-                  </FormDescription>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {equipmentOptions.map((item) => (
-                    <FormField
-                      key={item.id}
-                      control={form.control}
-                      name="availableEquipment"
-                      render={({ field }) => {
-                        return (
-                          <FormItem
-                            key={item.id}
-                            className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 hover:bg-muted/50 transition-colors"
-                          >
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value?.includes(item.id)}
-                                onCheckedChange={(checked) => {
-                                  return checked
-                                    ? field.onChange([...field.value, item.id])
-                                    : field.onChange(
-                                        field.value?.filter(
-                                          (value) => value !== item.id
-                                        )
-                                      )
-                                }}
-                              />
-                            </FormControl>
-                            <FormLabel className="font-normal cursor-pointer">
-                              {item.label}
-                            </FormLabel>
-                          </FormItem>
-                        )
-                      }}
-                    />
-                  ))}
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between pt-6">
-            <Button type="button" variant="outline" onClick={onPrev}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Previous
-            </Button>
-
-            <Button type="submit" className="min-w-[120px]">
-              Continue
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
+        {/* Training Goals - Clickable Tags */}
+        <div className="space-y-4">
+          <div>
+            <Label className="text-base">What are your training goals?</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Select all that apply
+            </p>
           </div>
-        </form>
-      </Form>
+          <div className="flex flex-wrap gap-2">
+            {TRAINING_GOALS.map((goal) => {
+              const isSelected = selectedGoals.includes(goal.id)
+              return (
+                <button
+                  key={goal.id}
+                  type="button"
+                  onClick={() => handleGoalToggle(goal.id)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-medium transition-colors",
+                    "border-2 min-h-[44px] active:scale-95",
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-muted/50"
+                  )}
+                >
+                  {isSelected && <Check className="w-3.5 h-3.5" />}
+                  {goal.label}
+                </button>
+              )
+            })}
+          </div>
+          {selectedGoals.length === 0 && (
+            <p className="text-sm text-destructive">
+              Please select at least one training goal
+            </p>
+          )}
+        </div>
+
+        {/* Experience Level - Direct Click Options */}
+        <div className="space-y-4">
+          <div>
+            <Label className="text-base">What's your experience level?</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              This helps us tailor workout complexity
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {EXPERIENCE_LEVELS.map((level) => {
+              const isSelected = selectedExperience === level.id
+              return (
+                <button
+                  key={level.id}
+                  type="button"
+                  onClick={() => setSelectedExperience(level.id)}
+                  className={cn(
+                    "flex flex-col items-center p-4 rounded-lg text-center transition-colors",
+                    "border-2 min-h-[80px] active:scale-[0.98]",
+                    isSelected
+                      ? "bg-primary/10 text-primary border-primary"
+                      : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-muted/50"
+                  )}
+                >
+                  <span className="font-semibold text-base sm:text-lg">{level.label}</span>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    {level.description}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          {!selectedExperience && (
+            <p className="text-sm text-destructive">
+              Please select your experience level
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Navigation Buttons */}
+      <div className="flex justify-between max-w-2xl mx-auto pt-4">
+        <Button type="button" variant="outline" onClick={onPrev}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Previous
+        </Button>
+
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canProceed}
+          className="min-w-[120px]"
+        >
+          Continue
+          <ArrowRight className="w-4 h-4 ml-2" />
+        </Button>
+      </div>
     </div>
   )
 }

@@ -1,11 +1,12 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, ArrowRight, Users, Award, BookOpen } from "lucide-react"
+import { ArrowLeft, ArrowRight, Users, Award, BookOpen, Check } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { OnboardingData } from "../onboarding-wizard"
 
 interface CoachDetailsStepProps {
@@ -17,29 +18,113 @@ interface CoachDetailsStepProps {
 
 // Common coaching specializations
 const SPECIALIZATIONS = [
-  "Sprints & Hurdles",
-  "Middle Distance",
-  "Long Distance",
-  "Jumping Events",
-  "Throwing Events",
-  "Multi-Events",
-  "General Track & Field",
-  "Strength & Conditioning",
-  "Youth Development",
-  "Elite Performance"
-]
+  { id: "sprints-hurdles", label: "Sprints & Hurdles" },
+  { id: "middle-distance", label: "Middle Distance" },
+  { id: "long-distance", label: "Long Distance" },
+  { id: "jumping-events", label: "Jumping Events" },
+  { id: "throwing-events", label: "Throwing Events" },
+  { id: "multi-events", label: "Multi-Events" },
+  { id: "general-track", label: "General Track & Field" },
+  { id: "strength-conditioning", label: "Strength & Conditioning" },
+  { id: "youth-development", label: "Youth Development" },
+  { id: "elite-performance", label: "Elite Performance" },
+] as const
 
 // Experience levels
 const EXPERIENCE_LEVELS = [
-  "New Coach (0-1 years)",
-  "Developing Coach (2-5 years)",
-  "Experienced Coach (6-10 years)",
-  "Veteran Coach (11-20 years)",
-  "Master Coach (20+ years)"
-]
+  {
+    id: "new",
+    label: "New Coach",
+    description: "0-1 years experience",
+  },
+  {
+    id: "developing",
+    label: "Developing",
+    description: "2-5 years experience",
+  },
+  {
+    id: "experienced",
+    label: "Experienced",
+    description: "6-10 years experience",
+  },
+  {
+    id: "veteran",
+    label: "Veteran",
+    description: "11-20 years experience",
+  },
+  {
+    id: "master",
+    label: "Master",
+    description: "20+ years experience",
+  },
+] as const
+
+// Sport focus options
+const SPORT_FOCUS_OPTIONS = [
+  { id: "track-field", label: "Track & Field" },
+  { id: "cross-country", label: "Cross Country" },
+  { id: "road-racing", label: "Road Racing" },
+  { id: "marathon", label: "Marathon" },
+  { id: "triathlon", label: "Triathlon" },
+  { id: "combined-events", label: "Combined Events" },
+] as const
 
 export function CoachDetailsStep({ userData, updateUserData, onNext, onPrev }: CoachDetailsStepProps) {
-  const canProceed = userData.firstName && userData.lastName
+  const [firstName, setFirstName] = useState(userData.firstName || "")
+  const [lastName, setLastName] = useState(userData.lastName || "")
+  const [birthdate, setBirthdate] = useState(userData.birthdate || "")
+  const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>(
+    userData.specialization ? userData.specialization.split(",").map(s => s.trim()).filter(Boolean) : []
+  )
+  const [selectedExperience, setSelectedExperience] = useState(userData.experience || "")
+  const [selectedSportFocus, setSelectedSportFocus] = useState<string[]>(
+    userData.sportFocus ? userData.sportFocus.split(",").map(s => s.trim()).filter(Boolean) : []
+  )
+  const [coachingPhilosophy, setCoachingPhilosophy] = useState(userData.coachingPhilosophy || "")
+
+  const handleSpecializationToggle = (specId: string) => {
+    setSelectedSpecializations((prev) =>
+      prev.includes(specId)
+        ? prev.filter((s) => s !== specId)
+        : [...prev, specId]
+    )
+  }
+
+  const handleSportFocusToggle = (sportId: string) => {
+    setSelectedSportFocus((prev) =>
+      prev.includes(sportId)
+        ? prev.filter((s) => s !== sportId)
+        : [...prev, sportId]
+    )
+  }
+
+  const handleSubmit = () => {
+    if (!firstName || !lastName) return
+
+    // Convert selected IDs to labels for storage
+    const specializationLabels = selectedSpecializations
+      .map((id) => SPECIALIZATIONS.find((s) => s.id === id)?.label)
+      .filter(Boolean)
+      .join(", ")
+
+    const sportFocusLabels = selectedSportFocus
+      .map((id) => SPORT_FOCUS_OPTIONS.find((s) => s.id === id)?.label)
+      .filter(Boolean)
+      .join(", ")
+
+    updateUserData({
+      firstName,
+      lastName,
+      birthdate,
+      specialization: specializationLabels,
+      experience: selectedExperience,
+      sportFocus: sportFocusLabels,
+      coachingPhilosophy,
+    })
+    onNext()
+  }
+
+  const canProceed = firstName && lastName
 
   return (
     <div className="space-y-8">
@@ -51,12 +136,12 @@ export function CoachDetailsStep({ userData, updateUserData, onNext, onPrev }: C
           Tell us about your coaching
         </h2>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Help us understand your coaching background and philosophy so we can provide 
+          Help us understand your coaching background and philosophy so we can provide
           the best tools for managing your athletes.
         </p>
       </div>
 
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-2xl mx-auto space-y-8">
         {/* Basic Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold flex items-center">
@@ -68,8 +153,8 @@ export function CoachDetailsStep({ userData, updateUserData, onNext, onPrev }: C
               <Label htmlFor="firstName">First Name *</Label>
               <Input
                 id="firstName"
-                value={userData.firstName}
-                onChange={(e) => updateUserData({ firstName: e.target.value })}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Enter your first name"
               />
             </div>
@@ -77,8 +162,8 @@ export function CoachDetailsStep({ userData, updateUserData, onNext, onPrev }: C
               <Label htmlFor="lastName">Last Name *</Label>
               <Input
                 id="lastName"
-                value={userData.lastName}
-                onChange={(e) => updateUserData({ lastName: e.target.value })}
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
                 placeholder="Enter your last name"
               />
             </div>
@@ -88,66 +173,109 @@ export function CoachDetailsStep({ userData, updateUserData, onNext, onPrev }: C
             <Input
               id="birthdate"
               type="date"
-              value={userData.birthdate}
-              onChange={(e) => updateUserData({ birthdate: e.target.value })}
+              value={birthdate}
+              onChange={(e) => setBirthdate(e.target.value)}
+              className="max-w-xs"
             />
           </div>
         </div>
 
-        {/* Coaching Background */}
+        {/* Coaching Specializations - Clickable Tags */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold flex items-center">
             <Award className="w-5 h-5 mr-2" />
-            Coaching Background
+            Coaching Specializations
           </h3>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="specialization">Primary Specialization</Label>
-              <Select
-                value={userData.specialization}
-                onValueChange={(value) => updateUserData({ specialization: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your coaching specialization" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SPECIALIZATIONS.map((spec) => (
-                    <SelectItem key={spec} value={spec}>
-                      {spec}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="experience">Coaching Experience</Label>
-              <Select
-                value={userData.experience}
-                onValueChange={(value) => updateUserData({ experience: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your experience level" />
-                </SelectTrigger>
-                <SelectContent>
-                  {EXPERIENCE_LEVELS.map((level) => (
-                    <SelectItem key={level} value={level}>
-                      {level}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <p className="text-sm text-muted-foreground">
+            Select all areas you specialize in
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {SPECIALIZATIONS.map((spec) => {
+              const isSelected = selectedSpecializations.includes(spec.id)
+              return (
+                <button
+                  key={spec.id}
+                  type="button"
+                  onClick={() => handleSpecializationToggle(spec.id)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-medium transition-colors",
+                    "border-2 min-h-[44px] active:scale-95",
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-muted/50"
+                  )}
+                >
+                  {isSelected && <Check className="w-3.5 h-3.5" />}
+                  {spec.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="sportFocus">Sport Focus</Label>
-              <Input
-                id="sportFocus"
-                value={userData.sportFocus}
-                onChange={(e) => updateUserData({ sportFocus: e.target.value })}
-                placeholder="e.g., Track & Field, Cross Country, Road Racing"
-              />
-            </div>
+        {/* Experience Level - Direct Click Options */}
+        <div className="space-y-4">
+          <div>
+            <Label className="text-base font-semibold">Coaching Experience</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              How long have you been coaching?
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {EXPERIENCE_LEVELS.map((level) => {
+              const isSelected = selectedExperience === level.id
+              return (
+                <button
+                  key={level.id}
+                  type="button"
+                  onClick={() => setSelectedExperience(level.id)}
+                  className={cn(
+                    "flex flex-col items-center p-3 rounded-lg text-center transition-colors",
+                    "border-2 min-h-[72px] active:scale-[0.98]",
+                    isSelected
+                      ? "bg-primary/10 text-primary border-primary"
+                      : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-muted/50"
+                  )}
+                >
+                  <span className="font-semibold text-sm sm:text-base">{level.label}</span>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground mt-1 leading-tight">
+                    {level.description}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Sport Focus - Clickable Tags */}
+        <div className="space-y-4">
+          <div>
+            <Label className="text-base font-semibold">Sport Focus</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              What sports do you primarily coach?
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {SPORT_FOCUS_OPTIONS.map((sport) => {
+              const isSelected = selectedSportFocus.includes(sport.id)
+              return (
+                <button
+                  key={sport.id}
+                  type="button"
+                  onClick={() => handleSportFocusToggle(sport.id)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-medium transition-colors",
+                    "border-2 min-h-[44px] active:scale-95",
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-muted/50"
+                  )}
+                >
+                  {isSelected && <Check className="w-3.5 h-3.5" />}
+                  {sport.label}
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -158,11 +286,11 @@ export function CoachDetailsStep({ userData, updateUserData, onNext, onPrev }: C
             Coaching Philosophy
           </h3>
           <div className="space-y-2">
-            <Label htmlFor="coachingPhilosophy">Your Coaching Philosophy</Label>
+            <Label htmlFor="coachingPhilosophy">Your Coaching Philosophy (Optional)</Label>
             <Textarea
               id="coachingPhilosophy"
-              value={userData.coachingPhilosophy}
-              onChange={(e) => updateUserData({ coachingPhilosophy: e.target.value })}
+              value={coachingPhilosophy}
+              onChange={(e) => setCoachingPhilosophy(e.target.value)}
               placeholder="Describe your coaching philosophy, approach to training, and what you believe makes athletes successful..."
               rows={4}
             />
@@ -173,14 +301,14 @@ export function CoachDetailsStep({ userData, updateUserData, onNext, onPrev }: C
         </div>
       </div>
 
-      <div className="flex justify-between max-w-2xl mx-auto">
+      <div className="flex justify-between max-w-2xl mx-auto pt-4">
         <Button variant="outline" onClick={onPrev}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Previous
         </Button>
-        
-        <Button 
-          onClick={onNext} 
+
+        <Button
+          onClick={handleSubmit}
           disabled={!canProceed}
           className="min-w-[120px]"
         >
@@ -190,4 +318,4 @@ export function CoachDetailsStep({ userData, updateUserData, onNext, onPrev }: C
       </div>
     </div>
   )
-} 
+}
