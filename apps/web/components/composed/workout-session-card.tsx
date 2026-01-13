@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { WorkoutLogWithDetails } from "@/types/training"
-import { SessionStatusBadge } from './workout-session-status-badge'
+import { SessionStatusBadge, type SessionStatus } from './workout-session-status-badge'
 import { SessionDateDisplay } from './workout-session-date-display'
 import { SessionDurationDisplay } from './workout-session-duration-display'
 import { SessionExerciseCount } from './workout-session-exercise-count'
@@ -34,7 +34,18 @@ export function SessionCard({
   showDetails = true,
   className 
 }: SessionCardProps) {
-  const status = 'assigned' // Default status since the property doesn't exist on the type
+  // Map database session_status to UI SessionStatus type
+  const mapSessionStatus = (dbStatus: string | undefined): SessionStatus => {
+    switch (dbStatus) {
+      case 'assigned': return 'assigned'
+      case 'ongoing': return 'ongoing'
+      case 'completed': return 'completed'
+      case 'cancelled': return 'cancelled'
+      default: return 'unknown'
+    }
+  }
+
+  const status = mapSessionStatus(session.session_status)
   const presetGroup = session.session_plan
 
   if (!presetGroup) {
@@ -71,6 +82,7 @@ export function SessionCard({
                 <SessionStatusBadge
                   status={status}
                   size="sm"
+                  scheduledDate={session.date_time}
                 />
               </div>
             </div>

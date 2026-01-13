@@ -71,14 +71,9 @@ export async function getTodayAndOngoingSessionsAction(
       }
     }
 
-    // 4. Get today's date range
-    const today = new Date()
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-
-    // 5. Query sessions with proper prioritization
-    // Optimized: Select only required fields instead of *
-    // Now includes workout_log_exercises with nested workout_log_sets
+    // 4. Query sessions with proper prioritization
+    // Shows ALL assigned workouts (including overdue) so athletes can complete missed workouts
+    // Priority: ongoing first, then all assigned (sorted by date)
     const { data: sessions, error } = await supabase
       .from('workout_logs')
       .select(`
@@ -181,9 +176,9 @@ export async function getTodayAndOngoingSessionsAction(
         )
       `)
       .eq('athlete_id', targetAthleteId)
-      .or(`session_status.eq.ongoing,and(date_time.gte.${startOfDay.toISOString()},date_time.lt.${endOfDay.toISOString()},session_status.eq.assigned)`)
+      .or(`session_status.eq.ongoing,session_status.eq.assigned`) // Show ALL ongoing and assigned
       .order('session_status', { ascending: false }) // ongoing first
-      .order('date_time', { ascending: true })
+      .order('date_time', { ascending: true }) // then by scheduled date (oldest first for overdue)
 
     if (error) {
       console.error('[getTodayAndOngoingSessionsAction] Error:', error)
@@ -211,14 +206,16 @@ export async function getTodayAndOngoingSessionsAction(
 }
 
 /**
- * Get past completed sessions with pagination
+ * Get past sessions with pagination (includes completed and cancelled/skipped)
+ * @param statusFilter - Optional array of statuses to filter by. Defaults to ['completed', 'cancelled']
  */
 export async function getPastSessionsAction(
   athleteId?: number,
   page: number = 1,
   limit: number = 10,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  statusFilter?: SessionStatus[]
 ): Promise<ActionState<{
   sessions: WorkoutLogWithDetails[]
   totalCount: number
@@ -366,7 +363,14 @@ export async function getPastSessionsAction(
         )
       `)
       .eq('athlete_id', targetAthleteId)
-      .eq('session_status', 'completed')
+
+    // Apply status filter - default to completed and cancelled (skipped)
+    const statuses = statusFilter || ['completed', 'cancelled']
+    if (statuses.length === 1) {
+      dateFilter = dateFilter.eq('session_status', statuses[0])
+    } else {
+      dateFilter = dateFilter.in('session_status', statuses)
+    }
 
     if (startDate) {
       dateFilter = dateFilter.gte('date_time', startDate)
@@ -375,12 +379,19 @@ export async function getPastSessionsAction(
       dateFilter = dateFilter.lte('date_time', endDate)
     }
 
-    // 5. Get total count
-    const { count, error: countError } = await supabase
+    // 5. Get total count with same status filter
+    let countQuery = supabase
       .from('workout_logs')
       .select('*', { count: 'exact', head: true })
       .eq('athlete_id', targetAthleteId)
-      .eq('session_status', 'completed')
+
+    if (statuses.length === 1) {
+      countQuery = countQuery.eq('session_status', statuses[0])
+    } else {
+      countQuery = countQuery.in('session_status', statuses)
+    }
+
+    const { count, error: countError } = await countQuery
 
     if (countError) {
       console.error('Error counting sessions:', countError)
@@ -547,6 +558,89 @@ export async function startTrainingSessionAction(
   } catch (error) {
     console.error('Error in startTrainingSessionAction:', error)
     return { isSuccess: false, message: "Failed to start session" }
+  }
+}
+
+/**
+ * Skip/miss a workout session
+ * Allows athletes to mark an assigned workout as skipped rather than completing it
+ * Only works for 'assigned' status (not ongoing or completed)
+ */
+export async function skipWorkoutSessionAction(
+  sessionId: string,
+  reason?: string
+): Promise<ActionState<Database["public"]["Tables"]["workout_logs"]["Row"]>> {
+  try {
+    // 1. Authentication check
+    const { userId } = await auth()
+    if (!userId) {
+      return { isSuccess: false, message: "Authentication required" }
+    }
+
+    // 2. Get database user ID
+    const dbUserId = await getDbUserId(userId)
+
+    // 3. Verify user owns this session
+    const isOwner = await verifySessionOwnership(dbUserId, sessionId)
+    if (!isOwner) {
+      logAuthFailure("skipWorkoutSessionAction", {
+        userId: dbUserId,
+        resourceType: "workout_log",
+        resourceId: sessionId,
+        reason: "User does not own this workout session"
+      })
+      return { isSuccess: false, message: "Not authorized to skip this session" }
+    }
+
+    // 4. Verify session is in 'assigned' status (can only skip unstarted workouts)
+    const { data: currentSession } = await supabase
+      .from('workout_logs')
+      .select('session_status')
+      .eq('id', sessionId)
+      .single()
+
+    if (!currentSession) {
+      return { isSuccess: false, message: "Session not found" }
+    }
+
+    if (currentSession.session_status !== 'assigned') {
+      return {
+        isSuccess: false,
+        message: currentSession.session_status === 'ongoing'
+          ? "Cannot skip a workout that is in progress. Complete or cancel it instead."
+          : "Cannot skip a workout that is already completed or cancelled."
+      }
+    }
+
+    // 5. Update session to cancelled with skip reason
+    const skipNote = reason
+      ? `Skipped by athlete: ${reason}`
+      : 'Skipped by athlete'
+
+    const { data: session, error } = await supabase
+      .from('workout_logs')
+      .update({
+        session_status: 'cancelled',
+        notes: skipNote,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', sessionId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error skipping session:', error)
+      return { isSuccess: false, message: "Failed to skip session" }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Workout skipped successfully",
+      data: session
+    }
+  } catch (error) {
+    console.error('Error in skipWorkoutSessionAction:', error)
+    return { isSuccess: false, message: "Failed to skip session" }
   }
 }
 

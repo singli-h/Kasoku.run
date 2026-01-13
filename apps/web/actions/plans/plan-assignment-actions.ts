@@ -197,29 +197,51 @@ export async function assignPlanToAthletesAction(
       }
     }
 
-    // Batch insert sessions
-    const { error: insertError, count } = await supabase
+    // P2: Batch insert sessions (atomic operation - all or nothing)
+    // If this fails, no workout_logs are created, so it's safe to retry
+    console.log(`[assignPlanToAthletesAction] Creating ${sessionsToCreate.length} workout_logs for ${targetAthleteIds.length} athletes`)
+
+    const { error: insertError } = await supabase
       .from('workout_logs')
       .insert(sessionsToCreate)
 
     if (insertError) {
       console.error('[assignPlanToAthletesAction] Failed to create sessions:', insertError)
-      return { isSuccess: false, message: 'Failed to assign plan. Please try again.' }
+      // Provide more specific error message for debugging
+      const errorDetail = insertError.code === '23505'
+        ? 'Some workouts already exist (duplicate key). Try refreshing and reassigning.'
+        : insertError.code === '23503'
+        ? 'Referenced athlete or session plan not found.'
+        : 'Database error occurred.'
+      return { isSuccess: false, message: `Failed to assign plan: ${errorDetail}` }
     }
 
     // Update macrocycle to associate with groups if applicable
+    // This is non-critical metadata - don't fail the whole operation if it fails
     if (input.groupIds && input.groupIds.length > 0) {
-      // For now, just associate with the first group (MVP limitation)
-      await supabase
-        .from('macrocycles')
-        .update({ athlete_group_id: input.groupIds[0] })
-        .eq('id', input.macrocycleId)
+      try {
+        // For now, just associate with the first group (MVP limitation)
+        const { error: macroUpdateError } = await supabase
+          .from('macrocycles')
+          .update({ athlete_group_id: input.groupIds[0] })
+          .eq('id', input.macrocycleId)
+
+        if (macroUpdateError) {
+          console.warn('[assignPlanToAthletesAction] Failed to update macrocycle group association:', macroUpdateError)
+          // Don't fail - workouts are assigned, this is just metadata
+        }
+      } catch (macroError) {
+        console.warn('[assignPlanToAthletesAction] Error updating macrocycle:', macroError)
+        // Don't fail - workouts are assigned
+      }
     }
 
     // Revalidate relevant paths
     revalidatePath('/plans')
     revalidatePath(`/plans/${input.macrocycleId}`)
     revalidatePath('/workout') // Athletes will see new sessions
+
+    console.log(`[assignPlanToAthletesAction] Successfully assigned ${sessionsToCreate.length} workouts`)
 
     return {
       isSuccess: true,

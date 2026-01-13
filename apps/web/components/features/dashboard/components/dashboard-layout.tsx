@@ -11,9 +11,10 @@ Pre-fetches active workout data for instant navigation.
 import { useEffect } from "react"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
-import { ChevronRight, Dumbbell, TrendingUp, Flame, BookOpen, Calendar } from "lucide-react"
+import { ChevronRight, Dumbbell, TrendingUp, Flame, BookOpen, Calendar, AlertTriangle } from "lucide-react"
 import type { DashboardData, RecentSession } from "../types/dashboard-types"
 import { useWorkoutCache } from "@/components/features/workout/hooks/use-workout-queries"
+import { isOverdue } from "@/components/composed/workout-session-status-badge"
 
 interface DashboardLayoutProps {
   data: DashboardData
@@ -73,25 +74,46 @@ function AthleteDashboardView({ data }: { data: DashboardData }) {
 
 // Today's workout - primary CTA
 function TodayWorkoutCard({ session }: { session: RecentSession }) {
+  const sessionIsOverdue = session.status === 'pending' && isOverdue(session.date)
+
   return (
     <Link
       href={`/workout/${session.id}`}
-      className="block p-6 -mx-4 sm:mx-0 sm:rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+      className={`block p-6 -mx-4 sm:mx-0 sm:rounded-lg border bg-card hover:bg-accent/50 transition-colors ${
+        sessionIsOverdue ? 'border-orange-300 dark:border-orange-700' : 'border-border'
+      }`}
     >
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">Today&apos;s Workout</p>
+          {sessionIsOverdue ? (
+            <div className="flex items-center gap-1.5 text-sm text-orange-600 dark:text-orange-400">
+              <AlertTriangle className="size-4" />
+              <span>Overdue Workout</span>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Today&apos;s Workout</p>
+          )}
           <h2 className="text-xl font-semibold">{session.title}</h2>
           <p className="text-sm text-muted-foreground">
-            {session.status === 'in-progress' ? 'Continue where you left off' : 'Ready to start'}
+            {session.status === 'in-progress'
+              ? 'Continue where you left off'
+              : sessionIsOverdue
+                ? `Scheduled ${formatDistanceToNow(session.date, { addSuffix: true })}`
+                : 'Ready to start'}
           </p>
         </div>
-        <div className="flex items-center justify-center size-12 rounded-full bg-primary text-primary-foreground">
-          <Dumbbell className="size-5" />
+        <div className={`flex items-center justify-center size-12 rounded-full ${
+          sessionIsOverdue
+            ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+            : 'bg-primary text-primary-foreground'
+        }`}>
+          {sessionIsOverdue ? <AlertTriangle className="size-5" /> : <Dumbbell className="size-5" />}
         </div>
       </div>
-      <div className="mt-4 flex items-center text-sm font-medium text-primary">
-        {session.status === 'in-progress' ? 'Continue Workout' : 'Start Workout'}
+      <div className={`mt-4 flex items-center text-sm font-medium ${
+        sessionIsOverdue ? 'text-orange-600 dark:text-orange-400' : 'text-primary'
+      }`}>
+        {session.status === 'in-progress' ? 'Continue Workout' : sessionIsOverdue ? 'Complete Now' : 'Start Workout'}
         <ChevronRight className="ml-1 size-4" />
       </div>
     </Link>

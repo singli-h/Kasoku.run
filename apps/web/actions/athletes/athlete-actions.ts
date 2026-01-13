@@ -11,10 +11,11 @@ import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
-import { 
+import {
   Athlete, AthleteInsert, AthleteUpdate,
   AthleteGroup, AthleteGroupInsert, AthleteGroupUpdate
 } from "@/types/training"
+import { addDays, parseISO, startOfWeek } from "date-fns"
 // (no direct Database type usage in this file)
 
 // (removed unused User type alias)
@@ -765,9 +766,21 @@ export async function assignAthleteToGroupAction(
       // Don't fail the main operation if history logging fails
     }
 
+    // P1: Retroactive assignment - assign existing group workouts to new athlete
+    const retroactiveResult = await assignExistingGroupWorkoutsToAthleteAction(athleteId, groupId)
+    if (!retroactiveResult.isSuccess) {
+      console.warn('Failed to assign existing group workouts:', retroactiveResult.message)
+      // Don't fail the main operation - athlete is in group, just missing some workouts
+    }
+
+    const workoutsAssigned = retroactiveResult.data?.sessionsCreated || 0
+    const message = workoutsAssigned > 0
+      ? `Athlete assigned to group successfully with ${workoutsAssigned} existing workouts`
+      : "Athlete assigned to group successfully"
+
     return {
       isSuccess: true,
-      message: "Athlete assigned to group successfully",
+      message,
       data: athlete
     }
   } catch (error) {
@@ -775,6 +788,128 @@ export async function assignAthleteToGroupAction(
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * P1: Assign existing group workouts to a newly added athlete
+ * When an athlete joins a group, they should receive all workout_logs
+ * that other athletes in the group already have
+ */
+async function assignExistingGroupWorkoutsToAthleteAction(
+  athleteId: number,
+  groupId: number
+): Promise<ActionState<{ sessionsCreated: number }>> {
+  try {
+    // 1. Find all macrocycles assigned to this group
+    const { data: macrocycles, error: macroError } = await supabase
+      .from('macrocycles')
+      .select('id, start_date')
+      .eq('athlete_group_id', groupId)
+
+    if (macroError) {
+      console.error('[assignExistingGroupWorkoutsToAthleteAction] Error fetching macrocycles:', macroError)
+      return { isSuccess: false, message: 'Failed to fetch group macrocycles' }
+    }
+
+    if (!macrocycles || macrocycles.length === 0) {
+      // No macrocycles assigned to this group yet - nothing to do
+      return { isSuccess: true, message: 'No existing plans to assign', data: { sessionsCreated: 0 } }
+    }
+
+    // 2. Get all session_plans from these macrocycles
+    const macrocycleIds = macrocycles.map(m => m.id)
+
+    const { data: mesocycles } = await supabase
+      .from('mesocycles')
+      .select('id')
+      .in('macrocycle_id', macrocycleIds)
+
+    if (!mesocycles || mesocycles.length === 0) {
+      return { isSuccess: true, message: 'No mesocycles found', data: { sessionsCreated: 0 } }
+    }
+
+    const mesocycleIds = mesocycles.map(m => m.id)
+
+    const { data: microcycles } = await supabase
+      .from('microcycles')
+      .select('id')
+      .in('mesocycle_id', mesocycleIds)
+
+    if (!microcycles || microcycles.length === 0) {
+      return { isSuccess: true, message: 'No microcycles found', data: { sessionsCreated: 0 } }
+    }
+
+    const microcycleIds = microcycles.map(m => m.id)
+
+    const { data: sessionPlans, error: plansError } = await supabase
+      .from('session_plans')
+      .select('id, date, week, day, description')
+      .in('microcycle_id', microcycleIds)
+      .eq('deleted', false)
+
+    if (plansError || !sessionPlans || sessionPlans.length === 0) {
+      return { isSuccess: true, message: 'No session plans found', data: { sessionsCreated: 0 } }
+    }
+
+    // 3. Check which workout_logs this athlete already has (idempotency)
+    const sessionPlanIds = sessionPlans.map(sp => sp.id)
+
+    const { data: existingLogs } = await supabase
+      .from('workout_logs')
+      .select('session_plan_id')
+      .eq('athlete_id', athleteId)
+      .in('session_plan_id', sessionPlanIds)
+
+    const existingPlanIds = new Set(existingLogs?.map(l => l.session_plan_id) || [])
+
+    // 4. Create workout_logs for sessions the athlete doesn't have
+    // Get the macrocycle start dates for calculating session dates
+    const macrocycleStartDates = new Map(macrocycles.map(m => [m.id, m.start_date]))
+
+    const sessionsToCreate = sessionPlans
+      .filter(sp => !existingPlanIds.has(sp.id))
+      .map(sp => {
+        // Calculate session date (simplified - use date if available, else current date)
+        const sessionDate = sp.date
+          ? parseISO(sp.date)
+          : new Date()
+
+        return {
+          athlete_id: athleteId,
+          session_plan_id: sp.id,
+          date_time: sessionDate.toISOString(),
+          session_status: 'assigned' as const,
+          session_mode: 'individual' as const,
+          description: sp.description || '',
+        }
+      })
+
+    if (sessionsToCreate.length === 0) {
+      return { isSuccess: true, message: 'Athlete already has all workouts', data: { sessionsCreated: 0 } }
+    }
+
+    // 5. Batch insert
+    const { error: insertError } = await supabase
+      .from('workout_logs')
+      .insert(sessionsToCreate)
+
+    if (insertError) {
+      console.error('[assignExistingGroupWorkoutsToAthleteAction] Insert error:', insertError)
+      return { isSuccess: false, message: 'Failed to create workout logs' }
+    }
+
+    return {
+      isSuccess: true,
+      message: `Created ${sessionsToCreate.length} workout logs`,
+      data: { sessionsCreated: sessionsToCreate.length }
+    }
+  } catch (error) {
+    console.error('[assignExistingGroupWorkoutsToAthleteAction] Error:', error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 }

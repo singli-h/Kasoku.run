@@ -13,6 +13,7 @@ import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import type { Database } from "@/types/database"
+import { addDays, startOfWeek, parseISO } from "date-fns"
 
 // Define types from database
 type SessionPlan = Database['public']['Tables']['session_plans']['Row']
@@ -277,14 +278,29 @@ export async function saveSessionPlanAction(
 
     // Create workout_logs for individual assignments (batch insert)
     if (planData.athleteIds && planData.athleteIds.length > 0 && !planData.isTemplate) {
+      // P3: Calculate scheduled dates based on session day/week
+      // Start from the beginning of current week (Monday)
+      const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }) // Monday
+
       const workoutLogInserts = planData.athleteIds.flatMap(athleteId =>
-        savedSessions.map(savedSession => ({
-          session_plan_id: savedSession.id,
-          athlete_id: athleteId,
-          date_time: new Date().toISOString(),
-          notes: null,
-          session_status: 'assigned' as const
-        }))
+        savedSessions.map((savedSession, sessionIndex) => {
+          // Get the original session data to access day/week
+          const originalSession = validSessions[sessionIndex]
+
+          // Calculate scheduled date: weekStart + (week-1)*7 + (day-1)
+          // week is 1-indexed (Week 1, Week 2...), day is 1-7 (Mon-Sun)
+          const weekOffset = ((originalSession?.week || 1) - 1) * 7
+          const dayOffset = (originalSession?.day || 1) - 1
+          const scheduledDate = addDays(weekStart, weekOffset + dayOffset)
+
+          return {
+            session_plan_id: savedSession.id,
+            athlete_id: athleteId,
+            date_time: scheduledDate.toISOString(),
+            notes: null,
+            session_status: 'assigned' as const
+          }
+        })
       )
 
       if (workoutLogInserts.length > 0) {
@@ -467,13 +483,14 @@ export async function updateSessionPlanAction(
 
 /**
  * Delete a session plan
+ * P4: Also cancels associated workout_logs that haven't been started
  */
 export async function deleteSessionPlanAction(
   sessionId: string
 ): Promise<ActionState<boolean>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -496,6 +513,24 @@ export async function deleteSessionPlanAction(
         isSuccess: false,
         message: `Failed to delete session plan: ${error.message}`
       }
+    }
+
+    // P4: Cancel associated workout_logs that are still 'assigned' (not started)
+    // Don't cancel 'ongoing' or 'completed' workouts - those have athlete data
+    const { error: cancelError, count: cancelledCount } = await supabase
+      .from('workout_logs')
+      .update({
+        session_status: 'cancelled',
+        notes: 'Session plan was deleted by coach'
+      })
+      .eq('session_plan_id', sessionId)
+      .eq('session_status', 'assigned')
+
+    if (cancelError) {
+      console.warn('Failed to cancel associated workout_logs:', cancelError)
+      // Don't fail the main operation - the plan is deleted, just log the warning
+    } else if (cancelledCount && cancelledCount > 0) {
+      console.log(`Cancelled ${cancelledCount} assigned workout_logs for deleted session plan ${sessionId}`)
     }
 
     return {
