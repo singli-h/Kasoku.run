@@ -1417,6 +1417,7 @@ export interface QuickTrainingBlockInput {
   endDate: string    // ISO date string
   focus: 'strength' | 'endurance' | 'general'
   trainingDays: number[]  // Array of day numbers (0=Sun, 1=Mon, etc.)
+  equipment?: string[]  // Equipment categories (bodyweight, dumbbells, etc.)
 }
 
 export async function createQuickTrainingBlockAction(
@@ -1453,7 +1454,11 @@ export async function createQuickTrainingBlockAction(
       end_date: input.endDate,
       macrocycle_id: null,  // Individual users don't use macrocycles
       user_id: dbUserId,
-      metadata: { focus: input.focus, createdVia: 'quick-start' }
+      metadata: {
+        focus: input.focus,
+        equipment: input.equipment || ['bodyweight'],
+        createdVia: 'quick-start'
+      }
     }
 
     const { data: mesocycle, error: mesoError } = await supabase

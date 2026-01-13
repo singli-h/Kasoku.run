@@ -25,6 +25,9 @@ import { useToast } from "@/hooks/use-toast"
 // Server Actions
 import { createQuickTrainingBlockAction } from "@/actions/plans/plan-actions"
 
+// Equipment Selection
+import { EquipmentSelector, type EquipmentCategory } from "@/components/features/equipment"
+
 // Duration presets in weeks
 const DURATION_PRESETS = [
   { value: 4, label: "4 weeks", description: "Quick focus" },
@@ -82,6 +85,7 @@ const blockSettingsSchema = z.object({
 // Step 2 Schema
 const weekSetupSchema = z.object({
   trainingDays: z.array(z.number()).min(1, "Select at least one training day"),
+  equipment: z.array(z.string()).min(1, "Select at least one equipment type"),
 })
 
 type BlockSettingsData = z.infer<typeof blockSettingsSchema>
@@ -141,6 +145,7 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
         endDate: formatDateOnly(endDate),
         focus: blockSettings.focus,
         trainingDays: data.trainingDays,
+        equipment: data.equipment,
       })
 
       if (result.isSuccess) {
@@ -405,10 +410,12 @@ function WeekSetupStep({
     resolver: zodResolver(weekSetupSchema),
     defaultValues: {
       trainingDays: defaultTrainingDays || [1, 3, 5], // Mon, Wed, Fri default
+      equipment: ["bodyweight", "dumbbells", "bench"], // Home gym default
     },
   })
 
   const trainingDays = watch("trainingDays") || []
+  const equipment = watch("equipment") || []
 
   const toggleDay = (day: number) => {
     const newDays = trainingDays.includes(day)
@@ -417,15 +424,19 @@ function WeekSetupStep({
     setValue("trainingDays", newDays, { shouldValidate: true })
   }
 
+  const handleEquipmentChange = (categories: EquipmentCategory[]) => {
+    setValue("equipment", categories, { shouldValidate: true })
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-primary" />
-          Set Your Schedule
+          Set Your Schedule & Equipment
         </CardTitle>
         <CardDescription>
-          Choose which days you&apos;ll train each week
+          Choose your training days and available equipment
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -463,6 +474,20 @@ function WeekSetupStep({
             </p>
           </div>
 
+          {/* Equipment Selection */}
+          <div className="space-y-3">
+            <EquipmentSelector
+              value={equipment as EquipmentCategory[]}
+              onChange={handleEquipmentChange}
+              showPresets={true}
+              showCategories={true}
+              compact={false}
+            />
+            {errors.equipment && (
+              <p className="text-sm text-destructive">{errors.equipment.message}</p>
+            )}
+          </div>
+
           {/* Summary */}
           <Card className="bg-muted/50">
             <CardContent className="pt-4">
@@ -470,6 +495,7 @@ function WeekSetupStep({
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Block: {blockName}</li>
                 <li>• {trainingDays.length} workout{trainingDays.length !== 1 ? "s" : ""} per week</li>
+                <li>• {equipment.length} equipment type{equipment.length !== 1 ? "s" : ""}</li>
                 <li>• Starting next Monday</li>
               </ul>
             </CardContent>

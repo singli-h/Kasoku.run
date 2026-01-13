@@ -258,7 +258,7 @@ A returning user who somehow has no training blocks sees the AI generator option
 #### Quick Personalization
 - **FR-004**: System MUST collect training days preference (1-7 days/week)
 - **FR-005**: System MUST collect workout duration preference (15/30/45/60 min)
-- **FR-006**: System SHOULD collect equipment availability (full gym/home/bodyweight)
+- **FR-006**: System MUST collect equipment availability via category-based selection (presets: Bodyweight Only, Home Gym, Full Gym; categories: bodyweight, dumbbells, barbell, kettlebells, cables, machines, bench)
 - **FR-007**: System MUST use onboarding data (goals, experience) as AI context
 - **FR-008**: System MUST pre-fill smart defaults based on experience level
 
@@ -296,6 +296,23 @@ A returning user who somehow has no training blocks sees the AI generator option
 ### Input Context (from onboarding + personalization)
 
 ```typescript
+// Equipment category types
+type EquipmentCategory =
+  | "bodyweight"   // No equipment needed (pull-up bar, dip station, resistance bands)
+  | "dumbbells"    // Fixed or adjustable dumbbells
+  | "barbell"      // Olympic bar, weight plates, squat rack
+  | "kettlebells"  // Various kettlebell weights
+  | "cables"       // Cable machine, functional trainer
+  | "machines"     // Leg press, chest press, lat pulldown, etc.
+  | "bench"        // Flat/incline/adjustable weight bench
+
+// Quick preset mappings
+const EQUIPMENT_PRESETS = {
+  "bodyweight-only": ["bodyweight"],
+  "home-gym": ["bodyweight", "dumbbells", "bench", "kettlebells"],
+  "full-gym": ["bodyweight", "dumbbells", "barbell", "kettlebells", "cables", "machines", "bench"],
+}
+
 interface PlanGenerationContext {
   // From onboarding
   trainingGoals: string[] // e.g., ["Build Strength", "Improve Endurance"]
@@ -305,10 +322,30 @@ interface PlanGenerationContext {
   // From personalization step
   trainingDays: number[] // e.g., [1, 3, 5] for Mon/Wed/Fri
   workoutDuration: 15 | 30 | 45 | 60 // minutes
-  equipment: "full-gym" | "home" | "bodyweight" | "dumbbells" | "custom"
-  customEquipment?: string[] // If equipment === "custom"
+  equipment: EquipmentCategory[] // Selected equipment categories
 }
 ```
+
+### Equipment Selection Design
+
+The equipment selection uses a 3-tier approach inspired by fitness apps like Fitbod:
+
+**1. Quick Presets (1-click selection)**
+- Bodyweight Only: No equipment needed
+- Home Gym: Dumbbells, bench, kettlebells + bodyweight
+- Full Gym: Complete gym access with all equipment types
+
+**2. Category Toggles (fine-tuning)**
+Users can customize their selection by toggling individual equipment categories:
+- Each category shows icon + label + example equipment
+- Checkbox-style selection for clear selected state
+- Preset auto-detects when selection matches
+
+**3. Implementation**
+- Component: `EquipmentSelector` at `/components/features/equipment/`
+- Integrated in QuickStartWizard Step 2 (Week Setup)
+- Equipment categories stored in Training Block metadata
+- Used by AI for exercise filtering during plan generation
 
 ### Output Structure
 
