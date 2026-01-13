@@ -761,20 +761,45 @@ export async function getSprintAnalyticsAction(
     const bestSessionMetadata = sprintSets.find(s => String(s.id) === bestSession?.id)?.metadata as FreeelapMetadata | undefined
     const phaseAnalysis = calculatePhaseAnalysis(bestSessionMetadata?.splits)
 
-    // Extract max velocity phase stride metrics
-    const maxVMetrics = extractMaxVelocityMetrics(bestSessionMetadata?.splits)
+    // Calculate best metrics across ALL sessions in time range for benchmark reference
+    // Best reaction time = lowest (faster reaction is better)
+    const bestReactionTime = sessions.filter(s => s.reactionTime !== undefined).length > 0
+      ? Math.min(...sessions.filter(s => s.reactionTime !== undefined).map(s => s.reactionTime!))
+      : undefined
 
-    // Build athlete metrics with phase-specific data
+    // Extract max velocity metrics from ALL sessions and find the best values
+    // Best stride length = highest, Best stride frequency = highest
+    let bestStrideLengthMaxV: number | undefined
+    let bestStrideFrequencyMaxV: number | undefined
+    for (const session of sessions) {
+      const metadata = sprintSets.find(s => String(s.id) === session.id)?.metadata as FreeelapMetadata | undefined
+      if (metadata?.splits) {
+        const maxVMetrics = extractMaxVelocityMetrics(metadata.splits)
+        if (maxVMetrics.strideLengthMaxV !== undefined) {
+          bestStrideLengthMaxV = bestStrideLengthMaxV !== undefined
+            ? Math.max(bestStrideLengthMaxV, maxVMetrics.strideLengthMaxV)
+            : maxVMetrics.strideLengthMaxV
+        }
+        if (maxVMetrics.strideFrequencyMaxV !== undefined) {
+          bestStrideFrequencyMaxV = bestStrideFrequencyMaxV !== undefined
+            ? Math.max(bestStrideFrequencyMaxV, maxVMetrics.strideFrequencyMaxV)
+            : maxVMetrics.strideFrequencyMaxV
+        }
+      }
+    }
+
+    // Build athlete metrics with phase-specific data using BEST values from all sessions
     const athleteMetrics: AthleteSprintMetrics = bestSession ? {
-      reactionTime: bestSession.reactionTime,
-      // Use all-time max top speed for benchmark comparison (highest from any session)
+      // Best reaction time across all sessions (lowest = best)
+      reactionTime: bestReactionTime,
+      // Best top speed across all sessions (highest = best)
       topSpeed: allTimeMaxTopSpeed ?? bestSession.topSpeed,
-      // Phase-specific stride metrics from max velocity phase
-      strideLengthMaxV: maxVMetrics.strideLengthMaxV,
-      strideFrequencyMaxV: maxVMetrics.strideFrequencyMaxV,
-      // Legacy fields (fall back to overall values if phase-specific not available)
-      strideLength: maxVMetrics.strideLengthMaxV ?? bestSession.strideLength,
-      strideFrequency: maxVMetrics.strideFrequencyMaxV ?? bestSession.frequency,
+      // Best stride metrics at max velocity phase across all sessions (highest = best)
+      strideLengthMaxV: bestStrideLengthMaxV,
+      strideFrequencyMaxV: bestStrideFrequencyMaxV,
+      // Legacy fields (fall back to best values or session values)
+      strideLength: bestStrideLengthMaxV ?? bestSession.strideLength,
+      strideFrequency: bestStrideFrequencyMaxV ?? bestSession.frequency,
       // Dynamic best time
       bestTime: bestSession.totalTime,
       bestDistance: bestSession.distance,
