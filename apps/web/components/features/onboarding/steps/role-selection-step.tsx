@@ -1,8 +1,8 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, ArrowRight, Users, Trophy, User } from "lucide-react"
+import { ArrowLeft, ArrowRight, Users, Trophy, User, Check } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { OnboardingData } from "../onboarding-wizard"
 
 interface RoleSelectionStepProps {
@@ -11,6 +11,27 @@ interface RoleSelectionStepProps {
   onNext: () => void
   onPrev: () => void
 }
+
+const ROLES = [
+  {
+    id: "athlete" as const,
+    icon: Trophy,
+    title: "Train with a Coach",
+    description: "Follow your coach's plans and track your progress",
+  },
+  {
+    id: "individual" as const,
+    icon: User,
+    title: "Train Myself",
+    description: "Create AI-powered plans and train independently",
+  },
+  {
+    id: "coach" as const,
+    icon: Users,
+    title: "Coach Athletes",
+    description: "Manage athletes and design training programs",
+  },
+]
 
 export function RoleSelectionStep({ userData, updateUserData, onNext, onPrev }: RoleSelectionStepProps) {
   const handleRoleSelect = (role: "athlete" | "coach" | "individual") => {
@@ -21,127 +42,59 @@ export function RoleSelectionStep({ userData, updateUserData, onNext, onPrev }: 
 
   return (
     <div className="space-y-8">
-      <div className="text-center space-y-4">
+      <div className="text-center space-y-3">
         <h2 className="text-2xl font-bold text-foreground">
           What's your role?
         </h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          Choose your primary role to get a personalized experience. 
-          You can always change this later in your settings.
+        <p className="text-muted-foreground">
+          Choose how you'll use Kasoku. You can change this later.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-        {/* Athlete Card */}
-        <Card
-          className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
-            userData.role === "athlete"
-              ? "ring-2 ring-primary bg-primary/5"
-              : "hover:ring-1 hover:ring-primary/50"
-          }`}
-          onClick={() => handleRoleSelect("athlete")}
-        >
-          <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trophy className="w-8 h-8 text-primary" />
-            </div>
-            <CardTitle className="text-xl">Train with a Coach</CardTitle>
-            <CardDescription>
-              I'm an athlete working with a coach
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-sm text-muted-foreground space-y-2">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-primary rounded-full mr-2" />
-                Follow coach's training plans
+      <div className="flex flex-col gap-3 max-w-md mx-auto">
+        {ROLES.map((role) => {
+          const Icon = role.icon
+          const isSelected = userData.role === role.id
+          return (
+            <button
+              key={role.id}
+              type="button"
+              onClick={() => handleRoleSelect(role.id)}
+              className={cn(
+                "flex items-center gap-4 p-4 rounded-xl text-left transition-all",
+                "border-2 active:scale-[0.98]",
+                isSelected
+                  ? "bg-primary/5 border-primary"
+                  : "bg-background border-border hover:border-primary/50 hover:bg-muted/30"
+              )}
+            >
+              <div
+                className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
+                  isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
+                )}
+              >
+                <Icon className="w-5 h-5" />
               </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-primary rounded-full mr-2" />
-                Log workouts and sessions
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-foreground">
+                  {role.title}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {role.description}
+                </div>
               </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-primary rounded-full mr-2" />
-                Track performance metrics
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Individual Card - Train Myself */}
-        <Card
-          className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
-            userData.role === "individual"
-              ? "ring-2 ring-primary bg-primary/5"
-              : "hover:ring-1 hover:ring-primary/50"
-          }`}
-          onClick={() => handleRoleSelect("individual")}
-        >
-          <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <User className="w-8 h-8 text-primary" />
-            </div>
-            <CardTitle className="text-xl">Train Myself</CardTitle>
-            <CardDescription>
-              I want to create my own training plans
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-sm text-muted-foreground space-y-2">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-primary rounded-full mr-2" />
-                Create your Training Blocks
-              </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-primary rounded-full mr-2" />
-                Log workouts with AI assistance
-              </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-primary rounded-full mr-2" />
-                Track your own progress
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Coach Card */}
-        <Card
-          className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
-            userData.role === "coach"
-              ? "ring-2 ring-primary bg-primary/5"
-              : "hover:ring-1 hover:ring-primary/50"
-          }`}
-          onClick={() => handleRoleSelect("coach")}
-        >
-          <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-primary" />
-            </div>
-            <CardTitle className="text-xl">Coach Athletes</CardTitle>
-            <CardDescription>
-              I manage athletes and create programs
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-sm text-muted-foreground space-y-2">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-primary rounded-full mr-2" />
-                Manage athlete groups
-              </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-primary rounded-full mr-2" />
-                Create training plans
-              </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-primary rounded-full mr-2" />
-                Analyze performance data
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              {isSelected && (
+                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
+                  <Check className="w-4 h-4 text-primary-foreground" />
+                </div>
+              )}
+            </button>
+          )
+        })}
       </div>
 
-      <div className="flex justify-between max-w-4xl mx-auto">
+      <div className="flex justify-between max-w-md mx-auto pt-4">
         <Button variant="outline" onClick={onPrev}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Previous
@@ -158,4 +111,4 @@ export function RoleSelectionStep({ userData, updateUserData, onNext, onPrev }: 
       </div>
     </div>
   )
-} 
+}
