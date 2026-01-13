@@ -16,8 +16,8 @@ export { EnhancedUserButton } from "./header/enhanced-user-button"
 
 // Sidebar components
 export { AppSidebar } from "./sidebar/app-sidebar"
-export { NavMain } from "./sidebar/nav-main"
-export { NavProjects } from "./sidebar/nav-projects"
+export { NavMain, NavSection, type NavItem } from "./sidebar/nav-main"
+export { NavProjects } from "./sidebar/nav-projects" // Legacy, consider removing
 export { TeamSwitcher } from "./sidebar/team-switcher"
 
 // New unified page layout system

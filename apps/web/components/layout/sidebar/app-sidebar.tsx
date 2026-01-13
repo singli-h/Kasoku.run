@@ -1,6 +1,10 @@
 /*
 <ai_context>
 This client component provides the sidebar for the Kasoku running/fitness app.
+Navigation is organized by user role with session-focused grouping:
+- Individual: Training (Workout, My Training, Performance) + Resources
+- Athlete: Training (Workout, Performance) + Resources
+- Coach: Overview + Coaching + My Training + Resources
 </ai_context>
 */
 
@@ -33,123 +37,157 @@ import {
   SidebarMenuItem,
   SidebarRail
 } from "@/components/ui/sidebar"
-import { NavMain } from "./nav-main"
-import { NavProjects } from "./nav-projects"
+import { NavSection } from "./nav-main"
 import { useUserRole, type UserRole } from "@/contexts/user-role-context"
 
-// Navigation item type with role-based visibility
-// If visibleTo is undefined, the item is visible to all roles
-interface NavItem {
+// Base navigation item definition with role visibility
+interface NavItemDef {
   title: string
   url: string
   icon: LucideIcon
-  visibleTo?: UserRole[]
+  visibleTo?: UserRole[] // undefined = visible to all
 }
 
-// Kasoku running/fitness navigation data
-// Note: Individual = Athlete + self-planning. Knowledge Base is available to all roles.
-const navItems: NavItem[] = [
-  {
+// All available navigation items
+const allNavItems: Record<string, NavItemDef> = {
+  overview: {
     title: "Overview",
     url: "/dashboard",
     icon: LayoutDashboard,
-    // visibleTo: undefined → visible to all
   },
-  {
+  workout: {
     title: "Workout",
     url: "/workout",
     icon: Dumbbell,
-    // visibleTo: undefined → visible to all (coaches also have athlete record)
   },
-  {
-    title: "Exercise Library",
-    url: "/library",
-    icon: BookOpen,
-    // visibleTo: undefined → visible to all
+  myTraining: {
+    title: "My Training",
+    url: "/plans",
+    icon: Calendar,
+    visibleTo: ['individual'],
   },
-  {
-    title: "Knowledge Base",
-    url: "/knowledge-base",
-    icon: FileText,
-    // visibleTo: undefined → visible to all (updated per clarification)
+  plans: {
+    title: "Plans",
+    url: "/plans",
+    icon: Calendar,
+    visibleTo: ['coach'],
   },
-  {
+  performance: {
     title: "Performance",
     url: "/performance",
     icon: TrendingUp,
-    // visibleTo: undefined → visible to all
   },
-  {
+  athletes: {
     title: "Athletes",
     url: "/athletes",
     icon: Users,
-    visibleTo: ['coach'], // Coach-only - managing athletes
+    visibleTo: ['coach'],
   },
-  {
+  sessions: {
+    title: "Sessions",
+    url: "/sessions",
+    icon: PlayCircle,
+    visibleTo: ['coach'],
+  },
+  exerciseLibrary: {
+    title: "Exercise Library",
+    url: "/library",
+    icon: BookOpen,
+  },
+  knowledgeBase: {
+    title: "Knowledge Base",
+    url: "/knowledge-base",
+    icon: FileText,
+  },
+  settings: {
     title: "Settings",
     url: "/settings",
     icon: Settings,
-    // visibleTo: undefined → visible to all
-  }
-]
-
-// Training-specific navigation items
-interface TrainingItem {
-  name: string
-  url: string
-  icon: LucideIcon
-  visibleTo?: UserRole[]
+  },
 }
 
-// Training items with role-specific labels
-const getTrainingItems = (role: UserRole | null): TrainingItem[] => [
-  {
-    name: role === 'coach' ? "Plans" : "My Training",
-    url: "/plans",
-    icon: Calendar,
-    visibleTo: ['coach', 'individual'], // Coaches + individuals can create plans
-  },
-  {
-    name: "Sessions",
-    url: "/sessions",
-    icon: PlayCircle,
-    visibleTo: ['coach'], // Coach-only session management
-  }
-]
+// Section configuration per role
+interface SectionConfig {
+  label: string
+  items: string[] // keys from allNavItems
+}
+
+// Role-based sidebar configurations
+const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
+  // Individual: Session-focused with Training priority
+  individual: [
+    {
+      label: "Training",
+      items: ["workout", "myTraining", "performance"],
+    },
+    {
+      label: "Resources",
+      items: ["exerciseLibrary", "knowledgeBase", "settings"],
+    },
+  ],
+
+  // Athlete: Simplified training focus (no plan access - assigned by coach)
+  athlete: [
+    {
+      label: "Training",
+      items: ["workout", "performance"],
+    },
+    {
+      label: "Resources",
+      items: ["exerciseLibrary", "knowledgeBase", "settings"],
+    },
+  ],
+
+  // Coach: Full access with coaching section
+  coach: [
+    {
+      label: "Overview",
+      items: ["overview"],
+    },
+    {
+      label: "Coaching",
+      items: ["athletes", "plans", "sessions"],
+    },
+    {
+      label: "My Training",
+      items: ["workout", "performance"],
+    },
+    {
+      label: "Resources",
+      items: ["exerciseLibrary", "knowledgeBase", "settings"],
+    },
+  ],
+}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const { role, isLoading } = useUserRole()
 
-  // Filter navigation items based on user role
-  const filteredNavItems = React.useMemo(() => {
+  // Build navigation sections based on user role
+  const sections = React.useMemo(() => {
     if (isLoading || !role) return []
 
-    return navItems.filter(item => {
-      // If visibleTo is undefined, item is visible to all roles
-      if (!item.visibleTo) return true
-      // Check if current role is in visibleTo array
-      return item.visibleTo.includes(role)
-    })
-  }, [role, isLoading])
+    const config = sidebarConfigs[role]
+    if (!config) return []
 
-  // Filter training items based on user role (with role-specific labels)
-  const filteredTrainingItems = React.useMemo(() => {
-    if (isLoading || !role) return []
-
-    return getTrainingItems(role).filter(item => {
-      // If visibleTo is undefined, item is visible to all roles
-      if (!item.visibleTo) return true
-      // Check if current role is in visibleTo array
-      return item.visibleTo.includes(role)
-    })
-  }, [role, isLoading])
-
-  // Add active state based on current pathname
-  const navItemsWithActive = filteredNavItems.map(item => ({
-    ...item,
-    isActive: pathname === item.url || pathname.startsWith(item.url + '/')
-  }))
+    return config.map(section => ({
+      label: section.label,
+      items: section.items
+        .map(key => allNavItems[key])
+        .filter(item => {
+          // Check visibility permissions
+          if (!item) return false
+          if (!item.visibleTo) return true
+          return item.visibleTo.includes(role)
+        })
+        .map(item => ({
+          title: item.title,
+          url: item.url,
+          icon: item.icon,
+          isActive: pathname === item.url || pathname.startsWith(item.url + '/'),
+        }))
+    })).filter(section => section.items.length > 0)
+  }, [role, isLoading, pathname])
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -171,10 +209,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navItemsWithActive} />
-        {filteredTrainingItems.length > 0 && (
-          <NavProjects projects={filteredTrainingItems} />
-        )}
+        {sections.map(section => (
+          <NavSection
+            key={section.label}
+            label={section.label}
+            items={section.items}
+          />
+        ))}
       </SidebarContent>
       <SidebarFooter>
         {/* User controls in header for better UX */}
