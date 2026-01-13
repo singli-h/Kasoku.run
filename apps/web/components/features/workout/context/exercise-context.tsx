@@ -472,17 +472,24 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
     exercisesRef.current = exercises
   }, [exercises])
 
-  // Cleanup timeouts on unmount
+  // CRITICAL FIX: Cleanup timeouts and queue when sessionId changes or on unmount
+  // This prevents cross-session data corruption and memory leaks
   useEffect(() => {
+    // Clear any pending timeouts and queue when sessionId changes
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
+        saveTimeoutRef.current = null
       }
       if (draftTimeoutRef.current) {
         clearTimeout(draftTimeoutRef.current)
+        draftTimeoutRef.current = null
       }
+      // Clear save queue to prevent old session data from being saved to new session
+      saveQueueRef.current.clear()
+      isSavingRef.current = false
     }
-  }, [])
+  }, [sessionId]) // Re-run cleanup when sessionId changes
 
   // Provide context value to children
   const value: ExerciseContextValue = {
