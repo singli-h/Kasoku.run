@@ -1,6 +1,6 @@
 /**
  * QuickStartWizard - Simplified Training Block Creation for Individuals
- * 2-step wizard: Block Settings → Week Setup
+ * 3-step wizard: Block Settings → Week Setup → AI Review
  *
  * Features localStorage persistence to preserve user input across refreshes
  */
@@ -29,6 +29,9 @@ import { createQuickTrainingBlockAction } from "@/actions/plans/plan-actions"
 
 // Equipment Selection
 import { EquipmentSelector, type EquipmentCategory } from "@/components/features/equipment"
+
+// AI Plan Generation
+import { PlanGenerationReview, MOCK_PROPOSED_PLAN } from "@/components/features/first-experience"
 
 // Duration presets in weeks
 const DURATION_PRESETS = [
@@ -94,7 +97,7 @@ const weekSetupSchema = z.object({
 type BlockSettingsData = z.infer<typeof blockSettingsSchema>
 type WeekSetupData = z.infer<typeof weekSetupSchema>
 
-type WizardStep = "settings" | "week"
+type WizardStep = "settings" | "week" | "review"
 
 // ============================================================================
 // LocalStorage Persistence
@@ -168,9 +171,11 @@ function clearWizardState(): void {
 
 interface QuickStartWizardProps {
   onComplete?: () => void
+  /** Skip AI review and create block directly (legacy mode) */
+  skipAIReview?: boolean
 }
 
-export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
+export function QuickStartWizard({ onComplete, skipAIReview = false }: QuickStartWizardProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
@@ -215,9 +220,10 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
     persistState()
   }, [persistState])
 
+  // For progress bar, only count settings and week steps (review is a different experience)
   const steps: WizardStep[] = ["settings", "week"]
-  const currentStepIndex = steps.indexOf(currentStep)
-  const progress = ((currentStepIndex + 1) / steps.length) * 100
+  const currentStepIndex = currentStep === "review" ? 1 : steps.indexOf(currentStep)
+  const progress = currentStep === "review" ? 100 : ((currentStepIndex + 1) / steps.length) * 100
 
   const handleSettingsComplete = (data: BlockSettingsData) => {
     setBlockSettings(data)
@@ -236,19 +242,31 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
   const handleWeekComplete = async (data: WeekSetupData) => {
     if (!blockSettings) return
 
+    // Store week setup data for review step
+    setWeekSetup(data)
+
+    // If AI review is enabled, go to review step
+    if (!skipAIReview) {
+      setCurrentStep("review")
+      return
+    }
+
+    // Legacy mode: create block directly
+    await createBlockDirectly(data)
+  }
+
+  const createBlockDirectly = async (data: WeekSetupData) => {
+    if (!blockSettings) return
+
     setIsCreating(true)
     try {
       const startDate = new Date()
       startDate.setHours(0, 0, 0, 0)
-      // P2 Fix: Start from today if Monday, otherwise next Monday for cleaner week alignment
       const dayOfWeek = startDate.getDay()
-      // Sunday(0) -> 1 day to Monday, Monday(1) -> 0 (today), Tue-Sat(2-6) -> days until next Monday
       const daysUntilMonday = dayOfWeek === 1 ? 0 : dayOfWeek === 0 ? 1 : 8 - dayOfWeek
       startDate.setDate(startDate.getDate() + daysUntilMonday)
 
       const endDate = addWeeks(startDate, blockSettings.durationWeeks)
-
-      // P1 Fix: Use date-only strings (YYYY-MM-DD) to match database format
       const formatDateOnly = (date: Date) => date.toISOString().split('T')[0]
 
       const result = await createQuickTrainingBlockAction({
@@ -262,9 +280,7 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
       })
 
       if (result.isSuccess) {
-        // Clear persisted state on successful creation
         clearWizardState()
-
         toast({
           title: "Training Block Created!",
           description: `"${blockSettings.name}" is ready. Let's start training!`,
@@ -296,6 +312,8 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
   const handleBack = () => {
     if (currentStep === "week") {
       setCurrentStep("settings")
+    } else if (currentStep === "review") {
+      setCurrentStep("week")
     }
   }
 
@@ -303,6 +321,48 @@ export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
     // Clear persisted state when user explicitly cancels
     clearWizardState()
     router.push("/plans")
+  }
+
+  const handleEditSetup = () => {
+    setCurrentStep("week")
+  }
+
+  const handlePlanComplete = (blockId: string) => {
+    clearWizardState()
+    toast({
+      title: "Training Block Created!",
+      description: `Your plan is ready. Let's start training!`,
+    })
+    if (onComplete) {
+      onComplete()
+    } else {
+      router.push(`/plans/${blockId}`)
+    }
+  }
+
+  // Review step is a full-page experience
+  if (currentStep === "review" && blockSettings && weekSetup) {
+    return (
+      <PlanGenerationReview
+        setupContext={{
+          blockName: blockSettings.name,
+          trainingDays: weekSetup.trainingDays || [],
+          durationMinutes: 45,
+          equipment: weekSetup.equipment || [],
+          focus: blockSettings.focus,
+        }}
+        plan={MOCK_PROPOSED_PLAN}
+        onEditSetup={handleEditSetup}
+        onComplete={handlePlanComplete}
+        onStartWorkout={(sessionId) => {
+          console.log('Start workout:', sessionId)
+          router.push('/workout')
+        }}
+        onViewBlock={(blockId) => {
+          router.push(`/plans/${blockId}`)
+        }}
+      />
+    )
   }
 
   return (
@@ -669,14 +729,17 @@ function WeekSetupStep({
             <Button type="button" variant="outline" onClick={onBack} disabled={isCreating}>
               Back
             </Button>
-            <Button type="submit" disabled={isCreating}>
+            <Button type="submit" disabled={isCreating} className="gap-2">
               {isCreating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...
                 </>
               ) : (
-                "Create Training Block"
+                <>
+                  Generate with AI
+                  <ArrowRight className="h-4 w-4" />
+                </>
               )}
             </Button>
           </div>
