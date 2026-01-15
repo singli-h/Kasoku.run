@@ -1,15 +1,21 @@
 /**
  * Session Details Dialog Component
  * Shows detailed view of completed workout session with all exercises and sets
+ * Includes editable notes functionality for completed sessions
  */
 
 "use client"
 
+import { useState, useEffect, useTransition } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Clock, Target, CheckCircle, TrendingUp, X } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Clock, Target, CheckCircle, TrendingUp, Pencil, Save, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
+import { updateTrainingSessionAction } from "@/actions/sessions/training-session-actions"
 import type { WorkoutLogWithDetails } from "@/types/training"
 import { format } from "date-fns"
 
@@ -43,10 +49,68 @@ function getActiveColumns(details: any[]) {
 }
 
 export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDetailsDialogProps) {
+  const { toast } = useToast()
+  const [isPending, startTransition] = useTransition()
+
+  // Notes editing state
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
+  const [editedNotes, setEditedNotes] = useState("")
+  const [currentNotes, setCurrentNotes] = useState<string | null>(null)
+
+  // Sync notes state when session changes
+  useEffect(() => {
+    if (session) {
+      const notes = (session as any)?.notes || null
+      setCurrentNotes(notes)
+      setEditedNotes(notes || "")
+    }
+  }, [session])
+
+  // Reset editing state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setIsEditingNotes(false)
+    }
+  }, [open])
+
   if (!session) return null
 
   const sessionData = session as any
   const sessionDate = sessionData.date_time ? new Date(sessionData.date_time) : new Date()
+
+  const handleSaveNotes = () => {
+    startTransition(async () => {
+      try {
+        const result = await updateTrainingSessionAction(sessionData.id, { notes: editedNotes || null })
+
+        if (result.isSuccess) {
+          setCurrentNotes(editedNotes || null)
+          setIsEditingNotes(false)
+          toast({
+            title: "Notes updated",
+            description: "Your session notes have been saved."
+          })
+        } else {
+          toast({
+            title: "Failed to save notes",
+            description: result.message,
+            variant: "destructive"
+          })
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to save notes. Please try again.",
+          variant: "destructive"
+        })
+      }
+    })
+  }
+
+  const handleCancelEdit = () => {
+    setEditedNotes(currentNotes || "")
+    setIsEditingNotes(false)
+  }
 
   // Use workout_log_exercises (actual completed data) if available,
   // fallback to session_plan_exercises (planned data) for older sessions
@@ -217,19 +281,68 @@ export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDet
             )}
           </div>
 
-          {/* Session Notes */}
-          {sessionData.notes && (
-            <Card>
-              <CardHeader>
+          {/* Session Notes - Editable */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Session Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {sessionData.notes}
+                {!isEditingNotes && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditingNotes(true)}
+                    className="h-8 px-2"
+                  >
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isEditingNotes ? (
+                <div className="space-y-3">
+                  <Textarea
+                    value={editedNotes}
+                    onChange={(e) => setEditedNotes(e.target.value)}
+                    placeholder="Add notes about this workout session..."
+                    className="min-h-24"
+                    disabled={isPending}
+                  />
+                  <div className="flex items-center gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      disabled={isPending}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveNotes}
+                      disabled={isPending}
+                    >
+                      {isPending ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-1" />
+                      )}
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className={cn(
+                  "text-sm whitespace-pre-wrap",
+                  currentNotes ? "text-muted-foreground" : "text-muted-foreground/50 italic"
+                )}>
+                  {currentNotes || "No notes for this session. Click Edit to add notes."}
                 </p>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </div>
       </DialogContent>
     </Dialog>

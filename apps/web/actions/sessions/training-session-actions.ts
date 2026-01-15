@@ -517,9 +517,10 @@ export async function completeTrainingSessionAction(
     }
 
     // Now complete the session
+    // Only include notes in update if explicitly provided (avoid overwriting with null)
     const updates: Partial<Database["public"]["Tables"]["workout_logs"]["Update"]> = {
       session_status: 'completed',
-      notes: notes || null
+      ...(notes !== undefined && { notes })
     }
 
     const { data: session, error } = await supabase
