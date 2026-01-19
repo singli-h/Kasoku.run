@@ -290,163 +290,9 @@ interface ChangeRequest {
 
 ---
 
-## 4. Tool Architecture
+## 4. Validation Layers
 
-### 4.1 Tool Categories
-
-| Category | Purpose | Runs On | Returns Tool Result? |
-|----------|---------|---------|---------------------|
-| **Proposal Tools** | Build changeset | Client | Yes (immediate) |
-| **Coordination Tools** | Control workflow | Client | Delayed (after user decision) |
-| **Execution** | Apply changes | Server | N/A (internal) |
-
-### 4.2 Proposal Tool Pattern
-
-```typescript
-// Separate tools per operation - follows {operation}{EntityType}ChangeRequest naming
-{
-  name: "create[EntityType]ChangeRequest",
-  description: "Add a new [entity] to the changeset",
-  parameters: {
-    // ... entity-specific fields for creation
-    reasoning: string         // AI explains why
-  }
-}
-
-{
-  name: "update[EntityType]ChangeRequest",
-  description: "Update an existing [entity] in the changeset",
-  parameters: {
-    entityId: string,         // Required - which entity to update
-    // ... fields to change
-    reasoning: string
-  }
-}
-
-{
-  name: "delete[EntityType]ChangeRequest",
-  description: "Remove an [entity] from the changeset",
-  parameters: {
-    entityId: string,         // Required - which entity to delete
-    reasoning: string
-  }
-}
-```
-
-**Key Principle**: One tool = one entity type + one operation. No combined tools with `operationType` parameter.
-
-### 4.3 Coordination Tools
-
-```typescript
-// Submit for approval
-{
-  name: "confirmChangeSet",
-  parameters: {
-    title: string,
-    description: string
-  }
-}
-
-// Clear and start over (rare)
-{
-  name: "resetChangeSet",
-  parameters: {}
-}
-```
-
-### 4.4 Tool Handler Pattern
-
-```typescript
-function handleToolCall(name: string, args: unknown): ToolResult | 'PAUSE' {
-  // Check if it's a ChangeRequest tool
-  if (name.endsWith('ChangeRequest')) {
-    const { operation, entity } = parseChangeRequestToolName(name)
-    const request = transform(entity, operation, args)
-    buffer.upsert(request)
-    return { success: true }  // Immediate response
-  }
-
-  // Coordination tools
-  if (name === 'confirmChangeSet') {
-    showApprovalWidget(buffer.snapshot())
-    return 'PAUSE'  // Don't call addToolOutput yet!
-  }
-
-  if (name === 'resetChangeSet') {
-    buffer.clear()
-    return { success: true }
-  }
-}
-
-// Parse tool name: createOrderChangeRequest → { operation: 'create', entity: 'Order' }
-function parseChangeRequestToolName(name: string): { operation: string, entity: string } {
-  const match = name.match(/^(create|update|delete)(\w+)ChangeRequest$/)
-  if (!match) throw new Error(`Invalid tool name: ${name}`)
-  return { operation: match[1], entity: match[2] }
-}
-```
-
----
-
-## 5. Stream Synchronization (Pause-Resume)
-
-### 5.1 The Challenge
-
-AI must wait for human decision without blocking the system.
-
-### 5.2 The Solution
-
-Control when `addToolOutput()` is called:
-
-```
-1. AI calls confirmChangeSet()
-       │
-2. Client intercepts (don't return result yet)
-       │
-3. AI stream PAUSES (waiting for tool result)
-       │
-4. Review widget renders (user has unlimited time)
-       │
-5. User decides (approve/reject)
-       │
-6. Client calls addToolOutput() with decision
-       │
-7. AI stream RESUMES with decision context
-```
-
-### 5.3 Implementation
-
-```typescript
-case 'confirmChangeSet':
-  showApprovalWidget({
-    changeset: buffer.snapshot(),
-
-    onApprove: async () => {
-      const result = await executeChangeSet(snapshot)
-      addToolOutput(toolCallId, result)  // NOW resume AI
-    },
-
-    onRejectWithFeedback: (feedback: string) => {
-      addToolOutput(toolCallId, {
-        status: 'rejected_with_feedback',
-        feedback
-      })
-    },
-
-    onRejectCompletely: () => {
-      buffer.clear()
-      addToolOutput(toolCallId, { status: 'rejected' })
-    }
-  })
-
-  return 'PAUSE'  // Critical: don't return result here
-```
-
----
-
-## 6. Validation Layers
-
-### 6.1 Layer Overview
+### 4.1 Layer Overview
 
 ```
 AI Proposes → [Schema] → [Business] → [State] → User Reviews → [Freshness] → Execute
@@ -454,7 +300,7 @@ AI Proposes → [Schema] → [Business] → [State] → User Reviews → [Freshn
              Immediate   Pre-confirm  Pre-confirm              Pre-execute
 ```
 
-### 6.2 Layer 1: Schema Validation (Immediate)
+### 4.2 Layer 1: Schema Validation (Immediate)
 
 When change request added to buffer.
 
@@ -465,7 +311,7 @@ When change request added to buffer.
 
 **Failure**: Return error to AI immediately, AI can retry
 
-### 6.3 Layer 2: Business Rules (Pre-Confirmation)
+### 4.3 Layer 2: Business Rules (Pre-Confirmation)
 
 Before transitioning to `pending_approval`.
 
@@ -473,7 +319,7 @@ Before transitioning to `pending_approval`.
 
 **Failure**: Return error to AI, AI can correct
 
-### 6.4 Layer 3: State Consistency (Pre-Confirmation)
+### 4.4 Layer 3: State Consistency (Pre-Confirmation)
 
 **Checks**:
 - Referenced entities exist
@@ -482,7 +328,7 @@ Before transitioning to `pending_approval`.
 
 **Failure**: Block confirmation, AI must fix
 
-### 6.5 Layer 4: Freshness / Optimistic Concurrency (Pre-Execution)
+### 4.5 Layer 4: Freshness / Optimistic Concurrency (Pre-Execution)
 
 Immediately before executing each operation.
 
@@ -492,89 +338,9 @@ Immediately before executing each operation.
 
 ---
 
-## 7. Execution Layer
+## 5. Persistence Strategy
 
-### 7.1 Atomic Execution
-
-```typescript
-async function executeChangeSet(changeset: ChangeSet): Promise<ExecutionResult> {
-  const tx = await db.transaction()
-
-  try {
-    for (const request of sortByExecutionOrder(changeset.changeRequests)) {
-      // Freshness check
-      if (!await validateFreshness(request, tx)) {
-        throw new StaleDataError(request)
-      }
-
-      // Execute
-      await executeOperation(request, tx)
-    }
-
-    await tx.commit()
-    return { status: 'approved' }
-
-  } catch (error) {
-    await tx.rollback()
-    return {
-      status: 'execution_failed',
-      error: classifyError(error)
-    }
-  }
-}
-```
-
-### 7.2 Operation Execution
-
-```typescript
-async function executeOperation(request: ChangeRequest, tx: Transaction) {
-  switch (request.operationType) {
-    case 'create':
-      return tx.insert(request.entityType, request.proposedData)
-    case 'update':
-      return tx.update(request.entityType, request.entityId, request.proposedData)
-    case 'delete':
-      return tx.delete(request.entityType, request.entityId)  // or soft-delete
-  }
-}
-```
-
----
-
-## 8. Error Taxonomy
-
-### 8.1 Error Classification
-
-| Type | Examples | AI Strategy |
-|------|----------|-------------|
-| `TRANSIENT` | Network timeout, DB locked | Auto-retry (wait, re-execute) |
-| `LOGIC_DATA` | FK violation, unique constraint | Auto-correct (fix via upsert) |
-| `STALE_STATE` | Optimistic lock fail | Refresh data, re-propose |
-| `CRITICAL` | Internal server error | Abort, notify user |
-
-### 8.2 Error Response Structure
-
-```typescript
-interface ExecutionError {
-  type: 'TRANSIENT' | 'LOGIC_DATA' | 'STALE_STATE' | 'CRITICAL'
-  code: string
-  message: string
-  failedRequestIndex: number
-  entityId?: string
-}
-```
-
-### 8.3 Recovery Rules
-
-1. After any correction, user MUST re-approve
-2. Never auto-execute after error fix
-3. AI receives full error context to formulate fix
-
----
-
-## 9. Persistence Strategy
-
-### 9.1 What to Persist
+### 5.1 What to Persist
 
 | State | Persist? | Reason |
 |-------|----------|--------|
@@ -585,7 +351,7 @@ interface ExecutionError {
 | `executing` | No | Seconds-long |
 | `execution_failed` | No | AI handles immediately |
 
-### 9.2 Minimal Schema
+### 5.2 Minimal Schema
 
 ```sql
 CREATE TABLE changesets (
@@ -614,9 +380,9 @@ CREATE TABLE change_requests (
 
 ---
 
-## 10. Conversation-ChangeSet Relationship
+## 6. Conversation-ChangeSet Relationship
 
-### 10.1 Constraint
+### 6.1 Constraint
 
 **One active changeset per conversation.**
 
@@ -624,7 +390,7 @@ CREATE TABLE change_requests (
 - Agent cannot read previous changesets
 - Reset = clear current changeset, start fresh
 
-### 10.2 Lifecycle
+### 6.2 Lifecycle
 
 ```
 Conversation Start
@@ -647,15 +413,8 @@ Conversation Start
 └──────────────────┘
 ```
 
-### 10.3 Implications
+### 6.3 Implications
 
 - No changeset history within conversation
 - Each conversation manages at most one changeset at a time
 - Approved/rejected changesets are persisted for audit but not accessible to agent
-
----
-
-## References
-
-- Principles: `20251221-changeset-principles.md`
-- Original sources: `20251217-product1-*.md`, `20251218-product2-*.md`

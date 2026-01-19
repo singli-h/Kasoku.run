@@ -5,21 +5,24 @@
  *
  * Seamless in-place component for AI plan generation and review.
  * Handles: Generation loading → Week 1 review → Full plan → Success
- * No nested stepping - clean single flow.
+ * Now integrated with real AI tools via usePlanGeneratorChat.
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, MessageCircle, Check, Loader2, Sparkles, ChevronLeft, Calendar, Clock, Dumbbell } from 'lucide-react'
+import { useAuth } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ChatDrawer } from '@/components/features/ai-assistant/ChatDrawer'
 import { ChatSidebar } from '@/components/features/ai-assistant/ChatSidebar'
 import { useIsDesktop } from '@/components/features/ai-assistant/hooks/useAILayoutMode'
+import { createClientSupabaseClient } from '@/lib/supabase-client'
+import { usePlanGeneratorChat } from '@/lib/changeset/plan-generator'
+import type { MesocycleData, PlanGenerationContext, CurrentPlanState } from '@/lib/changeset/plan-generator'
 import { WeekStepper } from './WeekStepper'
 import { FirstWorkoutSuccess } from './FirstWorkoutSuccess'
-import type { ProposedBlock } from './types'
-import type { UIMessage } from '@ai-sdk/react'
+import type { ProposedBlock, ProposedWeek, ProposedSession, ProposedExercise, ProposedSet } from './types'
 
 type FlowState = 'generating' | 'review-week1' | 'generating-full' | 'review-full' | 'applying' | 'success'
 
@@ -35,13 +38,71 @@ const DAY_LABELS: Record<number, string> = {
   0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat'
 }
 
+const DAY_NAME_TO_NUMBER: Record<string, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6
+}
+
 function formatDays(days: number[]): string {
   return days.sort((a, b) => a - b).map(d => DAY_LABELS[d]).join('/')
 }
 
+/**
+ * Convert CurrentPlanState (from AI) to ProposedBlock (for UI)
+ */
+function convertToProposedBlock(planState: CurrentPlanState | null, setupContext: SetupContext): ProposedBlock | null {
+  if (!planState || !planState.mesocycle) return null
+
+  const weeks: ProposedWeek[] = planState.microcycles.map((microcycle) => {
+    const sessions: ProposedSession[] = microcycle.session_plans.map((session) => {
+      const exercises: ProposedExercise[] = session.session_plan_exercises.map((exercise) => {
+        const sets: ProposedSet[] = exercise.session_plan_sets.map((set) => ({
+          reps: set.reps ?? 10,
+          weight: null,
+          restSeconds: set.rest_seconds ?? 60,
+          rpe: set.rpe ?? null,
+        }))
+
+        return {
+          exerciseId: parseInt(exercise.exercise_id) || 0,
+          exerciseName: exercise.exercise_name,
+          sets,
+          notes: exercise.notes,
+        }
+      })
+
+      return {
+        id: session.id,
+        name: session.name,
+        dayOfWeek: DAY_NAME_TO_NUMBER[session.day_of_week.toLowerCase()] ?? 1,
+        exercises,
+        estimatedDuration: session.estimated_duration,
+      }
+    })
+
+    return {
+      id: microcycle.id,
+      weekNumber: microcycle.week_number,
+      name: microcycle.name,
+      sessions,
+      isDeload: microcycle.is_deload,
+    }
+  })
+
+  return {
+    name: planState.mesocycle.name,
+    description: `AI-generated ${planState.mesocycle.goal_type} program`,
+    durationWeeks: planState.mesocycle.duration_weeks,
+    focus: setupContext.focus,
+    weeks,
+  }
+}
+
 interface PlanGenerationReviewProps {
   setupContext: SetupContext
-  plan: ProposedBlock
+  /** Pre-created mesocycle data */
+  mesocycle: MesocycleData
+  /** Generation context from wizard */
+  generationContext: PlanGenerationContext
   onEditSetup: () => void
   onComplete: (blockId: string) => void
   onStartWorkout?: (sessionId: string) => void
@@ -50,7 +111,8 @@ interface PlanGenerationReviewProps {
 
 export function PlanGenerationReview({
   setupContext,
-  plan,
+  mesocycle,
+  generationContext,
   onEditSetup,
   onComplete,
   onStartWorkout,
@@ -59,108 +121,138 @@ export function PlanGenerationReview({
   const [flowState, setFlowState] = useState<FlowState>('generating')
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(0)
 
-  // Chat state
-  const [chatOpen, setChatOpen] = useState(false)
-  const [messages, setMessages] = useState<UIMessage[]>([])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-
   const isDesktop = useIsDesktop()
+  const { getToken } = useAuth()
 
-  const firstSession = plan.weeks[0]?.sessions[0]
-  const approvedWeeks = flowState === 'generating' || flowState === 'review-week1' || flowState === 'generating-full'
-    ? 1
-    : plan.weeks.length
+  // Stabilize getToken with a ref to prevent infinite re-renders
+  const getTokenRef = useRef(getToken)
+  getTokenRef.current = getToken
 
-  // Simulate initial AI generation
-  useEffect(() => {
-    if (flowState === 'generating') {
-      const timer = setTimeout(() => {
-        // Add welcome message
-        const welcomeMessage = {
-          id: 'welcome-1',
-          role: 'assistant',
-          parts: [{
-            type: 'text',
-            text: `Here's Week 1 of your ${plan.name}. I've designed ${plan.weeks[0]?.sessions.length || 3} workouts based on your ${setupContext.focus} goals.\n\nTake a look and let me know if you'd like any adjustments.`,
-          }],
-        } as UIMessage
-        setMessages([welcomeMessage])
+  // Create Supabase client with Clerk auth (only once)
+  const supabase = useMemo(
+    () => createClientSupabaseClient(() => getTokenRef.current()),
+    [] // Empty deps - client created once, uses ref for fresh token
+  )
+
+  // Track week1OnlyMode in a ref to avoid stale closure in callback
+  const week1OnlyModeRef = useRef(true)
+
+  // Stable callback for status changes
+  const handleStatusChange = useCallback((newStatus: import('@/lib/changeset/plan-generator').PlanGeneratorStatus) => {
+    console.log('[PlanGenerationReview] Status changed:', newStatus)
+    if (newStatus === 'pending_approval') {
+      // AI finished building, show review
+      if (week1OnlyModeRef.current) {
         setFlowState('review-week1')
-      }, 2500)
-      return () => clearTimeout(timer)
+      } else {
+        setFlowState('review-full')
+      }
     }
-  }, [flowState, plan, setupContext.focus])
-
-  const handleLooksGood = () => {
-    setFlowState('generating-full')
-
-    // Simulate generating remaining weeks
-    setTimeout(() => {
-      const aiMessage = {
-        id: `ai-${Date.now()}`,
-        role: 'assistant',
-        parts: [{
-          type: 'text',
-          text: `Great! I've generated the remaining ${plan.weeks.length - 1} weeks based on your Week 1 preferences. The plan progressively builds intensity while keeping the same movement patterns.\n\nReview the full plan and apply when you're ready!`
-        }],
-      } as UIMessage
-      setMessages(prev => [...prev, aiMessage])
-      setFlowState('review-full')
-    }, 2000)
-  }
-
-  const handleApplyPlan = () => {
-    setFlowState('applying')
-    setTimeout(() => {
-      setFlowState('success')
-    }, 1500)
-  }
-
-  const handleOpenChat = () => {
-    setChatOpen(true)
-  }
-
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || isLoading) return
-
-    const userMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      parts: [{ type: 'text', text: input.trim() }],
-    } as UIMessage
-    setMessages(prev => [...prev, userMessage])
-    setInput('')
-    setIsLoading(true)
-
-    setTimeout(() => {
-      const aiMessage = {
-        id: `ai-${Date.now()}`,
-        role: 'assistant',
-        parts: [{ type: 'text', text: "I've noted your feedback. I can adjust the exercises, sets, or reps. What specific changes would you like?" }],
-      } as UIMessage
-      setMessages(prev => [...prev, aiMessage])
-      setIsLoading(false)
-    }, 1500)
-  }, [input, isLoading])
-
-  const handleClearChat = useCallback(() => {
-    setMessages([])
   }, [])
 
-  const handleStartWorkout = () => {
+  // Initialize plan generator chat
+  const {
+    messages,
+    input,
+    setInput,
+    handleSubmit,
+    isLoading,
+    status,
+    week1OnlyMode,
+    currentPlanState,
+    pendingCount,
+    startGeneration,
+    approveWeek1,
+    resetPlan,
+  } = usePlanGeneratorChat({
+    mesocycle,
+    context: generationContext,
+    supabase,
+    debug: true,
+    onStatusChange: handleStatusChange,
+  })
+
+  // Keep ref in sync
+  week1OnlyModeRef.current = week1OnlyMode
+
+  // Chat drawer state
+  const [chatOpen, setChatOpen] = useState(false)
+
+  // Track if generation has started to prevent duplicate starts
+  const generationStartedRef = useRef(false)
+
+  // Convert AI plan state to UI format
+  const plan = useMemo(
+    () => convertToProposedBlock(currentPlanState, setupContext),
+    [currentPlanState, setupContext]
+  )
+
+  const firstSession = plan?.weeks[0]?.sessions[0]
+  const approvedWeeks = flowState === 'generating' || flowState === 'review-week1' || flowState === 'generating-full'
+    ? 1
+    : (plan?.weeks.length ?? 1)
+
+  // Start generation on mount (only once)
+  useEffect(() => {
+    if (flowState === 'generating' && status === null && !generationStartedRef.current) {
+      generationStartedRef.current = true
+      console.log('[PlanGenerationReview] Starting generation...')
+      startGeneration()
+    }
+  }, [flowState, status, startGeneration])
+
+  // Watch for plan state changes during generation
+  useEffect(() => {
+    if (flowState === 'generating' && currentPlanState && currentPlanState.microcycles.length > 0) {
+      // Plan has content, transition to review
+      console.log('[PlanGenerationReview] Plan built, transitioning to review')
+      setFlowState('review-week1')
+    }
+  }, [flowState, currentPlanState])
+
+  // Watch for full plan generation
+  useEffect(() => {
+    if (flowState === 'generating-full' && currentPlanState && currentPlanState.microcycles.length > 1) {
+      console.log('[PlanGenerationReview] Full plan ready')
+      setFlowState('review-full')
+    }
+  }, [flowState, currentPlanState])
+
+  const handleLooksGood = useCallback(() => {
+    setFlowState('generating-full')
+    approveWeek1()
+  }, [approveWeek1])
+
+  const handleApplyPlan = useCallback(() => {
+    setFlowState('applying')
+    // TODO: Execute database save
+    setTimeout(() => {
+      setFlowState('success')
+      onComplete(mesocycle.id)
+    }, 1500)
+  }, [mesocycle.id, onComplete])
+
+  const handleOpenChat = useCallback(() => {
+    setChatOpen(true)
+  }, [])
+
+  const handleClearChat = useCallback(() => {
+    resetPlan()
+    setFlowState('generating')
+  }, [resetPlan])
+
+  const handleStartWorkout = useCallback(() => {
     if (firstSession) {
       onStartWorkout?.(firstSession.id)
     }
-  }
+  }, [firstSession, onStartWorkout])
 
-  const handleViewBlock = () => {
-    onViewBlock?.('mock-block-id')
-  }
+  const handleViewBlock = useCallback(() => {
+    onViewBlock?.(mesocycle.id)
+  }, [mesocycle.id, onViewBlock])
 
   // Success screen
-  if (flowState === 'success' && firstSession) {
+  if (flowState === 'success' && plan && firstSession) {
     return (
       <FirstWorkoutSuccess
         blockName={plan.name}
@@ -246,9 +338,13 @@ export function PlanGenerationReview({
                           Designing workouts based on your {setupContext.focus} goals
                         </p>
                         <div className="w-full max-w-xs space-y-2">
-                          <GenerationStep label="Analyzed your goals" done />
-                          <GenerationStep label="Selected exercises" done />
-                          <GenerationStep label="Creating workouts" loading />
+                          <GenerationStep label="Analyzing your goals" done={pendingCount > 0} loading={pendingCount === 0} />
+                          <GenerationStep label="Selecting exercises" done={pendingCount > 5} loading={pendingCount > 0 && pendingCount <= 5} />
+                          <GenerationStep label="Creating workouts" loading={pendingCount > 5} />
+                        </div>
+                        {/* Debug info */}
+                        <div className="mt-4 text-xs text-muted-foreground">
+                          Status: {status} | Changes: {pendingCount}
                         </div>
                       </div>
                     </CardContent>
@@ -257,7 +353,7 @@ export function PlanGenerationReview({
               )}
 
               {/* Review Week 1 State */}
-              {flowState === 'review-week1' && (
+              {flowState === 'review-week1' && plan && (
                 <motion.div
                   key="review-week1"
                   initial={{ opacity: 0, y: 10 }}
@@ -306,7 +402,7 @@ export function PlanGenerationReview({
               )}
 
               {/* Generating Full Plan State */}
-              {flowState === 'generating-full' && (
+              {flowState === 'generating-full' && plan && (
                 <motion.div
                   key="generating-full"
                   initial={{ opacity: 0, y: 10 }}
@@ -340,7 +436,7 @@ export function PlanGenerationReview({
               )}
 
               {/* Review Full Plan State */}
-              {(flowState === 'review-full' || flowState === 'applying') && (
+              {(flowState === 'review-full' || flowState === 'applying') && plan && (
                 <motion.div
                   key="review-full"
                   initial={{ opacity: 0, y: 10 }}

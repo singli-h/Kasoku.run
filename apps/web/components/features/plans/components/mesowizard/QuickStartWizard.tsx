@@ -7,7 +7,7 @@
 
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect, useCallback, memo, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -31,7 +31,8 @@ import { createQuickTrainingBlockAction } from "@/actions/plans/plan-actions"
 import { EquipmentSelector, type EquipmentCategory } from "@/components/features/equipment"
 
 // AI Plan Generation
-import { PlanGenerationReview, MOCK_PROPOSED_PLAN } from "@/components/features/first-experience"
+import { PlanGenerationReview } from "@/components/features/first-experience"
+import type { MesocycleData, PlanGenerationContext } from "@/lib/changeset/plan-generator"
 
 // Duration presets in weeks
 const DURATION_PRESETS = [
@@ -340,27 +341,34 @@ export function QuickStartWizard({ onComplete, skipAIReview = false }: QuickStar
     }
   }
 
+  // Stable callbacks for review step
+  const handleStartWorkout = useCallback((sessionId: string) => {
+    console.log('Start workout:', sessionId)
+    router.push('/workout')
+  }, [router])
+
+  const handleViewBlock = useCallback((blockId: string) => {
+    router.push(`/plans/${blockId}`)
+  }, [router])
+
+  // Compute stable mesoId
+  const mesoId = useMemo(() => {
+    if (!blockSettings) return ''
+    return `temp-meso-${blockSettings.name.replace(/\s+/g, '-').toLowerCase()}`
+  }, [blockSettings?.name])
+
   // Review step is a full-page experience
-  if (currentStep === "review" && blockSettings && weekSetup) {
+  // Create data inline only when rendering review to avoid hook dependency issues
+  if (currentStep === "review" && blockSettings && weekSetup && mesoId) {
     return (
-      <PlanGenerationReview
-        setupContext={{
-          blockName: blockSettings.name,
-          trainingDays: weekSetup.trainingDays || [],
-          durationMinutes: 45,
-          equipment: weekSetup.equipment || [],
-          focus: blockSettings.focus,
-        }}
-        plan={MOCK_PROPOSED_PLAN}
+      <PlanGenerationReviewWrapper
+        blockSettings={blockSettings}
+        weekSetup={weekSetup}
+        mesoId={mesoId}
         onEditSetup={handleEditSetup}
         onComplete={handlePlanComplete}
-        onStartWorkout={(sessionId) => {
-          console.log('Start workout:', sessionId)
-          router.push('/workout')
-        }}
-        onViewBlock={(blockId) => {
-          router.push(`/plans/${blockId}`)
-        }}
+        onStartWorkout={handleStartWorkout}
+        onViewBlock={handleViewBlock}
       />
     )
   }
@@ -748,3 +756,90 @@ function WeekSetupStep({
     </Card>
   )
 }
+
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
+
+/**
+ * Wrapper component for PlanGenerationReview that handles memoization
+ * This prevents re-renders by keeping props stable
+ */
+const PlanGenerationReviewWrapper = memo(function PlanGenerationReviewWrapper({
+  blockSettings,
+  weekSetup,
+  mesoId,
+  onEditSetup,
+  onComplete,
+  onStartWorkout,
+  onViewBlock,
+}: {
+  blockSettings: BlockSettingsData
+  weekSetup: Partial<WeekSetupData>
+  mesoId: string
+  onEditSetup: () => void
+  onComplete: (blockId: string) => void
+  onStartWorkout: (sessionId: string) => void
+  onViewBlock: (blockId: string) => void
+}) {
+  // Create data once on initial render using refs
+  const initialDataRef = useRef<{
+    mesocycle: MesocycleData
+    generationContext: PlanGenerationContext
+    setupContext: {
+      blockName: string
+      trainingDays: number[]
+      durationMinutes: number
+      equipment: string[]
+      focus: string
+    }
+  } | null>(null)
+
+  if (!initialDataRef.current) {
+    const trainingDays = weekSetup.trainingDays || []
+    const equipment = weekSetup.equipment || []
+    const equipmentType = (equipment[0] as 'full_gym' | 'home' | 'bodyweight' | 'dumbbells') || 'full_gym'
+
+    initialDataRef.current = {
+      mesocycle: {
+        id: mesoId,
+        name: blockSettings.name,
+        goal_type: blockSettings.focus,
+        duration_weeks: blockSettings.durationWeeks,
+        user_id: 'temp-user',
+      },
+      generationContext: {
+        user: {
+          experience_level: 'intermediate',
+          primary_goal: blockSettings.focus,
+          secondary_goals: [],
+        },
+        preferences: {
+          training_days: trainingDays.map(d => DAY_NAMES[d]),
+          session_duration: 45,
+          equipment: equipmentType,
+        },
+        mesocycle_id: mesoId,
+      },
+      setupContext: {
+        blockName: blockSettings.name,
+        trainingDays,
+        durationMinutes: 45,
+        equipment,
+        focus: blockSettings.focus,
+      },
+    }
+  }
+
+  const { mesocycle, generationContext, setupContext } = initialDataRef.current
+
+  return (
+    <PlanGenerationReview
+      setupContext={setupContext}
+      mesocycle={mesocycle}
+      generationContext={generationContext}
+      onEditSetup={onEditSetup}
+      onComplete={onComplete}
+      onStartWorkout={onStartWorkout}
+      onViewBlock={onViewBlock}
+    />
+  )
+})
