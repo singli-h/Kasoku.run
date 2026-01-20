@@ -802,27 +802,6 @@ export function ProfileSettingsPage() {
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Permission Denied Banner */}
-            {isPushSupported && pushPermission === 'denied' && (
-              <BentoCard variant="subtle" className="md:col-span-2 border-destructive/50">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-foreground mb-1">Notifications are blocked</p>
-                    <p className="text-muted-foreground">
-                      You previously denied notification permissions. To enable notifications:
-                    </p>
-                    <ol className="list-decimal list-inside mt-2 text-muted-foreground space-y-1">
-                      <li>Click the lock/info icon in your browser&apos;s address bar</li>
-                      <li>Find &quot;Notifications&quot; in the permissions list</li>
-                      <li>Change it from &quot;Block&quot; to &quot;Allow&quot;</li>
-                      <li>Refresh this page</li>
-                    </ol>
-                  </div>
-                </div>
-              </BentoCard>
-            )}
-
             {/* Push Notifications Toggle */}
             <BentoCard variant={isPushSubscribed ? "highlight" : "default"} className="md:col-span-2">
               <div className="flex items-center justify-between">
@@ -841,7 +820,7 @@ export function ProfileSettingsPage() {
                       {!isPushSupported
                         ? "Not supported in this browser"
                         : pushPermission === 'denied'
-                          ? "Blocked — see instructions above to re-enable"
+                          ? "Blocked — click the lock icon in your address bar to allow"
                           : isPushSubscribed
                             ? "Receiving notifications on this device"
                             : "Get reminders about your workouts"}

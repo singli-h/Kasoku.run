@@ -7,7 +7,7 @@ Allows custom error messages and recovery actions per feature.
 
 "use client"
 
-import { ErrorBoundary } from "react-error-boundary"
+import { ErrorBoundary, type FallbackProps } from "react-error-boundary"
 import { ErrorFallback } from "@/components/layout/error-fallback"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@ interface FeatureErrorBoundaryProps {
   featureName?: string
   customMessage?: string
   onReset?: () => void
-  fallback?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>
+  fallback?: React.ComponentType<FallbackProps>
 }
 
 /**
@@ -41,13 +41,15 @@ export function FeatureErrorBoundary({
   onReset,
   fallback
 }: FeatureErrorBoundaryProps) {
-  const defaultFallback = ({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) => {
+  const defaultFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
     const handleReset = () => {
       if (onReset) {
         onReset()
       }
       resetErrorBoundary()
     }
+
+    const errorMessage = error instanceof Error ? error.message : String(error)
 
     return (
       <div className="min-h-[400px] flex items-center justify-center p-4">
@@ -68,12 +70,12 @@ export function FeatureErrorBoundary({
               <details className="rounded-md bg-muted p-3 text-sm">
                 <summary className="cursor-pointer font-medium">Error Details</summary>
                 <pre className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">
-                  {error.message}
+                  {errorMessage}
                 </pre>
               </details>
             )}
-            <Button 
-              onClick={handleReset} 
+            <Button
+              onClick={handleReset}
               className="w-full"
               variant="default"
             >
