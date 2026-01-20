@@ -127,6 +127,9 @@ export interface CreateHandlersOptions {
 
   // Supabase client for exercise search
   supabase: SupabaseClient
+
+  // User ID for filtering custom exercises (from auth)
+  userId?: string
 }
 
 /**
@@ -166,6 +169,7 @@ export function createPlanGeneratorHandlers(
     setMetadata,
     context,
     supabase,
+    userId,
   } = options
 
   return {
@@ -180,7 +184,8 @@ export function createPlanGeneratorHandlers(
 
     searchExercisesForPlan: async (input: SearchExercisesForPlanInput) => {
       console.log('[PlanGenerator] searchExercisesForPlan called', input)
-      return executeSearchExercisesForPlan(input, supabase)
+      // Pass userId to include user's custom exercises in search results
+      return executeSearchExercisesForPlan(input, supabase, userId)
     },
 
     getCurrentPlanState: () => {
@@ -295,44 +300,71 @@ export function createPlanGeneratorHandlers(
 
 /**
  * Search exercises in the database.
- * Enhanced version with equipment filtering for plan generation.
+ * Uses PostgreSQL full-text search for efficient querying at scale (500+ exercises).
+ *
+ * Supports:
+ * - Full-text search via search_tsv column (indexed)
+ * - User's custom exercises (visibility = 'private')
+ * - Global exercises (visibility = 'global')
+ * - Exercise type information for AI context
  */
 async function executeSearchExercisesForPlan(
   input: SearchExercisesForPlanInput,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  userId?: string
 ): Promise<ExerciseSearchResult[]> {
   const { query, muscle_groups, equipment, exclude_equipment, limit = 10 } = input
 
-  // Build query
+  // Build query with exercise type for better AI context
   let queryBuilder = supabase
     .from('exercises')
-    .select('id, name, description')
+    .select(`
+      id,
+      name,
+      description,
+      exercise_type:exercise_types(type, description)
+    `)
     .eq('is_archived', false)
     .limit(limit)
 
-  // Text search on name
-  if (query) {
-    queryBuilder = queryBuilder.ilike('name', `%${query}%`)
+  // Visibility filter: include global exercises + user's custom exercises
+  if (userId) {
+    queryBuilder = queryBuilder.or(
+      `visibility.eq.global,and(visibility.eq.private,owner_user_id.eq.${userId})`
+    )
+  } else {
+    // If no user ID, only show global exercises
+    queryBuilder = queryBuilder.eq('visibility', 'global')
+  }
+
+  // Full-text search using search_tsv column (indexed tsvector)
+  // This is much more efficient than ilike for 500+ exercises
+  if (query && query.trim()) {
+    // Convert search terms to tsquery format (space-separated words become OR)
+    const searchTerms = query.trim().split(/\s+/).join(' | ')
+    queryBuilder = queryBuilder.textSearch('search_tsv', searchTerms, {
+      type: 'plain', // plain mode handles partial word matching better
+      config: 'simple', // matches the tsvector config in the database
+    })
   }
 
   // Execute query
-  const { data, error } = await queryBuilder
+  const { data, error } = await queryBuilder.order('name', { ascending: true })
 
   if (error) {
     console.error('[PlanGenerator] searchExercisesForPlan error:', error)
     throw new Error('Failed to search exercises')
   }
 
-  // Format results
-  // Note: muscle_groups and equipment filtering would require additional joins
-  // For POC, we return basic results and can enhance later
+  // Format results with exercise type info
   return (
-    data?.map((exercise) => ({
+    data?.map((exercise: any) => ({
       id: String(exercise.id),
       name: exercise.name ?? 'Unknown Exercise',
       description: exercise.description,
-      muscle_groups: [], // TODO: Join with muscle_groups table
-      equipment: [], // TODO: Join with equipment table
+      // Include exercise type for AI context (e.g., "Strength", "Cardio", "Flexibility")
+      muscle_groups: exercise.exercise_type?.type ? [exercise.exercise_type.type] : [],
+      equipment: [], // Equipment data not yet in schema - can be added when available
     })) ?? []
   )
 }

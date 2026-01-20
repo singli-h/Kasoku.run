@@ -89,7 +89,7 @@ export async function POST(req: Request) {
 
     // Stream response with tool support
     const result = streamText({
-      model: openai('gpt-4o'),
+      model: openai('gpt-5.2'),
       system: systemPrompt,
       messages: modelMessages,
       tools: coachDomainTools,

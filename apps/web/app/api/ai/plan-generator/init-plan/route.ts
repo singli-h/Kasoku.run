@@ -15,7 +15,17 @@ import {
   type PlanningContext,
 } from '@/lib/init-pipeline/prompts'
 
-export const maxDuration = 30
+export const maxDuration = 60 // Increased for thinking model
+
+/**
+ * Exercise library item for planning context
+ */
+interface ExerciseLibraryItem {
+  id: number
+  name: string
+  primary_muscles?: string[]
+  equipment?: string[]
+}
 
 export async function POST(req: Request) {
   try {
@@ -25,8 +35,11 @@ export async function POST(req: Request) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    // Parse request
-    const { context } = (await req.json()) as { context: PlanningContext }
+    // Parse request - now includes exerciseLibrary
+    const { context, exerciseLibrary = [] } = (await req.json()) as {
+      context: PlanningContext
+      exerciseLibrary?: ExerciseLibraryItem[]
+    }
 
     if (!context) {
       return new Response('Context is required', { status: 400 })
@@ -40,15 +53,21 @@ export async function POST(req: Request) {
       duration: context.preferences.session_duration,
       weeks: context.mesocycle.duration_weeks,
     })
+    console.log('[init-plan] Exercise library size:', exerciseLibrary.length)
 
-    // Build prompt
-    const userPrompt = buildPlanningPrompt(context)
+    // Build prompt with exercise library
+    const userPrompt = buildPlanningPrompt(context, exerciseLibrary)
 
-    // Stream response
+    // Stream response with GPT-5.2 thinking mode for deep reasoning
     const result = streamText({
-      model: openai('gpt-4o'),
+      model: openai('gpt-5.2'),
       system: PLANNING_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
+      providerOptions: {
+        openai: {
+          reasoningEffort: 'high', // Enable thinking mode for complex planning
+        },
+      },
       onFinish: ({ text, usage }) => {
         console.log('[init-plan] Complete, tokens:', usage)
         console.log('[init-plan] Output preview:', text?.substring(0, 200))

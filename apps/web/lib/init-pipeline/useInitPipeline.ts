@@ -107,9 +107,10 @@ export function useInitPipeline(options: UseInitPipelineOptions): UseInitPipelin
       // Step 1: Planning (streaming)
       // ========================================
       setStatus('planning')
-      console.log('[useInitPipeline] Starting planning step...')
+      console.log('[useInitPipeline] Starting planning step with', exerciseLibrary.length, 'exercises...')
 
-      const summary = await runPlanningStep(context, (partial) => {
+      // Pass exercise library to planning step so AI knows valid exercise IDs
+      const summary = await runPlanningStep(context, exerciseLibrary, (partial) => {
         setPlanningSummary(partial)
       })
 
@@ -210,12 +211,22 @@ async function fetchExerciseLibrary(equipment: string): Promise<ExerciseLibraryI
 
 async function runPlanningStep(
   context: PlanningContext,
+  exerciseLibrary: ExerciseLibraryItem[],
   onPartial: (partial: string) => void
 ): Promise<string> {
+  // Pass exercise library to planning step so AI uses real exercise IDs
   const response = await fetch('/api/ai/plan-generator/init-plan', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ context }),
+    body: JSON.stringify({
+      context,
+      exerciseLibrary: exerciseLibrary.map((e) => ({
+        id: Number(e.id),
+        name: e.name,
+        primary_muscles: e.primary_muscles,
+        equipment: e.equipment,
+      })),
+    }),
   })
 
   if (!response.ok) {

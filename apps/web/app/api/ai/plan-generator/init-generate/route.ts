@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
     // Generate structured output with simple schema
     const { object, usage } = await generateObject({
-      model: openai('gpt-4o'),
+      model: openai('gpt-5.2'),
       schema: SimpleGeneratedPlanSchema,
       system: GENERATION_SYSTEM_PROMPT,
       prompt,
