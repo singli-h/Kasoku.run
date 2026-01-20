@@ -7,7 +7,7 @@
 
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect, useCallback, memo, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -31,7 +31,7 @@ import { createQuickTrainingBlockAction } from "@/actions/plans/plan-actions"
 import { EquipmentSelector, type EquipmentCategory } from "@/components/features/equipment"
 
 // AI Plan Generation
-import { PlanGenerationReview, MOCK_PROPOSED_PLAN } from "@/components/features/first-experience"
+import { PlanGenerationReview } from "@/components/features/first-experience"
 
 // Duration presets in weeks
 const DURATION_PRESETS = [
@@ -327,7 +327,7 @@ export function QuickStartWizard({ onComplete, skipAIReview = false }: QuickStar
     setCurrentStep("week")
   }
 
-  const handlePlanComplete = (blockId: string) => {
+  const handlePlanComplete = (blockId: number) => {
     clearWizardState()
     toast({
       title: "Training Block Created!",
@@ -340,27 +340,27 @@ export function QuickStartWizard({ onComplete, skipAIReview = false }: QuickStar
     }
   }
 
+  // Stable callbacks for review step
+  const handleStartWorkout = useCallback((sessionId: string) => {
+    console.log('Start workout:', sessionId)
+    router.push('/workout')
+  }, [router])
+
+  const handleViewBlock = useCallback((blockId: number) => {
+    router.push(`/plans/${blockId}`)
+  }, [router])
+
   // Review step is a full-page experience
+  // Create data inline only when rendering review to avoid hook dependency issues
   if (currentStep === "review" && blockSettings && weekSetup) {
     return (
-      <PlanGenerationReview
-        setupContext={{
-          blockName: blockSettings.name,
-          trainingDays: weekSetup.trainingDays || [],
-          durationMinutes: 45,
-          equipment: weekSetup.equipment || [],
-          focus: blockSettings.focus,
-        }}
-        plan={MOCK_PROPOSED_PLAN}
+      <PlanGenerationReviewWrapper
+        blockSettings={blockSettings}
+        weekSetup={weekSetup}
         onEditSetup={handleEditSetup}
         onComplete={handlePlanComplete}
-        onStartWorkout={(sessionId) => {
-          console.log('Start workout:', sessionId)
-          router.push('/workout')
-        }}
-        onViewBlock={(blockId) => {
-          router.push(`/plans/${blockId}`)
-        }}
+        onStartWorkout={handleStartWorkout}
+        onViewBlock={handleViewBlock}
       />
     )
   }
@@ -748,3 +748,72 @@ function WeekSetupStep({
     </Card>
   )
 }
+
+/**
+ * Wrapper component for PlanGenerationReview that handles memoization
+ * This prevents re-renders by keeping props stable
+ */
+const PlanGenerationReviewWrapper = memo(function PlanGenerationReviewWrapper({
+  blockSettings,
+  weekSetup,
+  onEditSetup,
+  onComplete,
+  onStartWorkout,
+  onViewBlock,
+}: {
+  blockSettings: BlockSettingsData
+  weekSetup: Partial<WeekSetupData>
+  onEditSetup: () => void
+  onComplete: (blockId: number) => void
+  onStartWorkout: (sessionId: string) => void
+  onViewBlock: (blockId: number) => void
+}) {
+  // Create data once on initial render using refs
+  const initialDataRef = useRef<{
+    mesocycle: {
+      name: string
+      goal_type: string
+      duration_weeks: number
+    }
+    setupContext: {
+      blockName: string
+      trainingDays: number[]
+      durationMinutes: number
+      equipment: string[]
+      focus: string
+    }
+  } | null>(null)
+
+  if (!initialDataRef.current) {
+    const trainingDays = weekSetup.trainingDays || []
+    const equipment = weekSetup.equipment || []
+
+    initialDataRef.current = {
+      mesocycle: {
+        name: blockSettings.name,
+        goal_type: blockSettings.focus,
+        duration_weeks: blockSettings.durationWeeks,
+      },
+      setupContext: {
+        blockName: blockSettings.name,
+        trainingDays,
+        durationMinutes: 45,
+        equipment,
+        focus: blockSettings.focus,
+      },
+    }
+  }
+
+  const { mesocycle, setupContext } = initialDataRef.current
+
+  return (
+    <PlanGenerationReview
+      setupContext={setupContext}
+      mesocycle={mesocycle}
+      onEditSetup={onEditSetup}
+      onComplete={onComplete}
+      onStartWorkout={onStartWorkout}
+      onViewBlock={onViewBlock}
+    />
+  )
+})

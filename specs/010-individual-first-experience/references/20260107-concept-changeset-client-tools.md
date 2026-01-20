@@ -146,48 +146,35 @@ async function handleChangeRequestTool(
 
 ---
 
-## 3. Tool Name Parsing
+## 3. Stream Synchronization (Pause-Resume)
 
-### 3.1 parseChangeRequestToolName
+### 3.1 The Challenge
 
-Extract entity type and operation from standardized tool names.
+AI must wait for human decision without blocking the system. The `confirmChangeSet` tool is special — it needs to pause the AI stream until the user approves or rejects.
 
-```typescript
-/**
- * Parse tool name to extract entity and operation
- * Example: "createTransactionChangeRequest" -> { entity: "transaction", operation: "create" }
- */
-function parseChangeRequestToolName(toolName: string): {
-  entity: EntityType
-  operation: OperationType
-} {
-  // Tool name pattern: {operation}{Entity}ChangeRequest
-  const match = toolName.match(
-    /^(create|update|delete)([A-Z][a-zA-Z]+)ChangeRequest$/
-  )
+### 3.2 The Solution
 
-  if (!match) {
-    throw new Error(`Invalid changeset tool name: ${toolName}`)
-  }
+Control when `addToolOutput()` is called:
 
-  const [, operation, entityPascal] = match
-  const entity = entityPascal.toLowerCase() as EntityType
-
-  return {
-    entity,
-    operation: operation as OperationType,
-  }
-}
+```
+1. AI calls confirmChangeSet()
+       │
+2. Client intercepts (don't return result yet)
+       │
+3. AI stream PAUSES (waiting for tool result)
+       │
+4. Review widget renders (user has unlimited time)
+       │
+5. User decides (approve/reject)
+       │
+6. Client calls addToolOutput() with decision
+       │
+7. AI stream RESUMES with decision context
 ```
 
-### 3.2 Why This Pattern?
+### 3.3 Key Insight
 
-| Benefit | Explanation |
-|---------|-------------|
-| **Single Source of Truth** | Tool name encodes the operation, no separate mapping needed |
-| **Type Safety** | Pattern matching validates the tool name format |
-| **Extensibility** | Add new entities without changing parser logic |
-| **Consistency** | Enforces naming convention across all tools |
+The AI stream naturally pauses when waiting for a tool result. By delaying `addToolOutput()` until after user decision, we get pause-resume behavior without any special stream manipulation.
 
 ---
 
@@ -231,11 +218,11 @@ async function fetchCurrentData(
 
 ---
 
-## 5. Confirm Tool: Pause-Resume Pattern
+## 5. Confirm Tool Implementation
 
-### 5.1 The Critical Pattern
+### 5.1 Handler Pattern
 
-`confirmChangeSet` is special - it pauses the AI stream until user decides.
+The `confirmChangeSet` handler does NOT call `addToolOutput` — that's the key to pausing.
 
 ```typescript
 if (toolName === "confirmChangeSet") {
@@ -395,11 +382,3 @@ addToolOutput({
 | Fetch failed | Return error, AI can retry or skip |
 | Validation failed | Return error with details, AI can correct |
 | Execution failed | Return error, transition to recovery state |
-
----
-
-## References
-
-- Architecture: `20251221-changeset-architecture.md`
-- Transformation Layer: `20251221-changeset-transformation-layer.md`
-- Principles: `20251221-changeset-principles.md`

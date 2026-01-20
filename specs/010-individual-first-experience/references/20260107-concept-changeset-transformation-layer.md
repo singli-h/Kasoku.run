@@ -296,12 +296,3 @@ These are documented in domain-specific files (e.g., `session-tool-definitions.m
 2. Tool schemas are simple and focused
 3. Transformation is mechanical (no business logic conversion)
 4. ChangeRequest format is universal
-
----
-
-## References
-
-- Architecture: `20251221-concept-changeset-architecture.md`
-- Tool Design: `20251221-concept-changeset-tool-design.md`
-- Client Tools: `20251221-concept-changeset-client-tools.md`
-- Execution Flow: `20251221-concept-changeset-execution flow.md`

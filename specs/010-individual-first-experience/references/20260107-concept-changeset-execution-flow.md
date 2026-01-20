@@ -376,6 +376,12 @@ execution_failed
 └─────────────────────────────────┘
 ```
 
+### Recovery Rules
+
+1. After any correction, user MUST re-approve
+2. Never auto-execute after error fix
+3. AI receives full error context to formulate fix
+
 ---
 
 ## Implementation Pattern
@@ -538,11 +544,3 @@ For V1, we accept these simplifications:
 | **Rollback** | Best-effort (delete created records) | Database-level ROLLBACK |
 | **Retry** | No auto-retry | Transient error auto-retry |
 | **Audit** | Console logging | Persist to audit table |
-
----
-
-## References
-
-- Architecture: `20251221-changeset-architecture.md` (sections 1.3, 5.3, 7)
-- Concurrency: `20251221-changeset-concurrency.md`
-- Principles: `20251221-changeset-principles.md`
