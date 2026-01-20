@@ -1058,4 +1058,91 @@ export async function copySessionAction(
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
   }
+}
+
+// ============================================================================
+// CREATE SINGLE SESSION ACTION (for Individual Workspace)
+// ============================================================================
+
+export interface CreateSingleSessionInput {
+  microcycleId: number
+  name: string
+  day: number // 1-7 (Monday to Sunday)
+  week?: number
+}
+
+/**
+ * Create a single empty session for a microcycle
+ * Used by Individual users to add workouts to existing training blocks
+ * Returns the new session ID for navigation to session planner
+ */
+export async function createSingleSessionAction(
+  input: CreateSingleSessionInput
+): Promise<ActionState<{ id: string }>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify microcycle belongs to user
+    const { data: microcycle, error: microcycleError } = await supabase
+      .from('microcycles')
+      .select('id, mesocycle_id, mesocycles!inner(user_id)')
+      .eq('id', input.microcycleId)
+      .single()
+
+    if (microcycleError || !microcycle) {
+      return {
+        isSuccess: false,
+        message: "Microcycle not found or access denied"
+      }
+    }
+
+    // Create the session
+    const sessionInsert: SessionPlanInsert = {
+      name: input.name,
+      description: null,
+      date: new Date().toISOString().split('T')[0],
+      day: input.day,
+      week: input.week || 1,
+      session_mode: 'individual',
+      microcycle_id: input.microcycleId,
+      athlete_group_id: null,
+      user_id: dbUserId,
+      is_template: false
+    }
+
+    const { data: newSession, error: sessionError } = await supabase
+      .from('session_plans')
+      .insert(sessionInsert)
+      .select('id')
+      .single()
+
+    if (sessionError || !newSession) {
+      console.error('Error creating session:', sessionError)
+      return {
+        isSuccess: false,
+        message: `Failed to create session: ${sessionError?.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Session created successfully",
+      data: { id: String(newSession.id) }
+    }
+  } catch (error) {
+    console.error('Error in createSingleSessionAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
 } 

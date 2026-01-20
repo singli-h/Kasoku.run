@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import type { MesocycleWithDetails, MicrocycleWithDetails, SessionPlanWithDetails } from "@/types/training"
+import { AddWorkoutDialog } from "./components/AddWorkoutDialog"
 
 // ============================================================================
 // Type Definitions
@@ -38,8 +39,12 @@ export function IndividualWorkspace({ trainingBlock }: IndividualWorkspaceProps)
   const [selectedWeekId, setSelectedWeekId] = useState<number | null>(
     findCurrentWeek(trainingBlock.microcycles)?.id ?? trainingBlock.microcycles?.[0]?.id ?? null
   )
+  const [addWorkoutOpen, setAddWorkoutOpen] = useState(false)
 
   const selectedWeek = trainingBlock.microcycles?.find(m => m.id === selectedWeekId)
+  const selectedWeekNumber = selectedWeek
+    ? (trainingBlock.microcycles?.indexOf(selectedWeek) ?? 0) + 1
+    : 1
   const workouts = selectedWeek?.session_plans || []
 
   // P1 Fix: Handle nullable dates safely with defaults
@@ -107,7 +112,7 @@ export function IndividualWorkspace({ trainingBlock }: IndividualWorkspaceProps)
               {selectedWeek ? `Week ${(trainingBlock.microcycles?.indexOf(selectedWeek) ?? 0) + 1} Workouts` : "Workouts"}
             </CardTitle>
             {selectedWeek && (
-              <Button size="sm" disabled title="Coming soon">
+              <Button size="sm" onClick={() => setAddWorkoutOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Workout
               </Button>
@@ -125,7 +130,10 @@ export function IndividualWorkspace({ trainingBlock }: IndividualWorkspaceProps)
                     />
                   ))
                 ) : (
-                  <EmptyWorkoutsState weekName={selectedWeek.name || "this week"} />
+                  <EmptyWorkoutsState
+                    weekName={selectedWeek.name || "this week"}
+                    onAddWorkout={() => setAddWorkoutOpen(true)}
+                  />
                 )}
               </div>
             ) : (
@@ -136,6 +144,17 @@ export function IndividualWorkspace({ trainingBlock }: IndividualWorkspaceProps)
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Workout Dialog */}
+      {selectedWeek && (
+        <AddWorkoutDialog
+          open={addWorkoutOpen}
+          onOpenChange={setAddWorkoutOpen}
+          microcycleId={selectedWeek.id}
+          blockId={trainingBlock.id}
+          weekNumber={selectedWeekNumber}
+        />
+      )}
     </div>
   )
 }
@@ -228,7 +247,13 @@ function WorkoutCard({
   )
 }
 
-function EmptyWorkoutsState({ weekName }: { weekName: string }) {
+function EmptyWorkoutsState({
+  weekName,
+  onAddWorkout
+}: {
+  weekName: string
+  onAddWorkout: () => void
+}) {
   return (
     <div className="text-center py-12">
       <Dumbbell className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
@@ -236,7 +261,7 @@ function EmptyWorkoutsState({ weekName }: { weekName: string }) {
       <p className="text-sm text-muted-foreground mb-4">
         Add workouts to {weekName} to start planning
       </p>
-      <Button disabled title="Coming soon">
+      <Button onClick={onAddWorkout}>
         <Plus className="h-4 w-4 mr-2" />
         Add First Workout
       </Button>
