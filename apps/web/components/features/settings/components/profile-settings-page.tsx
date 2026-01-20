@@ -792,9 +792,180 @@ export function ProfileSettingsPage() {
         </AnimatedSection>
 
         {/* ================================================================ */}
-        {/* SECTION 2: Personal Details */}
+        {/* SECTION 2: Notifications */}
         {/* ================================================================ */}
-        <AnimatedSection delay={0.2} className="mb-12">
+        <AnimatedSection delay={0.15} className="mb-12">
+          <SectionHeader
+            title="Notifications"
+            subtitle="Manage workout reminders and alerts"
+            icon={<Bell className="w-5 h-5" />}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Permission Denied Banner */}
+            {isPushSupported && pushPermission === 'denied' && (
+              <BentoCard variant="subtle" className="md:col-span-2 border-destructive/50">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-foreground mb-1">Notifications are blocked</p>
+                    <p className="text-muted-foreground">
+                      You previously denied notification permissions. To enable notifications:
+                    </p>
+                    <ol className="list-decimal list-inside mt-2 text-muted-foreground space-y-1">
+                      <li>Click the lock/info icon in your browser&apos;s address bar</li>
+                      <li>Find &quot;Notifications&quot; in the permissions list</li>
+                      <li>Change it from &quot;Block&quot; to &quot;Allow&quot;</li>
+                      <li>Refresh this page</li>
+                    </ol>
+                  </div>
+                </div>
+              </BentoCard>
+            )}
+
+            {/* Push Notifications Toggle */}
+            <BentoCard variant={isPushSubscribed ? "highlight" : "default"} className="md:col-span-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "p-3 rounded-xl transition-colors",
+                    isPushSubscribed
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Push Notifications</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {!isPushSupported
+                        ? "Not supported in this browser"
+                        : pushPermission === 'denied'
+                          ? "Blocked — see instructions above to re-enable"
+                          : isPushSubscribed
+                            ? "Receiving notifications on this device"
+                            : "Get reminders about your workouts"}
+                    </p>
+                    {pushError && (
+                      <p className="text-sm text-destructive mt-1">{pushError}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {isPushSubscribed && (
+                    <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+                      Active
+                    </Badge>
+                  )}
+                  <button
+                    type="button"
+                    disabled={!isPushSupported || pushPermission === 'denied' || isPushLoading}
+                    onClick={handlePushToggle}
+                    className={cn(
+                      "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
+                      (!isPushSupported || pushPermission === 'denied') && "opacity-50 cursor-not-allowed",
+                      isPushSubscribed ? "bg-primary" : "bg-muted"
+                    )}
+                  >
+                    {isPushLoading ? (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </span>
+                    ) : (
+                      <span className={cn(
+                        "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow ring-0 transition duration-200 ease-in-out",
+                        isPushSubscribed ? "translate-x-5" : "translate-x-0"
+                      )} />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </BentoCard>
+
+            {/* Daily Workout Reminders */}
+            <BentoCard className={cn(!isPushSubscribed && "opacity-60")}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "p-3 rounded-xl transition-colors",
+                    reminderPrefs.workout_reminders_enabled && isPushSubscribed
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    <Bell className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Daily Reminders</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Notify when you have training
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={!isPushSubscribed || reminderPrefsLoading}
+                  onClick={handleReminderToggle}
+                  className={cn(
+                    "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
+                    !isPushSubscribed && "cursor-not-allowed",
+                    reminderPrefs.workout_reminders_enabled ? "bg-primary" : "bg-muted"
+                  )}
+                >
+                  <span className={cn(
+                    "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow ring-0 transition duration-200 ease-in-out",
+                    reminderPrefs.workout_reminders_enabled ? "translate-x-5" : "translate-x-0"
+                  )} />
+                </button>
+              </div>
+            </BentoCard>
+
+            {/* Reminder Time */}
+            <BentoCard className={cn((!isPushSubscribed || !reminderPrefs.workout_reminders_enabled) && "opacity-60")}>
+              <FormField
+                label="Reminder Time"
+                icon={<Clock className="w-4 h-4" />}
+                description="When should we remind you?"
+              >
+                <div className="relative">
+                  <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="time"
+                    value={reminderPrefs.preferred_time}
+                    onChange={(e) => handleReminderTimeChange(e.target.value)}
+                    disabled={!isPushSubscribed || !reminderPrefs.workout_reminders_enabled || reminderPrefsLoading}
+                    className={cn(
+                      "w-full h-12 pl-12 pr-4 text-sm rounded-xl border border-input",
+                      "bg-muted/50 text-foreground",
+                      "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
+                      (!isPushSubscribed || !reminderPrefs.workout_reminders_enabled) && "cursor-not-allowed"
+                    )}
+                  />
+                </div>
+              </FormField>
+            </BentoCard>
+
+            {/* iOS PWA Info Banner */}
+            {isPushSupported && !isPushSubscribed && pushPermission !== 'denied' && (
+              <BentoCard variant="subtle" className="md:col-span-2">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground mb-1">How it works</p>
+                    <p>Enable push notifications to get daily reminders about your scheduled workouts. You&apos;ll only be notified on days when you have training planned.</p>
+                    <p className="mt-2 text-xs">
+                      <strong>iOS users:</strong> Add this app to your home screen for the best notification experience.
+                    </p>
+                  </div>
+                </div>
+              </BentoCard>
+            )}
+          </div>
+        </AnimatedSection>
+
+        {/* ================================================================ */}
+        {/* SECTION 3: Personal Details */}
+        {/* ================================================================ */}
+        <AnimatedSection delay={0.25} className="mb-12">
           <SectionHeader
             title="Personal Details"
             subtitle="Demographics and regional settings"
@@ -872,10 +1043,10 @@ export function ProfileSettingsPage() {
         </AnimatedSection>
 
         {/* ================================================================ */}
-        {/* SECTION 3: Coaching Profile (Coaches) - Shown first when applicable */}
+        {/* SECTION 4: Coaching Profile (Coaches) - Shown first when applicable */}
         {/* ================================================================ */}
         {profileData.role === "coach" && (
-          <AnimatedSection delay={0.3} className="mb-12">
+          <AnimatedSection delay={0.35} className="mb-12">
             <SectionHeader
               title="Coaching Profile"
               subtitle="Your expertise and approach"
@@ -940,9 +1111,9 @@ export function ProfileSettingsPage() {
         )}
 
         {/* ================================================================ */}
-        {/* SECTION 4: Athlete Profile (Both Athletes & Coaches) */}
+        {/* SECTION 5: Athlete Profile (Both Athletes & Coaches) */}
         {/* ================================================================ */}
-        <AnimatedSection delay={profileData.role === "coach" ? 0.4 : 0.3} className="mb-12">
+        <AnimatedSection delay={profileData.role === "coach" ? 0.45 : 0.35} className="mb-12">
           <SectionHeader
             title="Athlete Profile"
             subtitle="Physical metrics, events, and training objectives"
@@ -1128,9 +1299,9 @@ export function ProfileSettingsPage() {
         </AnimatedSection>
 
         {/* ================================================================ */}
-        {/* SECTION 5: Appearance / Theme */}
+        {/* SECTION 6: Appearance / Theme */}
         {/* ================================================================ */}
-        <AnimatedSection delay={profileData.role === "coach" ? 0.5 : 0.4} className="mb-12">
+        <AnimatedSection delay={profileData.role === "coach" ? 0.55 : 0.45} className="mb-12">
           <SectionHeader
             title="Appearance"
             subtitle="Customize how Kasoku looks for you"
@@ -1233,156 +1404,6 @@ export function ProfileSettingsPage() {
                   </button>
                 </BentoCard>
               </>
-            )}
-          </div>
-        </AnimatedSection>
-
-        {/* ================================================================ */}
-        {/* SECTION 6: Notifications */}
-        {/* ================================================================ */}
-        <AnimatedSection delay={profileData.role === "coach" ? 0.6 : 0.5} className="mb-12">
-          <SectionHeader
-            title="Notifications"
-            subtitle="Manage workout reminders and alerts"
-            icon={<Bell className="w-5 h-5" />}
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Push Notifications Toggle */}
-            <BentoCard variant={isPushSubscribed ? "highlight" : "default"} className="md:col-span-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "p-3 rounded-xl transition-colors",
-                    isPushSubscribed
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    <Smartphone className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Push Notifications</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      {!isPushSupported
-                        ? "Not supported in this browser"
-                        : pushPermission === 'denied'
-                          ? "Blocked — enable in browser settings"
-                          : isPushSubscribed
-                            ? "Receiving notifications on this device"
-                            : "Get reminders about your workouts"}
-                    </p>
-                    {pushError && (
-                      <p className="text-sm text-destructive mt-1">{pushError}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {isPushSubscribed && (
-                    <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
-                      Active
-                    </Badge>
-                  )}
-                  <button
-                    type="button"
-                    disabled={!isPushSupported || pushPermission === 'denied' || isPushLoading}
-                    onClick={handlePushToggle}
-                    className={cn(
-                      "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
-                      (!isPushSupported || pushPermission === 'denied') && "opacity-50 cursor-not-allowed",
-                      isPushSubscribed ? "bg-primary" : "bg-muted"
-                    )}
-                  >
-                    {isPushLoading ? (
-                      <span className="absolute inset-0 flex items-center justify-center">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      </span>
-                    ) : (
-                      <span className={cn(
-                        "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow ring-0 transition duration-200 ease-in-out",
-                        isPushSubscribed ? "translate-x-5" : "translate-x-0"
-                      )} />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </BentoCard>
-
-            {/* Daily Workout Reminders */}
-            <BentoCard className={cn(!isPushSubscribed && "opacity-60")}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "p-3 rounded-xl transition-colors",
-                    reminderPrefs.workout_reminders_enabled && isPushSubscribed
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    <Bell className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Daily Reminders</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      Notify when you have training
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  disabled={!isPushSubscribed || reminderPrefsLoading}
-                  onClick={handleReminderToggle}
-                  className={cn(
-                    "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
-                    !isPushSubscribed && "cursor-not-allowed",
-                    reminderPrefs.workout_reminders_enabled ? "bg-primary" : "bg-muted"
-                  )}
-                >
-                  <span className={cn(
-                    "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow ring-0 transition duration-200 ease-in-out",
-                    reminderPrefs.workout_reminders_enabled ? "translate-x-5" : "translate-x-0"
-                  )} />
-                </button>
-              </div>
-            </BentoCard>
-
-            {/* Reminder Time */}
-            <BentoCard className={cn((!isPushSubscribed || !reminderPrefs.workout_reminders_enabled) && "opacity-60")}>
-              <FormField
-                label="Reminder Time"
-                icon={<Clock className="w-4 h-4" />}
-                description="When should we remind you?"
-              >
-                <div className="relative">
-                  <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="time"
-                    value={reminderPrefs.preferred_time}
-                    onChange={(e) => handleReminderTimeChange(e.target.value)}
-                    disabled={!isPushSubscribed || !reminderPrefs.workout_reminders_enabled || reminderPrefsLoading}
-                    className={cn(
-                      "w-full h-12 pl-12 pr-4 text-sm rounded-xl border border-input",
-                      "bg-muted/50 text-foreground",
-                      "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all",
-                      (!isPushSubscribed || !reminderPrefs.workout_reminders_enabled) && "cursor-not-allowed"
-                    )}
-                  />
-                </div>
-              </FormField>
-            </BentoCard>
-
-            {/* iOS PWA Info Banner */}
-            {isPushSupported && !isPushSubscribed && pushPermission !== 'denied' && (
-              <BentoCard variant="subtle" className="md:col-span-2">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <div className="text-sm text-muted-foreground">
-                    <p className="font-medium text-foreground mb-1">How it works</p>
-                    <p>Enable push notifications to get daily reminders about your scheduled workouts. You&apos;ll only be notified on days when you have training planned.</p>
-                    <p className="mt-2 text-xs">
-                      <strong>iOS users:</strong> Add this app to your home screen for the best notification experience.
-                    </p>
-                  </div>
-                </div>
-              </BentoCard>
             )}
           </div>
         </AnimatedSection>
