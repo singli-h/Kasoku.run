@@ -1,9 +1,9 @@
 /*
 <ai_context>
-Enhanced UserButton component that integrates custom settings pages with Clerk's UserProfile.
-Adds Theme Settings and Notification Settings to the default Clerk account management.
-Now properly updates appearance when theme changes in real-time.
+Enhanced UserButton component for Clerk's UserProfile.
+Updates appearance when theme changes in real-time.
 Fixed hydration issues by ensuring client-side only rendering.
+Note: Notification settings are now in the main Settings page, not here.
 </ai_context>
 */
 
@@ -12,8 +12,6 @@ Fixed hydration issues by ensuring client-side only rendering.
 import { UserButton } from "@clerk/nextjs"
 import { dark } from "@clerk/themes"
 import { useTheme } from "next-themes"
-// import { Palette, Bell } from "lucide-react"
-// import { ThemeSettingsPage, NotificationSettingsPage } from "@/components/features/settings"
 import { useEffect, useState } from "react"
 
 export function EnhancedUserButton() {
@@ -58,24 +56,6 @@ export function EnhancedUserButton() {
           baseTheme: isDark ? dark : undefined,
         }
       }}
-    >
-      {/* Custom tabs temporarily disabled
-      <UserButton.UserProfilePage
-        label="Theme"
-        labelIcon={<Palette className="h-4 w-4" />}
-        url="theme"
-      >
-        <ThemeSettingsPage />
-      </UserButton.UserProfilePage>
-
-      <UserButton.UserProfilePage
-        label="Notifications"
-        labelIcon={<Bell className="h-4 w-4" />}
-        url="notifications"
-      >
-        <NotificationSettingsPage />
-      </UserButton.UserProfilePage>
-      */}
-    </UserButton>
+    />
   )
 } 
