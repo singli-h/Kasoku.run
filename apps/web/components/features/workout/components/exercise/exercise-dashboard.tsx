@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 import { 
   useExerciseContext, 
   useWorkoutSession, 
@@ -79,6 +80,7 @@ const SESSION_STATUS_CONFIG = {
 
 export function ExerciseDashboard({ session, exercises, className }: ExerciseDashboardProps) {
   const { showVideo, toggleVideo } = useExerciseContext()
+  const { toast } = useToast()
   const {
     sessionStatus,
     isLoading,
@@ -115,7 +117,16 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
     const result = await startSession()
     if (!result.success && result.error) {
       console.error("Failed to start session:", result.error)
-      // TODO: Show toast notification
+      toast({
+        title: "Failed to start workout",
+        description: result.error.message || "Please try again",
+        variant: "destructive"
+      })
+    } else {
+      toast({
+        title: "Workout started!",
+        description: "Let's crush it 💪"
+      })
     }
   }
 
@@ -123,9 +134,16 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
     const result = await saveSession()
     if (!result.success && result.error) {
       console.error("Failed to save session:", result.error)
-      // TODO: Show toast notification
+      toast({
+        title: "Failed to save",
+        description: result.error.message || "Please try again",
+        variant: "destructive"
+      })
     } else {
-      // TODO: Show success toast
+      toast({
+        title: "Progress saved",
+        description: "Your workout has been saved"
+      })
     }
   }
 
@@ -133,9 +151,16 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
     const result = await completeSession()
     if (!result.success && result.error) {
       console.error("Failed to complete session:", result.error)
-      // TODO: Show toast notification
+      toast({
+        title: "Failed to complete",
+        description: result.error.message || "Please try again",
+        variant: "destructive"
+      })
     } else {
-      // TODO: Show success toast and possibly redirect
+      toast({
+        title: "Workout completed! 🎉",
+        description: "Great job finishing your session"
+      })
     }
   }
 
