@@ -102,17 +102,9 @@ export async function updateReminderPreferencesAction(
 
     const dbUserId = await getDbUserId(clerkId)
 
-    // Build update object with only provided fields
-    const updateData: Record<string, unknown> = {
-      user_id: dbUserId
-    }
-
-    if (preferences.workout_reminders_enabled !== undefined) {
-      updateData.workout_reminders_enabled = preferences.workout_reminders_enabled
-    }
-
+    // Validate time format if provided (HH:MM or HH:MM:SS)
+    let preferredTime: string | undefined
     if (preferences.preferred_time !== undefined) {
-      // Validate time format (HH:MM or HH:MM:SS)
       const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/
       if (!timeRegex.test(preferences.preferred_time)) {
         return {
@@ -121,9 +113,20 @@ export async function updateReminderPreferencesAction(
         }
       }
       // Ensure HH:MM:SS format
-      updateData.preferred_time = preferences.preferred_time.length === 5
+      preferredTime = preferences.preferred_time.length === 5
         ? `${preferences.preferred_time}:00`
         : preferences.preferred_time
+    }
+
+    // Build properly typed update object
+    const updateData = {
+      user_id: dbUserId,
+      ...(preferences.workout_reminders_enabled !== undefined && {
+        workout_reminders_enabled: preferences.workout_reminders_enabled
+      }),
+      ...(preferredTime !== undefined && {
+        preferred_time: preferredTime
+      })
     }
 
     // Upsert preferences

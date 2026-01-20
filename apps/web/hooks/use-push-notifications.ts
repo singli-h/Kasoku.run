@@ -246,14 +246,16 @@ export function usePushNotifications(): UsePushNotificationsReturn {
  * Convert a URL-safe base64 string to a Uint8Array
  * Used for VAPID public key conversion
  */
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - base64String.length % 4) % 4)
   const base64 = (base64String + padding)
     .replace(/-/g, '+')
     .replace(/_/g, '/')
 
   const rawData = window.atob(base64)
-  const outputArray = new Uint8Array(rawData.length)
+  // Create ArrayBuffer first to ensure proper typing
+  const arrayBuffer = new ArrayBuffer(rawData.length)
+  const outputArray = new Uint8Array(arrayBuffer)
 
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i)

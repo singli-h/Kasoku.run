@@ -851,6 +851,85 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+          user_agent: string | null
+          user_id: number
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: number
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reminder_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          last_reminder_sent: string | null
+          preferred_time: string
+          updated_at: string
+          user_id: number
+          workout_reminders_enabled: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_reminder_sent?: string | null
+          preferred_time?: string
+          updated_at?: string
+          user_id: number
+          workout_reminders_enabled?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_reminder_sent?: string | null
+          preferred_time?: string
+          updated_at?: string
+          user_id?: number
+          workout_reminders_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_plan_exercises: {
         Row: {
           created_at: string | null
@@ -1431,6 +1510,20 @@ export type Database = {
           role: string
           user_id: number
         }[]
+      }
+      get_users_for_workout_reminder: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: number
+          endpoint: string
+          p256dh: string
+          auth: string
+          timezone: string
+        }[]
+      }
+      mark_reminder_sent: {
+        Args: { p_user_id: number; p_date: string }
+        Returns: undefined
       }
       lookup_user_for_invite: {
         Args: { email_input: string }
