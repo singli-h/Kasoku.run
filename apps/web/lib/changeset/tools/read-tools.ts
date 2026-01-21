@@ -45,7 +45,10 @@ export const getSessionContextTool = tool({
  * Read-only - does not add to changeset.
  */
 export const searchExercisesSchema = z.object({
-  query: z.string().describe('Natural language search query (e.g., "squat", "chest press")'),
+  query: z
+    .string()
+    .optional()
+    .describe('Natural language search query (e.g., "squat", "chest press"). Optional if filtering by equipment.'),
   equipment: z
     .array(z.string())
     .optional()
