@@ -35,7 +35,11 @@ import {
   Monitor,
   Palette,
   Bell,
-  Smartphone
+  Smartphone,
+  Download,
+  Share,
+  Plus,
+  ExternalLink
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { format } from "date-fns"
@@ -70,6 +74,7 @@ import {
 
 // Hooks
 import { usePushNotifications } from "@/hooks/use-push-notifications"
+import { usePWAInstall } from "@/hooks/use-pwa-install"
 
 // Import proper types from database
 import type { Database, Json } from "@/types/database"
@@ -304,6 +309,17 @@ export function ProfileSettingsPage() {
     subscribe: subscribePush,
     unsubscribe: unsubscribePush
   } = usePushNotifications()
+
+  // PWA install state
+  const {
+    canInstall,
+    isInstalled,
+    isIOS,
+    hasPrompt,
+    isInstalling,
+    promptInstall
+  } = usePWAInstall()
+  const [showIOSInstallOverlay, setShowIOSInstallOverlay] = useState(false)
 
   // Reminder preferences state
   const [reminderPrefs, setReminderPrefs] = useState<ReminderPreferences>({
@@ -940,6 +956,182 @@ export function ProfileSettingsPage() {
             )}
           </div>
         </AnimatedSection>
+
+        {/* ================================================================ */}
+        {/* SECTION 2.5: Install App */}
+        {/* ================================================================ */}
+        {!isInstalled && (canInstall || hasPrompt) && (
+          <AnimatedSection delay={0.2} className="mb-12">
+            <SectionHeader
+              title="Install App"
+              subtitle="Get the full app experience on your device"
+              icon={<Download className="w-5 h-5" />}
+            />
+
+            <div className="grid grid-cols-1 gap-4">
+              <BentoCard variant="highlight">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-primary/10 text-primary">
+                      <Smartphone className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {isIOS ? "Add to Home Screen" : "Install Kasoku"}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {isIOS
+                          ? "Install as an app for quick access and offline support"
+                          : "Install as an app for the best experience"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      if (isIOS) {
+                        setShowIOSInstallOverlay(true)
+                      } else {
+                        promptInstall()
+                      }
+                    }}
+                    disabled={isInstalling}
+                    className="flex items-center gap-2"
+                  >
+                    {isInstalling ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    {isIOS ? "How to Install" : "Install"}
+                  </Button>
+                </div>
+
+                {/* Benefits list */}
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span>Quick launch from home screen</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span>Full screen experience</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span>Push notifications</span>
+                    </div>
+                  </div>
+                </div>
+              </BentoCard>
+            </div>
+          </AnimatedSection>
+        )}
+
+        {/* iOS Install Instructions Overlay */}
+        <AnimatePresence>
+          {showIOSInstallOverlay && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+              onClick={() => setShowIOSInstallOverlay(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 100, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 100, scale: 0.95 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="bg-background rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="relative p-6 pb-4 bg-linear-to-b from-primary/10 to-transparent">
+                  <button
+                    onClick={() => setShowIOSInstallOverlay(false)}
+                    className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors"
+                  >
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground text-2xl font-bold shadow-lg">
+                      K
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">Install Kasoku</h3>
+                      <p className="text-sm text-muted-foreground">Add to your home screen</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div className="p-6 pt-2 space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Follow these steps to install Kasoku on your {navigator.platform?.includes('iPad') ? 'iPad' : 'iPhone'}:
+                  </p>
+
+                  {/* Step 1 */}
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">
+                      1
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">Tap the Share button</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Find the <Share className="w-4 h-4 inline-block mx-1 text-primary" /> icon at the bottom of Safari
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">Scroll down and tap</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Look for <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted rounded text-xs font-medium"><Plus className="w-3 h-3" /> Add to Home Screen</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">
+                      3
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">Tap Add</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Confirm by tapping <span className="font-medium text-primary">Add</span> in the top right corner
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Note */}
+                  <div className="mt-4 p-3 rounded-xl bg-muted/50">
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Note:</strong> Make sure you&apos;re using Safari. This feature isn&apos;t available in other browsers on iOS.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 border-t border-border">
+                  <Button
+                    onClick={() => setShowIOSInstallOverlay(false)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Got it
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ================================================================ */}
         {/* SECTION 3: Personal Details */}
