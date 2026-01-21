@@ -1,4 +1,4 @@
-"use server"
+export const dynamic = 'force-dynamic'
 
 import { redirect } from "next/navigation"
 import { getCurrentUserAction } from "@/actions/auth/user-actions"
