@@ -48,8 +48,9 @@ export async function POST(req: Request) {
       name: exercise.name || 'Unknown',
       description: exercise.description || '',
       // Map exercise type to a simple category for AI context
-      primary_muscles: exercise.exerciseType?.type ? [exercise.exerciseType.type] : [],
+      exercise_type: exercise.exerciseType?.type ?? null,
       equipment: exercise.equipment ?? [],
+      contraindications: exercise.contraindications ?? [],
     }))
 
     return Response.json({

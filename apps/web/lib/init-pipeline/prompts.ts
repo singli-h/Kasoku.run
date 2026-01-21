@@ -41,6 +41,7 @@ Provide a clear, structured training plan outline that covers:
    - Use exercises from the provided library
    - Balance of compound and isolation movements
    - Equipment constraints applied
+   - Avoid exercises with contraindication tags that conflict with reported pain or injuries
    - Experience level considerations
 
 Be specific and actionable. Include exercise IDs, sets, reps, RPE, and rest times.
@@ -118,8 +119,9 @@ export function buildPlanningPrompt(
   exerciseLibrary: Array<{
     id: number
     name: string
-    primary_muscles?: string[]
+    exercise_type?: string | null
     equipment?: string[]
+    contraindications?: string[]
   }> = []
 ): string {
   const daysFormatted = context.preferences.training_days.join(', ')
@@ -127,9 +129,12 @@ export function buildPlanningPrompt(
   const exerciseList = exerciseLibrary
     .slice(0, 50) // Limit to avoid token overflow
     .map((e) => {
-      const muscles = e.primary_muscles?.join('/') || 'various'
+      const type = e.exercise_type ?? 'general'
       const equip = e.equipment?.join('/') || 'various'
-      return `- ID ${e.id}: ${e.name} (muscles: ${muscles}, equipment: ${equip})`
+      const contraindications = e.contraindications?.length
+        ? `, contraindications: ${e.contraindications.join('/')}`
+        : ''
+      return `- ID ${e.id}: ${e.name} (type: ${type}, equipment: ${equip}${contraindications})`
     })
     .join('\n')
 

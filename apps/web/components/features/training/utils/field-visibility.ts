@@ -14,6 +14,8 @@
  * 5 = Circuit (circuit training stations, AMRAP)
  * 6 = Sprint (100m, flying sprints, acceleration)
  * 7 = Drill (A-skips, B-skips, technique drills)
+ * 8 = Mobility (joint range of motion, stretch-based drills)
+ * 9 = Recovery (low-intensity recovery work)
  */
 
 /**
@@ -28,6 +30,8 @@ const REQUIRED_FIELDS_BY_TYPE: Record<number, string[]> = {
   5: ['performing_time', 'rest_time'], // Circuit: duration + rest
   6: ['distance', 'performing_time', 'velocity', 'rest_time'], // Sprint: distance + time + velocity + rest
   7: ['reps', 'rest_time'], // Drill: reps + rest
+  8: ['reps', 'rest_time'], // Mobility: reps + rest
+  9: ['performing_time', 'rest_time'], // Recovery: duration + rest
 }
 
 /**
@@ -42,6 +46,8 @@ const OPTIONAL_FIELDS_BY_TYPE: Record<number, string[]> = {
   5: ['reps', 'effort', 'distance'], // Circuit: rep-based stations, effort
   6: ['effort', 'resistance'], // Sprint: effort %, resistance (1080 Sprint) - velocity now required
   7: ['distance', 'performing_time', 'effort'], // Drill: running drills, timed drills
+  8: ['performing_time'], // Mobility: timed holds or flows
+  9: ['distance', 'effort'], // Recovery: distance + effort
 }
 
 /**
@@ -56,6 +62,8 @@ const EXCLUDED_FIELDS_BY_TYPE: Record<number, string[]> = {
   5: ['weight', 'height', 'tempo', 'power', 'velocity', 'resistance', 'rpe'], // Circuit
   6: ['reps', 'weight', 'height', 'tempo', 'power', 'rpe'], // Sprint (resistance for 1080 Sprint)
   7: ['weight', 'height', 'resistance', 'tempo', 'power', 'velocity', 'rpe'], // Drill
+  8: ['weight', 'height', 'tempo', 'power', 'velocity', 'rpe', 'resistance', 'effort', 'distance'], // Mobility
+  9: ['reps', 'weight', 'height', 'tempo', 'power', 'velocity', 'rpe', 'resistance'], // Recovery
 }
 
 /**
@@ -98,7 +106,7 @@ const UI_TO_DB_MAP: Record<string, string> = {
 /**
  * Get visible fields for an exercise based on exercise type and plan data
  *
- * @param exerciseTypeId - Exercise type ID from database (1-7)
+ * @param exerciseTypeId - Exercise type ID from database (1-9)
  * @param planSets - Array of plan sets with field values
  * @param options.forCoach - If true, shows all configurable fields (required + optional)
  * @returns Array of field keys that should be visible
@@ -169,7 +177,7 @@ export function getVisibleFields(
  * Get all fields that could be shown for an exercise type (for coach planning UI)
  * Returns required + optional fields (excludes never-show fields)
  *
- * @param exerciseTypeId - Exercise type ID from database (1-7)
+ * @param exerciseTypeId - Exercise type ID from database (1-9)
  * @returns Array of field keys that can be configured for this exercise type
  */
 export function getConfigurableFields(exerciseTypeId: number | undefined): string[] {
@@ -189,7 +197,7 @@ export function getConfigurableFields(exerciseTypeId: number | undefined): strin
 /**
  * Check if a field is valid for an exercise type
  *
- * @param exerciseTypeId - Exercise type ID from database (1-7)
+ * @param exerciseTypeId - Exercise type ID from database (1-9)
  * @param fieldName - Field name (UI or database format)
  * @returns true if the field can be used for this exercise type
  */
@@ -210,4 +218,3 @@ export function isFieldAllowed(
 
   return !excludedMapped.includes(uiFieldName)
 }
-

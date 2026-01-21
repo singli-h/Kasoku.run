@@ -21,8 +21,29 @@ export interface ExercisePickerSheetProps {
   defaultSection?: string | null
 }
 
-const DEFAULT_CATEGORIES = ["All", "Warmup", "Gym", "Isometric", "Plyometric", "Sprint", "Drill", "Circuit"]
-const DEFAULT_SECTIONS = ["Warmup", "Gym", "Isometric", "Plyometric", "Sprint", "Drill", "Circuit"]
+const DEFAULT_CATEGORIES = [
+  "All",
+  "Warmup",
+  "Mobility",
+  "Gym",
+  "Isometric",
+  "Plyometric",
+  "Sprint",
+  "Drill",
+  "Circuit",
+  "Recovery",
+]
+const DEFAULT_SECTIONS = [
+  "Warmup",
+  "Mobility",
+  "Gym",
+  "Isometric",
+  "Plyometric",
+  "Sprint",
+  "Drill",
+  "Circuit",
+  "Recovery",
+]
 
 /**
  * Capitalize first letter of a string for display
@@ -164,10 +185,17 @@ export function ExercisePickerSheet({
 
   const getCategoryColor = (category: string) => {
     switch (category) {
+      case "Warmup": return "bg-green-500/10 text-green-500"
+      case "Mobility": return "bg-teal-500/10 text-teal-500"
+      case "Gym": return "bg-red-500/10 text-red-500"
+      case "Isometric": return "bg-slate-500/10 text-slate-500"
+      case "Plyometric": return "bg-orange-500/10 text-orange-500"
+      case "Sprint": return "bg-blue-500/10 text-blue-500"
+      case "Drill": return "bg-amber-500/10 text-amber-500"
+      case "Circuit": return "bg-purple-500/10 text-purple-500"
+      case "Recovery": return "bg-emerald-500/10 text-emerald-500"
       case "Speed": return "bg-blue-500/10 text-blue-500"
       case "Strength": return "bg-red-500/10 text-red-500"
-      case "Plyometric": return "bg-orange-500/10 text-orange-500"
-      case "Warmup": return "bg-green-500/10 text-green-500"
       case "Conditioning": return "bg-purple-500/10 text-purple-500"
       default: return "bg-muted text-muted-foreground"
     }

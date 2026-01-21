@@ -41,7 +41,10 @@ export function MicrocycleEditor({
     switch (type) {
       case 'speed': return 'bg-red-500'
       case 'strength': return 'bg-blue-500'
+      case 'power': return 'bg-orange-500'
+      case 'hypertrophy': return 'bg-purple-500'
       case 'endurance': return 'bg-green-500'
+      case 'mobility': return 'bg-cyan-500'
       case 'recovery': return 'bg-gray-400'
       default: return 'bg-gray-300'
     }
@@ -50,8 +53,11 @@ export function MicrocycleEditor({
   const getSessionTypeIcon = (type: string) => {
     switch (type) {
       case 'speed': return 'S'
-      case 'strength': return 'P'
+      case 'strength': return 'ST'
+      case 'power': return 'P'
+      case 'hypertrophy': return 'H'
       case 'endurance': return 'E'
+      case 'mobility': return 'M'
       case 'recovery': return 'R'
       default: return '?'
     }

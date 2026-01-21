@@ -55,7 +55,7 @@ const AVAILABLE_TOOLS = `## Available Tools
 
 ### Read Tools (for gathering information)
 - **getSessionContext**: Get the current session with all exercises and sets. Use this first to understand the current state.
-- **searchExercises**: Search the exercise library by name, muscle group, or equipment.
+- **searchExercises**: Search the exercise library by name or keyword, with optional equipment filters.
 
 ### Proposal Tools (for making changes)
 These tools add changes to a buffer that the coach will review before applying:
@@ -91,6 +91,7 @@ const SOFT_GUIDANCE = `## Guidance
 
 - Gather context when helpful (use getSessionContext to see current state)
 - Search the exercise library when you need to find or suggest exercises
+- Use contraindication tags from search results to avoid exercises that conflict with reported pain or injuries
 - Make reasonable assumptions for incomplete information
 - Ask for clarification only when truly ambiguous
 - Tool results will guide your next steps - adapt based on what they return

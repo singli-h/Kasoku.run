@@ -687,8 +687,9 @@ export async function POST(req: Request) {
       id: String(e.id),
       name: e.name,
       description: e.description,
-      primary_muscles: e.exerciseType?.type ? [e.exerciseType.type] : [],
-      equipment: e.equipment ?? []
+      exercise_type: e.exerciseType?.type ?? null,
+      equipment: e.equipment ?? [],
+      contraindications: e.contraindications ?? []
     })),
     total: result.total,
     filteredByTags: result.debug?.equipmentFilterApplied ?? false
@@ -719,8 +720,9 @@ async function executeSearchExercisesForPlan(input, supabase, userId) {
     id: String(e.id),
     name: e.name,
     description: e.description,
-    muscle_groups: e.exerciseType?.type ? [e.exerciseType.type] : [],
-    equipment: e.equipment ?? []
+    exercise_type: e.exerciseType?.type ?? null,
+    equipment: e.equipment ?? [],
+    contraindications: e.contraindications ?? []
   }))
 }
 ```

@@ -9,7 +9,7 @@
 import type { WorkoutExercise } from "../context/exercise-context"
 
 // Exercise type mapping - matches actual database exercise_types table
-// Database schema: 1=Isometric, 2=Plyometric, 3=Gym, 4=Warmup, 5=Circuit, 6=Sprint, 7=Drill
+// Database schema: 1=Isometric, 2=Plyometric, 3=Gym, 4=Warmup, 5=Circuit, 6=Sprint, 7=Drill, 8=Mobility, 9=Recovery
 export enum ExerciseTypeId {
   Isometric = 1,
   Plyometric = 2,
@@ -17,11 +17,13 @@ export enum ExerciseTypeId {
   WarmUp = 4,
   Circuit = 5,
   Sprint = 6,
-  Drill = 7
+  Drill = 7,
+  Mobility = 8,
+  Recovery = 9
 }
 
 // Exercise group types - unified with exercise type names
-export type ExerciseGroupType = "warmup" | "gym" | "circuit" | "isometric" | "plyometric" | "sprint" | "drill" | "other" | "gymMerged" | "superset"
+export type ExerciseGroupType = "warmup" | "gym" | "circuit" | "isometric" | "plyometric" | "sprint" | "drill" | "mobility" | "recovery" | "other" | "gymMerged" | "superset"
 
 // Exercise group interface
 export interface ExerciseGroup {
@@ -52,6 +54,10 @@ export const getExerciseGroupType = (exerciseTypeId: number): ExerciseGroupType 
       return "sprint"
     case ExerciseTypeId.Drill: // 7
       return "drill"
+    case ExerciseTypeId.Mobility: // 8
+      return "mobility"
+    case ExerciseTypeId.Recovery: // 9
+      return "recovery"
     default:
       return "other"
   }

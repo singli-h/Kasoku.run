@@ -43,8 +43,9 @@ export interface ExerciseSearchResult {
   id: string
   name: string
   description: string | null
-  muscle_groups: string[]
+  exercise_type: string | null
   equipment: string[]
+  contraindications?: string[]
 }
 
 // ============================================================================
@@ -337,9 +338,10 @@ async function executeSearchExercisesForPlan(
     name: exercise.name ?? 'Unknown Exercise',
     description: exercise.description,
     // Include exercise type for AI context (e.g., "warmup", "plyometric", "gym")
-    muscle_groups: exercise.exerciseType?.type ? [exercise.exerciseType.type] : [],
+    exercise_type: exercise.exerciseType?.type ?? null,
     // Now includes equipment from tags (e.g., ["dumbbell", "bench"])
     equipment: exercise.equipment ?? [],
+    contraindications: exercise.contraindications ?? [],
   }))
 }
 

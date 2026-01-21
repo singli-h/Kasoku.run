@@ -78,7 +78,7 @@ export interface TrainingExercise {
   exerciseId: number
   /** Display name of the exercise */
   name: string
-  /** Training section (Warmup, Gym, Isometric, Plyometric, Sprint, Drill, Circuit) */
+  /** Training section (Warmup, Mobility, Gym, Isometric, Plyometric, Sprint, Drill, Circuit, Recovery) */
   section: string
   /** Order within the session */
   exerciseOrder: number
@@ -317,13 +317,15 @@ export function getDisplayColumns(
 export function getSectionOrder(section: string): number {
   const order: Record<string, number> = {
     Warmup: 1,
-    Gym: 2,
-    Isometric: 3,
-    Plyometric: 4,
-    Sprint: 5,
-    Drill: 6,
-    Circuit: 7,
-    Cooldown: 8,
+    Mobility: 2,
+    Gym: 3,
+    Isometric: 4,
+    Plyometric: 5,
+    Sprint: 6,
+    Drill: 7,
+    Circuit: 8,
+    Recovery: 9,
+    Cooldown: 10,
   }
   return order[section] ?? 99
 }

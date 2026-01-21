@@ -33,7 +33,10 @@ export function ExercisePlanningPanel({ sessionId }: ExercisePlanningPanelProps)
     switch (type) {
       case 'speed': return 'bg-red-500'
       case 'strength': return 'bg-blue-500'
+      case 'power': return 'bg-orange-500'
+      case 'hypertrophy': return 'bg-purple-500'
       case 'endurance': return 'bg-green-500'
+      case 'mobility': return 'bg-cyan-500'
       case 'recovery': return 'bg-gray-400'
       default: return 'bg-gray-300'
     }

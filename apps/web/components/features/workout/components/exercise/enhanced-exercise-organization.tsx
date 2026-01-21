@@ -82,50 +82,60 @@ const SECTION_CONFIG: Record<ExerciseGroupType, {
     icon: Target,
     priority: 1
   },
+  "mobility": {
+    label: "Mobility",
+    icon: Layers,
+    priority: 2
+  },
   "gym": {
     label: "Gym",
     icon: Zap,
-    priority: 2
+    priority: 3
   },
   "gymMerged": {
     label: "Gym",
     icon: Zap,
-    priority: 2
+    priority: 3
   },
   "circuit": {
     label: "Circuit",
     icon: Shuffle,
-    priority: 3
+    priority: 4
   },
   "isometric": {
     label: "Isometric",
     icon: Clock,
-    priority: 4
+    priority: 5
   },
   "plyometric": {
     label: "Plyometric",
     icon: ArrowUpDown,
-    priority: 5
+    priority: 6
   },
   "sprint": {
     label: "Sprint",
     icon: Zap,
-    priority: 6
+    priority: 7
   },
   "drill": {
     label: "Drill",
     icon: Target,
-    priority: 7
+    priority: 8
+  },
+  "recovery": {
+    label: "Recovery",
+    icon: CheckCircle2,
+    priority: 9
   },
   "superset": {
     label: "Superset",
     icon: Users,
-    priority: 8
+    priority: 10
   },
   "other": {
     label: "Other",
     icon: MoreHorizontal,
-    priority: 9
+    priority: 11
   }
 }
 

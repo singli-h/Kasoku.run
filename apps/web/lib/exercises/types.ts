@@ -57,7 +57,7 @@ export interface ExerciseSearchOptions {
  *
  * - minimal: id, name only (for dropdowns, autocomplete)
  * - picker: id, name, description, exercise_type (for UI picker)
- * - ai: id, name, description, exercise_type, equipment tags (for AI context)
+ * - ai: id, name, description, exercise_type, equipment + contraindication tags (for AI context)
  * - full: All fields including all tags, video URL, etc.
  */
 export type ExerciseFieldSet = 'minimal' | 'picker' | 'ai' | 'full'
@@ -102,6 +102,10 @@ export interface ExerciseSearchItem {
   equipment?: string[]
   /** Equipment tag IDs */
   equipmentTagIds?: number[]
+  /** Contraindication tag names */
+  contraindications?: string[]
+  /** Contraindication tag IDs */
+  contraindicationTagIds?: number[]
   videoUrl?: string
   visibility?: 'global' | 'private'
   /** Exercise type ID for quick access */

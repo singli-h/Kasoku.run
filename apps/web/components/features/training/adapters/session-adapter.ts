@@ -62,7 +62,8 @@ export interface SessionPlannerExercise {
  * Falls back to type name string matching if ID not available
  * 
  * Database exercise_types table:
- * 1 = Isometric, 2 = Plyometric, 3 = Gym, 4 = Warmup, 5 = Circuit, 6 = Sprint, 7 = Drill
+ * 1 = Isometric, 2 = Plyometric, 3 = Gym, 4 = Warmup, 5 = Circuit, 6 = Sprint, 7 = Drill,
+ * 8 = Mobility, 9 = Recovery
  */
 function getSection(exercise: SessionPlannerExercise): string {
   // Try exercise_type_id first (most reliable)
@@ -77,6 +78,8 @@ function getSection(exercise: SessionPlannerExercise): string {
       case 5: return 'Circuit'
       case 6: return 'Sprint'
       case 7: return 'Drill'
+      case 8: return 'Mobility'
+      case 9: return 'Recovery'
       default: break
     }
   }
@@ -90,6 +93,8 @@ function getSection(exercise: SessionPlannerExercise): string {
   if (typeName.includes('isometric')) return 'Isometric'
   if (typeName.includes('circuit')) return 'Circuit'
   if (typeName.includes('drill')) return 'Drill'
+  if (typeName.includes('mobility')) return 'Mobility'
+  if (typeName.includes('recovery')) return 'Recovery'
   if (typeName.includes('cool')) return 'Cooldown'
 
   return 'Other'

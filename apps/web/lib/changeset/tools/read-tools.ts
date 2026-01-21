@@ -73,7 +73,7 @@ export type SearchExercisesInput = z.infer<typeof searchExercisesSchema>
  */
 export const searchExercisesTool = tool({
   description:
-    'Search the exercise library. Returns matches but does not add to changeset.',
+    'Search the exercise library. Returns matches (including contraindication tags) but does not add to changeset.',
   inputSchema: searchExercisesSchema,
   // No execute - handled client-side
 })

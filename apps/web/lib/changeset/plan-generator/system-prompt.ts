@@ -38,7 +38,7 @@ Create a structured training plan based on the user's profile and preferences. T
 
 ### Read Tools
 - getPlanGenerationContext: Get user profile, goals, and preferences
-- searchExercisesForPlan: Search for exercises by name or muscle group
+- searchExercisesForPlan: Search for exercises by name or keyword, with optional equipment filters
 - getCurrentPlanState: See what you've built so far
 
 ### Create Tools
@@ -75,6 +75,7 @@ Create a structured training plan based on the user's profile and preferences. T
 ## Guidelines
 - Match session count to user's available training days
 - Consider equipment availability when selecting exercises
+- Avoid exercises with contraindication tags that conflict with reported pain or injuries
 - Adjust volume based on experience level (beginner: lower volume)
 - Include compound movements as primary exercises
 - Structure sets with appropriate rep ranges and RPE for the goal

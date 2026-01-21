@@ -62,7 +62,7 @@ const AVAILABLE_TOOLS = `## Available Tools
 
 ### Read Tools (for gathering information)
 - **getWorkoutContext**: Get the current workout with all exercises and sets, showing both prescribed (what the coach planned) and actual (what you've logged) data.
-- **searchExercises**: Search the exercise library by name, muscle group, or equipment. Use this to find alternatives when the athlete needs to swap exercises.
+- **searchExercises**: Search the exercise library by name or keyword, with optional equipment filters. Use this to find alternatives when the athlete needs to swap exercises.
 
 ### Proposal Tools (for logging and modifications)
 These tools add changes to a buffer that the athlete will review before saving:
@@ -106,6 +106,7 @@ const SOFT_GUIDANCE = `## Guidance
 
 - Gather context when helpful (use getWorkoutContext to see prescribed vs actual values)
 - Search the exercise library when the athlete needs alternatives
+- Use contraindication tags from search results to avoid exercises that conflict with reported pain
 - Make reasonable assumptions for incomplete information
 - Ask for clarification only when truly ambiguous (which set? which exercise?)
 - Tool results will guide your next steps - adapt based on what they return

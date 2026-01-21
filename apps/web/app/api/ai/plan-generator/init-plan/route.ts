@@ -23,8 +23,9 @@ export const maxDuration = 60 // Increased for thinking model
 interface ExerciseLibraryItem {
   id: number
   name: string
-  primary_muscles?: string[]
+  exercise_type?: string | null
   equipment?: string[]
+  contraindications?: string[]
 }
 
 export async function POST(req: Request) {

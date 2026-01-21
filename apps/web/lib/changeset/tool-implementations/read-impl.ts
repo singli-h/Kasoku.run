@@ -48,6 +48,7 @@ export interface ExerciseSearchResult {
   name: string
   description: string | null
   exerciseTypeName: string | null
+  contraindications?: string[]
 }
 
 /**
@@ -200,6 +201,7 @@ export async function executeSearchExercises(
     name: exercise.name ?? 'Unknown Exercise',
     description: exercise.description,
     exerciseTypeName: exercise.exerciseType?.type ?? null,
+    contraindications: exercise.contraindications ?? [],
   }))
 }
 

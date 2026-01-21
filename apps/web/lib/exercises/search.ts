@@ -386,10 +386,11 @@ function transformExercises(
     }
 
     const tagRows = row.tags || []
-    const tags = tagRows
+    const tags: Array<{ id: number; name?: string | null; category?: string | null }> = tagRows
       .map((t: any) => t.tag)
-      .filter((tag: any): tag is { id: number; name?: string | null; category?: string | null } =>
-        Boolean(tag && typeof tag.id === 'number')
+      .filter(
+        (tag: any): tag is { id: number; name?: string | null; category?: string | null } =>
+          Boolean(tag && typeof tag.id === 'number')
       )
 
     if (fields === 'full') {
@@ -418,11 +419,19 @@ function transformExercises(
     // Extract equipment tags for 'ai' and 'full' field sets
     if ((fields === 'ai' || fields === 'full') && tags.length > 0) {
       const equipmentTags = tags.filter((tag) => tag.category === 'equipment')
+      const contraindicationTags = tags.filter((tag) => tag.category === 'contraindication')
 
       item.equipment = equipmentTags
         .map((t) => t.name)
         .filter((name): name is string => Boolean(name))
       item.equipmentTagIds = equipmentTags
+        .map((t) => t.id)
+        .filter((id): id is number => typeof id === 'number')
+
+      item.contraindications = contraindicationTags
+        .map((t) => t.name)
+        .filter((name): name is string => Boolean(name))
+      item.contraindicationTagIds = contraindicationTags
         .map((t) => t.id)
         .filter((id): id is number => typeof id === 'number')
     }

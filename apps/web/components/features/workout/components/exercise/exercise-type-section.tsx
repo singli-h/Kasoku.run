@@ -90,6 +90,12 @@ const SECTION_CONFIG: Record<ExerciseGroupType, {
   "drill": {
     label: "Drill"
   },
+  "mobility": {
+    label: "Mobility"
+  },
+  "recovery": {
+    label: "Recovery"
+  },
   "superset": {
     label: "Superset"
   },

@@ -73,7 +73,7 @@ export interface LegacyWorkoutExercise {
  * Uses exercise type names directly as section names (unified naming)
  * 
  * Database exercise_types table:
- * 1 = Isometric, 2 = Plyometric, 3 = Gym, 4 = Warmup, 5 = Circuit, 6 = Sprint, 7 = Drill
+ * 1 = Isometric, 2 = Plyometric, 3 = Gym, 4 = Warmup, 5 = Circuit, 6 = Sprint, 7 = Drill, 8 = Mobility, 9 = Recovery
  * 
  * Note: exercise_type_id can come from two places depending on data source:
  * - Direct: exercise.exercise_type_id (older format)
@@ -100,6 +100,10 @@ function getSection(exercise: LegacyWorkoutExercise): string {
       return 'Sprint'
     case 7: // Drill
       return 'Drill'
+    case 8: // Mobility
+      return 'Mobility'
+    case 9: // Recovery
+      return 'Recovery'
     default:
       return 'Other'
   }

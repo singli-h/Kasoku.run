@@ -57,7 +57,7 @@ export type SearchExercisesForPlanInput = z.infer<typeof searchExercisesForPlanS
 
 export const searchExercisesForPlanTool = tool({
   description:
-    'Search the exercise library for exercises matching criteria. Use to find appropriate exercises when building session plans.',
+    'Search the exercise library for exercises matching criteria. Returns contraindication tags when available.',
   inputSchema: searchExercisesForPlanSchema,
 })
 
@@ -146,7 +146,7 @@ export const createSessionPlanSchema = z.object({
     .enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])
     .describe('Day of the week for this session'),
   session_type: z
-    .enum(['strength', 'hypertrophy', 'power', 'endurance', 'mobility', 'recovery'])
+    .enum(['strength', 'hypertrophy', 'power', 'endurance', 'mobility', 'recovery', 'speed'])
     .describe('Type of training session'),
   estimated_duration: z.number().int().min(15).max(180).describe('Estimated duration in minutes'),
   notes: z.string().optional().describe('Session notes or instructions'),
@@ -171,7 +171,7 @@ export const updateSessionPlanSchema = z.object({
     .optional()
     .describe('Updated day of the week'),
   session_type: z
-    .enum(['strength', 'hypertrophy', 'power', 'endurance', 'mobility', 'recovery'])
+    .enum(['strength', 'hypertrophy', 'power', 'endurance', 'mobility', 'recovery', 'speed'])
     .optional()
     .describe('Updated session type'),
   estimated_duration: z.number().int().min(15).max(180).optional().describe('Updated duration'),

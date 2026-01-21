@@ -46,7 +46,7 @@ interface Exercise {
 interface TrainingSession {
   id: string
   name: string
-  type: 'strength' | 'cardio' | 'flexibility' | 'mixed'
+  type: 'strength' | 'cardio' | 'flexibility' | 'mixed' | 'speed' | 'power' | 'hypertrophy' | 'endurance' | 'mobility' | 'recovery'
   status: 'not-started' | 'in-progress' | 'completed' | 'skipped'
   scheduledDate?: string
   startTime?: string
@@ -110,8 +110,14 @@ export function TrainingSessionCard({
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'strength': return <Dumbbell className="w-4 h-4" />
+      case 'hypertrophy': return <Dumbbell className="w-4 h-4" />
+      case 'power': return <TrendingUp className="w-4 h-4" />
+      case 'speed': return <TrendingUp className="w-4 h-4" />
       case 'cardio': return <TrendingUp className="w-4 h-4" />
+      case 'endurance': return <TrendingUp className="w-4 h-4" />
       case 'flexibility': return <User className="w-4 h-4" />
+      case 'mobility': return <User className="w-4 h-4" />
+      case 'recovery': return <Clock className="w-4 h-4" />
       default: return <Dumbbell className="w-4 h-4" />
     }
   }

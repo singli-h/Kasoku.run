@@ -187,8 +187,9 @@ export function useInitPipeline(options: UseInitPipelineOptions): UseInitPipelin
 interface ExerciseLibraryItem {
   id: string
   name: string
-  primary_muscles: string[]
-  equipment: string[]
+  exercise_type?: string | null
+  equipment?: string[]
+  contraindications?: string[]
 }
 
 async function fetchExerciseLibrary(
@@ -240,8 +241,9 @@ async function runPlanningStep(
       exerciseLibrary: exerciseLibrary.map((e) => ({
         id: Number(e.id),
         name: e.name,
-        primary_muscles: e.primary_muscles,
-        equipment: e.equipment,
+        exercise_type: e.exercise_type ?? null,
+        equipment: e.equipment ?? [],
+        contraindications: e.contraindications ?? [],
       })),
     }),
   })
