@@ -101,7 +101,13 @@ export function useInitPipeline(options: UseInitPipelineOptions): UseInitPipelin
       setStatus('fetching-exercises')
       console.log('[useInitPipeline] Fetching exercise library...')
 
-      const exerciseLibrary = await fetchExerciseLibrary(context.preferences.equipment)
+      const exerciseLibrary = await fetchExerciseLibrary(
+        context.preferences.equipment_tags,
+        context.preferences.equipment
+      )
+      if (!exerciseLibrary.length) {
+        throw new Error('No exercises available for plan generation. Please add exercises first.')
+      }
 
       // ========================================
       // Step 1: Planning (streaming)
@@ -185,13 +191,24 @@ interface ExerciseLibraryItem {
   equipment: string[]
 }
 
-async function fetchExerciseLibrary(equipment: string): Promise<ExerciseLibraryItem[]> {
+async function fetchExerciseLibrary(
+  equipmentTags?: string[],
+  fallbackEquipment?: string
+): Promise<ExerciseLibraryItem[]> {
   try {
+    const normalizedTags = Array.isArray(equipmentTags)
+      ? equipmentTags.map((tag) => tag.trim()).filter(Boolean)
+      : []
+    const fallbackTags =
+      !normalizedTags.length && fallbackEquipment && fallbackEquipment !== 'full_gym'
+        ? [fallbackEquipment]
+        : []
+
     const response = await fetch('/api/exercises/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        equipment: equipment === 'full_gym' ? undefined : equipment,
+        equipment_tags: normalizedTags.length ? normalizedTags : fallbackTags,
         limit: 100,
       }),
     })

@@ -16,11 +16,13 @@
 
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
+import { auth } from "@clerk/nextjs/server"
 import { UnifiedPageSkeleton } from "@/components/layout"
 import { SessionPlannerV2 } from "@/components/features/training"
 import { SessionAssistantWrapper, InlineProposalSlot } from "./SessionAssistantWrapper"
 import { getSessionPlanByIdAction } from "@/actions/library/exercise-actions"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
+import { getDbUserId } from "@/lib/user-cache"
 import type { SessionPlannerExercise } from "@/components/features/training/adapters/session-adapter"
 
 interface PageProps {
@@ -110,6 +112,10 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
   const planId = resolvedParams.id
   const sessionId = resolvedParams.sessionId
 
+  // Get user ID for exercise search visibility filtering
+  const { userId: clerkUserId } = await auth()
+  const dbUserId = clerkUserId ? await getDbUserId(clerkUserId) : undefined
+
   // Load session data only - exercise library is loaded on-demand via server-side search
   const sessionResult = await getSessionPlanByIdAction(sessionId)
 
@@ -127,6 +133,7 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
       sessionId={sessionId}
       planId={planId}
       initialExercises={exercises}
+      dbUserId={dbUserId ? String(dbUserId) : undefined}
       useInlineMode={true}
     >
       {/* Inline AI Proposals - shown when AI has pending changes */}

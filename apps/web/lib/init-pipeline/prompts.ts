@@ -105,6 +105,7 @@ export interface PlanningContext {
     training_days: string[]
     session_duration: number
     equipment: string
+    equipment_tags?: string[]
   }
   mesocycle: {
     name: string
@@ -148,7 +149,7 @@ ${context.user.secondary_goals?.length ? `**Secondary Goals:** ${context.user.se
 **Program Name:** ${context.mesocycle.name}
 
 ## Available Exercises
-${hasExercises ? exerciseList : 'No exercise library provided. Use common exercise names and ID 0 for all.'}
+${hasExercises ? exerciseList : 'No exercise library provided. Do not invent exercise IDs.'}
 
 Design a ${context.mesocycle.duration_weeks}-week training program.
 For each exercise, specify: exercise ID, sets, reps, weight (or null), RPE, rest time.`

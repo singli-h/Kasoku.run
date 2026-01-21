@@ -31,6 +31,9 @@ interface SessionAssistantWrapperProps {
   /** Initial exercises to populate the context */
   initialExercises: SessionPlannerExercise[]
 
+  /** Database user ID for exercise search visibility filtering */
+  dbUserId?: string
+
   /**
    * Use inline mode for proposals.
    * When true, proposals are displayed via ConnectedInlineProposalSection
@@ -47,6 +50,7 @@ export function SessionAssistantWrapper({
   sessionId,
   planId,
   initialExercises,
+  dbUserId,
   useInlineMode = true,
   children,
 }: SessionAssistantWrapperProps) {
@@ -55,6 +59,7 @@ export function SessionAssistantWrapper({
       <SessionAssistant
         sessionId={sessionId}
         planId={planId}
+        dbUserId={dbUserId}
         useInlineMode={useInlineMode}
         autoCollapseChat={useInlineMode}
       >

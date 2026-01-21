@@ -24,11 +24,13 @@ import { WorkoutLogWithDetails, SessionPlanWithDetails } from '@/types/training'
 interface WorkoutSessionClientProps {
   initialSession: WorkoutLogWithDetails
   sessionId: string
+  dbUserId?: string
 }
 
 export function WorkoutSessionClient({
   initialSession,
-  sessionId
+  sessionId,
+  dbUserId,
 }: WorkoutSessionClientProps) {
   // Use React Query with server-fetched initial data
   // This enables seamless background refresh without loading states
@@ -51,6 +53,7 @@ export function WorkoutSessionClient({
     <SessionAssistant
       sessionId={sessionId}
       domain="workout"
+      dbUserId={dbUserId}
       useInlineMode={false}
       onWorkoutUpdated={handleWorkoutUpdated}
     >

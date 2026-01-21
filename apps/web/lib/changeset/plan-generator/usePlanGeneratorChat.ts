@@ -33,6 +33,8 @@ export interface UsePlanGeneratorChatOptions {
   context: PlanGenerationContext
   /** Supabase client for exercise search (requires Clerk auth) */
   supabase: SupabaseClient
+  /** User ID for filtering custom exercises (database user ID) */
+  userId?: string
   /** Enable debug logging */
   debug?: boolean
   /** Callback when plan is ready for approval */
@@ -74,6 +76,7 @@ export function usePlanGeneratorChat(
     mesocycle,
     context,
     supabase,
+    userId,
     debug = true,
     onPlanReady,
     onStatusChange,
@@ -87,6 +90,7 @@ export function usePlanGeneratorChat(
   const onStatusChangeRef = useRef(onStatusChange)
   const contextRef = useRef(context)
   const supabaseRef = useRef(supabase)
+  const userIdRef = useRef(userId)
 
   // Keep refs updated
   useEffect(() => {
@@ -94,6 +98,7 @@ export function usePlanGeneratorChat(
     onStatusChangeRef.current = onStatusChange
     contextRef.current = context
     supabaseRef.current = supabase
+    userIdRef.current = userId
   })
 
   // Initialize plan generator state
@@ -151,6 +156,7 @@ export function usePlanGeneratorChat(
       setMetadata: (...args) => setMetadataRef.current(...args),
       context: contextRef.current,
       supabase: supabaseRef.current,
+      userId: userIdRef.current,
     })
   }, []) // Empty deps - handlers use refs
 

@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react"
 import { ChevronLeft, Clock, Dumbbell, Loader2, Plus, Search, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useExerciseSearch, useExerciseTypes } from "../hooks/useExerciseSearch"
+import { useExerciseSearch, useExerciseTypes, useEquipmentTags } from "../hooks/useExerciseSearch"
 import type { ExerciseLibraryItem } from "../types"
 
 export interface ExercisePickerSheetProps {
@@ -54,6 +54,10 @@ export function ExercisePickerSheet({
 }: ExercisePickerSheetProps) {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedSection, setSelectedSection] = useState("Warmup")
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | null>(null)
+
+  // Fetch equipment tags for filter dropdown
+  const { data: equipmentTags } = useEquipmentTags()
 
   // Set default section when opening with a pre-selected section
   useEffect(() => {
@@ -76,6 +80,7 @@ export function ExercisePickerSheet({
     resetSearch
   } = useExerciseSearch({
     enabled: isOpen && useServerSearch,
+    equipmentTagIds: selectedEquipmentId ? [selectedEquipmentId] : undefined,
     pageSize: 30,
     debounceMs: 300,
   })
@@ -141,6 +146,7 @@ export function ExercisePickerSheet({
     if (!isOpen) {
       resetSearch()
       setSelectedCategory("All")
+      setSelectedEquipmentId(null)
     }
   }, [isOpen, resetSearch])
 
@@ -231,19 +237,34 @@ export function ExercisePickerSheet({
         </div>
       </div>
 
-      {/* Section Selector */}
+      {/* Section Selector & Equipment Filter */}
       <div className="px-4 py-2 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Add to:</span>
-          <select
-            value={selectedSection}
-            onChange={(e) => setSelectedSection(e.target.value)}
-            className="text-sm font-medium bg-transparent border-0 focus:outline-none cursor-pointer"
-          >
-            {DEFAULT_SECTIONS.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Add to:</span>
+            <select
+              value={selectedSection}
+              onChange={(e) => setSelectedSection(e.target.value)}
+              className="text-sm font-medium bg-transparent border-0 focus:outline-none cursor-pointer"
+            >
+              {DEFAULT_SECTIONS.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Equipment:</span>
+            <select
+              value={selectedEquipmentId ?? ""}
+              onChange={(e) => setSelectedEquipmentId(e.target.value ? Number(e.target.value) : null)}
+              className="text-sm font-medium bg-transparent border-0 focus:outline-none cursor-pointer"
+            >
+              <option value="">All</option>
+              {equipmentTags?.map(tag => (
+                <option key={tag.id} value={tag.id}>{tag.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

@@ -29,6 +29,8 @@ interface UseExerciseSearchOptions {
   initialQuery?: string
   /** Exercise type filter */
   exerciseTypeId?: number
+  /** Equipment tag IDs filter */
+  equipmentTagIds?: number[]
   /** Number of results per page */
   pageSize?: number
   /** Debounce delay in ms */
@@ -76,6 +78,7 @@ interface UseExerciseSearchReturn {
 export function useExerciseSearch({
   initialQuery = '',
   exerciseTypeId,
+  equipmentTagIds,
   pageSize = 20,
   debounceMs = 300,
   enabled = true,
@@ -107,9 +110,10 @@ export function useExerciseSearch({
   const filters: ExerciseFilters = useMemo(() => ({
     search: debouncedQuery || undefined,
     exercise_type_id: exerciseTypeId,
+    equipment_tag_ids: equipmentTagIds?.length ? equipmentTagIds : undefined,
     limit: pageSize,
     offset: currentPage * pageSize,
-  }), [debouncedQuery, exerciseTypeId, pageSize, currentPage])
+  }), [debouncedQuery, exerciseTypeId, equipmentTagIds, pageSize, currentPage])
 
   // Query for exercises
   const { data, isLoading, error, isFetching } = useQuery<PaginatedExercises>({
@@ -187,6 +191,28 @@ export function useExerciseTypes() {
       return result.data
     },
     staleTime: 60 * 60 * 1000, // 1 hour - exercise types rarely change
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours
+  })
+}
+
+/**
+ * Hook for getting equipment tag options for filter dropdown
+ */
+export function useEquipmentTags() {
+  return useQuery({
+    queryKey: ['equipmentTags'],
+    queryFn: async () => {
+      // Import dynamically to avoid circular dependencies
+      const { getEquipmentTagsAction } = await import('@/actions/library/exercise-actions')
+      const result = await getEquipmentTagsAction()
+
+      if (!result.isSuccess) {
+        throw new Error(result.message)
+      }
+
+      return result.data
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour - equipment tags rarely change
     gcTime: 24 * 60 * 60 * 1000, // 24 hours
   })
 }

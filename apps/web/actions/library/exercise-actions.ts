@@ -10,6 +10,7 @@ Handles exercise CRUD operations, exercise types, and preset group management.
 import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
+import type { ExerciseSearchItem } from "@/lib/exercises"
 import { ActionState } from "@/types"
 import {
   Exercise, ExerciseInsert, ExerciseUpdate,
@@ -24,6 +25,34 @@ import {
   ExerciseFilters,
   PaginatedExercises
 } from "@/types/training"
+
+function mapExerciseSearchItemToDetails(exercise: ExerciseSearchItem): ExerciseWithDetails {
+  return {
+    id: exercise.id,
+    name: exercise.name,
+    description: exercise.description,
+    exercise_type_id: exercise.exerciseTypeId ?? null,
+    unit_id: exercise.unitId ?? null,
+    video_url: exercise.videoUrl ?? null,
+    visibility: exercise.visibility ?? 'global',
+    owner_user_id: exercise.ownerUserId ?? null,
+    created_at: exercise.createdAt ?? null,
+    updated_at: exercise.updatedAt ?? null,
+    is_archived: exercise.isArchived ?? false,
+    embedding: null,
+    search_tsv: null,
+    exercise_type: exercise.exerciseType ? {
+      id: exercise.exerciseType.id,
+      type: exercise.exerciseType.type,
+      description: exercise.exerciseType.description ?? null,
+    } : null,
+    unit: exercise.unit ? {
+      id: exercise.unit.id,
+      name: exercise.unit.name,
+    } : null,
+    tags: exercise.tags ?? [],
+  } as ExerciseWithDetails
+}
 
 // ============================================================================
 // EXERCISE LIBRARY ACTIONS
@@ -47,49 +76,41 @@ export async function getExercisesAction(filters?: ExerciseFilters): Promise<Act
     // Get database user ID from cache
     const dbUserId = await getDbUserId(userId)
 
-    // Using singleton supabase client
-    let query = supabase
-      .from('exercises')
-      .select(`
-        *,
-        exercise_type:exercise_types(*),
-        unit:units(*),
-        tags:exercise_tags(
-          tag:tags(*)
-        )
-      `)
-      .or(`visibility.eq.global,and(visibility.eq.private,owner_user_id.eq.${dbUserId})`)
+    const { searchExercises, MAX_LIMIT } = await import('@/lib/exercises')
 
-    // Apply filters
-    if (filters?.search) {
-      query = query.ilike('name', `%${filters.search}%`)
-    }
+    const pageSize = MAX_LIMIT
+    let offset = 0
+    let hasMore = true
+    let results: ExerciseSearchItem[] = []
 
-    if (filters?.exercise_type_id) {
-      query = query.eq('exercise_type_id', filters.exercise_type_id)
+    while (hasMore) {
+      const page = await searchExercises(supabase, {
+        query: filters?.search,
+        exerciseTypeId: filters?.exercise_type_id,
+        equipmentTagIds: filters?.equipment_tag_ids,
+        userId: String(dbUserId),
+        limit: pageSize,
+        offset,
+        fields: 'full',
+      })
+
+      results = results.concat(page.exercises)
+      offset += pageSize
+      hasMore = page.hasMore && page.exercises.length > 0
     }
 
     if (filters?.unit_id) {
-      query = query.eq('unit_id', filters.unit_id)
+      results = results.filter((exercise) => exercise.unitId === filters.unit_id)
     }
 
-    // Note: tag filtering would require a more complex query with joins
-    
-    const { data: exercises, error } = await query.order('name', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching exercises:', error)
-      return {
-        isSuccess: false,
-        message: `Failed to fetch exercises: ${error.message}`
-      }
+    if (filters?.tag_ids?.length) {
+      const tagIds = new Set(filters.tag_ids)
+      results = results.filter((exercise) =>
+        (exercise.tags ?? []).some((tag) => tagIds.has(tag.id))
+      )
     }
 
-    // Transform the data to match our expected interface
-    const transformedExercises = exercises?.map(exercise => ({
-      ...exercise,
-      tags: exercise.tags?.map((tag: any) => tag.tag) || []
-    })) || []
+    const transformedExercises = results.map(mapExerciseSearchItemToDetails)
 
     return {
       isSuccess: true,
@@ -108,6 +129,9 @@ export async function getExercisesAction(filters?: ExerciseFilters): Promise<Act
 /**
  * Search exercises with pagination - optimized for exercise picker
  * Returns paginated results for efficient loading of large exercise libraries
+ *
+ * Uses unified search module from lib/exercises for consistent behavior
+ * across all search consumers (UI picker, API routes, AI tools).
  */
 export async function searchExercisesAction(
   filters?: ExerciseFilters
@@ -125,147 +149,50 @@ export async function searchExercisesAction(
     // Get database user ID from cache
     const dbUserId = await getDbUserId(userId)
 
-    // Pagination defaults
-    const limit = filters?.limit ?? 20
-    const offset = filters?.offset ?? 0
+    // Import unified search module
+    const { searchExercises } = await import('@/lib/exercises')
 
-    // Build base query for exercises visible to user
-    let query = supabase
-      .from('exercises')
-      .select(`
-        id,
-        name,
-        description,
-        video_url,
-        exercise_type_id,
-        unit_id,
-        visibility,
-        exercise_type:exercise_types(id, type, description)
-      `, { count: 'exact' })
-      .or(`visibility.eq.global,and(visibility.eq.private,owner_user_id.eq.${dbUserId})`)
+    // Execute unified search
+    const result = await searchExercises(supabase, {
+      query: filters?.search,
+      exerciseTypeId: filters?.exercise_type_id,
+      equipmentTagIds: filters?.equipment_tag_ids,
+      userId: String(dbUserId), // Convert to string for unified search
+      limit: filters?.limit ?? 20,
+      offset: filters?.offset ?? 0,
+      fields: 'picker',
+    })
 
-    // Apply search filter (name or description)
-    if (filters?.search && filters.search.trim()) {
-      const searchTerm = `%${filters.search.trim()}%`
-      query = query.or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`)
-    }
-
-    // Apply exercise type filter
-    if (filters?.exercise_type_id) {
-      query = query.eq('exercise_type_id', filters.exercise_type_id)
-    }
-
-    // Apply unit filter
-    if (filters?.unit_id) {
-      query = query.eq('unit_id', filters.unit_id)
-    }
-
-    // Execute with pagination
-    const { data: exercises, error, count } = await query
-      .order('name', { ascending: true })
-      .range(offset, offset + limit - 1)
-
-    if (error) {
-      console.error('[searchExercisesAction] Error:', error)
-      return {
-        isSuccess: false,
-        message: `Failed to search exercises: ${error.message}`
-      }
-    }
-
-    const total = count ?? 0
-    const hasMore = offset + limit < total
-
-    // Transform to ExerciseWithDetails format (minimal fields for picker)
-    const transformedExercises: ExerciseWithDetails[] = (exercises || []).map((exercise: any) => ({
-      ...exercise,
+    // Transform to ExerciseWithDetails format for backward compatibility
+    // Note: Using type assertion since picker only needs subset of fields
+    const transformedExercises = result.exercises.map((exercise) => ({
+      id: exercise.id,
+      name: exercise.name,
+      description: exercise.description,
+      video_url: exercise.videoUrl ?? null,
+      exercise_type_id: exercise.exerciseTypeId ?? null,
+      unit_id: null, // Not included in picker field set
+      visibility: exercise.visibility ?? 'global',
+      exercise_type: exercise.exerciseType ? {
+        id: exercise.exerciseType.id,
+        type: exercise.exerciseType.type,
+        description: exercise.exerciseType.description,
+      } : null,
       tags: [], // Skip tags for search performance
-      unit: null // Skip unit for search performance
-    }))
+      unit: null, // Skip unit for search performance
+    })) as unknown as ExerciseWithDetails[]
 
     return {
       isSuccess: true,
       message: "Exercises retrieved successfully",
       data: {
         exercises: transformedExercises,
-        total,
-        hasMore
+        total: result.total,
+        hasMore: result.hasMore
       }
     }
   } catch (error) {
     console.error('Error in searchExercisesAction:', error)
-    return {
-      isSuccess: false,
-      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
-    }
-  }
-}
-
-/**
- * Get exercises by tag IDs
- */
-export async function getExercisesByTagsAction(tagIds: number[]): Promise<ActionState<ExerciseWithDetails[]>> {
-  try {
-    // Using singleton supabase client
-
-    // Use a more complex query to filter by tags
-    const { data: exerciseTagsData, error: tagsError } = await supabase
-      .from('exercise_tags')
-      .select('exercise_id')
-      .in('tag_id', tagIds)
-
-    if (tagsError) {
-      console.error('Error fetching exercise tags:', tagsError)
-      return {
-        isSuccess: false,
-        message: `Failed to fetch exercises by tags: ${tagsError.message}`
-      }
-    }
-
-    const exerciseIds = exerciseTagsData?.map(et => et.exercise_id).filter((id): id is number => id !== null) || []
-
-    if (exerciseIds.length === 0) {
-      return {
-        isSuccess: true,
-        message: "No exercises found with the specified tags",
-        data: []
-      }
-    }
-
-    const { data: exercises, error } = await supabase
-      .from('exercises')
-      .select(`
-        *,
-        exercise_type:exercise_types(*),
-        unit:units(*),
-        tags:exercise_tags(
-          tag:tags(*)
-        )
-      `)
-      .in('id', exerciseIds)
-      .order('name', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching exercises:', error)
-      return {
-        isSuccess: false,
-        message: `Failed to fetch exercises: ${error.message}`
-      }
-    }
-
-    // Transform the data to match our expected interface
-    const transformedExercises = exercises?.map(exercise => ({
-      ...exercise,
-      tags: exercise.tags?.map((tag: any) => tag.tag) || []
-    })) || []
-
-    return {
-      isSuccess: true,
-      message: "Exercises retrieved successfully",
-      data: transformedExercises
-    }
-  } catch (error) {
-    console.error('Error in getExercisesByTagsAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -560,6 +487,33 @@ export async function getExerciseTypesAction(): Promise<ActionState<ExerciseType
     }
   } catch (error) {
     console.error('Error in getExerciseTypesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Get all equipment tags for filtering
+ * Returns tags with category = 'equipment'
+ *
+ * Uses unified search module from lib/exercises for consistent behavior.
+ */
+export async function getEquipmentTagsAction(): Promise<ActionState<{ id: number; name: string }[]>> {
+  try {
+    // Import unified search module
+    const { getEquipmentTags } = await import('@/lib/exercises')
+
+    const tags = await getEquipmentTags(supabase)
+
+    return {
+      isSuccess: true,
+      message: "Equipment tags retrieved successfully",
+      data: tags
+    }
+  } catch (error) {
+    console.error('Error in getEquipmentTagsAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`

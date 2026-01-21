@@ -45,23 +45,15 @@ export const getSessionContextTool = tool({
  * Read-only - does not add to changeset.
  */
 export const searchExercisesSchema = z.object({
-  query: z.string().describe('Natural language search query'),
-  muscleGroups: z
-    .array(z.string())
-    .optional()
-    .describe('Filter by muscle groups'),
+  query: z.string().describe('Natural language search query (e.g., "squat", "chest press")'),
   equipment: z
     .array(z.string())
     .optional()
-    .describe('Filter by required equipment'),
+    .describe('Filter by required equipment (e.g., ["barbell", "dumbbell"])'),
   excludeEquipment: z
     .array(z.string())
     .optional()
-    .describe('Exclude exercises requiring this equipment'),
-  injuryConsiderations: z
-    .array(z.string())
-    .optional()
-    .describe('Filter by injury considerations'),
+    .describe('Exclude exercises requiring this equipment (e.g., ["cable machine"])'),
   limit: z
     .number()
     .int()

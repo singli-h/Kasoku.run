@@ -159,48 +159,48 @@ export async function executeGetSessionContext(
 /**
  * Executes the searchExercises read tool.
  *
- * Searches the exercise library by name.
+ * Uses unified search module from lib/exercises for consistent behavior
+ * across all search consumers (UI picker, API routes, AI tools).
+ *
+ * Supports:
+ * - Partial text search on name/description
+ * - Equipment tag filtering
+ * - User's custom exercises (visibility = 'private')
+ * - Global exercises (visibility = 'global')
+ * - Exercise type info for AI context
  *
  * @param input - Tool input parameters
  * @param supabase - Supabase client
+ * @param userId - Optional user ID for visibility filtering
  * @returns Array of matching exercises
  */
 export async function executeSearchExercises(
   input: SearchExercisesInput,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  userId?: string
 ): Promise<ExerciseSearchResult[]> {
-  const { query, muscleGroups, equipment, limit = 5 } = input
+  const { query, equipment, excludeEquipment, limit = 5 } = input
 
-  // Start building query - simple select without complex joins
-  let queryBuilder = supabase
-    .from('exercises')
-    .select('id, name, description, exercise_type_id')
-    .eq('is_archived', false)
-    .limit(limit)
+  // Import unified search module
+  const { searchExercises } = await import('@/lib/exercises')
 
-  // Full-text search on name
-  if (query) {
-    // Use ilike for simple search (could be enhanced with tsquery)
-    queryBuilder = queryBuilder.ilike('name', `%${query}%`)
-  }
+  // Execute unified search with 'ai' field set for exercise type context
+  const result = await searchExercises(supabase, {
+    query: query?.trim() || undefined,
+    equipmentTags: equipment,
+    excludeEquipmentTags: excludeEquipment,
+    userId,
+    limit,
+    fields: 'ai', // Include exercise type for AI context
+  })
 
-  // Execute query
-  const { data, error } = await queryBuilder
-
-  if (error) {
-    console.error('[executeSearchExercises] Error:', error)
-    throw new Error('Failed to search exercises')
-  }
-
-  // Format results
-  return (
-    data?.map((exercise) => ({
-      id: String(exercise.id),
-      name: exercise.name ?? 'Unknown Exercise',
-      description: exercise.description,
-      exerciseTypeName: null, // Simplified - skip type lookup for now
-    })) ?? []
-  )
+  // Format results for session assistant
+  return result.exercises.map((exercise) => ({
+    id: String(exercise.id),
+    name: exercise.name ?? 'Unknown Exercise',
+    description: exercise.description,
+    exerciseTypeName: exercise.exerciseType?.type ?? null,
+  }))
 }
 
 /**
@@ -209,19 +209,21 @@ export async function executeSearchExercises(
  * @param toolName - The name of the read tool
  * @param args - Tool arguments
  * @param supabase - Supabase client
+ * @param userId - Optional user ID for visibility filtering
  * @returns Tool result
  */
 export async function executeReadTool(
   toolName: string,
   args: Record<string, unknown>,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  userId?: string
 ): Promise<unknown> {
   switch (toolName) {
     case 'getSessionContext':
       return executeGetSessionContext(args as GetSessionContextInput, supabase)
 
     case 'searchExercises':
-      return executeSearchExercises(args as SearchExercisesInput, supabase)
+      return executeSearchExercises(args as SearchExercisesInput, supabase, userId)
 
     default:
       throw new Error(`Unknown read tool: ${toolName}`)

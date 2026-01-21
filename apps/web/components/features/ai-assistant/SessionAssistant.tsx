@@ -61,6 +61,9 @@ interface SessionAssistantProps {
    */
   domain?: AssistantDomain
 
+  /** Database user ID for exercise search visibility filtering */
+  dbUserId?: string
+
   /**
    * Use inline mode for proposals.
    * When true, the overlay ApprovalBanner is hidden.
@@ -104,6 +107,7 @@ export function SessionAssistant(props: SessionAssistantProps) {
 function SessionAssistantContent({
   sessionId,
   domain = 'session',
+  dbUserId,
   useInlineMode = false,
   autoCollapseChat = true,
   onWorkoutUpdated,
@@ -197,8 +201,8 @@ function SessionAssistantContent({
             },
             executeReadTool: (name, args) =>
               domain === 'workout'
-                ? executeAthleteReadTool(name, args, supabase)
-                : executeReadTool(name, args, supabase),
+                ? executeAthleteReadTool(name, args, supabase, dbUserId)
+                : executeReadTool(name, args, supabase, dbUserId),
           }
         )
 

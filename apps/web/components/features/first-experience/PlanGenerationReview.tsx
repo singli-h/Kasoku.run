@@ -128,7 +128,8 @@ function buildPlanningContext(setupContext: SetupContext, mesocycle: MesocycleSe
     preferences: {
       training_days: setupContext.trainingDays.map(d => NUMBER_TO_DAY_NAME[d]),
       session_duration: setupContext.durationMinutes,
-      equipment: setupContext.equipment[0] || 'full_gym',
+      equipment: setupContext.equipment.length ? setupContext.equipment.join(', ') : 'full_gym',
+      equipment_tags: setupContext.equipment,
     },
     mesocycle: {
       name: mesocycle.name,

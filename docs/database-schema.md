@@ -255,7 +255,7 @@ Categorization tags for exercises with structured categories.
 | `category` | `text` | Tag category | NULLABLE, CHECK constraint |
 
 **RLS**: Enabled
-**Valid Categories**: 'region', 'goal', 'modality', 'intensity', 'contraindication'
+**Valid Categories**: 'region', 'goal', 'modality', 'intensity', 'contraindication', 'equipment'
 
 #### `exercise_tags`
 Many-to-many relationship between exercises and tags.

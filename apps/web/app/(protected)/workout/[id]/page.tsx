@@ -11,15 +11,21 @@
 
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
+import { auth } from "@clerk/nextjs/server"
 import { getWorkoutSessionByIdAction } from "@/actions/workout/workout-session-actions"
 import { UnifiedPageSkeleton } from "@/components/layout"
 import { WorkoutSessionClient } from "./WorkoutSessionClient"
+import { getDbUserId } from "@/lib/user-cache"
 
 interface WorkoutSessionPageProps {
   params: Promise<{ id: string }>
 }
 
 async function WorkoutSessionContent({ sessionId }: { sessionId: string }) {
+  // Get user ID for exercise search visibility filtering
+  const { userId: clerkUserId } = await auth()
+  const dbUserId = clerkUserId ? await getDbUserId(clerkUserId) : undefined
+
   // Server-side fetch for fast initial render
   const result = await getWorkoutSessionByIdAction(sessionId)
 
@@ -40,6 +46,7 @@ async function WorkoutSessionContent({ sessionId }: { sessionId: string }) {
     <WorkoutSessionClient
       initialSession={session}
       sessionId={sessionId}
+      dbUserId={dbUserId ? String(dbUserId) : undefined}
     />
   )
 }

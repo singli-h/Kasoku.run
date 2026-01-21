@@ -394,12 +394,14 @@ export async function executeGetWorkoutContext(
  * @param toolName - The name of the read tool
  * @param args - Tool arguments
  * @param supabase - Supabase client
+ * @param userId - Optional user ID for visibility filtering
  * @returns Tool result
  */
 export async function executeAthleteReadTool(
   toolName: string,
   args: Record<string, unknown>,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  userId?: string
 ): Promise<unknown> {
   switch (toolName) {
     case 'getWorkoutContext': {
@@ -417,7 +419,7 @@ export async function executeAthleteReadTool(
 
     case 'searchExercises':
       // Reuse the same exercise search from coach domain
-      return executeSearchExercises(args as SearchExercisesInput, supabase)
+      return executeSearchExercises(args as SearchExercisesInput, supabase, userId)
 
     default:
       throw new Error(`Unknown athlete read tool: ${toolName}`)

@@ -300,73 +300,47 @@ export function createPlanGeneratorHandlers(
 
 /**
  * Search exercises in the database.
- * Uses PostgreSQL full-text search for efficient querying at scale (500+ exercises).
+ *
+ * Uses unified search module from lib/exercises for consistent behavior
+ * across all search consumers (UI picker, API routes, AI tools).
  *
  * Supports:
- * - Full-text search via search_tsv column (indexed)
+ * - Partial text search on name/description
+ * - Equipment tag filtering
  * - User's custom exercises (visibility = 'private')
  * - Global exercises (visibility = 'global')
- * - Exercise type information for AI context
+ * - Exercise type and equipment info for AI context
  */
 async function executeSearchExercisesForPlan(
   input: SearchExercisesForPlanInput,
   supabase: SupabaseClient,
   userId?: string
 ): Promise<ExerciseSearchResult[]> {
-  const { query, muscle_groups, equipment, exclude_equipment, limit = 10 } = input
+  const { query, equipment, exclude_equipment, limit = 10 } = input
 
-  // Build query with exercise type for better AI context
-  let queryBuilder = supabase
-    .from('exercises')
-    .select(`
-      id,
-      name,
-      description,
-      exercise_type:exercise_types(type, description)
-    `)
-    .eq('is_archived', false)
-    .limit(limit)
+  // Import unified search module
+  const { searchExercises } = await import('@/lib/exercises')
 
-  // Visibility filter: include global exercises + user's custom exercises
-  if (userId) {
-    queryBuilder = queryBuilder.or(
-      `visibility.eq.global,and(visibility.eq.private,owner_user_id.eq.${userId})`
-    )
-  } else {
-    // If no user ID, only show global exercises
-    queryBuilder = queryBuilder.eq('visibility', 'global')
-  }
+  // Execute unified search with 'ai' field set for equipment context
+  const result = await searchExercises(supabase, {
+    query: query?.trim() || undefined,
+    equipmentTags: equipment,
+    excludeEquipmentTags: exclude_equipment,
+    userId: userId,
+    limit,
+    fields: 'ai', // Include exercise type and equipment tags for AI context
+  })
 
-  // Full-text search using search_tsv column (indexed tsvector)
-  // This is much more efficient than ilike for 500+ exercises
-  if (query && query.trim()) {
-    // Convert search terms to tsquery format (space-separated words become OR)
-    const searchTerms = query.trim().split(/\s+/).join(' | ')
-    queryBuilder = queryBuilder.textSearch('search_tsv', searchTerms, {
-      type: 'plain', // plain mode handles partial word matching better
-      config: 'simple', // matches the tsvector config in the database
-    })
-  }
-
-  // Execute query
-  const { data, error } = await queryBuilder.order('name', { ascending: true })
-
-  if (error) {
-    console.error('[PlanGenerator] searchExercisesForPlan error:', error)
-    throw new Error('Failed to search exercises')
-  }
-
-  // Format results with exercise type info
-  return (
-    data?.map((exercise: any) => ({
-      id: String(exercise.id),
-      name: exercise.name ?? 'Unknown Exercise',
-      description: exercise.description,
-      // Include exercise type for AI context (e.g., "Strength", "Cardio", "Flexibility")
-      muscle_groups: exercise.exercise_type?.type ? [exercise.exercise_type.type] : [],
-      equipment: [], // Equipment data not yet in schema - can be added when available
-    })) ?? []
-  )
+  // Format results for AI tool consumption
+  return result.exercises.map((exercise) => ({
+    id: String(exercise.id),
+    name: exercise.name ?? 'Unknown Exercise',
+    description: exercise.description,
+    // Include exercise type for AI context (e.g., "warmup", "plyometric", "gym")
+    muscle_groups: exercise.exerciseType?.type ? [exercise.exerciseType.type] : [],
+    // Now includes equipment from tags (e.g., ["dumbbell", "bench"])
+    equipment: exercise.equipment ?? [],
+  }))
 }
 
 // ============================================================================

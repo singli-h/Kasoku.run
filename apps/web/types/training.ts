@@ -279,6 +279,8 @@ export interface ExerciseFilters {
   search?: string
   exercise_type_id?: number
   tag_ids?: number[]
+  /** Filter by equipment tags (category: equipment) */
+  equipment_tag_ids?: number[]
   unit_id?: number
   /** Maximum number of results to return (default: 50) */
   limit?: number

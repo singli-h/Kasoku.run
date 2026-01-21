@@ -36,10 +36,6 @@ export const getPlanGenerationContextTool = tool({
  */
 export const searchExercisesForPlanSchema = z.object({
   query: z.string().describe('Natural language search query (e.g., "chest press", "squat variation")'),
-  muscle_groups: z
-    .array(z.string())
-    .optional()
-    .describe('Filter by muscle groups (e.g., ["chest", "triceps"])'),
   equipment: z
     .array(z.string())
     .optional()
@@ -47,7 +43,7 @@ export const searchExercisesForPlanSchema = z.object({
   exclude_equipment: z
     .array(z.string())
     .optional()
-    .describe('Exclude exercises requiring this equipment'),
+    .describe('Exclude exercises requiring this equipment (e.g., ["cable machine"])'),
   limit: z
     .number()
     .int()
