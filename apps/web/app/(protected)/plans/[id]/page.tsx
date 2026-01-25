@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { TrainingPlanWorkspace } from "@/components/features/plans/workspace/TrainingPlanWorkspace"
-import { IndividualWorkspace } from "@/components/features/plans/workspace/IndividualWorkspace"
+import { IndividualPlanPage } from "@/components/features/plans/individual"
 import { UnifiedPageSkeleton, PageLayout } from "@/components/layout"
 import { getMacrocycleByIdAction, getMesocycleByIdAction } from "@/actions/plans/plan-actions"
 import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
@@ -80,11 +80,9 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
 
     return (
       <FeatureErrorBoundary featureName="Training Block" customMessage="Something went wrong while loading your training block. Please try again.">
-        <PageLayout title="Training Block" description="">
-          <Suspense fallback={<UnifiedPageSkeleton title="Training Block" variant="grid" />}>
-            <IndividualWorkspace trainingBlock={mesocycleResult.data as MesocycleWithDetails} />
-          </Suspense>
-        </PageLayout>
+        <Suspense fallback={<UnifiedPageSkeleton title="Training Block" variant="grid" />}>
+          <IndividualPlanPage trainingBlock={mesocycleResult.data as MesocycleWithDetails} />
+        </Suspense>
       </FeatureErrorBoundary>
     )
   }

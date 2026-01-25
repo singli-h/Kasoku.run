@@ -501,7 +501,7 @@ export async function getMesocyclesByMacrocycleAction(macrocycleId: number): Pro
             *,
             session_plan_exercises(
               *,
-              exercises(*),
+              exercise:exercises(*),
               session_plan_sets(*)
             )
           )
@@ -561,7 +561,7 @@ export async function getMesocycleByIdAction(id: number): Promise<ActionState<Me
             *,
             session_plan_exercises(
               *,
-              exercises(*),
+              exercise:exercises(*),
               session_plan_sets(*)
             )
           )
@@ -899,7 +899,7 @@ export async function getMicrocyclesByMesocycleAction(mesocycleId: number): Prom
           *,
           session_plan_exercises(
             *,
-            exercises(*),
+            exercise:exercises(*),
             session_plan_sets(*)
           ),
           athlete_groups(*)
@@ -1456,9 +1456,18 @@ export async function getActiveMesocycleForUserAction(): Promise<ActionState<Mes
               id,
               exercise_id,
               exercise_order,
-              exercises (
+              exercise:exercises (
                 id,
                 name
+              ),
+              session_plan_sets (
+                id,
+                set_number,
+                reps,
+                weight,
+                duration,
+                rest_seconds,
+                notes
               )
             )
           )

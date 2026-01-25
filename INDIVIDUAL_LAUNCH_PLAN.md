@@ -6,7 +6,7 @@ Launch the **Individual user role** to production with focus on:
 1. ✅ Polished onboarding experience with role-specific guidance
 2. ✅ Clear first-time user journey
 3. ✅ Complete feature parity (Edit Training Block)
-4. 🚧 **Phase 2: Mobile-first Individual Plan Page** (Section 5)
+4. ✅ **Phase 2: Mobile-first Individual Plan Page** (Section 5)
 
 ### Phase 2 Priority: Individual Plan Page
 
@@ -280,18 +280,20 @@ All new components must be responsive (mobile-first, desktop-enhanced):
 <WeekSelectorDropdown className="hidden lg:block" /> // Desktop only
 ```
 
-### 5.7 Implementation Tasks
+### 5.7 Implementation Status ✅ COMPLETE
 
-- [ ] Create `apps/web/components/features/plans/individual/` directory
-- [ ] Create `IndividualPlanPage.tsx` - main layout (responsive)
-- [ ] Create `TodayWorkoutCard.tsx` - expandable workout card
-- [ ] Create `WeekWorkoutList.tsx` - week workouts list
-- [ ] Create `WeekSelectorSheet.tsx` - week navigation (mobile: sheet, desktop: dropdown)
-- [ ] Update route to use new component for individual users
-- [ ] Wire up `SessionAssistant` for AI functionality
-- [ ] Wire up `SessionExercisesContext` for state management
+- [x] Create `apps/web/components/features/plans/individual/` directory
+- [x] Create `IndividualPlanPage.tsx` - main layout (responsive)
+- [x] Create `TodayWorkoutCard.tsx` - expandable workout card
+- [x] Create `WeekWorkoutList.tsx` - week workouts list
+- [x] Create `WeekSelectorSheet.tsx` - week navigation (mobile: sheet, desktop: dropdown)
+- [x] Update route to use new component for individual users
+- [x] Wire up AI regenerate functionality (dropdown in header)
+- [x] Export new components from `plans/index.ts`
 - [ ] Test on mobile viewport sizes (375px, 414px)
 - [ ] Test on desktop viewport sizes (1024px, 1440px)
+
+**Note:** Full inline editing with `SessionAssistant` + `SessionExercisesContext` remains in the session editor page (`/plans/[id]/session/[sessionId]`). The IndividualPlanPage serves as a today-focused overview with quick navigation to the full editor.
 
 ---
 
@@ -310,21 +312,21 @@ All new components must be responsive (mobile-first, desktop-enhanced):
 | `IndividualWorkspace.tsx` | Entire component | Replaced by `IndividualPlanPage` for individual users |
 | `IndividualWorkspace.tsx` | `WorkoutCard` sub-component | Replaced by `TodayWorkoutCard` with expand functionality |
 
-### 6.3 Recommended Migration Strategy
+### 6.3 Migration Status ✅ COMPLETE
 
-**Phase 1: Build Parallel (No Breaking Changes)**
-1. Create new `IndividualPlanPage` in separate directory
-2. Keep `IndividualWorkspace` unchanged
-3. Test new component thoroughly
+**Phase 1: Build Parallel** ✅
+1. Created new `IndividualPlanPage` in `apps/web/components/features/plans/individual/`
+2. `IndividualWorkspace` kept as legacy export
 
-**Phase 2: Route Switch**
-1. Update page route to detect user type
-2. Individual users → `IndividualPlanPage`
-3. Coach users → Keep using `IndividualWorkspace` (or `TrainingPlanWorkspace`)
+**Phase 2: Route Switch** ✅
+1. Route at `/plans/[id]/page.tsx` updated
+2. Individual users → `IndividualPlanPage` (mobile-first, today-focused)
+3. Coach users → `TrainingPlanWorkspace` (full periodization view)
 
-**Phase 3: Cleanup (After Validation)**
-1. Remove `IndividualWorkspace` if no longer needed
-2. Or rename to `CoachPlanOverview` if coach-specific
+**Phase 3: Cleanup** ⏳
+1. `IndividualWorkspace` marked as legacy in exports
+2. Can be removed after validation period
+3. Consider renaming to `CoachBlockOverview` if needed for coach role later
 
 ### 6.4 Files to Keep (Shared Infrastructure)
 

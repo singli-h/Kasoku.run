@@ -11,5 +11,10 @@ export { TemplatesPage } from './components/templates-page'
 export { IndividualPlansHome } from './home/IndividualPlansHome'
 export { TrainingBlockCard } from './home/TrainingBlockCard'
 export { EmptyTrainingState } from './home/EmptyTrainingState'
-export { IndividualWorkspace } from './workspace/IndividualWorkspace'
 export { QuickStartWizard } from './components/mesowizard/QuickStartWizard'
+
+// Mobile-first individual plan page
+export { IndividualPlanPage, WeekSelectorSheet } from './individual'
+
+// Legacy - kept for backwards compatibility
+export { IndividualWorkspace } from './workspace/IndividualWorkspace'

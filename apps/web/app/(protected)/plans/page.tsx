@@ -8,21 +8,25 @@ export default async function PlansPage() {
   const role = await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
   const isIndividual = role === 'individual'
 
-  // Role-based terminology is handled inline
-  // Note: Keep "Plans" to avoid confusion with "Training" nav group
-  const pageTitle = isIndividual ? "Plans" : "Training Plans"
-  const pageDescription = isIndividual
-    ? "Manage your training blocks and workouts"
-    : "View and manage your macrocycles with race-anchored timelines"
+  // Individual users: streamlined view without PageLayout wrapper
+  // Active block content is shown directly (no extra navigation needed)
+  if (isIndividual) {
+    return (
+      <Suspense fallback={<UnifiedPageSkeleton title="Training" variant="plans" />}>
+        <IndividualPlansHome />
+      </Suspense>
+    )
+  }
 
+  // Coach users: full PageLayout with title/description
   return (
     <PageLayout
-      title={pageTitle}
-      description={pageDescription}
+      title="Training Plans"
+      description="View and manage your macrocycles with race-anchored timelines"
     >
-      <Suspense fallback={<UnifiedPageSkeleton title={pageTitle} variant="plans" />}>
-        {isIndividual ? <IndividualPlansHome /> : <PlansHome />}
+      <Suspense fallback={<UnifiedPageSkeleton title="Training Plans" variant="plans" />}>
+        <PlansHome />
       </Suspense>
     </PageLayout>
   )
-} 
+}
