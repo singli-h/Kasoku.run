@@ -250,7 +250,10 @@ export default function OnboardingWizard() {
           title: "Welcome to Kasoku!",
           description: "Your profile has been set up successfully.",
         })
-        router.push('/dashboard')
+
+        // Redirect based on role: individuals go to plans to create first training block
+        const redirectPath = userData.role === 'individual' ? '/plans' : '/dashboard'
+        router.push(redirectPath)
       } else {
         console.error('Onboarding failed:', result.message)
         toast({
@@ -340,9 +343,10 @@ export default function OnboardingWizard() {
         return <DashboardTourStep role={userData.role} onNext={nextStep} onPrev={prevStep} />
       case 5:
         return (
-          <CompletionStep 
-            onComplete={handleComplete} 
+          <CompletionStep
+            onComplete={handleComplete}
             isSubmitting={isSubmitting}
+            role={userData.role}
           />
         )
       default:

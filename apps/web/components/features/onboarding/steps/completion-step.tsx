@@ -3,12 +3,50 @@
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Loader2, Sparkles } from "lucide-react"
 
+type UserRole = "athlete" | "coach" | "individual" | ""
+
 interface CompletionStepProps {
   onComplete: () => void
   isSubmitting: boolean
+  role: UserRole
 }
 
-export function CompletionStep({ onComplete, isSubmitting }: CompletionStepProps) {
+// Role-specific next steps content
+const ROLE_NEXT_STEPS: Record<Exclude<UserRole, "">, { items: string[]; buttonText: string }> = {
+  individual: {
+    items: [
+      "Create your first Training Block with AI assistance",
+      "Set your weekly workout schedule and available equipment",
+      "Review and approve your AI-generated workouts",
+      "Start logging workouts and track your progress",
+    ],
+    buttonText: "Create Your First Plan",
+  },
+  athlete: {
+    items: [
+      "Your dashboard is ready with your training overview",
+      "View training plans assigned by your coach",
+      "Start logging workouts and track your progress",
+      "Check your performance analytics anytime",
+    ],
+    buttonText: "Go to Dashboard",
+  },
+  coach: {
+    items: [
+      "Set up your first athlete or training group",
+      "Create training programs and assign to athletes",
+      "Track athlete progress from your dashboard",
+      "Use the exercise library to build custom workouts",
+    ],
+    buttonText: "Go to Dashboard",
+  },
+}
+
+export function CompletionStep({ onComplete, isSubmitting, role }: CompletionStepProps) {
+  // Fallback to individual if role is empty (shouldn't happen)
+  const effectiveRole = role || "individual"
+  const { items, buttonText } = ROLE_NEXT_STEPS[effectiveRole]
+
   return (
     <div className="text-center space-y-8">
       <div className="space-y-6">
@@ -22,12 +60,12 @@ export function CompletionStep({ onComplete, isSubmitting }: CompletionStepProps
             </div>
           </div>
         </div>
-        
+
         <div className="space-y-4">
           <h1 className="text-3xl font-bold text-foreground">
             You're all set!
           </h1>
-          
+
           <p className="text-lg text-muted-foreground max-w-md mx-auto">
             Welcome to Kasoku! Your account has been configured and you're ready to start your training journey.
           </p>
@@ -36,28 +74,18 @@ export function CompletionStep({ onComplete, isSubmitting }: CompletionStepProps
         <div className="bg-muted/50 rounded-lg p-6 max-w-lg mx-auto">
           <h3 className="font-semibold text-foreground mb-4">What happens next?</h3>
           <div className="space-y-3 text-sm text-muted-foreground text-left">
-            <div className="flex items-start">
-              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 shrink-0" />
-              <span>Your personalized dashboard will be prepared</span>
-            </div>
-            <div className="flex items-start">
-              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 shrink-0" />
-              <span>You'll have access to all the features for your plan</span>
-            </div>
-            <div className="flex items-start">
-              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 shrink-0" />
-              <span>You can start tracking workouts immediately</span>
-            </div>
-            <div className="flex items-start">
-              <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 shrink-0" />
-              <span>Check your email for additional setup tips</span>
-            </div>
+            {items.map((item, index) => (
+              <div key={index} className="flex items-start">
+                <div className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 shrink-0" />
+                <span>{item}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        <Button 
+        <Button
           onClick={onComplete}
           disabled={isSubmitting}
           size="lg"
@@ -70,12 +98,12 @@ export function CompletionStep({ onComplete, isSubmitting }: CompletionStepProps
             </>
           ) : (
             <>
-              Complete Setup
+              {buttonText}
               <Sparkles className="w-4 h-4 ml-2" />
             </>
           )}
         </Button>
-        
+
         {isSubmitting && (
           <p className="text-xs text-muted-foreground">
             This may take a few moments while we configure your account.

@@ -24,14 +24,29 @@ export interface WorkoutExercise extends SessionPlanExerciseWithDetails {
   superset_id: number | null
 }
 
-// Save status for auto-save indicator
+// Simple save status for backward compatibility
 export type SaveStatus = 'saved' | 'saving' | 'error' | 'idle'
+
+// Enhanced save info for smarter UI feedback
+export interface SaveInfo {
+  /** Current save status */
+  status: SaveStatus
+  /** Number of pending changes to save */
+  pendingCount: number
+  /** Timestamp of last successful save */
+  lastSavedAt: Date | null
+  /** Details about failed saves for retry UI */
+  failedItems: Array<{ exerciseName: string; setIndex: number; error?: string }>
+}
 
 // Context value interface
 interface ExerciseContextValue {
   exercises: WorkoutExercise[]
   showVideo: boolean
+  /** Simple save status for backward compatibility */
   saveStatus: SaveStatus
+  /** Enhanced save info for smarter UI */
+  saveInfo: SaveInfo
   updateExercise: (id: string, updates: Partial<WorkoutExercise>) => void
   toggleSetComplete: (exerciseId: string, detailId: string) => void
   toggleVideo: () => void
@@ -40,6 +55,8 @@ interface ExerciseContextValue {
   forceSave: () => Promise<boolean>
   /** Check if there are pending unsaved changes */
   hasPendingChanges: () => boolean
+  /** Retry failed saves */
+  retryFailedSaves: () => Promise<boolean>
 }
 
 // Create context with null initial value
@@ -75,19 +92,79 @@ interface ExerciseProviderProps {
   sessionId?: string
 }
 
+// Saveable set data type that matches what saveExercisePerformance expects
+// Different from WorkoutLogSet because API expects boolean (not boolean | null) for completed
+interface SaveableSetData {
+  reps?: number | null
+  weight?: number | null
+  distance?: number | null
+  performing_time?: number | null
+  rest_time?: number | null
+  power?: number | null
+  resistance?: number | null
+  velocity?: number | null
+  height?: number | null
+  effort?: number | null
+  tempo?: string | null
+  rpe?: number | null
+  completed?: boolean
+}
+
+// Queue item type for type safety
+interface SaveQueueItem {
+  sessionPlanExerciseId: string
+  exerciseId: number
+  exerciseName: string
+  setIndex: number
+  updates: SaveableSetData
+}
+
+/**
+ * Convert WorkoutLogSet to SaveableSetData
+ * Picks only the fields that can be saved and converts null completed to undefined
+ */
+function toSaveableSetData(set: Partial<WorkoutLogSet>): SaveableSetData {
+  return {
+    reps: set.reps,
+    weight: set.weight,
+    distance: set.distance,
+    performing_time: set.performing_time,
+    rest_time: set.rest_time,
+    power: set.power,
+    resistance: set.resistance,
+    velocity: set.velocity,
+    height: set.height,
+    effort: set.effort,
+    tempo: set.tempo,
+    rpe: set.rpe,
+    // Convert null to undefined for completed (API expects boolean | undefined, not boolean | null)
+    completed: set.completed ?? undefined
+  }
+}
+
 export const ExerciseProvider = ({ children, initialData = [], sessionId }: ExerciseProviderProps) => {
   // State for managing exercises and video display
   const [exercises, setExercises] = useState<WorkoutExercise[]>(initialData)
   const [showVideo, setShowVideo] = useState(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
+  const [failedItems, setFailedItems] = useState<SaveInfo['failedItems']>([])
 
-  // Auto-save queue and timer
-  const saveQueueRef = useRef<Map<string, any>>(new Map())
+  // Auto-save queue and timer - using typed Map
+  const saveQueueRef = useRef<Map<string, SaveQueueItem>>(new Map())
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const draftTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isSavingRef = useRef<boolean>(false)
   // Track latest exercises for draft save (Phase 3)
   const exercisesRef = useRef<WorkoutExercise[]>(initialData)
+
+  // Compute saveInfo from state
+  const saveInfo: SaveInfo = {
+    status: saveStatus,
+    pendingCount: saveQueueRef.current.size,
+    lastSavedAt,
+    failedItems
+  }
 
   // Workout API for saving data
   const { saveExercisePerformance } = useWorkoutApi()
@@ -95,7 +172,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
   /**
    * Process the auto-save queue
    * Debounced to avoid excessive database writes
-   * Properly handles individual save failures
+   * Properly handles individual save failures with detailed tracking
    * Uses lock to prevent concurrent saves
    */
   const processSaveQueue = useCallback(async () => {
@@ -111,51 +188,59 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
 
     isSavingRef.current = true
     setSaveStatus('saving')
+    // Clear previous failed items when starting new save batch
+    setFailedItems([])
 
     try {
       // Snapshot the queue at start of processing - new items added during save will be processed next time
       const entries = Array.from(saveQueueRef.current.entries())
       const results = await Promise.all(
         entries.map(async ([key, data]) => {
-          const { sessionPlanExerciseId, exerciseId, setIndex, updates } = data
+          const { sessionPlanExerciseId, exerciseId, exerciseName, setIndex, updates } = data
 
           // Pass sessionPlanExerciseId for precise exercise instance identification
           const success = await saveExercisePerformance(
             sessionId,
             exerciseId,
-            { set_index: setIndex, ...updates },
+            { ...updates, set_index: setIndex }, // set_index after spread to ensure numeric value overrides any null in updates
             true, // immediate save
             sessionPlanExerciseId // CRITICAL: Pass session_plan_exercise_id for unique lookup
           )
 
-          return { key, success }
+          return { key, success, exerciseName, setIndex }
         })
       )
 
-      // Only remove successful saves from the queue
+      // Track failed items for UI feedback
+      const newFailedItems: SaveInfo['failedItems'] = []
       let hasFailures = false
-      for (const { key, success } of results) {
+
+      for (const { key, success, exerciseName, setIndex } of results) {
         if (success) {
           saveQueueRef.current.delete(key)
         } else {
           hasFailures = true
+          newFailedItems.push({ exerciseName, setIndex, error: 'Save failed' })
           console.error('[ExerciseProvider] Save failed for key:', key)
         }
       }
 
       if (hasFailures) {
         setSaveStatus('error')
+        setFailedItems(newFailedItems)
         // Keep failed items in queue - will retry on next save trigger
-        setTimeout(() => setSaveStatus('idle'), 3000)
+        setTimeout(() => setSaveStatus('idle'), 5000)
       } else {
         setSaveStatus('saved')
+        setLastSavedAt(new Date())
         setTimeout(() => setSaveStatus('idle'), 2000)
       }
     } catch (error) {
       console.error('[ExerciseProvider] Auto-save failed:', error)
       setSaveStatus('error')
+      setFailedItems([{ exerciseName: 'Unknown', setIndex: 0, error: String(error) }])
       // Keep items in queue for retry
-      setTimeout(() => setSaveStatus('idle'), 3000)
+      setTimeout(() => setSaveStatus('idle'), 5000)
     } finally {
       isSavingRef.current = false
 
@@ -268,6 +353,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
             // Also get template exercise ID for backward compatibility
             const rawExId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
             const exerciseTemplateId = typeof rawExId === 'string' ? parseInt(rawExId, 10) : rawExId
+            const exerciseName = exerciseData.exercise?.name || 'Exercise'
 
             console.log('[ExerciseProvider] Change detected for set', {
               index,
@@ -283,14 +369,24 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
               return
             }
 
-            // Use session_plan_exercise_id as queue key to prevent collisions
+            // UNIFIED QUEUE KEY: Use consistent key pattern for all updates (no more -completion suffix)
             const queueKey = `${sessionId}-${sessionPlanExerciseId}-${index}`
-            console.log('[ExerciseProvider] Queueing save', { queueKey, setIndex: index + 1, sessionPlanExerciseId })
+
+            // MERGE STRATEGY: Merge with existing queued updates instead of replacing
+            // Convert to saveable format to ensure proper types (especially completed: boolean, not null)
+            const existingItem = saveQueueRef.current.get(queueKey)
+            const saveableData = toSaveableSetData(newSet)
+            const mergedUpdates: SaveableSetData = existingItem
+              ? { ...existingItem.updates, ...saveableData }
+              : saveableData
+
+            console.log('[ExerciseProvider] Queueing save', { queueKey, setIndex: index + 1, sessionPlanExerciseId, merged: !!existingItem })
             saveQueueRef.current.set(queueKey, {
               sessionPlanExerciseId, // Primary identifier - unique per exercise instance
               exerciseId: exerciseTemplateId, // Kept for backward compatibility
+              exerciseName,
               setIndex: index + 1,
-              updates: newSet
+              updates: mergedUpdates
             })
           }
         })
@@ -340,6 +436,7 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
         // Also get template exercise ID for backward compatibility
         const rawExId = exerciseData.exercise?.id ?? (exerciseData as any).exercise_id
         const exerciseTemplateId = typeof rawExId === 'string' ? parseInt(rawExId, 10) : rawExId
+        const exerciseName = exerciseData.exercise?.name || 'Exercise'
 
         if (!sessionPlanExerciseId) {
           console.error('[ExerciseProvider] Cannot save completion - missing session_plan_exercise_id:', {
@@ -349,14 +446,25 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
         }
 
         const detail = exerciseData.workout_log_sets[detailIndex]
-        // Use session_plan_exercise_id as queue key to prevent collisions
-        const queueKey = `${sessionId}-${sessionPlanExerciseId}-${detailIndex}-completion`
+
+        // UNIFIED QUEUE KEY: Same pattern as updateExercise - no more separate -completion suffix
+        // This ensures completion toggle merges with any pending field updates
+        const queueKey = `${sessionId}-${sessionPlanExerciseId}-${detailIndex}`
+
+        // MERGE STRATEGY: Merge completion status with any existing queued updates
+        // Convert completed to boolean (not null) for API compatibility
+        const existingItem = saveQueueRef.current.get(queueKey)
+        const completedValue = detail.completed ?? false // Ensure boolean, not null
+        const mergedUpdates: SaveableSetData = existingItem
+          ? { ...existingItem.updates, completed: completedValue }
+          : { completed: completedValue }
 
         saveQueueRef.current.set(queueKey, {
           sessionPlanExerciseId, // Primary identifier - unique per exercise instance
           exerciseId: exerciseTemplateId, // Kept for backward compatibility
+          exerciseName,
           setIndex: detailIndex + 1,
-          updates: { completed: detail.completed } // Now using the NEW toggled value
+          updates: mergedUpdates
         })
 
         scheduleAutoSave()
@@ -411,38 +519,43 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
 
     isSavingRef.current = true
     setSaveStatus('saving')
+    setFailedItems([])
 
     try {
       // Process all pending saves and track results
       const entries = Array.from(saveQueueRef.current.entries())
       const results = await Promise.all(
         entries.map(async ([key, data]) => {
-          const { sessionPlanExerciseId, exerciseId, setIndex, updates } = data
+          const { sessionPlanExerciseId, exerciseId, exerciseName, setIndex, updates } = data
           // Pass sessionPlanExerciseId for precise exercise instance identification
           const success = await saveExercisePerformance(
             sessionId!,
             exerciseId,
-            { set_index: setIndex, ...updates },
+            { ...updates, set_index: setIndex }, // set_index after spread to ensure numeric value overrides any null in updates
             true, // immediate save
             sessionPlanExerciseId // CRITICAL: Pass session_plan_exercise_id for unique lookup
           )
-          return { key, success }
+          return { key, success, exerciseName, setIndex }
         })
       )
 
-      // Check results and handle failures
+      // Check results and handle failures with detailed tracking
+      const newFailedItems: SaveInfo['failedItems'] = []
       let allSucceeded = true
-      for (const { key, success } of results) {
+
+      for (const { key, success, exerciseName, setIndex } of results) {
         if (success) {
           saveQueueRef.current.delete(key)
         } else {
           allSucceeded = false
+          newFailedItems.push({ exerciseName, setIndex, error: 'Save failed' })
           console.error('[ExerciseProvider] Force save failed for key:', key)
         }
       }
 
       if (allSucceeded) {
         setSaveStatus('saved')
+        setLastSavedAt(new Date())
         // Clear draft on successful save (Phase 3)
         if (sessionId) {
           clearDraft(sessionId)
@@ -450,11 +563,13 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
         return true
       } else {
         setSaveStatus('error')
+        setFailedItems(newFailedItems)
         return false
       }
     } catch (error) {
       console.error('[ExerciseProvider] Force save failed:', error)
       setSaveStatus('error')
+      setFailedItems([{ exerciseName: 'Unknown', setIndex: 0, error: String(error) }])
       return false
     } finally {
       isSavingRef.current = false
@@ -468,6 +583,23 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
   const hasPendingChanges = useCallback((): boolean => {
     return saveQueueRef.current.size > 0 || saveStatus === 'saving'
   }, [saveStatus])
+
+  /**
+   * Retry failed saves - useful for manual retry button in UI
+   * @returns Promise<boolean> - true if all retries succeeded
+   */
+  const retryFailedSaves = useCallback(async (): Promise<boolean> => {
+    if (saveQueueRef.current.size === 0) {
+      setFailedItems([])
+      return true
+    }
+
+    // Clear failed items and trigger save
+    setFailedItems([])
+    await processSaveQueue()
+
+    return saveQueueRef.current.size === 0
+  }, [processSaveQueue])
 
   // Keep exercisesRef in sync with state (Phase 3: for draft save)
   useEffect(() => {
@@ -498,12 +630,14 @@ export const ExerciseProvider = ({ children, initialData = [], sessionId }: Exer
     exercises,
     showVideo,
     saveStatus,
+    saveInfo,
     updateExercise,
     toggleSetComplete,
     toggleVideo,
     setExercises,
     forceSave,
-    hasPendingChanges
+    hasPendingChanges,
+    retryFailedSaves
   }
 
   return (

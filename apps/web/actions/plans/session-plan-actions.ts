@@ -225,6 +225,7 @@ export async function saveSessionPlanAction(
       resistance_unit_id: number | null
       tempo: string | null
       effort: number | null
+      rpe: number | null
       height: number | null
       metadata: string | null
     }> = []
@@ -250,7 +251,9 @@ export async function saveSessionPlanAction(
           resistance: set.resistance || null,
           resistance_unit_id: set.resistance_unit_id || null,
           tempo: set.tempo || null,
-          effort: set.rpe || null,
+          // FIX: Use set.effort, not set.rpe (different fields)
+          effort: set.effort != null ? set.effort / 100 : null,
+          rpe: set.rpe || null,
           height: set.height || null,
           metadata: set.metadata ? JSON.stringify(set.metadata) : null
         })
@@ -388,13 +391,14 @@ export async function getSessionPlansByMicrocycleAction(
            setIndex: detail.set_index,
            reps: detail.reps,
            weight: detail.weight,
-           rpe: detail.effort, // Map effort back to RPE
-           restTime: 90, // Default rest time
+           rpe: detail.rpe, // FIX: Read rpe from its own field, not from effort
+           restTime: detail.rest_time || 90, // Use actual rest_time from DB
            distance: detail.distance,
            performing_time: detail.performing_time,
            power: detail.power,
            velocity: detail.velocity,
-           effort: detail.effort,
+           // Convert effort from DB (0-1) to UI (0-100)
+           effort: detail.effort != null ? detail.effort * 100 : null,
            height: detail.height,
            resistance: detail.resistance,
            resistance_unit_id: detail.resistance_unit_id,
@@ -668,7 +672,9 @@ export async function saveAsTemplateAction(
             resistance: set.resistance || null,
             resistance_unit_id: set.resistance_unit_id || null,
             tempo: set.tempo || null,
-            effort: set.rpe || null,
+            // FIX: Use set.effort, not set.rpe (different fields)
+            effort: set.effort != null ? set.effort / 100 : null,
+            rpe: set.rpe || null,
             height: set.height || null,
             metadata: set.metadata ? JSON.stringify(set.metadata) : null
           }

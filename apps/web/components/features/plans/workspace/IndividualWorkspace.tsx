@@ -7,16 +7,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Calendar,
   ChevronRight,
   Plus,
   Dumbbell,
   Edit,
-  ArrowLeft
+  ArrowLeft,
+  Sparkles,
+  ChevronDown
 } from "lucide-react"
 import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 import type { MesocycleWithDetails, MicrocycleWithDetails, SessionPlanWithDetails } from "@/types/training"
 import { AddWorkoutDialog } from "./components/AddWorkoutDialog"
+import { EditTrainingBlockDialog, type TrainingBlockFormData } from "./components/EditTrainingBlockDialog"
+import { updateMesocycleAction } from "@/actions/plans/plan-actions"
 
 // ============================================================================
 // Type Definitions
@@ -36,10 +47,12 @@ interface IndividualWorkspaceProps {
  */
 export function IndividualWorkspace({ trainingBlock }: IndividualWorkspaceProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [selectedWeekId, setSelectedWeekId] = useState<number | null>(
     findCurrentWeek(trainingBlock.microcycles)?.id ?? trainingBlock.microcycles?.[0]?.id ?? null
   )
   const [addWorkoutOpen, setAddWorkoutOpen] = useState(false)
+  const [editBlockOpen, setEditBlockOpen] = useState(false)
 
   const selectedWeek = trainingBlock.microcycles?.find(m => m.id === selectedWeekId)
   const selectedWeekNumber = selectedWeek
@@ -54,6 +67,37 @@ export function IndividualWorkspace({ trainingBlock }: IndividualWorkspaceProps)
   const totalDays = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)))
   const daysElapsed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
   const progress = Math.min(100, Math.max(0, Math.round((daysElapsed / totalDays) * 100)))
+
+  // Handler for saving block edits
+  const handleSaveBlock = async (data: TrainingBlockFormData) => {
+    const result = await updateMesocycleAction(data.id, {
+      name: data.name,
+      description: data.description,
+      start_date: data.start_date,
+      end_date: data.end_date,
+    })
+
+    if (result.isSuccess) {
+      toast({
+        title: "Block Updated",
+        description: "Your training block has been updated.",
+      })
+      router.refresh()
+    } else {
+      toast({
+        title: "Error",
+        description: result.message || "Failed to update training block",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Handler for regenerate with AI
+  const handleRegenerateWithAI = () => {
+    // Navigate to the plan creation wizard with existing block context
+    // The wizard will detect this is a regeneration and load existing settings
+    router.push(`/plans/new?regenerate=${trainingBlock.id}`)
+  }
 
   return (
     <div className="space-y-6">
@@ -74,10 +118,27 @@ export function IndividualWorkspace({ trainingBlock }: IndividualWorkspaceProps)
             </div>
           </div>
         </div>
-        <Button variant="outline" size="sm" disabled title="Coming soon">
-          <Edit className="h-4 w-4 mr-2" />
-          Edit Block
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setEditBlockOpen(true)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleRegenerateWithAI}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Regenerate Workouts
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* 2-Column Layout */}
@@ -155,6 +216,20 @@ export function IndividualWorkspace({ trainingBlock }: IndividualWorkspaceProps)
           weekNumber={selectedWeekNumber}
         />
       )}
+
+      {/* Edit Training Block Dialog */}
+      <EditTrainingBlockDialog
+        block={{
+          id: trainingBlock.id,
+          name: trainingBlock.name || "",
+          description: trainingBlock.description,
+          start_date: trainingBlock.start_date,
+          end_date: trainingBlock.end_date,
+        }}
+        open={editBlockOpen}
+        onOpenChange={setEditBlockOpen}
+        onSave={handleSaveBlock}
+      />
     </div>
   )
 }

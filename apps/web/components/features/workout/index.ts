@@ -1,6 +1,6 @@
 // Workout feature domain exports
 export { ExerciseProvider, useExerciseContext } from './context/exercise-context'
-export type { WorkoutExercise } from './context/exercise-context'
+export type { WorkoutExercise, SaveStatus, SaveInfo } from './context/exercise-context'
 
 export { useWorkoutSession } from './hooks/use-workout-session'
 export type { SessionStatus } from './hooks/use-workout-session'

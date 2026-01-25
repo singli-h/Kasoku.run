@@ -120,6 +120,8 @@ export function sessionExerciseToTraining(
     velocity: set.velocity,
     height: set.height,
     resistance: set.resistance,
+    // SessionPlannerExercise stores effort in UI format (0-100), no conversion needed
+    // Conversion from DB (0-1) to UI (0-100) happens in transformSessionData (page.tsx)
     effort: set.effort,
     resistanceUnitId: set.resistance_unit_id,
     completed: false, // Coach mode - no completion tracking

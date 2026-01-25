@@ -90,7 +90,9 @@ function transformSessionData(backendData: any): {
       resistance_unit_id: setRecord.resistance_unit_id,
       power: setRecord.power,
       velocity: setRecord.velocity,
-      effort: setRecord.effort,
+      // Convert effort from 0-1 (database) to 0-100 (UI percentage)
+      // SessionPlannerExercise uses UI format so user edits don't cause double conversion
+      effort: setRecord.effort != null ? setRecord.effort * 100 : null,
       height: setRecord.height,
       resistance: setRecord.resistance,
       completed: false, // Default for planning mode

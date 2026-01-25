@@ -84,7 +84,8 @@ function mapSetsToInsert(
     resistance_unit_id: set.resistance_unit_id,
     power: set.power,
     velocity: set.velocity,
-    effort: set.effort,
+    // Convert effort from 0-100 (UI percentage) to 0-1 (database)
+    effort: set.effort != null ? set.effort / 100 : null,
     height: set.height,
     resistance: set.resistance
   }))

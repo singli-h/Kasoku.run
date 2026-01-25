@@ -46,10 +46,28 @@ export interface WorkoutSetDraft {
   setIndex: number
   /** Number of reps performed */
   reps?: number
-  /** Weight used */
+  /** Weight used (kg) */
   weight?: number
+  /** Distance (meters) */
+  distance?: number
+  /** Performing time (seconds) */
+  performingTime?: number
+  /** Rest time (seconds) */
+  restTime?: number
+  /** Tempo (e.g., "3-1-2-0") */
+  tempo?: string
   /** RPE (1-10) */
   rpe?: number
+  /** Power (watts) */
+  power?: number
+  /** Velocity (m/s) */
+  velocity?: number
+  /** Height (cm) */
+  height?: number
+  /** Resistance (kg) */
+  resistance?: number
+  /** Effort percentage (0-100 in UI) */
+  effort?: number
   /** Whether set is complete */
   completed: boolean
 }
@@ -78,10 +96,19 @@ export function saveDraft(
     exerciseDrafts[exercise.id] = {
       exerciseId: exercise.id,
       sets: exercise.workout_log_sets.map((set, index) => ({
-        setIndex: index + 1,
+        setIndex: set.set_index ?? index + 1,
         reps: set.reps ?? undefined,
         weight: set.weight ?? undefined,
+        distance: set.distance ?? undefined,
+        performingTime: set.performing_time ?? undefined,
+        restTime: set.rest_time ?? undefined,
+        tempo: set.tempo ?? undefined,
         rpe: set.rpe ?? undefined,
+        power: set.power ?? undefined,
+        velocity: set.velocity ?? undefined,
+        height: set.height ?? undefined,
+        resistance: set.resistance ?? undefined,
+        effort: set.effort ?? undefined,
         completed: set.completed ?? false
       })),
       notes: exercise.notes
@@ -93,7 +120,7 @@ export function saveDraft(
     exercises: exerciseDrafts,
     notes,
     lastModified: Date.now(),
-    version: 1
+    version: 2  // v2: Added all training fields (distance, time, effort, etc.)
   }
 
   try {

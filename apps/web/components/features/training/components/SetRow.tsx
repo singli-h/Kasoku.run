@@ -442,7 +442,7 @@ export function SetRow({
                 value={set.performingTime ?? ""}
                 onChange={(e) => handleChange("performingTime", e.target.value)}
                 className={cn(inputClass, "w-12")}
-                placeholder="0.00"
+                placeholder="-"
               />
               <span className="text-muted-foreground text-xs">s</span>
             </div>
@@ -502,7 +502,7 @@ export function SetRow({
                 value={set.velocity ?? ""}
                 onChange={(e) => handleChange("velocity", e.target.value)}
                 className={cn(inputClass, "w-12")}
-                placeholder="0.00"
+                placeholder="-"
               />
               <span className="text-muted-foreground text-xs">m/s</span>
             </div>
@@ -726,7 +726,7 @@ export function SetRow({
               value={set.performingTime ?? ""}
               onChange={(e) => handleChange("performingTime", e.target.value)}
               className={cn(inputClass, "w-12")}
-              placeholder="0.00"
+              placeholder="-"
             />
             <span className="text-muted-foreground text-xs">s</span>
           </div>
@@ -786,7 +786,7 @@ export function SetRow({
               value={set.velocity ?? ""}
               onChange={(e) => handleChange("velocity", e.target.value)}
               className={cn(inputClass, "w-12")}
-              placeholder="0.00"
+              placeholder="-"
             />
             <span className="text-muted-foreground text-xs">m/s</span>
           </div>
