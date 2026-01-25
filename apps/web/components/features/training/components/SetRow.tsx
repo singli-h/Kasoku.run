@@ -398,7 +398,7 @@ export function SetRow({
                 value={set.reps ?? ""}
                 onChange={(e) => handleChange("reps", e.target.value)}
                 className={cn(inputClass, "w-8")}
-                placeholder="--"
+                placeholder="-"
               />
               <span className="text-muted-foreground text-xs">x</span>
             </div>
@@ -413,7 +413,7 @@ export function SetRow({
                 value={set.weight ?? ""}
                 onChange={(e) => handleChange("weight", e.target.value)}
                 className={cn(inputClass, "w-10")}
-                placeholder="--"
+                placeholder="-"
               />
               <span className="text-muted-foreground text-xs">kg</span>
             </div>
@@ -427,7 +427,7 @@ export function SetRow({
                 value={set.distance ?? ""}
                 onChange={(e) => handleChange("distance", e.target.value)}
                 className={cn(inputClass, "w-9")}
-                placeholder="--"
+                placeholder="-"
               />
               <span className="text-muted-foreground text-xs">m</span>
             </div>
@@ -447,51 +447,6 @@ export function SetRow({
               <span className="text-muted-foreground text-xs">s</span>
             </div>
           )}
-          {showHeight && (
-            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <input
-                type="number"
-                min={0}
-                max={999}
-                step={0.1}
-                value={set.height ?? ""}
-                onChange={(e) => handleChange("height", e.target.value)}
-                className={cn(inputClass, "w-9")}
-                placeholder="--"
-              />
-              <span className="text-muted-foreground text-xs">cm</span>
-            </div>
-          )}
-          {showResistance && (
-            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <input
-                type="number"
-                min={0}
-                max={9999}
-                step={0.5}
-                value={set.resistance ?? ""}
-                onChange={(e) => handleChange("resistance", e.target.value)}
-                className={cn(inputClass, "w-10")}
-                placeholder="--"
-              />
-              <span className="text-muted-foreground text-xs">R</span>
-            </div>
-          )}
-          {showPower && (
-            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <input
-                type="number"
-                min={0}
-                max={99999}
-                step={0.1}
-                value={set.power ?? ""}
-                onChange={(e) => handleChange("power", e.target.value)}
-                className={cn(inputClass, "w-12")}
-                placeholder="--"
-              />
-              <span className="text-muted-foreground text-xs">W</span>
-            </div>
-          )}
           {showVelocity && (
             <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
@@ -507,6 +462,21 @@ export function SetRow({
               <span className="text-muted-foreground text-xs">m/s</span>
             </div>
           )}
+          {showHeight && (
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
+              <input
+                type="number"
+                min={0}
+                max={999}
+                step={0.1}
+                value={set.height ?? ""}
+                onChange={(e) => handleChange("height", e.target.value)}
+                className={cn(inputClass, "w-9")}
+                placeholder="-"
+              />
+              <span className="text-muted-foreground text-xs">cm</span>
+            </div>
+          )}
           {showRestTime && (
             <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
@@ -519,6 +489,20 @@ export function SetRow({
                 placeholder="60"
               />
               <span className="text-muted-foreground text-xs">rest</span>
+            </div>
+          )}
+          {showRPE && (
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
+              <span className="text-muted-foreground text-xs">RPE</span>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={set.rpe ?? ""}
+                onChange={(e) => handleChange("rpe", e.target.value)}
+                className={cn(inputClass, "w-7")}
+                placeholder="-"
+              />
             </div>
           )}
           {showTempo && (
@@ -546,18 +530,34 @@ export function SetRow({
               <span className="text-muted-foreground text-xs">%</span>
             </div>
           )}
-          {showRPE && (
+          {showPower && (
             <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
-              <span className="text-muted-foreground text-xs">RPE</span>
               <input
                 type="number"
-                min={1}
-                max={10}
-                value={set.rpe ?? ""}
-                onChange={(e) => handleChange("rpe", e.target.value)}
-                className={cn(inputClass, "w-7")}
-                placeholder="--"
+                min={0}
+                max={99999}
+                step={0.1}
+                value={set.power ?? ""}
+                onChange={(e) => handleChange("power", e.target.value)}
+                className={cn(inputClass, "w-12")}
+                placeholder="-"
               />
+              <span className="text-muted-foreground text-xs">W</span>
+            </div>
+          )}
+          {showResistance && (
+            <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
+              <input
+                type="number"
+                min={0}
+                max={9999}
+                step={0.5}
+                value={set.resistance ?? ""}
+                onChange={(e) => handleChange("resistance", e.target.value)}
+                className={cn(inputClass, "w-10")}
+                placeholder="-"
+              />
+              <span className="text-muted-foreground text-xs">R</span>
             </div>
           )}
         </div>
@@ -678,7 +678,7 @@ export function SetRow({
               onChange={(e) => handleChange("reps", e.target.value)}
               disabled={isRemove}
               className={cn(inputClass, "w-8", isRemove && "cursor-not-allowed")}
-              placeholder="--"
+              placeholder="-"
             />
             <span className="text-muted-foreground text-xs">x</span>
           </div>
@@ -697,7 +697,7 @@ export function SetRow({
               onChange={(e) => handleChange("weight", e.target.value)}
               disabled={isRemove}
               className={cn(inputClass, "w-10", isRemove && "cursor-not-allowed")}
-              placeholder="--"
+              placeholder="-"
             />
             <span className="text-muted-foreground text-xs">kg</span>
           </div>
@@ -711,7 +711,7 @@ export function SetRow({
               value={set.distance ?? ""}
               onChange={(e) => handleChange("distance", e.target.value)}
               className={cn(inputClass, "w-9")}
-              placeholder="--"
+              placeholder="-"
             />
             <span className="text-muted-foreground text-xs">m</span>
           </div>
@@ -731,51 +731,6 @@ export function SetRow({
             <span className="text-muted-foreground text-xs">s</span>
           </div>
         )}
-        {coachShowHeight && (
-          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
-            <input
-              type="number"
-              min={0}
-              max={999}
-              step={0.1}
-              value={set.height ?? ""}
-              onChange={(e) => handleChange("height", e.target.value)}
-              className={cn(inputClass, "w-9")}
-              placeholder="--"
-            />
-            <span className="text-muted-foreground text-xs">cm</span>
-          </div>
-        )}
-        {coachShowResistance && (
-          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
-            <input
-              type="number"
-              min={0}
-              max={9999}
-              step={0.5}
-              value={set.resistance ?? ""}
-              onChange={(e) => handleChange("resistance", e.target.value)}
-              className={cn(inputClass, "w-10")}
-              placeholder="--"
-            />
-            <span className="text-muted-foreground text-xs">R</span>
-          </div>
-        )}
-        {coachShowPower && (
-          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
-            <input
-              type="number"
-              min={0}
-              max={99999}
-              step={0.1}
-              value={set.power ?? ""}
-              onChange={(e) => handleChange("power", e.target.value)}
-              className={cn(inputClass, "w-12")}
-              placeholder="--"
-            />
-            <span className="text-muted-foreground text-xs">W</span>
-          </div>
-        )}
         {coachShowVelocity && (
           <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <input
@@ -791,6 +746,21 @@ export function SetRow({
             <span className="text-muted-foreground text-xs">m/s</span>
           </div>
         )}
+        {coachShowHeight && (
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
+            <input
+              type="number"
+              min={0}
+              max={999}
+              step={0.1}
+              value={set.height ?? ""}
+              onChange={(e) => handleChange("height", e.target.value)}
+              className={cn(inputClass, "w-9")}
+              placeholder="-"
+            />
+            <span className="text-muted-foreground text-xs">cm</span>
+          </div>
+        )}
         {coachShowRestTime && (
           <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
             <input
@@ -803,6 +773,20 @@ export function SetRow({
               placeholder="60"
             />
             <span className="text-muted-foreground text-xs">rest</span>
+          </div>
+        )}
+        {coachShowRPE && (
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
+            <span className="text-muted-foreground text-xs">RPE</span>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={set.rpe ?? ""}
+              onChange={(e) => handleChange("rpe", e.target.value)}
+              className={cn(inputClass, "w-7")}
+              placeholder="-"
+            />
           </div>
         )}
         {coachShowTempo && (
@@ -830,18 +814,34 @@ export function SetRow({
             <span className="text-muted-foreground text-xs">%</span>
           </div>
         )}
-        {coachShowRPE && (
+        {coachShowPower && (
           <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
-            <span className="text-muted-foreground text-xs">RPE</span>
             <input
               type="number"
-              min={1}
-              max={10}
-              value={set.rpe ?? ""}
-              onChange={(e) => handleChange("rpe", e.target.value)}
-              className={cn(inputClass, "w-7")}
-              placeholder="--"
+              min={0}
+              max={99999}
+              step={0.1}
+              value={set.power ?? ""}
+              onChange={(e) => handleChange("power", e.target.value)}
+              className={cn(inputClass, "w-12")}
+              placeholder="-"
             />
+            <span className="text-muted-foreground text-xs">W</span>
+          </div>
+        )}
+        {coachShowResistance && (
+          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
+            <input
+              type="number"
+              min={0}
+              max={9999}
+              step={0.5}
+              value={set.resistance ?? ""}
+              onChange={(e) => handleChange("resistance", e.target.value)}
+              className={cn(inputClass, "w-10")}
+              placeholder="-"
+            />
+            <span className="text-muted-foreground text-xs">R</span>
           </div>
         )}
       </div>
