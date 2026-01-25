@@ -29,11 +29,8 @@ import {
 import {
   ChevronDown,
   ChevronRight,
-  Play,
   Dumbbell,
-  Sparkles,
   Calendar,
-  MoreHorizontal,
   Edit,
   ExternalLink,
   CheckCircle2,
@@ -41,12 +38,17 @@ import {
   Layers,
   Clock,
   Check,
+  Plus,
+  Sparkles,
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useIsDesktop } from "@/components/features/ai-assistant/hooks/useAILayoutMode"
 import type { MesocycleWithDetails, MicrocycleWithDetails, SessionPlanWithDetails } from "@/types/training"
 import { WeekSelectorSheet } from "./WeekSelectorSheet"
+import { EditTrainingBlockDialog, type TrainingBlockFormData, type ExistingBlockDateRange } from "@/components/features/plans/workspace/components/EditTrainingBlockDialog"
+import { updateMesocycleAction } from "@/actions/plans/plan-actions"
+import { useToast } from "@/hooks/use-toast"
 
 interface IndividualPlanPageProps {
   trainingBlock: MesocycleWithDetails
@@ -82,7 +84,7 @@ function findTodayWorkout(workouts?: SessionPlanWithDetails[]): SessionPlanWithD
 }
 
 function getDayAbbrev(day: number): string {
-  return ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][day] ?? '—'
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day] ?? '—'
 }
 
 function getDayName(day: number | null): string {
@@ -122,9 +124,26 @@ function formatDateShort(dateStr: string | null | undefined): string {
 export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPlanPageProps) {
   const router = useRouter()
   const isDesktop = useIsDesktop()
+  const { toast } = useToast()
 
   // Combine other blocks for the switcher
   const hasOtherBlocks = (otherBlocks?.upcoming?.length ?? 0) > 0 || (otherBlocks?.completed?.length ?? 0) > 0
+
+  // Existing blocks for date overlap validation (excluding current block)
+  const existingBlocks: ExistingBlockDateRange[] = useMemo(() => {
+    const allBlocks = [
+      ...(otherBlocks?.upcoming ?? []),
+      ...(otherBlocks?.completed ?? [])
+    ]
+    return allBlocks.map(b => ({
+      id: b.id,
+      start_date: b.start_date,
+      end_date: b.end_date
+    }))
+  }, [otherBlocks])
+
+  // Edit block dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
 
   // Week selection state
   const [selectedWeekId, setSelectedWeekId] = useState<number | null>(() =>
@@ -162,9 +181,27 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
     setWeekSelectorOpen(false)
   }
 
-  const handleStartWorkout = () => {
-    if (displayedWorkout) {
-      router.push(`/plans/${trainingBlock.id}/session/${displayedWorkout.id}`)
+  // Handler for saving edited block
+  const handleSaveBlock = async (data: TrainingBlockFormData) => {
+    const result = await updateMesocycleAction(data.id, {
+      name: data.name,
+      description: data.description,
+      start_date: data.start_date,
+      end_date: data.end_date,
+    })
+
+    if (result.isSuccess) {
+      toast({
+        title: "Block updated",
+        description: "Your training block has been updated successfully.",
+      })
+      router.refresh()
+    } else {
+      toast({
+        title: "Error",
+        description: result.message || "Failed to update training block.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -174,7 +211,7 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
       <div className="min-h-screen bg-background">
         <div className="flex">
           {/* Left Sidebar: Week Timeline */}
-          <aside className="w-64 shrink-0 border-r border-border/40 bg-muted/20">
+          <aside className="w-80 shrink-0 border-r border-border/40 bg-muted/20">
             <div className="sticky top-0 h-screen overflow-y-auto">
               {/* Block Header with Switcher */}
               <div className="p-4 border-b border-border/40">
@@ -182,11 +219,11 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button className="w-full text-left group hover:bg-muted/50 -m-2 p-2 rounded-lg transition-colors">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <Layers className="h-4 w-4 text-primary shrink-0" />
-                              <h1 className="font-semibold text-sm truncate">
+                            <div className="flex items-start gap-2">
+                              <Layers className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                              <h1 className="font-semibold text-sm line-clamp-2 leading-tight">
                                 {trainingBlock.name || "Training Block"}
                               </h1>
                             </div>
@@ -194,11 +231,11 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                               {totalWeeks} weeks · Active
                             </p>
                           </div>
-                          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-foreground transition-colors" />
+                          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-foreground transition-colors mt-0.5" />
                         </div>
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-64">
+                    <DropdownMenuContent align="start" className="w-80">
                       <DropdownMenuLabel className="text-xs text-muted-foreground">
                         Switch Training Block
                       </DropdownMenuLabel>
@@ -264,11 +301,19 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                           )}
                         </>
                       )}
+                      {/* Add New Block */}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/plans/new" className="cursor-pointer">
+                          <Plus className="h-4 w-4 mr-2 text-primary" />
+                          <span className="text-sm font-medium">New Training Block</span>
+                        </Link>
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
                   <div>
-                    <h1 className="font-semibold text-sm truncate">
+                    <h1 className="font-semibold text-sm line-clamp-2 leading-tight">
                       {trainingBlock.name || "Training Block"}
                     </h1>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -276,6 +321,39 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                     </p>
                   </div>
                 )}
+
+                {/* Edit Actions */}
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-9 text-xs"
+                    onClick={() => setEditDialogOpen(true)}
+                  >
+                    <Edit className="h-3.5 w-3.5 mr-1.5" />
+                    Edit Block
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-9 text-xs"
+                    onClick={() => router.push(`/plans/${trainingBlock.id}/edit`)}
+                  >
+                    <svg width="0" height="0" className="absolute">
+                      <defs>
+                        <linearGradient id="rainbow-gradient-desktop" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#f97316" />
+                          <stop offset="25%" stopColor="#ec4899" />
+                          <stop offset="50%" stopColor="#8b5cf6" />
+                          <stop offset="75%" stopColor="#3b82f6" />
+                          <stop offset="100%" stopColor="#10b981" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <Sparkles className="h-3.5 w-3.5 mr-1.5" style={{ stroke: 'url(#rainbow-gradient-desktop)' }} />
+                    Edit with AI
+                  </Button>
+                </div>
               </div>
 
               {/* Week List */}
@@ -353,28 +431,6 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                   })}
                 </div>
               </nav>
-
-              {/* Actions at bottom */}
-              <div className="p-4 border-t border-border/40 mt-auto">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full justify-start gap-2">
-                      <MoreHorizontal className="h-4 w-4" />
-                      Options
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    <DropdownMenuItem>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Block
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push(`/plans/new?regenerate=${trainingBlock.id}`)}>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Regenerate with AI
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
             </div>
           </aside>
 
@@ -452,7 +508,6 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                   workout={displayedWorkout}
                   blockId={trainingBlock.id}
                   isToday={displayedWorkout.day === today}
-                  onStart={handleStartWorkout}
                   onEdit={() => router.push(`/plans/${trainingBlock.id}/session/${displayedWorkout.id}`)}
                 />
               ) : (
@@ -461,6 +516,21 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
             </div>
           </main>
         </div>
+
+        {/* Edit Block Dialog */}
+        <EditTrainingBlockDialog
+          block={{
+            id: trainingBlock.id,
+            name: trainingBlock.name || '',
+            description: trainingBlock.description,
+            start_date: trainingBlock.start_date,
+            end_date: trainingBlock.end_date,
+          }}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSave={handleSaveBlock}
+          existingBlocks={existingBlocks}
+        />
       </div>
     )
   }
@@ -477,11 +547,11 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
               {hasOtherBlocks ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-1.5 text-left max-w-full group">
-                      <h1 className="text-base font-semibold truncate">
+                    <button className="flex items-center gap-1 text-left max-w-full group">
+                      <h1 className="text-base font-semibold line-clamp-2 leading-tight">
                         {trainingBlock.name || "Training Block"}
                       </h1>
-                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 group-hover:text-foreground" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-foreground" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-72">
@@ -550,48 +620,89 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                         )}
                       </>
                     )}
+                    {/* Add New Block */}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/plans/new" className="cursor-pointer">
+                        <Plus className="h-4 w-4 mr-2 text-primary" />
+                        <span className="text-sm font-medium">New Training Block</span>
+                      </Link>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <h1 className="text-base font-semibold truncate">
+                <h1 className="text-base font-semibold line-clamp-2 leading-tight">
                   {trainingBlock.name || "Training Block"}
                 </h1>
               )}
-              {/* Week selector - more prominent on mobile */}
-              <button
-                onClick={() => setWeekSelectorOpen(true)}
-                className="flex items-center gap-2 mt-1 px-2 py-1 -ml-2 rounded-md hover:bg-muted/50 transition-colors"
+            </div>
+
+            {/* Action buttons - icons only on mobile */}
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11"
+                onClick={() => setEditDialogOpen(true)}
               >
+                <Edit className="h-5 w-5" />
+                <span className="sr-only">Edit Block</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 relative overflow-hidden"
+                onClick={() => router.push(`/plans/${trainingBlock.id}/edit`)}
+              >
+                <svg width="0" height="0" className="absolute">
+                  <defs>
+                    <linearGradient id="rainbow-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#f97316" />
+                      <stop offset="25%" stopColor="#ec4899" />
+                      <stop offset="50%" stopColor="#8b5cf6" />
+                      <stop offset="75%" stopColor="#3b82f6" />
+                      <stop offset="100%" stopColor="#10b981" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <Sparkles className="h-5 w-5" style={{ stroke: 'url(#rainbow-gradient)' }} />
+                <span className="sr-only">Edit with AI</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Week Selector - Prominent card style */}
+          <button
+            onClick={() => setWeekSelectorOpen(true)}
+            className="w-full mt-3 p-3 bg-muted/50 hover:bg-muted/70 rounded-xl border border-border/50 transition-colors active:scale-[0.98]"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                  <Calendar className="h-5 w-5 text-primary" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium">
+                    {selectedWeek?.name || `Week ${weekNumber}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedWeek?.start_date && selectedWeek?.end_date
+                      ? `${formatDateShort(selectedWeek.start_date)} - ${formatDateShort(selectedWeek.end_date)}`
+                      : `Week ${weekNumber} of ${totalWeeks}`
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
                 <WeekProgressDots
                   totalWeeks={totalWeeks}
                   currentWeek={weekNumber}
                   microcycles={trainingBlock.microcycles ?? []}
                 />
-                <span className="text-xs text-muted-foreground">
-                  Week {weekNumber}/{totalWeeks}
-                </span>
-                <ChevronDown className="h-3 w-3 text-muted-foreground" />
-              </button>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </div>
             </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Block
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push(`/plans/new?regenerate=${trainingBlock.id}`)}>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Regenerate with AI
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          </button>
         </div>
 
         {/* Horizontal Day Selector */}
@@ -653,7 +764,6 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
             workout={displayedWorkout}
             blockId={trainingBlock.id}
             isToday={displayedWorkout.day === today}
-            onStart={handleStartWorkout}
             onEdit={() => router.push(`/plans/${trainingBlock.id}/session/${displayedWorkout.id}`)}
           />
         ) : (
@@ -668,6 +778,21 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
         weeks={trainingBlock.microcycles ?? []}
         selectedWeekId={selectedWeekId}
         onSelectWeek={handleWeekSelect}
+      />
+
+      {/* Edit Block Dialog */}
+      <EditTrainingBlockDialog
+        block={{
+          id: trainingBlock.id,
+          name: trainingBlock.name || '',
+          description: trainingBlock.description,
+          start_date: trainingBlock.start_date,
+          end_date: trainingBlock.end_date,
+        }}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSave={handleSaveBlock}
+        existingBlocks={existingBlocks}
       />
     </div>
   )
@@ -739,13 +864,11 @@ function WorkoutDetails({
   workout,
   blockId,
   isToday,
-  onStart,
   onEdit,
 }: {
   workout: SessionPlanWithDetails
   blockId: number
   isToday: boolean
-  onStart: () => void
   onEdit: () => void
 }) {
   const exerciseCount = workout.session_plan_exercises?.length ?? 0
@@ -770,25 +893,15 @@ function WorkoutDetails({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onEdit}
-            className="gap-1.5"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Edit</span>
-          </Button>
-          <Button
-            size="sm"
-            onClick={onStart}
-            className="gap-1.5"
-          >
-            <Play className="h-3.5 w-3.5" />
-            Start
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onEdit}
+          className="gap-1.5"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Edit Session
+        </Button>
       </div>
 
       {/* Exercise List */}

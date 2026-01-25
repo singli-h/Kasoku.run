@@ -46,8 +46,10 @@ interface SaveGeneratedPlanResult {
   mesocycleId: number
   /** IDs of created microcycles */
   microcycleIds: number[]
-  /** ID of first session (for redirect to workout) */
+  /** ID of first session plan (for reference) */
   firstSessionId: string | null
+  /** ID of first workout log (for redirect to workout logger) */
+  firstWorkoutLogId: string | null
 }
 
 // ============================================================================
@@ -112,6 +114,22 @@ export async function saveGeneratedPlanAction(
     const microcycleIds: number[] = []
     let firstSessionId: string | null = null
 
+    // Track session plans for workout_log creation
+    const sessionPlanRecords: Array<{
+      sessionPlanId: string
+      weekNumber: number
+      dayOfWeek: number
+    }> = []
+
+    // ========================================
+    // Get athlete ID for workout_log assignment
+    // ========================================
+    const { data: athlete } = await supabase
+      .from('athletes')
+      .select('id')
+      .eq('user_id', dbUserId)
+      .single()
+
     // ========================================
     // Insert all child entities
     // ========================================
@@ -165,6 +183,13 @@ export async function saveGeneratedPlanAction(
 
         const sessionPlanId = spData.id
 
+        // Track session for workout_log creation
+        sessionPlanRecords.push({
+          sessionPlanId,
+          weekNumber: microcycle.week_number,
+          dayOfWeek: dayNumber,
+        })
+
         // Track first session for redirect
         if (!firstSessionId && microcycle.week_number === 1) {
           firstSessionId = sessionPlanId
@@ -217,12 +242,64 @@ export async function saveGeneratedPlanAction(
       }
     }
 
+    // ========================================
+    // Create workout_logs for all sessions
+    // ========================================
+    let firstWorkoutLogId: string | null = null
+
+    if (athlete) {
+      console.log('[saveGeneratedPlanAction] Creating workout_logs for athlete:', athlete.id)
+
+      const workoutLogInserts = sessionPlanRecords.map((record) => {
+        // Calculate scheduled date: startDate + (weekNumber - 1) * 7 + dayOffset
+        const scheduledDate = new Date(startDate)
+        const weekOffset = (record.weekNumber - 1) * 7
+
+        // Calculate days from Monday (day 1) to the target day
+        // dayOfWeek: 0=Sun, 1=Mon, 2=Tue, etc.
+        // We want Monday (1) to be offset 0, Tuesday (2) to be offset 1, etc.
+        // Sunday (0) should be offset 6 (end of week)
+        const dayOffset = record.dayOfWeek === 0 ? 6 : record.dayOfWeek - 1
+
+        scheduledDate.setDate(scheduledDate.getDate() + weekOffset + dayOffset)
+
+        return {
+          session_plan_id: record.sessionPlanId,
+          athlete_id: athlete.id,
+          date_time: scheduledDate.toISOString(),
+          session_status: 'assigned' as const,
+        }
+      })
+
+      if (workoutLogInserts.length > 0) {
+        const { data: workoutLogs, error: wlError } = await supabase
+          .from('workout_logs')
+          .insert(workoutLogInserts)
+          .select('id')
+
+        if (wlError) {
+          console.error('[saveGeneratedPlanAction] workout_logs insert error:', wlError)
+          // Don't fail the whole operation, just log it
+        } else {
+          console.log(`[saveGeneratedPlanAction] Created ${workoutLogs?.length || 0} workout_logs`)
+          // Get the first workout log ID for redirect
+          if (workoutLogs && workoutLogs.length > 0) {
+            firstWorkoutLogId = String(workoutLogs[0].id)
+          }
+        }
+      }
+    } else {
+      console.warn('[saveGeneratedPlanAction] No athlete found for user, skipping workout_log creation')
+    }
+
     console.log('[saveGeneratedPlanAction] Plan saved successfully')
     console.log('[saveGeneratedPlanAction] Mesocycle ID:', mesocycleId)
     console.log('[saveGeneratedPlanAction] Microcycles created:', microcycleIds.length)
     console.log('[saveGeneratedPlanAction] First session ID:', firstSessionId)
+    console.log('[saveGeneratedPlanAction] First workout log ID:', firstWorkoutLogId)
 
     // Revalidate relevant paths
+    revalidatePath('/workout')
     revalidatePath('/plans')
     revalidatePath(`/plans/${mesocycleId}`)
     revalidatePath('/dashboard')
@@ -234,6 +311,7 @@ export async function saveGeneratedPlanAction(
         mesocycleId,
         microcycleIds,
         firstSessionId,
+        firstWorkoutLogId,
       },
     }
   } catch (error) {

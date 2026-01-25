@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import { TrainingPlanWorkspace } from "@/components/features/plans/workspace/TrainingPlanWorkspace"
 import { IndividualPlanPage } from "@/components/features/plans/individual"
 import { UnifiedPageSkeleton, PageLayout } from "@/components/layout"
-import { getMacrocycleByIdAction, getMesocycleByIdAction } from "@/actions/plans/plan-actions"
+import { getMacrocycleByIdAction, getMesocycleByIdAction, getUserMesocyclesAction } from "@/actions/plans/plan-actions"
 import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { FeatureErrorBoundary } from "@/components/error-boundary"
@@ -71,17 +71,41 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
 
   // For individual users, fetch mesocycle (Training Block) directly
   if (isIndividual) {
-    const mesocycleResult = await getMesocycleByIdAction(planId)
+    // Fetch current block and all user's blocks in parallel
+    const [mesocycleResult, allBlocksResult] = await Promise.all([
+      getMesocycleByIdAction(planId),
+      getUserMesocyclesAction()
+    ])
 
     if (!mesocycleResult.isSuccess || !mesocycleResult.data) {
       console.error('Failed to fetch training block:', mesocycleResult.message)
       notFound()
     }
 
+    // Categorize other blocks for the switcher and date validation
+    const allBlocks = allBlocksResult.isSuccess ? (allBlocksResult.data || []) : []
+    const today = new Date()
+
+    const otherBlocks = {
+      upcoming: allBlocks.filter(block => {
+        if (block.id === planId) return false // Exclude current block
+        if (!block.end_date) return true // No end date = ongoing/upcoming
+        return new Date(block.end_date) >= today
+      }),
+      completed: allBlocks.filter(block => {
+        if (block.id === planId) return false // Exclude current block
+        if (!block.end_date) return false
+        return new Date(block.end_date) < today
+      })
+    }
+
     return (
       <FeatureErrorBoundary featureName="Training Block" customMessage="Something went wrong while loading your training block. Please try again.">
         <Suspense fallback={<UnifiedPageSkeleton title="Training Block" variant="grid" />}>
-          <IndividualPlanPage trainingBlock={mesocycleResult.data as MesocycleWithDetails} />
+          <IndividualPlanPage
+            trainingBlock={mesocycleResult.data as MesocycleWithDetails}
+            otherBlocks={otherBlocks}
+          />
         </Suspense>
       </FeatureErrorBoundary>
     )

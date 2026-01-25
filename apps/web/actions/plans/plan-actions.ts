@@ -77,6 +77,53 @@ function validateDateBoundaries(
   return null
 }
 
+/**
+ * Validates that a new cycle doesn't overlap with existing sibling cycles
+ * Two date ranges overlap if: start1 <= end2 AND end1 >= start2
+ * Returns error message if overlap found, null if no overlap
+ */
+async function validateNoSiblingOverlap(
+  tableName: 'mesocycles' | 'microcycles',
+  parentColumn: 'macrocycle_id' | 'mesocycle_id',
+  parentId: number,
+  startDate: string,
+  endDate: string,
+  excludeId?: number // For updates, exclude the current cycle being edited
+): Promise<string | null> {
+  // Skip if dates are missing
+  if (!startDate || !endDate) return null
+
+  // Query for siblings that might overlap
+  // Overlap condition: existing.start_date <= newEndDate AND existing.end_date >= newStartDate
+  let query = supabase
+    .from(tableName)
+    .select('id, name, start_date, end_date')
+    .eq(parentColumn, parentId)
+    .lte('start_date', endDate)
+    .gte('end_date', startDate)
+
+  // Exclude current cycle when updating
+  if (excludeId) {
+    query = query.neq('id', excludeId)
+  }
+
+  const { data: overlapping, error } = await query
+
+  if (error) {
+    console.error(`Error checking for sibling overlap in ${tableName}:`, error)
+    // Don't block on query errors, but log them
+    return null
+  }
+
+  if (overlapping && overlapping.length > 0) {
+    const cycleType = tableName === 'mesocycles' ? 'mesocycle' : 'microcycle'
+    const sibling = overlapping[0]
+    return `Date range overlaps with existing ${cycleType}: "${sibling.name}" (${sibling.start_date} to ${sibling.end_date})`
+  }
+
+  return null
+}
+
 // ============================================================================
 // MACROCYCLE ACTIONS
 // ============================================================================
@@ -433,6 +480,20 @@ export async function createMesocycleAction(
           return { isSuccess: false, message: boundaryError }
         }
       }
+
+      // Check for overlapping sibling mesocycles within the same macrocycle
+      if (formData.start_date && formData.end_date) {
+        const overlapError = await validateNoSiblingOverlap(
+          'mesocycles',
+          'macrocycle_id',
+          formData.macrocycle_id,
+          formData.start_date,
+          formData.end_date
+        )
+        if (overlapError) {
+          return { isSuccess: false, message: overlapError }
+        }
+      }
     }
 
     const mesocycleData: MesocycleInsert = {
@@ -608,7 +669,7 @@ export async function updateMesocycleAction(
 ): Promise<ActionState<Mesocycle>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -618,6 +679,43 @@ export async function updateMesocycleAction(
 
     // Using singleton supabase client and cached user lookup
     const dbUserId = await getDbUserId(userId)
+
+    // If dates are being updated, validate for sibling overlap
+    if (updates.start_date || updates.end_date) {
+      // Fetch current mesocycle to get existing dates and parent
+      const { data: currentMeso } = await supabase
+        .from('mesocycles')
+        .select('start_date, end_date, macrocycle_id')
+        .eq('id', id)
+        .eq('user_id', dbUserId)
+        .single()
+
+      if (currentMeso && currentMeso.macrocycle_id) {
+        const newStart = updates.start_date || currentMeso.start_date
+        const newEnd = updates.end_date || currentMeso.end_date
+
+        // Validate date range
+        const dateError = validateDateRange(newStart, newEnd)
+        if (dateError) {
+          return { isSuccess: false, message: dateError }
+        }
+
+        // Check for sibling overlap, excluding the current mesocycle
+        if (newStart && newEnd) {
+          const overlapError = await validateNoSiblingOverlap(
+            'mesocycles',
+            'macrocycle_id',
+            currentMeso.macrocycle_id,
+            newStart,
+            newEnd,
+            id // Exclude current mesocycle
+          )
+          if (overlapError) {
+            return { isSuccess: false, message: overlapError }
+          }
+        }
+      }
+    }
 
     const { data: mesocycle, error } = await supabase
       .from('mesocycles')
@@ -792,6 +890,20 @@ export async function createMicrocycleAction(
         )
         if (boundaryError) {
           return { isSuccess: false, message: boundaryError }
+        }
+      }
+
+      // Check for overlapping sibling microcycles within the same mesocycle
+      if (formData.start_date && formData.end_date) {
+        const overlapError = await validateNoSiblingOverlap(
+          'microcycles',
+          'mesocycle_id',
+          formData.mesocycle_id,
+          formData.start_date,
+          formData.end_date
+        )
+        if (overlapError) {
+          return { isSuccess: false, message: overlapError }
         }
       }
     }
@@ -1002,7 +1114,7 @@ export async function updateMicrocycleAction(
 ): Promise<ActionState<Microcycle>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -1012,6 +1124,43 @@ export async function updateMicrocycleAction(
 
     // Using singleton supabase client and cached user lookup
     const dbUserId = await getDbUserId(userId)
+
+    // If dates are being updated, validate for sibling overlap
+    if (updates.start_date || updates.end_date) {
+      // Fetch current microcycle to get existing dates and parent
+      const { data: currentMicro } = await supabase
+        .from('microcycles')
+        .select('start_date, end_date, mesocycle_id')
+        .eq('id', id)
+        .eq('user_id', dbUserId)
+        .single()
+
+      if (currentMicro && currentMicro.mesocycle_id) {
+        const newStart = updates.start_date || currentMicro.start_date
+        const newEnd = updates.end_date || currentMicro.end_date
+
+        // Validate date range
+        const dateError = validateDateRange(newStart, newEnd)
+        if (dateError) {
+          return { isSuccess: false, message: dateError }
+        }
+
+        // Check for sibling overlap, excluding the current microcycle
+        if (newStart && newEnd) {
+          const overlapError = await validateNoSiblingOverlap(
+            'microcycles',
+            'mesocycle_id',
+            currentMicro.mesocycle_id,
+            newStart,
+            newEnd,
+            id // Exclude current microcycle
+          )
+          if (overlapError) {
+            return { isSuccess: false, message: overlapError }
+          }
+        }
+      }
+    }
 
     const { data: microcycle, error } = await supabase
       .from('microcycles')
@@ -1462,12 +1611,12 @@ export async function getActiveMesocycleForUserAction(): Promise<ActionState<Mes
               ),
               session_plan_sets (
                 id,
-                set_number,
+                set_index,
                 reps,
                 weight,
-                duration,
-                rest_seconds,
-                notes
+                performing_time,
+                rest_time,
+                metadata
               )
             )
           )
@@ -1482,7 +1631,7 @@ export async function getActiveMesocycleForUserAction(): Promise<ActionState<Mes
       .maybeSingle()
 
     if (error && error.code !== 'PGRST116') {
-      console.error('[getActiveMesocycleForUserAction] DB error:', error)
+      console.error('[getActiveMesocycleForUserAction] DB error:', JSON.stringify(error, null, 2))
       return {
         isSuccess: false,
         message: "Failed to fetch active training block"
