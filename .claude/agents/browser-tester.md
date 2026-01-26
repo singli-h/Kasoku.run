@@ -1,3 +1,14 @@
+---
+subagent_type: browser-tester
+model: sonnet
+description: E2E browser testing specialist
+tools:
+  - Read
+  - Bash
+  - Glob
+  - Grep
+---
+
 # browser-tester
 
 Test Kasoku.run features using agent-browser CLI via Bash tool.

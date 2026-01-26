@@ -86,35 +86,39 @@ Run these tasks in parallel:
 
 ---
 
-# Browser Testing (agent-browser MCP)
+# Browser Testing (agent-browser CLI)
 
 ## Overview
 
-MCP server for headless Chromium testing. Uses accessibility tree snapshots (90% smaller than HTML) with stable element refs.
+Headless browser automation CLI for AI agents. Uses accessibility tree snapshots (90% smaller than HTML) with stable element refs (@e1, @e2, etc.).
 
 ## Self-Verification Workflow
 
-**Pattern (no scripts needed - use MCP tools directly):**
-1. Open page → `mcp__agent-browser__open`
-2. Get snapshot → `mcp__agent-browser__snapshot -i -c`
+**Pattern (use agent-browser CLI via Bash tool):**
+1. Open page → `agent-browser open <url>`
+2. Get snapshot → `agent-browser snapshot -i -c`
 3. Parse refs → Elements show as `@e1`, `@e2`, `@e3`
-4. Interact → `mcp__agent-browser__click @e2`, `fill @e3 "text"`
+4. Interact → `agent-browser click @e2`, `agent-browser fill @e3 "text"`
 5. Verify → Re-snapshot, check state
-6. Evidence → `mcp__agent-browser__screenshot`
+6. Evidence → `agent-browser screenshot /tmp/test.png`
 
-## Key MCP Tools
+## Key Commands
 
-- `open` - Navigate to URL
-- `snapshot` - Get accessibility tree with refs (`-i` interactive, `-c` compact)
-- `click` - Click element by ref
-- `fill` - Fill input by ref
-- `find` - Semantic locator (role, label, placeholder)
-- `screenshot` - Capture viewport
-- `network route` - Mock API responses
+- `agent-browser open <url>` - Navigate to URL
+- `agent-browser snapshot -i -c` - Get accessibility tree with refs (`-i` interactive, `-c` compact)
+- `agent-browser click <ref>` - Click element by ref
+- `agent-browser fill <ref> <text>` - Fill input by ref
+- `agent-browser find role <role> <action>` - Semantic locator (role, label, placeholder)
+- `agent-browser screenshot <path>` - Capture viewport
+- `agent-browser network route <url> --body <json>` - Mock API responses
 
 ## Session Isolation
 
-Use `--session` flag for parallel/multi-user tests (separate cookies/storage).
+Use `--session` flag for parallel/multi-user tests (separate cookies/storage):
+```bash
+agent-browser --session coach open http://localhost:3000
+agent-browser --session athlete open http://localhost:3000
+```
 
 ## When to Use
 
@@ -125,7 +129,7 @@ Use `--session` flag for parallel/multi-user tests (separate cookies/storage).
 
 ## Subagent
 
-`browser-tester` agent available for dedicated testing tasks.
+`browser-tester` agent available for dedicated testing tasks. Always use Bash tool to invoke `agent-browser` commands.
 
 ---
 
