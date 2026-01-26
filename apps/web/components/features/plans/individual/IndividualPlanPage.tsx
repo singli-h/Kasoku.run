@@ -19,7 +19,7 @@
  * @see docs/features/plans/individual/IMPLEMENTATION_PLAN.md
  */
 
-import { useState, useMemo, useCallback, useEffect, Suspense, lazy } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import {
   ChevronDown,
-  ChevronRight,
   ChevronUp,
   Dumbbell,
   Calendar,
@@ -50,7 +49,7 @@ import {
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useIsDesktop } from "@/components/features/ai-assistant/hooks/useAILayoutMode"
-import type { MesocycleWithDetails, MicrocycleWithDetails, SessionPlanWithDetails } from "@/types/training"
+import type { MesocycleWithDetails, MicrocycleWithDetails, SessionPlanWithDetails, SessionPlanExerciseWithDetails } from "@/types/training"
 import type { ExerciseLibraryItem } from "@/components/features/training/types"
 import { WeekSelectorSheet } from "./WeekSelectorSheet"
 import { EditTrainingBlockDialog, type TrainingBlockFormData, type ExistingBlockDateRange } from "@/components/features/plans/workspace/components/EditTrainingBlockDialog"
@@ -72,11 +71,11 @@ import { AdvancedFieldsToggle } from "./AdvancedFieldsToggle"
 import { MobileSettingsSheet } from "./MobileSettingsSheet"
 import { useAdvancedFieldsToggle } from "@/lib/hooks/useAdvancedFieldsToggle"
 import { WorkoutEditorSkeleton } from "./skeletons/WorkoutEditorSkeleton"
+import { SetRow, type VisibleFields } from "@/components/features/training/components/SetRow"
+import { getVisibleFields } from "@/components/features/training/utils/field-visibility"
+import type { TrainingSet } from "@/components/features/training/types"
 
-// Lazy load SessionPlannerV2 for inline editing (T015)
-const SessionPlannerV2 = lazy(() =>
-  import("@/components/features/training/views/SessionPlannerV2").then(mod => ({ default: mod.SessionPlannerV2 }))
-)
+// SessionPlannerV2 removed - now using inline SetRow editing (T015)
 
 interface IndividualPlanPageProps {
   trainingBlock: MesocycleWithDetails
@@ -577,35 +576,15 @@ export function IndividualPlanPage({
               )}
 
               {displayedWorkout ? (
-                <>
-                  <WorkoutDetails
-                    workout={displayedWorkout}
-                    blockId={trainingBlock.id}
-                    isToday={displayedWorkout.day === today}
-                    onEdit={() => handleEditWorkout(displayedWorkout.id)}
-                    isExpanded={unifiedMode && expandedWorkoutId === displayedWorkout.id}
-                    unifiedMode={unifiedMode}
-                  />
-                  {/* Inline SessionPlannerV2 when expanded (T014, T015) */}
-                  {unifiedMode && expandedWorkoutId === displayedWorkout.id && (
-                    <div className="mt-6 border-t border-border/40 pt-6">
-                      <Suspense fallback={<WorkoutEditorSkeleton />}>
-                        <SessionPlannerV2
-                          planId={String(trainingBlock.id)}
-                          sessionId={displayedWorkout.id}
-                          initialSession={{
-                            id: displayedWorkout.id,
-                            name: displayedWorkout.name || 'Workout',
-                            description: displayedWorkout.description,
-                            day: displayedWorkout.day,
-                          }}
-                          exerciseLibrary={exerciseLibrary}
-                          showAdvancedFields={showAdvancedFields}
-                        />
-                      </Suspense>
-                    </div>
-                  )}
-                </>
+                <WorkoutDetails
+                  workout={displayedWorkout}
+                  blockId={trainingBlock.id}
+                  isToday={displayedWorkout.day === today}
+                  onEdit={() => handleEditWorkout(displayedWorkout.id)}
+                  isExpanded={unifiedMode && expandedWorkoutId === displayedWorkout.id}
+                  unifiedMode={unifiedMode}
+                  showAdvancedFields={showAdvancedFields}
+                />
               ) : (
                 <EmptyWorkoutState />
               )}
@@ -855,35 +834,15 @@ export function IndividualPlanPage({
         )}
 
         {displayedWorkout ? (
-          <>
-            <WorkoutDetails
-              workout={displayedWorkout}
-              blockId={trainingBlock.id}
-              isToday={displayedWorkout.day === today}
-              onEdit={() => handleEditWorkout(displayedWorkout.id)}
-              isExpanded={unifiedMode && expandedWorkoutId === displayedWorkout.id}
-              unifiedMode={unifiedMode}
-            />
-            {/* Inline SessionPlannerV2 when expanded (T014, T015) */}
-            {unifiedMode && expandedWorkoutId === displayedWorkout.id && (
-              <div className="mt-4 border-t border-border/40 pt-4">
-                <Suspense fallback={<WorkoutEditorSkeleton />}>
-                  <SessionPlannerV2
-                    planId={String(trainingBlock.id)}
-                    sessionId={displayedWorkout.id}
-                    initialSession={{
-                      id: displayedWorkout.id,
-                      name: displayedWorkout.name || 'Workout',
-                      description: displayedWorkout.description,
-                      day: displayedWorkout.day,
-                    }}
-                    exerciseLibrary={exerciseLibrary}
-                    showAdvancedFields={showAdvancedFields}
-                  />
-                </Suspense>
-              </div>
-            )}
-          </>
+          <WorkoutDetails
+            workout={displayedWorkout}
+            blockId={trainingBlock.id}
+            isToday={displayedWorkout.day === today}
+            onEdit={() => handleEditWorkout(displayedWorkout.id)}
+            isExpanded={unifiedMode && expandedWorkoutId === displayedWorkout.id}
+            unifiedMode={unifiedMode}
+            showAdvancedFields={showAdvancedFields}
+          />
         ) : (
           <EmptyWorkoutState />
         )}
@@ -995,6 +954,7 @@ function WorkoutDetails({
   onEdit,
   isExpanded = false,
   unifiedMode = false,
+  showAdvancedFields = true,
 }: {
   workout: SessionPlanWithDetails
   blockId: number
@@ -1004,8 +964,42 @@ function WorkoutDetails({
   isExpanded?: boolean
   /** Whether unified mode is enabled (changes edit button behavior) */
   unifiedMode?: boolean
+  /** Whether to show advanced fields (RPE, tempo, velocity, effort) */
+  showAdvancedFields?: boolean
 }) {
   const exerciseCount = workout.session_plan_exercises?.length ?? 0
+  const [expandedExerciseIds, setExpandedExerciseIds] = useState<Set<string | number>>(new Set())
+
+  // Check if all exercises are expanded
+  const allExpanded = workout.session_plan_exercises
+    ? workout.session_plan_exercises.every(ex => expandedExerciseIds.has(ex.id))
+    : false
+
+  // Toggle all exercises
+  const toggleAllExercises = useCallback(() => {
+    if (!workout.session_plan_exercises) return
+
+    if (allExpanded) {
+      // Collapse all
+      setExpandedExerciseIds(new Set())
+    } else {
+      // Expand all
+      setExpandedExerciseIds(new Set(workout.session_plan_exercises.map(ex => ex.id)))
+    }
+  }, [workout.session_plan_exercises, allExpanded])
+
+  // Toggle individual exercise
+  const toggleExercise = useCallback((exerciseId: string | number) => {
+    setExpandedExerciseIds(prev => {
+      const next = new Set(prev)
+      if (next.has(exerciseId)) {
+        next.delete(exerciseId)
+      } else {
+        next.add(exerciseId)
+      }
+      return next
+    })
+  }, [])
 
   return (
     <div>
@@ -1027,91 +1021,141 @@ function WorkoutDetails({
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onEdit}
-          className="gap-1.5"
-          aria-expanded={unifiedMode ? isExpanded : undefined}
-          aria-label={unifiedMode
-            ? (isExpanded ? `Collapse workout editor for ${workout.name || 'workout'}` : `Expand workout editor for ${workout.name || 'workout'}`)
-            : `Edit ${workout.name || 'workout'} session in new page`
-          }
-        >
-          {unifiedMode ? (
-            isExpanded ? (
+        {unifiedMode && isExpanded && exerciseCount > 0 ? (
+          // In unified mode when expanded: Show Expand All / Collapse All
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleAllExercises}
+            className="gap-1.5"
+            aria-label={allExpanded ? `Collapse all exercises in ${workout.name || 'workout'}` : `Expand all exercises in ${workout.name || 'workout'}`}
+          >
+            {allExpanded ? (
               <>
                 <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
-                Collapse
+                Collapse All
               </>
             ) : (
               <>
-                <Edit className="h-3.5 w-3.5" aria-hidden="true" />
-                Edit
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                Expand All
               </>
-            )
-          ) : (
-            <>
-              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-              Edit Session
-            </>
-          )}
-        </Button>
+            )}
+          </Button>
+        ) : (
+          // Original Edit/Collapse button for non-unified mode or when collapsed
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onEdit}
+            className="gap-1.5"
+            aria-expanded={unifiedMode ? isExpanded : undefined}
+            aria-label={unifiedMode
+              ? (isExpanded ? `Collapse workout editor for ${workout.name || 'workout'}` : `Expand workout editor for ${workout.name || 'workout'}`)
+              : `Edit ${workout.name || 'workout'} session in new page`
+            }
+          >
+            {unifiedMode ? (
+              isExpanded ? (
+                <>
+                  <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+                  Collapse
+                </>
+              ) : (
+                <>
+                  <Edit className="h-3.5 w-3.5" aria-hidden="true" />
+                  Edit
+                </>
+              )
+            ) : (
+              <>
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                Edit Session
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
-      {/* Exercise List - Hidden when expanded in unified mode (exercises shown in SessionPlannerV2) */}
-      {!(unifiedMode && isExpanded) && (
-        <div className="space-y-3">
-          {exerciseCount > 0 ? (
-            workout.session_plan_exercises?.map((exercise, index) => (
+      {/* Exercise List - Expandable inline editing in unified mode */}
+      <div className="space-y-3">
+        {exerciseCount > 0 ? (
+          workout.session_plan_exercises?.map((exercise, index) => {
+            const exerciseId = exercise.id
+            const isExerciseExpanded = unifiedMode && isExpanded && expandedExerciseIds.has(exerciseId)
+
+            return (
               <ExerciseRow
                 key={exercise.id}
                 index={index + 1}
-                name={exercise.exercise?.name || "Exercise"}
-                sets={exercise.session_plan_sets ?? []}
-                onClick={onEdit}
+                exercise={exercise}
+                isExpanded={isExerciseExpanded}
+                onToggleExpand={() => {
+                  if (unifiedMode && isExpanded) {
+                    toggleExercise(exerciseId)
+                  } else {
+                    onEdit()
+                  }
+                }}
+                showAdvancedFields={showAdvancedFields}
+                supersetId={exercise.superset_id}
+                allExercises={workout.session_plan_exercises ?? []}
               />
-            ))
-          ) : (
-            <div className="text-center py-12 border border-dashed border-border/60 rounded-xl">
-              <Dumbbell className="h-8 w-8 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-sm text-muted-foreground mb-4">No exercises added yet</p>
-              <Button variant="outline" size="sm" onClick={onEdit}>
-                Add Exercises
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+            )
+          })
+        ) : (
+          <div className="text-center py-12 border border-dashed border-border/60 rounded-xl">
+            <Dumbbell className="h-8 w-8 mx-auto text-muted-foreground/40 mb-3" />
+            <p className="text-sm text-muted-foreground mb-4">No exercises added yet</p>
+            <Button variant="outline" size="sm" onClick={onEdit}>
+              Add Exercises
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
 /**
- * Exercise row with set details
+ * Exercise row with set details and inline editing
  */
 function ExerciseRow({
   index,
-  name,
-  sets,
-  onClick,
+  exercise,
+  isExpanded = false,
+  onToggleExpand,
+  showAdvancedFields = true,
+  supersetId,
+  allExercises,
 }: {
   index: number
-  name: string
-  sets: Array<{
-    id: number | string
-    set_index: number | null
-    reps?: number | null
-    weight?: number | null
-    distance?: number | null
-    performing_time?: number | null
-  }> | null | undefined
-  onClick: () => void
+  exercise: SessionPlanExerciseWithDetails
+  isExpanded?: boolean
+  onToggleExpand: () => void
+  showAdvancedFields?: boolean
+  supersetId?: number | null
+  allExercises?: SessionPlanExerciseWithDetails[]
 }) {
-  // Defensive guard: ensure sets is always an array
-  const safeSets = sets ?? []
+  const name = exercise.exercise?.name || "Exercise"
+  const sets = exercise.session_plan_sets ?? []
+  const exerciseTypeId = exercise.exercise?.exercise_type_id
 
-  const formatSet = (set: NonNullable<typeof sets>[0]) => {
+  // Determine superset display
+  const showSupersetBar = !!supersetId
+  let supersetLabel: string | undefined
+  if (supersetId && allExercises) {
+    // Get all exercises in this superset
+    const supersetExercises = allExercises.filter(ex => ex.superset_id === supersetId)
+    // Find this exercise's position in the superset (0-indexed)
+    const supersetIndex = supersetExercises.findIndex(ex => ex.id === exercise.id)
+    // Convert to letter label (A, B, C, etc.)
+    if (supersetIndex >= 0) {
+      supersetLabel = String.fromCharCode(65 + supersetIndex) // 65 is 'A'
+    }
+  }
+
+  const formatSet = (set: typeof sets[0]) => {
     const parts: string[] = []
     if (set.reps) parts.push(`${set.reps}`)
     if (set.weight) parts.push(`${set.weight}kg`)
@@ -1120,51 +1164,204 @@ function ExerciseRow({
     return parts.join(' × ') || '—'
   }
 
-  const hasNoSets = safeSets.length === 0
+  const hasNoSets = sets.length === 0
+
+  // Get visible fields for this exercise type
+  const visibleFields = useMemo((): VisibleFields | undefined => {
+    if (!exerciseTypeId) return undefined
+
+    // Convert sets to plan sets format
+    const planSets = sets.map(set => ({
+      reps: set.reps,
+      weight: set.weight,
+      distance: set.distance,
+      performing_time: set.performing_time,
+      rest_time: set.rest_time,
+      tempo: set.tempo,
+      rpe: set.rpe,
+      power: set.power,
+      velocity: set.velocity,
+      height: set.height,
+      resistance: set.resistance,
+      effort: set.effort,
+    }))
+
+    // Get visible field keys - coach mode for editing
+    const visibleFieldKeys = getVisibleFields(exerciseTypeId, planSets, { forCoach: true })
+
+    // Convert to VisibleFields object
+    return {
+      reps: visibleFieldKeys.includes('reps'),
+      weight: visibleFieldKeys.includes('weight'),
+      distance: visibleFieldKeys.includes('distance'),
+      performingTime: visibleFieldKeys.includes('performingTime'),
+      height: visibleFieldKeys.includes('height'),
+      power: visibleFieldKeys.includes('power'),
+      velocity: visibleFieldKeys.includes('velocity'),
+      rpe: visibleFieldKeys.includes('rpe'),
+      restTime: visibleFieldKeys.includes('restTime'),
+      tempo: visibleFieldKeys.includes('tempo'),
+      effort: visibleFieldKeys.includes('effort'),
+      resistance: visibleFieldKeys.includes('resistance'),
+    }
+  }, [exerciseTypeId, sets])
+
+  // Convert session plan sets to training sets format
+  const trainingSets: TrainingSet[] = useMemo(() => {
+    return sets.map((set, idx) => ({
+      id: set.id,
+      setIndex: set.set_index ?? idx + 1,
+      reps: set.reps ?? null,
+      weight: set.weight ?? null,
+      distance: set.distance ?? null,
+      performingTime: set.performing_time ?? null,
+      height: set.height ?? null,
+      power: set.power ?? null,
+      velocity: set.velocity ?? null,
+      rpe: set.rpe ?? null,
+      restTime: set.rest_time ?? null,
+      tempo: set.tempo ?? null,
+      effort: set.effort ?? null,
+      resistance: set.resistance ?? null,
+      completed: false,
+      metadata: set.metadata as any, // Json type from DB - will be validated by SetRow
+    }))
+  }, [sets])
 
   return (
-    <button
-      onClick={onClick}
-      aria-label={`Exercise ${index}: ${name}${!hasNoSets ? `, ${safeSets.length} set${safeSets.length !== 1 ? 's' : ''}` : ', no sets yet - click to add'}. Click to edit.`}
-      className={cn(
-        "w-full text-left p-4 rounded-xl transition-all",
-        "bg-muted/30 hover:bg-muted/50 border border-transparent hover:border-border/40",
-        "group"
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
-          <span className="shrink-0 w-6 h-6 rounded-full bg-foreground/10 flex items-center justify-center text-xs font-medium" aria-hidden="true">
-            {index}
-          </span>
-          <div className="min-w-0">
-            <h3 className="font-medium text-sm">{name}</h3>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2" aria-hidden="true">
-              {safeSets.slice(0, 4).map((set, i) => (
-                <span
-                  key={set.id}
-                  className="text-xs text-muted-foreground font-mono"
-                >
-                  <span className="text-muted-foreground/60">S{i + 1}</span> {formatSet(set)}
-                </span>
-              ))}
-              {safeSets.length > 4 && (
-                <span className="text-xs text-muted-foreground">
-                  +{safeSets.length - 4} more
-                </span>
-              )}
-              {hasNoSets && (
-                <span className="text-xs text-muted-foreground italic flex items-center gap-1.5">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500/60" aria-hidden="true" />
-                  No sets yet — tap to add
-                </span>
-              )}
-            </div>
-          </div>
+    <div className={cn(
+      "rounded-xl transition-all border flex",
+      isExpanded
+        ? "bg-background border-border/40"
+        : "bg-muted/30 border-transparent"
+    )}>
+      {/* Superset bar - lean design (matching ExerciseCard) */}
+      {showSupersetBar && (
+        <div className="w-0.5 bg-primary/60 rounded-l-xl shrink-0 relative">
+          {supersetLabel && (
+            <span className="absolute left-1 top-2 text-[9px] font-bold text-primary/80 bg-background px-0.5 rounded">
+              {supersetLabel}
+            </span>
+          )}
         </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0 mt-1" aria-hidden="true" />
+      )}
+
+      <div className="flex-1 min-w-0">
+        {/* Exercise Header */}
+        <button
+          onClick={onToggleExpand}
+          aria-label={`Exercise ${index}: ${name}${!hasNoSets ? `, ${sets.length} set${sets.length !== 1 ? 's' : ''}` : ', no sets yet - click to add'}. ${isExpanded ? 'Collapse' : 'Expand'} to ${isExpanded ? 'hide' : 'edit'} sets.`}
+          aria-expanded={isExpanded}
+          className={cn(
+            "w-full text-left p-4 transition-all group",
+            !isExpanded && "hover:bg-muted/50"
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
+              <span className="shrink-0 w-6 h-6 rounded-full bg-foreground/10 flex items-center justify-center text-xs font-medium" aria-hidden="true">
+                {index}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium text-sm">{name}</h3>
+                  {isExpanded && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                      Editing
+                    </Badge>
+                  )}
+                </div>
+                {!isExpanded && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2" aria-hidden="true">
+                    {sets.slice(0, 4).map((set, i) => (
+                      <span
+                        key={set.id}
+                        className="text-xs text-muted-foreground font-mono"
+                      >
+                        <span className="text-muted-foreground/60">S{i + 1}</span> {formatSet(set)}
+                      </span>
+                    ))}
+                    {sets.length > 4 && (
+                      <span className="text-xs text-muted-foreground">
+                        +{sets.length - 4} more
+                      </span>
+                    )}
+                    {hasNoSets && (
+                      <span className="text-xs text-muted-foreground italic flex items-center gap-1.5">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500/60" aria-hidden="true" />
+                        No sets yet — tap to add
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            {isExpanded ? (
+              <ChevronUp className="shrink-0 w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="shrink-0 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+            )}
+          </div>
+        </button>
+
+        {/* Inline Set Editing */}
+        {isExpanded && (
+          <div className="px-4 pb-4 space-y-2 border-t border-border/40 pt-4">
+            {trainingSets.length > 0 ? (
+              trainingSets.map((set) => (
+                <SetRow
+                  key={set.id}
+                  set={set}
+                  isAthlete={false}
+                  visibleFields={visibleFields}
+                  showAdvancedFields={showAdvancedFields}
+                  onUpdate={(field, value) => {
+                    // TODO: Implement set update
+                    console.log('Update set', set.id, field, value)
+                  }}
+                  onRemove={() => {
+                    // TODO: Implement set removal
+                    console.log('Remove set', set.id)
+                  }}
+                />
+              ))
+            ) : (
+              <div className="text-center py-8 border border-dashed border-border/60 rounded-lg">
+                <Plus className="h-6 w-6 mx-auto text-muted-foreground/40 mb-2" />
+                <p className="text-sm text-muted-foreground mb-3">No sets yet</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    // TODO: Implement add set
+                    console.log('Add set to', exercise.id)
+                  }}
+                >
+                  Add Set
+                </Button>
+              </div>
+            )}
+
+            {trainingSets.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-2"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  // TODO: Implement add set
+                  console.log('Add set to', exercise.id)
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Add Set
+              </Button>
+            )}
+          </div>
+        )}
       </div>
-    </button>
+    </div>
   )
 }
 
