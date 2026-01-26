@@ -66,5 +66,13 @@
 3. **Phased approach**: Clear 3-phase strategy (2 weeks → 4 weeks → 8 weeks)
 4. **Measurable**: All success criteria are quantifiable (e.g., "30% reduction in conversation turns", "80% memory citation rate")
 5. **Technology-agnostic**: No mention of React, Next.js, or implementation details in requirements
+6. **Hybrid architecture**: Clearly distinguishes memory (database) from KB (skill-like patterns in database) from global skills (folder-based)
+
+**Latest Update (2026-01-26)**: Simplified KB architecture to use **Hybrid RAG** (industry standard 2026):
+- Replaced complex skill-like trigger patterns with simple metadata filtering + semantic search
+- KB articles use simple tags (auto-generated via GPT-4o-mini: ~$0.0001/article) instead of manual trigger arrays
+- Retrieval: metadata filter (coach_id, expertise_level, sport_focus) → vector similarity search
+- Simpler implementation, lower maintenance burden, more flexible than manual triggers
+- Auto-tagging minimizes coach effort while maintaining precision through metadata filters
 
 **Ready for**: `/speckit.plan` to generate implementation plan

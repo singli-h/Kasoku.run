@@ -87,14 +87,21 @@ export async function POST(req: Request) {
     }))))
     console.log('[session-assistant] Tools available:', Object.keys(coachDomainTools))
 
-    // Stream response with tool support
+    // Stream response with tool support and reasoning mode
     const result = streamText({
       model: openai('gpt-5.2'),
       system: systemPrompt,
       messages: modelMessages,
       tools: coachDomainTools,
-      onFinish: ({ text, toolCalls, usage }) => {
+      providerOptions: {
+        openai: {
+          reasoningEffort: 'high',      // Enable deep reasoning for complex planning
+          reasoningSummary: 'auto',     // Stream condensed reasoning to client
+        },
+      },
+      onFinish: ({ text, toolCalls, usage, reasoning }) => {
         console.log('[session-assistant] Response text:', text?.substring(0, 200))
+        console.log('[session-assistant] Reasoning:', reasoning ? reasoning.substring(0, 200) : 'none')
         console.log('[session-assistant] Tool calls:', toolCalls?.map(t => t.toolName))
         console.log('[session-assistant] Tokens:', usage)
       },

@@ -191,13 +191,15 @@ As Priya (data-driven user), when my preferences or training responses change ov
 - **FR-021**: AI MUST have createMemory tool to proactively suggest storing important context
 - **FR-022**: System MUST prompt user for approval before AI-created memories are saved (except for auto-approve users)
 - **FR-023**: AI MUST provide reasoning for why context is memory-worthy when suggesting memory creation
-- **FR-024**: System MUST integrate knowledge_base_articles table for coach-specific content
-- **FR-025**: AI MUST retrieve relevant KB articles when planning coached athlete sessions
-- **FR-026**: Personal memories MUST take priority over coach KB when conflicts exist
-- **FR-027**: System MUST track memory evolution by appending change history to metadata.evolution array
-- **FR-028**: System MUST update existing memories rather than creating duplicates when context changes (e.g., injury recovery)
-- **FR-029**: System MUST support User Context Overview page showing aggregated view of profile + memories + KB + history
-- **FR-030**: System MUST display memory evolution timeline in memory management UI for memories with change history
+- **FR-024**: System MUST integrate knowledge_base_articles table using Hybrid RAG (metadata filtering + semantic search)
+- **FR-025**: AI MUST retrieve relevant KB articles via metadata filters (coach_id, expertise_level, sport_focus) followed by vector similarity search
+- **FR-026**: System MUST auto-generate tags for KB articles using cheap AI (GPT-4o-mini) when coaches create/update content
+- **FR-027**: System MUST generate embeddings for KB articles using text-embedding-3-small model
+- **FR-028**: Personal memories MUST take priority over coach KB when conflicts exist
+- **FR-029**: System MUST track memory evolution by appending change history to metadata.evolution array
+- **FR-030**: System MUST update existing memories rather than creating duplicates when context changes (e.g., injury recovery)
+- **FR-031**: System MUST support User Context Overview page showing aggregated view of profile + memories + KB + history
+- **FR-032**: System MUST display memory evolution timeline in memory management UI for memories with change history
 
 ### Key Entities
 
@@ -210,7 +212,154 @@ As Priya (data-driven user), when my preferences or training responses change ov
   - `session_summary`: Workout completion data, RPE, performance (captured on workout completion)
   - `note`: Free-form context like travel, stress, fatigue (user-created or AI-suggested)
 - **Workout Log** (`workout_logs`): Source data for session_summary memories
-- **Knowledge Base Article** (`knowledge_base_articles`): Coach-created training content referenced alongside personal memories
+- **Knowledge Base Article** (`knowledge_base_articles`): Coach-created training content using Hybrid RAG architecture. Attributes: id, coach_id, title, content (markdown), category_id, embedding (vector), created_at, updated_at. Metadata structure (JSONB): expertise_level, sport_focus, tags (simple array auto-generated via GPT-4o-mini). Retrieved via metadata filtering (coach, expertise, sport) + vector similarity search (semantic matching). Simpler than skill-based triggers, more flexible than pure semantic search.
+
+## Knowledge Base Architecture (Hybrid RAG)
+
+The Knowledge Base uses **Hybrid RAG** - combining metadata filtering with semantic search - following 2026 industry best practices for production RAG systems.
+
+### Why Not Folder-Based Skills?
+
+**Memories** cannot use folder-based skills because they are:
+- **Dynamic**: Auto-generated from user actions (not static markdown)
+- **User-specific**: Scoped to `athlete_id` (not universal)
+- **Relational**: Foreign keys to users, coaches, groups (SQL queries required)
+- **High-volume**: Hundreds per user (not 5-20 global skills)
+- **Evolving**: Content changes with user behavior (not manually edited)
+
+**Knowledge Base** also cannot use folder-based skills because:
+- **Permissions**: Needs RLS policies for coach/athlete access control
+- **Search**: Requires SQL + vector similarity queries at scale
+- **Updates**: Coaches edit via UI, not file system
+- **Relationships**: Links to categories, coaches, athlete groups
+- **Scalability**: Thousands of articles across all coaches
+
+### Hybrid RAG Structure (Industry Standard 2026)
+
+Knowledge Base articles use **simple metadata filters + semantic search**:
+
+```typescript
+// Stored in knowledge_base_articles table
+type KnowledgeBaseArticle = {
+  // Database fields
+  id: number;
+  coach_id: number;
+  title: string;
+  content: string; // Markdown content
+  category_id: number; // Links to categories table
+  created_at: timestamp;
+  updated_at: timestamp;
+
+  // Simple metadata (existing JSONB column)
+  metadata: {
+    expertise_level: "beginner" | "intermediate" | "advanced";
+    sport_focus: string; // "track and field", "general fitness", etc.
+    tags: string[]; // Simple tags: ["hamstring", "speed", "plyometric"]
+  };
+
+  // Vector for semantic search (Phase 3)
+  embedding: vector(1536); // text-embedding-3-small
+}
+```
+
+**Why this is simpler than complex trigger patterns:**
+- ✅ No complex `triggers` or `when_to_apply` arrays to maintain
+- ✅ Coaches just write markdown articles
+- ✅ Tags auto-generated via cheap AI (GPT-4o-mini: $0.15/1M tokens)
+- ✅ Semantic search handles variations ("hammy" = "hamstring")
+- ✅ Metadata filters ensure scoping (expertise, sport, coach)
+
+### Auto-Tagging with Cheap AI
+
+When a coach creates/updates a KB article:
+
+```typescript
+// Auto-generate tags using cheap AI (~$0.0001 per article)
+const tags = await openai.chat.completions.create({
+  model: 'gpt-4o-mini', // $0.15/1M input tokens, $0.60/1M output
+  messages: [{
+    role: 'system',
+    content: 'Extract 3-5 training-related tags from this article. Return only a JSON array of tags.'
+  }, {
+    role: 'user',
+    content: article.content
+  }],
+  response_format: { type: "json_object" }
+});
+
+// Auto-generate embedding
+const embedding = await openai.embeddings.create({
+  model: 'text-embedding-3-small', // $0.02/1M tokens
+  input: article.content
+});
+
+// Total cost: ~$0.0001 per article
+```
+
+Coaches can review/edit tags but don't have to manually create them.
+
+### Retrieval Logic (Phase 3 - Hybrid RAG)
+
+**Step 1: Metadata Filter** (fast, precise)
+```sql
+WHERE coach_id = $athlete_coach_id
+  AND metadata->>'expertise_level' <= $athlete_level
+  AND (metadata->>'sport_focus' = $athlete_sport OR metadata->>'sport_focus' = 'general')
+```
+
+**Step 2: Semantic Search** (flexible, handles variations)
+```sql
+ORDER BY embedding <=> $query_embedding
+LIMIT 3
+```
+
+**Example:**
+- Query: "What should I do for sore hamstrings after sprinting?"
+- Metadata filter: Coach's articles only, athlete's expertise level, track focus
+- Semantic search: Matches "Eccentric Hamstring Protocol" even if it doesn't say "sore"
+
+**Benefits:**
+- Automatic scoping (coach, expertise, sport)
+- Handles synonyms ("hammy", "posterior chain", "hamstring")
+- No manual trigger maintenance
+- Scales to thousands of articles
+- Industry standard architecture (AWS Bedrock, Pinecone, 2026 best practices)
+
+### Hybrid Context System
+
+AI receives three knowledge sources in Phase 3:
+
+| Source | Type | Storage | Retrieval | Scope |
+|--------|------|---------|-----------|-------|
+| **Memories** | Dynamic, personal | Database | Recency + vector search | User-specific |
+| **Knowledge Base** | Semi-static, expert | Database | Metadata filter + semantic search | Coach-specific |
+| **Global Skills** | Static, universal | Filesystem | Pattern matching | Project-wide |
+
+Example context injection:
+```typescript
+const context = {
+  // User-specific, evolving
+  personal_memories: [
+    { type: "injury", content: "Left knee pain, avoid single-leg" },
+    { type: "preference", content: "Prefers safety bar over back squat" }
+  ],
+
+  // Coach-specific, hybrid RAG
+  coach_knowledge: [
+    {
+      title: "Eccentric Hamstring Protocol",
+      tags: ["hamstring", "eccentric", "injury-prevention"],
+      similarity: 0.89,
+      content: "# Eccentric Hamstring Protocol\n\nFor athletes returning from hamstring strains..."
+    }
+  ],
+
+  // Universal, static
+  global_skills: [
+    { name: "vercel-react-best-practices" } // For code review tasks
+  ]
+};
+```
 
 ## Success Criteria *(mandatory)*
 
@@ -280,12 +429,15 @@ As Priya (data-driven user), when my preferences or training responses change ov
 
 **Deliverables**:
 1. AI `createMemory` tool with approval flow
-2. Knowledge base integration (search KB articles during planning)
-3. User Context Overview page
-4. Memory evolution tracking (metadata.evolution array)
-5. Memory update logic (prevent duplicates)
-6. Multi-modal memories (images, videos, race results)
-7. Persona-specific approval flows (auto for Sarah, review for Marcus)
+2. Knowledge base integration using Hybrid RAG (metadata filtering + semantic search)
+3. Auto-tagging system for KB articles (GPT-4o-mini generates tags from content)
+4. KB article embedding generation (text-embedding-3-small)
+5. Hybrid KB retrieval function (metadata filter by coach/expertise/sport, then vector similarity search)
+6. User Context Overview page (personal memories + coach KB + workout history)
+7. Memory evolution tracking (metadata.evolution array)
+8. Memory update logic (prevent duplicates)
+9. Multi-modal memories (images, videos, race results)
+10. Persona-specific approval flows (auto for Sarah, review for Marcus)
 
 **Validation**: User mentions "I prefer high volume training" in chat. AI asks "Should I remember this philosophy?". User approves. Next plan reflects high volume approach without re-stating preference.
 
@@ -299,7 +451,12 @@ As Priya (data-driven user), when my preferences or training responses change ov
 - Session summary memories can be auto-generated without user review (low risk)
 - Preference memories require 2-3 instances of rejection to establish pattern (prevents false positives)
 - Profile memories are updated, not duplicated, when user changes settings
-- Coach KB articles use similar structure to memories (title, content, metadata)
+- Coach KB articles use Hybrid RAG (simple metadata + semantic search) instead of complex skill-like trigger patterns
+- Knowledge Base is database-backed (not folder-based) because it requires RLS, SQL queries, and coach-specific scoping
+- Memories cannot use folder-based skills because they are dynamic, user-specific, relational, and high-volume
+- KB article tags are auto-generated via cheap AI (GPT-4o-mini: ~$0.0001 per article) to minimize coach tagging burden
+- Hybrid RAG retrieval (metadata filter → semantic search) is simpler and more maintainable than manual trigger arrays
+- Metadata filtering (coach_id, expertise_level, sport_focus) provides precise scoping before semantic search
 - Memory deletion is soft delete (mark inactive) rather than hard delete (preserves audit trail)
 - Individual users (no coach) rely solely on personal memories + general training principles
 - Coached athletes see combination of personal memories + coach KB (with personal taking priority)
@@ -311,8 +468,9 @@ As Priya (data-driven user), when my preferences or training responses change ov
 
 - Existing `ai_memories` table schema (already deployed)
 - AI SDK 6.0 custom memory layer support
-- OpenAI text-embedding-3-small API for Phase 2 embeddings
-- PostgreSQL pgvector extension for Phase 2 vector search
+- OpenAI text-embedding-3-small API for Phase 2 memory embeddings and Phase 3 KB embeddings
+- OpenAI GPT-4o-mini API for Phase 3 KB auto-tagging ($0.15/1M input tokens)
+- PostgreSQL pgvector extension for Phase 2 vector search (memories and KB articles)
 - Existing contraindication logic in `session-planner.ts` for injury integration
 - Existing changeset approval flow for AI-generated memories
 - `knowledge_base_articles` table for Phase 3 (already exists but unused)

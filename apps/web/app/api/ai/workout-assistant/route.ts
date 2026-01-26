@@ -95,14 +95,21 @@ export async function POST(req: Request) {
     console.log('[workout-assistant] Messages count:', modelMessages.length)
     console.log('[workout-assistant] Tools available:', Object.keys(athleteDomainTools))
 
-    // Stream response with tool support
+    // Stream response with tool support and reasoning mode
     const result = streamText({
       model: openai('gpt-5.2'),
       system: systemPrompt,
       messages: modelMessages,
       tools: athleteDomainTools,
-      onFinish: ({ text, toolCalls, usage }) => {
+      providerOptions: {
+        openai: {
+          reasoningEffort: 'high',      // Enable deep reasoning for workout analysis
+          reasoningSummary: 'auto',     // Stream condensed reasoning to client
+        },
+      },
+      onFinish: ({ text, toolCalls, usage, reasoning }) => {
         console.log('[workout-assistant] Response text:', text?.substring(0, 200))
+        console.log('[workout-assistant] Reasoning:', reasoning ? reasoning.substring(0, 200) : 'none')
         console.log('[workout-assistant] Tool calls:', toolCalls?.map((t) => t.toolName))
         console.log('[workout-assistant] Tokens:', usage)
       },
