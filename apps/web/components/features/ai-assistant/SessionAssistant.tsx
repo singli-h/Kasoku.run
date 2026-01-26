@@ -37,6 +37,7 @@ import { ApprovalBanner } from './ApprovalBanner'
 import { SessionAssistantContext } from './SessionAssistantContext'
 import { useIsDesktop } from './hooks/useAILayoutMode'
 import { useSessionExercisesOptional } from '@/components/features/training/context'
+import { useBlockWideExpand } from '@/components/features/plans/individual/PlanAssistantWrapper'
 import type { SessionPlannerExercise } from '@/components/features/training/adapters/session-adapter'
 import type { ExecutionError, ChangeSet } from '@/lib/changeset/types'
 
@@ -115,6 +116,9 @@ function SessionAssistantContent({
 }: SessionAssistantProps) {
   // Responsive layout detection
   const isDesktop = useIsDesktop()
+
+  // Block-wide expand context for full-width AI view
+  const blockWideExpand = useBlockWideExpand()
 
   // Get exercises from shared context (single source of truth)
   const exercisesContext = useSessionExercisesOptional()
@@ -446,17 +450,20 @@ function SessionAssistantContent({
   )
 
   // On desktop, sidebar pushes content instead of overlaying
+  // When expanded, sidebar takes full width so no margin needed
   const showSidebar = isDesktop && chatOpen
+  const isExpanded = blockWideExpand?.isExpanded ?? false
 
   return (
     <SessionAssistantContext.Provider value={contextValue}>
       {/* Desktop: Flex layout with sidebar pushing content */}
       <div className="flex min-h-full">
-        {/* Main content area - shrinks when sidebar is open */}
+        {/* Main content area - shrinks when sidebar is open, hidden when expanded */}
         <div
           className="flex-1 min-w-0 transition-all duration-300 ease-out"
           style={{
-            marginRight: showSidebar ? 400 : 0,
+            marginRight: showSidebar && !isExpanded ? 400 : 0,
+            display: isExpanded && chatOpen ? 'none' : undefined,
           }}
         >
           {children}
@@ -476,6 +483,9 @@ function SessionAssistantContent({
             isLoading={isLoading}
             onStop={stop}
             onClearChat={handleClearChat}
+            isExpanded={blockWideExpand?.isExpanded ?? false}
+            onExpand={blockWideExpand?.expand}
+            onCollapse={blockWideExpand?.collapse}
           />
         )}
       </div>
@@ -492,6 +502,9 @@ function SessionAssistantContent({
           isLoading={isLoading}
           onStop={stop}
           onClearChat={handleClearChat}
+          isExpanded={blockWideExpand?.isExpanded ?? false}
+          onExpand={blockWideExpand?.expand}
+          onCollapse={blockWideExpand?.collapse}
         />
       )}
 

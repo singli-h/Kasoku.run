@@ -47,6 +47,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
       .trim()
   }, [textContent, thinkingContent])
 
+  // Check for any tool-related parts (tool-invocation, tool-result, etc.)
+  const hasToolParts = message.parts.some((part) => part.type.startsWith('tool-'))
+
   // Count tool calls in progress (not yet completed)
   const toolCalls = message.parts.filter((part) => {
     if (!part.type.startsWith('tool-') || part.type.startsWith('tool-result')) return false
@@ -69,7 +72,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
     )
   }
 
-  if (!displayText && !thinkingContent) return null
+  // Only return null if message is truly empty (no text, no thinking, no tool parts)
+  if (!displayText && !thinkingContent && !hasToolParts) return null
 
   return (
     <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>

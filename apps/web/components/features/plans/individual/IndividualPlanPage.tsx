@@ -45,8 +45,6 @@ import {
   Clock,
   Check,
   Plus,
-  Sparkles,
-  Loader2,
   Settings2,
 } from "lucide-react"
 import Link from "next/link"
@@ -69,7 +67,7 @@ import {
   isWeekCurrent,
   formatDateShort,
 } from "./context"
-import { InlineProposalSlot } from "./PlanAssistantWrapper"
+import { InlineProposalSlot, useBlockWideExpand } from "./PlanAssistantWrapper"
 import { AdvancedFieldsToggle } from "./AdvancedFieldsToggle"
 import { MobileSettingsSheet } from "./MobileSettingsSheet"
 import { useAdvancedFieldsToggle } from "@/lib/hooks/useAdvancedFieldsToggle"
@@ -115,6 +113,10 @@ export function IndividualPlanPage({
 
   // Get PlanContext if available (for unified mode integration)
   const planContext = usePlanContextOptional()
+
+  // Block-wide expand context - when AI is expanded, hide week sidebar
+  const blockWideExpand = useBlockWideExpand()
+  const isAIExpanded = blockWideExpand?.isExpanded ?? false
 
   // Combine other blocks for the switcher
   const hasOtherBlocks = (otherBlocks?.upcoming?.length ?? 0) > 0 || (otherBlocks?.completed?.length ?? 0) > 0
@@ -273,12 +275,20 @@ export function IndividualPlanPage({
   }
 
   // Desktop: 2-column layout with week sidebar
+  // When AI is expanded, hide the week sidebar to give AI full width
   if (isDesktop) {
     return (
       <div className="min-h-screen bg-background">
         <div className="flex">
-          {/* Left Sidebar: Week Timeline */}
-          <aside className="w-80 shrink-0 border-r border-border/40 bg-muted/20" role="navigation" aria-label="Week selector">
+          {/* Left Sidebar: Week Timeline - hidden when AI is expanded */}
+          <aside
+            className={cn(
+              "w-80 shrink-0 border-r border-border/40 bg-muted/20 transition-all duration-300",
+              isAIExpanded && "hidden"
+            )}
+            role="navigation"
+            aria-label="Week selector"
+          >
             <div className="sticky top-0 h-screen overflow-y-auto">
               {/* Block Header with Switcher */}
               <div className="p-4 border-b border-border/40">
@@ -390,35 +400,15 @@ export function IndividualPlanPage({
                 )}
 
                 {/* Edit Actions */}
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 h-9 text-xs"
+                    className="w-full h-9 text-xs"
                     onClick={() => setEditDialogOpen(true)}
                   >
                     <Edit className="h-3.5 w-3.5 mr-1.5" />
                     Edit Block
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 h-9 text-xs"
-                    onClick={() => router.push(`/plans/${trainingBlock.id}/edit`)}
-                  >
-                    <svg width="0" height="0" className="absolute">
-                      <defs>
-                        <linearGradient id="rainbow-gradient-desktop" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#f97316" />
-                          <stop offset="25%" stopColor="#ec4899" />
-                          <stop offset="50%" stopColor="#8b5cf6" />
-                          <stop offset="75%" stopColor="#3b82f6" />
-                          <stop offset="100%" stopColor="#10b981" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    <Sparkles className="h-3.5 w-3.5 mr-1.5" style={{ stroke: 'url(#rainbow-gradient-desktop)' }} />
-                    Edit with AI
                   </Button>
                 </div>
               </div>
@@ -764,26 +754,6 @@ export function IndividualPlanPage({
                 <Edit className="h-5 w-5" />
                 <span className="sr-only">Edit Block</span>
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-11 w-11 relative overflow-hidden"
-                onClick={() => router.push(`/plans/${trainingBlock.id}/edit`)}
-              >
-                <svg width="0" height="0" className="absolute">
-                  <defs>
-                    <linearGradient id="rainbow-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#f97316" />
-                      <stop offset="25%" stopColor="#ec4899" />
-                      <stop offset="50%" stopColor="#8b5cf6" />
-                      <stop offset="75%" stopColor="#3b82f6" />
-                      <stop offset="100%" stopColor="#10b981" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <Sparkles className="h-5 w-5" style={{ stroke: 'url(#rainbow-gradient)' }} />
-                <span className="sr-only">Edit with AI</span>
-              </Button>
             </div>
           </div>
 
@@ -1089,28 +1059,30 @@ function WorkoutDetails({
         </Button>
       </div>
 
-      {/* Exercise List */}
-      <div className="space-y-3">
-        {exerciseCount > 0 ? (
-          workout.session_plan_exercises?.map((exercise, index) => (
-            <ExerciseRow
-              key={exercise.id}
-              index={index + 1}
-              name={exercise.exercise?.name || "Exercise"}
-              sets={exercise.session_plan_sets ?? []}
-              onClick={onEdit}
-            />
-          ))
-        ) : (
-          <div className="text-center py-12 border border-dashed border-border/60 rounded-xl">
-            <Dumbbell className="h-8 w-8 mx-auto text-muted-foreground/40 mb-3" />
-            <p className="text-sm text-muted-foreground mb-4">No exercises added yet</p>
-            <Button variant="outline" size="sm" onClick={onEdit}>
-              Add Exercises
-            </Button>
-          </div>
-        )}
-      </div>
+      {/* Exercise List - Hidden when expanded in unified mode (exercises shown in SessionPlannerV2) */}
+      {!(unifiedMode && isExpanded) && (
+        <div className="space-y-3">
+          {exerciseCount > 0 ? (
+            workout.session_plan_exercises?.map((exercise, index) => (
+              <ExerciseRow
+                key={exercise.id}
+                index={index + 1}
+                name={exercise.exercise?.name || "Exercise"}
+                sets={exercise.session_plan_sets ?? []}
+                onClick={onEdit}
+              />
+            ))
+          ) : (
+            <div className="text-center py-12 border border-dashed border-border/60 rounded-xl">
+              <Dumbbell className="h-8 w-8 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground mb-4">No exercises added yet</p>
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                Add Exercises
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -1133,10 +1105,13 @@ function ExerciseRow({
     weight?: number | null
     distance?: number | null
     performing_time?: number | null
-  }>
+  }> | null | undefined
   onClick: () => void
 }) {
-  const formatSet = (set: typeof sets[0]) => {
+  // Defensive guard: ensure sets is always an array
+  const safeSets = sets ?? []
+
+  const formatSet = (set: NonNullable<typeof sets>[0]) => {
     const parts: string[] = []
     if (set.reps) parts.push(`${set.reps}`)
     if (set.weight) parts.push(`${set.weight}kg`)
@@ -1145,10 +1120,12 @@ function ExerciseRow({
     return parts.join(' × ') || '—'
   }
 
+  const hasNoSets = safeSets.length === 0
+
   return (
     <button
       onClick={onClick}
-      aria-label={`Exercise ${index}: ${name}${sets.length > 0 ? `, ${sets.length} set${sets.length !== 1 ? 's' : ''}` : ', no sets defined'}. Click to edit.`}
+      aria-label={`Exercise ${index}: ${name}${!hasNoSets ? `, ${safeSets.length} set${safeSets.length !== 1 ? 's' : ''}` : ', no sets yet - click to add'}. Click to edit.`}
       className={cn(
         "w-full text-left p-4 rounded-xl transition-all",
         "bg-muted/30 hover:bg-muted/50 border border-transparent hover:border-border/40",
@@ -1163,7 +1140,7 @@ function ExerciseRow({
           <div className="min-w-0">
             <h3 className="font-medium text-sm">{name}</h3>
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2" aria-hidden="true">
-              {sets.slice(0, 4).map((set, i) => (
+              {safeSets.slice(0, 4).map((set, i) => (
                 <span
                   key={set.id}
                   className="text-xs text-muted-foreground font-mono"
@@ -1171,13 +1148,16 @@ function ExerciseRow({
                   <span className="text-muted-foreground/60">S{i + 1}</span> {formatSet(set)}
                 </span>
               ))}
-              {sets.length > 4 && (
+              {safeSets.length > 4 && (
                 <span className="text-xs text-muted-foreground">
-                  +{sets.length - 4} more
+                  +{safeSets.length - 4} more
                 </span>
               )}
-              {sets.length === 0 && (
-                <span className="text-xs text-muted-foreground/60 italic">No sets defined</span>
+              {hasNoSets && (
+                <span className="text-xs text-muted-foreground italic flex items-center gap-1.5">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500/60" aria-hidden="true" />
+                  No sets yet — tap to add
+                </span>
               )}
             </div>
           </div>

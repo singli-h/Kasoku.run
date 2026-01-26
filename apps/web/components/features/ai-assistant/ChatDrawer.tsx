@@ -12,7 +12,7 @@
  */
 
 import { useRef, useEffect, useCallback } from 'react'
-import { Bot, Send, X, Loader2, Mic, MicOff, RotateCcw } from 'lucide-react'
+import { Bot, Send, X, Loader2, Mic, MicOff, RotateCcw, Maximize2, Minimize2, ArrowLeft } from 'lucide-react'
 import { Drawer } from 'vaul'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,12 @@ interface ChatDrawerProps {
   isLoading?: boolean
   onStop?: () => void
   onClearChat?: () => void
+  /** Whether the drawer is in expanded (full-screen) mode */
+  isExpanded?: boolean
+  /** Callback to expand to full screen */
+  onExpand?: () => void
+  /** Callback to collapse back to drawer */
+  onCollapse?: () => void
 }
 
 export function ChatDrawer({
@@ -47,6 +53,9 @@ export function ChatDrawer({
   isLoading = false,
   onStop,
   onClearChat,
+  isExpanded = false,
+  onExpand,
+  onCollapse,
 }: ChatDrawerProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -85,7 +94,14 @@ export function ChatDrawer({
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-60 bg-black/40" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-60 flex h-[85vh] flex-col rounded-t-2xl bg-background border-t shadow-xl">
+        <Drawer.Content
+          className={cn(
+            "fixed bottom-0 left-0 right-0 z-60 flex flex-col bg-background border-t shadow-xl transition-all duration-300",
+            isExpanded
+              ? "h-full rounded-none"
+              : "h-[85vh] rounded-t-2xl"
+          )}
+        >
           <VisuallyHidden.Root asChild>
             <Drawer.Title>AI Session Assistant Chat</Drawer.Title>
           </VisuallyHidden.Root>
@@ -93,24 +109,45 @@ export function ChatDrawer({
             <Drawer.Description>Chat interface for AI-powered session modifications</Drawer.Description>
           </VisuallyHidden.Root>
 
-          {/* Drag handle */}
-          <div className="flex justify-center pt-3 pb-2">
-            <div className="h-1.5 w-12 rounded-full bg-muted-foreground/20" />
-          </div>
+          {/* Drag handle - hidden when expanded */}
+          {!isExpanded && (
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="h-1.5 w-12 rounded-full bg-muted-foreground/20" />
+            </div>
+          )}
 
           {/* Header */}
-          <div className="flex items-center justify-between border-b px-4 py-3">
+          <div className={cn(
+            "flex items-center justify-between border-b px-4 py-3",
+            isExpanded && "pt-4"
+          )}>
+            {/* Left side: Back button when expanded, or bot icon */}
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-                <Bot className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-medium text-foreground">AI Assistant</h3>
-                <p className="text-xs text-muted-foreground">
-                  {isLoading ? 'Thinking...' : 'Ready to help'}
-                </p>
-              </div>
+              {isExpanded && onCollapse ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onCollapse}
+                  className="gap-2 -ml-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Back to Plan</span>
+                </Button>
+              ) : (
+                <>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+                    <Bot className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-foreground">AI Assistant</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {isLoading ? 'Thinking...' : 'Ready to help'}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
+            {/* Right side: action buttons */}
             <div className="flex items-center gap-1">
               {onClearChat && messages.length > 0 && (
                 <Button
@@ -123,10 +160,39 @@ export function ChatDrawer({
                   <RotateCcw className="h-4 w-4" />
                 </Button>
               )}
+              {/* Expand/Collapse button */}
+              {!isExpanded && onExpand && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onExpand}
+                  className="h-8 w-8"
+                  title="Expand to full screen"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+              )}
+              {isExpanded && onCollapse && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onCollapse}
+                  className="h-8 w-8"
+                  title="Collapse to drawer"
+                >
+                  <Minimize2 className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => onOpenChange(false)}
+                onClick={() => {
+                  // If expanded, collapse first then close
+                  if (isExpanded && onCollapse) {
+                    onCollapse()
+                  }
+                  onOpenChange(false)
+                }}
                 className="h-8 w-8"
               >
                 <X className="h-4 w-4" />

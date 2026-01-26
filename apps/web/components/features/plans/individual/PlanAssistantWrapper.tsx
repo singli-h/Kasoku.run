@@ -36,10 +36,18 @@ import { cn } from '@/lib/utils'
 interface BlockWideExpandContextValue {
   /** Whether block-wide proposal is detected */
   isBlockWideProposal: boolean
-  /** Whether the view should be expanded */
+  /** Whether the view should be expanded (manual or auto) */
   isExpanded: boolean
+  /** Whether expansion was triggered manually by user */
+  isManuallyExpanded: boolean
   /** Callback to set block-wide detected state */
   setBlockWideDetected: (isBlockWide: boolean) => void
+  /** Expand the AI view (manual trigger) */
+  expand: () => void
+  /** Collapse back to normal view */
+  collapse: () => void
+  /** Toggle expanded state */
+  toggle: () => void
 }
 
 const BlockWideExpandContext = createContext<BlockWideExpandContextValue | null>(null)
@@ -256,9 +264,24 @@ export function PlanAssistantWrapper({
 
   // T043: Track block-wide proposal detection for auto-expand
   const [isBlockWideProposal, setIsBlockWideProposal] = useState(false)
+  // Manual expansion state (user-triggered via expand button)
+  const [isManuallyExpanded, setIsManuallyExpanded] = useState(false)
 
   const handleBlockWideDetected = useCallback((isBlockWide: boolean) => {
     setIsBlockWideProposal(isBlockWide)
+  }, [])
+
+  // Manual expand/collapse controls
+  const expand = useCallback(() => {
+    setIsManuallyExpanded(true)
+  }, [])
+
+  const collapse = useCallback(() => {
+    setIsManuallyExpanded(false)
+  }, [])
+
+  const toggle = useCallback(() => {
+    setIsManuallyExpanded(prev => !prev)
   }, [])
 
   // T074: Success flash animation state
@@ -339,11 +362,16 @@ export function PlanAssistantWrapper({
   }), [pendingProposal, clearPendingProposal])
 
   // Memoize block-wide expand context value
+  // isExpanded is true if either manually expanded OR auto-expanded from block-wide proposal
   const blockWideExpandValue = useMemo((): BlockWideExpandContextValue => ({
     isBlockWideProposal,
-    isExpanded: isBlockWideProposal, // Auto-expand when block-wide proposal detected
+    isExpanded: isManuallyExpanded || isBlockWideProposal,
+    isManuallyExpanded,
     setBlockWideDetected: handleBlockWideDetected,
-  }), [isBlockWideProposal, handleBlockWideDetected])
+    expand,
+    collapse,
+    toggle,
+  }), [isBlockWideProposal, isManuallyExpanded, handleBlockWideDetected, expand, collapse, toggle])
 
   // Adapt exercises for the SessionExercisesProvider
   const exercises = useMemo(() => {
