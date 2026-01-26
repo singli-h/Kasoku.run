@@ -6,6 +6,9 @@
  * Mobile sliding drawer interface for AI conversation.
  * Uses Vaul for drawer behavior.
  * Consistent styling with ChatSidebar.
+ * Includes collapsible ThinkingSection for AI reasoning (T064).
+ *
+ * @see docs/features/plans/individual/tasks.md T064
  */
 
 import { useRef, useEffect, useCallback, useMemo } from 'react'
@@ -17,6 +20,8 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { UIMessage } from '@ai-sdk/react'
 import { useSpeechRecognition } from './use-speech-recognition'
+import { CompactThinkingSection, extractThinkingContent } from './ThinkingSection'
+import { deduplicateMessages } from './utils/message-utils'
 
 interface ChatDrawerProps {
   open: boolean
@@ -42,19 +47,10 @@ export function ChatDrawer({
   onClearChat,
 }: ChatDrawerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // Deduplicate messages by ID to prevent React key collision warnings
-  // This can happen when AI SDK adds messages during tool execution flow
-  const uniqueMessages = useMemo(() => {
-    const seen = new Set<string>()
-    return messages.filter((message) => {
-      if (seen.has(message.id)) {
-        return false
-      }
-      seen.add(message.id)
-      return true
-    })
-  }, [messages])
+  const uniqueMessages = deduplicateMessages(messages)
 
   const handleTranscript = useCallback(
     (transcript: string) => {
@@ -143,7 +139,12 @@ export function ChatDrawer({
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4">
             {uniqueMessages.length === 0 ? (
-              <EmptyState />
+              <EmptyState
+                onSuggestionClick={(suggestion) => {
+                  onInputChange(suggestion)
+                  inputRef.current?.focus()
+                }}
+              />
             ) : (
               <div className="space-y-4">
                 {uniqueMessages.map((message) => (
@@ -192,6 +193,7 @@ export function ChatDrawer({
                 </Button>
               )}
               <Input
+                ref={inputRef}
                 value={input}
                 onChange={(e) => onInputChange(e.target.value)}
                 placeholder="Ask me to modify the session..."
@@ -223,6 +225,28 @@ function ChatMessage({ message }: { message: UIMessage }) {
     .map((part) => part.text)
     .join('')
 
+  // Extract thinking content from message (T064)
+  const thinkingContent = useMemo(() => {
+    if (isUser) return null
+    return extractThinkingContent(
+      message.parts.map(part => ({
+        type: part.type,
+        text: part.type === 'text' ? (part as { text: string }).text : undefined
+      }))
+    )
+  }, [message.parts, isUser])
+
+  // Remove thinking content from displayed text if it was extracted
+  const displayText = useMemo(() => {
+    if (!textContent || !thinkingContent) return textContent
+
+    // Remove thinking tags and their content from display text
+    return textContent
+      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+      .replace(/\*\*Reasoning:?\*\*\s*[\s\S]*?(?=\n\n|\*\*|$)/gi, '')
+      .trim()
+  }, [textContent, thinkingContent])
+
   // Count tool calls in progress (not yet completed)
   const toolCalls = message.parts.filter((part) => {
     if (!part.type.startsWith('tool-') || part.type.startsWith('tool-result')) return false
@@ -245,7 +269,7 @@ function ChatMessage({ message }: { message: UIMessage }) {
     )
   }
 
-  if (!textContent) return null
+  if (!displayText && !thinkingContent) return null
 
   return (
     <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
@@ -261,19 +285,39 @@ function ChatMessage({ message }: { message: UIMessage }) {
           <Bot className="h-4 w-4 text-primary" />
         )}
       </div>
-      <div
-        className={cn(
-          'max-w-[80%] rounded-2xl px-4 py-2.5',
-          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+      <div className="flex flex-col gap-2 max-w-[80%]">
+        {/* Thinking section - collapsible (T064) */}
+        {thinkingContent && (
+          <CompactThinkingSection content={thinkingContent} />
         )}
-      >
-        <p className="whitespace-pre-wrap text-sm">{textContent}</p>
+
+        {/* Main message content */}
+        {displayText && (
+          <div
+            className={cn(
+              'rounded-2xl px-4 py-2.5',
+              isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+            )}
+          >
+            <p className="whitespace-pre-wrap text-sm">{displayText}</p>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-function EmptyState() {
+interface EmptyStateProps {
+  onSuggestionClick?: (suggestion: string) => void
+}
+
+function EmptyState({ onSuggestionClick }: EmptyStateProps) {
+  const suggestions = [
+    'Add 3 sets of face pulls at the end',
+    'Swap back squats for safety bar squats',
+    'Increase all sets by 1 rep',
+  ]
+
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
@@ -284,19 +328,42 @@ function EmptyState() {
         I can help you modify this session. Try asking me to:
       </p>
       <div className="space-y-2 text-sm">
-        <SuggestionChip text="Add 3 sets of face pulls at the end" />
-        <SuggestionChip text="Swap back squats for safety bar squats" />
-        <SuggestionChip text="Increase all sets by 1 rep" />
+        {suggestions.map((suggestion) => (
+          <SuggestionChip
+            key={suggestion}
+            text={suggestion}
+            onClick={onSuggestionClick ? () => onSuggestionClick(suggestion) : undefined}
+          />
+        ))}
       </div>
     </div>
   )
 }
 
-function SuggestionChip({ text }: { text: string }) {
+interface SuggestionChipProps {
+  text: string
+  onClick?: () => void
+}
+
+function SuggestionChip({ text, onClick }: SuggestionChipProps) {
+  if (!onClick) {
+    // If no handler, display as static text without interactive styling
+    return (
+      <div className="rounded-full bg-muted px-3 py-1.5 text-muted-foreground text-sm">
+        &ldquo;{text}&rdquo;
+      </div>
+    )
+  }
+
   return (
-    <div className="rounded-full bg-muted px-3 py-1.5 text-muted-foreground hover:bg-muted/80 transition-colors cursor-pointer">
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full bg-muted px-3 py-1.5 text-muted-foreground hover:bg-muted/80 transition-colors text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      aria-label={`Try suggestion: ${text}`}
+    >
       &ldquo;{text}&rdquo;
-    </div>
+    </button>
   )
 }
 

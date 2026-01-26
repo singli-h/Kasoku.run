@@ -49,6 +49,12 @@ interface SessionPlannerV2Props {
     session_mode?: string | null
   }
   exerciseLibrary: ExerciseLibraryItem[]
+  /**
+   * T054: Whether to show advanced fields (RPE, tempo, velocity, effort)
+   * Passed down to WorkoutView -> ExerciseCard -> SetRow.
+   * @default true
+   */
+  showAdvancedFields?: boolean
   className?: string
 }
 
@@ -57,6 +63,7 @@ export function SessionPlannerV2({
   sessionId,
   initialSession,
   exerciseLibrary,
+  showAdvancedFields = true,
   className,
 }: SessionPlannerV2Props) {
   const router = useRouter()
@@ -579,6 +586,7 @@ export function SessionPlannerV2({
           isAthlete={false}
           sessionStatus="ongoing"
           exerciseLibrary={exerciseLibraryItems}
+          showAdvancedFields={showAdvancedFields}
           onToggleExpand={handleToggleExpand}
           onCompleteSet={() => {}} // No completion in coach mode
           onUpdateSet={handleUpdateSet}

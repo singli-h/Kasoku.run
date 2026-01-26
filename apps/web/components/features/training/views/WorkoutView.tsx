@@ -63,6 +63,13 @@ export interface WorkoutViewProps {
   /** AI change info per exercise (keyed by exercise ID as string) */
   aiChangesByExercise?: Map<string, AIExerciseChangeInfo>
 
+  /**
+   * T054: Whether to show advanced fields (RPE, tempo, velocity, effort)
+   * Passed down to ExerciseCard -> SetRow. When false, these fields are hidden.
+   * @default true
+   */
+  showAdvancedFields?: boolean
+
   className?: string
 }
 
@@ -100,6 +107,7 @@ export function WorkoutView({
   onCreateSuperset,
   onUnlinkSuperset,
   aiChangesByExercise,
+  showAdvancedFields = true,
   className,
 }: WorkoutViewProps) {
   // Format session date for display
@@ -465,6 +473,7 @@ export function WorkoutView({
                                   exercise={ex}
                                   isAthlete={isAthlete}
                                   showAllFields={showAllFields}
+                                  showAdvancedFields={showAdvancedFields}
                                   showSupersetBar
                                   supersetLabel={exIdx === 0 ? ex.supersetId || undefined : undefined}
                                   onToggleExpand={() => onToggleExpand?.(ex.id)}
@@ -507,6 +516,7 @@ export function WorkoutView({
                           exercise={item}
                           isAthlete={isAthlete}
                           showAllFields={showAllFields}
+                          showAdvancedFields={showAdvancedFields}
                           onToggleExpand={() => onToggleExpand?.(item.id)}
                           onCompleteSet={(setId) => onCompleteSet?.(item.id, setId)}
                           onCompleteAllSets={() => onCompleteAllSets?.(item.id)}
@@ -552,6 +562,7 @@ export function WorkoutView({
                       exercise={ghostEx}
                       isAthlete={isAthlete}
                       showAllFields={showAllFields}
+                      showAdvancedFields={showAdvancedFields}
                       isGhostExercise={true}
                       onToggleExpand={() => {}}
                       onCompleteSet={() => {}}

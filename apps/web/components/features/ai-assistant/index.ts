@@ -38,6 +38,11 @@ export { SessionAssistant } from './SessionAssistant'
 export { ApprovalBanner } from './ApprovalBanner'
 export { ChatDrawer, ChatTrigger } from './ChatDrawer'
 export { ChatSidebar } from './ChatSidebar'
+export {
+  ThinkingSection,
+  CompactThinkingSection,
+  extractThinkingContent,
+} from './ThinkingSection'
 
 // =============================================================================
 // Context

@@ -7,7 +7,12 @@
  * - Mobile/Tablet: Bottom sheet (Vaul drawer)
  * - Desktop: Dropdown popover
  *
+ * Supports two modes:
+ * - Standalone: Uses passed selectedWeekId/onSelectWeek props
+ * - Integrated: Uses PlanContext for selection state when usePlanContext is true
+ *
  * @see INDIVIDUAL_LAUNCH_PLAN.md Section 5.4
+ * @see docs/features/plans/individual/IMPLEMENTATION_PLAN.md
  */
 
 import { format } from "date-fns"
@@ -22,13 +27,21 @@ import { CheckCircle2, Circle, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIsDesktop } from "@/components/features/ai-assistant/hooks/useAILayoutMode"
 import type { MicrocycleWithDetails } from "@/types/training"
+import { usePlanContextOptional } from "./context"
 
 interface WeekSelectorSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   weeks: MicrocycleWithDetails[]
-  selectedWeekId: number | null
-  onSelectWeek: (weekId: number) => void
+  /** Selected week ID - used when not using PlanContext */
+  selectedWeekId?: number | null
+  /** Week selection handler - used when not using PlanContext */
+  onSelectWeek?: (weekId: number) => void
+  /**
+   * When true, uses PlanContext for selection state instead of props.
+   * @default false
+   */
+  usePlanContext?: boolean
 }
 
 /**
@@ -171,10 +184,29 @@ export function WeekSelectorSheet({
   open,
   onOpenChange,
   weeks,
-  selectedWeekId,
-  onSelectWeek,
+  selectedWeekId: selectedWeekIdProp,
+  onSelectWeek: onSelectWeekProp,
+  usePlanContext: usePlanContextFlag = false,
 }: WeekSelectorSheetProps) {
   const isDesktop = useIsDesktop()
+
+  // Get PlanContext if available (T012)
+  const planContext = usePlanContextOptional()
+
+  // Use PlanContext values when usePlanContext flag is true and context is available
+  const selectedWeekId = (usePlanContextFlag && planContext)
+    ? planContext.selectedWeekId
+    : selectedWeekIdProp ?? null
+
+  const onSelectWeek = (weekId: number) => {
+    if (usePlanContextFlag && planContext) {
+      planContext.selectWeek(weekId)
+    } else if (onSelectWeekProp) {
+      onSelectWeekProp(weekId)
+    }
+    // Close the sheet after selection
+    onOpenChange(false)
+  }
 
   // Desktop: Use popover (controlled externally via open state)
   if (isDesktop) {

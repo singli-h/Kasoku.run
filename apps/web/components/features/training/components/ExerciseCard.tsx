@@ -8,8 +8,8 @@ import { getCompletedCount } from "../types"
 import { SetRow, type VisibleFields } from "./SetRow"
 import { getVisibleFields } from "../utils/field-visibility"
 import type { UIDisplayType } from "@/lib/changeset/types"
+import { AI_BG_COLORS } from "@/lib/changeset/ui-constants"
 import type { AISetChangeInfo } from "@/components/features/ai-assistant/hooks"
-import { UNGROUPED_SET_CHANGES_KEY } from "@/components/features/ai-assistant/hooks"
 import { isFreeelapMetadata, type FreeelapMetadata } from "@/types/freelap"
 
 export interface ExerciseCardProps {
@@ -59,6 +59,12 @@ export interface ExerciseCardProps {
   isGhostExercise?: boolean
   /** Whether to show all optional fields (true) or only required + filled fields (false) */
   showAllFields?: boolean
+  /**
+   * T054: Whether to show advanced fields (RPE, tempo, velocity, effort)
+   * Passed down to SetRow. When false, these fields are hidden even if visibleFields allows them.
+   * @default true
+   */
+  showAdvancedFields?: boolean
 }
 
 /**
@@ -101,6 +107,7 @@ export function ExerciseCard({
   aiCurrentData,
   isGhostExercise = false,
   showAllFields = false,
+  showAdvancedFields = true,
 }: ExerciseCardProps) {
   // Derive AI change states
   // Enhanced swap detection: also check if proposedData has a different exercise_id
@@ -144,13 +151,6 @@ export function ExerciseCard({
     })
   }, [])
 
-  // AI change indicator colors - uses CSS classes from globals.css for dark mode support
-  const AI_BG_COLORS: Record<UIDisplayType, string> = {
-    swap: 'ai-swap-bg',
-    add: 'ai-add-bg',
-    update: 'ai-update-bg',
-    remove: 'ai-remove-bg',
-  }
 
   const completedCount = getCompletedCount(exercise)
   const totalSets = exercise.sets.length
@@ -455,6 +455,7 @@ export function ExerciseCard({
                     isAthlete={isAthlete}
                     isActive={isActive}
                     visibleFields={visibleFields}
+                    showAdvancedFields={showAdvancedFields}
                     onComplete={() => onCompleteSet(set.id)}
                     onUpdate={(field, value) => onUpdateSet?.(set.id, field, value)}
                     onRemove={() => onRemoveSet?.(set.id)}
@@ -501,6 +502,7 @@ export function ExerciseCard({
                 }}
                 isAthlete={isAthlete}
                 visibleFields={visibleFields}
+                showAdvancedFields={showAdvancedFields}
                 isGhostRow={true}
                 ghostData={pendingSet.proposedData}
               />

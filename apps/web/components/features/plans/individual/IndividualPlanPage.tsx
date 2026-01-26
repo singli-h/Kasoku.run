@@ -8,13 +8,18 @@
  * Desktop: 2-column layout with week timeline sidebar + workout details
  * Mobile: Single column with progress header + day selector
  *
+ * Supports two modes:
+ * - Standalone: Original behavior with navigation to session page
+ * - Unified: Integrated with PlanContext for single-page experience with AI
+ *
  * Design inspired by: TrainingPeaks week timeline, Apple Fitness+ progress,
  * and Strong app's clean workout presentation.
  *
  * @see INDIVIDUAL_LAUNCH_PLAN.md Section 5
+ * @see docs/features/plans/individual/IMPLEMENTATION_PLAN.md
  */
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback, useEffect, Suspense, lazy } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -29,6 +34,7 @@ import {
 import {
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Dumbbell,
   Calendar,
   Edit,
@@ -40,6 +46,8 @@ import {
   Check,
   Plus,
   Sparkles,
+  Loader2,
+  Settings2,
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -49,6 +57,26 @@ import { WeekSelectorSheet } from "./WeekSelectorSheet"
 import { EditTrainingBlockDialog, type TrainingBlockFormData, type ExistingBlockDateRange } from "@/components/features/plans/workspace/components/EditTrainingBlockDialog"
 import { updateMesocycleAction } from "@/actions/plans/plan-actions"
 import { useToast } from "@/hooks/use-toast"
+import {
+  usePlanContextOptional,
+  findCurrentWeek,
+  findTodayWorkout,
+  getDayAbbrev,
+  getDayName,
+  sortByDay,
+  isWeekPast,
+  isWeekCurrent,
+  formatDateShort,
+} from "./context"
+import { InlineProposalSlot } from "./PlanAssistantWrapper"
+import { AdvancedFieldsToggle } from "./AdvancedFieldsToggle"
+import { MobileSettingsSheet } from "./MobileSettingsSheet"
+import { useAdvancedFieldsToggle } from "@/lib/hooks/useAdvancedFieldsToggle"
+
+// Lazy load SessionPlannerV2 for inline editing (T015)
+const SessionPlannerV2 = lazy(() =>
+  import("@/components/features/training/views/SessionPlannerV2").then(mod => ({ default: mod.SessionPlannerV2 }))
+)
 
 interface IndividualPlanPageProps {
   trainingBlock: MesocycleWithDetails
@@ -57,74 +85,40 @@ interface IndividualPlanPageProps {
     upcoming: MesocycleWithDetails[]
     completed: MesocycleWithDetails[]
   }
-}
-
-// ============================================================================
-// Utility Functions
-// ============================================================================
-
-function findCurrentWeek(microcycles?: MicrocycleWithDetails[]): MicrocycleWithDetails | null {
-  if (!microcycles?.length) return null
-  const today = new Date()
-  return microcycles.find(week => {
-    if (!week.start_date || !week.end_date) return false
-    const start = new Date(week.start_date)
-    const end = new Date(week.end_date)
-    return today >= start && today <= end
-  }) || microcycles[0]
-}
-
-function findTodayWorkout(workouts?: SessionPlanWithDetails[]): SessionPlanWithDetails | null {
-  if (!workouts?.length) return null
-  const today = new Date().getDay()
-  const todayWorkout = workouts.find(w => w.day === today)
-  if (todayWorkout) return todayWorkout
-  const sortedWorkouts = [...workouts].sort((a, b) => (a.day ?? 0) - (b.day ?? 0))
-  return sortedWorkouts.find(w => (w.day ?? 0) >= today) || sortedWorkouts[0]
-}
-
-function getDayAbbrev(day: number): string {
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day] ?? '—'
-}
-
-function getDayName(day: number | null): string {
-  if (day === null) return 'Unscheduled'
-  return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day] ?? '—'
-}
-
-function sortByDay(workouts: SessionPlanWithDetails[]): SessionPlanWithDetails[] {
-  return [...workouts].sort((a, b) => {
-    const dayA = a.day === 0 ? 7 : (a.day ?? 8)
-    const dayB = b.day === 0 ? 7 : (b.day ?? 8)
-    return dayA - dayB
-  })
-}
-
-function isWeekPast(week: MicrocycleWithDetails): boolean {
-  if (!week.end_date) return false
-  return new Date(week.end_date) < new Date()
-}
-
-function isWeekCurrent(week: MicrocycleWithDetails): boolean {
-  if (!week.start_date || !week.end_date) return false
-  const today = new Date()
-  return today >= new Date(week.start_date) && today <= new Date(week.end_date)
-}
-
-function formatDateShort(dateStr: string | null | undefined): string {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  /**
+   * Enable unified mode with inline session editing and AI integration.
+   * When true, workouts expand inline instead of navigating away.
+   * @default false
+   */
+  unifiedMode?: boolean
+  /**
+   * Exercise library for inline editing (required when unifiedMode is true).
+   */
+  exerciseLibrary?: Array<{
+    id: string
+    name: string
+    description?: string | null
+    type?: string | null
+    equipment?: string[] | null
+  }>
 }
 
 // ============================================================================
 // Main Component
 // ============================================================================
 
-export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPlanPageProps) {
+export function IndividualPlanPage({
+  trainingBlock,
+  otherBlocks,
+  unifiedMode = false,
+  exerciseLibrary = [],
+}: IndividualPlanPageProps) {
   const router = useRouter()
   const isDesktop = useIsDesktop()
   const { toast } = useToast()
+
+  // Get PlanContext if available (for unified mode integration)
+  const planContext = usePlanContextOptional()
 
   // Combine other blocks for the switcher
   const hasOtherBlocks = (otherBlocks?.upcoming?.length ?? 0) > 0 || (otherBlocks?.completed?.length ?? 0) > 0
@@ -145,11 +139,26 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
   // Edit block dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false)
 
-  // Week selection state
-  const [selectedWeekId, setSelectedWeekId] = useState<number | null>(() =>
+  // Mobile settings sheet state (T052)
+  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false)
+
+  // Advanced fields toggle (T050, T053)
+  const {
+    showAdvancedFields,
+    toggleAdvancedFields,
+    setShowAdvancedFields,
+    isLoaded: advancedFieldsLoaded,
+  } = useAdvancedFieldsToggle()
+
+  // Local week selection state (used when not in PlanContext)
+  const [localSelectedWeekId, setLocalSelectedWeekId] = useState<number | null>(() =>
     findCurrentWeek(trainingBlock.microcycles)?.id ?? trainingBlock.microcycles?.[0]?.id ?? null
   )
   const [weekSelectorOpen, setWeekSelectorOpen] = useState(false)
+
+  // Use PlanContext selection if available, otherwise use local state (T009)
+  const selectedWeekId = planContext?.selectedWeekId ?? localSelectedWeekId
+  const setSelectedWeekId = planContext?.selectWeek ?? setLocalSelectedWeekId
 
   // Currently selected week
   const selectedWeek = useMemo(() =>
@@ -162,8 +171,19 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
   const todayWorkout = useMemo(() => findTodayWorkout(selectedWeek?.session_plans), [selectedWeek])
   const today = new Date().getDay()
 
-  // Selected workout state
-  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null)
+  // Local selected workout state (used when not in PlanContext)
+  const [localSelectedWorkoutId, setLocalSelectedWorkoutId] = useState<string | null>(null)
+
+  // Use PlanContext session selection if available (T009)
+  const selectedWorkoutId = planContext?.selectedSessionId ?? localSelectedWorkoutId
+  const setSelectedWorkoutId = useCallback((id: string | null) => {
+    if (planContext?.selectSession) {
+      planContext.selectSession(id)
+    } else {
+      setLocalSelectedWorkoutId(id)
+    }
+  }, [planContext])
+
   const displayedWorkout = useMemo(() => {
     if (selectedWorkoutId !== null) {
       return workouts.find(w => w.id === selectedWorkoutId) ?? todayWorkout
@@ -171,15 +191,66 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
     return todayWorkout
   }, [selectedWorkoutId, workouts, todayWorkout])
 
+  // Expanded workout state for inline editing (T014)
+  const [expandedWorkoutId, setExpandedWorkoutId] = useState<string | null>(null)
+
   // Week info
   const weekNumber = (trainingBlock.microcycles?.findIndex(m => m.id === selectedWeekId) ?? 0) + 1
   const totalWeeks = trainingBlock.microcycles?.length ?? 0
 
-  const handleWeekSelect = (weekId: number) => {
+  // Auto-select current week on mount (T010)
+  useEffect(() => {
+    if (!trainingBlock?.microcycles) return
+
+    const currentWeek = findCurrentWeek(trainingBlock.microcycles)
+    if (currentWeek && !selectedWeekId) {
+      setSelectedWeekId(currentWeek.id)
+    }
+  }, [trainingBlock?.microcycles, selectedWeekId, setSelectedWeekId])
+
+  // Auto-select today's workout on mount (T011)
+  useEffect(() => {
+    if (!selectedWeek?.session_plans) return
+
+    if (selectedWeek && !selectedWorkoutId) {
+      const todaysWorkout = findTodayWorkout(selectedWeek.session_plans)
+      if (todaysWorkout) {
+        setSelectedWorkoutId(todaysWorkout.id)
+      }
+    }
+  }, [selectedWeek, selectedWorkoutId, setSelectedWorkoutId])
+
+  const handleWeekSelect = useCallback((weekId: number) => {
     setSelectedWeekId(weekId)
     setSelectedWorkoutId(null)
+    setExpandedWorkoutId(null)
     setWeekSelectorOpen(false)
-  }
+  }, [setSelectedWeekId, setSelectedWorkoutId])
+
+  // Handle workout selection (T013 - no navigation in unified mode)
+  const handleWorkoutSelect = useCallback((workoutId: string) => {
+    if (workoutId === todayWorkout?.id && selectedWorkoutId === null) {
+      // Clicking the already-displayed today's workout - no change
+      return
+    }
+    setSelectedWorkoutId(workoutId === todayWorkout?.id ? null : workoutId)
+    // In unified mode, also expand the workout for inline editing
+    if (unifiedMode) {
+      setExpandedWorkoutId(prev => prev === workoutId ? null : workoutId)
+    }
+  }, [todayWorkout, selectedWorkoutId, setSelectedWorkoutId, unifiedMode])
+
+  // Handle edit button click (T013 - inline expansion in unified mode)
+  const handleEditWorkout = useCallback((workoutId: string) => {
+    if (unifiedMode) {
+      // Toggle inline expansion
+      setExpandedWorkoutId(prev => prev === workoutId ? null : workoutId)
+      setSelectedWorkoutId(workoutId)
+    } else {
+      // Navigate to session page (original behavior)
+      router.push(`/plans/${trainingBlock.id}/session/${workoutId}`)
+    }
+  }, [unifiedMode, router, trainingBlock.id, setSelectedWorkoutId])
 
   // Handler for saving edited block
   const handleSaveBlock = async (data: TrainingBlockFormData) => {
@@ -211,7 +282,7 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
       <div className="min-h-screen bg-background">
         <div className="flex">
           {/* Left Sidebar: Week Timeline */}
-          <aside className="w-80 shrink-0 border-r border-border/40 bg-muted/20">
+          <aside className="w-80 shrink-0 border-r border-border/40 bg-muted/20" role="navigation" aria-label="Week selector">
             <div className="sticky top-0 h-screen overflow-y-auto">
               {/* Block Header with Switcher */}
               <div className="p-4 border-b border-border/40">
@@ -256,7 +327,7 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                             <Clock className="h-3 w-3" />
                             Upcoming
                           </DropdownMenuLabel>
-                          {otherBlocks?.upcoming.map(block => (
+                          {otherBlocks?.upcoming?.map(block => (
                             <DropdownMenuItem key={block.id} asChild>
                               <Link href={`/plans/${block.id}`} className="cursor-pointer">
                                 <Circle className="h-4 w-4 mr-2 text-muted-foreground/40" />
@@ -279,7 +350,7 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                             <CheckCircle2 className="h-3 w-3" />
                             Completed
                           </DropdownMenuLabel>
-                          {otherBlocks?.completed.slice(0, 3).map(block => (
+                          {otherBlocks?.completed?.slice(0, 3).map(block => (
                             <DropdownMenuItem key={block.id} asChild>
                               <Link href={`/plans/${block.id}`} className="cursor-pointer">
                                 <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
@@ -357,7 +428,7 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
               </div>
 
               {/* Week List */}
-              <nav className="p-2">
+              <nav className="p-2" aria-label="Training weeks">
                 <div className="space-y-1">
                   {trainingBlock.microcycles?.map((week, index) => {
                     const isSelected = week.id === selectedWeekId
@@ -369,6 +440,8 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                       <button
                         key={week.id}
                         onClick={() => handleWeekSelect(week.id)}
+                        aria-pressed={isSelected}
+                        aria-label={`Week ${index + 1}${isCurrent ? ', current week' : ''}${isPast ? ', completed' : ''}${isSelected ? ', currently selected' : ''}`}
                         className={cn(
                           "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all",
                           isSelected
@@ -435,7 +508,7 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1 min-w-0">
+          <main className="flex-1 min-w-0" role="main" aria-label="Workout details">
             {/* Week Header */}
             <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border/40">
               <div className="px-6 py-4">
@@ -446,11 +519,18 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                       {formatDateShort(selectedWeek?.start_date)} - {formatDateShort(selectedWeek?.end_date)}
                     </p>
                   </div>
+                  {/* T051: Advanced fields toggle for desktop */}
+                  <AdvancedFieldsToggle
+                    checked={showAdvancedFields}
+                    onCheckedChange={setShowAdvancedFields}
+                    variant="inline"
+                    isLoading={!advancedFieldsLoaded}
+                  />
                 </div>
               </div>
 
               {/* Horizontal Day Selector */}
-              <div className="px-6 pb-4">
+              <nav className="px-6 pb-4" role="navigation" aria-label="Workout day selector">
                 <div className="flex items-center gap-2">
                   {workouts.map((workout) => {
                     const isSelected = workout.id === displayedWorkout?.id
@@ -461,7 +541,9 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                     return (
                       <button
                         key={workout.id}
-                        onClick={() => setSelectedWorkoutId(workout.id === todayWorkout?.id ? null : workout.id)}
+                        onClick={() => handleWorkoutSelect(workout.id)}
+                        aria-pressed={isSelected}
+                        aria-label={`${getDayName(workout.day)} workout${workout.name ? `: ${workout.name}` : ''}${isToday ? ', today' : ''}${isSelected ? ', currently selected' : ''}`}
                         className={cn(
                           "shrink-0 flex flex-col items-center px-4 py-2 rounded-lg transition-all",
                           "min-w-[80px] border",
@@ -486,7 +568,7 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                           {workout.name?.split(' ')[0] || 'Workout'}
                         </span>
                         {isToday && !isSelected && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1" aria-hidden="true" />
                         )}
                       </button>
                     )
@@ -498,18 +580,46 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                     </div>
                   )}
                 </div>
-              </div>
+              </nav>
             </header>
 
             {/* Workout Details */}
             <div className="p-6">
+              {/* Inline proposal slot for AI changes (T020) */}
+              {unifiedMode && (
+                <InlineProposalSlot className="mb-6" />
+              )}
+
               {displayedWorkout ? (
-                <WorkoutDetails
-                  workout={displayedWorkout}
-                  blockId={trainingBlock.id}
-                  isToday={displayedWorkout.day === today}
-                  onEdit={() => router.push(`/plans/${trainingBlock.id}/session/${displayedWorkout.id}`)}
-                />
+                <>
+                  <WorkoutDetails
+                    workout={displayedWorkout}
+                    blockId={trainingBlock.id}
+                    isToday={displayedWorkout.day === today}
+                    onEdit={() => handleEditWorkout(displayedWorkout.id)}
+                    isExpanded={unifiedMode && expandedWorkoutId === displayedWorkout.id}
+                    unifiedMode={unifiedMode}
+                  />
+                  {/* Inline SessionPlannerV2 when expanded (T014, T015) */}
+                  {unifiedMode && expandedWorkoutId === displayedWorkout.id && (
+                    <div className="mt-6 border-t border-border/40 pt-6">
+                      <Suspense fallback={<WorkoutEditorSkeleton />}>
+                        <SessionPlannerV2
+                          planId={String(trainingBlock.id)}
+                          sessionId={displayedWorkout.id}
+                          initialSession={{
+                            id: displayedWorkout.id,
+                            name: displayedWorkout.name || 'Workout',
+                            description: displayedWorkout.description,
+                            day: displayedWorkout.day,
+                          }}
+                          exerciseLibrary={exerciseLibrary}
+                          showAdvancedFields={showAdvancedFields}
+                        />
+                      </Suspense>
+                    </div>
+                  )}
+                </>
               ) : (
                 <EmptyWorkoutState />
               )}
@@ -575,7 +685,7 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                           <Clock className="h-3 w-3" />
                           Upcoming
                         </DropdownMenuLabel>
-                        {otherBlocks?.upcoming.map(block => (
+                        {otherBlocks?.upcoming?.map(block => (
                           <DropdownMenuItem key={block.id} asChild>
                             <Link href={`/plans/${block.id}`} className="cursor-pointer">
                               <Circle className="h-4 w-4 mr-2 text-muted-foreground/40" />
@@ -598,7 +708,7 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                           <CheckCircle2 className="h-3 w-3" />
                           Completed
                         </DropdownMenuLabel>
-                        {otherBlocks?.completed.slice(0, 2).map(block => (
+                        {otherBlocks?.completed?.slice(0, 2).map(block => (
                           <DropdownMenuItem key={block.id} asChild>
                             <Link href={`/plans/${block.id}`} className="cursor-pointer">
                               <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
@@ -639,6 +749,16 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
 
             {/* Action buttons - icons only on mobile */}
             <div className="flex items-center gap-1.5">
+              {/* T052: Settings button for mobile */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11"
+                onClick={() => setMobileSettingsOpen(true)}
+              >
+                <Settings2 className="h-5 w-5" />
+                <span className="sr-only">View Settings</span>
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -674,6 +794,8 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
           {/* Week Selector - Prominent card style */}
           <button
             onClick={() => setWeekSelectorOpen(true)}
+            aria-label={`Select week. Currently on ${selectedWeek?.name || `Week ${weekNumber}`}, week ${weekNumber} of ${totalWeeks}`}
+            aria-haspopup="dialog"
             className="w-full mt-3 p-3 bg-muted/50 hover:bg-muted/70 rounded-xl border border-border/50 transition-colors active:scale-[0.98]"
           >
             <div className="flex items-center justify-between">
@@ -706,7 +828,7 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
         </div>
 
         {/* Horizontal Day Selector */}
-        <div className="px-4 pb-3">
+        <nav className="px-4 pb-3" role="navigation" aria-label="Workout day selector">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {workouts.map((workout) => {
               const isSelected = workout.id === displayedWorkout?.id
@@ -717,7 +839,9 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
               return (
                 <button
                   key={workout.id}
-                  onClick={() => setSelectedWorkoutId(workout.id === todayWorkout?.id ? null : workout.id)}
+                  onClick={() => handleWorkoutSelect(workout.id)}
+                  aria-pressed={isSelected}
+                  aria-label={`${getDayName(workout.day)} workout${workout.name ? `: ${workout.name}` : ''}${isToday ? ', today' : ''}${isSelected ? ', currently selected' : ''}`}
                   className={cn(
                     "shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-all",
                     "min-w-[64px] border",
@@ -742,7 +866,7 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
                     {workout.name?.split(' ')[0] || 'Workout'}
                   </span>
                   {isToday && !isSelected && (
-                    <span className="w-1 h-1 rounded-full bg-primary mt-1" />
+                    <span className="w-1 h-1 rounded-full bg-primary mt-1" aria-hidden="true" />
                   )}
                 </button>
               )
@@ -754,18 +878,46 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
               </div>
             )}
           </div>
-        </div>
+        </nav>
       </header>
 
       {/* Mobile Content */}
-      <main className="p-4">
+      <main className="p-4" role="main" aria-label="Workout details">
+        {/* Inline proposal slot for AI changes (T020) */}
+        {unifiedMode && (
+          <InlineProposalSlot className="mb-4" />
+        )}
+
         {displayedWorkout ? (
-          <WorkoutDetails
-            workout={displayedWorkout}
-            blockId={trainingBlock.id}
-            isToday={displayedWorkout.day === today}
-            onEdit={() => router.push(`/plans/${trainingBlock.id}/session/${displayedWorkout.id}`)}
-          />
+          <>
+            <WorkoutDetails
+              workout={displayedWorkout}
+              blockId={trainingBlock.id}
+              isToday={displayedWorkout.day === today}
+              onEdit={() => handleEditWorkout(displayedWorkout.id)}
+              isExpanded={unifiedMode && expandedWorkoutId === displayedWorkout.id}
+              unifiedMode={unifiedMode}
+            />
+            {/* Inline SessionPlannerV2 when expanded (T014, T015) */}
+            {unifiedMode && expandedWorkoutId === displayedWorkout.id && (
+              <div className="mt-4 border-t border-border/40 pt-4">
+                <Suspense fallback={<WorkoutEditorSkeleton />}>
+                  <SessionPlannerV2
+                    planId={String(trainingBlock.id)}
+                    sessionId={displayedWorkout.id}
+                    initialSession={{
+                      id: displayedWorkout.id,
+                      name: displayedWorkout.name || 'Workout',
+                      description: displayedWorkout.description,
+                      day: displayedWorkout.day,
+                    }}
+                    exerciseLibrary={exerciseLibrary}
+                    showAdvancedFields={showAdvancedFields}
+                  />
+                </Suspense>
+              </div>
+            )}
+          </>
         ) : (
           <EmptyWorkoutState />
         )}
@@ -793,6 +945,15 @@ export function IndividualPlanPage({ trainingBlock, otherBlocks }: IndividualPla
         onOpenChange={setEditDialogOpen}
         onSave={handleSaveBlock}
         existingBlocks={existingBlocks}
+      />
+
+      {/* Mobile Settings Sheet (T052) */}
+      <MobileSettingsSheet
+        open={mobileSettingsOpen}
+        onOpenChange={setMobileSettingsOpen}
+        showAdvancedFields={showAdvancedFields}
+        onAdvancedFieldsChange={setShowAdvancedFields}
+        isLoading={!advancedFieldsLoaded}
       />
     </div>
   )
@@ -859,17 +1020,24 @@ function WeekProgressDots({
 
 /**
  * Workout details with exercises
+ * Supports unified mode with inline expansion for editing
  */
 function WorkoutDetails({
   workout,
   blockId,
   isToday,
   onEdit,
+  isExpanded = false,
+  unifiedMode = false,
 }: {
   workout: SessionPlanWithDetails
   blockId: number
   isToday: boolean
   onEdit: () => void
+  /** Whether the workout editor is currently expanded inline (unified mode only) */
+  isExpanded?: boolean
+  /** Whether unified mode is enabled (changes edit button behavior) */
+  unifiedMode?: boolean
 }) {
   const exerciseCount = workout.session_plan_exercises?.length ?? 0
 
@@ -898,9 +1066,30 @@ function WorkoutDetails({
           size="sm"
           onClick={onEdit}
           className="gap-1.5"
+          aria-expanded={unifiedMode ? isExpanded : undefined}
+          aria-label={unifiedMode
+            ? (isExpanded ? `Collapse workout editor for ${workout.name || 'workout'}` : `Expand workout editor for ${workout.name || 'workout'}`)
+            : `Edit ${workout.name || 'workout'} session in new page`
+          }
         >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Edit Session
+          {unifiedMode ? (
+            isExpanded ? (
+              <>
+                <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+                Collapse
+              </>
+            ) : (
+              <>
+                <Edit className="h-3.5 w-3.5" aria-hidden="true" />
+                Edit
+              </>
+            )
+          ) : (
+            <>
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              Edit Session
+            </>
+          )}
         </Button>
       </div>
 
@@ -963,6 +1152,7 @@ function ExerciseRow({
   return (
     <button
       onClick={onClick}
+      aria-label={`Exercise ${index}: ${name}${sets.length > 0 ? `, ${sets.length} set${sets.length !== 1 ? 's' : ''}` : ', no sets defined'}. Click to edit.`}
       className={cn(
         "w-full text-left p-4 rounded-xl transition-all",
         "bg-muted/30 hover:bg-muted/50 border border-transparent hover:border-border/40",
@@ -971,12 +1161,12 @@ function ExerciseRow({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <span className="shrink-0 w-6 h-6 rounded-full bg-foreground/10 flex items-center justify-center text-xs font-medium">
+          <span className="shrink-0 w-6 h-6 rounded-full bg-foreground/10 flex items-center justify-center text-xs font-medium" aria-hidden="true">
             {index}
           </span>
           <div className="min-w-0">
             <h3 className="font-medium text-sm">{name}</h3>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2" aria-hidden="true">
               {sets.slice(0, 4).map((set, i) => (
                 <span
                   key={set.id}
@@ -996,7 +1186,7 @@ function ExerciseRow({
             </div>
           </div>
         </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0 mt-1" />
+        <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0 mt-1" aria-hidden="true" />
       </div>
     </button>
   )
@@ -1010,6 +1200,41 @@ function EmptyWorkoutState() {
     <div className="text-center py-16">
       <Calendar className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
       <p className="text-muted-foreground">Select a workout to view details</p>
+    </div>
+  )
+}
+
+/**
+ * Loading skeleton for SessionPlannerV2 during lazy load (T015)
+ */
+function WorkoutEditorSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="h-6 w-48 bg-muted rounded" />
+        <div className="h-8 w-24 bg-muted rounded" />
+      </div>
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="p-4 rounded-xl bg-muted/50 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-muted" />
+              <div className="flex-1 space-y-2">
+                <div className="h-5 w-32 bg-muted rounded" />
+                <div className="flex gap-2">
+                  <div className="h-4 w-16 bg-muted rounded" />
+                  <div className="h-4 w-16 bg-muted rounded" />
+                  <div className="h-4 w-16 bg-muted rounded" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-sm text-muted-foreground">Loading editor...</span>
+      </div>
     </div>
   )
 }

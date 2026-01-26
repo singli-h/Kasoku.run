@@ -2,13 +2,62 @@
 
 import { useCallback, useState, Fragment } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Bot, Check, GripVertical, Plus, X } from "lucide-react"
+import { ArrowRight, Bot, Check, GripVertical, Plus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TrainingSet } from "../types"
 import type { UIDisplayType } from "@/lib/changeset/types"
+import { AI_BG_COLORS } from "@/lib/changeset/ui-constants"
 import { FreeelapMetricsTable } from "@/components/features/workout/components/exercise/freelap-metrics-table"
 import { isFreeelapMetadata, type FreeelapMetadata } from "@/types/freelap"
 import type { SetMetadata } from "../types/set-metadata"
+
+// ============================================================================
+// T049: Inline Diff Display Component
+// ============================================================================
+
+/**
+ * InlineDiffValue Component (T049)
+ *
+ * Renders a field value with inline diff display for AI changes.
+ * Shows "old → new" format for low-density changes.
+ *
+ * @see docs/features/plans/individual/tasks.md T049
+ */
+interface InlineDiffValueProps {
+  oldValue: unknown
+  newValue: unknown
+  unit: string
+  isHighlightMode?: boolean
+}
+
+function InlineDiffValue({ oldValue, newValue, unit, isHighlightMode = false }: InlineDiffValueProps) {
+  const formatValue = (val: unknown) => {
+    if (val === null || val === undefined) return '-'
+    return `${val}${unit}`
+  }
+
+  // T059: Highlight-only mode - just show new value with amber background
+  if (isHighlightMode) {
+    return (
+      <span className="font-medium text-amber-800 dark:text-amber-200">
+        {formatValue(newValue)}
+      </span>
+    )
+  }
+
+  // T049: Full inline diff - "old → new"
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      <span className="text-muted-foreground line-through text-[10px]">
+        {formatValue(oldValue)}
+      </span>
+      <ArrowRight className="h-2.5 w-2.5 text-amber-500 shrink-0" />
+      <span className="font-medium text-amber-800 dark:text-amber-200">
+        {formatValue(newValue)}
+      </span>
+    </span>
+  )
+}
 
 /** Visible fields computed from exercise type and plan data */
 export interface VisibleFields {
@@ -26,12 +75,26 @@ export interface VisibleFields {
   resistance: boolean
 }
 
+/**
+ * Display mode for AI changes (T056, T059)
+ * - 'inline': Show full old→new diff for each field
+ * - 'highlight': Show only new value with highlight (for high-density changes)
+ */
+export type AIDiffDisplayMode = 'inline' | 'highlight'
+
 export interface SetRowProps {
   set: TrainingSet
   isAthlete: boolean
   isActive?: boolean
   /** Task 10.1: Pre-computed visible fields from ExerciseCard */
   visibleFields?: VisibleFields
+  /**
+   * T054: Whether to show advanced fields (RPE, tempo, velocity, effort)
+   * When false, these fields are hidden even if visibleFields indicates they should show.
+   * This layers ON TOP of visibleFields - both must be true for field to render.
+   * @default true
+   */
+  showAdvancedFields?: boolean
   onComplete?: () => void
   onUpdate?: (field: keyof TrainingSet, value: number | string | null) => void
   onRemove?: () => void
@@ -50,6 +113,13 @@ export interface SetRowProps {
   aiCurrentData?: Record<string, unknown> | null
   /** For UPDATE: proposed data for diff display */
   aiProposedData?: Record<string, unknown> | null
+  /**
+   * Display mode for AI diffs (T049, T059)
+   * - 'inline': Show full old→new diff for each field (low-density)
+   * - 'highlight': Show only new value with highlight (high-density)
+   * @default 'inline'
+   */
+  aiDiffDisplayMode?: AIDiffDisplayMode
   // Ghost row mode (for pending CREATE operations)
   /** If true, renders as a read-only ghost row with dashed border */
   isGhostRow?: boolean
@@ -72,19 +142,13 @@ export interface SetRowProps {
  * - Athlete view: Tappable set number for completion, inline editable inputs
  * - Coach view: Drag handle for reordering, all fields visible, remove button
  */
-// AI change indicator colors for sets - uses CSS classes from globals.css for dark mode support
-const AI_SET_COLORS: Record<UIDisplayType, string> = {
-  swap: 'ai-swap-bg',
-  add: 'ai-add-bg',
-  update: 'ai-update-bg',
-  remove: 'ai-remove-bg',
-}
 
 export function SetRow({
   set,
   isAthlete,
   isActive,
   visibleFields,
+  showAdvancedFields = true,
   onComplete,
   onUpdate,
   onRemove,
@@ -98,6 +162,7 @@ export function SetRow({
   aiChangeType,
   aiCurrentData,
   aiProposedData,
+  aiDiffDisplayMode = 'inline',
   // Ghost row props
   isGhostRow = false,
   ghostData,
@@ -115,12 +180,16 @@ export function SetRow({
   const showTime = visibleFields?.performingTime ?? false
   const showHeight = visibleFields?.height ?? false
   const showPower = visibleFields?.power ?? false
-  const showVelocity = visibleFields?.velocity ?? false
-  const showRPE = visibleFields?.rpe ?? false
+  // T054: Advanced fields - only show when both visibleFields and showAdvancedFields are true
+  const showVelocity = (visibleFields?.velocity ?? false) && showAdvancedFields
+  const showRPE = (visibleFields?.rpe ?? false) && showAdvancedFields
   const showRestTime = visibleFields?.restTime ?? false
-  const showTempo = visibleFields?.tempo ?? false
-  const showEffort = visibleFields?.effort ?? false
+  const showTempo = (visibleFields?.tempo ?? false) && showAdvancedFields
+  const showEffort = (visibleFields?.effort ?? false) && showAdvancedFields
   const showResistance = visibleFields?.resistance ?? false
+
+  // T055: Calculate if we have many fields visible (for enhanced scroll indicators on mobile)
+  const hasAdvancedFieldsVisible = showVelocity || showRPE || showTempo || showEffort
 
   // Helper to check if a field was changed by AI (for UPDATE operations)
   const isFieldChanged = useCallback((field: string): boolean => {
@@ -141,6 +210,17 @@ export function SetRow({
   // Is this a remove operation?
   const isRemove = aiChangeType === 'remove'
   const isUpdate = aiChangeType === 'update'
+
+  // T049: Get old value for inline diff display
+  const getOldValue = useCallback((field: string): unknown => {
+    if (!aiCurrentData) return undefined
+    // Check both snake_case and camelCase
+    const snakeField = field.replace(/([A-Z])/g, '_$1').toLowerCase()
+    return aiCurrentData[field] ?? aiCurrentData[snakeField]
+  }, [aiCurrentData])
+
+  // T059: Check if we should use highlight-only mode (high-density)
+  const useHighlightMode = aiDiffDisplayMode === 'highlight'
 
   // Shared input styles - larger for better touch targets
   const inputClass = cn(
@@ -347,7 +427,7 @@ export function SetRow({
           "flex items-center gap-1 py-1.5 px-1 transition-colors min-w-0 w-full",
           // Apply AI styling if there's a pending change, otherwise normal styling
           hasPendingChange && aiChangeType
-            ? AI_SET_COLORS[aiChangeType]
+            ? AI_BG_COLORS[aiChangeType]
             : set.completed ? "bg-green-500/5" : "",
           isFreeelapExpanded && hasFreeelapData && "bg-primary/5 dark:bg-primary/10"
         )}>
@@ -388,7 +468,11 @@ export function SetRow({
           </div>
 
         {/* Inline editable inputs - horizontal scroll */}
-        <div className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0">
+        {/* T055: Enhanced scroll affordance when advanced fields are visible on mobile */}
+        <div className={cn(
+          "flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0",
+          hasAdvancedFieldsVisible && "scroll-smooth md:overflow-x-visible"
+        )}>
           {showReps && (
             <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
               <input
@@ -397,6 +481,7 @@ export function SetRow({
                 max={999}
                 value={set.reps ?? ""}
                 onChange={(e) => handleChange("reps", e.target.value)}
+                aria-label={`Set ${set.setIndex} reps`}
                 className={cn(inputClass, "w-8")}
                 placeholder="-"
               />
@@ -412,6 +497,7 @@ export function SetRow({
                 step={0.5}
                 value={set.weight ?? ""}
                 onChange={(e) => handleChange("weight", e.target.value)}
+                aria-label={`Set ${set.setIndex} weight in kilograms`}
                 className={cn(inputClass, "w-10")}
                 placeholder="-"
               />
@@ -426,6 +512,7 @@ export function SetRow({
                 max={99999}
                 value={set.distance ?? ""}
                 onChange={(e) => handleChange("distance", e.target.value)}
+                aria-label={`Set ${set.setIndex} distance in meters`}
                 className={cn(inputClass, "w-9")}
                 placeholder="-"
               />
@@ -441,6 +528,7 @@ export function SetRow({
                 step={0.01}
                 value={set.performingTime ?? ""}
                 onChange={(e) => handleChange("performingTime", e.target.value)}
+                aria-label={`Set ${set.setIndex} time in seconds`}
                 className={cn(inputClass, "w-12")}
                 placeholder="-"
               />
@@ -456,6 +544,7 @@ export function SetRow({
                 step={0.01}
                 value={set.velocity ?? ""}
                 onChange={(e) => handleChange("velocity", e.target.value)}
+                aria-label={`Set ${set.setIndex} target velocity in meters per second`}
                 className={cn(inputClass, "w-12")}
                 placeholder="-"
               />
@@ -471,6 +560,7 @@ export function SetRow({
                 step={0.1}
                 value={set.height ?? ""}
                 onChange={(e) => handleChange("height", e.target.value)}
+                aria-label={`Set ${set.setIndex} height in centimeters`}
                 className={cn(inputClass, "w-9")}
                 placeholder="-"
               />
@@ -485,6 +575,7 @@ export function SetRow({
                 max={999}
                 value={set.restTime ?? ""}
                 onChange={(e) => handleChange("restTime", e.target.value)}
+                aria-label={`Set ${set.setIndex} rest time in seconds`}
                 className={cn(inputClass, "w-9")}
                 placeholder="60"
               />
@@ -500,6 +591,7 @@ export function SetRow({
                 max={10}
                 value={set.rpe ?? ""}
                 onChange={(e) => handleChange("rpe", e.target.value)}
+                aria-label={`Set ${set.setIndex} rate of perceived exertion`}
                 className={cn(inputClass, "w-7")}
                 placeholder="-"
               />
@@ -511,6 +603,7 @@ export function SetRow({
                 type="text"
                 value={set.tempo ?? ""}
                 onChange={(e) => onUpdate?.("tempo", e.target.value || null)}
+                aria-label={`Set ${set.setIndex} tempo (eccentric-bottom-concentric-top)`}
                 className={cn(inputClass, "w-16")}
                 placeholder="3-1-2-0"
               />
@@ -524,6 +617,7 @@ export function SetRow({
                 max={100}
                 value={set.effort ?? ""}
                 onChange={(e) => handleChange("effort", e.target.value)}
+                aria-label={`Set ${set.setIndex} effort percentage`}
                 className={cn(inputClass, "w-9")}
                 placeholder="80"
               />
@@ -539,6 +633,7 @@ export function SetRow({
                 step={0.1}
                 value={set.power ?? ""}
                 onChange={(e) => handleChange("power", e.target.value)}
+                aria-label={`Set ${set.setIndex} power in watts`}
                 className={cn(inputClass, "w-12")}
                 placeholder="-"
               />
@@ -554,6 +649,7 @@ export function SetRow({
                 step={0.5}
                 value={set.resistance ?? ""}
                 onChange={(e) => handleChange("resistance", e.target.value)}
+                aria-label={`Set ${set.setIndex} resistance level`}
                 className={cn(inputClass, "w-10")}
                 placeholder="-"
               />
@@ -565,6 +661,7 @@ export function SetRow({
         {/* Completion toggle - moved to far right */}
         <button
           onClick={onComplete}
+          aria-label={`Mark set ${set.setIndex} as ${set.completed ? 'incomplete' : 'complete'}`}
           className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all shrink-0 flex-shrink-0",
             set.completed
@@ -603,18 +700,22 @@ export function SetRow({
 
   // Coach view - draggable with type-appropriate fields visible
   // Use visibleFields if provided, otherwise show common fields
+  // T054: Apply showAdvancedFields toggle to advanced fields (RPE, tempo, velocity, effort)
   const coachShowReps = visibleFields?.reps ?? true
   const coachShowWeight = visibleFields?.weight ?? true
   const coachShowDistance = visibleFields?.distance ?? false
   const coachShowTime = visibleFields?.performingTime ?? false
   const coachShowHeight = visibleFields?.height ?? false
   const coachShowPower = visibleFields?.power ?? false
-  const coachShowVelocity = visibleFields?.velocity ?? false
-  const coachShowRPE = visibleFields?.rpe ?? false
+  const coachShowVelocity = (visibleFields?.velocity ?? false) && showAdvancedFields
+  const coachShowRPE = (visibleFields?.rpe ?? false) && showAdvancedFields
   const coachShowRestTime = visibleFields?.restTime ?? true
-  const coachShowTempo = visibleFields?.tempo ?? false
-  const coachShowEffort = visibleFields?.effort ?? false
+  const coachShowTempo = (visibleFields?.tempo ?? false) && showAdvancedFields
+  const coachShowEffort = (visibleFields?.effort ?? false) && showAdvancedFields
   const coachShowResistance = visibleFields?.resistance ?? false
+
+  // T055: Calculate if coach view has many fields visible (for enhanced scroll indicators)
+  const coachHasAdvancedFieldsVisible = coachShowVelocity || coachShowRPE || coachShowTempo || coachShowEffort
 
   return (
     <div
@@ -632,7 +733,7 @@ export function SetRow({
           ? "opacity-50 bg-primary/10 border border-dashed border-primary"
           // Apply AI styling: update only highlights cells, not the row
           : hasPendingChange && aiChangeType && aiChangeType !== 'update'
-            ? AI_SET_COLORS[aiChangeType]
+            ? AI_BG_COLORS[aiChangeType]
             : "bg-muted/30 hover:bg-muted/50"
       )}
     >
@@ -661,89 +762,178 @@ export function SetRow({
       </div>
 
       {/* Pill notation inputs - show only type-appropriate fields */}
+      {/* T055: Enhanced scroll affordance when advanced fields are visible on mobile */}
       <div className={cn(
         "flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-hide min-w-0",
-        isRemove && "opacity-60"
+        isRemove && "opacity-60",
+        coachHasAdvancedFieldsVisible && "scroll-smooth md:overflow-x-visible"
       )}>
         {coachShowReps && (
           <div className={cn(
             "px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0",
-            isFieldChanged('reps') ? "ai-update-cell" : "bg-muted"
+            isFieldChanged('reps')
+              ? useHighlightMode
+                ? "bg-amber-100 dark:bg-amber-900/40 ring-1 ring-amber-300 dark:ring-amber-700"
+                : "ai-update-cell"
+              : "bg-muted"
           )}>
-            <input
-              type="number"
-              min={0}
-              max={999}
-              value={getDisplayValue('reps', set.reps) as number ?? ""}
-              onChange={(e) => handleChange("reps", e.target.value)}
-              disabled={isRemove}
-              className={cn(inputClass, "w-8", isRemove && "cursor-not-allowed")}
-              placeholder="-"
-            />
+            {/* T049/T059: Show inline diff when field changed */}
+            {isFieldChanged('reps') ? (
+              <InlineDiffValue
+                oldValue={getOldValue('reps')}
+                newValue={getDisplayValue('reps', set.reps)}
+                unit=""
+                isHighlightMode={useHighlightMode}
+              />
+            ) : (
+              <input
+                type="number"
+                min={0}
+                max={999}
+                value={getDisplayValue('reps', set.reps) as number ?? ""}
+                onChange={(e) => handleChange("reps", e.target.value)}
+                disabled={isRemove}
+                aria-label={`Set ${set.setIndex} reps`}
+                className={cn(inputClass, "w-8", isRemove && "cursor-not-allowed")}
+                placeholder="-"
+              />
+            )}
             <span className="text-muted-foreground text-xs">x</span>
           </div>
         )}
         {coachShowWeight && (
           <div className={cn(
             "px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0",
-            isFieldChanged('weight') ? "ai-update-cell" : "bg-muted"
+            isFieldChanged('weight')
+              ? useHighlightMode
+                ? "bg-amber-100 dark:bg-amber-900/40 ring-1 ring-amber-300 dark:ring-amber-700"
+                : "ai-update-cell"
+              : "bg-muted"
           )}>
-            <input
-              type="number"
-              min={0}
-              max={9999}
-              step={0.5}
-              value={getDisplayValue('weight', set.weight) as number ?? ""}
-              onChange={(e) => handleChange("weight", e.target.value)}
-              disabled={isRemove}
-              className={cn(inputClass, "w-10", isRemove && "cursor-not-allowed")}
-              placeholder="-"
-            />
-            <span className="text-muted-foreground text-xs">kg</span>
+            {/* T049/T059: Show inline diff when field changed */}
+            {isFieldChanged('weight') ? (
+              <InlineDiffValue
+                oldValue={getOldValue('weight')}
+                newValue={getDisplayValue('weight', set.weight)}
+                unit="kg"
+                isHighlightMode={useHighlightMode}
+              />
+            ) : (
+              <input
+                type="number"
+                min={0}
+                max={9999}
+                step={0.5}
+                value={getDisplayValue('weight', set.weight) as number ?? ""}
+                onChange={(e) => handleChange("weight", e.target.value)}
+                disabled={isRemove}
+                aria-label={`Set ${set.setIndex} weight in kilograms`}
+                className={cn(inputClass, "w-10", isRemove && "cursor-not-allowed")}
+                placeholder="-"
+              />
+            )}
+            <span className={cn("text-muted-foreground text-xs", isFieldChanged('weight') && "hidden")}>kg</span>
           </div>
         )}
         {coachShowDistance && (
-          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
-            <input
-              type="number"
-              min={0}
-              max={99999}
-              value={set.distance ?? ""}
-              onChange={(e) => handleChange("distance", e.target.value)}
-              className={cn(inputClass, "w-9")}
-              placeholder="-"
-            />
-            <span className="text-muted-foreground text-xs">m</span>
+          <div className={cn(
+            "px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0",
+            isFieldChanged('distance')
+              ? useHighlightMode
+                ? "bg-amber-100 dark:bg-amber-900/40 ring-1 ring-amber-300 dark:ring-amber-700"
+                : "ai-update-cell"
+              : "bg-muted"
+          )}>
+            {isFieldChanged('distance') ? (
+              <InlineDiffValue
+                oldValue={getOldValue('distance')}
+                newValue={getDisplayValue('distance', set.distance)}
+                unit="m"
+                isHighlightMode={useHighlightMode}
+              />
+            ) : (
+              <>
+                <input
+                  type="number"
+                  min={0}
+                  max={99999}
+                  value={set.distance ?? ""}
+                  onChange={(e) => handleChange("distance", e.target.value)}
+                  aria-label={`Set ${set.setIndex} distance in meters`}
+                  className={cn(inputClass, "w-9")}
+                  placeholder="-"
+                />
+                <span className="text-muted-foreground text-xs">m</span>
+              </>
+            )}
           </div>
         )}
         {coachShowTime && (
-          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
-            <input
-              type="number"
-              min={0}
-              max={99999}
-              step={0.01}
-              value={set.performingTime ?? ""}
-              onChange={(e) => handleChange("performingTime", e.target.value)}
-              className={cn(inputClass, "w-12")}
-              placeholder="-"
-            />
-            <span className="text-muted-foreground text-xs">s</span>
+          <div className={cn(
+            "px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0",
+            isFieldChanged('performing_time') || isFieldChanged('performingTime')
+              ? useHighlightMode
+                ? "bg-amber-100 dark:bg-amber-900/40 ring-1 ring-amber-300 dark:ring-amber-700"
+                : "ai-update-cell"
+              : "bg-muted"
+          )}>
+            {isFieldChanged('performing_time') || isFieldChanged('performingTime') ? (
+              <InlineDiffValue
+                oldValue={getOldValue('performing_time') ?? getOldValue('performingTime')}
+                newValue={getDisplayValue('performingTime', set.performingTime)}
+                unit="s"
+                isHighlightMode={useHighlightMode}
+              />
+            ) : (
+              <>
+                <input
+                  type="number"
+                  min={0}
+                  max={99999}
+                  step={0.01}
+                  value={set.performingTime ?? ""}
+                  onChange={(e) => handleChange("performingTime", e.target.value)}
+                  aria-label={`Set ${set.setIndex} time in seconds`}
+                  className={cn(inputClass, "w-12")}
+                  placeholder="-"
+                />
+                <span className="text-muted-foreground text-xs">s</span>
+              </>
+            )}
           </div>
         )}
         {coachShowVelocity && (
-          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
-            <input
-              type="number"
-              min={0}
-              max={99}
-              step={0.01}
-              value={set.velocity ?? ""}
-              onChange={(e) => handleChange("velocity", e.target.value)}
-              className={cn(inputClass, "w-12")}
-              placeholder="-"
-            />
-            <span className="text-muted-foreground text-xs">m/s</span>
+          <div className={cn(
+            "px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0",
+            isFieldChanged('velocity')
+              ? useHighlightMode
+                ? "bg-amber-100 dark:bg-amber-900/40 ring-1 ring-amber-300 dark:ring-amber-700"
+                : "ai-update-cell"
+              : "bg-muted"
+          )}>
+            {isFieldChanged('velocity') ? (
+              <InlineDiffValue
+                oldValue={getOldValue('velocity')}
+                newValue={getDisplayValue('velocity', set.velocity)}
+                unit="m/s"
+                isHighlightMode={useHighlightMode}
+              />
+            ) : (
+              <>
+                <input
+                  type="number"
+                  min={0}
+                  max={99}
+                  step={0.01}
+                  value={set.velocity ?? ""}
+                  onChange={(e) => handleChange("velocity", e.target.value)}
+                  aria-label={`Set ${set.setIndex} target velocity in meters per second`}
+                  className={cn(inputClass, "w-12")}
+                  placeholder="-"
+                />
+                <span className="text-muted-foreground text-xs">m/s</span>
+              </>
+            )}
           </div>
         )}
         {coachShowHeight && (
@@ -755,6 +945,7 @@ export function SetRow({
               step={0.1}
               value={set.height ?? ""}
               onChange={(e) => handleChange("height", e.target.value)}
+              aria-label={`Set ${set.setIndex} height in centimeters`}
               className={cn(inputClass, "w-9")}
               placeholder="-"
             />
@@ -762,31 +953,67 @@ export function SetRow({
           </div>
         )}
         {coachShowRestTime && (
-          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
-            <input
-              type="number"
-              min={0}
-              max={999}
-              value={set.restTime ?? ""}
-              onChange={(e) => handleChange("restTime", e.target.value)}
-              className={cn(inputClass, "w-9")}
-              placeholder="60"
-            />
-            <span className="text-muted-foreground text-xs">rest</span>
+          <div className={cn(
+            "px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0",
+            isFieldChanged('rest_time') || isFieldChanged('restTime')
+              ? useHighlightMode
+                ? "bg-amber-100 dark:bg-amber-900/40 ring-1 ring-amber-300 dark:ring-amber-700"
+                : "ai-update-cell"
+              : "bg-muted"
+          )}>
+            {isFieldChanged('rest_time') || isFieldChanged('restTime') ? (
+              <InlineDiffValue
+                oldValue={getOldValue('rest_time') ?? getOldValue('restTime')}
+                newValue={getDisplayValue('restTime', set.restTime)}
+                unit="s"
+                isHighlightMode={useHighlightMode}
+              />
+            ) : (
+              <>
+                <input
+                  type="number"
+                  min={0}
+                  max={999}
+                  value={set.restTime ?? ""}
+                  onChange={(e) => handleChange("restTime", e.target.value)}
+                  aria-label={`Set ${set.setIndex} rest time in seconds`}
+                  className={cn(inputClass, "w-9")}
+                  placeholder="60"
+                />
+                <span className="text-muted-foreground text-xs">rest</span>
+              </>
+            )}
           </div>
         )}
         {coachShowRPE && (
-          <div className="px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 bg-muted shrink-0">
+          <div className={cn(
+            "px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0",
+            isFieldChanged('rpe')
+              ? useHighlightMode
+                ? "bg-amber-100 dark:bg-amber-900/40 ring-1 ring-amber-300 dark:ring-amber-700"
+                : "ai-update-cell"
+              : "bg-muted"
+          )}>
             <span className="text-muted-foreground text-xs">RPE</span>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              value={set.rpe ?? ""}
-              onChange={(e) => handleChange("rpe", e.target.value)}
-              className={cn(inputClass, "w-7")}
-              placeholder="-"
-            />
+            {isFieldChanged('rpe') ? (
+              <InlineDiffValue
+                oldValue={getOldValue('rpe')}
+                newValue={getDisplayValue('rpe', set.rpe)}
+                unit=""
+                isHighlightMode={useHighlightMode}
+              />
+            ) : (
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={set.rpe ?? ""}
+                onChange={(e) => handleChange("rpe", e.target.value)}
+                aria-label={`Set ${set.setIndex} rate of perceived exertion`}
+                className={cn(inputClass, "w-7")}
+                placeholder="-"
+              />
+            )}
           </div>
         )}
         {coachShowTempo && (
@@ -795,6 +1022,7 @@ export function SetRow({
               type="text"
               value={set.tempo ?? ""}
               onChange={(e) => onUpdate?.("tempo", e.target.value || null)}
+              aria-label={`Set ${set.setIndex} tempo (eccentric-bottom-concentric-top)`}
               className={cn(inputClass, "w-16")}
               placeholder="3-1-2-0"
             />
@@ -808,6 +1036,7 @@ export function SetRow({
               max={100}
               value={set.effort ?? ""}
               onChange={(e) => handleChange("effort", e.target.value)}
+              aria-label={`Set ${set.setIndex} effort percentage`}
               className={cn(inputClass, "w-9")}
               placeholder="80"
             />
@@ -823,6 +1052,7 @@ export function SetRow({
               step={0.1}
               value={set.power ?? ""}
               onChange={(e) => handleChange("power", e.target.value)}
+              aria-label={`Set ${set.setIndex} power in watts`}
               className={cn(inputClass, "w-12")}
               placeholder="-"
             />
@@ -838,6 +1068,7 @@ export function SetRow({
               step={0.5}
               value={set.resistance ?? ""}
               onChange={(e) => handleChange("resistance", e.target.value)}
+              aria-label={`Set ${set.setIndex} resistance level`}
               className={cn(inputClass, "w-10")}
               placeholder="-"
             />
@@ -848,6 +1079,7 @@ export function SetRow({
 
       <button
         onClick={onRemove}
+        aria-label={`Remove set ${set.setIndex}`}
         className="p-1.5 text-muted-foreground hover:text-destructive transition-colors shrink-0"
       >
         <X className="w-4 h-4" />

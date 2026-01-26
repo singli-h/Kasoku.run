@@ -1,10 +1,11 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { TrainingPlanWorkspace } from "@/components/features/plans/workspace/TrainingPlanWorkspace"
-import { IndividualPlanPage } from "@/components/features/plans/individual"
+import { IndividualPlanPageWithAI } from "@/components/features/plans/individual"
 import { UnifiedPageSkeleton, PageLayout } from "@/components/layout"
 import { getMacrocycleByIdAction, getMesocycleByIdAction, getUserMesocyclesAction } from "@/actions/plans/plan-actions"
 import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
+import { getExercisesAction } from "@/actions/library/exercise-actions"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { FeatureErrorBoundary } from "@/components/error-boundary"
 import type { MesocycleWithDetails } from "@/types/training"
@@ -69,12 +70,13 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
   const planId = Number(resolvedParams.id)
   const isIndividual = role === 'individual'
 
-  // For individual users, fetch mesocycle (Training Block) directly
+  // For individual users, fetch mesocycle (Training Block) directly with AI support (T016)
   if (isIndividual) {
-    // Fetch current block and all user's blocks in parallel
-    const [mesocycleResult, allBlocksResult] = await Promise.all([
+    // Fetch current block, all user's blocks, and exercise library in parallel
+    const [mesocycleResult, allBlocksResult, exercisesResult] = await Promise.all([
       getMesocycleByIdAction(planId),
-      getUserMesocyclesAction()
+      getUserMesocyclesAction(),
+      getExercisesAction() // Fetch exercise library for inline editing
     ])
 
     if (!mesocycleResult.isSuccess || !mesocycleResult.data) {
@@ -99,12 +101,25 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
       })
     }
 
+    // Transform exercise library for the planner
+    // Map ExerciseWithDetails to the expected exerciseLibrary format
+    const exerciseLibrary = exercisesResult.isSuccess && exercisesResult.data
+      ? exercisesResult.data.map(ex => ({
+          id: String(ex.id),
+          name: ex.name ?? '',
+          description: ex.description,
+          type: ex.exercise_type?.type ?? null,
+          equipment: null, // Equipment is stored as tags, not on the exercise directly
+        }))
+      : []
+
     return (
       <FeatureErrorBoundary featureName="Training Block" customMessage="Something went wrong while loading your training block. Please try again.">
         <Suspense fallback={<UnifiedPageSkeleton title="Training Block" variant="grid" />}>
-          <IndividualPlanPage
+          <IndividualPlanPageWithAI
             trainingBlock={mesocycleResult.data as MesocycleWithDetails}
             otherBlocks={otherBlocks}
+            exerciseLibrary={exerciseLibrary}
           />
         </Suspense>
       </FeatureErrorBoundary>
