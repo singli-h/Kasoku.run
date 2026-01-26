@@ -22,6 +22,7 @@ import { CrossSessionProposal, hasCrossSessionChanges, type TargetSessionInfo } 
 import { GroupedProposalSection, hasMultiSessionChanges, type SessionInfo } from './GroupedProposalSection'
 import { TextDiffSummary, isDeloadChangeSet } from './TextDiffSummary'
 import { BlockSummarySection, isBlockWideChangeSet, hasBlockWideIndicators, type WeekInfo } from './BlockSummarySection'
+import { getDayAbbrev } from '@/components/features/plans/individual/context/utils'
 
 interface ConnectedCrossSessionProposalProps {
   /** Additional className for styling */
@@ -31,14 +32,6 @@ interface ConnectedCrossSessionProposalProps {
   onBlockWideDetected?: (isBlockWide: boolean) => void
 }
 
-/**
- * Get day name from day number
- */
-function getDayName(day: number | null): string {
-  if (day === null) return ''
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  return days[day] ?? ''
-}
 
 export function ConnectedCrossSessionProposal({
   className,
@@ -56,7 +49,7 @@ export function ConnectedCrossSessionProposal({
     }
 
     for (const session of planContext.selectedWeek.session_plans) {
-      const dayName = getDayName(session.day)
+      const dayName = session.day !== null ? getDayAbbrev(session.day) : ''
       lookup.set(session.id, {
         id: session.id,
         name: session.name ?? 'Unnamed Session',

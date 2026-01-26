@@ -28,6 +28,7 @@ import type { MesocycleWithDetails, MicrocycleWithDetails, SessionPlanWithDetail
 import { AddWorkoutDialog } from "./components/AddWorkoutDialog"
 import { EditTrainingBlockDialog, type TrainingBlockFormData } from "./components/EditTrainingBlockDialog"
 import { updateMesocycleAction } from "@/actions/plans/plan-actions"
+import { findCurrentWeek, isWeekCurrent, formatDateShort, getDayAbbrev } from "../individual/context/utils"
 
 // ============================================================================
 // Type Definitions
@@ -157,7 +158,7 @@ export function IndividualWorkspace({ trainingBlock }: IndividualWorkspaceProps)
                     week={week}
                     weekNumber={index + 1}
                     isSelected={week.id === selectedWeekId}
-                    isCurrent={isCurrentWeek(week)}
+                    isCurrent={isWeekCurrent(week)}
                     onClick={() => setSelectedWeekId(week.id)}
                   />
                 ))}
@@ -295,7 +296,7 @@ function WorkoutCard({
   blockId: number
 }) {
   const exerciseCount = workout.session_plan_exercises?.length || 0
-  const dayLabel = getDayLabel(workout.day)
+  const dayLabel = workout.day !== null ? getDayAbbrev(workout.day) : null
 
   return (
     <Link href={`/plans/${blockId}/session/${workout.id}`}>
@@ -348,35 +349,11 @@ function EmptyWorkoutsState({
 // Utility Functions
 // ============================================================================
 
-function findCurrentWeek(microcycles?: MicrocycleWithDetails[]): MicrocycleWithDetails | null {
-  if (!microcycles) return null
-  const today = new Date()
-  return microcycles.find(week => {
-    if (!week.start_date || !week.end_date) return false
-    const start = new Date(week.start_date)
-    const end = new Date(week.end_date)
-    return today >= start && today <= end
-  }) || null
-}
-
-function isCurrentWeek(week: MicrocycleWithDetails): boolean {
-  if (!week.start_date || !week.end_date) return false
-  const today = new Date()
-  const start = new Date(week.start_date)
-  const end = new Date(week.end_date)
-  return today >= start && today <= end
-}
-
+// Local date formatting helpers (work with Date objects)
 function formatDate(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function formatShortDate(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function getDayLabel(day: number | null): string | null {
-  if (day === null) return null
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  return days[day] || null
 }

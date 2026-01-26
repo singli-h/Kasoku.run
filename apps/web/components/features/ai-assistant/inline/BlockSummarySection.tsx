@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { ChangeSet, ChangeRequest, ExecutionError } from '@/lib/changeset/types'
 import { formatErrorForUser } from '@/lib/changeset/errors'
+import { getDayAbbrev } from '@/components/features/plans/individual/context/utils'
 
 type SectionState = 'pending' | 'editing' | 'executing' | 'success' | 'error'
 
@@ -82,14 +83,6 @@ function getSessionIdFromChange(change: ChangeRequest): string | null {
   return null
 }
 
-/**
- * Get day name from day number
- */
-function getDayName(day: number | null): string {
-  if (day === null) return 'Unscheduled'
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  return days[day] ?? 'Day'
-}
 
 /**
  * Get a description for a change
@@ -171,7 +164,7 @@ function buildWeekSummaries(
       sessionSummaries.push({
         sessionId: session.id,
         sessionName: session.name || 'Session',
-        dayName: getDayName(session.day),
+        dayName: session.day !== null ? getDayAbbrev(session.day) : 'Unscheduled',
         changes: details,
       })
 

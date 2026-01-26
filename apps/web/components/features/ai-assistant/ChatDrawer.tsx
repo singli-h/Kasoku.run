@@ -11,7 +11,7 @@
  * @see docs/features/plans/individual/tasks.md T064
  */
 
-import { useRef, useEffect, useCallback, useMemo } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import { Bot, Send, X, Loader2, Mic, MicOff, RotateCcw } from 'lucide-react'
 import { Drawer } from 'vaul'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
@@ -20,7 +20,9 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { UIMessage } from '@ai-sdk/react'
 import { useSpeechRecognition } from './use-speech-recognition'
-import { CompactThinkingSection, extractThinkingContent } from './ThinkingSection'
+import { useChatScrollToBottom } from './hooks/useChatScrollToBottom'
+import { ChatMessage } from './shared/ChatMessage'
+import { EmptyState } from './shared/EmptyState'
 import { deduplicateMessages } from './utils/message-utils'
 
 interface ChatDrawerProps {
@@ -46,11 +48,11 @@ export function ChatDrawer({
   onStop,
   onClearChat,
 }: ChatDrawerProps) {
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Deduplicate messages by ID to prevent React key collision warnings
   const uniqueMessages = deduplicateMessages(messages)
+  const messagesEndRef = useChatScrollToBottom(uniqueMessages)
 
   const handleTranscript = useCallback(
     (transcript: string) => {
@@ -78,10 +80,6 @@ export function ChatDrawer({
   const handleMicToggle = useCallback(() => {
     isListening ? stopListening() : startListening()
   }, [isListening, startListening, stopListening])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
 
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
@@ -217,155 +215,6 @@ export function ChatDrawer({
   )
 }
 
-function ChatMessage({ message }: { message: UIMessage }) {
-  const isUser = message.role === 'user'
-
-  const textContent = message.parts
-    .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-    .map((part) => part.text)
-    .join('')
-
-  // Extract thinking content from message (T064)
-  const thinkingContent = useMemo(() => {
-    if (isUser) return null
-    return extractThinkingContent(
-      message.parts.map(part => ({
-        type: part.type,
-        text: part.type === 'text' ? (part as { text: string }).text : undefined
-      }))
-    )
-  }, [message.parts, isUser])
-
-  // Remove thinking content from displayed text if it was extracted
-  const displayText = useMemo(() => {
-    if (!textContent || !thinkingContent) return textContent
-
-    // Remove thinking tags and their content from display text
-    return textContent
-      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
-      .replace(/\*\*Reasoning:?\*\*\s*[\s\S]*?(?=\n\n|\*\*|$)/gi, '')
-      .trim()
-  }, [textContent, thinkingContent])
-
-  // Count tool calls in progress (not yet completed)
-  const toolCalls = message.parts.filter((part) => {
-    if (!part.type.startsWith('tool-') || part.type.startsWith('tool-result')) return false
-    const toolPart = part as { state?: string; output?: unknown; result?: unknown }
-    const hasOutput = toolPart.output !== undefined || toolPart.result !== undefined
-    return !(hasOutput || toolPart.state === 'output-available')
-  })
-
-  if (!isUser && !textContent && toolCalls.length > 0) {
-    return (
-      <div className="flex gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-          <Bot className="h-4 w-4 text-primary" />
-        </div>
-        <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Processing {toolCalls.length} action{toolCalls.length > 1 ? 's' : ''}...</span>
-        </div>
-      </div>
-    )
-  }
-
-  if (!displayText && !thinkingContent) return null
-
-  return (
-    <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
-      <div
-        className={cn(
-          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-          isUser ? 'bg-muted' : 'bg-primary/10'
-        )}
-      >
-        {isUser ? (
-          <span className="text-xs font-medium text-muted-foreground">You</span>
-        ) : (
-          <Bot className="h-4 w-4 text-primary" />
-        )}
-      </div>
-      <div className="flex flex-col gap-2 max-w-[80%]">
-        {/* Thinking section - collapsible (T064) */}
-        {thinkingContent && (
-          <CompactThinkingSection content={thinkingContent} />
-        )}
-
-        {/* Main message content */}
-        {displayText && (
-          <div
-            className={cn(
-              'rounded-2xl px-4 py-2.5',
-              isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
-            )}
-          >
-            <p className="whitespace-pre-wrap text-sm">{displayText}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-interface EmptyStateProps {
-  onSuggestionClick?: (suggestion: string) => void
-}
-
-function EmptyState({ onSuggestionClick }: EmptyStateProps) {
-  const suggestions = [
-    'Add 3 sets of face pulls at the end',
-    'Swap back squats for safety bar squats',
-    'Increase all sets by 1 rep',
-  ]
-
-  return (
-    <div className="flex h-full flex-col items-center justify-center text-center">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-        <Bot className="h-7 w-7 text-primary" />
-      </div>
-      <h3 className="mb-2 font-semibold text-foreground">How can I help?</h3>
-      <p className="mb-4 max-w-sm text-sm text-muted-foreground">
-        I can help you modify this session. Try asking me to:
-      </p>
-      <div className="space-y-2 text-sm">
-        {suggestions.map((suggestion) => (
-          <SuggestionChip
-            key={suggestion}
-            text={suggestion}
-            onClick={onSuggestionClick ? () => onSuggestionClick(suggestion) : undefined}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-interface SuggestionChipProps {
-  text: string
-  onClick?: () => void
-}
-
-function SuggestionChip({ text, onClick }: SuggestionChipProps) {
-  if (!onClick) {
-    // If no handler, display as static text without interactive styling
-    return (
-      <div className="rounded-full bg-muted px-3 py-1.5 text-muted-foreground text-sm">
-        &ldquo;{text}&rdquo;
-      </div>
-    )
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-full bg-muted px-3 py-1.5 text-muted-foreground hover:bg-muted/80 transition-colors text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      aria-label={`Try suggestion: ${text}`}
-    >
-      &ldquo;{text}&rdquo;
-    </button>
-  )
-}
 
 /**
  * Trigger button for opening the chat drawer/sidebar.

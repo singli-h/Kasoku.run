@@ -194,6 +194,7 @@ export interface WorkoutLogWithDetails extends WorkoutLog {
 export interface ExerciseWithDetails extends Exercise {
   exercise_type?: ExerciseType | null
   unit?: Unit | null
+  tags?: Array<{ id: number; name: string; category: string | null }>
 }
 
 // ============================================================================

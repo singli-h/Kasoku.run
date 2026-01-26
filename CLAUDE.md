@@ -37,6 +37,7 @@ When delegating tasks, you MUST prefer project-level custom agents over the buil
 | `parallel-implementer` | Feature implementation, component building | React best practices, Frontend design |
 | `debugger` | Errors, bugs, test failures | - |
 | `research-explorer` | Codebase exploration, architecture questions | - |
+| `browser-tester` | E2E testing, browser automation, visual regression | - |
 
 ### Delegation Decision Tree
 
@@ -45,9 +46,11 @@ Task involves writing/modifying code?
 ├── Yes → Is it a self-contained feature/component?
 │         ├── Yes → Use `parallel-implementer`
 │         └── No (debugging) → Use `debugger`
-└── No → Is it exploration/research?
-          ├── Yes → Use `research-explorer`
-          └── No (review) → Use `code-reviewer`
+└── No → Is it browser testing/E2E?
+          ├── Yes → Use `browser-tester`
+          └── No → Is it exploration/research?
+                   ├── Yes → Use `research-explorer`
+                   └── No (review) → Use `code-reviewer`
 ```
 
 ### Explicit Agent Invocation
@@ -58,6 +61,7 @@ When delegating, ALWAYS specify the agent explicitly:
 ✓ "Use the parallel-implementer agent to implement the settings component"
 ✓ "Use the code-reviewer agent to review recent changes"
 ✓ "Use the debugger agent to investigate this error"
+✓ "Use the browser-tester agent to test the login flow"
 
 ✗ "Delegate this to a subagent" (too vague - may use general-purpose)
 ✗ "Have an agent look at this" (too vague)
@@ -79,6 +83,49 @@ Run these tasks in parallel:
 - Simple single-file edits (do directly)
 - Quick questions about code (answer directly)
 - Tasks requiring conversation context (do directly)
+
+---
+
+# Browser Testing (agent-browser MCP)
+
+## Overview
+
+MCP server for headless Chromium testing. Uses accessibility tree snapshots (90% smaller than HTML) with stable element refs.
+
+## Self-Verification Workflow
+
+**Pattern (no scripts needed - use MCP tools directly):**
+1. Open page → `mcp__agent-browser__open`
+2. Get snapshot → `mcp__agent-browser__snapshot -i -c`
+3. Parse refs → Elements show as `@e1`, `@e2`, `@e3`
+4. Interact → `mcp__agent-browser__click @e2`, `fill @e3 "text"`
+5. Verify → Re-snapshot, check state
+6. Evidence → `mcp__agent-browser__screenshot`
+
+## Key MCP Tools
+
+- `open` - Navigate to URL
+- `snapshot` - Get accessibility tree with refs (`-i` interactive, `-c` compact)
+- `click` - Click element by ref
+- `fill` - Fill input by ref
+- `find` - Semantic locator (role, label, placeholder)
+- `screenshot` - Capture viewport
+- `network route` - Mock API responses
+
+## Session Isolation
+
+Use `--session` flag for parallel/multi-user tests (separate cookies/storage).
+
+## When to Use
+
+- Test critical flows (login, plan creation, workout logging)
+- Verify UI changes didn't break functionality
+- Screenshot evidence for visual regression
+- Multi-user session testing
+
+## Subagent
+
+`browser-tester` agent available for dedicated testing tasks.
 
 ---
 

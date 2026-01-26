@@ -109,7 +109,9 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
           name: ex.name ?? '',
           category: ex.exercise_type?.type ?? 'General', // Use exercise type as category
           equipment: ex.exercise_type?.type ?? 'Bodyweight', // Placeholder - equipment stored as tags
-          muscleGroups: [], // TODO: Fetch from exercise tags/metadata
+          muscleGroups: (ex.tags ?? [])
+            .filter(tag => tag.category === 'region')
+            .map(tag => tag.name),
           exerciseTypeId: ex.exercise_type_id ?? undefined,
         }))
       : []
