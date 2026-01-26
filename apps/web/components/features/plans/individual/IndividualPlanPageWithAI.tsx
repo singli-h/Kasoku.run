@@ -28,6 +28,7 @@ import { PlanContextProvider } from './context'
 import { PlanAssistantWrapper } from './PlanAssistantWrapper'
 import { IndividualPlanPage } from './IndividualPlanPage'
 import type { MesocycleWithDetails } from '@/types/training'
+import type { ExerciseLibraryItem } from '@/components/features/training/types'
 
 interface IndividualPlanPageWithAIProps {
   /** The training block data */
@@ -40,13 +41,7 @@ interface IndividualPlanPageWithAIProps {
   }
 
   /** Exercise library for inline editing */
-  exerciseLibrary?: Array<{
-    id: string
-    name: string
-    description?: string | null
-    type?: string | null
-    equipment?: string[] | null
-  }>
+  exerciseLibrary?: ExerciseLibraryItem[]
 
   /** Database user ID for exercise search visibility filtering */
   dbUserId?: string
@@ -75,13 +70,7 @@ function PlanPageFallback({
     upcoming: MesocycleWithDetails[]
     completed: MesocycleWithDetails[]
   }
-  exerciseLibrary: Array<{
-    id: string
-    name: string
-    description?: string | null
-    type?: string | null
-    equipment?: string[] | null
-  }>
+  exerciseLibrary?: ExerciseLibraryItem[]
   error: Error
   resetErrorBoundary: () => void
 }) {

@@ -183,13 +183,15 @@ interface PlanAssistantWrapperProps {
  * This is needed for the SessionExercisesProvider.
  */
 function adaptExercises(sessionPlan: {
+  id?: string
   session_plan_exercises?: Array<{
     id: string | number
-    order: number | null
-    exercise_id: string | null
+    order?: number | null
+    exercise_order?: number | null
+    exercise_id: string | number | null
     exercise?: {
-      id: string
-      name: string
+      id: string | number
+      name: string | null
       description?: string | null
       type?: string | null
     } | null
@@ -210,16 +212,21 @@ function adaptExercises(sessionPlan: {
 
   return sessionPlan.session_plan_exercises.map((spe, index) => ({
     id: String(spe.id),
+    session_plan_id: sessionPlan.id ?? '',  // Add required field
+    exercise_order: spe.order ?? index,  // Add required field (renamed from 'order')
     order: spe.order ?? index,
-    exercise_id: spe.exercise_id ?? '',
+    exercise_id: spe.exercise_id ? Number(spe.exercise_id) : 0,  // Convert to number
     exercise: spe.exercise ? {
-      id: spe.exercise.id,
-      name: spe.exercise.name,
-      description: spe.exercise.description ?? null,
-      type: spe.exercise.type ?? null,
+      id: Number(spe.exercise.id),
+      name: spe.exercise.name ?? 'Unnamed Exercise',
+      description: spe.exercise.description ?? undefined,
+      exercise_type_id: undefined,
+      video_url: undefined,
+      exercise_type: spe.exercise.type ? { type: spe.exercise.type } : undefined,
     } : null,
     sets: (spe.session_plan_sets ?? []).map((set, setIndex) => ({
       id: String(set.id),
+      session_plan_exercise_id: String(spe.id),
       set_index: set.set_index ?? setIndex,
       reps: set.reps ?? null,
       weight: set.weight ?? null,

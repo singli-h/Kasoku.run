@@ -107,9 +107,10 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
       ? exercisesResult.data.map(ex => ({
           id: String(ex.id),
           name: ex.name ?? '',
-          description: ex.description,
-          type: ex.exercise_type?.type ?? null,
-          equipment: null, // Equipment is stored as tags, not on the exercise directly
+          category: ex.exercise_type?.type ?? 'General', // Use exercise type as category
+          equipment: ex.exercise_type?.type ?? 'Bodyweight', // Placeholder - equipment stored as tags
+          muscleGroups: [], // TODO: Fetch from exercise tags/metadata
+          exerciseTypeId: ex.exercise_type_id ?? undefined,
         }))
       : []
 

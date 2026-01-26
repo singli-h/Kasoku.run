@@ -439,7 +439,7 @@ export function CrossSessionProposal({
                         {change.operationType === 'update' && '~ Update '}
                         {change.operationType === 'delete' && '- Remove '}
                         {change.entityType.replace('session_plan_', '')}
-                        {change.proposedData?.name && `: ${change.proposedData.name}`}
+                        {change.proposedData?.name ? `: ${change.proposedData.name}` : ''}
                       </div>
                     ))}
                     {changes.length > 5 && (

@@ -53,6 +53,7 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useIsDesktop } from "@/components/features/ai-assistant/hooks/useAILayoutMode"
 import type { MesocycleWithDetails, MicrocycleWithDetails, SessionPlanWithDetails } from "@/types/training"
+import type { ExerciseLibraryItem } from "@/components/features/training/types"
 import { WeekSelectorSheet } from "./WeekSelectorSheet"
 import { EditTrainingBlockDialog, type TrainingBlockFormData, type ExistingBlockDateRange } from "@/components/features/plans/workspace/components/EditTrainingBlockDialog"
 import { updateMesocycleAction } from "@/actions/plans/plan-actions"
@@ -94,13 +95,7 @@ interface IndividualPlanPageProps {
   /**
    * Exercise library for inline editing (required when unifiedMode is true).
    */
-  exerciseLibrary?: Array<{
-    id: string
-    name: string
-    description?: string | null
-    type?: string | null
-    equipment?: string[] | null
-  }>
+  exerciseLibrary?: ExerciseLibraryItem[]
 }
 
 // ============================================================================

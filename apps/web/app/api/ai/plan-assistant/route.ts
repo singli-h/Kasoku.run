@@ -69,7 +69,7 @@ interface SessionPlanExerciseRow {
  */
 const PlanAssistantRequestSchema = z.object({
   messages: z.array(z.unknown()),
-  planId: z.string().min(1, 'Plan ID is required'),
+  planId: z.coerce.number().int().positive('Plan ID must be a positive integer'),
   sessionId: z.string().nullable().optional(),
   weekId: z.number().nullable().optional(),
   exerciseId: z.string().nullable().optional(),
