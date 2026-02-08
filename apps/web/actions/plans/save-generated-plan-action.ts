@@ -59,6 +59,12 @@ interface SaveGeneratedPlanResult {
 export async function saveGeneratedPlanAction(
   input: SaveGeneratedPlanInput
 ): Promise<ActionState<SaveGeneratedPlanResult>> {
+  let mesocycleId: number | null = null
+  // Track created session plan IDs for rollback (session_plans.microcycle_id is SET NULL, not CASCADE)
+  const createdSessionPlanIds: string[] = []
+  // Track created workout log IDs for reliable rollback
+  const createdWorkoutLogIds: string[] = []
+
   try {
     // Authenticate
     const { userId } = await auth()
@@ -108,7 +114,7 @@ export async function saveGeneratedPlanAction(
       return { isSuccess: false, message: 'Failed to create training block' }
     }
 
-    const mesocycleId = mesocycle.id
+    mesocycleId = mesocycle.id
     console.log('[saveGeneratedPlanAction] Created mesocycle:', mesocycleId)
 
     const microcycleIds: number[] = []
@@ -133,16 +139,34 @@ export async function saveGeneratedPlanAction(
     // ========================================
     // Insert all child entities
     // ========================================
+    const totalWeeks = input.plan.microcycles.length
+
     for (const microcycle of input.plan.microcycles) {
       // ----------------------------------------
       // Insert Microcycle (Week)
       // ----------------------------------------
+
+      // Calculate week start/end dates
+      const weekStart = new Date(startDate)
+      weekStart.setDate(weekStart.getDate() + (microcycle.week_number - 1) * 7)
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekEnd.getDate() + 6)
+
+      // Progressive volume/intensity ramp (deload week gets lower values)
+      const isDeload = microcycle.is_deload || microcycle.week_number === totalWeeks
+      const volume = isDeload ? 3 : Math.min(5 + microcycle.week_number - 1, 8)
+      const intensity = isDeload ? 4 : Math.min(5 + microcycle.week_number - 1, 8)
+
       const { data: mcData, error: mcError } = await supabase
         .from('microcycles')
         .insert({
           mesocycle_id: mesocycleId,
           name: microcycle.name,
           user_id: dbUserId,
+          start_date: weekStart.toISOString().split('T')[0],
+          end_date: weekEnd.toISOString().split('T')[0],
+          volume,
+          intensity,
         })
         .select('id')
         .single()
@@ -182,6 +206,7 @@ export async function saveGeneratedPlanAction(
         }
 
         const sessionPlanId = spData.id
+        createdSessionPlanIds.push(sessionPlanId)
 
         // Track session for workout_log creation
         sessionPlanRecords.push({
@@ -224,10 +249,10 @@ export async function saveGeneratedPlanAction(
           // ----------------------------------------
           const setsToInsert = exercise.session_plan_sets.map((set) => ({
             session_plan_exercise_id: exerciseId,
-            set_number: set.set_number,
+            set_index: set.set_number,
             reps: set.reps,
             rpe: set.rpe,
-            rest_seconds: set.rest_seconds,
+            rest_time: set.rest_seconds,
           }))
 
           const { error: setsError } = await supabase
@@ -271,6 +296,9 @@ export async function saveGeneratedPlanAction(
         }
       })
 
+      // Sort by date to ensure first entry is chronologically earliest
+      workoutLogInserts.sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
+
       if (workoutLogInserts.length > 0) {
         const { data: workoutLogs, error: wlError } = await supabase
           .from('workout_logs')
@@ -282,8 +310,9 @@ export async function saveGeneratedPlanAction(
           // Don't fail the whole operation, just log it
         } else {
           console.log(`[saveGeneratedPlanAction] Created ${workoutLogs?.length || 0} workout_logs`)
-          // Get the first workout log ID for redirect
+          // Track IDs for rollback and get first workout log for redirect
           if (workoutLogs && workoutLogs.length > 0) {
+            createdWorkoutLogIds.push(...workoutLogs.map(wl => String(wl.id)))
             firstWorkoutLogId = String(workoutLogs[0].id)
           }
         }
@@ -316,6 +345,34 @@ export async function saveGeneratedPlanAction(
     }
   } catch (error) {
     console.error('[saveGeneratedPlanAction] Error:', error)
+
+    // Rollback: delete all created entities in reverse order
+    // Note: session_plans.microcycle_id FK is ON DELETE SET NULL (not CASCADE),
+    // so we must delete session_plans explicitly to avoid orphans.
+    if (mesocycleId) {
+      console.warn('[saveGeneratedPlanAction] Rolling back mesocycle:', mesocycleId)
+      try {
+        // 1. Delete workout_logs by tracked IDs (more reliable than session_plan_id filter)
+        if (createdWorkoutLogIds.length > 0) {
+          await supabase.from('workout_logs').delete().in('id', createdWorkoutLogIds)
+        } else if (createdSessionPlanIds.length > 0) {
+          // Fallback: delete by session_plan_id if we didn't get to track workout_log IDs
+          await supabase.from('workout_logs').delete().in('session_plan_id', createdSessionPlanIds)
+        }
+        // 2. Delete session_plans (cascades to exercises/sets via FK)
+        if (createdSessionPlanIds.length > 0) {
+          await supabase.from('session_plans').delete().in('id', createdSessionPlanIds)
+        }
+        // 3. Delete microcycles
+        await supabase.from('microcycles').delete().eq('mesocycle_id', mesocycleId)
+        // 4. Delete mesocycle
+        await supabase.from('mesocycles').delete().eq('id', mesocycleId)
+        console.log('[saveGeneratedPlanAction] Rollback complete')
+      } catch (rollbackError) {
+        console.error('[saveGeneratedPlanAction] Rollback failed:', rollbackError)
+      }
+    }
+
     return {
       isSuccess: false,
       message: error instanceof Error ? error.message : 'Failed to save plan',

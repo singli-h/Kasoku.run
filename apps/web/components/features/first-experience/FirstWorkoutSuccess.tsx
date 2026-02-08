@@ -18,7 +18,7 @@ const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Fri
 interface FirstWorkoutSuccessProps {
   blockName: string
   workoutsThisWeek: number
-  firstSession: {
+  firstSession?: {
     name: string
     dayOfWeek: number
     exerciseCount: number
@@ -37,7 +37,7 @@ export function FirstWorkoutSuccess({
   onViewBlock,
   className,
 }: FirstWorkoutSuccessProps) {
-  const dayLabel = DAY_LABELS[firstSession.dayOfWeek]
+  const dayLabel = firstSession ? DAY_LABELS[firstSession.dayOfWeek] : undefined
 
   return (
     <div className={cn('flex flex-col items-center justify-center min-h-[80vh] px-4', className)}>
@@ -77,70 +77,56 @@ export function FirstWorkoutSuccess({
         </p>
       </motion.div>
 
-      {/* First Workout CTA Card */}
+      {/* Primary CTA: View Training Block */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
         className="w-full max-w-md"
       >
-        <Card
-          className="cursor-pointer hover:bg-muted/50 transition-colors"
-          onClick={onStartWorkout}
-        >
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                <Dumbbell className="h-6 w-6 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-semibold">Start Your First Workout</span>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span>{dayLabel}</span>
-                  <span className="text-muted-foreground/50">·</span>
-                  <span>{firstSession.name}</span>
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {firstSession.exerciseCount} exercises · ~{firstSession.estimatedDuration} min
-                </div>
-              </div>
-            </div>
-
-            {/* Progress bar */}
-            <div className="mt-4 pt-3 border-t">
-              <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-                <span>This week</span>
-                <span>0 / {workoutsThisWeek} completed</span>
-              </div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div className="h-full w-0 bg-primary rounded-full" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Alternative action */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="mt-6 text-center"
-      >
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onViewBlock}
-          className="text-muted-foreground hover:text-foreground"
-        >
+        <Button onClick={onViewBlock} className="w-full" size="lg">
           View Training Block
-          <ChevronRight className="h-4 w-4 ml-1" />
+          <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
       </motion.div>
+
+      {/* Secondary CTA: Start First Workout (only if session data available) */}
+      {firstSession && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="w-full max-w-md mt-4"
+        >
+          <Card
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={onStartWorkout}
+          >
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <Dumbbell className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-semibold">Start Your First Workout</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>{dayLabel}</span>
+                    <span className="text-muted-foreground/50">·</span>
+                    <span>{firstSession.name}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {firstSession.exerciseCount} exercises · ~{firstSession.estimatedDuration} min
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
     </div>
   )
 }

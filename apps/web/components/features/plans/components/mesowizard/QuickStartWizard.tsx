@@ -12,8 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { addWeeks } from "date-fns"
-import { ArrowLeft, ArrowRight, Calendar, Clock, Dumbbell, Loader2, Target, Zap } from "lucide-react"
+import { ArrowLeft, ArrowRight, Calendar, Clock, Dumbbell, Target, Zap } from "lucide-react"
 
 // UI Components
 import { Button } from "@/components/ui/button"
@@ -22,10 +21,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { useToast } from "@/hooks/use-toast"
-
-// Server Actions
-import { createQuickTrainingBlockAction } from "@/actions/plans/plan-actions"
 
 // Equipment Selection
 import { EquipmentSelector, type EquipmentCategory } from "@/components/features/equipment"
@@ -171,19 +166,15 @@ function clearWizardState(): void {
 
 interface QuickStartWizardProps {
   onComplete?: () => void
-  /** Skip AI review and create block directly (legacy mode) */
-  skipAIReview?: boolean
 }
 
-export function QuickStartWizard({ onComplete, skipAIReview = false }: QuickStartWizardProps) {
+export function QuickStartWizard({ onComplete }: QuickStartWizardProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { toast } = useToast()
   const [isHydrated, setIsHydrated] = useState(false)
   const [currentStep, setCurrentStep] = useState<WizardStep>("settings")
   const [blockSettings, setBlockSettings] = useState<BlockSettingsData | null>(null)
   const [weekSetup, setWeekSetup] = useState<Partial<WeekSetupData> | null>(null)
-  const [isCreating, setIsCreating] = useState(false)
 
   // Get template from URL params and resolve config
   const templateParam = searchParams.get("template")
@@ -239,74 +230,10 @@ export function QuickStartWizard({ onComplete, skipAIReview = false }: QuickStar
     setWeekSetup(data)
   }, [])
 
-  const handleWeekComplete = async (data: WeekSetupData) => {
+  const handleWeekComplete = (data: WeekSetupData) => {
     if (!blockSettings) return
-
-    // Store week setup data for review step
     setWeekSetup(data)
-
-    // If AI review is enabled, go to review step
-    if (!skipAIReview) {
-      setCurrentStep("review")
-      return
-    }
-
-    // Legacy mode: create block directly
-    await createBlockDirectly(data)
-  }
-
-  const createBlockDirectly = async (data: WeekSetupData) => {
-    if (!blockSettings) return
-
-    setIsCreating(true)
-    try {
-      const startDate = new Date()
-      startDate.setHours(0, 0, 0, 0)
-      const dayOfWeek = startDate.getDay()
-      const daysUntilMonday = dayOfWeek === 1 ? 0 : dayOfWeek === 0 ? 1 : 8 - dayOfWeek
-      startDate.setDate(startDate.getDate() + daysUntilMonday)
-
-      const endDate = addWeeks(startDate, blockSettings.durationWeeks)
-      const formatDateOnly = (date: Date) => date.toISOString().split('T')[0]
-
-      const result = await createQuickTrainingBlockAction({
-        name: blockSettings.name,
-        startDate: formatDateOnly(startDate),
-        endDate: formatDateOnly(endDate),
-        focus: blockSettings.focus,
-        trainingDays: data.trainingDays,
-        equipment: data.equipment,
-        notes: blockSettings.notes,
-      })
-
-      if (result.isSuccess) {
-        clearWizardState()
-        toast({
-          title: "Training Block Created!",
-          description: `"${blockSettings.name}" is ready. Let's start training!`,
-        })
-        if (onComplete) {
-          onComplete()
-        } else {
-          router.push(`/plans/${result.data?.id}`)
-        }
-      } else {
-        toast({
-          title: "Error",
-          description: result.message || "Failed to create training block",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("[QuickStartWizard] Error creating block:", error)
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCreating(false)
-    }
+    setCurrentStep("review")
   }
 
   const handleBack = () => {
@@ -327,23 +254,14 @@ export function QuickStartWizard({ onComplete, skipAIReview = false }: QuickStar
     setCurrentStep("week")
   }
 
-  const handlePlanComplete = (blockId: number) => {
+  const handlePlanComplete = (_blockId: number) => {
+    // Clear wizard persistence — success screen handles navigation
     clearWizardState()
-    toast({
-      title: "Training Block Created!",
-      description: `Your plan is ready. Let's start training!`,
-    })
-    if (onComplete) {
-      onComplete()
-    } else {
-      router.push(`/plans/${blockId}`)
-    }
   }
 
   // Stable callbacks for review step
-  const handleStartWorkout = useCallback((sessionId: string) => {
-    console.log('Start workout:', sessionId)
-    router.push('/workout')
+  const handleStartWorkout = useCallback((workoutLogId: string) => {
+    router.push(`/workout/${workoutLogId}`)
   }, [router])
 
   const handleViewBlock = useCallback((blockId: number) => {
@@ -409,7 +327,6 @@ export function QuickStartWizard({ onComplete, skipAIReview = false }: QuickStar
           onComplete={handleWeekComplete}
           onBack={handleBack}
           onChange={handleWeekSetupChange}
-          isCreating={isCreating}
           blockName={blockSettings?.name || "Training Block"}
           defaultTrainingDays={templateConfig?.trainingDays}
           initialData={weekSetup || undefined}
@@ -603,7 +520,6 @@ function WeekSetupStep({
   onComplete,
   onBack,
   onChange,
-  isCreating,
   blockName,
   defaultTrainingDays,
   initialData,
@@ -611,7 +527,6 @@ function WeekSetupStep({
   onComplete: (data: WeekSetupData) => void
   onBack: () => void
   onChange?: (data: Partial<WeekSetupData>) => void
-  isCreating: boolean
   blockName: string
   defaultTrainingDays?: number[]
   initialData?: Partial<WeekSetupData>
@@ -719,28 +634,19 @@ function WeekSetupStep({
                 <li>• Block: {blockName}</li>
                 <li>• {trainingDays.length} workout{trainingDays.length !== 1 ? "s" : ""} per week</li>
                 <li>• {equipment.length} equipment type{equipment.length !== 1 ? "s" : ""}</li>
-                <li>• Starting next Monday</li>
+                <li>• Starting {new Date().getDay() === 1 ? 'this' : 'next'} Monday</li>
               </ul>
             </CardContent>
           </Card>
 
           {/* Form Actions */}
           <div className="flex justify-between pt-4">
-            <Button type="button" variant="outline" onClick={onBack} disabled={isCreating}>
+            <Button type="button" variant="outline" onClick={onBack}>
               Back
             </Button>
-            <Button type="submit" disabled={isCreating} className="gap-2">
-              {isCreating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  Generate with AI
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
+            <Button type="submit" className="gap-2">
+              Generate with AI
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </form>
@@ -774,6 +680,7 @@ const PlanGenerationReviewWrapper = memo(function PlanGenerationReviewWrapper({
       name: string
       goal_type: string
       duration_weeks: number
+      start_date: string
     }
     setupContext: {
       blockName: string
@@ -781,6 +688,7 @@ const PlanGenerationReviewWrapper = memo(function PlanGenerationReviewWrapper({
       durationMinutes: number
       equipment: string[]
       focus: string
+      notes?: string
     }
   } | null>(null)
 
@@ -788,11 +696,20 @@ const PlanGenerationReviewWrapper = memo(function PlanGenerationReviewWrapper({
     const trainingDays = weekSetup.trainingDays || []
     const equipment = weekSetup.equipment || []
 
+    // Calculate next Monday for consistent week-start alignment
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    const dow = now.getDay()
+    const daysUntilMonday = dow === 1 ? 0 : dow === 0 ? 1 : 8 - dow
+    now.setDate(now.getDate() + daysUntilMonday)
+    const startDate = now.toISOString().split('T')[0]
+
     initialDataRef.current = {
       mesocycle: {
         name: blockSettings.name,
         goal_type: blockSettings.focus,
         duration_weeks: blockSettings.durationWeeks,
+        start_date: startDate,
       },
       setupContext: {
         blockName: blockSettings.name,
@@ -800,6 +717,7 @@ const PlanGenerationReviewWrapper = memo(function PlanGenerationReviewWrapper({
         durationMinutes: 45,
         equipment,
         focus: blockSettings.focus,
+        notes: blockSettings.notes,
       },
     }
   }

@@ -10,7 +10,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bot, Check, Loader2, Sparkles, ChevronLeft, Calendar, Clock, Dumbbell } from 'lucide-react'
+import { AlertCircle, Bot, Check, Loader2, Sparkles, ChevronLeft, Calendar, Clock, Dumbbell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useInitPipeline, type PlanningContext, type ScaffoldedPlan } from '@/lib/init-pipeline'
@@ -31,6 +31,7 @@ interface SetupContext {
   durationMinutes: number
   equipment: string[]
   focus: string
+  notes?: string
 }
 
 interface MesocycleSetupData {
@@ -61,7 +62,7 @@ const NUMBER_TO_DAY_NAME: Record<number, string> = {
 }
 
 function formatDays(days: number[]): string {
-  return days.sort((a, b) => a - b).map(d => DAY_LABELS[d]).join('/')
+  return [...days].sort((a, b) => a - b).map(d => DAY_LABELS[d]).join('/')
 }
 
 /**
@@ -135,6 +136,7 @@ function buildPlanningContext(setupContext: SetupContext, mesocycle: MesocycleSe
       name: mesocycle.name,
       duration_weeks: mesocycle.duration_weeks,
     },
+    notes: setupContext.notes,
   }
 }
 
@@ -169,7 +171,8 @@ export function PlanGenerationReview({
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(0)
   const [showFullPlan, setShowFullPlan] = useState(false)
   const [savedMesocycleId, setSavedMesocycleId] = useState<number | null>(null)
-  const [savedSessionId, setSavedSessionId] = useState<string | null>(null)
+  const [savedWorkoutLogId, setSavedWorkoutLogId] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   // Build planning context
   const planningContext = useMemo(
@@ -182,6 +185,7 @@ export function PlanGenerationReview({
 
   // Track if pipeline has started
   const pipelineStartedRef = useRef(false)
+  const applyingRef = useRef(false)
 
   // Initialize Init Pipeline
   const {
@@ -236,9 +240,11 @@ export function PlanGenerationReview({
 
   // Handle "Apply Plan" - save to database
   const handleApplyPlan = useCallback(async () => {
-    if (!scaffoldedPlan) return
+    if (!scaffoldedPlan || applyingRef.current) return
+    applyingRef.current = true
 
     setFlowState('applying')
+    setSaveError(null)
     console.log('[PlanGenerationReview] Saving plan...')
 
     // Build mesocycle creation data
@@ -259,15 +265,15 @@ export function PlanGenerationReview({
     if (result.isSuccess && result.data) {
       console.log('[PlanGenerationReview] Plan saved successfully, mesocycle:', result.data.mesocycleId)
       setSavedMesocycleId(result.data.mesocycleId)
-      setSavedSessionId(result.data.firstSessionId)
+      setSavedWorkoutLogId(result.data.firstWorkoutLogId)
       setFlowState('success')
-      onComplete(result.data.mesocycleId)
     } else {
       console.error('[PlanGenerationReview] Save failed:', result.message)
-      // TODO: Show error toast
+      setSaveError(result.message || 'Failed to save plan. Please try again.')
       setFlowState('review-full')
+      applyingRef.current = false
     }
-  }, [scaffoldedPlan, simplePlan, mesocycle, setupContext, onComplete])
+  }, [scaffoldedPlan, simplePlan, mesocycle, setupContext])
 
   // Handle retry
   const handleRetry = useCallback(() => {
@@ -277,31 +283,33 @@ export function PlanGenerationReview({
   }, [resetPipeline])
 
   const handleStartWorkout = useCallback(() => {
-    if (savedSessionId) {
-      onStartWorkout?.(savedSessionId)
-    } else if (firstSession) {
-      onStartWorkout?.(firstSession.id)
+    if (savedWorkoutLogId) {
+      if (savedMesocycleId) {
+        onComplete(savedMesocycleId)
+      }
+      onStartWorkout?.(savedWorkoutLogId)
     }
-  }, [savedSessionId, firstSession, onStartWorkout])
+  }, [savedWorkoutLogId, savedMesocycleId, onComplete, onStartWorkout])
 
   const handleViewBlock = useCallback(() => {
     if (savedMesocycleId) {
+      onComplete(savedMesocycleId)
       onViewBlock?.(savedMesocycleId)
     }
-  }, [savedMesocycleId, onViewBlock])
+  }, [savedMesocycleId, onComplete, onViewBlock])
 
   // Success screen
-  if (flowState === 'success' && plan && firstSession) {
+  if (flowState === 'success' && plan) {
     return (
       <FirstWorkoutSuccess
         blockName={plan.name}
         workoutsThisWeek={plan.weeks[0]?.sessions.length || 0}
-        firstSession={{
+        firstSession={savedWorkoutLogId && firstSession ? {
           name: firstSession.name,
           dayOfWeek: firstSession.dayOfWeek,
           exerciseCount: firstSession.exercises.length,
           estimatedDuration: firstSession.estimatedDuration,
-        }}
+        } : undefined}
         onStartWorkout={handleStartWorkout}
         onViewBlock={handleViewBlock}
       />
@@ -476,6 +484,15 @@ export function PlanGenerationReview({
                     </div>
                   </div>
 
+                  {saveError && (
+                    <div className="mb-3 p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                        <p className="text-sm text-destructive">{saveError}</p>
+                      </div>
+                    </div>
+                  )}
+
                   <Button
                     onClick={handleApplyPlan}
                     disabled={flowState === 'applying'}
@@ -489,7 +506,7 @@ export function PlanGenerationReview({
                     ) : (
                       <>
                         <Check className="h-4 w-4 mr-2" />
-                        Apply Plan
+                        {saveError ? 'Retry' : 'Apply Plan'}
                       </>
                     )}
                   </Button>

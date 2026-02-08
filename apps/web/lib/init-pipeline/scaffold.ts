@@ -91,15 +91,17 @@ export function scaffoldPlan(
 
         console.log(`[scaffold]   Session: ${session.name} (day ${session.day})`)
 
-        const exercises: SessionPlanExerciseData[] = session.exercises.map(
+        const exercises: (SessionPlanExerciseData | null)[] = session.exercises.map(
           (ex, exIndex) => {
+            const exerciseName = context.exerciseLibrary.get(ex.exercise_id)
+
+            // Skip exercises with invalid IDs (AI hallucinated an ID not in library)
+            if (!exerciseName) {
+              console.warn(`[scaffold] Skipping invalid exercise_id ${ex.exercise_id} - not in library`)
+              return null
+            }
+
             const exerciseId = generateId()
-
-            // Look up exercise name from library
-            const exerciseName =
-              context.exerciseLibrary.get(ex.exercise_id) ||
-              `Exercise ${ex.exercise_id}`
-
             console.log(`[scaffold]     Exercise ${exIndex}: ${exerciseName} (${ex.sets}x${ex.reps})`)
 
             // EXPAND sets count into individual set objects
@@ -135,7 +137,9 @@ export function scaffoldPlan(
           session_type: 'strength', // Default - could be inferred from description
           estimated_duration: 45, // Default
           notes: session.description,
-          session_plan_exercises: exercises,
+          session_plan_exercises: exercises
+            .filter((e): e is SessionPlanExerciseData => e !== null)
+            .map((e, i) => ({ ...e, exercise_order: i })),
         }
       })
 

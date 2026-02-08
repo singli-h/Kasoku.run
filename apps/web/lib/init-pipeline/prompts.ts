@@ -112,6 +112,7 @@ export interface PlanningContext {
     name: string
     duration_weeks: number
   }
+  notes?: string
 }
 
 export function buildPlanningPrompt(
@@ -149,7 +150,7 @@ ${context.user.secondary_goals?.length ? `**Secondary Goals:** ${context.user.se
 **Training Days:** ${daysFormatted} (${context.preferences.training_days.length} days/week)
 **Session Duration:** ${context.preferences.session_duration} minutes
 **Equipment:** ${context.preferences.equipment}
-
+${context.notes ? `\n**User Notes/Preferences:** ${context.notes}` : ''}
 **Program Length:** ${context.mesocycle.duration_weeks} weeks
 **Program Name:** ${context.mesocycle.name}
 
@@ -177,7 +178,7 @@ ${input.planningSummary}
 - Training days: ${input.context.preferences.training_days.join(', ')}
 - Session duration: ${input.context.preferences.session_duration} minutes
 - Equipment: ${input.context.preferences.equipment}
-- Program length: ${input.context.mesocycle.duration_weeks} weeks
+${input.context.notes ? `- User notes: ${input.context.notes}\n` : ''}- Program length: ${input.context.mesocycle.duration_weeks} weeks
 
 ## Instructions
 
