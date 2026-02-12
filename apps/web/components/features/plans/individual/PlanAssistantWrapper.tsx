@@ -349,7 +349,8 @@ export function PlanAssistantWrapper({
 
     // Update previous context reference
     previousContextRef.current = { sessionId: currentSessionId, sessionName: selectedSession?.name ?? null, weekId: currentWeekId }
-  }, [selectedSessionId, selectedSession?.name, selectedWeek?.id, isBlockWideProposal])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- name is stored in ref for labels only; effect should only fire on ID changes
+  }, [selectedSessionId, selectedWeek?.id, isBlockWideProposal])
 
   const clearPendingProposal = useCallback(() => {
     setPendingProposal(null)

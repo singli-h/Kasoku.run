@@ -467,7 +467,7 @@ export function IndividualPlanPage({
                               Week {index + 1}
                             </span>
                             {isCurrent && !isSelected && (
-                              <span className="text-xs px-1.5 py-0.5 bg-primary text-primary-foreground rounded font-medium">
+                              <span className="text-2xs px-1.5 py-0.5 bg-primary text-primary-foreground rounded font-medium">
                                 NOW
                               </span>
                             )}

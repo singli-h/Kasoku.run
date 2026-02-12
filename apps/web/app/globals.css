@@ -75,6 +75,10 @@ BEST PRACTICES:
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-ring: hsl(var(--sidebar-ring));
 
+  /* Typography: sub-xs size for tight UI (badges, labels) */
+  --font-size-2xs: 0.625rem; /* 10px */
+  --font-size-2xs--line-height: 0.875rem; /* 14px */
+
   /* Border Radius Scale */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

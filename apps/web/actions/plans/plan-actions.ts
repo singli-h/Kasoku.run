@@ -520,6 +520,8 @@ export async function createMesocycleAction(
       }
     }
 
+    revalidatePath('/plans', 'page')
+
     return {
       isSuccess: true,
       message: "Mesocycle created successfully",
@@ -802,6 +804,8 @@ export async function deleteMesocycleAction(id: number): Promise<ActionState<boo
       }
     }
 
+    revalidatePath('/plans', 'page')
+
     return {
       isSuccess: true,
       message: "Mesocycle deleted successfully",
@@ -972,6 +976,8 @@ export async function createMicrocycleAction(
         // Don't fail the microcycle creation, but log the issue
       }
     }
+
+    revalidatePath('/plans/[id]', 'page')
 
     return {
       isSuccess: true,
@@ -1246,6 +1252,8 @@ export async function deleteMicrocycleAction(id: number): Promise<ActionState<bo
         message: `Failed to delete microcycle: ${error.message}`
       }
     }
+
+    revalidatePath('/plans/[id]', 'page')
 
     return {
       isSuccess: true,

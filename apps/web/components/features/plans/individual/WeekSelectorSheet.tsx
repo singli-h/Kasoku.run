@@ -138,7 +138,7 @@ function WeekItem({
             Week {weekNumber}
           </span>
           {isCurrent && (
-            <span className="text-xs px-1.5 py-0.5 bg-primary text-primary-foreground rounded">
+            <span className="text-2xs px-1.5 py-0.5 bg-primary text-primary-foreground rounded">
               Current
             </span>
           )}
