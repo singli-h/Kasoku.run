@@ -429,6 +429,7 @@ export function IndividualPlanPage({
                         aria-label={`Week ${index + 1}${isCurrent ? ', current week' : ''}${isPast ? ', completed' : ''}${isSelected ? ', currently selected' : ''}`}
                         className={cn(
                           "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all",
+                          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
                           isSelected
                             ? "bg-foreground text-background"
                             : "hover:bg-muted/60"
@@ -466,7 +467,7 @@ export function IndividualPlanPage({
                               Week {index + 1}
                             </span>
                             {isCurrent && !isSelected && (
-                              <span className="text-[9px] px-1.5 py-0.5 bg-primary text-primary-foreground rounded font-medium">
+                              <span className="text-xs px-1.5 py-0.5 bg-primary text-primary-foreground rounded font-medium">
                                 NOW
                               </span>
                             )}
@@ -532,6 +533,7 @@ export function IndividualPlanPage({
                         className={cn(
                           "shrink-0 flex flex-col items-center px-4 py-2 rounded-lg transition-all",
                           "min-w-[80px] border",
+                          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
                           isSelected
                             ? "bg-foreground text-background border-foreground"
                             : isToday
@@ -541,7 +543,7 @@ export function IndividualPlanPage({
                         )}
                       >
                         <span className={cn(
-                          "text-[10px] font-medium uppercase tracking-wider",
+                          "text-xs font-medium uppercase tracking-wider",
                           isSelected ? "text-background/70" : "text-muted-foreground"
                         )}>
                           {getDayAbbrev(workout.day ?? 0)}
@@ -569,7 +571,7 @@ export function IndividualPlanPage({
             </header>
 
             {/* Workout Details */}
-            <div className="p-6">
+            <div className="p-6" aria-live="polite">
               {/* Inline proposal slot for AI changes (T020) */}
               {unifiedMode && (
                 <InlineProposalSlot className="mb-6" />
@@ -774,7 +776,10 @@ export function IndividualPlanPage({
 
         {/* Horizontal Day Selector */}
         <nav className="px-4 pb-3" role="navigation" aria-label="Workout day selector">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <div
+            className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide"
+            style={{ maskImage: "linear-gradient(to right, black calc(100% - 24px), transparent)" , WebkitMaskImage: "linear-gradient(to right, black calc(100% - 24px), transparent)" }}
+          >
             {workouts.map((workout) => {
               const isSelected = workout.id === displayedWorkout?.id
               const isToday = workout.day === today
@@ -788,8 +793,9 @@ export function IndividualPlanPage({
                   aria-pressed={isSelected}
                   aria-label={`${getDayName(workout.day)} workout${workout.name ? `: ${workout.name}` : ''}${isToday ? ', today' : ''}${isSelected ? ', currently selected' : ''}`}
                   className={cn(
-                    "shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-all",
+                    "shrink-0 flex flex-col items-center px-3 py-3 rounded-xl transition-all",
                     "min-w-[64px] border",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
                     isSelected
                       ? "bg-foreground text-background border-foreground"
                       : isToday
@@ -799,13 +805,13 @@ export function IndividualPlanPage({
                   )}
                 >
                   <span className={cn(
-                    "text-[10px] font-medium uppercase tracking-wider",
+                    "text-xs font-medium uppercase tracking-wider",
                     isSelected ? "text-background/70" : "text-muted-foreground"
                   )}>
                     {getDayAbbrev(workout.day ?? 0)}
                   </span>
                   <span className={cn(
-                    "text-[11px] font-medium mt-0.5 truncate max-w-[56px]",
+                    "text-xs font-medium mt-0.5 truncate max-w-[56px]",
                     isSelected ? "text-background" : ""
                   )}>
                     {workout.name?.split(' ')[0] || 'Workout'}
@@ -828,24 +834,26 @@ export function IndividualPlanPage({
 
       {/* Mobile Content */}
       <main className="p-4" role="main" aria-label="Workout details">
-        {/* Inline proposal slot for AI changes (T020) */}
-        {unifiedMode && (
-          <InlineProposalSlot className="mb-4" />
-        )}
+        <div aria-live="polite">
+          {/* Inline proposal slot for AI changes (T020) */}
+          {unifiedMode && (
+            <InlineProposalSlot className="mb-4" />
+          )}
 
-        {displayedWorkout ? (
-          <WorkoutDetails
-            workout={displayedWorkout}
-            blockId={trainingBlock.id}
-            isToday={displayedWorkout.day === today}
-            onEdit={() => handleEditWorkout(displayedWorkout.id)}
-            isExpanded={unifiedMode && expandedWorkoutId === displayedWorkout.id}
-            unifiedMode={unifiedMode}
-            showAdvancedFields={showAdvancedFields}
-          />
-        ) : (
-          <EmptyWorkoutState />
-        )}
+          {displayedWorkout ? (
+            <WorkoutDetails
+              workout={displayedWorkout}
+              blockId={trainingBlock.id}
+              isToday={displayedWorkout.day === today}
+              onEdit={() => handleEditWorkout(displayedWorkout.id)}
+              isExpanded={unifiedMode && expandedWorkoutId === displayedWorkout.id}
+              unifiedMode={unifiedMode}
+              showAdvancedFields={showAdvancedFields}
+            />
+          ) : (
+            <EmptyWorkoutState />
+          )}
+        </div>
       </main>
 
       {/* Week Selector Sheet */}
@@ -906,7 +914,7 @@ function WeekProgressDots({
 
   if (!showDots) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1" aria-hidden="true">
         <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-primary rounded-full transition-all"
@@ -918,7 +926,7 @@ function WeekProgressDots({
   }
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" aria-hidden="true">
       {microcycles.map((week, index) => {
         const isPast = isWeekPast(week)
         const isCurrent = isWeekCurrent(week)
@@ -1011,7 +1019,7 @@ function WorkoutDetails({
               {workout.name || "Workout"}
             </h2>
             {isToday && (
-              <Badge variant="default" className="text-[10px] uppercase tracking-wider">
+              <Badge variant="default" className="text-xs uppercase tracking-wider">
                 Today
               </Badge>
             )}
@@ -1239,7 +1247,7 @@ function ExerciseRow({
       {showSupersetBar && (
         <div className="w-0.5 bg-primary/60 rounded-l-xl shrink-0 relative">
           {supersetLabel && (
-            <span className="absolute left-1 top-2 text-[9px] font-bold text-primary/80 bg-background px-0.5 rounded">
+            <span className="absolute left-1 top-2 text-xs font-bold text-primary/80 bg-background px-0.5 rounded">
               {supersetLabel}
             </span>
           )}
@@ -1254,6 +1262,7 @@ function ExerciseRow({
           aria-expanded={isExpanded}
           className={cn(
             "w-full text-left p-4 transition-all group",
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
             !isExpanded && "hover:bg-muted/50"
           )}
         >
@@ -1266,13 +1275,13 @@ function ExerciseRow({
                 <div className="flex items-center gap-2">
                   <h3 className="font-medium text-sm">{name}</h3>
                   {isExpanded && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                    <Badge variant="outline" className="text-xs px-1.5 py-0">
                       Editing
                     </Badge>
                   )}
                 </div>
                 {!isExpanded && (
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2" aria-hidden="true">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
                     {sets.slice(0, 4).map((set, i) => (
                       <span
                         key={set.id}

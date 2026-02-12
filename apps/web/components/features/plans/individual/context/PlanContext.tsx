@@ -139,11 +139,10 @@ export function PlanContextProvider({
   initialSessionId,
   children,
 }: PlanContextProviderProps) {
-  // Determine initial week (only computed once)
-  const defaultWeekId = initialWeekId ?? findCurrentWeek(trainingBlock.microcycles)?.id ?? trainingBlock.microcycles?.[0]?.id ?? null
-
-  // Selection state
-  const [selectedWeekId, setSelectedWeekId] = useState<number | null>(defaultWeekId)
+  // Selection state with lazy initializer to avoid recomputing on every render
+  const [selectedWeekId, setSelectedWeekId] = useState<number | null>(
+    () => initialWeekId ?? findCurrentWeek(trainingBlock.microcycles)?.id ?? trainingBlock.microcycles?.[0]?.id ?? null
+  )
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId ?? null)
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null)
 

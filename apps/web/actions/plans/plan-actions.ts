@@ -733,6 +733,8 @@ export async function updateMesocycleAction(
       }
     }
 
+    revalidatePath('/plans/[id]', 'page')
+
     return {
       isSuccess: true,
       message: "Mesocycle updated successfully",

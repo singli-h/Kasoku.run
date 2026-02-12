@@ -103,12 +103,17 @@ function WeekItem({
   const isCurrent = isCurrentWeek(week)
   const isPast = isPastWeek(week)
   const { done, total } = getWeekCompletion(week)
+  const dateRange = formatWeekDates(week)
 
   return (
     <button
       onClick={onClick}
+      aria-label={`Week ${weekNumber}${dateRange ? `, ${dateRange}` : ''}${total > 0 ? `, ${total} workout${total !== 1 ? 's' : ''}` : ''}${isCurrent ? ', current week' : ''}${isPast ? ', completed' : ''}`}
+      aria-current={isCurrent ? "true" : undefined}
+      aria-pressed={isSelected}
       className={cn(
         "w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors",
+        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
         isSelected
           ? "bg-primary/10 border border-primary/20"
           : "hover:bg-muted/50",
@@ -133,7 +138,7 @@ function WeekItem({
             Week {weekNumber}
           </span>
           {isCurrent && (
-            <span className="text-[10px] px-1.5 py-0.5 bg-primary text-primary-foreground rounded">
+            <span className="text-xs px-1.5 py-0.5 bg-primary text-primary-foreground rounded">
               Current
             </span>
           )}
@@ -269,7 +274,7 @@ export function WeekSelectorSheet({
           </div>
 
           {/* Bottom padding for safe area */}
-          <div className="h-6" />
+          <div style={{ paddingBottom: "env(safe-area-inset-bottom, 24px)" }} />
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>

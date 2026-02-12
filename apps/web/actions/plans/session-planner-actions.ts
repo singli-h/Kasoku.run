@@ -65,6 +65,42 @@ type SessionPlanSetInsert = Database['public']['Tables']['session_plan_sets']['I
 const DEBUG_SAVE = process.env.NODE_ENV === 'development'
 
 /**
+ * Rollback helper: restore snapshotted sets and clean up newly created exercises.
+ * Best-effort — logs errors but does not throw.
+ */
+async function rollbackSets(
+  setsSnapshot: Array<Record<string, unknown>>,
+  createdExerciseIds: string[]
+): Promise<void> {
+  try {
+    // Clean up newly created exercises (CASCADE will remove their sets)
+    if (createdExerciseIds.length > 0) {
+      const { error: cleanupError } = await supabase
+        .from('session_plan_exercises')
+        .delete()
+        .in('id', createdExerciseIds)
+      if (cleanupError) {
+        console.error('[saveSession:rollback] Failed to clean up new exercises:', cleanupError)
+      }
+    }
+
+    // Restore snapshotted sets (re-insert what was deleted)
+    if (setsSnapshot.length > 0) {
+      // Strip the 'id' field so Supabase generates new IDs
+      const setsToRestore = setsSnapshot.map(({ id: _id, ...rest }) => rest)
+      const { error: restoreError } = await supabase
+        .from('session_plan_sets')
+        .insert(setsToRestore as SessionPlanSetInsert[])
+      if (restoreError) {
+        console.error('[saveSession:rollback] Failed to restore sets snapshot:', restoreError)
+      }
+    }
+  } catch (rollbackError) {
+    console.error('[saveSession:rollback] Unexpected error during rollback:', rollbackError)
+  }
+}
+
+/**
  * Maps SessionPlannerExercise sets to database insert format
  */
 function mapSetsToInsert(
@@ -99,14 +135,19 @@ function mapSetsToInsert(
  * - Existing records: Numeric ID as string (e.g., "123") - will be updated
  * - New items: "new_" or "temp_" prefix - will be inserted
  *
- * Note: Not wrapped in a DB transaction - partial failures may leave inconsistent state.
- * Consider adding transaction support if data integrity issues arise.
+ * Uses a snapshot-and-rollback strategy for data integrity:
+ * 1. Before modifying, snapshots existing sets data
+ * 2. On any failure after deletion, restores from snapshot
+ * 3. Tracks newly created exercise IDs for cleanup on rollback
  */
 export async function saveSessionWithExercisesAction(
   sessionId: string,
   sessionUpdates: Partial<SessionUpdate>,
   exercises: SessionPlannerExercise[]
 ): Promise<ActionState<SessionPlan>> {
+  // Track newly created exercise IDs for rollback cleanup
+  const createdExerciseIds: string[] = []
+
   try {
     if (DEBUG_SAVE) {
       console.log(`[saveSession] sessionId: ${sessionId}, exercises: ${exercises.length}`)
@@ -170,7 +211,7 @@ export async function saveSessionWithExercisesAction(
       }
     }
 
-    // Step 3: Get existing session_plan_exercises to determine what to delete/update/insert
+    // Step 3: Get existing session_plan_exercises with full sets data for snapshot
     const { data: existingExercises, error: exercisesError } = await supabase
       .from('session_plan_exercises')
       .select('id, exercise_id, exercise_order, superset_id, notes')
@@ -183,6 +224,14 @@ export async function saveSessionWithExercisesAction(
         message: `Failed to fetch existing exercises: ${exercisesError.message}`
       }
     }
+
+    // Snapshot existing sets before any modifications (for rollback)
+    const { data: existingSets } = await supabase
+      .from('session_plan_sets')
+      .select('*')
+      .in('session_plan_exercise_id', (existingExercises || []).map(ex => ex.id))
+
+    const setsSnapshot = existingSets || []
 
     // Create a map of existing exercises by ID for quick lookup
     const existingExerciseMap = new Map(
@@ -263,6 +312,7 @@ export async function saveSessionWithExercisesAction(
 
       if (updateExerciseError) {
         console.error(`[saveSession] Error updating exercise ${dbId}:`, updateExerciseError)
+        await rollbackSets(setsSnapshot, createdExerciseIds)
         return {
           isSuccess: false,
           message: `Failed to update exercise: ${updateExerciseError.message}`
@@ -277,7 +327,7 @@ export async function saveSessionWithExercisesAction(
 
       if (deleteOldSetsError) {
         console.error(`[saveSession] Error deleting old sets for exercise ${dbId}:`, deleteOldSetsError)
-        // Continue anyway
+        // Continue anyway - sets may already be deleted
       }
 
       // Insert updated session_plan_sets
@@ -288,6 +338,7 @@ export async function saveSessionWithExercisesAction(
 
         if (insertSetsError) {
           console.error(`[saveSession] Error inserting sets for exercise ${dbId}:`, insertSetsError)
+          await rollbackSets(setsSnapshot, createdExerciseIds)
           return {
             isSuccess: false,
             message: `Failed to save exercise sets: ${insertSetsError.message}`
@@ -319,11 +370,15 @@ export async function saveSessionWithExercisesAction(
 
       if (insertExerciseError || !newExercise) {
         console.error('[saveSession] Error inserting exercise:', insertExerciseError)
+        await rollbackSets(setsSnapshot, createdExerciseIds)
         return {
           isSuccess: false,
           message: `Failed to add exercise: ${insertExerciseError?.message}`
         }
       }
+
+      // Track for potential rollback
+      createdExerciseIds.push(newExercise.id)
 
       // Insert session_plan_sets for the new exercise
       if (exercise.sets && exercise.sets.length > 0) {
@@ -333,6 +388,7 @@ export async function saveSessionWithExercisesAction(
 
         if (insertSetsError) {
           console.error('[saveSession] Error inserting sets for new exercise:', insertSetsError)
+          await rollbackSets(setsSnapshot, createdExerciseIds)
           return {
             isSuccess: false,
             message: `Failed to save exercise sets: ${insertSetsError.message}`

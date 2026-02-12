@@ -9,28 +9,33 @@ import { getExercisesAction } from "@/actions/library/exercise-actions"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { FeatureErrorBoundary } from "@/components/error-boundary"
 import type { MesocycleWithDetails } from "@/types/training"
+import type { SessionPlanExerciseWithDetails } from "@/types/training"
 
-// Type definitions for better type safety
-interface SessionData {
-  volume: number
-  intensity: number
-  [key: string]: any
-}
-
+// Type definitions for the coach plan data (fed into TrainingPlanWorkspace)
 interface SessionPlan {
   id: string
   day: number | null
   name: string | null
   session_mode: string | null
-  session_plan_exercises?: any[]
-  [key: string]: any
+  session_plan_exercises?: SessionPlanExerciseWithDetails[]
 }
 
 interface MicrocycleData {
   id: number
   name: string | null
+  description?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  volume?: number | null
+  intensity?: number | null
   session_plans?: SessionPlan[]
-  [key: string]: any
+}
+
+/** Metadata shape expected by TrainingPlanWorkspace */
+interface WorkspaceMetadata {
+  phase?: "GPP" | "SPP" | "Taper" | "Competition"
+  color?: string
+  deload?: boolean
 }
 
 interface MesocycleData {
@@ -41,9 +46,8 @@ interface MesocycleData {
   description: string | null
   start_date: string | null
   end_date: string | null
-  metadata: any
+  metadata: WorkspaceMetadata | null
   microcycles?: MicrocycleData[]
-  [key: string]: any
 }
 
 interface MacrocycleData {
@@ -53,13 +57,6 @@ interface MacrocycleData {
   start_date: string | null
   end_date: string | null
   mesocycles?: MesocycleData[]
-}
-
-// Helper function to calculate average from sessions
-function calculateAverage(sessions: Array<{ volume: number; intensity: number }>, field: 'volume' | 'intensity'): number {
-  if (!sessions.length) return 0
-  const sum = sessions.reduce((acc, session) => acc + (session[field] || 0), 0)
-  return Math.round(sum / sessions.length)
 }
 
 export default async function PlanWorkspacePage({ params }: { params: Promise<{ id: string }> }) {

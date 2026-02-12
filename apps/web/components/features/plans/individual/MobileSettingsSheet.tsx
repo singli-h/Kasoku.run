@@ -63,7 +63,7 @@ export function MobileSettingsSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-4 pb-6">
+        <div className="space-y-4" style={{ paddingBottom: "env(safe-area-inset-bottom, 24px)" }}>
           {/* Advanced Fields Toggle */}
           <AdvancedFieldsToggle
             checked={showAdvancedFields}

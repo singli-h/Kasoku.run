@@ -349,7 +349,7 @@ export function PlanAssistantWrapper({
 
     // Update previous context reference
     previousContextRef.current = { sessionId: currentSessionId, sessionName: selectedSession?.name ?? null, weekId: currentWeekId }
-  }, [selectedSessionId, selectedWeek?.id, isBlockWideProposal])
+  }, [selectedSessionId, selectedSession?.name, selectedWeek?.id, isBlockWideProposal])
 
   const clearPendingProposal = useCallback(() => {
     setPendingProposal(null)
@@ -407,23 +407,15 @@ export function PlanAssistantWrapper({
     exercise: exerciseContext,
   }), [aiContextLevel, trainingBlock, selectedWeek, selectedSessionId, selectedSession, exerciseContext])
 
-  // If no session is selected, render children without AI wrapper
-  // AI will still be available but won't have exercise context
+  // If no session is selected, render children without SessionAssistant
+  // AI assistant requires a valid sessionId to function
   if (!selectedSessionId || !selectedSession) {
     return (
       <BlockWideExpandContext.Provider value={blockWideExpandValue}>
         <SuccessFlashContext.Provider value={successFlashValue}>
           <PendingProposalContext.Provider value={pendingProposalValue}>
             <SessionExercisesProvider initialExercises={[]}>
-              <SessionAssistant
-                sessionId=""
-                planId={String(trainingBlock.id)}
-                dbUserId={dbUserId}
-                useInlineMode={useInlineMode}
-                autoCollapseChat={useInlineMode}
-              >
-                {children}
-              </SessionAssistant>
+              {children}
             </SessionExercisesProvider>
           </PendingProposalContext.Provider>
         </SuccessFlashContext.Provider>
