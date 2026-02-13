@@ -91,12 +91,7 @@ export default function OnboardingWizard() {
   // Update user data when Clerk user is loaded
   useEffect(() => {
     if (isUserLoaded && user) {
-      console.log('Clerk user loaded in onboarding wizard:', {
-        userId,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.primaryEmailAddress?.emailAddress
-      })
+      // Clerk user loaded — PII intentionally omitted from logs
       
       setUserData(prevData => ({
         ...prevData,
@@ -199,7 +194,7 @@ export default function OnboardingWizard() {
     setIsSubmitting(true)
     
     try {
-      console.log('Completing onboarding with data:', userData)
+      console.log('Completing onboarding for role:', userData.role)
       
       const result = await completeOnboardingAction({
         clerkId: userId,

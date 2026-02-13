@@ -98,6 +98,7 @@ const allNavItems: Record<string, NavItemDef> = {
     title: "Knowledge Base",
     url: "/knowledge-base",
     icon: FileText,
+    visibleTo: ['coach'],
   },
   settings: {
     title: "Settings",
