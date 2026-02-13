@@ -2,11 +2,21 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, Info } from "lucide-react"
+import { Loader2, Info, Trash2 } from "lucide-react"
 
 export interface TrainingBlockFormData {
   id: number
@@ -29,6 +39,8 @@ interface EditTrainingBlockDialogProps {
   onSave: (block: TrainingBlockFormData) => Promise<void>
   /** Other existing blocks to check for date overlap (excluding current block) */
   existingBlocks?: ExistingBlockDateRange[]
+  /** Optional delete handler. When provided, shows a delete button in the dialog. */
+  onDelete?: () => Promise<void>
 }
 
 /**
@@ -102,9 +114,12 @@ export function EditTrainingBlockDialog({
   open,
   onOpenChange,
   onSave,
-  existingBlocks = []
+  existingBlocks = [],
+  onDelete,
 }: EditTrainingBlockDialogProps) {
   const [isSaving, setIsSaving] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [formData, setFormData] = useState<TrainingBlockFormData>({
     id: 0,
     name: "",
@@ -171,9 +186,20 @@ export function EditTrainingBlockDialog({
     }
   }
 
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await onDelete?.()
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
+
   const canSave = formData.name.trim().length > 0 && dateValidation.isValid
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
@@ -249,16 +275,27 @@ export function EditTrainingBlockDialog({
         </div>
 
         <DialogFooter>
+          {onDelete && (
+            <Button
+              variant="destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={isSaving || isDeleting}
+              className="mr-auto"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Block
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isSaving}
+            disabled={isSaving || isDeleting}
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!canSave || isSaving}
+            disabled={!canSave || isSaving || isDeleting}
           >
             {isSaving ? (
               <>
@@ -272,5 +309,34 @@ export function EditTrainingBlockDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Training Block?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete this training block and all its weeks, workouts, and exercises. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              "Delete Permanently"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

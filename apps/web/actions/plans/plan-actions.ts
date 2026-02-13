@@ -757,7 +757,7 @@ export async function updateMesocycleAction(
 export async function deleteMesocycleAction(id: number): Promise<ActionState<boolean>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -768,28 +768,84 @@ export async function deleteMesocycleAction(id: number): Promise<ActionState<boo
     // Using singleton supabase client and cached user lookup
     const dbUserId = await getDbUserId(userId)
 
-    // Check if mesocycle has any microcycles
-    const { data: microcycles, error: checkError } = await supabase
+    // Gather dependent item counts for logging
+    const { data: microcycles } = await supabase
       .from('microcycles')
       .select('id')
       .eq('mesocycle_id', id)
-      .limit(1)
 
-    if (checkError) {
-      console.error('Error checking for dependent microcycles:', checkError)
-      return {
-        isSuccess: false,
-        message: `Failed to check dependencies: ${checkError.message}`
+    const microcycleIds = microcycles?.map(m => m.id) ?? []
+
+    let sessionPlanIds: string[] = []
+    let exerciseIds: string[] = []
+
+    if (microcycleIds.length > 0) {
+      const { data: sessionPlans } = await supabase
+        .from('session_plans')
+        .select('id')
+        .in('microcycle_id', microcycleIds as any)
+
+      sessionPlanIds = sessionPlans?.map(s => s.id) ?? []
+
+      if (sessionPlanIds.length > 0) {
+        const { data: exercises } = await supabase
+          .from('session_plan_exercises')
+          .select('id')
+          .in('session_plan_id', sessionPlanIds as any)
+
+        exerciseIds = exercises?.map(e => e.id) ?? []
+      }
+
+      console.log(
+        `Cascade deleting mesocycle ${id}: ${microcycleIds.length} microcycles, ` +
+        `${sessionPlanIds.length} session_plans, ${exerciseIds.length} exercises`
+      )
+    }
+
+    // Delete in reverse dependency order
+    if (exerciseIds.length > 0) {
+      const { error: setsError } = await supabase
+        .from('session_plan_sets')
+        .delete()
+        .in('session_plan_exercise_id', exerciseIds as any)
+
+      if (setsError) {
+        console.error('Error deleting session_plan_sets:', setsError)
       }
     }
 
-    if (microcycles && microcycles.length > 0) {
-      return {
-        isSuccess: false,
-        message: "Cannot delete mesocycle that contains microcycles. Please delete the microcycles first."
+    if (sessionPlanIds.length > 0) {
+      const { error: exercisesError } = await supabase
+        .from('session_plan_exercises')
+        .delete()
+        .in('session_plan_id', sessionPlanIds as any)
+
+      if (exercisesError) {
+        console.error('Error deleting session_plan_exercises:', exercisesError)
       }
     }
 
+    if (microcycleIds.length > 0) {
+      const { error: sessionsError } = await supabase
+        .from('session_plans')
+        .delete()
+        .in('microcycle_id', microcycleIds as any)
+
+      if (sessionsError) {
+        console.error('Error deleting session_plans:', sessionsError)
+      }
+
+      const { error: microcyclesError } = await supabase
+        .from('microcycles')
+        .delete()
+        .eq('mesocycle_id', id)
+
+      if (microcyclesError) {
+        console.error('Error deleting microcycles:', microcyclesError)
+      }
+    }
+
+    // Delete the mesocycle itself
     const { error } = await supabase
       .from('mesocycles')
       .delete()

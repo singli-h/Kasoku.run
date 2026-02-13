@@ -13,7 +13,9 @@ import {
   Save,
   CheckCircle,
   RotateCcw,
-  X
+  X,
+  AlertTriangle,
+  RefreshCw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -124,6 +126,11 @@ function WorkoutSessionContent({
     draft: WorkoutDraft | null
     age: string | null
   }>({ show: false, draft: null, age: null })
+
+  // M-10: Save failed on finish — shows retry banner
+  const [saveFailedOnFinish, setSaveFailedOnFinish] = useState(false)
+  // M-11: Completion failed — shows recovery button
+  const [completionFailed, setCompletionFailed] = useState(false)
 
   // Confirmation dialog for incomplete session completion
   const [showFinishConfirm, setShowFinishConfirm] = useState(false)
@@ -349,13 +356,17 @@ function WorkoutSessionContent({
    */
   const executeCompleteSession = async () => {
     try {
+      setSaveFailedOnFinish(false)
+
       // T012: Force flush all pending exercise data FIRST before completing session
       // This ensures no data is lost when user clicks Finish
       const saveSuccess = await forceSave()
       if (!saveSuccess) {
+        // M-10: Show retry banner instead of just returning
+        setSaveFailedOnFinish(true)
         toast({
           title: "Save Failed",
-          description: "Failed to save exercise data before completing. Please try again.",
+          description: "Failed to save exercise data. Use the retry button below to try again.",
           variant: "destructive"
         })
         return
@@ -367,6 +378,8 @@ function WorkoutSessionContent({
         // Close dialog if open
         setShowFinishConfirm(false)
         setCompletionSummary(null)
+        // M-11: Clear completion failure state on success
+        setCompletionFailed(false)
 
         toast({
           title: "Session Completed!",
@@ -376,9 +389,11 @@ function WorkoutSessionContent({
         throw result.error || new Error("Failed to complete session")
       }
     } catch {
+      // M-11: Set completion failed so recovery button appears
+      setCompletionFailed(true)
       toast({
-        title: "Error",
-        description: "Failed to complete session",
+        title: "Failed to Complete Session",
+        description: "Your data has been saved, but session completion failed. Try again or contact support.",
         variant: "destructive"
       })
     }
@@ -497,14 +512,38 @@ function WorkoutSessionContent({
                 <Save className="h-4 w-4 mr-2" />
                 Save
               </Button>
-              <Button 
-                onClick={handleCompleteSession} 
+              <Button
+                onClick={handleCompleteSession}
                 disabled={isLoading}
                 className="btn-primary-enhanced"
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Finish
               </Button>
+              {/* M-11: Stuck session recovery button */}
+              {completionFailed && (
+                <Button
+                  onClick={async () => {
+                    try {
+                      const result = await completeSession(sessionNotes)
+                      if (result.success) {
+                        setCompletionFailed(false)
+                        toast({ title: "Session Completed!", description: "Recovery successful." })
+                      } else {
+                        throw result.error || new Error("Recovery failed")
+                      }
+                    } catch {
+                      toast({ title: "Recovery Failed", description: "Please try again.", variant: "destructive" })
+                    }
+                  }}
+                  size="sm"
+                  variant="outline"
+                  className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry Complete
+                </Button>
+              )}
             </>
           )}
           
@@ -516,6 +555,43 @@ function WorkoutSessionContent({
           )}
         </div>
       </div>
+
+      {/* M-10: Save Failed Retry Banner */}
+      {saveFailedOnFinish && (
+        <div className="flex items-center justify-between gap-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-destructive">Failed to save workout data</p>
+              <p className="text-xs text-destructive/80 mt-0.5">Some changes couldn&apos;t be saved. Retry before finishing.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={async () => {
+                const success = await forceSave()
+                if (success) {
+                  setSaveFailedOnFinish(false)
+                  toast({ title: "Saved", description: "All changes saved successfully." })
+                }
+              }}
+              size="sm"
+              variant="outline"
+              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              Retry Save
+            </Button>
+            <Button
+              onClick={executeCompleteSession}
+              size="sm"
+              variant="destructive"
+            >
+              Finish Anyway
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Simple Progress Stats */}
       {sessionStatus !== 'completed' && (

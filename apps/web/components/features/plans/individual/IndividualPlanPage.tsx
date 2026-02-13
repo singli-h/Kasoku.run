@@ -53,7 +53,8 @@ import type { MesocycleWithDetails, MicrocycleWithDetails, SessionPlanWithDetail
 import type { ExerciseLibraryItem } from "@/components/features/training/types"
 import { WeekSelectorSheet } from "./WeekSelectorSheet"
 import { EditTrainingBlockDialog, type TrainingBlockFormData, type ExistingBlockDateRange } from "@/components/features/plans/workspace/components/EditTrainingBlockDialog"
-import { updateMesocycleAction } from "@/actions/plans/plan-actions"
+import { updateMesocycleAction, deleteMesocycleAction } from "@/actions/plans/plan-actions"
+import { updateSessionPlanSetAction, deleteSessionPlanSetAction, addSessionPlanSetAction } from "@/actions/plans/set-actions"
 import { useToast } from "@/hooks/use-toast"
 import {
   usePlanContextOptional,
@@ -268,6 +269,24 @@ export function IndividualPlanPage({
       toast({
         title: "Error",
         description: result.message || "Failed to update training block.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Handler for deleting block
+  const handleDeleteBlock = async () => {
+    const result = await deleteMesocycleAction(trainingBlock.id)
+    if (result.isSuccess) {
+      toast({
+        title: "Block deleted",
+        description: "Your training block has been deleted.",
+      })
+      router.push('/plans')
+    } else {
+      toast({
+        title: "Error",
+        description: result.message || "Failed to delete training block.",
         variant: "destructive",
       })
     }
@@ -607,6 +626,7 @@ export function IndividualPlanPage({
           onOpenChange={setEditDialogOpen}
           onSave={handleSaveBlock}
           existingBlocks={existingBlocks}
+          onDelete={handleDeleteBlock}
         />
       </div>
     )
@@ -878,6 +898,7 @@ export function IndividualPlanPage({
         onOpenChange={setEditDialogOpen}
         onSave={handleSaveBlock}
         existingBlocks={existingBlocks}
+        onDelete={handleDeleteBlock}
       />
 
       {/* Mobile Settings Sheet (T052) */}
@@ -1145,6 +1166,8 @@ function ExerciseRow({
   supersetId?: number | null
   allExercises?: SessionPlanExerciseWithDetails[]
 }) {
+  const router = useRouter()
+  const { toast } = useToast()
   const name = exercise.exercise?.name || "Exercise"
   const sets = exercise.session_plan_sets ?? []
   const exerciseTypeId = exercise.exercise?.exercise_type_id
@@ -1324,13 +1347,21 @@ function ExerciseRow({
                   isAthlete={false}
                   visibleFields={visibleFields}
                   showAdvancedFields={showAdvancedFields}
-                  onUpdate={(field, value) => {
-                    // TODO: Implement set update
-                    console.log('Update set', set.id, field, value)
+                  onUpdate={async (field, value) => {
+                    const result = await updateSessionPlanSetAction(String(set.id), { [field]: value })
+                    if (!result.isSuccess) {
+                      toast({ title: "Error", description: result.message, variant: "destructive" })
+                    } else {
+                      router.refresh()
+                    }
                   }}
-                  onRemove={() => {
-                    // TODO: Implement set removal
-                    console.log('Remove set', set.id)
+                  onRemove={async () => {
+                    const result = await deleteSessionPlanSetAction(String(set.id))
+                    if (!result.isSuccess) {
+                      toast({ title: "Error", description: result.message, variant: "destructive" })
+                    } else {
+                      router.refresh()
+                    }
                   }}
                 />
               ))
@@ -1341,10 +1372,14 @@ function ExerciseRow({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation()
-                    // TODO: Implement add set
-                    console.log('Add set to', exercise.id)
+                    const result = await addSessionPlanSetAction(String(exercise.id))
+                    if (!result.isSuccess) {
+                      toast({ title: "Error", description: result.message, variant: "destructive" })
+                    } else {
+                      router.refresh()
+                    }
                   }}
                 >
                   Add Set
@@ -1357,10 +1392,14 @@ function ExerciseRow({
                 variant="outline"
                 size="sm"
                 className="w-full gap-2"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation()
-                  // TODO: Implement add set
-                  console.log('Add set to', exercise.id)
+                  const result = await addSessionPlanSetAction(String(exercise.id))
+                  if (!result.isSuccess) {
+                    toast({ title: "Error", description: result.message, variant: "destructive" })
+                  } else {
+                    router.refresh()
+                  }
                 }}
               >
                 <Plus className="h-4 w-4" />

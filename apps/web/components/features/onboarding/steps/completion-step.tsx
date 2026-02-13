@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Loader2, Sparkles } from "lucide-react"
+import { CheckCircle, Loader2, Sparkles, AlertCircle } from "lucide-react"
 
 type UserRole = "athlete" | "coach" | "individual" | ""
 
@@ -9,6 +9,7 @@ interface CompletionStepProps {
   onComplete: () => void
   isSubmitting: boolean
   role: UserRole
+  error?: string | null
 }
 
 // Role-specific next steps content
@@ -42,7 +43,7 @@ const ROLE_NEXT_STEPS: Record<Exclude<UserRole, "">, { items: string[]; buttonTe
   },
 }
 
-export function CompletionStep({ onComplete, isSubmitting, role }: CompletionStepProps) {
+export function CompletionStep({ onComplete, isSubmitting, role, error }: CompletionStepProps) {
   // Fallback to individual if role is empty (shouldn't happen)
   const effectiveRole = role || "individual"
   const { items, buttonText } = ROLE_NEXT_STEPS[effectiveRole]
@@ -85,6 +86,15 @@ export function CompletionStep({ onComplete, isSubmitting, role }: CompletionSte
       </div>
 
       <div className="space-y-4">
+        {error && (
+          <div className="flex items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-lg max-w-lg mx-auto text-left">
+            <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-destructive">Setup failed</p>
+              <p className="text-xs text-destructive/80 mt-0.5">{error}</p>
+            </div>
+          </div>
+        )}
         <Button
           onClick={onComplete}
           disabled={isSubmitting}
@@ -95,6 +105,11 @@ export function CompletionStep({ onComplete, isSubmitting, role }: CompletionSte
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Setting up your account...
+            </>
+          ) : error ? (
+            <>
+              Retry Setup
+              <AlertCircle className="w-4 h-4 ml-2" />
             </>
           ) : (
             <>

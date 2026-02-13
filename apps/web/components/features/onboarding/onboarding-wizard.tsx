@@ -106,6 +106,7 @@ export default function OnboardingWizard() {
 
   const [currentStep, setCurrentStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [onboardingError, setOnboardingError] = useState<string | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
 
   // Load saved onboarding data from localStorage on mount
@@ -192,8 +193,9 @@ export default function OnboardingWizard() {
     }
 
     setIsSubmitting(true)
-    
+
     try {
+      setOnboardingError(null)
       console.log('Completing onboarding for role:', userData.role)
       
       const result = await completeOnboardingAction({
@@ -251,17 +253,21 @@ export default function OnboardingWizard() {
         router.push(redirectPath)
       } else {
         console.error('Onboarding failed:', result.message)
+        const errorMsg = result.message || "Failed to complete onboarding. Please try again."
+        setOnboardingError(errorMsg)
         toast({
           title: "Error",
-          description: result.message || "Failed to complete onboarding. Please try again.",
+          description: errorMsg,
           variant: "destructive",
         })
       }
     } catch (error: any) {
       console.error('Error completing onboarding:', error)
+      const errorMsg = error?.message || "Something went wrong. Please try again."
+      setOnboardingError(errorMsg)
       toast({
         title: "Error",
-        description: error?.message || "Something went wrong. Please try again.",
+        description: errorMsg,
         variant: "destructive",
       })
     } finally {
@@ -342,6 +348,7 @@ export default function OnboardingWizard() {
             onComplete={handleComplete}
             isSubmitting={isSubmitting}
             role={userData.role}
+            error={onboardingError}
           />
         )
       default:
