@@ -68,7 +68,7 @@
       "url": "/workout",
       "icons": [
         {
-          "src": "/icons/workout-96x96.png",
+          "src": "/icons/icon-96x96.png",
           "sizes": "96x96"
         }
       ]
@@ -80,7 +80,7 @@
       "url": "/athletes",
       "icons": [
         {
-          "src": "/icons/athletes-96x96.png",
+          "src": "/icons/icon-96x96.png",
           "sizes": "96x96"
         }
       ]
@@ -92,33 +92,10 @@
       "url": "/performance",
       "icons": [
         {
-          "src": "/icons/performance-96x96.png",
+          "src": "/icons/icon-96x96.png",
           "sizes": "96x96"
         }
       ]
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/dashboard-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Dashboard view on mobile"
-    },
-    {
-      "src": "/screenshots/workout-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Workout session on mobile"
-    },
-    {
-      "src": "/screenshots/dashboard-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Dashboard view on desktop"
     }
   ],
   "prefer_related_applications": false,

@@ -10,7 +10,7 @@ const config: Config = {
   testMatch: ['**/*.test.ts', '**/*.test.tsx'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
-      tsconfig: 'apps/web/tsconfig.json',
+      tsconfig: 'apps/web/tsconfig.test.json',
       diagnostics: false,
     }],
   },

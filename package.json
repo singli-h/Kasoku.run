@@ -13,7 +13,7 @@
     "dev": "npm run dev --workspace=@kasoku/web",
     "build": "npm run build --workspace=@kasoku/web",
     "lint": "npm run lint --workspace=@kasoku/web",
-    "test": "echo 'Tests disabled for faster deployment - TODO: re-enable later'",
+    "test": "jest --config jest.config.ts",
     "dev:all": "turbo run dev",
     "build:all": "turbo run build",
     "dev:web": "npm run dev --workspace=@kasoku/web",
