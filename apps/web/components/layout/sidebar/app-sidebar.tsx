@@ -118,6 +118,10 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
   // Individual: Session-focused with Training priority
   individual: [
     {
+      label: "Overview",
+      items: ["overview"],
+    },
+    {
       label: "Training",
       items: ["workout", "myTraining", "performance"],
     },

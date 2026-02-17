@@ -40,8 +40,18 @@ export async function getDashboardDataAction(): Promise<
 
     if (!athlete) {
       return {
-        isSuccess: false,
-        message: "No athlete profile found"
+        isSuccess: true,
+        message: "Dashboard loaded",
+        data: {
+          stats: {
+            totalSessions: 0,
+            completedSessions: 0,
+            upcomingSessions: 0,
+            activeAthletes: 0,
+          },
+          recentSessions: [],
+          activeWorkout: undefined,
+        }
       }
     }
 
@@ -136,7 +146,7 @@ export async function getDashboardDataAction(): Promise<
       totalSessions,
       completedSessions: completedSessionsCount,
       upcomingSessions: statsData?.filter(s => s.session_status === 'assigned').length || 0,
-      activeAthletes: 1 // For now, just the current user as athlete
+      activeAthletes: 0
     }
 
     const recentSessions: RecentSession[] = (sessions || []).map(session => {

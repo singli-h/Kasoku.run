@@ -143,6 +143,14 @@ export async function saveGeneratedPlanAction(
       .eq('user_id', dbUserId)
       .single()
 
+    if (!athlete) {
+      console.error('[saveGeneratedPlanAction] No athlete record found for user:', dbUserId)
+      return {
+        isSuccess: false,
+        message: 'Unable to create workout schedule — athlete profile not found. Please contact support.',
+      }
+    }
+
     // ========================================
     // Insert all child entities
     // ========================================
@@ -279,53 +287,49 @@ export async function saveGeneratedPlanAction(
     // ========================================
     let firstWorkoutLogId: string | null = null
 
-    if (athlete) {
-      console.log('[saveGeneratedPlanAction] Creating workout_logs for athlete:', athlete.id)
+    console.log('[saveGeneratedPlanAction] Creating workout_logs for athlete:', athlete.id)
 
-      const workoutLogInserts = sessionPlanRecords.map((record) => {
-        // Calculate scheduled date: startDate + (weekNumber - 1) * 7 + dayOffset
-        const scheduledDate = new Date(startDate)
-        const weekOffset = (record.weekNumber - 1) * 7
+    const workoutLogInserts = sessionPlanRecords.map((record) => {
+      // Calculate scheduled date: startDate + (weekNumber - 1) * 7 + dayOffset
+      const scheduledDate = new Date(startDate)
+      const weekOffset = (record.weekNumber - 1) * 7
 
-        // Calculate days from Monday (day 1) to the target day
-        // dayOfWeek: 0=Sun, 1=Mon, 2=Tue, etc.
-        // We want Monday (1) to be offset 0, Tuesday (2) to be offset 1, etc.
-        // Sunday (0) should be offset 6 (end of week)
-        const dayOffset = record.dayOfWeek === 0 ? 6 : record.dayOfWeek - 1
+      // Calculate days from Monday (day 1) to the target day
+      // dayOfWeek: 0=Sun, 1=Mon, 2=Tue, etc.
+      // We want Monday (1) to be offset 0, Tuesday (2) to be offset 1, etc.
+      // Sunday (0) should be offset 6 (end of week)
+      const dayOffset = record.dayOfWeek === 0 ? 6 : record.dayOfWeek - 1
 
-        scheduledDate.setDate(scheduledDate.getDate() + weekOffset + dayOffset)
+      scheduledDate.setDate(scheduledDate.getDate() + weekOffset + dayOffset)
 
-        return {
-          session_plan_id: record.sessionPlanId,
-          athlete_id: athlete.id,
-          date_time: scheduledDate.toISOString(),
-          session_status: 'assigned' as const,
-        }
-      })
+      return {
+        session_plan_id: record.sessionPlanId,
+        athlete_id: athlete.id,
+        date_time: scheduledDate.toISOString(),
+        session_status: 'assigned' as const,
+      }
+    })
 
-      // Sort by date to ensure first entry is chronologically earliest
-      workoutLogInserts.sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
+    // Sort by date to ensure first entry is chronologically earliest
+    workoutLogInserts.sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
 
-      if (workoutLogInserts.length > 0) {
-        const { data: workoutLogs, error: wlError } = await db
-          .from('workout_logs')
-          .insert(workoutLogInserts)
-          .select('id')
+    if (workoutLogInserts.length > 0) {
+      const { data: workoutLogs, error: wlError } = await db
+        .from('workout_logs')
+        .insert(workoutLogInserts)
+        .select('id')
 
-        if (wlError) {
-          console.error('[saveGeneratedPlanAction] workout_logs insert error:', wlError)
-          // Don't fail the whole operation, just log it
-        } else {
-          console.log(`[saveGeneratedPlanAction] Created ${workoutLogs?.length || 0} workout_logs`)
-          // Track IDs for rollback and get first workout log for redirect
-          if (workoutLogs && workoutLogs.length > 0) {
-            createdWorkoutLogIds.push(...workoutLogs.map(wl => String(wl.id)))
-            firstWorkoutLogId = String(workoutLogs[0].id)
-          }
+      if (wlError) {
+        console.error('[saveGeneratedPlanAction] workout_logs insert error:', wlError)
+        // Don't fail the whole operation, just log it
+      } else {
+        console.log(`[saveGeneratedPlanAction] Created ${workoutLogs?.length || 0} workout_logs`)
+        // Track IDs for rollback and get first workout log for redirect
+        if (workoutLogs && workoutLogs.length > 0) {
+          createdWorkoutLogIds.push(...workoutLogs.map(wl => String(wl.id)))
+          firstWorkoutLogId = String(workoutLogs[0].id)
         }
       }
-    } else {
-      console.warn('[saveGeneratedPlanAction] No athlete found for user, skipping workout_log creation')
     }
 
     console.log('[saveGeneratedPlanAction] Plan saved successfully')

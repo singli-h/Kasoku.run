@@ -26,12 +26,8 @@ async function DashboardContent() {
     redirect("/onboarding")
   }
 
-  // Fetch user + both dashboard datasets in parallel (only one will be used based on role)
-  const [userResult, dashboardDataResult, coachDataResult] = await Promise.all([
-    getCurrentUserAction(),
-    getDashboardDataAction(),
-    getCoachDashboardDataAction()
-  ])
+  // Fetch user first to determine role
+  const userResult = await getCurrentUserAction()
 
   if (!userResult.isSuccess || !userResult.data) {
     redirect("/")
@@ -40,19 +36,24 @@ async function DashboardContent() {
   const user = userResult.data
   const displayName = user.first_name || user.email.split("@")[0]
 
-  // Coach role → coach dashboard
-  if (user.role === 'coach' && coachDataResult.isSuccess && coachDataResult.data) {
-    return (
-      <PageLayout
-        title={`Welcome back, ${displayName}!`}
-        description="Here's your coaching overview for today."
-      >
-        <CoachDashboardView data={coachDataResult.data} />
-      </PageLayout>
-    )
+  // Coach role → fetch coach data only
+  if (user.role === 'coach') {
+    const coachDataResult = await getCoachDashboardDataAction()
+    if (coachDataResult.isSuccess && coachDataResult.data) {
+      return (
+        <PageLayout
+          title={`Welcome back, ${displayName}!`}
+          description="Here's your coaching overview for today."
+        >
+          <CoachDashboardView data={coachDataResult.data} />
+        </PageLayout>
+      )
+    }
   }
 
-  // Athlete / individual role → athlete dashboard
+  // Athlete / individual role → fetch athlete data only
+  const dashboardDataResult = await getDashboardDataAction()
+
   if (!dashboardDataResult.isSuccess || !dashboardDataResult.data) {
     return (
       <PageLayout

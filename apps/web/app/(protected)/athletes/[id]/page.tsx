@@ -13,6 +13,7 @@ import Link from "next/link"
 import { ArrowLeft, Users, MessageSquare, Calendar } from "lucide-react"
 
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
+import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -230,6 +231,7 @@ async function AthleteProfileContent({ athleteId }: { athleteId: number }) {
 }
 
 export default async function AthleteProfilePage({ params }: AthleteProfilePageProps) {
+  await serverProtectRoute({ allowedRoles: ['coach'] })
   const resolvedParams = await params
   const athleteId = parseInt(resolvedParams.id, 10)
 
