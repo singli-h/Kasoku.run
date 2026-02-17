@@ -31,7 +31,45 @@ Execute browser tests using agent-browser CLI commands. Use self-verification pa
 
 ## Authentication (Clerk)
 
-Kasoku uses Clerk auth with HTTP-only cookies. **Manual login required** via headed mode:
+Kasoku uses Clerk auth with HTTP-only cookies. Two methods available:
+
+### Method 1: Programmatic Sign-In via Clerk API (Preferred)
+
+Use Clerk's Backend API to create a one-time sign-in token, then open the magic URL in headless mode. No manual login needed.
+
+```bash
+# 1. Create a sign-in token for a known test user
+SIGN_IN_RESPONSE=$(curl -s -X POST https://api.clerk.com/v1/sign_in_tokens \
+  -H "Authorization: Bearer $CLERK_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "USER_CLERK_ID_HERE"}')
+
+# 2. Extract the sign-in URL
+SIGN_IN_URL=$(echo "$SIGN_IN_RESPONSE" | jq -r '.url')
+
+# 3. Open the URL in agent-browser (sets auth cookies automatically)
+agent-browser open "$SIGN_IN_URL"
+
+# 4. Wait for redirect, verify auth
+agent-browser get url  # Should be /dashboard or /plans
+agent-browser snapshot -i -c  # Verify authenticated state
+```
+
+**Known test users:**
+| User | Clerk ID | DB ID | Email | Role |
+|------|----------|-------|-------|------|
+| Primary | `user_2wwjAKlTnCDri0VPt3SMjAejEki` | 1 | `singli.hk@gmail.com` | individual |
+
+**List all users:** `curl -s "https://api.clerk.com/v1/users?limit=10" -H "Authorization: Bearer $CLERK_SECRET_KEY" | jq '.[] | {id, email: .email_addresses[0].email_address}'`
+
+**CLERK_SECRET_KEY** is in `apps/web/.env.local` — read it at runtime:
+```bash
+CLERK_SECRET_KEY=$(grep CLERK_SECRET_KEY apps/web/.env.local | cut -d= -f2)
+```
+
+### Method 2: Manual Headed Login (Fallback)
+
+Use when you need to test the actual sign-in UI flow or Clerk API is unavailable:
 
 ```bash
 # 1. Open browser visibly for user to login
@@ -47,7 +85,7 @@ agent-browser state save ~/.kasoku-auth.json
 agent-browser close
 ```
 
-**Note:** Persistent profiles (`--profile`) don't work with Clerk's HTTP-only cookies. Use headed mode for each test session.
+**Note:** Persistent profiles (`--profile`) don't work with Clerk's HTTP-only cookies.
 
 ## Key Patterns
 

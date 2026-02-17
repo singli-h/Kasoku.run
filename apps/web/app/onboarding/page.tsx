@@ -12,8 +12,8 @@ async function OnboardingContent() {
   const onboardingResult = await checkUserNeedsOnboardingAction()
   
   if (onboardingResult.isSuccess && !onboardingResult.data) {
-    // User has already completed onboarding, redirect to dashboard
-    redirect('/dashboard')
+    // User has already completed onboarding, redirect via session handler (role-aware)
+    redirect('/auth/session')
   }
 
   return (

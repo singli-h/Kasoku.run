@@ -171,7 +171,7 @@ export default function RootLayout({
 
   return (
     <ClerkProvider
-      signInFallbackRedirectUrl="/dashboard"
+      signInFallbackRedirectUrl="/auth/session"
       signUpFallbackRedirectUrl="/onboarding"
       appearance={{
         userProfile: {

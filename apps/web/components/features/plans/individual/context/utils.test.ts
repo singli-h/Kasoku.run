@@ -15,37 +15,43 @@ import {
 import type { MicrocycleWithDetails, SessionPlanWithDetails } from '@/types/training'
 
 // Helper to create a minimal MicrocycleWithDetails mock
+// Fields match the actual microcycles table Row type from database.ts
 function mockWeek(overrides: Partial<MicrocycleWithDetails> = {}): MicrocycleWithDetails {
   return {
     id: 1,
     mesocycle_id: 1,
-    week_number: 1,
     name: 'Week 1',
+    description: null,
     start_date: null,
     end_date: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     notes: null,
-    focus: null,
-    intensity_target: null,
-    volume_target: null,
-    user_id: 'user-1',
+    intensity: null,
+    volume: null,
+    user_id: 1,
     ...overrides,
   } as MicrocycleWithDetails
 }
 
 // Helper to create a minimal SessionPlanWithDetails mock
+// Fields match the actual session_plans table Row type from database.ts
 function mockSession(overrides: Partial<SessionPlanWithDetails> = {}): SessionPlanWithDetails {
   return {
     id: 'session-1',
     microcycle_id: 1,
     name: 'Workout A',
+    description: null,
     day: 1,
+    date: null,
+    week: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    notes: null,
-    order_index: 0,
-    user_id: 'user-1',
+    session_mode: null,
+    athlete_group_id: null,
+    is_template: null,
+    deleted: null,
+    user_id: 1,
     ...overrides,
   } as SessionPlanWithDetails
 }
@@ -82,6 +88,25 @@ describe('getAIContextLevel', () => {
   it('returns "block" when nothing is selected', () => {
     expect(getAIContextLevel({
       selectedWeekId: null,
+      selectedSessionId: null,
+      selectedExerciseId: null,
+    })).toBe('block')
+  })
+
+  it('returns "exercise" even when weekId and sessionId are null', () => {
+    // exerciseId takes highest priority regardless of other fields
+    expect(getAIContextLevel({
+      selectedWeekId: null,
+      selectedSessionId: null,
+      selectedExerciseId: 'ex-1',
+    })).toBe('exercise')
+  })
+
+  it('treats weekId of 0 as falsy, returning "block"', () => {
+    // weekId 0 is falsy in JS, so getAIContextLevel returns "block"
+    // This documents the actual behavior: weekId 0 is treated as unselected
+    expect(getAIContextLevel({
+      selectedWeekId: 0 as unknown as number,
       selectedSessionId: null,
       selectedExerciseId: null,
     })).toBe('block')
@@ -173,6 +198,41 @@ describe('isWeekCurrent', () => {
   it('returns false when dates are null', () => {
     expect(isWeekCurrent(mockWeek())).toBe(false)
   })
+
+  it('returns true when today is exactly the start date', () => {
+    const today = new Date()
+    const dateStr = today.toISOString().split('T')[0]
+    const end = new Date(today)
+    end.setDate(end.getDate() + 6)
+
+    const week = mockWeek({
+      start_date: dateStr,
+      end_date: end.toISOString().split('T')[0],
+    })
+    expect(isWeekCurrent(week)).toBe(true)
+  })
+
+  it('returns true when today is exactly the end date', () => {
+    const today = new Date()
+    const dateStr = today.toISOString().split('T')[0]
+    const start = new Date(today)
+    start.setDate(start.getDate() - 6)
+
+    const week = mockWeek({
+      start_date: start.toISOString().split('T')[0],
+      end_date: dateStr,
+    })
+    expect(isWeekCurrent(week)).toBe(true)
+  })
+
+  it('returns false when only start_date is provided (end_date null)', () => {
+    const today = new Date()
+    const week = mockWeek({
+      start_date: today.toISOString().split('T')[0],
+      end_date: null,
+    })
+    expect(isWeekCurrent(week)).toBe(false)
+  })
 })
 
 describe('isWeekPast', () => {
@@ -241,6 +301,36 @@ describe('findTodayWorkout', () => {
     // Should pick the closest upcoming day
     expect(result?.id).toBe('tomorrow')
   })
+
+  it('wraps around to earliest workout when all workouts are before today', () => {
+    // If today is Saturday (6), and only workouts are Mon(1) and Wed(3),
+    // the normalized sort is Mon(1), Wed(3), none >= Sat(6), so it wraps to Mon
+    const today = new Date().getDay()
+    // Pick two days that are definitely before today (in the Mon-first order)
+    // We use days that, when normalized, are less than today normalized
+    const todayNorm = today === 0 ? 7 : today
+
+    // If today is Monday (normalized 1), every other day is after it.
+    // So we need to handle the special case where wrapping is impossible to
+    // test deterministically. We skip if today=Monday since all days are "after" it.
+    if (todayNorm > 1) {
+      // Pick day 1 (Monday), which is always before today (when today > Monday)
+      const monSession = mockSession({ id: 'mon', day: 1 })
+
+      // Make sure no session matches today
+      const result = findTodayWorkout([monSession])
+      // Since Monday < today normalized, findTodayWorkout should wrap to first sorted workout
+      expect(result?.id).toBe('mon')
+    }
+  })
+
+  it('handles workouts with null day', () => {
+    const nullDaySession = mockSession({ id: 'null-day', day: null })
+    const result = findTodayWorkout([nullDaySession])
+    // Null day gets normalized to 8, which is after any real day
+    // but since no exact match, it falls back to sortedWorkouts[0]
+    expect(result?.id).toBe('null-day')
+  })
 })
 
 // ============================================================================
@@ -267,6 +357,29 @@ describe('sortByDay', () => {
 
   it('returns empty array for empty input', () => {
     expect(sortByDay([])).toEqual([])
+  })
+
+  it('sorts a full week correctly (Mon-Sun order)', () => {
+    const days = [0, 1, 2, 3, 4, 5, 6].map(d =>
+      mockSession({ id: `day-${d}`, day: d })
+    )
+    // Shuffle to randomize input order
+    const shuffled = [days[0], days[5], days[2], days[6], days[1], days[4], days[3]]
+    const sorted = sortByDay(shuffled)
+    // Expected order: Mon(1), Tue(2), Wed(3), Thu(4), Fri(5), Sat(6), Sun(0)
+    expect(sorted.map(s => s.id)).toEqual([
+      'day-1', 'day-2', 'day-3', 'day-4', 'day-5', 'day-6', 'day-0'
+    ])
+  })
+
+  it('does not mutate the input array', () => {
+    const sessions = [
+      mockSession({ id: 'sun', day: 0 }),
+      mockSession({ id: 'mon', day: 1 }),
+    ]
+    const original = [...sessions]
+    sortByDay(sessions)
+    expect(sessions.map(s => s.id)).toEqual(original.map(s => s.id))
   })
 })
 
@@ -404,5 +517,41 @@ describe('buildAIContextInfo', () => {
       sessionDay: null,
       exerciseId: null,
     })
+  })
+
+  it('includes exerciseId when at exercise level', () => {
+    const week = mockWeek({ name: 'Week 1' })
+    const session = mockSession({ name: 'Sprint Day', day: 3 })
+
+    const result = buildAIContextInfo({
+      aiContextLevel: 'exercise',
+      selectedWeekId: 1,
+      selectedWeek: week,
+      weekNumber: 1,
+      selectedSessionId: 'sess-1',
+      selectedSession: session,
+      selectedExerciseId: 'ex-42',
+    })
+
+    expect(result.level).toBe('exercise')
+    expect(result.exerciseId).toBe('ex-42')
+    expect(result.sessionName).toBe('Sprint Day')
+    expect(result.sessionDay).toBe(3)
+  })
+
+  it('extracts null for sessionDay when session has null day', () => {
+    const session = mockSession({ name: 'Rest Day', day: null })
+
+    const result = buildAIContextInfo({
+      aiContextLevel: 'session',
+      selectedWeekId: 1,
+      selectedWeek: mockWeek(),
+      weekNumber: 1,
+      selectedSessionId: 'sess-1',
+      selectedSession: session,
+      selectedExerciseId: null,
+    })
+
+    expect(result.sessionDay).toBeNull()
   })
 })

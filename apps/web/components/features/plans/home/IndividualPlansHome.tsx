@@ -5,6 +5,11 @@ import type { MesocycleWithDetails } from "@/types/training"
 /**
  * Server component for Individual user's "My Training" home page
  * Fetches training blocks (mesocycles) and passes to client component
+ *
+ * Race condition fix: When either data fetch fails (e.g. transient auth issue
+ * on fresh login), we pass dataFetchFailed=true so the client shows a retry
+ * state instead of the empty "Create Training Block" flow. This prevents
+ * the brief flash of the create flow before data loads on subsequent navigation.
  */
 export async function IndividualPlansHome() {
   // Fetch data in parallel
@@ -13,8 +18,8 @@ export async function IndividualPlansHome() {
     getActiveMesocycleForUserAction()
   ])
 
-  // Handle error case
-  if (!blocksResult.isSuccess) {
+  // Handle complete failure - both queries failed
+  if (!blocksResult.isSuccess && !activeBlockResult.isSuccess) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-center h-64">
@@ -29,7 +34,10 @@ export async function IndividualPlansHome() {
     )
   }
 
-  const blocks = blocksResult.data || []
+  // Track if any fetch failed - the data picture may be incomplete
+  const dataFetchFailed = !blocksResult.isSuccess || !activeBlockResult.isSuccess
+
+  const blocks = blocksResult.isSuccess ? (blocksResult.data || []) : []
   const activeBlock = activeBlockResult.isSuccess ? activeBlockResult.data : null
 
   // Separate completed blocks from active/upcoming
@@ -87,6 +95,7 @@ export async function IndividualPlansHome() {
       completedBlocks={completedBlocks}
       upcomingBlocks={upcomingOrActiveBlocks.filter(b => b.id !== activeBlock?.id)}
       todayWorkout={todayWorkout}
+      dataFetchFailed={dataFetchFailed}
     />
   )
 }

@@ -244,18 +244,21 @@ export function buildProposedData(
     data[key] = value
   }
 
-  // Add parent foreign key for session plan exercises if not present
-  // Note: workout_log_exercise parent FK is handled via ALL_PARENT_FK_FROM_TOOL_INPUT
-  if (
-    entityType === 'session_plan_exercise' &&
-    !data['sessionPlanId'] &&
-    sessionId
-  ) {
-    data['sessionPlanId'] = sessionId
-  }
-
   // Convert to snake_case for database FIRST
   const result = convertKeysToSnakeCase(data)
+
+  // Add parent foreign key for session plan exercises if not present.
+  // IMPORTANT: We add this AFTER conversion using the correct snake_case DB column
+  // name ('session_plan_id'), not the camelCase 'sessionPlanId' which maps to 'id'
+  // via CAMEL_TO_SNAKE_MAP (since sessionPlanId is the primary key identifier for
+  // session_plan entities, not a foreign key field).
+  if (
+    entityType === 'session_plan_exercise' &&
+    !result['session_plan_id'] &&
+    sessionId
+  ) {
+    result['session_plan_id'] = sessionId
+  }
 
   // Add parent foreign key from tool input for entities that specify it
   // (e.g., sets specify their parent exercise via sessionPlanExerciseId or workoutLogExerciseId)

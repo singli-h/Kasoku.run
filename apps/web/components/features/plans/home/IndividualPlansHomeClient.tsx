@@ -6,11 +6,17 @@
  * Streamlined training home for individual users.
  * When there's an active block, directly embeds IndividualPlanPage content.
  * No extra navigation needed - one screen does it all.
+ *
+ * Race condition fix: accepts `dataFetchFailed` to distinguish between
+ * "data loaded and is genuinely empty" vs "data fetch failed (transient)".
+ * When a fetch failed, shows a retry state instead of the create flow,
+ * preventing the brief flash of EmptyTrainingState on fresh auth.
  */
 
 import { Button } from "@/components/ui/button"
-import { Plus, Calendar, ChevronRight } from "lucide-react"
+import { Plus, Calendar, ChevronRight, RefreshCw } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { EmptyTrainingState } from "./EmptyTrainingState"
 import { IndividualPlanPage } from "../individual/IndividualPlanPage"
 import type { MesocycleWithDetails } from "@/types/training"
@@ -24,6 +30,8 @@ interface IndividualPlansHomeClientProps {
     name: string
     exerciseCount: number
   } | null
+  /** True when one or both server-side data fetches failed (transient error) */
+  dataFetchFailed?: boolean
 }
 
 /**
@@ -41,10 +49,34 @@ export function IndividualPlansHomeClient({
   activeBlock,
   completedBlocks,
   upcomingBlocks,
+  dataFetchFailed = false,
 }: IndividualPlansHomeClientProps) {
+  const router = useRouter()
   const hasAnyBlocks = activeBlock || completedBlocks.length > 0 || upcomingBlocks.length > 0
 
-  // If no blocks at all, show empty state
+  // If no blocks found BUT a data fetch failed, show retry state instead of
+  // the create flow. This prevents the race condition where transient auth
+  // issues on fresh login cause EmptyTrainingState to flash briefly.
+  if (!hasAnyBlocks && dataFetchFailed) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-4">
+        <Calendar className="h-10 w-10 mx-auto text-muted-foreground/40" />
+        <h2 className="text-lg font-semibold">Loading Training Data</h2>
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+          We had trouble loading your training blocks. This can happen right after signing in.
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => router.refresh()}
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Retry
+        </Button>
+      </div>
+    )
+  }
+
+  // If no blocks at all and data loaded successfully, show empty state
   if (!hasAnyBlocks) {
     return <EmptyTrainingState />
   }
