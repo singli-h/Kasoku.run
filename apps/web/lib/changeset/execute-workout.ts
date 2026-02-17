@@ -203,9 +203,10 @@ async function applyWorkoutSetChange(
     }
 
     case 'delete': {
-      // Delete set - for MVP, we'll just mark it as skipped or handle it differently
-      // Actual deletion would require a new action
-      console.log('[applyWorkoutSetChange] Delete set not implemented in MVP')
+      // Product decision: Athletes cannot delete prescribed sets during workout.
+      // They should fill in 0 or leave blank if a set is skipped.
+      // Set deletion is only available in plan editing via deleteSessionPlanSetAction.
+      console.warn('[applyWorkoutSetChange] Set deletion is intentionally disabled during workout logging.')
       break
     }
   }

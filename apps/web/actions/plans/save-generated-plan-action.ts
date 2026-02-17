@@ -10,7 +10,7 @@
 
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
-import supabase from '@/lib/supabase-server'
+import supabaseService from '@/lib/supabase-service'
 import { getDbUserId } from '@/lib/user-cache'
 import type { ActionState } from '@/types'
 import type { ScaffoldedPlan } from '@/lib/init-pipeline/scaffold'
@@ -65,17 +65,24 @@ export async function saveGeneratedPlanAction(
   // Track created workout log IDs for reliable rollback
   const createdWorkoutLogIds: string[] = []
 
-  try {
-    // Authenticate
-    const { userId } = await auth()
-    if (!userId) {
-      return { isSuccess: false, message: 'Unauthorized' }
-    }
+  // Authenticate early — before try block so db client is available in catch for rollback
+  const { userId } = await auth()
+  if (!userId) {
+    return { isSuccess: false, message: 'Unauthorized' }
+  }
 
-    const dbUserId = await getDbUserId(userId)
-    if (!dbUserId) {
-      return { isSuccess: false, message: 'User not found' }
-    }
+  const dbUserId = await getDbUserId(userId)
+  if (!dbUserId) {
+    return { isSuccess: false, message: 'User not found' }
+  }
+
+  // Use service role client for DB writes. The save operation involves 200+
+  // sequential inserts that can take 30-60s total. Clerk JWTs expire in 60s,
+  // making the RLS-authenticated client unreliable for this long-running write.
+  // Auth is already validated above via auth() + getDbUserId().
+  const db = supabaseService
+
+  try {
 
     console.log('[saveGeneratedPlanAction] Creating mesocycle and plan...')
     console.log('[saveGeneratedPlanAction] Block name:', input.mesocycle.name)
@@ -91,7 +98,7 @@ export async function saveGeneratedPlanAction(
     // ========================================
     // Create Mesocycle (Training Block)
     // ========================================
-    const { data: mesocycle, error: mesoError } = await supabase
+    const { data: mesocycle, error: mesoError } = await db
       .from('mesocycles')
       .insert({
         name: input.mesocycle.name,
@@ -130,7 +137,7 @@ export async function saveGeneratedPlanAction(
     // ========================================
     // Get athlete ID for workout_log assignment
     // ========================================
-    const { data: athlete } = await supabase
+    const { data: athlete } = await db
       .from('athletes')
       .select('id')
       .eq('user_id', dbUserId)
@@ -157,7 +164,7 @@ export async function saveGeneratedPlanAction(
       const volume = isDeload ? 3 : Math.min(5 + microcycle.week_number - 1, 8)
       const intensity = isDeload ? 4 : Math.min(5 + microcycle.week_number - 1, 8)
 
-      const { data: mcData, error: mcError } = await supabase
+      const { data: mcData, error: mcError } = await db
         .from('microcycles')
         .insert({
           mesocycle_id: mesocycleId,
@@ -188,7 +195,7 @@ export async function saveGeneratedPlanAction(
         // Convert day_of_week string to number for database
         const dayNumber = dayNameToNumber(session.day_of_week)
 
-        const { data: spData, error: spError } = await supabase
+        const { data: spData, error: spError } = await db
           .from('session_plans')
           .insert({
             microcycle_id: dbMicrocycleId,
@@ -226,7 +233,7 @@ export async function saveGeneratedPlanAction(
         // Insert Exercises
         // ----------------------------------------
         for (const exercise of session.session_plan_exercises) {
-          const { data: exData, error: exError } = await supabase
+          const { data: exData, error: exError } = await db
             .from('session_plan_exercises')
             .insert({
               session_plan_id: sessionPlanId,
@@ -250,12 +257,12 @@ export async function saveGeneratedPlanAction(
           const setsToInsert = exercise.session_plan_sets.map((set) => ({
             session_plan_exercise_id: exerciseId,
             set_index: set.set_number,
-            reps: set.reps,
-            rpe: set.rpe,
-            rest_time: set.rest_seconds,
+            reps: set.reps != null ? Math.round(set.reps) : null,
+            rpe: set.rpe != null ? Math.round(set.rpe) : null,
+            rest_time: set.rest_seconds != null ? Math.round(set.rest_seconds) : null,
           }))
 
-          const { error: setsError } = await supabase
+          const { error: setsError } = await db
             .from('session_plan_sets')
             .insert(setsToInsert)
 
@@ -300,7 +307,7 @@ export async function saveGeneratedPlanAction(
       workoutLogInserts.sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
 
       if (workoutLogInserts.length > 0) {
-        const { data: workoutLogs, error: wlError } = await supabase
+        const { data: workoutLogs, error: wlError } = await db
           .from('workout_logs')
           .insert(workoutLogInserts)
           .select('id')
@@ -354,19 +361,19 @@ export async function saveGeneratedPlanAction(
       try {
         // 1. Delete workout_logs by tracked IDs (more reliable than session_plan_id filter)
         if (createdWorkoutLogIds.length > 0) {
-          await supabase.from('workout_logs').delete().in('id', createdWorkoutLogIds)
+          await db.from('workout_logs').delete().in('id', createdWorkoutLogIds)
         } else if (createdSessionPlanIds.length > 0) {
           // Fallback: delete by session_plan_id if we didn't get to track workout_log IDs
-          await supabase.from('workout_logs').delete().in('session_plan_id', createdSessionPlanIds)
+          await db.from('workout_logs').delete().in('session_plan_id', createdSessionPlanIds)
         }
         // 2. Delete session_plans (cascades to exercises/sets via FK)
         if (createdSessionPlanIds.length > 0) {
-          await supabase.from('session_plans').delete().in('id', createdSessionPlanIds)
+          await db.from('session_plans').delete().in('id', createdSessionPlanIds)
         }
         // 3. Delete microcycles
-        await supabase.from('microcycles').delete().eq('mesocycle_id', mesocycleId)
+        await db.from('microcycles').delete().eq('mesocycle_id', mesocycleId)
         // 4. Delete mesocycle
-        await supabase.from('mesocycles').delete().eq('id', mesocycleId)
+        await db.from('mesocycles').delete().eq('id', mesocycleId)
         console.log('[saveGeneratedPlanAction] Rollback complete')
       } catch (rollbackError) {
         console.error('[saveGeneratedPlanAction] Rollback failed:', rollbackError)

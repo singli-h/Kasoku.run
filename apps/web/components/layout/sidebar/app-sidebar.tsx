@@ -123,7 +123,7 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
     },
     {
       label: "Resources",
-      items: ["exerciseLibrary", "knowledgeBase", "settings"],
+      items: ["exerciseLibrary", /* "knowledgeBase", */ "settings"],
     },
   ],
 
@@ -135,7 +135,7 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
     },
     {
       label: "Resources",
-      items: ["exerciseLibrary", "knowledgeBase", "settings"],
+      items: ["exerciseLibrary", /* "knowledgeBase", */ "settings"],
     },
   ],
 

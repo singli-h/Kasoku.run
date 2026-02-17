@@ -1740,7 +1740,6 @@ export async function hasActiveTrainingBlockAction(): Promise<ActionState<boolea
       .from('mesocycles')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', dbUserId)
-      .is('athlete_group_id', null)
       .lte('start_date', today)
       .gte('end_date', today)
 

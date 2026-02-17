@@ -119,10 +119,10 @@ function convertToProposedBlock(plan: ScaffoldedPlan | null, mesocycle: Mesocycl
 /**
  * Convert SetupContext to PlanningContext for Init Pipeline
  */
-function buildPlanningContext(setupContext: SetupContext, mesocycle: MesocycleSetupData): PlanningContext {
+function buildPlanningContext(setupContext: SetupContext, mesocycle: MesocycleSetupData, experienceLevel?: string): PlanningContext {
   return {
     user: {
-      experience_level: 'intermediate', // TODO: Get from user profile
+      experience_level: experienceLevel || 'intermediate',
       primary_goal: setupContext.focus,
       secondary_goals: [],
     },
@@ -148,6 +148,8 @@ interface PlanGenerationReviewProps {
   setupContext: SetupContext
   /** Mesocycle setup data (will be created on save) */
   mesocycle: MesocycleSetupData
+  /** User's experience level from their athlete profile. Fallback: 'intermediate' */
+  experienceLevel?: string
   onEditSetup: () => void
   /** Called when plan is saved, with the created mesocycle ID */
   onComplete: (blockId: number) => void
@@ -162,6 +164,7 @@ interface PlanGenerationReviewProps {
 export function PlanGenerationReview({
   setupContext,
   mesocycle,
+  experienceLevel,
   onEditSetup,
   onComplete,
   onStartWorkout,
@@ -176,8 +179,8 @@ export function PlanGenerationReview({
 
   // Build planning context
   const planningContext = useMemo(
-    () => buildPlanningContext(setupContext, mesocycle),
-    [setupContext, mesocycle]
+    () => buildPlanningContext(setupContext, mesocycle, experienceLevel),
+    [setupContext, mesocycle, experienceLevel]
   )
 
   // Generate a temporary mesocycle ID for scaffolding

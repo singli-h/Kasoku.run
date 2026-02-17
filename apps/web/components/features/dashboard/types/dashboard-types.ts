@@ -46,4 +46,22 @@ export interface DashboardSectionProps {
 export interface LoadingState {
   isLoading: boolean
   error?: string | null
+}
+
+export interface CoachDashboardData {
+  athletes: Array<{
+    id: string
+    name: string
+    avatar_url: string | null
+    lastWorkoutDate: Date | null
+    status: 'active' | 'inactive'
+  }>
+  totalAthletes: number
+  activePlans: number
+  recentActivity: Array<{
+    athleteName: string
+    sessionName: string
+    status: 'pending' | 'in-progress' | 'completed' | 'cancelled'
+    date: Date
+  }>
 } 

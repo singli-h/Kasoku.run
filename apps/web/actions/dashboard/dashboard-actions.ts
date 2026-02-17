@@ -7,7 +7,8 @@ import type { ActionState } from "@/types/server-action-types"
 import type {
   DashboardData,
   RecentSession,
-  DashboardStats
+  DashboardStats,
+  CoachDashboardData
 } from "@/components/features/dashboard/types/dashboard-types"
 import type { WorkoutLogWithDetails, SessionPlanWithDetails } from "@/types/training"
 
@@ -366,6 +367,178 @@ export async function getDashboardStatsAction(): Promise<
     return {
       isSuccess: false,
       message: "Failed to load dashboard stats"
+    }
+  }
+}
+
+/**
+ * Get coach dashboard data - athletes, active plans, and recent activity
+ */
+export async function getCoachDashboardDataAction(): Promise<
+  ActionState<CoachDashboardData>
+> {
+  try {
+    const { userId: clerkUserId } = await auth()
+
+    if (!clerkUserId) {
+      return {
+        isSuccess: false,
+        message: "Authentication required"
+      }
+    }
+
+    const dbUserId = await getDbUserId(clerkUserId)
+
+    // Get coach profile
+    const { data: coach, error: coachError } = await supabase
+      .from('coaches')
+      .select('id')
+      .eq('user_id', dbUserId)
+      .single()
+
+    if (coachError || !coach) {
+      return {
+        isSuccess: false,
+        message: "No coach profile found"
+      }
+    }
+
+    // First get coach's athlete groups
+    const { data: groups } = await supabase
+      .from('athlete_groups')
+      .select('id')
+      .eq('coach_id', coach.id)
+
+    const groupIds = groups?.map(g => g.id) || []
+
+    if (groupIds.length === 0) {
+      return {
+        isSuccess: true,
+        message: "Coach dashboard data retrieved successfully",
+        data: {
+          athletes: [],
+          totalAthletes: 0,
+          activePlans: 0,
+          recentActivity: []
+        }
+      }
+    }
+
+    // Step 1: Get athletes in coach's groups
+    const { data: athletesData, error: athletesError } = await supabase
+      .from('athletes')
+      .select(`
+        id,
+        user_id,
+        user:users(first_name, last_name, metadata)
+      `)
+      .in('athlete_group_id', groupIds)
+
+    if (athletesError) {
+      console.error("Error fetching athletes:", athletesError)
+      return { isSuccess: false, message: "Failed to fetch athletes" }
+    }
+
+    const athleteIds = athletesData?.map(a => a.id) || []
+    const athleteUserIds = athletesData?.map(a => a.user_id).filter(Boolean) as number[] || []
+
+    // Step 2: Parallel queries that depend on athlete IDs
+    const [mesocyclesResult, logsResult, lastWorkoutsResult] = await Promise.all([
+      // Count mesocycles for these athletes' user_ids (mesocycles link via user_id)
+      athleteUserIds.length > 0
+        ? supabase
+            .from('mesocycles')
+            .select('id')
+            .in('user_id', athleteUserIds)
+        : Promise.resolve({ data: [], error: null }),
+
+      // Recent workout logs across all coach's athletes
+      athleteIds.length > 0
+        ? supabase
+            .from('workout_logs')
+            .select(`
+              date_time,
+              session_status,
+              athlete:athletes(user:users(first_name, last_name)),
+              session_plan:session_plans(name)
+            `)
+            .in('athlete_id', athleteIds)
+            .order('date_time', { ascending: false })
+            .limit(10)
+        : Promise.resolve({ data: [], error: null }),
+
+      // Last completed workout per athlete
+      athleteIds.length > 0
+        ? supabase
+            .from('workout_logs')
+            .select('athlete_id, date_time')
+            .in('athlete_id', athleteIds)
+            .eq('session_status', 'completed')
+            .order('date_time', { ascending: false })
+        : Promise.resolve({ data: [], error: null })
+    ])
+
+    const lastWorkoutDates = new Map<number, Date>()
+    lastWorkoutsResult.data?.forEach((log: { athlete_id: number | null; date_time: string | null }) => {
+      if (log.date_time && log.athlete_id && !lastWorkoutDates.has(log.athlete_id)) {
+        lastWorkoutDates.set(log.athlete_id, new Date(log.date_time))
+      }
+    })
+
+    const athletesResult = { data: athletesData }
+
+    // Build athlete list
+    const athletes = (athletesResult.data || []).map(athlete => {
+      const user = athlete.user as { first_name: string; last_name: string; metadata?: { avatar_url?: string } } | null
+      const lastWorkoutDate = lastWorkoutDates.get(athlete.id) || null
+      const isActive = lastWorkoutDate && (Date.now() - lastWorkoutDate.getTime()) < 7 * 24 * 60 * 60 * 1000
+
+      return {
+        id: String(athlete.id),
+        name: user ? `${user.first_name} ${user.last_name}` : 'Unknown Athlete',
+        avatar_url: user?.metadata?.avatar_url || null,
+        lastWorkoutDate,
+        status: isActive ? 'active' as const : 'inactive' as const
+      }
+    })
+
+    // Build recent activity
+    const recentActivity = (logsResult.data || []).map(log => {
+      const athlete = log.athlete as { user: { first_name: string; last_name: string } } | null
+      let status: 'pending' | 'in-progress' | 'completed' | 'cancelled' = 'pending'
+
+      switch (log.session_status) {
+        case 'assigned': status = 'pending'; break
+        case 'ongoing': status = 'in-progress'; break
+        case 'completed': status = 'completed'; break
+        case 'cancelled': status = 'cancelled'; break
+      }
+
+      return {
+        athleteName: athlete?.user ? `${athlete.user.first_name} ${athlete.user.last_name}` : 'Unknown',
+        sessionName: log.session_plan?.name || 'Untitled Session',
+        status,
+        date: log.date_time ? new Date(log.date_time) : new Date()
+      }
+    })
+
+    const coachDashboardData: CoachDashboardData = {
+      athletes,
+      totalAthletes: athletes.length,
+      activePlans: mesocyclesResult.data?.length || 0,
+      recentActivity
+    }
+
+    return {
+      isSuccess: true,
+      message: "Coach dashboard data retrieved successfully",
+      data: coachDashboardData
+    }
+  } catch (error) {
+    console.error("Error in getCoachDashboardDataAction:", error)
+    return {
+      isSuccess: false,
+      message: "Failed to load coach dashboard data"
     }
   }
 } 

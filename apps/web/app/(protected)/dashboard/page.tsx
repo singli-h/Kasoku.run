@@ -3,9 +3,9 @@ import {
   getCurrentUserAction,
   checkUserNeedsOnboardingAction
 } from "@/actions/auth/user-actions"
-import { getDashboardDataAction } from "@/actions/dashboard/dashboard-actions"
+import { getDashboardDataAction, getCoachDashboardDataAction } from "@/actions/dashboard/dashboard-actions"
 import { redirect } from "next/navigation"
-import { DashboardLayout } from "@/components/features/dashboard/components"
+import { DashboardLayout, CoachDashboardView } from "@/components/features/dashboard/components"
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 
 // Dashboard needs real-time data - disable caching for this page
@@ -26,19 +26,34 @@ async function DashboardContent() {
     redirect("/onboarding")
   }
 
-  // Get current user and dashboard data in parallel
-  const [userResult, dashboardDataResult] = await Promise.all([
+  // Fetch user + both dashboard datasets in parallel (only one will be used based on role)
+  const [userResult, dashboardDataResult, coachDataResult] = await Promise.all([
     getCurrentUserAction(),
-    getDashboardDataAction()
+    getDashboardDataAction(),
+    getCoachDashboardDataAction()
   ])
 
   if (!userResult.isSuccess || !userResult.data) {
-    // This will be caught by the (protected) layout which handles auth state
     redirect("/")
   }
 
+  const user = userResult.data
+  const displayName = user.first_name || user.email.split("@")[0]
+
+  // Coach role → coach dashboard
+  if (user.role === 'coach' && coachDataResult.isSuccess && coachDataResult.data) {
+    return (
+      <PageLayout
+        title={`Welcome back, ${displayName}!`}
+        description="Here's your coaching overview for today."
+      >
+        <CoachDashboardView data={coachDataResult.data} />
+      </PageLayout>
+    )
+  }
+
+  // Athlete / individual role → athlete dashboard
   if (!dashboardDataResult.isSuccess || !dashboardDataResult.data) {
-    // Use unified error handling (no onRetry - can't pass functions from Server to Client)
     return (
       <PageLayout
         title="Dashboard"
@@ -50,16 +65,12 @@ async function DashboardContent() {
     )
   }
 
-  const user = userResult.data
-  const displayName = user.first_name || user.email.split("@")[0]
-  const dashboardData = dashboardDataResult.data
-
   return (
     <PageLayout
       title={`Welcome back, ${displayName}!`}
       description="Here's your training overview for today."
     >
-      <DashboardLayout data={dashboardData} displayName={displayName} />
+      <DashboardLayout data={dashboardDataResult.data} displayName={displayName} />
     </PageLayout>
   )
-} 
+}
