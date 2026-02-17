@@ -73,19 +73,21 @@ export async function POST(req: Request) {
     // ModelMessage format (for streamText): { role, content: string }
     const modelMessages = await convertToModelMessages(messages)
 
-    // Debug: Log the messages structure to see if tool results are included
-    console.log('[session-assistant] Messages count:', modelMessages.length)
-    console.log('[session-assistant] Raw messages:', JSON.stringify(messages.map((m: { role: string; parts?: Array<{ type?: string }> }) => ({
-      role: m.role,
-      partsCount: m.parts?.length,
-      partTypes: m.parts?.map((p) => p.type)
-    }))))
-    console.log('[session-assistant] Model messages:', JSON.stringify(modelMessages.map((m: { role: string; content?: unknown }) => ({
-      role: m.role,
-      contentType: typeof m.content,
-      contentPreview: typeof m.content === 'string' ? m.content.substring(0, 100) : Array.isArray(m.content) ? `array[${m.content.length}]` : 'other'
-    }))))
-    console.log('[session-assistant] Tools available:', Object.keys(coachDomainTools))
+    // Debug logging (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[session-assistant] Messages count:', modelMessages.length)
+      console.log('[session-assistant] Raw messages:', JSON.stringify(messages.map((m: { role: string; parts?: Array<{ type?: string }> }) => ({
+        role: m.role,
+        partsCount: m.parts?.length,
+        partTypes: m.parts?.map((p) => p.type)
+      }))))
+      console.log('[session-assistant] Model messages:', JSON.stringify(modelMessages.map((m: { role: string; content?: unknown }) => ({
+        role: m.role,
+        contentType: typeof m.content,
+        contentPreview: typeof m.content === 'string' ? m.content.substring(0, 100) : Array.isArray(m.content) ? `array[${m.content.length}]` : 'other'
+      }))))
+      console.log('[session-assistant] Tools available:', Object.keys(coachDomainTools))
+    }
 
     // Stream response with tool support and reasoning mode
     const result = streamText({
@@ -95,7 +97,7 @@ export async function POST(req: Request) {
       tools: coachDomainTools,
       providerOptions: {
         openai: {
-          reasoningEffort: 'high',      // Enable deep reasoning for complex planning
+          reasoningEffort: 'low',       // Low effort for interactive chat responsiveness
           reasoningSummary: 'auto',     // Stream condensed reasoning to client
         },
       },

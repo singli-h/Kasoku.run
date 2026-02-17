@@ -1,15 +1,41 @@
-import { Suspense } from "react"
+import dynamic from "next/dynamic"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  ComparativePerformanceAnalytics,
-  SprintAnalyticsDashboard,
-  GymAnalyticsDashboard,
-  RaceResultsDashboard,
-} from "@/components/features/performance"
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 import { Timer, Dumbbell, Users, Trophy } from "lucide-react"
 
-export default async function PerformancePage() {
+// Dynamically import each dashboard to code-split per tab.
+// Only the active tab's bundle loads since Radix TabsContent
+// unmounts inactive content by default.
+const SprintAnalyticsDashboard = dynamic(
+  () =>
+    import("@/components/features/performance/components/sprint/SprintAnalyticsDashboard").then(
+      (mod) => mod.SprintAnalyticsDashboard
+    ),
+  { loading: () => <SprintAnalyticsSkeleton /> }
+)
+
+const GymAnalyticsDashboard = dynamic(
+  () =>
+    import("@/components/features/performance/components/gym/GymAnalyticsDashboard").then(
+      (mod) => mod.GymAnalyticsDashboard
+    ),
+  { loading: () => <UnifiedPageSkeleton title="Gym Analytics" variant="dashboard" /> }
+)
+
+const RaceResultsDashboard = dynamic(
+  () =>
+    import("@/components/features/performance/components/race/RaceResultsDashboard").then(
+      (mod) => mod.RaceResultsDashboard
+    ),
+  { loading: () => <UnifiedPageSkeleton title="Race Results" variant="dashboard" /> }
+)
+
+const ComparativePerformanceAnalytics = dynamic(
+  () => import("@/components/features/performance/components/comparative-performance-analytics"),
+  { loading: () => <UnifiedPageSkeleton title="Comparative Analytics" variant="dashboard" /> }
+)
+
+export default function PerformancePage() {
   return (
     <PageLayout
       title="Performance Analytics"
@@ -36,56 +62,22 @@ export default async function PerformancePage() {
         </TabsList>
 
         <TabsContent value="sprint">
-          <Suspense fallback={<SprintAnalyticsSkeleton />}>
-            <SprintAnalyticsFetcher />
-          </Suspense>
+          <SprintAnalyticsDashboard />
         </TabsContent>
 
         <TabsContent value="gym">
-          <Suspense fallback={<UnifiedPageSkeleton title="Gym Analytics" variant="dashboard" />}>
-            <GymAnalyticsFetcher />
-          </Suspense>
+          <GymAnalyticsDashboard />
         </TabsContent>
 
         <TabsContent value="race">
-          <Suspense fallback={<UnifiedPageSkeleton title="Race Results" variant="dashboard" />}>
-            <RaceResultsFetcher />
-          </Suspense>
+          <RaceResultsDashboard />
         </TabsContent>
 
         <TabsContent value="compare">
-          <Suspense fallback={<UnifiedPageSkeleton title="Comparative Analytics" variant="dashboard" />}>
-            <ComparativeAnalyticsFetcher />
-          </Suspense>
+          <ComparativePerformanceAnalytics className="w-full" />
         </TabsContent>
       </Tabs>
     </PageLayout>
-  )
-}
-
-async function SprintAnalyticsFetcher() {
-  // SprintAnalyticsDashboard handles its own data fetching via React Query
-  return <SprintAnalyticsDashboard />
-}
-
-async function GymAnalyticsFetcher() {
-  // GymAnalyticsDashboard handles its own data fetching via React Query
-  return <GymAnalyticsDashboard />
-}
-
-async function RaceResultsFetcher() {
-  // RaceResultsDashboard handles its own data fetching via React Query
-  return <RaceResultsDashboard />
-}
-
-async function ComparativeAnalyticsFetcher() {
-  // In production, this would fetch comparative performance data
-  // with proper anonymization and privacy controls
-
-  return (
-    <ComparativePerformanceAnalytics
-      className="w-full"
-    />
   )
 }
 

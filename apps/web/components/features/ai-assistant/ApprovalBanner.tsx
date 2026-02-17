@@ -90,6 +90,14 @@ export function ApprovalBanner({
     }
   }, [executionError, isExecuting])
 
+  // Auto-dismiss success state after 2 seconds
+  useEffect(() => {
+    if (state === 'success') {
+      const timer = setTimeout(() => setState('pending'), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [state])
+
   const handleApprove = async () => {
     setState('executing')
     try {
@@ -163,8 +171,8 @@ export function ApprovalBanner({
         // Industrial status bar aesthetic
         'flex items-center justify-between gap-3',
         'px-3 py-2 rounded-lg',
-        'bg-gradient-to-r from-slate-50 to-slate-100/80',
-        'border border-slate-200/80',
+        'bg-muted/80',
+        'border border-border',
         'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)]',
         'transition-all duration-200',
         className
@@ -179,14 +187,14 @@ export function ApprovalBanner({
 
         {/* Concise summary - single line */}
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-sm font-semibold text-slate-800 tabular-nums">
+          <span className="text-sm font-semibold text-foreground tabular-nums">
             {changeCount}
           </span>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-muted-foreground">
             change{changeCount !== 1 ? 's' : ''}
           </span>
-          <span className="text-slate-300 mx-0.5">|</span>
-          <span className="text-sm font-medium text-slate-600 truncate">
+          <span className="text-border mx-0.5">|</span>
+          <span className="text-sm font-medium text-foreground/80 truncate">
             {compactSummary}
           </span>
         </div>
@@ -200,7 +208,7 @@ export function ApprovalBanner({
           disabled={state === 'executing'}
           className={cn(
             'flex items-center gap-1 px-2 py-1.5 rounded-md text-sm transition-colors',
-            'text-slate-500 hover:text-blue-600 hover:bg-blue-50',
+            'text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30',
             state === 'executing' && 'opacity-50 cursor-not-allowed'
           )}
           title="Request changes - AI will ask what to modify"

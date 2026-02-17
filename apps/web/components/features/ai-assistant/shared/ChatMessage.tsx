@@ -31,7 +31,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
     return extractThinkingContent(
       message.parts.map(part => ({
         type: part.type,
-        text: part.type === 'text' ? (part as { text: string }).text : undefined
+        text: (part.type === 'text' || part.type === 'reasoning') ? (part as { text: string }).text : undefined,
       }))
     )
   }, [message.parts, isUser])

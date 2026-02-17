@@ -174,13 +174,65 @@ export async function executeGetWorkoutContext(
     throw new Error('Failed to fetch workout exercises')
   }
 
-  // Get all session_plan_exercise_ids to fetch prescribed sets
+  // Collect IDs for parallel set queries
   const sessionPlanExerciseIds = (workoutExercises ?? [])
     .map((e) => e.session_plan_exercise_id)
     .filter((id): id is string => id !== null)
 
-  // Fetch prescribed sets from session_plan_sets
-  let prescribedSetsMap = new Map<
+  const workoutExerciseIds = (workoutExercises ?? []).map((e) => e.id)
+
+  // Fetch prescribed sets and actual sets in parallel (independent queries)
+  const [prescribedSetsResult, actualSetsResult] = await Promise.all([
+    // Query 3: Prescribed sets from session_plan_sets
+    sessionPlanExerciseIds.length > 0
+      ? supabase
+          .from('session_plan_sets')
+          .select(
+            `
+            session_plan_exercise_id,
+            set_index,
+            reps,
+            weight,
+            rpe,
+            distance,
+            performing_time,
+            power,
+            velocity,
+            height,
+            resistance
+          `
+          )
+          .in('session_plan_exercise_id', sessionPlanExerciseIds)
+          .order('set_index', { ascending: true })
+      : Promise.resolve({ data: null, error: null }),
+    // Query 4: Actual sets from workout_log_sets
+    workoutExerciseIds.length > 0
+      ? supabase
+          .from('workout_log_sets')
+          .select(
+            `
+            id,
+            workout_log_exercise_id,
+            set_index,
+            reps,
+            weight,
+            rpe,
+            completed,
+            distance,
+            performing_time,
+            power,
+            velocity,
+            height,
+            resistance
+          `
+          )
+          .in('workout_log_exercise_id', workoutExerciseIds)
+          .order('set_index', { ascending: true })
+      : Promise.resolve({ data: null, error: null }),
+  ])
+
+  // Build prescribed sets map
+  const prescribedSetsMap = new Map<
     string,
     Array<{
       set_index: number
@@ -196,45 +248,20 @@ export async function executeGetWorkoutContext(
     }>
   >()
 
-  if (sessionPlanExerciseIds.length > 0) {
-    const { data: prescribedSets, error: prescribedError } = await supabase
-      .from('session_plan_sets')
-      .select(
-        `
-        session_plan_exercise_id,
-        set_index,
-        reps,
-        weight,
-        rpe,
-        distance,
-        performing_time,
-        power,
-        velocity,
-        height,
-        resistance
-      `
-      )
-      .in('session_plan_exercise_id', sessionPlanExerciseIds)
-      .order('set_index', { ascending: true })
-
-    if (!prescribedError && prescribedSets) {
-      // Group by session_plan_exercise_id
-      for (const set of prescribedSets) {
-        const exerciseId = set.session_plan_exercise_id
-        if (exerciseId !== null) {
-          if (!prescribedSetsMap.has(exerciseId)) {
-            prescribedSetsMap.set(exerciseId, [])
-          }
-          prescribedSetsMap.get(exerciseId)!.push(set)
+  if (!prescribedSetsResult.error && prescribedSetsResult.data) {
+    for (const set of prescribedSetsResult.data) {
+      const exerciseId = set.session_plan_exercise_id
+      if (exerciseId !== null) {
+        if (!prescribedSetsMap.has(exerciseId)) {
+          prescribedSetsMap.set(exerciseId, [])
         }
+        prescribedSetsMap.get(exerciseId)!.push(set)
       }
     }
   }
 
-  // Fetch actual sets from workout_log_sets
-  const workoutExerciseIds = (workoutExercises ?? []).map((e) => e.id)
-
-  let actualSetsMap = new Map<
+  // Build actual sets map
+  const actualSetsMap = new Map<
     string,
     Array<{
       id: string
@@ -252,39 +279,14 @@ export async function executeGetWorkoutContext(
     }>
   >()
 
-  if (workoutExerciseIds.length > 0) {
-    const { data: actualSets, error: actualError } = await supabase
-      .from('workout_log_sets')
-      .select(
-        `
-        id,
-        workout_log_exercise_id,
-        set_index,
-        reps,
-        weight,
-        rpe,
-        completed,
-        distance,
-        performing_time,
-        power,
-        velocity,
-        height,
-        resistance
-      `
-      )
-      .in('workout_log_exercise_id', workoutExerciseIds)
-      .order('set_index', { ascending: true })
-
-    if (!actualError && actualSets) {
-      // Group by workout_log_exercise_id
-      for (const set of actualSets) {
-        const exerciseId = set.workout_log_exercise_id
-        if (exerciseId !== null) {
-          if (!actualSetsMap.has(exerciseId)) {
-            actualSetsMap.set(exerciseId, [])
-          }
-          actualSetsMap.get(exerciseId)!.push(set)
+  if (!actualSetsResult.error && actualSetsResult.data) {
+    for (const set of actualSetsResult.data) {
+      const exerciseId = set.workout_log_exercise_id
+      if (exerciseId !== null) {
+        if (!actualSetsMap.has(exerciseId)) {
+          actualSetsMap.set(exerciseId, [])
         }
+        actualSetsMap.get(exerciseId)!.push(set)
       }
     }
   }

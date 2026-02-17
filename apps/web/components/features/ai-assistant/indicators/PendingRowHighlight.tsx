@@ -26,10 +26,10 @@ interface PendingRowHighlightProps {
 }
 
 const BG_COLORS: Record<UIDisplayType, string> = {
-  swap: 'bg-blue-50/50',
-  add: 'bg-green-50/50',
-  update: 'bg-amber-50/50',
-  remove: 'bg-red-50/30',
+  swap: 'bg-blue-50/50 dark:bg-blue-950/30',
+  add: 'bg-green-50/50 dark:bg-green-950/30',
+  update: 'bg-amber-50/50 dark:bg-amber-950/30',
+  remove: 'bg-red-50/30 dark:bg-red-950/20',
 }
 
 const BORDER_COLORS: Record<UIDisplayType, string> = {
@@ -85,7 +85,7 @@ export function NewItemHighlight({ children, className }: NewItemHighlightProps)
   return (
     <div
       className={cn(
-        'rounded-lg border-2 border-dashed border-green-300 bg-green-50/30',
+        'rounded-lg border-2 border-dashed border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-950/30',
         'transition-all duration-200',
         className
       )}
@@ -109,7 +109,7 @@ export function RemovedItemHighlight({ children, className }: RemovedItemHighlig
   return (
     <div
       className={cn(
-        'rounded-lg border border-red-200 bg-red-50/30 opacity-60',
+        'rounded-lg border border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-950/20 opacity-60',
         'transition-all duration-200',
         className
       )}
@@ -133,7 +133,7 @@ export function SwapItemHighlight({ children, className }: SwapItemHighlightProp
   return (
     <div
       className={cn(
-        'rounded-lg border border-blue-200 bg-blue-50/30',
+        'rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/30',
         'transition-all duration-200',
         className
       )}

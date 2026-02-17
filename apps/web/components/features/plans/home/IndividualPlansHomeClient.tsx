@@ -25,11 +25,6 @@ interface IndividualPlansHomeClientProps {
   activeBlock: MesocycleWithDetails | null
   completedBlocks: MesocycleWithDetails[]
   upcomingBlocks: MesocycleWithDetails[]
-  todayWorkout: {
-    id: string
-    name: string
-    exerciseCount: number
-  } | null
   /** True when one or both server-side data fetches failed (transient error) */
   dataFetchFailed?: boolean
 }

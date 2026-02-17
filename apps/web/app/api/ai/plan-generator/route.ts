@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       tools: planGeneratorTools,
       providerOptions: {
         openai: {
-          reasoningEffort: 'high',      // Enable deep reasoning for plan generation
+          reasoningEffort: 'medium',    // Medium effort balances quality and speed for plan generation
           reasoningSummary: 'auto',     // Stream condensed reasoning to client
         },
       },

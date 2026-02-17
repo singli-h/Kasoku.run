@@ -110,73 +110,61 @@ export async function POST(req: Request) {
 
     const { messages, planId, sessionId, weekId, exerciseId, aiContextLevel = 'session' } = body
 
-    // Verify plan ownership (mesocycle for individual users)
-    const { data: plan, error: planError } = await supabase
-      .from('mesocycles')
-      .select('id, user_id, name')
-      .eq('id', planId)
-      .single()
-
-    if (planError || !plan) {
-      return new Response('Plan not found', { status: 404 })
-    }
-
-    if (plan.user_id !== dbUserId) {
-      return new Response('Forbidden', { status: 403 })
-    }
-
-    // Get context based on level
+    // Fetch plan with ownership check and context in a single query
     let sessionContext
     let weekContext
     let planContext
 
-    // Always get plan context (high-level info)
-    try {
-      const { data: planData } = await supabase
-        .from('mesocycles')
-        .select(`
+    const { data: planData, error: planError } = await supabase
+      .from('mesocycles')
+      .select(`
+        id,
+        user_id,
+        name,
+        description,
+        start_date,
+        end_date,
+        microcycles (
           id,
           name,
-          description,
           start_date,
           end_date,
-          microcycles (
+          session_plans (
             id,
             name,
-            start_date,
-            end_date,
-            session_plans (
-              id,
-              name,
-              day
-            )
+            day
           )
-        `)
-        .eq('id', planId)
-        .single()
+        )
+      `)
+      .eq('id', planId)
+      .single()
 
-      if (planData) {
-        planContext = {
-          id: planData.id,
-          name: planData.name,
-          description: planData.description,
-          startDate: planData.start_date,
-          endDate: planData.end_date,
-          weeks: planData.microcycles?.map((w: MicrocycleRow) => ({
-            id: w.id,
-            name: w.name,
-            startDate: w.start_date,
-            endDate: w.end_date,
-            sessions: w.session_plans?.map((s: SessionPlanRow) => ({
-              id: s.id,
-              name: s.name,
-              day: s.day,
-            })) ?? [],
-          })) ?? [],
-        }
-      }
-    } catch (error) {
-      console.error('[plan-assistant] Error fetching plan context:', error)
+    if (planError || !planData) {
+      return new Response('Plan not found', { status: 404 })
+    }
+
+    if (planData.user_id !== dbUserId) {
+      return new Response('Forbidden', { status: 403 })
+    }
+
+    // Build plan context from the combined query result
+    planContext = {
+      id: planData.id,
+      name: planData.name,
+      description: planData.description,
+      startDate: planData.start_date,
+      endDate: planData.end_date,
+      weeks: planData.microcycles?.map((w: MicrocycleRow) => ({
+        id: w.id,
+        name: w.name,
+        startDate: w.start_date,
+        endDate: w.end_date,
+        sessions: w.session_plans?.map((s: SessionPlanRow) => ({
+          id: s.id,
+          name: s.name,
+          day: s.day,
+        })) ?? [],
+      })) ?? [],
     }
 
     // Get week context if a week is selected
@@ -280,6 +268,12 @@ export async function POST(req: Request) {
       system: systemPrompt,
       messages: modelMessages,
       tools: coachDomainTools,
+      providerOptions: {
+        openai: {
+          reasoningEffort: 'low',
+          reasoningSummary: 'auto',
+        },
+      },
       onFinish: ({ text, toolCalls, usage }) => {
         if (process.env.NODE_ENV === 'development') {
           console.log('[plan-assistant] Response text:', text?.substring(0, 200))

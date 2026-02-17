@@ -89,11 +89,13 @@ export async function POST(req: Request) {
     // Convert UI messages to model messages format
     const modelMessages = await convertToModelMessages(messages)
 
-    // Debug logging
-    console.log('[workout-assistant] Workout ID:', workoutLogId)
-    console.log('[workout-assistant] Athlete ID:', athlete.id)
-    console.log('[workout-assistant] Messages count:', modelMessages.length)
-    console.log('[workout-assistant] Tools available:', Object.keys(athleteDomainTools))
+    // Debug logging (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[workout-assistant] Workout ID:', workoutLogId)
+      console.log('[workout-assistant] Athlete ID:', athlete.id)
+      console.log('[workout-assistant] Messages count:', modelMessages.length)
+      console.log('[workout-assistant] Tools available:', Object.keys(athleteDomainTools))
+    }
 
     // Stream response with tool support and reasoning mode
     const result = streamText({
@@ -103,7 +105,7 @@ export async function POST(req: Request) {
       tools: athleteDomainTools,
       providerOptions: {
         openai: {
-          reasoningEffort: 'high',      // Enable deep reasoning for workout analysis
+          reasoningEffort: 'low',       // Low effort for interactive chat responsiveness
           reasoningSummary: 'auto',     // Stream condensed reasoning to client
         },
       },

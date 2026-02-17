@@ -479,10 +479,7 @@ export function IndividualPlanPage({
                         {/* Week info */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className={cn(
-                              "text-sm font-medium",
-                              isSelected ? "" : ""
-                            )}>
+                            <span className="text-sm font-medium">
                               Week {index + 1}
                             </span>
                             {isCurrent && !isSelected && (
@@ -571,7 +568,7 @@ export function IndividualPlanPage({
                           "text-xs font-medium mt-0.5 truncate max-w-[72px]",
                           isSelected ? "text-background" : ""
                         )}>
-                          {workout.name?.split(' ')[0] || 'Workout'}
+                          {workout.name || 'Workout'}
                         </span>
                         {isToday && !isSelected && (
                           <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1" aria-hidden="true" />
@@ -834,7 +831,7 @@ export function IndividualPlanPage({
                     "text-xs font-medium mt-0.5 truncate max-w-[56px]",
                     isSelected ? "text-background" : ""
                   )}>
-                    {workout.name?.split(' ')[0] || 'Workout'}
+                    {workout.name || 'Workout'}
                   </span>
                   {isToday && !isSelected && (
                     <span className="w-1 h-1 rounded-full bg-primary mt-1" aria-hidden="true" />

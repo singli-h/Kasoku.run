@@ -15,7 +15,7 @@
  * @see docs/features/plans/individual/tasks.md T063-T066
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useId } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronDown, Lightbulb, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -48,6 +48,7 @@ export function ThinkingSection({
   className,
   onExpandedChange,
 }: ThinkingSectionProps) {
+  const contentId = useId()
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   const handleToggle = useCallback(() => {
@@ -81,7 +82,7 @@ export function ThinkingSection({
           'rounded-lg'
         )}
         aria-expanded={isExpanded}
-        aria-controls="thinking-content"
+        aria-controls={contentId}
       >
         {/* Toggle icon with animation */}
         <motion.div
@@ -140,7 +141,7 @@ export function ThinkingSection({
       <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.div
-            id="thinking-content"
+            id={contentId}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -179,6 +180,7 @@ export function CompactThinkingSection({
   isThinking = false,
   className,
 }: CompactThinkingSectionProps) {
+  const contentId = useId()
   const [isExpanded, setIsExpanded] = useState(false)
 
   if (!content && !isThinking) return null
@@ -188,6 +190,8 @@ export function CompactThinkingSection({
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center gap-1 hover:text-foreground transition-colors"
+        aria-expanded={isExpanded}
+        aria-controls={contentId}
       >
         <motion.div
           animate={{ rotate: isExpanded ? 90 : 0 }}
@@ -203,6 +207,7 @@ export function CompactThinkingSection({
       <AnimatePresence>
         {isExpanded && (
           <motion.div
+            id={contentId}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -223,7 +228,14 @@ export function CompactThinkingSection({
  * Extract thinking/reasoning content from AI message parts
  */
 export function extractThinkingContent(messageParts: Array<{ type: string; text?: string }>): string | null {
-  // Look for parts that contain reasoning or thinking markers
+  // Check for native AI SDK 6 reasoning parts first (type === 'reasoning', content in text field)
+  for (const part of messageParts) {
+    if (part.type === 'reasoning' && part.text) {
+      return part.text
+    }
+  }
+
+  // Fallback: look for parts that contain reasoning or thinking markers in text
   for (const part of messageParts) {
     if (part.type === 'text' && part.text) {
       // Check if the text contains thinking markers
