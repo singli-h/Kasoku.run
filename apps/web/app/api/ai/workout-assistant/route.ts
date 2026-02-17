@@ -109,7 +109,7 @@ export async function POST(req: Request) {
       },
       onFinish: ({ text, toolCalls, usage, reasoning }) => {
         console.log('[workout-assistant] Response text:', text?.substring(0, 200))
-        console.log('[workout-assistant] Reasoning:', reasoning ? reasoning.substring(0, 200) : 'none')
+        console.log('[workout-assistant] Reasoning:', reasoning ? JSON.stringify(reasoning).substring(0, 200) : 'none')
         console.log('[workout-assistant] Tool calls:', toolCalls?.map((t) => t.toolName))
         console.log('[workout-assistant] Tokens:', usage)
       },

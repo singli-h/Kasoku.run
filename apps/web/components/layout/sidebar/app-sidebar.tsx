@@ -118,12 +118,16 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
   // Individual: Session-focused with Training priority
   individual: [
     {
+      label: "Overview",
+      items: ["overview"],
+    },
+    {
       label: "Training",
       items: ["workout", "myTraining", "performance"],
     },
     {
       label: "Resources",
-      items: ["exerciseLibrary", "knowledgeBase", "settings"],
+      items: ["exerciseLibrary", /* "knowledgeBase", */ "settings"],
     },
   ],
 
@@ -135,7 +139,7 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
     },
     {
       label: "Resources",
-      items: ["exerciseLibrary", "knowledgeBase", "settings"],
+      items: ["exerciseLibrary", /* "knowledgeBase", */ "settings"],
     },
   ],
 

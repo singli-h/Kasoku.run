@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       },
       onFinish: ({ text, toolCalls, usage, reasoning }) => {
         console.log('[plan-generator] Response text:', text?.substring(0, 200))
-        console.log('[plan-generator] Reasoning:', reasoning ? reasoning.substring(0, 200) : 'none')
+        console.log('[plan-generator] Reasoning:', reasoning ? JSON.stringify(reasoning).substring(0, 200) : 'none')
         console.log('[plan-generator] Tool calls:', toolCalls?.map((t) => t.toolName))
         console.log('[plan-generator] Tokens:', usage)
       },

@@ -9,7 +9,7 @@ Handles athlete profiles, group assignments, and coach-athlete relationships.
 
 import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
-import { getDbUserId } from "@/lib/user-cache"
+import { getDbUserId, getUserInfo } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import {
   Athlete, AthleteInsert, AthleteUpdate,
@@ -207,7 +207,7 @@ export async function createOrUpdateAthleteProfileAction(
 export async function getAthletesByGroupAction(groupId: number): Promise<ActionState<Athlete[]>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -215,7 +215,36 @@ export async function getAthletesByGroupAction(groupId: number): Promise<ActionS
       }
     }
 
-    // Using singleton supabase client
+    // Get caller's DB ID and verify coach ownership
+    const dbUserId = await getDbUserId(userId)
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('role, coach:coaches(id)')
+      .eq('id', dbUserId)
+      .single()
+
+    if (!user || user.role !== 'coach' || !user.coach) {
+      return {
+        isSuccess: false,
+        message: "Access denied: only coaches can view group athletes"
+      }
+    }
+
+    // Verify the group belongs to this coach
+    const { data: group } = await supabase
+      .from('athlete_groups')
+      .select('id')
+      .eq('id', groupId)
+      .eq('coach_id', (user.coach as { id: number }).id)
+      .single()
+
+    if (!group) {
+      return {
+        isSuccess: false,
+        message: "Access denied: you don't have permission to view this group's athletes"
+      }
+    }
 
     const { data: athletes, error } = await supabase
       .from('athletes')
@@ -260,7 +289,7 @@ export async function getAthletesByGroupAction(groupId: number): Promise<ActionS
 export async function getAthleteByIdAction(athleteId: number): Promise<ActionState<Athlete>> {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return {
         isSuccess: false,
@@ -268,7 +297,84 @@ export async function getAthleteByIdAction(athleteId: number): Promise<ActionSta
       }
     }
 
-    // Using singleton supabase client
+    // Get caller's DB ID and role for ownership verification
+    const { id: dbUserId, role } = await getUserInfo(userId)
+
+    // Role-based access control
+    if (role === 'individual') {
+      return {
+        isSuccess: false,
+        message: "Access denied: you don't have permission to view this athlete"
+      }
+    }
+
+    if (role === 'athlete') {
+      // Athletes can only view their own record
+      const { data: ownAthlete } = await supabase
+        .from('athletes')
+        .select('id')
+        .eq('user_id', dbUserId)
+        .single()
+
+      if (!ownAthlete || ownAthlete.id !== athleteId) {
+        return {
+          isSuccess: false,
+          message: "Access denied: you don't have permission to view this athlete"
+        }
+      }
+    }
+
+    if (role === 'coach') {
+      // Coaches can only view athletes in their own groups
+      const { data: coachRecord } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('user_id', dbUserId)
+        .single()
+
+      if (!coachRecord) {
+        return {
+          isSuccess: false,
+          message: "Access denied: coach record not found"
+        }
+      }
+
+      // Verify this athlete belongs to one of the coach's groups
+      const { data: athleteRecord } = await supabase
+        .from('athletes')
+        .select('athlete_group_id')
+        .eq('id', athleteId)
+        .single()
+
+      if (!athleteRecord) {
+        return {
+          isSuccess: false,
+          message: "Athlete not found"
+        }
+      }
+
+      if (athleteRecord.athlete_group_id) {
+        const { data: group } = await supabase
+          .from('athlete_groups')
+          .select('id')
+          .eq('id', athleteRecord.athlete_group_id)
+          .eq('coach_id', coachRecord.id)
+          .single()
+
+        if (!group) {
+          return {
+            isSuccess: false,
+            message: "Access denied: you don't have permission to view this athlete"
+          }
+        }
+      } else {
+        // Athlete has no group — coach can't access unassigned athletes they don't own
+        return {
+          isSuccess: false,
+          message: "Access denied: you don't have permission to view this athlete"
+        }
+      }
+    }
 
     const { data: athlete, error } = await supabase
       .from('athletes')

@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       },
       onFinish: ({ text, toolCalls, usage, reasoning }) => {
         console.log('[session-assistant] Response text:', text?.substring(0, 200))
-        console.log('[session-assistant] Reasoning:', reasoning ? reasoning.substring(0, 200) : 'none')
+        console.log('[session-assistant] Reasoning:', reasoning ? JSON.stringify(reasoning).substring(0, 200) : 'none')
         console.log('[session-assistant] Tool calls:', toolCalls?.map(t => t.toolName))
         console.log('[session-assistant] Tokens:', usage)
       },

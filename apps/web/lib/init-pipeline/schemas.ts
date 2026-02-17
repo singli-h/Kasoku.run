@@ -17,7 +17,7 @@ export const SimpleExerciseSchema = z.object({
   sets: z.number().int().min(1).max(10).describe('Number of sets'),
   reps: z.number().int().min(1).max(50).describe('Reps per set'),
   weight: z.number().nullable().describe('Weight in kg, null for bodyweight'),
-  rpe: z.number().min(1).max(10).describe('Target RPE (1-10)'),
+  rpe: z.number().int().min(1).max(10).describe('Target RPE (1-10)'),
   rest_time: z.number().int().min(0).max(600).describe('Rest time in seconds'),
 })
 
