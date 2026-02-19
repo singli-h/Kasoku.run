@@ -187,6 +187,7 @@ export function CategoryManager({ open, onOpenChange }: CategoryManagerProps) {
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader className="pb-6 flex-shrink-0">
@@ -482,5 +483,28 @@ export function CategoryManager({ open, onOpenChange }: CategoryManagerProps) {
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={!!deletingCategory} onOpenChange={(open) => { if (!open) setDeletingCategory(null) }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Category</AlertDialogTitle>
+          <AlertDialogDescription>
+            {deletingCategory?.articleCount && deletingCategory.articleCount > 0
+              ? `"${deletingCategory?.name}" contains ${deletingCategory.articleCount} article(s). They will become uncategorized. This action cannot be undone.`
+              : `Are you sure you want to delete "${deletingCategory?.name}"? This action cannot be undone.`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmDeleteCategory}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
