@@ -99,7 +99,7 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
                 )}
                 <div className="flex items-center gap-1.5">
                   <Target className="h-4 w-4 shrink-0" />
-                  <span>{mc.phases.length} phases · {Math.max(...mc.phases.map(p => p.endWeek))} weeks</span>
+                  <span>{mc.phases.length} phases{mc.phases.length > 0 ? ` · ${Math.max(...mc.phases.map(p => p.endWeek))} weeks` : ''}</span>
                 </div>
               </div>
             </div>
