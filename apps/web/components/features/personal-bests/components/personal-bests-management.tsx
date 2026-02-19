@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Trophy, Plus, Pencil, Trash2, AlertCircle } from "lucide-react"
+import { Trophy, Trash2, AlertCircle, Loader2 } from "lucide-react"
 import { getMyPersonalBestsAction, deletePBAction } from "@/actions/athletes"
 import {
   Table,
@@ -24,6 +24,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 
 interface PersonalBest {
@@ -40,6 +51,33 @@ interface PersonalBest {
   notes: string | null
   created_at: string
   updated_at: string
+  exercise?: { id: number; name: string; description?: string | null } | null
+}
+
+// Map unit_id to display labels
+// Based on: 1=reps, 2=meters, 3=kg, 4=lbs, 5=seconds, 6=minutes, 7=watts
+const UNIT_LABELS: Record<number, string> = {
+  1: 'reps',
+  2: 'm',
+  3: 'kg',
+  4: 'lbs',
+  5: 's',
+  6: 'min',
+  7: 'W',
+}
+
+function formatPBValue(value: number, unitId: number): string {
+  const unit = UNIT_LABELS[unitId]
+  // For time-based units, show more precision
+  if (unitId === 5 || unitId === 6) {
+    return `${value.toFixed(2)} ${unit || ''}`
+  }
+  // For whole-number units like reps
+  if (unitId === 1) {
+    return `${Math.round(value)} ${unit}`
+  }
+  // Default: 1 decimal place
+  return `${Number.isInteger(value) ? value : value.toFixed(1)} ${unit || ''}`
 }
 
 export function PersonalBestsManagement() {
@@ -47,6 +85,7 @@ export function PersonalBestsManagement() {
   const [pbs, setPbs] = useState<PersonalBest[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     loadPersonalBests()
@@ -75,10 +114,7 @@ export function PersonalBestsManagement() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this personal best?')) {
-      return
-    }
-
+    setIsDeleting(true)
     const result = await deletePBAction(id)
 
     if (result.isSuccess) {
@@ -94,6 +130,7 @@ export function PersonalBestsManagement() {
         variant: "destructive"
       })
     }
+    setIsDeleting(false)
   }
 
   if (isLoading) {
@@ -148,13 +185,9 @@ export function PersonalBestsManagement() {
         <CardContent>
           <div className="text-center py-8">
             <Trophy className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground">
               Start training to set your first personal best!
             </p>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Manual PB
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -173,10 +206,6 @@ export function PersonalBestsManagement() {
             {pbs.length} record{pbs.length !== 1 ? 's' : ''} • {pbs.filter(pb => pb.verified).length} verified
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add PB
-        </Button>
       </div>
 
       <Card>
@@ -195,15 +224,10 @@ export function PersonalBestsManagement() {
               {pbs.map((pb) => (
                 <TableRow key={pb.id}>
                   <TableCell className="font-medium">
-                    {pb.exercise_id ? `Exercise ID: ${pb.exercise_id}` : ''}
-                    {pb.event_id ? `Event ID: ${pb.event_id}` : ''}
-                    {!pb.exercise_id && !pb.event_id && 'Unknown'}
+                    {pb.exercise?.name ?? (pb.event_id ? `Event ID: ${pb.event_id}` : 'Unknown Exercise')}
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {pb.value.toFixed(2)}
-                    <span className="text-muted-foreground ml-1">
-                      (unit: {pb.unit_id})
-                    </span>
+                    {formatPBValue(pb.value, pb.unit_id)}
                   </TableCell>
                   <TableCell>
                     {new Date(pb.achieved_date).toLocaleDateString('en-US', {
@@ -221,27 +245,42 @@ export function PersonalBestsManagement() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          toast({
-                            title: "Edit PB",
-                            description: "Edit functionality coming in next update"
-                          })
-                        }}
-                        title="Edit personal best (coming soon)"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(pb.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Personal Best?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this personal best? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(pb.id)}
+                              disabled={isDeleting}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              {isDeleting ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                "Delete"
+                              )}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -252,8 +291,7 @@ export function PersonalBestsManagement() {
       </Card>
 
       <div className="text-xs text-muted-foreground">
-        <p>💡 Personal bests are automatically detected when you complete training sessions</p>
-        <p>✅ Verified PBs have been confirmed by a coach</p>
+        <p>Personal bests are automatically detected from your completed sessions (sprint times and gym weights).</p>
       </div>
     </div>
   )

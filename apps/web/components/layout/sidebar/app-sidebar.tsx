@@ -21,6 +21,7 @@ import {
   BookOpen,
   PlayCircle,
   FileText,
+  ClipboardList,
   type LucideIcon
 } from "lucide-react"
 import * as React from "react"
@@ -89,6 +90,12 @@ const allNavItems: Record<string, NavItemDef> = {
     icon: PlayCircle,
     visibleTo: ['coach'],
   },
+  program: {
+    title: "My Program",
+    url: "/program",
+    icon: ClipboardList,
+    visibleTo: ['athlete'],
+  },
   exerciseLibrary: {
     title: "Exercise Library",
     url: "/library",
@@ -131,11 +138,11 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
     },
   ],
 
-  // Athlete: Simplified training focus (no plan access - assigned by coach)
+  // Athlete: Training focus with program view (assigned by coach)
   athlete: [
     {
       label: "Training",
-      items: ["workout", "performance"],
+      items: ["workout", "program", "performance"],
     },
     {
       label: "Resources",

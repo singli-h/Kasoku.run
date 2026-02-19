@@ -13,6 +13,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -63,6 +73,7 @@ export function CategoryManager({ open, onOpenChange }: CategoryManagerProps) {
   const [newCategoryName, setNewCategoryName] = useState("")
   const [newCategoryColor, setNewCategoryColor] = useState(predefinedColors[0].value)
   const [isCreating, setIsCreating] = useState(false)
+  const [deletingCategory, setDeletingCategory] = useState<{ id: number; name: string; articleCount: number } | null>(null)
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -138,25 +149,23 @@ export function CategoryManager({ open, onOpenChange }: CategoryManagerProps) {
     }
   }
 
-  const handleDeleteCategory = async (categoryId: number, categoryName: string) => {
+  const handleRequestDeleteCategory = (categoryId: number, categoryName: string) => {
     const category = categories.find(c => c.id === categoryId)
     const articleCount = category?.article_count || 0
-    const message = articleCount > 0 
-      ? `Are you sure you want to delete "${categoryName}"? This will make ${articleCount} article(s) uncategorized. This action cannot be undone.`
-      : `Are you sure you want to delete "${categoryName}"? This action cannot be undone.`
-    
-    if (!confirm(message)) {
-      return
-    }
+    setDeletingCategory({ id: categoryId, name: categoryName, articleCount })
+  }
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!deletingCategory) return
 
     try {
-      await deleteCategoryMutation.mutateAsync(categoryId)
-      
+      await deleteCategoryMutation.mutateAsync(deletingCategory.id)
+
       toast({
         title: "Category Deleted",
-        description: articleCount > 0 
-          ? `"${categoryName}" has been deleted. ${articleCount} article(s) are now uncategorized.`
-          : `"${categoryName}" has been deleted successfully.`,
+        description: deletingCategory.articleCount > 0
+          ? `"${deletingCategory.name}" has been deleted. ${deletingCategory.articleCount} article(s) are now uncategorized.`
+          : `"${deletingCategory.name}" has been deleted successfully.`,
       })
     } catch (error) {
       toast({
@@ -164,6 +173,8 @@ export function CategoryManager({ open, onOpenChange }: CategoryManagerProps) {
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
         variant: "destructive"
       })
+    } finally {
+      setDeletingCategory(null)
     }
   }
 
@@ -366,7 +377,7 @@ export function CategoryManager({ open, onOpenChange }: CategoryManagerProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteCategory(category.id, category.name)}
+                            onClick={() => handleRequestDeleteCategory(category.id, category.name)}
                             className="h-9 w-9 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                             title="Delete category"
                           >

@@ -7,7 +7,7 @@ Follows the established patterns for editor pages with fixed action buttons.
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, Eye, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { ArticleEditor } from "../editor/article-editor"
 import { useToast } from "@/hooks/use-toast"
 import { 
@@ -52,6 +62,7 @@ export function ArticleEditorPage({ articleId, mode }: ArticleEditorPageProps) {
   const [categoryId, setCategoryId] = useState<string>("")
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
 
   // Queries
   const { data: article, isLoading: isLoadingArticle } = useKnowledgeBaseArticle(
@@ -161,13 +172,16 @@ export function ArticleEditorPage({ articleId, mode }: ArticleEditorPageProps) {
 
   const handleBack = () => {
     if (hasUnsavedChanges) {
-      const confirmed = window.confirm(
-        "You have unsaved changes. Are you sure you want to leave?"
-      )
-      if (!confirmed) return
+      setShowLeaveConfirm(true)
+      return
     }
     router.back()
   }
+
+  const confirmLeave = useCallback(() => {
+    setShowLeaveConfirm(false)
+    router.back()
+  }, [router])
 
   if (mode === "edit" && isLoadingArticle) {
     return (
@@ -300,6 +314,24 @@ export function ArticleEditorPage({ articleId, mode }: ArticleEditorPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Unsaved changes confirmation dialog */}
+      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmLeave}>
+              Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

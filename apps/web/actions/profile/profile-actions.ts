@@ -506,17 +506,25 @@ async function getAthleteStats(athleteId: number): Promise<ProfileViewData['stat
       .select('id', { count: 'exact', head: true })
       .eq('athlete_id', athleteId)
 
-    // Calculate weekly streak (simplified - count consecutive weeks with workouts)
-    // This is a simplified version - in production you'd want a more sophisticated algorithm
-    const weeklyStreak = 0 // TODO: Implement proper streak calculation
+    // Calculate completion rate from workout_logs session_status
+    const { count: completedCount } = await supabase
+      .from('workout_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('athlete_id', athleteId)
+      .eq('session_status', 'completed')
 
-    // Calculate completion rate (workouts completed / workouts planned)
-    // Simplified for now
-    const completionRate = workoutCount ? Math.min(95, 70 + Math.floor(Math.random() * 25)) : 0
+    const { count: totalRelevant } = await supabase
+      .from('workout_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('athlete_id', athleteId)
+      .in('session_status', ['completed', 'assigned', 'ongoing'])
+
+    const completed = completedCount || 0
+    const total = totalRelevant || 0
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0
 
     return {
       totalWorkouts: workoutCount || 0,
-      weeklyStreak,
       personalRecords: prCount || 0,
       completionRate
     }
@@ -552,7 +560,7 @@ async function getCoachStats(coachId: number): Promise<ProfileViewData['stats']>
     // Count programs (macrocycles created by this coach)
     const { data: coach } = await supabase
       .from('coaches')
-      .select('user_id')
+      .select('user_id, created_at')
       .eq('id', coachId)
       .single()
 
@@ -566,10 +574,22 @@ async function getCoachStats(coachId: number): Promise<ProfileViewData['stats']>
       programCount = count || 0
     }
 
+    // Calculate years of experience from coach created_at (full 12-month years)
+    let yearsExperience: number | undefined
+    if (coach?.created_at) {
+      const now = new Date()
+      const created = new Date(coach.created_at)
+      const diffMs = now.getTime() - created.getTime()
+      const years = Math.floor(diffMs / (365.25 * 24 * 60 * 60 * 1000))
+      if (years >= 1) {
+        yearsExperience = years
+      }
+    }
+
     return {
       athletesCoached: athleteCount,
       programsCreated: programCount,
-      yearsExperience: 0 // TODO: Calculate from coach.experience or join date
+      ...(yearsExperience !== undefined && { yearsExperience })
     }
   } catch (error) {
     console.error('[getCoachStats] Error:', error)

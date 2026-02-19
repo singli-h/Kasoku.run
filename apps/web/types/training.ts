@@ -168,6 +168,8 @@ export interface SessionPlanWithDetails extends SessionPlan {
   microcycle?: Microcycle | null
   session_plan_exercises?: SessionPlanExerciseWithDetails[]
   athlete_group?: AthleteGroup | null
+  /** Workout logs linked to this session plan, used for completion tracking */
+  workout_logs?: Pick<WorkoutLog, 'id' | 'session_status'>[]
 }
 
 export interface SessionPlanExerciseWithDetails extends SessionPlanExercise {

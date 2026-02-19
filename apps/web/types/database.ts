@@ -1483,6 +1483,7 @@ export type Database = {
           p_events?: Json
           p_experience?: string
           p_first_name: string
+          p_group_id?: number
           p_height?: number
           p_last_name: string
           p_philosophy?: string

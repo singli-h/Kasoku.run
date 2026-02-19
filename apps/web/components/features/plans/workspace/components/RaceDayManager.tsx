@@ -1,13 +1,24 @@
 "use client"
 
-import { useState } from "react"
-import { Badge } from "@/components/ui/badge"
+import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Trash2, Flag } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Plus, Edit, Trash2, Flag, Loader2 } from "lucide-react"
+import { deleteRaceAction } from "@/actions/plans/race-actions"
+import { useToast } from "@/hooks/use-toast"
 
 interface Event {
   id: number
@@ -23,9 +34,46 @@ interface RaceDayManagerProps {
 }
 
 export function RaceDayManager({ events }: RaceDayManagerProps) {
+  const { toast } = useToast()
+  const [isPending, startTransition] = useTransition()
   const [editingMode, setEditingMode] = useState<'view' | 'edit'>('view')
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
+  const [deleteConfirmEvent, setDeleteConfirmEvent] = useState<Event | null>(null)
+
+  const handleDeleteEvent = (event: Event) => {
+    setDeleteConfirmEvent(event)
+  }
+
+  const confirmDeleteEvent = () => {
+    if (!deleteConfirmEvent) return
+    const eventId = deleteConfirmEvent.id
+    startTransition(async () => {
+      try {
+        const result = await deleteRaceAction(eventId)
+        if (result.isSuccess) {
+          toast({
+            title: "Race deleted",
+            description: `"${deleteConfirmEvent.name}" has been removed.`,
+          })
+        } else {
+          toast({
+            title: "Failed to delete race",
+            description: result.message,
+            variant: "destructive",
+          })
+        }
+      } catch {
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred while deleting the race.",
+          variant: "destructive",
+        })
+      } finally {
+        setDeleteConfirmEvent(null)
+      }
+    })
+  }
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return ""
@@ -118,12 +166,14 @@ export function RaceDayManager({ events }: RaceDayManagerProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      // TODO: Delete event
-                      console.log('Delete event:', event.id)
-                    }}
+                    onClick={() => handleDeleteEvent(event)}
+                    disabled={isPending}
                   >
-                    <Trash2 className="h-3 w-3" />
+                    {isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    )}
                   </Button>
                 </div>
               )}
@@ -190,6 +240,28 @@ export function RaceDayManager({ events }: RaceDayManagerProps) {
             </CardContent>
           </Card>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteConfirmEvent !== null} onOpenChange={(open) => !open && setDeleteConfirmEvent(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Race Day?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete &quot;{deleteConfirmEvent?.name}&quot;? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDeleteEvent}
+                disabled={isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Edit Race Form */}
         {editingEvent && (

@@ -88,21 +88,27 @@ export default function OnboardingWizard() {
     subscription: "free",
   })
 
+  // Check if user was invited (publicMetadata set server-side by Clerk)
+  const invitedRole = (user?.publicMetadata as { role?: string } | undefined)?.role
+  const isInvitedAthlete = invitedRole === 'athlete'
+
   // Update user data when Clerk user is loaded
   useEffect(() => {
     if (isUserLoaded && user) {
       // Clerk user loaded — PII intentionally omitted from logs
-      
+
       setUserData(prevData => ({
         ...prevData,
         firstName: user.firstName || prevData.firstName,
         lastName: user.lastName || prevData.lastName,
-        email: user.primaryEmailAddress?.emailAddress || prevData.email
+        email: user.primaryEmailAddress?.emailAddress || prevData.email,
+        // Pre-select athlete role if invited
+        ...(isInvitedAthlete && { role: 'athlete' as const }),
       }))
     } else if (isUserLoaded && !user) {
       console.error('Clerk user loaded but null in onboarding wizard')
     }
-  }, [isUserLoaded, user, userId])
+  }, [isUserLoaded, user, userId, isInvitedAthlete])
 
   const [currentStep, setCurrentStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -288,6 +294,7 @@ export default function OnboardingWizard() {
             updateUserData={updateUserData}
             onNext={nextStep}
             onPrev={prevStep}
+            lockedRole={isInvitedAthlete ? 'athlete' : undefined}
           />
         )
       case 2:

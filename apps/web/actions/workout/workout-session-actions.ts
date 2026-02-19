@@ -72,8 +72,14 @@ export async function getTodayAndOngoingSessionsAction(
     }
 
     // 4. Query sessions with proper prioritization
-    // Shows ALL assigned workouts (including overdue) so athletes can complete missed workouts
-    // Priority: ongoing first, then all assigned (sorted by date)
+    // Shows ongoing sessions (regardless of date) and assigned sessions within ±7 days
+    // Priority: ongoing first, then assigned (sorted by date)
+    const now = new Date()
+    const sevenDaysAgo = new Date(now)
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const sevenDaysFromNow = new Date(now)
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7)
+
     const { data: sessions, error } = await supabase
       .from('workout_logs')
       .select(`
@@ -156,7 +162,7 @@ export async function getTodayAndOngoingSessionsAction(
         )
       `)
       .eq('athlete_id', targetAthleteId)
-      .or(`session_status.eq.ongoing,session_status.eq.assigned`) // Show ALL ongoing and assigned
+      .or(`session_status.eq.ongoing,and(session_status.eq.assigned,date_time.gte.${sevenDaysAgo.toISOString()},date_time.lte.${sevenDaysFromNow.toISOString()})`)
       .order('session_status', { ascending: false }) // ongoing first
       .order('date_time', { ascending: true }) // then by scheduled date (oldest first for overdue)
 

@@ -78,6 +78,7 @@ function WorkoutSessionContentV2({
     startSession,
     completeSession,
     saveSession,
+    abandonSession,
     isLoading
   } = useWorkoutSession(existingSession)
 
@@ -331,6 +332,32 @@ function WorkoutSessionContentV2({
     }
   }, [forceSave, completeSession, toast])
 
+  // Handle abandon session
+  const handleAbandonSession = useCallback(async () => {
+    try {
+      // Save exercise data first so nothing is lost
+      await forceSave()
+
+      const result = await abandonSession()
+      if (result.success) {
+        setIsTimerRunning(false)
+        toast({
+          title: "Session Abandoned",
+          description: "Your logged sets have been saved."
+        })
+        router.push('/workout')
+      } else {
+        throw result.error || new Error("Failed to abandon session")
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to abandon session",
+        variant: "destructive"
+      })
+    }
+  }, [forceSave, abandonSession, toast, router])
+
   // Handle save session
   const handleSaveSession = useCallback(async () => {
     try {
@@ -398,6 +425,7 @@ function WorkoutSessionContentV2({
         onUpdateSet={handleUpdateSet}
         onFinishSession={handleFinishSession}
         onSaveSession={handleSaveSession}
+        onAbandonSession={handleAbandonSession}
         aiChangesByExercise={aiChangesByExercise}
       />
 

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useCallback, useMemo } from "react"
+import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,7 +12,7 @@ import { EditRaceDialog } from "./components/EditRaceDialog"
 import { EditSessionDialog } from "./components/EditSessionDialog"
 import { CopySessionDialog } from "./components/CopySessionDialog"
 import { PlanPageHeader } from "../components/PlanPageHeader"
-import { copySessionAction } from "@/actions/plans/session-plan-actions"
+import { copySessionAction, updateSessionPlanAction, deleteSessionPlanAction } from "@/actions/plans/session-plan-actions"
 import {
   createMesocycleAction,
   updateMesocycleAction,
@@ -20,7 +20,9 @@ import {
   createMicrocycleAction,
   updateMicrocycleAction,
   deleteMicrocycleAction,
+  updateMacrocycleAction,
 } from "@/actions/plans/plan-actions"
+import { createRaceAction, updateRaceAction, deleteRaceAction } from "@/actions/plans/race-actions"
 import { Copy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -200,6 +202,14 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
   const touchStartX = useRef<number>(0)
   const touchEndX = useRef<number>(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const titleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Clean up debounced title save on unmount
+  useEffect(() => {
+    return () => {
+      if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+    }
+  }, [])
 
   const addToHistory = useCallback((newPlan: TrainingPlan) => {
     setHistory(prevHistory => {
@@ -477,27 +487,111 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
     }
   }
 
-  const handleSaveEvent = (event: Event) => {
+  const handleSaveEvent = async (event: Event) => {
     const existingEvent = plan.events.find((e) => e.id === event.id)
-    const newPlan = {
-      ...plan,
-      events: existingEvent
-        ? plan.events.map((e) => (e.id === event.id ? event : e))
-        : [...plan.events, event],
+    const isNew = !existingEvent || event.id >= 1e12 // Date.now()-generated IDs are very large
+
+    try {
+      if (isNew) {
+        const result = await createRaceAction({
+          name: event.name || "",
+          type: event.type || "secondary",
+          date: event.date || new Date().toISOString().split("T")[0],
+          macrocycle_id: plan.macrocycle.id,
+        })
+
+        if (!result.isSuccess || !result.data) {
+          toast({
+            title: "Error",
+            description: result.message || "Failed to create race.",
+            variant: "destructive",
+          })
+          return
+        }
+
+        const savedEvent: Event = {
+          id: result.data.id,
+          name: result.data.name,
+          category: event.category,
+          type: result.data.type,
+          date: result.data.date,
+        }
+        const newPlan = {
+          ...plan,
+          events: existingEvent
+            ? plan.events.map((e) => (e.id === event.id ? savedEvent : e))
+            : [...plan.events, savedEvent],
+        }
+        addToHistory(newPlan)
+        toast({ title: "Race saved", description: "Race has been created." })
+      } else {
+        const result = await updateRaceAction(event.id, {
+          name: event.name || undefined,
+          type: event.type || undefined,
+          date: event.date || undefined,
+        })
+
+        if (!result.isSuccess) {
+          toast({
+            title: "Error",
+            description: result.message || "Failed to update race.",
+            variant: "destructive",
+          })
+          return
+        }
+
+        const newPlan = {
+          ...plan,
+          events: plan.events.map((e) => (e.id === event.id ? event : e)),
+        }
+        addToHistory(newPlan)
+        toast({ title: "Race updated", description: "Race has been updated." })
+      }
+      router.refresh()
+    } catch (error) {
+      console.error("Error saving event:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save race. Please try again.",
+        variant: "destructive",
+      })
     }
-    addToHistory(newPlan)
   }
 
-  const handleDeleteEvent = (id: number) => {
-    const newPlan = {
-      ...plan,
-      events: plan.events.filter((e) => e.id !== id),
+  const handleDeleteEvent = async (id: number) => {
+    try {
+      const result = await deleteRaceAction(id)
+
+      if (!result.isSuccess) {
+        toast({
+          title: "Error",
+          description: result.message || "Failed to delete race.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const newPlan = {
+        ...plan,
+        events: plan.events.filter((e) => e.id !== id),
+      }
+      addToHistory(newPlan)
+      toast({ title: "Race deleted", description: "Race has been removed." })
+      router.refresh()
+    } catch (error) {
+      console.error("Error deleting event:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete race. Please try again.",
+        variant: "destructive",
+      })
     }
-    addToHistory(newPlan)
   }
 
-  const handleSaveSession = (session: Session) => {
+  const handleSaveSession = async (session: Session) => {
     if (!selectedMeso || !selectedMicro) return
+
+    // Optimistic local state update
     const updatedMicro = {
       ...selectedMicro,
       sessions: selectedMicro.sessions.some((s) => s.id === session.id)
@@ -515,10 +609,42 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
     addToHistory(newPlan)
     setSelectedMeso(updatedMeso)
     setSelectedMicro(updatedMicro)
+
+    // Persist to server
+    try {
+      const result = await updateSessionPlanAction(session.id, {
+        name: session.name,
+        day: session.day,
+      })
+
+      if (!result.isSuccess) {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Session saved",
+        description: "Your changes have been saved.",
+      })
+      router.refresh()
+    } catch (error) {
+      console.error("Error saving session:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save session. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleDeleteSession = (id: string) => {
+  const handleDeleteSession = async (id: string) => {
     if (!selectedMeso || !selectedMicro) return
+
+    // Optimistic local state update
     const updatedMicro = {
       ...selectedMicro,
       sessions: selectedMicro.sessions.filter((s) => s.id !== id),
@@ -534,6 +660,33 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
     addToHistory(newPlan)
     setSelectedMeso(updatedMeso)
     setSelectedMicro(updatedMicro)
+
+    // Persist to server
+    try {
+      const result = await deleteSessionPlanAction(id)
+
+      if (!result.isSuccess) {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Session deleted",
+        description: result.message,
+      })
+      router.refresh()
+    } catch (error) {
+      console.error("Error deleting session:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete session. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleCopySession = async (sessionId: string, targetMicrocycleId: number, targetDay: number) => {
@@ -657,11 +810,41 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
         status={plan.status}
         editable
         onTitleChange={(newName) => {
+          // Optimistic local state update
           setPlan((prev) => ({
             ...prev,
             macrocycle: { ...prev.macrocycle, name: newName },
           }))
-          addToHistory(plan)
+
+          // Debounced server persistence
+          if (titleSaveTimeoutRef.current) {
+            clearTimeout(titleSaveTimeoutRef.current)
+          }
+          titleSaveTimeoutRef.current = setTimeout(async () => {
+            try {
+              const result = await updateMacrocycleAction(plan.macrocycle.id, { name: newName })
+              if (!result.isSuccess) {
+                toast({
+                  title: "Error",
+                  description: result.message,
+                  variant: "destructive",
+                })
+              } else {
+                toast({
+                  title: "Plan renamed",
+                  description: "Plan title has been saved.",
+                })
+                router.refresh()
+              }
+            } catch (error) {
+              console.error("Error renaming plan:", error)
+              toast({
+                title: "Error",
+                description: "Failed to save plan title. Please try again.",
+                variant: "destructive",
+              })
+            }
+          }, 1000)
         }}
         // Mobile navigation arrows
         showNavArrows

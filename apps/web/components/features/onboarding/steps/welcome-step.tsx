@@ -27,7 +27,7 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
         </h1>
         
         <p className="text-lg text-muted-foreground max-w-md mx-auto">
-          Your comprehensive training platform for athletes and coaches. 
+          Your comprehensive training platform.
           Let's get you set up with a personalized experience.
         </p>
       </div>
@@ -38,9 +38,9 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
             <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-2">
               <span className="text-sm font-bold text-primary">1</span>
             </div>
-            <h3 className="font-semibold text-sm">Choose Your Role</h3>
+            <h3 className="font-semibold text-sm">Choose Your Path</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              Athlete or Coach - we'll customize your experience
+              Tell us how you train and we'll customize your experience
             </p>
           </div>
           

@@ -56,16 +56,6 @@ function isCurrentWeek(week: MicrocycleWithDetails): boolean {
 }
 
 /**
- * Check if a week is in the past
- */
-function isPastWeek(week: MicrocycleWithDetails): boolean {
-  if (!week.end_date) return false
-  const today = new Date()
-  const end = new Date(week.end_date)
-  return today > end
-}
-
-/**
  * Format week date range
  */
 function formatWeekDates(week: MicrocycleWithDetails): string {
@@ -76,14 +66,29 @@ function formatWeekDates(week: MicrocycleWithDetails): string {
 }
 
 /**
- * Calculate week completion percentage
+ * Calculate week completion from workout_logs data.
+ *
+ * A session is considered "done" if it has at least one workout_log with
+ * session_status === "completed". This relies on the `workout_logs` field
+ * being included in the SessionPlanWithDetails query (see getMesocycleByIdAction).
  */
-function getWeekCompletion(week: MicrocycleWithDetails): { done: number; total: number } {
+function getWeekCompletion(week: MicrocycleWithDetails): { done: number; total: number; hasData: boolean } {
   const workouts = week.session_plans ?? []
   const total = workouts.length
-  // For now, consider past weeks as "done" - TODO: integrate with actual completion data
-  const done = isPastWeek(week) ? total : 0
-  return { done, total }
+
+  // Check if any session plan actually carries workout_logs data.
+  // If the field is absent on every session, we cannot determine completion.
+  const hasData = workouts.some(sp => Array.isArray(sp.workout_logs))
+
+  if (!hasData) {
+    return { done: 0, total, hasData: false }
+  }
+
+  const done = workouts.filter(sp =>
+    sp.workout_logs?.some(log => log.session_status === 'completed')
+  ).length
+
+  return { done, total, hasData: true }
 }
 
 /**
@@ -101,14 +106,21 @@ function WeekItem({
   onClick: () => void
 }) {
   const isCurrent = isCurrentWeek(week)
-  const isPast = isPastWeek(week)
-  const { done, total } = getWeekCompletion(week)
+  const { done, total, hasData } = getWeekCompletion(week)
   const dateRange = formatWeekDates(week)
+  const allDone = hasData && total > 0 && done === total
+
+  // Build accessible completion description
+  const completionLabel = hasData && total > 0
+    ? `, ${done} of ${total} workout${total !== 1 ? 's' : ''} completed`
+    : total > 0
+      ? `, ${total} workout${total !== 1 ? 's' : ''}`
+      : ''
 
   return (
     <button
       onClick={onClick}
-      aria-label={`Week ${weekNumber}${dateRange ? `, ${dateRange}` : ''}${total > 0 ? `, ${total} workout${total !== 1 ? 's' : ''}` : ''}${isCurrent ? ', current week' : ''}${isPast ? ', completed' : ''}`}
+      aria-label={`Week ${weekNumber}${dateRange ? `, ${dateRange}` : ''}${completionLabel}${isCurrent ? ', current week' : ''}${allDone ? ', all completed' : ''}`}
       aria-current={isCurrent ? "true" : undefined}
       aria-pressed={isSelected}
       className={cn(
@@ -119,10 +131,12 @@ function WeekItem({
           : "hover:bg-muted/50",
       )}
     >
-      {/* Status icon */}
+      {/* Status icon - reflects real completion, not just date */}
       <div className="shrink-0">
-        {isPast ? (
+        {allDone ? (
           <CheckCircle2 className="h-5 w-5 text-green-500" />
+        ) : hasData && done > 0 ? (
+          <CheckCircle2 className="h-5 w-5 text-amber-500" />
         ) : (
           <Circle className={cn(
             "h-5 w-5",
@@ -149,7 +163,11 @@ function WeekItem({
           {total > 0 && (
             <>
               <span>•</span>
-              <span>{done}/{total} workouts</span>
+              {hasData ? (
+                <span>{done}/{total} workouts</span>
+              ) : (
+                <span>{total} workout{total !== 1 ? 's' : ''}</span>
+              )}
             </>
           )}
         </div>

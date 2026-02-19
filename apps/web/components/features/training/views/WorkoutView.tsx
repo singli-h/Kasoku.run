@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { Check, Loader2, Plus, Calendar, SlidersHorizontal } from "lucide-react"
+import { Check, Loader2, Plus, Calendar, SlidersHorizontal, XCircle } from "lucide-react"
 import { format, isToday, isYesterday, isTomorrow } from "date-fns"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet, ExerciseLibraryItem } from "../types"
@@ -15,6 +15,17 @@ import { ExerciseCard } from "../components/ExerciseCard"
 import { SectionDivider } from "../components/SectionDivider"
 import { ExercisePickerSheet } from "../components/ExercisePickerSheet"
 import { SessionCompletionModal } from "../components/SessionCompletionModal"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { BackToTopButton } from "@/components/ui/back-to-top-button"
 
 export interface WorkoutViewProps {
@@ -55,6 +66,7 @@ export interface WorkoutViewProps {
   onReorderExercises?: (fromId: number | string, toId: number | string) => void
   onFinishSession?: () => void
   onSaveSession?: () => void
+  onAbandonSession?: () => void
   /** Create a superset from selected exercise IDs */
   onCreateSuperset?: (exerciseIds: (string | number)[]) => void
   /** Unlink a superset (dissolve all exercises in it) */
@@ -104,6 +116,7 @@ export function WorkoutView({
   onReorderExercises,
   onFinishSession,
   onSaveSession,
+  onAbandonSession,
   onCreateSuperset,
   onUnlinkSuperset,
   aiChangesByExercise,
@@ -375,8 +388,36 @@ export function WorkoutView({
               )}
             </div>
 
-            {/* Save/Finish Buttons */}
+            {/* Abandon/Save/Finish Buttons */}
             <div className="flex items-center gap-2">
+              {/* Abandon button - only shown for ongoing sessions */}
+              {!isCompleted && isAthlete && onAbandonSession && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-md"
+                      title="Abandon session"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Abandon this session?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Your logged sets will be saved, but the session will be marked as cancelled. You can start a new session later.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Keep Going</AlertDialogCancel>
+                      <AlertDialogAction onClick={onAbandonSession}>
+                        Abandon Session
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+
               {/* Save button - shown for both ongoing and completed sessions */}
               {isAthlete && onSaveSession && (
                 <button

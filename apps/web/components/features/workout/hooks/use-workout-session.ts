@@ -33,6 +33,7 @@ interface UseWorkoutSessionReturn extends WorkoutSessionState {
   startSession: () => Promise<{ success: boolean; error?: Error }>
   saveSession: (notes?: string) => Promise<{ success: boolean; error?: Error }>
   completeSession: (notes?: string) => Promise<{ success: boolean; error?: Error }>
+  abandonSession: () => Promise<{ success: boolean; error?: Error }>
   updateTrainingDetail: (detailId: string, updates: Partial<WorkoutLogSet>) => void
   updateWorkoutLogSets: (exerciseId: number, updatedDetails: WorkoutLogSet[]) => void
   refreshSessionData: () => Promise<void>
@@ -192,8 +193,8 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
       const currentStatus = state.session?.session_status || (state.session as any)?.session_status
       const updates: { session_status?: SessionStatus; notes?: string } = {}
 
-      // Only set to 'ongoing' if not already completed (prevents status regression)
-      if (currentStatus !== 'completed') {
+      // Only set to 'ongoing' if not already completed or cancelled (prevents status regression)
+      if (currentStatus !== 'completed' && currentStatus !== 'cancelled') {
         updates.session_status = 'ongoing'
       }
 
@@ -254,6 +255,45 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
     }
   }, [saveSession, (state.session as any)?.id, workoutApi, refreshSessionData])
 
+  // Abandon/cancel an ongoing session
+  const abandonSession = useCallback(async () => {
+    if (!(state.session as any)?.id) {
+      return { success: false, error: new Error('No session available') }
+    }
+
+    try {
+      setState(prev => ({ ...prev, isLoading: true }))
+
+      // Update session status to cancelled
+      const success = await workoutApi.updateSession(
+        (state.session as any).id,
+        { session_status: 'cancelled' },
+        true
+      )
+
+      if (!success) {
+        throw new Error('Failed to abandon session')
+      }
+
+      setState(prev => ({
+        ...prev,
+        sessionStatus: 'cancelled',
+        isLoading: false
+      }))
+
+      return { success: true }
+    } catch (error) {
+      console.error("Error abandoning session:", error)
+      const err = error instanceof Error ? error : new Error('Failed to abandon session')
+      setState(prev => ({
+        ...prev,
+        error: err,
+        isLoading: false
+      }))
+      return { success: false, error: err }
+    }
+  }, [(state.session as any)?.id, workoutApi])
+
   // Update a single training detail
   const updateTrainingDetail = useCallback((detailId: string, updates: Partial<WorkoutLogSet>) => {
     setTrainingDetails(prev => {
@@ -283,6 +323,7 @@ export const useWorkoutSession = (initialSession?: WorkoutLogWithDetails): UseWo
     startSession,
     saveSession,
     completeSession,
+    abandonSession,
     updateTrainingDetail,
     updateWorkoutLogSets,
     refreshSessionData

@@ -6,8 +6,6 @@
  */
 
 export { PlanReviewScreen } from './PlanReviewScreen'
-export { PlanReviewOptionC } from './PlanReviewOptionC'
-export { PlanReviewOptionD } from './PlanReviewOptionD'
 export { PlanGenerationReview } from './PlanGenerationReview'
 export { PlanApprovalBar } from './PlanApprovalBar'
 export { ProposedBlockSummary } from './ProposedBlockSummary'

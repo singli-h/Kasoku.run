@@ -8,14 +8,25 @@
 
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { AlertCircle, Clock, CheckCircle, XCircle, Play, Save, Trophy, Eye, EyeOff } from "lucide-react"
+import { useMemo } from "react"
+import { AlertCircle, Clock, CheckCircle, XCircle, Play, Save, Trophy, Eye, EyeOff, ArrowLeft, Dumbbell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 import { 
   useExerciseContext, 
   useWorkoutSession, 
@@ -81,13 +92,15 @@ const SESSION_STATUS_CONFIG = {
 export function ExerciseDashboard({ session, exercises, className }: ExerciseDashboardProps) {
   const { showVideo, toggleVideo } = useExerciseContext()
   const { toast } = useToast()
+  const router = useRouter()
   const {
     sessionStatus,
     isLoading,
     error,
     startSession,
     saveSession,
-    completeSession
+    completeSession,
+    abandonSession
   } = useWorkoutSession(session)
 
   // Group exercises using the brilliant algorithm with separate supersets
@@ -156,11 +169,25 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
         description: result.error.message || "Please try again",
         variant: "destructive"
       })
+    }
+    // Don't redirect — the UI will show the completion card via sessionStatus === 'completed'
+  }
+
+  const handleAbandonSession = async () => {
+    const result = await abandonSession()
+    if (!result.success && result.error) {
+      console.error("Failed to abandon session:", result.error)
+      toast({
+        title: "Failed to abandon",
+        description: result.error.message || "Please try again",
+        variant: "destructive"
+      })
     } else {
       toast({
-        title: "Workout completed! 🎉",
-        description: "Great job finishing your session"
+        title: "Session abandoned",
+        description: "Your progress has been saved"
       })
+      router.push('/workout')
     }
   }
 
@@ -182,8 +209,35 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
       case 'ongoing':
         return (
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isLoading}
+                  className="text-muted-foreground"
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Abandon
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Abandon this session?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Your logged sets will be saved, but the session will be marked as cancelled. You can start a new session later.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep Going</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleAbandonSession}>
+                    Abandon Session
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button
+              variant="outline"
               onClick={handleSaveSession}
               disabled={isLoading}
               className="flex items-center gap-2"
@@ -191,9 +245,9 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
               <Save className="h-4 w-4" />
               Save Progress
             </Button>
-            <Button 
+            <Button
               onClick={handleCompleteSession}
-              disabled={isLoading || completionStats.percentage < 100}
+              disabled={isLoading}
               className="flex items-center gap-2"
             >
               <Trophy className="h-4 w-4" />
@@ -201,18 +255,49 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
             </Button>
           </div>
         )
-      
+
       case 'completed':
-        return (
-          <Badge variant="outline" className="flex items-center gap-2 px-4 py-2">
-            <CheckCircle className="h-4 w-4" />
-            Session Completed
-          </Badge>
-        )
+        return null // Handled by completion card below
       
       default:
         return null
     }
+  }
+
+  // Completion card — shown when session finishes
+  if (sessionStatus === 'completed') {
+    return (
+      <div className={cn("max-w-4xl mx-auto p-6 space-y-6", className)}>
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="rounded-full bg-green-100 p-4 mb-4">
+              <Trophy className="h-8 w-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-green-900 mb-2">
+              Workout Complete!
+            </h2>
+            <p className="text-green-700 mb-1">
+              {session.session_plan?.name || "Session"}
+            </p>
+            <div className="flex items-center gap-4 text-sm text-green-600 mb-6">
+              <span>{completionStats.completed}/{completionStats.total} exercises</span>
+              {completionStats.total > 0 && (
+                <span>{completionStats.percentage}% completed</span>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => router.push('/workout/history')}>
+                View History
+              </Button>
+              <Button onClick={() => router.push('/workout')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Workouts
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -235,10 +320,10 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
                 <span>{(session as any).date_time ? new Date((session as any).date_time).toLocaleDateString() : 'No date'}</span>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
               {/* Status Badge */}
-              <Badge 
+              <Badge
                 variant={statusConfig.variant}
                 className={cn("flex items-center gap-2", statusConfig.textColor)}
               >
@@ -262,7 +347,7 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${completionStats.percentage}%` }}
               />
@@ -319,8 +404,17 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
           <Card>
             <CardContent className="pt-6">
               <div className="text-center py-8 text-gray-500">
-                <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                <p>No exercises found for this session.</p>
+                <Dumbbell className="h-8 w-8 mx-auto mb-2" />
+                <p className="font-medium">No exercises in this session yet.</p>
+                <p className="text-sm mt-1">Add exercises from the session planner to get started.</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => router.push('/workout')}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Workouts
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Edit, Plus, Trash2, Copy } from "lucide-react"
+import { Edit, Trash2 } from "lucide-react"
 import { usePlanContext } from "../context/PlanContext"
 import { useTerminology } from "@/lib/terminology"
 
@@ -52,10 +52,6 @@ export function MesocycleEditor({
             <Edit className="h-4 w-4 mr-1" />
             {editingMode === 'edit' ? 'Done' : 'Edit'}
           </Button>
-          <Button variant="outline" size="sm">
-            <Copy className="h-4 w-4 mr-1" />
-            Duplicate
-          </Button>
         </div>
       </div>
 
@@ -91,12 +87,6 @@ export function MesocycleEditor({
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-medium">Training Weeks</h3>
-          {editingMode === 'edit' && (
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Week
-            </Button>
-          )}
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -163,20 +153,6 @@ export function MesocycleEditor({
         </div>
       </div>
 
-      {/* Load Progression Chart Placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Load Progression</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-32 bg-muted/20 rounded flex items-center justify-center">
-            <div className="text-center text-muted-foreground">
-              <div className="text-sm">Volume & Intensity Trends</div>
-              <div className="text-xs">Chart visualization coming soon</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

@@ -5,6 +5,5 @@
 
 export { WorkoutPageContent } from './workout-page-content'
 export { WorkoutSessionSelector } from './workout-session-selector'
-export { WorkoutSessionDashboard } from './workout-session-dashboard'
 export { WorkoutHistoryPage } from './workout-history-page'
 export { OngoingSessionBanner } from './ongoing-session-banner'

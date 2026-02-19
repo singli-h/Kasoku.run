@@ -22,6 +22,7 @@
  * @see docs/features/plans/individual/IMPLEMENTATION_PLAN.md
  */
 
+import { useRouter } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import { AlertTriangle } from 'lucide-react'
 import { PlanContextProvider } from './context'
@@ -74,6 +75,7 @@ function PlanPageFallback({
   error: Error
   resetErrorBoundary: () => void
 }) {
+  const router = useRouter()
   return (
     <div className="flex flex-col">
       {/* Error notification banner */}
@@ -100,7 +102,7 @@ function PlanPageFallback({
               Try Again
             </button>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => router.refresh()}
               className="px-3 py-1.5 bg-muted text-foreground rounded-md text-xs font-medium hover:bg-muted/80 transition-colors"
             >
               Reload Page

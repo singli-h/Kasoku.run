@@ -74,20 +74,17 @@ export function PlanReview({ planData, onBack, onComplete }: PlanReviewProps) {
           end_date: format(planData.endDate, 'yyyy-MM-dd'),
         })
 
-        // If sessions exist, save them in parallel
+        // If sessions exist, save them as a batch
         if (planData.sessions && planData.sessions.length > 0 && result.isSuccess && result.data) {
           const microcycleId = result.data.id
 
-          // Execute all session saves in parallel for better performance
-          await Promise.all(
-            planData.sessions.map(session =>
-              saveSessionPlanAction({
-                ...session,
-                microcycle_id: microcycleId,
-                athlete_group_id: planData.athleteGroupId || undefined,
-              })
-            )
-          )
+          await saveSessionPlanAction({
+            name: planData.name,
+            description: planData.description,
+            microcycleId: microcycleId,
+            athleteGroupId: planData.athleteGroupId,
+            sessions: planData.sessions,
+          })
         }
       }
 

@@ -9,6 +9,7 @@ Handles athlete profiles, group assignments, and coach-athlete relationships.
 
 import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
+import supabaseService from "@/lib/supabase-service"
 import { getDbUserId, getUserInfo } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import {
@@ -1378,9 +1379,40 @@ export async function inviteOrAttachAthleteAction(
       // User exists - ensure they have an athlete profile and assign to group
       const { user_id, athlete_id, current_group_id } = lookupResult
 
+      // Check if user is a coach — coaches cannot be invited as athletes
+      const { data: targetUser } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user_id)
+        .single()
+
+      if (targetUser?.role === 'coach') {
+        return {
+          isSuccess: false,
+          message: "Cannot invite a coach as an athlete"
+        }
+      }
+
+      // Promote 'individual' users to 'athlete' role
+      // Uses service client to bypass RLS (coach already verified above)
+      const { error: roleError } = await supabaseService
+        .from('users')
+        .update({ role: 'athlete' })
+        .eq('id', user_id)
+        .eq('role', 'individual')
+
+      if (roleError) {
+        console.error('Error promoting user role to athlete:', roleError)
+        return {
+          isSuccess: false,
+          message: "Failed to update user role"
+        }
+      }
+
       if (!athlete_id) {
         // Create athlete profile
-        const { data: newAthlete, error: athleteError } = await supabase
+        // Uses service client to bypass RLS (coach already verified above)
+        const { data: newAthlete, error: athleteError } = await supabaseService
           .from('athletes')
           .insert({
             user_id: user_id,
@@ -1416,7 +1448,8 @@ export async function inviteOrAttachAthleteAction(
         }
       } else {
         // Athlete profile exists - update group assignment
-        const { data: updatedAthlete, error: updateError } = await supabase
+        // Uses service client to bypass RLS (coach already verified above)
+        const { data: updatedAthlete, error: updateError } = await supabaseService
           .from('athletes')
           .update({ athlete_group_id: groupId })
           .eq('id', athlete_id)
@@ -1452,38 +1485,27 @@ export async function inviteOrAttachAthleteAction(
         }
       }
     } else {
-      // User doesn't exist - send Clerk invitation
+      // User doesn't exist - send Clerk invitation with metadata
       try {
         const { clerkClient } = await import('@clerk/nextjs/server')
-        
+
         const invitation = await clerkClient.invitations.createInvitation({
           emailAddress: email,
-          redirectUrl: `${process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL || '/onboarding'}?groupId=${groupId}`,
-          notify: true
+          redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/accept-invitation`,
+          notify: true,
+          publicMetadata: {
+            groupId,
+            coachId: (user.coach as { id: number }).id,
+            role: 'athlete',
+          },
         })
 
-        // Create a pending athlete record linked to the invitation
-        const { data: pendingAthlete, error: pendingError } = await supabase
-          .from('athletes')
-          .insert({
-            // Note: user_id is required, so this athlete record will be created
-            // when the user completes signup, not during invitation
-            athlete_group_id: groupId,
-            // Store invitation ID in metadata for later linking
-            training_goals: `Invited via ${invitation.id}`
-          } as any) // Temporary workaround - invitation flow needs refactoring
-          .select()
-          .single()
-
-        if (pendingError) {
-          console.error('Error creating pending athlete record:', pendingError)
-          // Don't fail the whole operation if we can't create pending record
-        }
+        console.log('Invitation sent:', invitation.id, 'with groupId:', groupId)
 
         return {
           isSuccess: true,
           message: "Invitation sent successfully",
-          data: { type: 'invited', athlete: pendingAthlete ?? undefined }
+          data: { type: 'invited' }
         }
       } catch (clerkError) {
         console.error('Error sending Clerk invitation:', clerkError)

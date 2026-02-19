@@ -453,14 +453,13 @@ export async function getCoachDashboardDataAction(): Promise<
     const athleteUserIds = athletesData?.map(a => a.user_id).filter(Boolean) as number[] || []
 
     // Step 2: Parallel queries that depend on athlete IDs
-    const [mesocyclesResult, logsResult, lastWorkoutsResult] = await Promise.all([
-      // Count mesocycles for these athletes' user_ids (mesocycles link via user_id)
-      athleteUserIds.length > 0
-        ? supabase
-            .from('mesocycles')
-            .select('id')
-            .in('user_id', athleteUserIds)
-        : Promise.resolve({ data: [], error: null }),
+    const [activePlansResult, logsResult, lastWorkoutsResult] = await Promise.all([
+      // Count macrocycles created by this coach that are assigned to a group
+      supabase
+        .from('macrocycles')
+        .select('id')
+        .eq('user_id', dbUserId)
+        .not('athlete_group_id', 'is', null),
 
       // Recent workout logs across all coach's athletes
       athleteIds.length > 0
@@ -535,7 +534,7 @@ export async function getCoachDashboardDataAction(): Promise<
     const coachDashboardData: CoachDashboardData = {
       athletes,
       totalAthletes: athletes.length,
-      activePlans: mesocyclesResult.data?.length || 0,
+      activePlans: activePlansResult.data?.length || 0,
       recentActivity
     }
 

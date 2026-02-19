@@ -9,6 +9,7 @@ Follows Apple-inspired design principles with clean, minimalist layout.
 "use client"
 
 import { ReactNode } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, RefreshCw, Home } from "lucide-react"
@@ -81,6 +82,7 @@ function PageContent({ children, className }: PageContentProps) {
  * Consistent error state with retry functionality
  */
 function PageError({ title, error, onRetry }: PageErrorProps) {
+  const router = useRouter()
   return (
     <div className="page-container">
       <div className="page-header">
@@ -116,7 +118,7 @@ function PageError({ title, error, onRetry }: PageErrorProps) {
                   variant="outline"
                   size="sm"
                   className="flex items-center gap-2"
-                  onClick={() => window.location.href = '/dashboard'}
+                  onClick={() => router.push('/dashboard')}
                 >
                   <Home className="h-4 w-4" />
                   Go to Dashboard

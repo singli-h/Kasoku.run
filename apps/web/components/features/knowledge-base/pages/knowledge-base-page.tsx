@@ -86,7 +86,7 @@ export function KnowledgeBasePage() {
           <p className="text-muted-foreground mb-4">
             {articlesError?.message || categoriesError?.message}
           </p>
-          <Button onClick={() => window.location.reload()}>
+          <Button onClick={() => router.refresh()}>
             Try Again
           </Button>
         </div>

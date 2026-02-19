@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { 
   Search, 
@@ -17,8 +18,6 @@ import {
   Dumbbell,
   Heart,
   Zap,
-  Copy,
-  Edit,
   Trash2,
   Play,
   MoreHorizontal
@@ -53,6 +52,16 @@ import {
   DialogTitle,
   DialogTrigger
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -73,6 +82,7 @@ interface TemplateWithStats extends SessionPlan {
 }
 
 export function TemplatesPage() {
+  const router = useRouter()
   const { toast } = useToast()
   const [templates, setTemplates] = useState<TemplateWithStats[]>([])
   const [filteredTemplates, setFilteredTemplates] = useState<TemplateWithStats[]>([])
@@ -81,6 +91,7 @@ export function TemplatesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all")
   const [selectedTab, setSelectedTab] = useState("popular")
+  const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null)
 
   // Load templates
   const loadTemplates = async () => {
@@ -155,7 +166,7 @@ export function TemplatesPage() {
           description: "Template plan created successfully",
         })
         // Redirect to plans page or open MesoWizard with template data
-        window.location.href = `/plans?template=${templateId}`
+        router.push(`/plans?template=${templateId}`)
       } else {
         toast({
           title: "Error",
@@ -173,11 +184,9 @@ export function TemplatesPage() {
   }
 
   const handleDeleteTemplate = async (templateId: string) => {
-    if (!confirm("Are you sure you want to delete this template?")) return
-
     try {
       const result = await deleteTemplateAction(templateId)
-      
+
       if (result.isSuccess) {
         toast({
           title: "Success",
@@ -197,6 +206,8 @@ export function TemplatesPage() {
         description: "Failed to delete template",
         variant: "destructive"
       })
+    } finally {
+      setDeleteTemplateId(null)
     }
   }
 
@@ -234,7 +245,7 @@ export function TemplatesPage() {
           </p>
         </div>
         
-        <Button onClick={() => window.location.href = "/plans"}>
+        <Button onClick={() => router.push("/plans")}>
           <Plus className="h-4 w-4 mr-2" />
           Create New Template
         </Button>
@@ -314,7 +325,7 @@ export function TemplatesPage() {
                     : "Be the first to create a template for the community"
                   }
                 </p>
-                <Button onClick={() => window.location.href = "/plans"}>
+                <Button onClick={() => router.push("/plans")}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Template
                 </Button>
@@ -327,7 +338,7 @@ export function TemplatesPage() {
                   key={(template as any).id}
                   template={template}
                   onUse={() => handleUseTemplate((template as any).id)}
-                  onDelete={() => handleDeleteTemplate((template as any).id)}
+                  onDelete={() => setDeleteTemplateId((template as any).id)}
                   getCategoryIcon={getCategoryIcon}
                   getDifficultyColor={getDifficultyColor}
                 />
@@ -336,6 +347,26 @@ export function TemplatesPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={!!deleteTemplateId} onOpenChange={(open) => !open && setDeleteTemplateId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Template?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this template? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTemplateId && handleDeleteTemplate(deleteTemplateId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -382,10 +413,6 @@ function TemplateCard({ template, onUse, onDelete, getCategoryIcon, getDifficult
                     <Play className="h-4 w-4 mr-2" />
                     Use Template
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => window.location.href = `/templates/${(template as any).id}`}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    View Details
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onDelete} className="text-red-600">
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -426,9 +453,6 @@ function TemplateCard({ template, onUse, onDelete, getCategoryIcon, getDifficult
               <Button onClick={onUse} className="flex-1">
                 <Play className="h-4 w-4 mr-2" />
                 Use Template
-              </Button>
-              <Button variant="outline" onClick={() => window.location.href = `/templates/${(template as any).id || 1}`}>
-                <Copy className="h-4 w-4" />
               </Button>
             </div>
           </div>

@@ -1,5 +1,6 @@
 "use server"
 
+import { currentUser } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { ActionState } from "@/types"
 import { Database } from "@/types/database"
@@ -133,6 +134,28 @@ export async function completeOnboardingAction(
     const uniqueUsername = await generateUniqueUsername(data.username)
     console.log('Generated unique username:', uniqueUsername, 'from base:', data.username)
 
+    // Read Clerk publicMetadata for invitation context (tamper-proof, set server-side)
+    const clerkUser = await currentUser()
+    const meta = clerkUser?.publicMetadata as { groupId?: number; coachId?: number; role?: string } | undefined
+    let invitedGroupId: number | null = meta?.groupId ?? null
+
+    // Validate the group actually exists before passing to RPC
+    if (invitedGroupId !== null) {
+      const { data: groupCheck } = await supabase
+        .from('athlete_groups')
+        .select('id')
+        .eq('id', invitedGroupId)
+        .single()
+
+      if (!groupCheck) {
+        console.warn(`Invalid groupId ${invitedGroupId} from Clerk metadata — ignoring`)
+        invitedGroupId = null
+      }
+    }
+
+    // If user was invited as athlete, force that role regardless of what was submitted
+    const effectiveRole = meta?.role === 'athlete' ? 'athlete' : data.role
+
     // Prepare RPC parameters based on role
     // Start with required base params, then add optional role-specific params
     const rpcParams: CompleteOnboardingArgs = {
@@ -141,11 +164,13 @@ export async function completeOnboardingAction(
       p_email: data.email,
       p_first_name: data.firstName.trim(),
       p_last_name: data.lastName.trim(),
-      p_role: data.role,
+      p_role: effectiveRole,
       // Only pass birthdate if it's a non-empty string (empty string would fail DATE cast)
       p_birthdate: data.birthdate && data.birthdate.trim() ? data.birthdate.trim() : undefined,
       p_timezone: data.timezone || 'UTC',
       p_subscription: data.subscription,
+      // Link invited athlete to coach's group
+      p_group_id: invitedGroupId ?? undefined,
     }
 
     // Add role-specific parameters (undefined for optional fields that aren't set)

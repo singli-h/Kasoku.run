@@ -101,6 +101,8 @@ export async function getSpecificPBAction(
       return { isSuccess: false, message: "Not authorized to access this athlete's data" }
     }
 
+    // Use .limit(1) instead of .maybeSingle() to avoid errors when
+    // an exercise has both sprint PBs (with distance) and gym PBs (without distance)
     const { data, error } = await supabase
       .from("athlete_personal_bests")
       .select(`
@@ -117,17 +119,19 @@ export async function getSpecificPBAction(
       `)
       .eq("athlete_id", athleteId)
       .eq("exercise_id", exerciseId)
-      .maybeSingle()
+      .order("achieved_date", { ascending: false })
+      .limit(1)
 
     if (error) {
       console.error("[getSpecificPBAction] DB error:", error)
       return { isSuccess: false, message: "Failed to fetch personal best" }
     }
 
+    const pb = data?.[0] || null
     return {
       isSuccess: true,
-      message: data ? "Personal best found" : "No personal best found",
-      data: data || null,
+      message: pb ? "Personal best found" : "No personal best found",
+      data: pb,
     }
   } catch (error) {
     console.error("[getSpecificPBAction]:", error)
@@ -731,11 +735,131 @@ export async function processSessionForPBsAction(
       }
     }
 
+    // ========================================
+    // Gym PB Detection (weight-based exercises)
+    // ========================================
+    // Query all completed sets with weight data for this session
+    const { data: gymSets, error: gymError } = await supabase
+      .from("workout_log_sets")
+      .select(`
+        id,
+        weight,
+        reps,
+        completed,
+        workout_log_exercise:workout_log_exercises!inner(
+          id,
+          exercise_id,
+          exercise:exercises(id, name),
+          workout_log:workout_logs!inner(
+            id,
+            athlete_id
+          )
+        )
+      `)
+      .eq("completed", true)
+      .not("weight", "is", null)
+      .gt("weight", 0)
+      .eq("workout_log_exercise.workout_log.id", sessionId)
+      .eq("workout_log_exercise.workout_log.athlete_id", athlete.id)
+
+    if (gymError) {
+      console.error("[processSessionForPBsAction] Gym query error:", gymError)
+      // Don't fail — sprint PBs already processed
+    } else {
+      // Group by exercise_id, find max weight per exercise
+      const exerciseMaxWeight = new Map<number, { weight: number; reps: number | null; exerciseName: string }>()
+
+      for (const set of (gymSets || []) as Array<{
+        id: string
+        weight: number | null
+        reps: number | null
+        completed: boolean
+        workout_log_exercise: {
+          id: string
+          exercise_id: number | null
+          exercise: { id: number; name: string } | null
+          workout_log: { id: string; athlete_id: number | null } | null
+        } | null
+      }>) {
+        const exerciseId = set.workout_log_exercise?.exercise_id
+        if (!exerciseId || !set.weight) continue
+
+        const current = exerciseMaxWeight.get(exerciseId)
+        if (!current || set.weight > current.weight) {
+          exerciseMaxWeight.set(exerciseId, {
+            weight: set.weight,
+            reps: set.reps,
+            exerciseName: set.workout_log_exercise?.exercise?.name || 'Unknown'
+          })
+        }
+      }
+
+      // Check each exercise's max weight against existing PBs
+      for (const [exerciseId, { weight, reps, exerciseName }] of exerciseMaxWeight) {
+        // Look for existing weight PB for this exercise (unit_id=3 for kg, no distance)
+        const { data: existingPB } = await supabase
+          .from("athlete_personal_bests")
+          .select("*")
+          .eq("athlete_id", athlete.id)
+          .eq("exercise_id", exerciseId)
+          .eq("unit_id", 3)
+          .is("distance", null)
+          .maybeSingle()
+
+        if (!existingPB || weight > Number(existingPB.value)) {
+          const pbData = {
+            athlete_id: athlete.id,
+            exercise_id: exerciseId,
+            value: weight,
+            unit_id: 3, // kg
+            achieved_date: new Date().toISOString().split("T")[0],
+            session_id: sessionId,
+            verified: false,
+            notes: `Auto-detected: ${weight}kg${reps ? ` x ${reps} reps` : ''} — ${exerciseName}`,
+            metadata: JSON.parse(JSON.stringify({ reps, type: 'gym_weight' })),
+          }
+
+          if (!existingPB) {
+            const { error: insertError } = await supabase
+              .from("athlete_personal_bests")
+              .insert(pbData)
+
+            if (insertError) {
+              console.error(`[processSessionForPBsAction] Gym PB insert error for ${exerciseName}:`, insertError)
+            } else {
+              detected++
+              console.log(`[processSessionForPBsAction] New gym PB: ${exerciseName} ${weight}kg`)
+            }
+          } else {
+            const { error: updateError } = await supabase
+              .from("athlete_personal_bests")
+              .update({
+                value: weight,
+                achieved_date: pbData.achieved_date,
+                session_id: sessionId,
+                notes: pbData.notes,
+                metadata: pbData.metadata,
+              })
+              .eq("id", existingPB.id)
+
+            if (updateError) {
+              console.error(`[processSessionForPBsAction] Gym PB update error for ${exerciseName}:`, updateError)
+            } else {
+              detected++
+              updated++
+              console.log(`[processSessionForPBsAction] Updated gym PB: ${exerciseName} ${weight}kg (was ${existingPB.value}kg)`)
+            }
+          }
+        }
+      }
+    }
+
     revalidatePath("/performance")
+    revalidatePath("/personal-bests")
 
     return {
       isSuccess: true,
-      message: `Processed ${sprintSets.length} sprint records. Found ${detected} PBs (${updated} updates).`,
+      message: `Processed ${sprintSets.length} sprint + ${gymSets?.length || 0} gym records. Found ${detected} PBs (${updated} updates).`,
       data: { detected, updated },
     }
   } catch (error) {

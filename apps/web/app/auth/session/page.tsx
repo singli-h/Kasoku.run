@@ -12,12 +12,21 @@
 
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
 
-export default function SessionHandler() {
+export default function SessionHandlerPage() {
+  return (
+    <Suspense fallback={null}>
+      <SessionHandler />
+    </Suspense>
+  )
+}
+
+function SessionHandler() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { isLoaded, isSignedIn } = useAuth()
 
   useEffect(() => {
@@ -28,7 +37,10 @@ export default function SessionHandler() {
         if (onboardingRes.ok) {
           const onboardingJson = await onboardingRes.json()
           if (onboardingJson?.onboarding_completed !== true) {
-            router.replace("/onboarding")
+            // Forward groupId to onboarding if present (from invite link)
+            const groupId = searchParams.get("groupId")
+            const onboardingUrl = groupId ? `/onboarding?groupId=${groupId}` : "/onboarding"
+            router.replace(onboardingUrl)
             return
           }
         }
@@ -58,7 +70,7 @@ export default function SessionHandler() {
     if (isLoaded && isSignedIn) {
       decide()
     }
-  }, [isLoaded, isSignedIn, router])
+  }, [isLoaded, isSignedIn, router, searchParams])
 
   return null
 }

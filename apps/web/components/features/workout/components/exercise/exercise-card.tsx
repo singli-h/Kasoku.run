@@ -41,7 +41,7 @@ interface ExerciseField {
 // Only include fields that actually exist in the database schema
 const EXERCISE_FIELDS: ExerciseField[] = [
   { key: 'reps', label: 'Reps', type: 'number', placeholder: '12' },
-  { key: 'weight', label: 'Weight', type: 'number', unit: 'lbs', placeholder: '135' },
+  { key: 'weight', label: 'Weight', type: 'number', unit: 'kg', placeholder: '60' },
   { key: 'performing_time', label: 'Duration', type: 'time', unit: 'sec', placeholder: '30' },
   { key: 'distance', label: 'Distance', type: 'number', unit: 'yards', placeholder: '100' },
   { key: 'power', label: 'Power', type: 'number', unit: 'W', placeholder: '200' },

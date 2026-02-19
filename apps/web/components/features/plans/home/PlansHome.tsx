@@ -109,10 +109,15 @@ export async function PlansHome() {
       }
     }).filter((anchor): anchor is { id: string; name: string; date: string; week: number; exactPosition: number; isPrimary: boolean } => anchor !== null)
 
+    // Compute state from dates: before start = Draft, between start/end = Active, after end = Archived
+    const now = new Date()
+    const computedState: "Draft" | "Active" | "Archived" =
+      now < startDate ? "Draft" : now > endDate ? "Archived" : "Active"
+
     return {
       id: macro.id!.toString(),
       name: macro.name || "Untitled Plan",
-      state: "Active" as const, // Default state - you can add a state field to your database
+      state: computedState,
       group: macro.athlete_group?.group_name || undefined,
       start: macro.start_date!,
       end: macro.end_date!,

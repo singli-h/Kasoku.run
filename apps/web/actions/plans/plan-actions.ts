@@ -419,6 +419,8 @@ export async function deleteMacrocycleAction(id: number): Promise<ActionState<bo
       }
     }
 
+    revalidatePath('/plans', 'page')
+
     return {
       isSuccess: true,
       message: "Macrocycle deleted successfully",
@@ -626,7 +628,8 @@ export async function getMesocycleByIdAction(id: number): Promise<ActionState<Me
               *,
               exercise:exercises(*),
               session_plan_sets(*)
-            )
+            ),
+            workout_logs(id, session_status)
           )
         )
       `)
@@ -1569,6 +1572,177 @@ export async function copyMacrocycleAsTemplateAction(
 }
 
 // ============================================================================
+// MACROCYCLE ASSIGNMENT ACTIONS
+// ============================================================================
+
+/**
+ * Get the count of active assignments (workout_logs) linked to a macrocycle.
+ * Uses a single query with nested !inner joins to avoid waterfall queries.
+ * Only counts workout_logs with session_status IN ('assigned', 'ongoing').
+ */
+export async function getAssignmentCountForMacrocycle(
+  macrocycleId: number
+): Promise<ActionState<{ count: number; athleteNames: string[] }>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return { isSuccess: false, message: "User not authenticated" }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify ownership
+    const { data: macrocycle, error: macroError } = await supabase
+      .from('macrocycles')
+      .select('id')
+      .eq('id', macrocycleId)
+      .eq('user_id', dbUserId)
+      .single()
+
+    if (macroError || !macrocycle) {
+      return { isSuccess: false, message: "Macrocycle not found" }
+    }
+
+    // Single query: get all session_plan IDs via nested inner joins
+    const { data: sessionPlans, error: spError } = await supabase
+      .from('session_plans')
+      .select('id, microcycles!inner(mesocycles!inner(macrocycle_id))')
+      .eq('microcycles.mesocycles.macrocycle_id', macrocycleId)
+
+    if (spError) {
+      console.error('Error fetching session plans for assignment count:', spError)
+      return { isSuccess: false, message: `Failed to fetch assignments: ${spError.message}` }
+    }
+
+    if (!sessionPlans || sessionPlans.length === 0) {
+      return { isSuccess: true, message: "No assignments found", data: { count: 0, athleteNames: [] } }
+    }
+
+    const sessionPlanIds = sessionPlans.map(sp => sp.id)
+
+    // Get workout_logs with active statuses + athlete names in one query
+    const { data: workoutLogs, error: wlError } = await supabase
+      .from('workout_logs')
+      .select('athlete_id, athletes!inner(user_id, users!inner(first_name, last_name))')
+      .in('session_plan_id', sessionPlanIds)
+      .in('session_status', ['assigned', 'ongoing'])
+
+    if (wlError) {
+      console.error('Error fetching workout logs for assignment count:', wlError)
+      return { isSuccess: false, message: `Failed to fetch assignments: ${wlError.message}` }
+    }
+
+    if (!workoutLogs || workoutLogs.length === 0) {
+      return { isSuccess: true, message: "No assignments found", data: { count: 0, athleteNames: [] } }
+    }
+
+    // Deduplicate athletes
+    const seen = new Set<number>()
+    const athleteNames: string[] = []
+    for (const wl of workoutLogs) {
+      if (wl.athlete_id && !seen.has(wl.athlete_id)) {
+        seen.add(wl.athlete_id)
+        const athlete = wl.athletes as unknown as { user_id: number; users: { first_name: string | null; last_name: string | null } }
+        if (athlete?.users) {
+          athleteNames.push(
+            [athlete.users.first_name, athlete.users.last_name].filter(Boolean).join(' ') || 'Unknown'
+          )
+        }
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Assignment count retrieved",
+      data: { count: seen.size, athleteNames }
+    }
+  } catch (error) {
+    console.error('Error in getAssignmentCountForMacrocycle:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Bulk cancel all 'assigned' workout_logs linked to a macrocycle.
+ * Uses nested !inner joins to collect session_plan IDs in a single query.
+ * Only cancels workout_logs with session_status = 'assigned' (NOT ongoing or completed).
+ * Reports actual rows affected from the update operation.
+ */
+export async function bulkCancelAssignmentsForMacrocycle(
+  macrocycleId: number
+): Promise<ActionState<{ cancelled: number }>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return { isSuccess: false, message: "User not authenticated" }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify ownership
+    const { data: macrocycle, error: macroError } = await supabase
+      .from('macrocycles')
+      .select('id')
+      .eq('id', macrocycleId)
+      .eq('user_id', dbUserId)
+      .single()
+
+    if (macroError || !macrocycle) {
+      return { isSuccess: false, message: "Macrocycle not found" }
+    }
+
+    // Single query: get all session_plan IDs via nested inner joins
+    const { data: sessionPlans, error: spError } = await supabase
+      .from('session_plans')
+      .select('id, microcycles!inner(mesocycles!inner(macrocycle_id))')
+      .eq('microcycles.mesocycles.macrocycle_id', macrocycleId)
+
+    if (spError) {
+      console.error('Error fetching session plans for bulk cancel:', spError)
+      return { isSuccess: false, message: `Failed to cancel assignments: ${spError.message}` }
+    }
+
+    if (!sessionPlans || sessionPlans.length === 0) {
+      return { isSuccess: true, message: "No assignments to cancel", data: { cancelled: 0 } }
+    }
+
+    const sessionPlanIds = sessionPlans.map(sp => sp.id)
+
+    // Update all 'assigned' workout_logs to 'cancelled' and return actual count
+    const { data: updated, error: updateError } = await supabase
+      .from('workout_logs')
+      .update({ session_status: 'cancelled' })
+      .in('session_plan_id', sessionPlanIds)
+      .eq('session_status', 'assigned')
+      .select('id')
+
+    if (updateError) {
+      console.error('Error cancelling workout logs:', updateError)
+      return { isSuccess: false, message: `Failed to cancel assignments: ${updateError.message}` }
+    }
+
+    const cancelCount = updated?.length ?? 0
+
+    return {
+      isSuccess: true,
+      message: cancelCount > 0 ? `${cancelCount} assignment(s) cancelled` : "No assigned workouts to cancel",
+      data: { cancelled: cancelCount }
+    }
+  } catch (error) {
+    console.error('Error in bulkCancelAssignmentsForMacrocycle:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+// ============================================================================
 // INDIVIDUAL USER ACTIONS (Training Blocks)
 // ============================================================================
 
@@ -1939,6 +2113,200 @@ export async function createQuickTrainingBlockAction(
     return {
       isSuccess: false,
       message: error instanceof Error ? error.message : "Failed to create training block"
+    }
+  }
+}
+
+// ============================================================================
+// ATHLETE PROGRAM VIEW
+// ============================================================================
+
+interface AthleteSessionView {
+  id: string | number
+  name: string | null
+  day: number | null
+  week: number | null
+  status: 'completed' | 'assigned' | 'ongoing' | 'upcoming'
+}
+
+interface AthleteAssignedPlan {
+  planName: string
+  currentWeek: number
+  totalWeeks: number
+  sessions: AthleteSessionView[]
+}
+
+/**
+ * Get the plan assigned to the current athlete via their athlete_group_id.
+ * Returns current + next week's sessions with completion status from workout_logs.
+ */
+export async function getAthleteAssignedPlanAction(): Promise<ActionState<AthleteAssignedPlan | null>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return { isSuccess: false, message: "User not authenticated" }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // 1. Get athlete record with group assignment
+    const { data: athlete, error: athleteError } = await supabase
+      .from('athletes')
+      .select('id, athlete_group_id')
+      .eq('user_id', dbUserId)
+      .single()
+
+    if (athleteError || !athlete) {
+      return { isSuccess: false, message: "Athlete profile not found" }
+    }
+
+    if (!athlete.athlete_group_id) {
+      return { isSuccess: true, message: "No group assigned", data: null }
+    }
+
+    // 2. Get the most recent macrocycle assigned to this group
+    const { data: macrocycle, error: macroError } = await supabase
+      .from('macrocycles')
+      .select(`
+        id,
+        name,
+        mesocycles (
+          id,
+          name,
+          start_date,
+          end_date,
+          microcycles (
+            id,
+            name,
+            start_date,
+            end_date,
+            session_plans (
+              id,
+              name,
+              day,
+              week
+            )
+          )
+        )
+      `)
+      .eq('athlete_group_id', athlete.athlete_group_id)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (macroError) {
+      console.error('[getAthleteAssignedPlanAction] Macrocycle error:', macroError)
+      return { isSuccess: false, message: "Failed to fetch assigned plan" }
+    }
+
+    if (!macrocycle) {
+      return { isSuccess: true, message: "No plan assigned to your group", data: null }
+    }
+
+    // 3. Flatten all session plan IDs and determine current week
+    const today = new Date().toISOString().split('T')[0]
+    const allMicrocycles = (macrocycle.mesocycles ?? [])
+      .flatMap(meso => meso.microcycles ?? [])
+      .sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''))
+
+    const totalWeeks = allMicrocycles.length
+
+    // Find the current week index (0-based) by checking which microcycle contains today
+    let currentWeekIndex = 0
+    for (let i = 0; i < allMicrocycles.length; i++) {
+      const micro = allMicrocycles[i]
+      if (micro.start_date && micro.end_date) {
+        if (today >= micro.start_date && today <= micro.end_date) {
+          currentWeekIndex = i
+          break
+        }
+        // If today is past this microcycle, advance
+        if (today > micro.end_date) {
+          currentWeekIndex = i + 1
+        }
+      }
+    }
+    // Clamp to valid range
+    currentWeekIndex = Math.min(currentWeekIndex, totalWeeks - 1)
+    currentWeekIndex = Math.max(currentWeekIndex, 0)
+
+    // 4. Get sessions for current + next week
+    const relevantMicrocycles = allMicrocycles.slice(
+      currentWeekIndex,
+      Math.min(currentWeekIndex + 2, totalWeeks)
+    )
+
+    const relevantSessions = relevantMicrocycles.flatMap(micro =>
+      (micro.session_plans ?? []).map(sp => ({
+        ...sp,
+        microIndex: allMicrocycles.indexOf(micro)
+      }))
+    )
+
+    const sessionPlanIds = relevantSessions.map(sp => sp.id)
+
+    // 5. Query workout_logs for this athlete to get completion status
+    let logsBySessionPlanId: Record<string, string> = {}
+    if (sessionPlanIds.length > 0) {
+      const { data: logs, error: logError } = await supabase
+        .from('workout_logs')
+        .select('session_plan_id, session_status')
+        .eq('athlete_id', athlete.id)
+        .in('session_plan_id', sessionPlanIds)
+
+      if (logError) {
+        console.error('[getAthleteAssignedPlanAction] Workout log error:', logError)
+        // Non-fatal — we can still show sessions without status
+      }
+
+      if (logs) {
+        for (const log of logs) {
+          if (log.session_plan_id) {
+            logsBySessionPlanId[log.session_plan_id] = log.session_status
+          }
+        }
+      }
+    }
+
+    // 6. Build the response
+    const sessions: AthleteSessionView[] = relevantSessions.map(sp => {
+      const logStatus = logsBySessionPlanId[sp.id]
+      let status: AthleteSessionView['status']
+      if (logStatus === 'completed') {
+        status = 'completed'
+      } else if (logStatus === 'ongoing') {
+        status = 'ongoing'
+      } else if (logStatus === 'assigned') {
+        status = 'assigned'
+      } else {
+        // No workout_log → session is upcoming (not yet assigned/started)
+        status = 'upcoming'
+      }
+
+      return {
+        id: sp.id,
+        name: sp.name,
+        day: sp.day,
+        week: sp.microIndex + 1, // 1-based week number
+        status,
+      }
+    })
+
+    return {
+      isSuccess: true,
+      message: "Assigned plan retrieved",
+      data: {
+        planName: macrocycle.name || 'Training Plan',
+        currentWeek: currentWeekIndex + 1, // 1-based
+        totalWeeks,
+        sessions,
+      }
+    }
+  } catch (error) {
+    console.error('[getAthleteAssignedPlanAction]:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
   }
 } 

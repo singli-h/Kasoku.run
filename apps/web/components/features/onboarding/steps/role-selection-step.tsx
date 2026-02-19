@@ -10,6 +10,7 @@ interface RoleSelectionStepProps {
   updateUserData: (data: Partial<OnboardingData>) => void
   onNext: () => void
   onPrev: () => void
+  lockedRole?: "athlete" | "coach" | "individual"
 }
 
 const ROLES = [
@@ -33,26 +34,31 @@ const ROLES = [
   },
 ]
 
-export function RoleSelectionStep({ userData, updateUserData, onNext, onPrev }: RoleSelectionStepProps) {
+export function RoleSelectionStep({ userData, updateUserData, onNext, onPrev, lockedRole }: RoleSelectionStepProps) {
   const handleRoleSelect = (role: "athlete" | "coach" | "individual") => {
+    if (lockedRole) return // Role locked by invitation
     updateUserData({ role })
   }
 
   const canProceed = userData.role !== ""
 
+  const visibleRoles = lockedRole ? ROLES.filter(r => r.id === lockedRole) : ROLES
+
   return (
     <div className="space-y-8">
       <div className="text-center space-y-3">
         <h2 className="text-2xl font-bold text-foreground">
-          Select Your Role
+          {lockedRole ? "Your Role" : "Select Your Role"}
         </h2>
         <p className="text-muted-foreground">
-          Choose how you'll use Kasoku. You can change this later.
+          {lockedRole
+            ? "Your coach has invited you as an athlete."
+            : "Choose how you'll use Kasoku. You can change this later."}
         </p>
       </div>
 
       <div className="flex flex-col gap-3 max-w-md mx-auto">
-        {ROLES.map((role) => {
+        {visibleRoles.map((role) => {
           const Icon = role.icon
           const isSelected = userData.role === role.id
           return (
@@ -60,12 +66,14 @@ export function RoleSelectionStep({ userData, updateUserData, onNext, onPrev }: 
               key={role.id}
               type="button"
               onClick={() => handleRoleSelect(role.id)}
+              disabled={!!lockedRole}
               className={cn(
                 "flex items-center gap-4 p-4 rounded-xl text-left transition-all",
                 "border-2 active:scale-[0.98]",
                 isSelected
                   ? "bg-primary/5 border-primary"
-                  : "bg-background border-border hover:border-primary/50 hover:bg-muted/30"
+                  : "bg-background border-border hover:border-primary/50 hover:bg-muted/30",
+                lockedRole && "cursor-default"
               )}
             >
               <div

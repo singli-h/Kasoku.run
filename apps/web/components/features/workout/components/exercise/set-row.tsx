@@ -86,16 +86,7 @@ export const DEFAULT_FIELD_CONFIG: FieldConfig[] = [
     step: 0.5,
     placeholder: '0'
   },
-  { 
-    key: 'rest_time', 
-    label: 'Rest', 
-    unit: 's', 
-    always: true,
-    type: 'number',
-    min: 0,
-    placeholder: '60'
-  },
-  { 
+  {
     key: 'distance', 
     label: 'Distance', 
     unit: 'm', 

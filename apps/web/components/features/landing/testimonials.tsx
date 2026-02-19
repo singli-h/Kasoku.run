@@ -136,52 +136,45 @@ export default function Testimonials() {
             transition={{ duration: 0.5 }}
             className="text-4xl font-bold text-foreground"
           >
-            Trusted by
+            Built for
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-              {" "}Elite Athletes
+              {" "}Serious Athletes
             </span>
           </motion.h2>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
             className="mt-4 text-xl text-muted-foreground max-w-2xl mx-auto"
           >
-            See how Kasoku is helping athletes and coaches achieve their goals
+            Periodized training plans, workout tracking, and coach-athlete collaboration in one platform
           </motion.p>
         </div>
 
-        {/* Stats Row */}
-        <motion.div 
+        {/* Platform Highlights */}
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16"
         >
           <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">10k+</div>
-            <div className="text-sm text-muted-foreground">Active Athletes</div>
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">AI</div>
+            <div className="text-sm text-muted-foreground">Powered Plans</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">500+</div>
-            <div className="text-sm text-muted-foreground">Certified Coaches</div>
+            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">Coach</div>
+            <div className="text-sm text-muted-foreground">& Athlete Roles</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-green-600 dark:text-green-400">1M+</div>
-            <div className="text-sm text-muted-foreground">Workouts Completed</div>
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400">Track</div>
+            <div className="text-sm text-muted-foreground">Every Workout</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">4.9</div>
-            <div className="text-sm text-muted-foreground">Average Rating</div>
+            <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">Free</div>
+            <div className="text-sm text-muted-foreground">To Get Started</div>
           </div>
         </motion.div>
-
-        {/* Testimonials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {testimonials.map((testimonial, index) => (
-            <TestimonialCard key={testimonial.id} testimonial={testimonial} index={index} />
-          ))}
-        </div>
       </div>
     </section>
   )

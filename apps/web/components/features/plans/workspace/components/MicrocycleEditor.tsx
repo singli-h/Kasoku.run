@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Plus, Edit, Trash2, Move } from "lucide-react"
+import { ArrowLeft, Edit, Trash2, Move } from "lucide-react"
 import { usePlanContext } from "../context/PlanContext"
 import { useTerminology } from "@/lib/terminology"
 
@@ -127,12 +127,6 @@ export function MicrocycleEditor({
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-medium">Weekly Schedule</h3>
-          {editingMode === 'edit' && (
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Session
-            </Button>
-          )}
         </div>
 
         <div className="grid grid-cols-7 gap-2">
@@ -148,22 +142,7 @@ export function MicrocycleEditor({
                   <div className="space-y-2">
                     {daySessions.length === 0 ? (
                       <div className="text-center">
-                        {editingMode === 'edit' ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full text-xs"
-                            onClick={() => {
-                              // TODO: Add session creation logic
-                              console.log(`Add session for ${day}`)
-                            }}
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add
-                          </Button>
-                        ) : (
-                          <div className="text-xs text-muted-foreground">Rest</div>
-                        )}
+                        <div className="text-xs text-muted-foreground">Rest</div>
                       </div>
                     ) : (
                       daySessions.map((session) => (

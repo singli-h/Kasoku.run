@@ -1,7 +1,7 @@
 import dynamic from "next/dynamic"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
-import { Timer, Dumbbell, Users, Trophy } from "lucide-react"
+import { Timer, Dumbbell, Trophy } from "lucide-react"
 
 // Dynamically import each dashboard to code-split per tab.
 // Only the active tab's bundle loads since Radix TabsContent
@@ -30,11 +30,6 @@ const RaceResultsDashboard = dynamic(
   { loading: () => <UnifiedPageSkeleton title="Race Results" variant="dashboard" /> }
 )
 
-const ComparativePerformanceAnalytics = dynamic(
-  () => import("@/components/features/performance/components/comparative-performance-analytics"),
-  { loading: () => <UnifiedPageSkeleton title="Comparative Analytics" variant="dashboard" /> }
-)
-
 export default function PerformancePage() {
   return (
     <PageLayout
@@ -42,7 +37,7 @@ export default function PerformancePage() {
       description="Track your progress with detailed sprint and gym analytics"
     >
       <Tabs defaultValue="sprint" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 max-w-lg">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="sprint" className="gap-1.5 text-xs sm:text-sm">
             <Timer className="h-4 w-4" />
             <span className="hidden sm:inline">Sprint</span>
@@ -54,10 +49,6 @@ export default function PerformancePage() {
           <TabsTrigger value="race" className="gap-1.5 text-xs sm:text-sm">
             <Trophy className="h-4 w-4" />
             <span className="hidden sm:inline">Races</span>
-          </TabsTrigger>
-          <TabsTrigger value="compare" className="gap-1.5 text-xs sm:text-sm">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Compare</span>
           </TabsTrigger>
         </TabsList>
 
@@ -71,10 +62,6 @@ export default function PerformancePage() {
 
         <TabsContent value="race">
           <RaceResultsDashboard />
-        </TabsContent>
-
-        <TabsContent value="compare">
-          <ComparativePerformanceAnalytics className="w-full" />
         </TabsContent>
       </Tabs>
     </PageLayout>

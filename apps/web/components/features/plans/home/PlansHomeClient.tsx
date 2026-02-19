@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,11 +15,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Calendar, Users, Target, Plus, Search, MoreVertical, Copy, Download, Trash2 } from "lucide-react"
+import { Calendar, Users, Target, Plus, Search, MoreVertical, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { MacrocycleTimeline, MacrocyclePhase, RaceAnchor } from "./MacrocycleTimeline"
 import { VolumeIntensityChart, ChartDataPoint } from "./VolumeIntensityChart"
 import { AssignmentView } from "../workspace/AssignmentView"
+import { DeletePlanDialog } from "./DeletePlanDialog"
 
 type TransformedMacrocycle = {
   id: string
@@ -38,6 +40,7 @@ interface PlansHomeClientProps {
 }
 
 export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [stateFilter, setStateFilter] = useState<string>("all")
   const [groupFilter, setGroupFilter] = useState<string>("all")
@@ -45,6 +48,9 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
   const [selectedPhaseByPlanId, setSelectedPhaseByPlanId] = useState<Record<string, string | undefined>>({})
   // Track which plan is selected for assignment
   const [selectedPlanForAssignment, setSelectedPlanForAssignment] = useState<string | null>(null)
+  // Track which plan is selected for deletion
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [selectedPlanForDelete, setSelectedPlanForDelete] = useState<{ id: string; name: string } | null>(null)
 
   const filteredMacrocycles = useMemo(() => {
     return initialMacrocycles.filter(mc => {
@@ -118,16 +124,14 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
                     <Users className="mr-2 h-4 w-4" />
                     Assign to Groups...
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Duplicate Plan
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled>
-                    <Download className="mr-2 h-4 w-4" />
-                    Export
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive focus:text-destructive" disabled>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => {
+                      setSelectedPlanForDelete({ id: mc.id, name: mc.name })
+                      setDeleteDialogOpen(true)
+                    }}
+                  >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
                   </DropdownMenuItem>
@@ -243,6 +247,20 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
         )}
       </div>
 
+      {/* Delete Plan Dialog */}
+      {selectedPlanForDelete && (
+        <DeletePlanDialog
+          macrocycleId={Number(selectedPlanForDelete.id)}
+          planName={selectedPlanForDelete.name}
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            setDeleteDialogOpen(open)
+            if (!open) setSelectedPlanForDelete(null)
+          }}
+          onDeleted={() => router.refresh()}
+        />
+      )}
+
       {/* Assignment Dialog */}
       <Dialog open={selectedPlanForAssignment !== null} onOpenChange={(open) => !open && setSelectedPlanForAssignment(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -258,7 +276,7 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
               onAssignmentComplete={() => {
                 setSelectedPlanForAssignment(null)
                 // Optionally refresh the page or revalidate data
-                window.location.reload()
+                router.refresh()
               }} 
             />
           )}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Settings2, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { GymQuickStats, type GymStat, defaultGymStats } from "./GymQuickStats"
 import { OneRMProgressionChart, type ExerciseProgress } from "./OneRMProgressionChart"
@@ -230,10 +229,7 @@ export function GymAnalyticsDashboard({
           </Select>
         </div>
 
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-          <Settings2 className="h-3.5 w-3.5" />
-          Settings
-        </Button>
+        {/* TODO: Wire up gym analytics settings */}
       </div>
 
       {/* Quick Stats */}

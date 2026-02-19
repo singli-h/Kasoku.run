@@ -1,8 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { Download, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -309,12 +308,7 @@ export function SprintAnalyticsDashboard({
           </Select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
-            <Download className="h-3.5 w-3.5" />
-            Export
-          </Button>
-        </div>
+        {/* TODO: Wire up export functionality */}
       </div>
 
       {/* Quick Stats */}

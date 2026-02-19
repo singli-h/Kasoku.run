@@ -12,59 +12,31 @@ import { stripe } from "@/lib/stripe"
 import { headers } from "next/headers"
 import Stripe from "stripe"
 
-const relevantEvents = new Set([
-  "checkout.session.completed",
-  "customer.subscription.updated",
-  "customer.subscription.deleted"
-])
+// Events that will be handled once subscription persistence is implemented
+// const relevantEvents = new Set([
+//   "checkout.session.completed",
+//   "customer.subscription.updated",
+//   "customer.subscription.deleted"
+// ])
 
 export async function POST(req: Request) {
   const body = await req.text()
   const sig = (await headers()).get("Stripe-Signature") as string
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-  let event: Stripe.Event
-
   try {
     if (!sig || !webhookSecret) {
       throw new Error("Webhook secret or signature missing")
     }
 
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
+    // Verify signature even though events are not processed yet
+    stripe.webhooks.constructEvent(body, sig, webhookSecret)
   } catch (err: any) {
     console.error(`Webhook Error: ${err.message}`)
     return new Response(`Webhook Error: ${err.message}`, { status: 400 })
   }
 
-  if (relevantEvents.has(event.type)) {
-    try {
-      switch (event.type) {
-        case "customer.subscription.updated":
-        case "customer.subscription.deleted":
-          // TODO: Implement with Supabase
-          // await handleSubscriptionChange(event)
-          console.log("Subscription change event received:", event.type)
-          break
-
-        case "checkout.session.completed":
-          // TODO: Implement with Supabase
-          // await handleCheckoutSession(event)
-          console.log("Checkout session completed:", event.type)
-          break
-
-        default:
-          throw new Error("Unhandled relevant event!")
-      }
-    } catch (error) {
-      console.error("Webhook handler failed:", error)
-      return new Response(
-        "Webhook handler failed. View your nextjs function logs.",
-        {
-          status: 400
-        }
-      )
-    }
-  }
-
+  // TODO: Implement subscription persistence when payments are MVP
+  // Currently no-op — events are acknowledged but not processed
   return new Response(JSON.stringify({ received: true }))
 }
 

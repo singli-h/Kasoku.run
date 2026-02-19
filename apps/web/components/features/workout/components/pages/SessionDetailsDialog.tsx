@@ -34,7 +34,6 @@ const ALL_COLUMNS = [
   { key: 'velocity', label: 'Velocity', unit: 'm/s' },
   { key: 'height', label: 'Height', unit: 'cm' },
   { key: 'power', label: 'Power', unit: 'W' },
-  { key: 'rest_time', label: 'Rest', unit: 's' },
   { key: 'rpe', label: 'RPE', unit: '' },
   { key: 'effort', label: 'Effort', unit: '%' },
   { key: 'resistance', label: 'Resistance', unit: '' },
@@ -132,7 +131,10 @@ export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDet
     return sum + (sets || []).filter((d: any) => d.completed).length
   }, 0)
 
-  const sessionDuration = sessionData.duration || 0 // in minutes
+  // Calculate duration from completed_at - started_at timestamps
+  const sessionDuration = sessionData.completed_at && sessionData.started_at
+    ? Math.round((new Date(sessionData.completed_at).getTime() - new Date(sessionData.started_at).getTime()) / 60000)
+    : 0
   const totalVolume = exercises.reduce((sum: number, ex: any) => {
     const sets = isActualWorkoutData ? ex.workout_log_sets : ex.session_plan_sets
     return sum + (sets || []).reduce((exSum: number, d: any) => {
@@ -175,15 +177,17 @@ export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDet
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center text-center">
-                  <Clock className="h-8 w-8 text-orange-500 mb-2" />
-                  <div className="text-2xl font-bold">{sessionDuration}</div>
-                  <div className="text-xs text-muted-foreground">Minutes</div>
-                </div>
-              </CardContent>
-            </Card>
+            {sessionDuration > 0 && (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex flex-col items-center text-center">
+                    <Clock className="h-8 w-8 text-orange-500 mb-2" />
+                    <div className="text-2xl font-bold">{sessionDuration}</div>
+                    <div className="text-xs text-muted-foreground">Minutes</div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardContent className="pt-6">

@@ -8,9 +8,9 @@
 "use server"
 
 import { Suspense } from "react"
-import { notFound, redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Users, MessageSquare, Calendar } from "lucide-react"
+import { ArrowLeft, Users, Calendar, ClipboardList, History } from "lucide-react"
 
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { getAthleteProfileAction, type ProfileViewData } from "@/actions/profile/profile-actions"
 import { HolographicProfileCard, type ProfileCardData } from "@/components/features/profile"
+import supabase from "@/lib/supabase-server"
 
 interface AthleteProfilePageProps {
   params: Promise<{ id: string }>
@@ -97,6 +98,86 @@ async function AthleteProfileContent({ athleteId }: { athleteId: number }) {
 
   const profile = result.data
   const cardData = transformToCardData(profile)
+
+  // Fetch assigned plan via athlete's group
+  let planName: string | null = null
+  let macrocycleId: number | null = null
+  let currentWeek = 0
+  let totalWeeks = 0
+  let completionRate = 0
+
+  if (profile.groupId) {
+    // Get the most recent macrocycle assigned to this athlete's group
+    const { data: macrocycle } = await supabase
+      .from('macrocycles')
+      .select(`
+        id,
+        name,
+        mesocycles (
+          id,
+          microcycles (
+            id,
+            start_date,
+            end_date
+          )
+        )
+      `)
+      .eq('athlete_group_id', profile.groupId)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (macrocycle) {
+      macrocycleId = macrocycle.id
+      planName = macrocycle.name || 'Training Plan'
+
+      const allMicrocycles = (macrocycle.mesocycles ?? [])
+        .flatMap(meso => meso.microcycles ?? [])
+        .sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''))
+
+      totalWeeks = allMicrocycles.length
+      const today = new Date().toISOString().split('T')[0]
+      let weekIndex = 0
+      for (let i = 0; i < allMicrocycles.length; i++) {
+        const micro = allMicrocycles[i]
+        if (micro.start_date && micro.end_date) {
+          if (today >= micro.start_date && today <= micro.end_date) {
+            weekIndex = i
+            break
+          }
+          if (today > micro.end_date) {
+            weekIndex = i + 1
+          }
+        }
+      }
+      currentWeek = Math.min(Math.max(weekIndex + 1, 1), totalWeeks)
+    }
+
+    // Compute completion rate from workout_logs for this athlete
+    const { data: athleteRecord } = await supabase
+      .from('athletes')
+      .select('id')
+      .eq('id', athleteId)
+      .single()
+
+    if (athleteRecord) {
+      const { count: completedCount } = await supabase
+        .from('workout_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('athlete_id', athleteRecord.id)
+        .eq('session_status', 'completed')
+
+      const { count: totalCount } = await supabase
+        .from('workout_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('athlete_id', athleteRecord.id)
+        .in('session_status', ['completed', 'assigned', 'ongoing'])
+
+      if (totalCount && totalCount > 0) {
+        completionRate = Math.round(((completedCount ?? 0) / totalCount) * 100)
+      }
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -199,6 +280,34 @@ async function AthleteProfileContent({ athleteId }: { athleteId: number }) {
             </Card>
           )}
 
+          {/* Plan Summary */}
+          {planName && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  Training Plan
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-sm font-medium truncate">{planName}</p>
+                    <p className="text-xs text-muted-foreground">Plan</p>
+                  </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold">{currentWeek}/{totalWeeks}</p>
+                    <p className="text-xs text-muted-foreground">Current Week</p>
+                  </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold">{completionRate}%</p>
+                    <p className="text-xs text-muted-foreground">Completion</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Quick Actions */}
           <Card>
             <CardHeader>
@@ -206,22 +315,32 @@ async function AthleteProfileContent({ athleteId }: { athleteId: number }) {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" size="sm" disabled>
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Send Message
-                </Button>
-                <Button variant="outline" size="sm" disabled>
-                  <Calendar className="h-4 w-4 mr-2" />
-                  View Schedule
-                </Button>
-                <Button variant="outline" size="sm" disabled>
-                  <Users className="h-4 w-4 mr-2" />
-                  View Group
-                </Button>
+                {macrocycleId ? (
+                  <Link href={`/plans/${macrocycleId}`}>
+                    <Button variant="outline" size="sm">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      View Plan
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button variant="outline" size="sm" disabled>
+                    <Calendar className="h-4 w-4 mr-2" />
+                    No Plan Assigned
+                  </Button>
+                )}
+                <Link href="/athletes">
+                  <Button variant="outline" size="sm">
+                    <Users className="h-4 w-4 mr-2" />
+                    View Group
+                  </Button>
+                </Link>
+                <Link href={`/workout/history?athleteId=${athleteId}`}>
+                  <Button variant="outline" size="sm">
+                    <History className="h-4 w-4 mr-2" />
+                    View Workout History
+                  </Button>
+                </Link>
               </div>
-              <p className="text-xs text-muted-foreground mt-3">
-                These features are coming soon
-              </p>
             </CardContent>
           </Card>
         </div>

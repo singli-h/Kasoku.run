@@ -34,7 +34,7 @@ export default function CTA() {
           >
             <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 px-4 py-2">
               <Sparkles className="h-4 w-4 mr-2" />
-              Limited Time Offer
+              Now in Beta
             </Badge>
           </motion.div>
 
@@ -57,7 +57,7 @@ export default function CTA() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto"
           >
-            Join thousands of athletes who are already achieving their goals with AI-powered training
+            Start building smarter training plans with AI-powered periodization and real-time workout tracking
           </motion.p>
 
           {/* Features List */}
@@ -77,7 +77,7 @@ export default function CTA() {
               <div className="p-2 bg-white/20 rounded-lg">
                 <Shield className="h-5 w-5" />
               </div>
-              <span className="font-medium">30-Day Free Trial</span>
+              <span className="font-medium">Free Plan Available</span>
             </div>
             <div className="flex items-center justify-center gap-3 text-white">
               <div className="p-2 bg-white/20 rounded-lg">
@@ -125,33 +125,20 @@ export default function CTA() {
             </Button>
           </motion.div>
 
-          {/* Trust Indicators */}
+          {/* Platform Highlights */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.5 }}
             className="mt-12 pt-8 border-t border-white/20"
           >
-            <p className="text-white/70 text-sm mb-4">Trusted by athletes worldwide</p>
+            <p className="text-white/70 text-sm mb-4">Built for athletes and coaches</p>
             <div className="flex justify-center items-center gap-8 opacity-60">
-              <div className="text-white font-semibold">10,000+ Athletes</div>
+              <div className="text-white font-semibold">Periodized Plans</div>
               <div className="w-1 h-1 bg-white/50 rounded-full"></div>
-              <div className="text-white font-semibold">500+ Coaches</div>
+              <div className="text-white font-semibold">Coach Dashboard</div>
               <div className="w-1 h-1 bg-white/50 rounded-full"></div>
-              <div className="text-white font-semibold">4.9★ Rating</div>
-            </div>
-          </motion.div>
-
-          {/* Urgency Element */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-            className="mt-8 p-4 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 max-w-md mx-auto"
-          >
-            <div className="flex items-center justify-center gap-2 text-white">
-              <Clock className="h-4 w-4" />
-              <span className="text-sm font-medium">Limited time: 50% off Pro plans</span>
+              <div className="text-white font-semibold">AI Powered</div>
             </div>
           </motion.div>
         </div>
