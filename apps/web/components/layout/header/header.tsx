@@ -1,7 +1,8 @@
 /*
 <ai_context>
-This client component provides the header specifically for landing/marketing pages.
-It includes navigation, authentication buttons, and marketing-focused features.
+Marketing header for landing pages.
+Clean, minimal design with Syne display font for the logo.
+Orange accent for the brand and primary CTA.
 </ai_context>
 */
 
@@ -22,169 +23,131 @@ import { ThemeSwitcher } from "../../utilities/theme-switcher"
 
 const navLinks = [
   { href: "#features", label: "Features" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "#about", label: "About" },
-  { href: "#contact", label: "Contact" }
+  { href: "#faq", label: "FAQ" },
 ]
 
 export default function LandingHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen)
-  }
-
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 0)
-    }
-
+    const handleScroll = () => setIsScrolled(window.scrollY > 10)
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-colors ${
+      className={`sticky top-0 z-50 transition-all duration-200 ${
         isScrolled
-          ? "bg-background/80 shadow-sm backdrop-blur-sm"
+          ? "bg-background/80 backdrop-blur-md border-b border-border/50"
           : "bg-background"
       }`}
     >
-      <div className="mx-auto flex max-w-screen-2xl items-center justify-between p-4">
-        <div className="flex items-center space-x-2 hover:cursor-pointer hover:opacity-80">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <BrainCircuit className="size-5 text-white" />
+      <div className="container mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <div className="w-7 h-7 bg-orange-500 rounded-lg flex items-center justify-center">
+            <BrainCircuit className="w-4 h-4 text-white" />
           </div>
-          <Link href="/" className="text-xl font-bold text-slate-800 dark:text-slate-100">
+          <span className="font-heading text-lg font-bold text-foreground">
             Kasoku
-          </Link>
-        </div>
+          </span>
+        </Link>
 
-        <nav className="absolute left-1/2 hidden -translate-x-1/2 space-x-2 font-semibold md:flex items-center">
-          {/* Navigation Links */}
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1">
           {navLinks.map(link => (
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-full px-3 py-1 hover:opacity-80"
+              className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center space-x-4">
+        {/* Right side */}
+        <div className="flex items-center gap-3">
           <ThemeSwitcher />
 
           <SignedOut>
-            <SignInButton>
-              <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700">Login</Button>
-            </SignInButton>
-
-            <SignUpButton>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">Sign Up</Button>
-            </SignUpButton>
+            <div className="hidden md:flex items-center gap-2">
+              <SignInButton>
+                <Button variant="ghost" size="sm">
+                  Sign In
+                </Button>
+              </SignInButton>
+              <SignUpButton>
+                <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white">
+                  Join Beta
+                </Button>
+              </SignUpButton>
+            </div>
           </SignedOut>
 
           <SignedIn>
-            <Link href="/dashboard">
-              <Button variant="outline" size="sm" className="hidden items-center gap-2 md:flex">
-                <LayoutDashboard className="size-4" />
+            <Link href="/dashboard" className="hidden md:block">
+              <Button variant="outline" size="sm" className="gap-2">
+                <LayoutDashboard className="w-4 h-4" />
                 Dashboard
               </Button>
             </Link>
             <UserButton />
           </SignedIn>
 
-          <div className="md:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleMenu}
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? (
-                <X className="size-6" />
-              ) : (
-                <Menu className="size-6" />
-              )}
-            </Button>
-          </div>
+          {/* Mobile menu toggle */}
+          <button
+            className="md:hidden p-2 text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </div>
 
+      {/* Mobile menu */}
       {isMenuOpen && (
-        <nav className="bg-primary-foreground p-4 text-primary md:hidden">
-          <ul className="space-y-2">
-            <li>
-              <Link
-                href="/"
-                className="block hover:underline"
-                onClick={toggleMenu}
-              >
-                Home
-              </Link>
-            </li>
-            
+        <div className="md:hidden border-t border-border bg-background">
+          <div className="container mx-auto px-4 py-4 space-y-3">
             {navLinks.map(link => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className="block hover:underline"
-                  onClick={toggleMenu}
-                >
-                  {link.label}
-                </Link>
-              </li>
+              <Link
+                key={link.href}
+                href={link.href}
+                className="block py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
             ))}
-          </ul>
-          
-          {/* Mobile Authentication Buttons */}
-          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <SignedOut>
-              <div className="space-y-2">
+
+            <div className="pt-3 border-t border-border space-y-2">
+              <SignedOut>
                 <SignInButton>
-                  <Button 
-                    variant="outline" 
-                    className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                    onClick={toggleMenu}
-                  >
-                    Login
+                  <Button variant="outline" className="w-full" onClick={() => setIsMenuOpen(false)}>
+                    Sign In
                   </Button>
                 </SignInButton>
-                
                 <SignUpButton>
-                  <Button 
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={toggleMenu}
-                  >
-                    Sign Up
+                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white" onClick={() => setIsMenuOpen(false)}>
+                    Join Beta
                   </Button>
                 </SignUpButton>
-              </div>
-            </SignedOut>
+              </SignedOut>
 
-            <SignedIn>
-              <div className="space-y-2">
-                <Link href="/dashboard" onClick={toggleMenu}>
-                  <Button 
-                    variant="outline" 
-                    className="w-full items-center gap-2"
-                  >
-                    <LayoutDashboard className="size-4" />
+              <SignedIn>
+                <Link href="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="outline" className="w-full gap-2">
+                    <LayoutDashboard className="w-4 h-4" />
                     Dashboard
                   </Button>
                 </Link>
-                
-                <div className="flex justify-center">
-                  <UserButton />
-                </div>
-              </div>
-            </SignedIn>
+              </SignedIn>
+            </div>
           </div>
-        </nav>
+        </div>
       )}
     </header>
   )

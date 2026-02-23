@@ -15,149 +15,120 @@ interface Feature {
   icon: LucideIcon
   title: string
   description: string
-  highlight?: string
 }
 
 const features: Feature[] = [
   {
     icon: Bot,
     title: "AI Session Assistant",
-    description: "Chat with your AI training partner to modify workouts in real-time. Add exercises, swap movements, adjust sets—all through natural conversation.",
-    highlight: "Real-time AI"
+    description: "Chat with AI to modify workouts in real-time. Add exercises, swap movements, adjust sets — all through natural conversation.",
   },
   {
     icon: Dumbbell,
     title: "Smart Workout Logging",
-    description: "Log every rep, set, and personal record with an intuitive interface. Track weight, reps, RPE, and notes for complete training documentation.",
-    highlight: "Complete tracking"
+    description: "Log every rep, set, and personal record. Track weight, reps, RPE, and notes for complete training documentation.",
   },
   {
     icon: Calendar,
-    title: "Training Blocks",
-    description: "Structure your training with periodized blocks and weekly plans. Coaches create programs, individuals build their own—all with AI assistance.",
-    highlight: "Periodization"
+    title: "Periodized Training Blocks",
+    description: "Structure training with periodized blocks and weekly plans. Coaches create programs, individuals build their own — with AI assistance.",
   },
   {
     icon: Timer,
     title: "Sprint & Speed Training",
-    description: "Built for track athletes with Freelap timing integration. Auto-detect splits, analyze velocity, and track speed progression over time.",
-    highlight: "Timing ready"
+    description: "Built for track athletes with Freelap timing integration. Auto-detect splits, analyze velocity, and track speed progression.",
   },
   {
     icon: Trophy,
     title: "Personal Best Detection",
-    description: "Automatically celebrate new PRs across all exercises. Track historical bests, visualize progress, and never miss a milestone.",
-    highlight: "Auto-detect PRs"
+    description: "Automatically detect new PRs across all exercises. Track historical bests, visualize progress, and never miss a milestone.",
   },
   {
     icon: BookOpen,
     title: "Exercise Library",
-    description: "Access a comprehensive database of exercises organized by category, muscle group, and equipment. Add custom exercises for your unique training.",
-    highlight: "500+ exercises"
-  }
+    description: "Browse a comprehensive database organized by category, muscle group, and equipment. Add custom exercises for your unique training.",
+  },
 ]
-
-interface FeatureCardProps {
-  icon: LucideIcon
-  title: string
-  description: string
-  highlight?: string
-  index: number
-}
-
-const FeatureCard = ({ icon: Icon, title, description, highlight, index }: FeatureCardProps) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-100px" }}
-      transition={{ duration: 0.4, delay: index * 0.05 }}
-      className="group relative p-6 bg-card rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-border/50 hover:border-primary/30"
-    >
-      {/* Icon container with gradient */}
-      <div className="absolute -top-4 -left-4 p-3 bg-gradient-to-br from-primary to-purple-500 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-        <Icon className="w-6 h-6 text-primary-foreground" />
-      </div>
-
-      {/* Highlight badge */}
-      {highlight && (
-        <div className="absolute top-4 right-4">
-          <span className="text-xs font-medium px-2 py-1 rounded-full bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground/90">
-            {highlight}
-          </span>
-        </div>
-      )}
-
-      <div className="mt-4">
-        <h3 className="text-xl font-semibold text-foreground mt-2 group-hover:text-primary transition-colors duration-300">
-          {title}
-        </h3>
-        <p className="mt-3 text-muted-foreground leading-relaxed">
-          {description}
-        </p>
-      </div>
-
-      {/* Subtle hover glow effect */}
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-    </motion.div>
-  )
-}
 
 export default function Features() {
   return (
-    <section id="features" className="py-20 bg-muted">
+    <section id="features" className="py-24 bg-muted/50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
+        {/* Section header — left-aligned for editorial feel */}
+        <div className="max-w-2xl mb-16">
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 dark:bg-primary/20 mb-6"
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            className="text-sm font-semibold uppercase tracking-widest text-orange-600 dark:text-orange-400 mb-3"
           >
-            <span className="text-sm font-medium text-primary dark:text-primary-foreground/90">
-              Built for Athletes & Coaches
-            </span>
-          </motion.div>
-
+            Features
+          </motion.p>
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-4xl font-bold text-foreground"
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+            className="font-heading text-3xl sm:text-4xl font-bold text-foreground tracking-tight"
           >
-            Train Smarter with
-            <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-              {" "}AI-Powered Tools
-            </span>
+            Everything you need to train smarter
           </motion.h2>
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-4 text-xl text-muted-foreground max-w-2xl mx-auto"
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="mt-4 text-lg text-muted-foreground"
           >
-            Whether you're self-coaching or working with a trainer, Kasoku adapts to your workflow with intelligent features that make training effortless.
+            Whether you&apos;re self-coaching or working with a trainer, Kasoku adapts to your workflow.
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
-            <FeatureCard key={feature.title} {...feature} index={index} />
-          ))}
+        {/* Feature grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {features.map((feature, index) => {
+            const Icon = feature.icon
+            return (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.4, delay: index * 0.05 }}
+                className="group p-6 rounded-2xl border border-border/60 bg-card hover:border-orange-500/30 transition-colors duration-300"
+              >
+                <div className="w-10 h-10 rounded-xl bg-orange-500/10 dark:bg-orange-500/15 flex items-center justify-center mb-4">
+                  <Icon className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  {feature.title}
+                </h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  {feature.description}
+                </p>
+              </motion.div>
+            )
+          })}
         </div>
 
-        {/* Bottom CTA hint */}
+        {/* Role callout */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="text-center mt-12"
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-muted-foreground"
         >
-          <p className="text-muted-foreground">
-            <span className="text-foreground font-medium">For individuals</span>: Create your own Training Blocks with AI guidance.
-            {" "}
-            <span className="text-foreground font-medium">For coaches</span>: Build programs and assign to athletes.
-          </p>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-orange-500" />
+            <span><strong className="text-foreground">Self-coaching</strong> — Build your own plans with AI guidance</span>
+          </div>
+          <div className="hidden sm:block w-px h-4 bg-border" />
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-orange-500" />
+            <span><strong className="text-foreground">Coach &amp; Athletes</strong> — Create programs and assign to your team</span>
+          </div>
         </motion.div>
       </div>
     </section>

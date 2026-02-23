@@ -18,10 +18,12 @@ import { cn } from "@/lib/utils"
 import { ClerkProvider } from "@clerk/nextjs"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Syne, Outfit } from "next/font/google"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
+const syne = Syne({ subsets: ["latin"], variable: "--font-syne", display: "swap" })
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit", display: "swap" })
 
 export const metadata: Metadata = {
   title: {
@@ -228,7 +230,9 @@ export default function RootLayout({
         <body
           className={cn(
             "bg-background mx-auto min-h-screen w-full scroll-smooth antialiased",
-            inter.className
+            inter.className,
+            syne.variable,
+            outfit.variable
           )}
           suppressHydrationWarning
         >
