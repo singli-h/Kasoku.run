@@ -69,29 +69,32 @@ interface SetRowProps {
 
 // Default field configuration - the complete field system
 export const DEFAULT_FIELD_CONFIG: FieldConfig[] = [
-  { 
-    key: 'reps', 
-    label: 'Reps', 
-    always: true, 
+  {
+    key: 'reps',
+    label: 'Reps',
+    always: true,
     type: 'number',
     min: 0,
+    max: 999,
     placeholder: '0'
   },
-  { 
-    key: 'weight', 
-    label: 'Weight', 
-    unit: 'kg', 
+  {
+    key: 'weight',
+    label: 'Weight',
+    unit: 'kg',
     type: 'number',
     min: 0,
+    max: 9999,
     step: 0.5,
     placeholder: '0'
   },
   {
-    key: 'distance', 
-    label: 'Distance', 
-    unit: 'm', 
+    key: 'distance',
+    label: 'Distance',
+    unit: 'm',
     type: 'number',
     min: 0,
+    max: 99999,
     placeholder: '0'
   },
   {
@@ -100,43 +103,47 @@ export const DEFAULT_FIELD_CONFIG: FieldConfig[] = [
     unit: 's',
     type: 'number',
     min: 0,
+    max: 86400,
     placeholder: '0'
   },
-  { 
-    key: 'resistance', 
-    label: 'Resistance', 
-    unit: 'kg', 
+  {
+    key: 'resistance',
+    label: 'Resistance',
+    unit: 'kg',
     type: 'number',
     min: 0,
+    max: 999,
     step: 0.5,
     placeholder: '0'
   },
-  { 
-    key: 'power', 
-    label: 'Power', 
-    unit: 'W', 
+  {
+    key: 'power',
+    label: 'Power',
+    unit: 'W',
     type: 'number',
     min: 0,
+    max: 9999,
     placeholder: '0'
   },
-  { 
-    key: 'velocity', 
-    label: 'Velocity', 
-    unit: 'm/s', 
+  {
+    key: 'velocity',
+    label: 'Velocity',
+    unit: 'm/s',
     type: 'number',
     min: 0,
+    max: 100,
     step: 0.1,
     placeholder: '0.0'
   },
-  { 
-    key: 'tempo', 
-    label: 'Tempo', 
+  {
+    key: 'tempo',
+    label: 'Tempo',
     type: 'text',
     placeholder: '3-1-2-0'
   },
-  { 
-    key: 'effort', 
-    label: 'Effort', 
+  {
+    key: 'effort',
+    label: 'Effort',
     type: 'text',
     placeholder: '8 RPE'
   }

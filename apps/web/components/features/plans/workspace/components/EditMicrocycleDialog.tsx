@@ -101,6 +101,9 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
               <Input
                 id="weekNumber"
                 type="number"
+                min={1}
+                max={52}
+                step={1}
                 value={formData.weekNumber || 1}
                 onChange={(e) => setFormData({ ...formData, weekNumber: Number.parseInt(e.target.value) })}
               />
@@ -149,6 +152,7 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
                 type="number"
                 min="0"
                 max="10"
+                step="1"
                 value={formData.volume ?? 5}
                 onChange={(e) => setFormData({ ...formData, volume: Number.parseInt(e.target.value) || 0 })}
               />

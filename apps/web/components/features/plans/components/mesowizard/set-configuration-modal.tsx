@@ -262,42 +262,50 @@ export function SetConfigurationModal({
                             <Label className="text-xs">Reps</Label>
                             <Input
                               type="number"
+                              min={1}
+                              max={999}
+                              step={1}
                               value={set.reps || ''}
                               onChange={(e) => updateSetParameter(set.setIndex, 'reps', e.target.value ? parseInt(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="1-20"
                             />
                           </div>
-                          
+
                           <div className="space-y-1">
                             <Label className="text-xs">Weight</Label>
                             <Input
                               type="number"
-                              step="0.5"
+                              min={0}
+                              max={9999}
+                              step={0.5}
                               value={set.weight || ''}
                               onChange={(e) => updateSetParameter(set.setIndex, 'weight', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="kg/lbs"
                             />
                           </div>
-                          
+
                           <div className="space-y-1">
                             <Label className="text-xs">RPE</Label>
                             <Input
                               type="number"
-                              step="0.5"
-                              min="1"
-                              max="10"
+                              step={0.5}
+                              min={1}
+                              max={10}
                               value={set.rpe || ''}
                               onChange={(e) => updateSetParameter(set.setIndex, 'rpe', parseFloat(e.target.value) || 0)}
                               className="h-8"
                             />
                           </div>
-                          
+
                           <div className="space-y-1">
                             <Label className="text-xs">Rest (s)</Label>
                             <Input
                               type="number"
+                              min={0}
+                              max={600}
+                              step={5}
                               value={set.restTime || ''}
                               onChange={(e) => updateSetParameter(set.setIndex, 'restTime', parseInt(e.target.value) || 0)}
                               className="h-8"
@@ -353,13 +361,15 @@ export function SetConfigurationModal({
                             </Label>
                             <Input
                               type="number"
+                              min={0}
+                              max={9999}
                               value={set.power || ''}
                               onChange={(e) => updateSetParameter(set.setIndex, 'power', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="Watts"
                             />
                           </div>
-                          
+
                           <div className="space-y-1">
                             <Label className="text-xs flex items-center gap-1">
                               <Gauge className="h-3 w-3" />
@@ -367,14 +377,16 @@ export function SetConfigurationModal({
                             </Label>
                             <Input
                               type="number"
-                              step="0.1"
+                              min={0}
+                              max={100}
+                              step={0.1}
                               value={set.velocity || ''}
                               onChange={(e) => updateSetParameter(set.setIndex, 'velocity', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="m/s"
                             />
                           </div>
-                          
+
                           <div className="space-y-1">
                             <Label className="text-xs flex items-center gap-1">
                               <Activity className="h-3 w-3" />
@@ -382,30 +394,36 @@ export function SetConfigurationModal({
                             </Label>
                             <Input
                               type="number"
-                              min="0"
-                              max="100"
+                              min={0}
+                              max={100}
+                              step={1}
                               value={set.effort || ''}
                               onChange={(e) => updateSetParameter(set.setIndex, 'effort', parseInt(e.target.value) || 0)}
                               className="h-8"
                               placeholder="0-100"
                             />
                           </div>
-                          
+
                           <div className="space-y-1">
                             <Label className="text-xs">Resistance</Label>
                             <Input
                               type="number"
+                              min={0}
+                              max={999}
+                              step={0.5}
                               value={set.resistance || ''}
                               onChange={(e) => updateSetParameter(set.setIndex, 'resistance', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="Band/Cable"
                             />
                           </div>
-                          
+
                           <div className="space-y-1">
                             <Label className="text-xs">Height</Label>
                             <Input
                               type="number"
+                              min={0}
+                              max={999}
                               value={set.height || ''}
                               onChange={(e) => updateSetParameter(set.setIndex, 'height', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"
@@ -448,17 +466,22 @@ export function SetConfigurationModal({
                             </Label>
                             <Input
                               type="number"
+                              min={0}
+                              max={86400}
+                              step={1}
                               value={set.duration || ''}
                               onChange={(e) => updateSetParameter(set.setIndex, 'duration', e.target.value ? parseInt(e.target.value) : undefined)}
                               className="h-8"
                               placeholder="Seconds"
                             />
                           </div>
-                          
+
                           <div className="space-y-1">
                             <Label className="text-xs">Distance</Label>
                             <Input
                               type="number"
+                              min={0}
+                              max={99999}
                               value={set.distance || ''}
                               onChange={(e) => updateSetParameter(set.setIndex, 'distance', e.target.value ? parseFloat(e.target.value) : undefined)}
                               className="h-8"

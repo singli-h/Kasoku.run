@@ -993,9 +993,12 @@ export function SessionPlanning({
                     <Input
                       id="estimated-duration"
                       type="number"
+                      min={1}
+                      max={600}
+                      step={5}
                       value={selectedSession.estimatedDuration}
-                      onChange={(e) => updateSession(selectedSession.id, { 
-                        estimatedDuration: parseInt(e.target.value) || 60 
+                      onChange={(e) => updateSession(selectedSession.id, {
+                        estimatedDuration: parseInt(e.target.value) || 60
                       })}
                     />
                   </div>

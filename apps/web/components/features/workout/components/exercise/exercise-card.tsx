@@ -35,19 +35,22 @@ interface ExerciseField {
   required?: boolean
   unit?: string
   placeholder?: string
+  min?: number
+  max?: number
+  step?: number
 }
 
 // Dynamic field detection based on exercise data
 // Only include fields that actually exist in the database schema
 const EXERCISE_FIELDS: ExerciseField[] = [
-  { key: 'reps', label: 'Reps', type: 'number', placeholder: '12' },
-  { key: 'weight', label: 'Weight', type: 'number', unit: 'kg', placeholder: '60' },
-  { key: 'performing_time', label: 'Duration', type: 'time', unit: 'sec', placeholder: '30' },
-  { key: 'distance', label: 'Distance', type: 'number', unit: 'yards', placeholder: '100' },
-  { key: 'power', label: 'Power', type: 'number', unit: 'W', placeholder: '200' },
-  { key: 'resistance', label: 'Resistance', type: 'number', placeholder: '5' },
-  { key: 'effort', label: 'Effort', type: 'number', placeholder: '7' },
-  { key: 'rpe', label: 'RPE', type: 'number', placeholder: '7' }
+  { key: 'reps', label: 'Reps', type: 'number', placeholder: '12', min: 0, max: 999, step: 1 },
+  { key: 'weight', label: 'Weight', type: 'number', unit: 'kg', placeholder: '60', min: 0, max: 9999, step: 0.5 },
+  { key: 'performing_time', label: 'Duration', type: 'time', unit: 'sec', placeholder: '30', min: 0, max: 86400, step: 1 },
+  { key: 'distance', label: 'Distance', type: 'number', unit: 'yards', placeholder: '100', min: 0, max: 99999 },
+  { key: 'power', label: 'Power', type: 'number', unit: 'W', placeholder: '200', min: 0, max: 9999 },
+  { key: 'resistance', label: 'Resistance', type: 'number', placeholder: '5', min: 0, max: 999, step: 0.5 },
+  { key: 'effort', label: 'Effort', type: 'text', placeholder: '8 RPE' },
+  { key: 'rpe', label: 'RPE', type: 'number', placeholder: '7', min: 1, max: 10, step: 0.5 }
 ]
 
 export function ExerciseCard({ exercise, className, isSuperset = false }: ExerciseCardProps) {
@@ -333,6 +336,9 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
                             value={String(set.detail?.[field.key] ?? '')}
                             onChange={(e) => updateSetData(set.index, field.key, e.target.value)}
                             placeholder={field.placeholder}
+                            min={field.min}
+                            max={field.max}
+                            step={field.step}
                             className={cn("h-5 text-xs text-center bg-transparent border-0 p-0 focus:ring-0", inputWidth)}
                             disabled={set.isCompleted}
                           />

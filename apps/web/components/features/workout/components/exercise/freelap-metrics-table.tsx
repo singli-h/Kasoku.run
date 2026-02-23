@@ -71,6 +71,7 @@ function MetricInput({
       <input
         type="number"
         step={unit === 's' || unit === 'm/s' ? 0.01 : 0.1}
+        min={0}
         value={formattedValue}
         onChange={(e) => {
           const val = e.target.value ? parseFloat(e.target.value) : undefined
