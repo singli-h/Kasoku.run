@@ -53,6 +53,7 @@ export interface UsePlanGeneratorChatReturn {
 
   // Plan state
   status: PlanGeneratorStatus | null
+  streamError: string | null
   week1OnlyMode: boolean
   currentPlanState: CurrentPlanState | null
   pendingCount: number
@@ -180,6 +181,9 @@ export function usePlanGeneratorChat(
     [mesocycle.id, mesocycle.name]
   )
 
+  // Track processed tool calls to deduplicate between onToolCall and effect fallback
+  const processedToolCallsRef = useRef<Set<string>>(new Set())
+
   // Initialize useChat
   const {
     messages,
@@ -193,11 +197,22 @@ export function usePlanGeneratorChat(
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     // Handle stream errors (network drops, 500s, token limits, timeouts)
     onError(error) {
-      console.error('[PlanGeneratorChat] Stream error:', error)
+      console.error('[PlanGeneratorChat] Stream error:', {
+        message: error.message,
+        name: error.name,
+        constructor: error.constructor?.name,
+      })
       setStreamError(error.message || 'Plan generation failed. Please try again.')
     },
     async onToolCall({ toolCall }) {
-      console.log('[PlanGeneratorChat] Tool call:', toolCall.toolName)
+      // Deduplicate: skip if already processed by effect fallback
+      if (processedToolCallsRef.current.has(toolCall.toolCallId)) {
+        console.log('[PlanGeneratorChat] onToolCall skipped (already processed):', toolCall.toolName)
+        return
+      }
+      processedToolCallsRef.current.add(toolCall.toolCallId)
+
+      console.log('[PlanGeneratorChat] onToolCall received:', toolCall.toolName, toolCall.toolCallId)
 
       try {
         const toolArgs = ((toolCall as { input?: unknown }).input ?? {}) as Record<string, unknown>
@@ -207,8 +222,6 @@ export function usePlanGeneratorChat(
           toolArgs as Record<string, unknown>,
           handlersRef.current
         )
-
-        console.log('[PlanGeneratorChat] Tool result:', result)
 
         const output = typeof result === 'string' ? result : JSON.stringify(result)
         addToolOutput({
@@ -229,6 +242,68 @@ export function usePlanGeneratorChat(
       }
     },
   })
+
+  // Stable ref for addToolOutput (needed by effect fallback)
+  const addToolOutputRef = useRef(addToolOutput)
+  addToolOutputRef.current = addToolOutput
+
+  // Effect-based fallback: detect unprocessed tool parts in messages
+  // Handles cases where onToolCall doesn't fire (SDK race conditions, etc.)
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1]
+    if (!lastMessage || lastMessage.role !== 'assistant') return
+
+    // Only process when stream is done
+    if (chatStatus === 'streaming' || chatStatus === 'submitted') return
+
+    for (const part of lastMessage.parts) {
+      if (!part.type.startsWith('tool-')) continue
+
+      const toolPart = part as {
+        toolCallId?: string
+        toolName?: string
+        state?: string
+        input?: unknown
+      }
+
+      if (toolPart.state !== 'input-available') continue
+      if (!toolPart.toolCallId || !toolPart.toolName) continue
+      if (processedToolCallsRef.current.has(toolPart.toolCallId)) continue
+
+      processedToolCallsRef.current.add(toolPart.toolCallId)
+
+      console.log('[PlanGeneratorChat] Effect fallback processing tool:', toolPart.toolName, toolPart.toolCallId)
+
+      const processAsync = async () => {
+        try {
+          const toolArgs = (toolPart.input ?? {}) as Record<string, unknown>
+          const result = await executePlanGeneratorTool(
+            toolPart.toolName!,
+            toolArgs,
+            handlersRef.current
+          )
+
+          const output = typeof result === 'string' ? result : JSON.stringify(result)
+          addToolOutputRef.current({
+            tool: toolPart.toolName!,
+            toolCallId: toolPart.toolCallId!,
+            output,
+          })
+        } catch (err) {
+          console.error('[PlanGeneratorChat] Effect fallback tool error:', err)
+          addToolOutputRef.current({
+            tool: toolPart.toolName!,
+            toolCallId: toolPart.toolCallId!,
+            output: JSON.stringify({
+              error: err instanceof Error ? err.message : 'Tool execution failed',
+            }),
+          })
+        }
+      }
+
+      processAsync()
+    }
+  }, [messages, chatStatus])
 
   // Derived loading state
   const isLoading = chatStatus === 'submitted' || chatStatus === 'streaming'
@@ -251,6 +326,7 @@ export function usePlanGeneratorChat(
     console.log('[PlanGeneratorChat] Resetting plan')
     clear()
     setMessages([])
+    processedToolCallsRef.current.clear()
   }, [clear, setMessages])
 
   const handleSubmit = useCallback(

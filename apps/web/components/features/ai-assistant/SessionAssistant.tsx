@@ -143,8 +143,10 @@ function SessionAssistantContent({
   const respondedToolCallsRef = useRef<Set<string>>(new Set())
 
   // Track mounted state to guard against post-unmount operations
+  // Must set true in setup (not just useRef init) to survive React Strict Mode re-mount
   const isMountedRef = useRef(true)
   useEffect(() => {
+    isMountedRef.current = true
     return () => { isMountedRef.current = false }
   }, [])
 
@@ -180,6 +182,69 @@ function SessionAssistantContent({
     body: domain === 'workout' ? { workoutLogId: sessionId } : { sessionId },
   }), [sessionId, domain])
 
+  // Track which tool calls have been processed (by onToolCall or effect fallback)
+  const processedToolCallsRef = useRef<Set<string>>(new Set())
+
+  // Shared tool call handler — used by both onToolCall callback and effect fallback
+  const processToolCall = useCallback(async (
+    toolCallId: string,
+    toolName: string,
+    toolInput: unknown,
+    addToolOutputFn: typeof addToolOutputRef.current,
+  ) => {
+    if (!isMountedRef.current) return
+
+    const supabase = supabaseClientRef.current
+
+    try {
+      const toolArgs = (toolInput ?? {}) as Record<string, unknown>
+
+      const result = await handleToolCall(
+        toolName,
+        toolArgs,
+        {
+          changeSet: changeSetRef.current,
+          sessionId,
+          showApprovalWidget: () => {
+            setPendingToolCall({ toolCallId, toolName })
+            setShowBanner(true)
+            setExecutionError(undefined)
+          },
+          executeReadTool: (name, args) =>
+            domain === 'workout'
+              ? executeAthleteReadTool(name, args, supabase, dbUserId)
+              : executeReadTool(name, args, supabase, dbUserId),
+        }
+      )
+
+      // If PAUSE, don't return a result yet - wait for user decision
+      if (result === 'PAUSE') {
+        console.log('[SessionAssistant] Tool paused for user approval:', toolName)
+        return
+      }
+
+      // For other results, add the tool output
+      const output = typeof result === 'string' ? result : JSON.stringify(result)
+      console.log('[SessionAssistant] Adding tool output for:', toolName, 'output:', output.substring(0, 100))
+
+      addToolOutputFn({
+        tool: toolName,
+        toolCallId,
+        output,
+      })
+    } catch (error) {
+      console.error('[SessionAssistant] Tool execution error:', error)
+
+      addToolOutputFn({
+        tool: toolName,
+        toolCallId,
+        output: JSON.stringify({
+          error: error instanceof Error ? error.message : 'Tool execution failed',
+        }),
+      })
+    }
+  }, [sessionId, domain, dbUserId])
+
   // Vercel AI SDK useChat hook with onToolCall for client-side tools
   const {
     messages,
@@ -194,77 +259,81 @@ function SessionAssistantContent({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     // Handle stream errors (network drops, 500s, token limits, timeouts)
     onError(error) {
-      console.error('[SessionAssistant] Stream error:', error)
+      console.error('[SessionAssistant] Stream error:', {
+        message: error.message,
+        name: error.name,
+        constructor: error.constructor?.name,
+        stack: error.stack?.substring(0, 300),
+      })
       if (isMountedRef.current) {
         setStreamError(error.message || 'Something went wrong. Please try again.')
-        // Clear pending tool call so UI doesn't get stuck
         setPendingToolCall(null)
       }
     },
-    // Handle tool calls from the AI
+    // Handle tool calls from the AI (primary path)
     async onToolCall({ toolCall }) {
-      // Guard against post-unmount tool calls
       if (!isMountedRef.current) return
 
-      console.log('[SessionAssistant] onToolCall received:', toolCall.toolName)
-
-      // Reuse Supabase client from ref (avoids creating a new client per tool call)
-      const supabase = supabaseClientRef.current
-
-      try {
-        const toolArgs = ((toolCall as { input?: unknown }).input ?? {}) as Record<string, unknown>
-
-        const result = await handleToolCall(
-          toolCall.toolName,
-          toolArgs as Record<string, unknown>,
-          {
-            changeSet: changeSetRef.current,
-            sessionId,
-            showApprovalWidget: () => {
-              // Save the tool call info for later (for confirmChangeSet pause/resume)
-              setPendingToolCall({ toolCallId: toolCall.toolCallId, toolName: toolCall.toolName })
-              // Show the approval banner
-              setShowBanner(true)
-              setExecutionError(undefined)
-            },
-            executeReadTool: (name, args) =>
-              domain === 'workout'
-                ? executeAthleteReadTool(name, args, supabase, dbUserId)
-                : executeReadTool(name, args, supabase, dbUserId),
-          }
-        )
-
-        // If PAUSE, don't return a result yet - wait for user decision
-        if (result === 'PAUSE') {
-          console.log('[SessionAssistant] Tool paused for user approval:', toolCall.toolName)
-          // Don't call addToolOutput - the UI will handle the pending state
-          return
-        }
-
-        // For other results, add the tool output (NO await to avoid deadlocks)
-        const output = typeof result === 'string' ? result : JSON.stringify(result)
-        console.log('[SessionAssistant] Adding tool output for:', toolCall.toolName, 'output:', output.substring(0, 100))
-
-        // Call without await - this is critical for the AI SDK pattern
-        addToolOutput({
-          tool: toolCall.toolName,
-          toolCallId: toolCall.toolCallId,
-          output,
-        })
-      } catch (error) {
-        console.error('[SessionAssistant] Tool execution error:', error)
-
-        // Report error back to AI
-        addToolOutput({
-          tool: toolCall.toolName,
-          toolCallId: toolCall.toolCallId,
-          output: JSON.stringify({
-            error: error instanceof Error ? error.message : 'Tool execution failed',
-          }),
-        })
+      // Deduplicate: skip if already processed by effect fallback
+      if (processedToolCallsRef.current.has(toolCall.toolCallId)) {
+        console.log('[SessionAssistant] onToolCall skipped (already processed):', toolCall.toolName)
+        return
       }
+      processedToolCallsRef.current.add(toolCall.toolCallId)
+
+      console.log('[SessionAssistant] onToolCall received:', toolCall.toolName, toolCall.toolCallId)
+
+      const toolInput = ((toolCall as { input?: unknown }).input ?? {})
+      await processToolCall(toolCall.toolCallId, toolCall.toolName, toolInput, addToolOutput)
     },
   })
+
+  // Stable ref for addToolOutput (needed by effect fallback)
+  const addToolOutputRef = useRef(addToolOutput)
+  addToolOutputRef.current = addToolOutput
+
+  // Effect-based fallback: detect unprocessed tool parts in messages
+  // This handles cases where onToolCall doesn't fire (SDK race conditions, etc.)
+  useEffect(() => {
+    if (!isMountedRef.current) return
+
+    const lastMessage = messages[messages.length - 1]
+    if (!lastMessage || lastMessage.role !== 'assistant') return
+
+    // Only process when stream is done (status 'ready' or 'error')
+    // During streaming, onToolCall should handle it
+    if (status === 'streaming' || status === 'submitted') return
+
+    for (const part of lastMessage.parts) {
+      if (!part.type.startsWith('tool-')) continue
+
+      const toolPart = part as {
+        toolCallId?: string
+        toolName?: string
+        state?: string
+        input?: unknown
+      }
+
+      // Only process tools in 'input-available' state (not yet handled)
+      if (toolPart.state !== 'input-available') continue
+      if (!toolPart.toolCallId || !toolPart.toolName) continue
+      if (processedToolCallsRef.current.has(toolPart.toolCallId)) continue
+
+      // Mark as processed
+      processedToolCallsRef.current.add(toolPart.toolCallId)
+
+      console.log('[SessionAssistant] Effect fallback processing tool:', toolPart.toolName, toolPart.toolCallId)
+
+      // Extract tool name from part type (format: "tool-{toolName}")
+      const toolName = toolPart.toolName
+      processToolCall(
+        toolPart.toolCallId,
+        toolName,
+        toolPart.input,
+        addToolOutputRef.current,
+      )
+    }
+  }, [messages, status, processToolCall])
 
   // Derived state
   const isLoading = status === 'submitted' || status === 'streaming'
@@ -449,8 +518,9 @@ function SessionAssistantContent({
     setExecutionError(undefined)
     setStreamError(null)
     setPendingToolCall(null)
-    // Clear responded tool calls tracking
+    // Clear tool call tracking
     respondedToolCallsRef.current.clear()
+    processedToolCallsRef.current.clear()
   }, [stop, setMessages, changeSet])
 
   // Context value for inline proposal section
