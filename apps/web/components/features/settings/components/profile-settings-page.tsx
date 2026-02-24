@@ -82,7 +82,7 @@ import type { Database, Json } from "@/types/database"
 // Define types from database schema
 type UserInsert = Database['public']['Tables']['users']['Insert']
 
-type UserRole = 'athlete' | 'coach' | 'individual'
+import type { UserRole } from "@/contexts/user-role-context"
 type Gender = 'male' | 'female' | 'other'
 type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced' | 'elite'
 
@@ -555,7 +555,6 @@ export function ProfileSettingsPage() {
         birthdate: profileData.birthdate,
         sex: profileData.sex,
         timezone: profileData.timezone,
-        role: profileData.role,
         metadata: profileData.metadata as { [key: string]: Json | undefined }
       }
 

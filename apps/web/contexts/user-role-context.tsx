@@ -1,16 +1,13 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { getUserRole } from '@/lib/user-cache'
+import type { Database } from '@/types/database'
 
 /**
- * User role types
- * - athlete: User training under a coach
- * - coach: User managing athletes and creating training programs
- * - individual: Self-coaching user (Athlete + self-planning capabilities)
+ * User role types — derived from the Supabase DB enum (single source of truth)
  */
-export type UserRole = 'athlete' | 'coach' | 'individual'
+export type UserRole = Database["public"]["Enums"]["role"]
 
 /**
  * User role context value
@@ -18,6 +15,7 @@ export type UserRole = 'athlete' | 'coach' | 'individual'
 interface UserRoleContextValue {
   role: UserRole | null
   isLoading: boolean
+  error: string | null
   isCoach: boolean
   isAthlete: boolean
   isIndividual: boolean
@@ -54,34 +52,68 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser()
   const [role, setRole] = useState<UserRole | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const retryCount = useRef(0)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const MAX_RETRIES = 2
 
   useEffect(() => {
+    // Reset retry count on user change
+    retryCount.current = 0
+
     async function fetchUserRole() {
       if (!isLoaded) return
 
       if (!user) {
         setRole(null)
         setIsLoading(false)
+        setError(null)
         return
       }
 
       try {
-        // This uses the cached getUserRole from user-cache.ts
-        // In client components, we need to call this via a server action
+        const VALID_ROLES: UserRole[] = ['coach', 'athlete', 'individual']
         const response = await fetch('/api/user/role')
         if (response.ok) {
           const data = await response.json()
-          setRole(data.role as UserRole)
+          if (VALID_ROLES.includes(data.role)) {
+            setRole(data.role as UserRole)
+            setError(null)
+            retryCount.current = 0
+            setIsLoading(false)
+          } else {
+            setError('Invalid role received from server')
+            setRole(null)
+            setIsLoading(false)
+          }
+        } else if (retryCount.current < MAX_RETRIES) {
+          retryCount.current++
+          const delay = 1000 * Math.pow(2, retryCount.current - 1)
+          timeoutRef.current = setTimeout(fetchUserRole, delay)
+        } else {
+          setError('Failed to load user role')
+          setRole(null)
+          setIsLoading(false)
         }
-      } catch (error) {
-        console.error('Failed to fetch user role:', error)
-        setRole(null)
-      } finally {
-        setIsLoading(false)
+      } catch (err) {
+        console.error('Failed to fetch user role:', err)
+        if (retryCount.current < MAX_RETRIES) {
+          retryCount.current++
+          const delay = 1000 * Math.pow(2, retryCount.current - 1)
+          timeoutRef.current = setTimeout(fetchUserRole, delay)
+        } else {
+          setError('Failed to load user role')
+          setRole(null)
+          setIsLoading(false)
+        }
       }
     }
 
     fetchUserRole()
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
   }, [user, isLoaded])
 
   // Memoize hasRole function to prevent recreation on every render
@@ -97,11 +129,12 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<UserRoleContextValue>(() => ({
     role,
     isLoading,
+    error,
     isCoach: role === 'coach',
     isAthlete: role === 'athlete',
     isIndividual: role === 'individual',
     hasRole
-  }), [role, isLoading, hasRole])
+  }), [role, isLoading, error, hasRole])
 
   return (
     <UserRoleContext.Provider value={value}>

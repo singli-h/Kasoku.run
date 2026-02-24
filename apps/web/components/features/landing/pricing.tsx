@@ -72,8 +72,8 @@ const PricingCard = ({ plan, index }: PricingCardProps) => {
       className={`relative p-8 ${
         highlighted
           ? 'bg-gradient-to-br from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 text-white'
-          : 'bg-card text-foreground border border-border/50'
-      } rounded-2xl shadow-xl`}
+          : 'bg-card text-foreground border border-border/50 hover:border-border'
+      } rounded-2xl shadow-xl transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl`}
     >
       {highlighted && (
         <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-4 py-1 rounded-full text-sm font-medium">

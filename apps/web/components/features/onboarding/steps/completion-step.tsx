@@ -3,17 +3,17 @@
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Loader2, Sparkles, AlertCircle } from "lucide-react"
 
-type UserRole = "athlete" | "coach" | "individual" | ""
+import type { UserRole } from "@/contexts/user-role-context"
 
 interface CompletionStepProps {
   onComplete: () => void
   isSubmitting: boolean
-  role: UserRole
+  role: UserRole | ""
   error?: string | null
 }
 
 // Role-specific next steps content
-const ROLE_NEXT_STEPS: Record<Exclude<UserRole, "">, { items: string[]; buttonText: string }> = {
+const ROLE_NEXT_STEPS: Record<UserRole, { items: string[]; buttonText: string }> = {
   individual: {
     items: [
       "Create your first Training Block with AI assistance",

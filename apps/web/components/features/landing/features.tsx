@@ -96,7 +96,7 @@ export default function Features() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-80px" }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
-                className="group p-6 rounded-2xl border border-border/60 bg-card hover:border-orange-500/30 transition-colors duration-300"
+                className="group p-6 rounded-2xl border border-border/60 bg-card hover:border-orange-500/30 transition-all duration-200 hover:-translate-y-0.5"
               >
                 <div className="w-10 h-10 rounded-xl bg-orange-500/10 dark:bg-orange-500/15 flex items-center justify-center mb-4">
                   <Icon className="w-5 h-5 text-orange-600 dark:text-orange-400" />

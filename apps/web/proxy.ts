@@ -95,7 +95,14 @@ export default clerkMiddleware(async (auth: any, req: any) => {
     return NextResponse.next()
   } catch (error) {
     console.error('[Proxy Error]:', error)
-    // Continue with request even if proxy fails (fail-open for availability)
+    const request = req as NextRequest
+    // For protected routes, fail-closed: redirect to sign-in rather than allowing through
+    if (isProtectedRoute(request)) {
+      const signInUrl = new URL('/sign-in', request.url)
+      signInUrl.searchParams.set('redirect_url', request.url)
+      return NextResponse.redirect(signInUrl)
+    }
+    // For public routes, continue (fail-open is safe since no auth is expected)
     return NextResponse.next()
   }
 })

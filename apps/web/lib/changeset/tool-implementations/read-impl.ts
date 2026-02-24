@@ -9,6 +9,17 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { GetSessionContextInput, SearchExercisesInput } from '../tools'
+import { searchExercises } from '@/lib/exercises'
+
+/**
+ * Pre-fetched session plan data that can be passed to avoid redundant queries.
+ * The route already fetches session_plans for ownership check — pass that here.
+ */
+export interface PrefetchedSession {
+  id: number | string
+  name: string | null
+  description: string | null
+}
 
 /**
  * Session context returned to the AI.
@@ -62,19 +73,26 @@ export interface ExerciseSearchResult {
  */
 export async function executeGetSessionContext(
   input: GetSessionContextInput,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  prefetchedSession?: PrefetchedSession
 ): Promise<SessionContext> {
   const { sessionId } = input
 
-  // Fetch session (preset_group)
-  const { data: session, error: sessionError } = await supabase
-    .from('session_plans')
-    .select('id, name, description')
-    .eq('id', sessionId)
-    .single()
+  // Use prefetched session data if available, otherwise fetch from DB
+  let session: PrefetchedSession
+  if (prefetchedSession) {
+    session = prefetchedSession
+  } else {
+    const { data, error: sessionError } = await supabase
+      .from('session_plans')
+      .select('id, name, description')
+      .eq('id', sessionId)
+      .single()
 
-  if (sessionError || !session) {
-    throw new Error(`Session not found: ${sessionId}`)
+    if (sessionError || !data) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+    session = data
   }
 
   // Fetch exercises with their sets
@@ -181,9 +199,6 @@ export async function executeSearchExercises(
   userId?: string
 ): Promise<ExerciseSearchResult[]> {
   const { query, equipment, excludeEquipment, limit = 5 } = input
-
-  // Import unified search module
-  const { searchExercises } = await import('@/lib/exercises')
 
   // Execute unified search with 'ai' field set for exercise type context
   const result = await searchExercises(supabase, {

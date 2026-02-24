@@ -135,8 +135,15 @@ export async function completeOnboardingAction(
     console.log('Generated unique username:', uniqueUsername, 'from base:', data.username)
 
     // Read Clerk publicMetadata for invitation context (tamper-proof, set server-side)
+    // IMPORTANT: Use server-side identity, not client-supplied clerkId
     const clerkUser = await currentUser()
-    const meta = clerkUser?.publicMetadata as { groupId?: number; coachId?: number; role?: string } | undefined
+    if (!clerkUser) {
+      return {
+        isSuccess: false,
+        message: "Not authenticated"
+      }
+    }
+    const meta = clerkUser.publicMetadata as { groupId?: number; coachId?: number; role?: string } | undefined
     let invitedGroupId: number | null = meta?.groupId ?? null
 
     // Validate the group actually exists before passing to RPC
@@ -156,36 +163,47 @@ export async function completeOnboardingAction(
     // If user was invited as athlete, force that role regardless of what was submitted
     const effectiveRole = meta?.role === 'athlete' ? 'athlete' : data.role
 
+    // Use server-side Clerk email as source of truth (prevents email mismatch attacks)
+    const serverEmail = clerkUser.emailAddresses[0]?.emailAddress
+    if (!serverEmail) {
+      return {
+        isSuccess: false,
+        message: "No email found on Clerk account"
+      }
+    }
+
     // Prepare RPC parameters based on role
     // Start with required base params, then add optional role-specific params
     const rpcParams: CompleteOnboardingArgs = {
-      p_clerk_id: data.clerkId,
+      p_clerk_id: clerkUser.id,
       p_username: uniqueUsername,
-      p_email: data.email,
+      p_email: serverEmail,
       p_first_name: data.firstName.trim(),
       p_last_name: data.lastName.trim(),
       p_role: effectiveRole,
       // Only pass birthdate if it's a non-empty string (empty string would fail DATE cast)
       p_birthdate: data.birthdate && data.birthdate.trim() ? data.birthdate.trim() : undefined,
       p_timezone: data.timezone || 'UTC',
-      p_subscription: data.subscription,
+      // Always start on free tier; upgrades only via verified payment flow
+      p_subscription: 'free',
       // Link invited athlete to coach's group
       p_group_id: invitedGroupId ?? undefined,
     }
 
     // Add role-specific parameters (undefined for optional fields that aren't set)
-    if (data.role === "athlete" && data.athleteData) {
+    // Use effectiveRole (not data.role) to match the role sent to the RPC
+    if (effectiveRole === "athlete" && data.athleteData) {
       rpcParams.p_height = data.athleteData.height ?? undefined
       rpcParams.p_weight = data.athleteData.weight ?? undefined
       rpcParams.p_training_goals = data.athleteData.trainingGoals
       rpcParams.p_experience = data.athleteData.experience
       rpcParams.p_events = data.athleteData.events
-    } else if (data.role === "coach" && data.coachData) {
+    } else if (effectiveRole === "coach" && data.coachData) {
       rpcParams.p_speciality = data.coachData.speciality
       rpcParams.p_experience = data.coachData.experience
       rpcParams.p_philosophy = data.coachData.philosophy
       rpcParams.p_sport_focus = data.coachData.sportFocus
-    } else if (data.role === "individual" && data.individualData) {
+    } else if (effectiveRole === "individual" && data.individualData) {
       rpcParams.p_training_goals = data.individualData.trainingGoals
       rpcParams.p_experience = data.individualData.experienceLevel
       rpcParams.p_available_equipment = data.individualData.availableEquipment

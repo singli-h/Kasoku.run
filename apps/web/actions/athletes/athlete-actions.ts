@@ -431,8 +431,69 @@ export async function updateAthleteProfileAction(
   updates: AthleteUpdate
 ): Promise<ActionState<Athlete>> {
   try {
-    // Using singleton supabase client
-    
+    const { userId: clerkId } = await auth()
+
+    if (!clerkId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Verify the caller owns this profile or is a coach of this athlete
+    const { id: callerDbId, role: callerRole } = await getUserInfo(clerkId)
+
+    if (callerRole === 'coach') {
+      // Coaches can update athletes in their groups
+      const { data: coachRecord } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('user_id', callerDbId)
+        .single()
+
+      if (!coachRecord) {
+        return {
+          isSuccess: false,
+          message: "Access denied: coach record not found"
+        }
+      }
+
+      // Allow coaches to update their own profile without group check
+      if (callerDbId !== userId) {
+        const { data: athleteRecord } = await supabase
+          .from('athletes')
+          .select('athlete_group_id')
+          .eq('user_id', userId)
+          .single()
+
+        if (!athleteRecord?.athlete_group_id) {
+          return {
+            isSuccess: false,
+            message: "Access denied: athlete is not in your group"
+          }
+        }
+
+        const { data: group } = await supabase
+          .from('athlete_groups')
+          .select('id')
+          .eq('id', athleteRecord.athlete_group_id)
+          .eq('coach_id', coachRecord.id)
+          .single()
+
+        if (!group) {
+          return {
+            isSuccess: false,
+            message: "Access denied: you don't have permission to update this athlete"
+          }
+        }
+      }
+    } else if (callerDbId !== userId) {
+      return {
+        isSuccess: false,
+        message: "Access denied: you can only update your own profile"
+      }
+    }
+
     // First check if athlete profile exists
     const { data: existingAthlete, error: checkError } = await supabase
       .from('athletes')
@@ -487,12 +548,75 @@ export async function updateAthleteProfileAction(
 }
 
 /**
- * Get athlete profile by user ID
+ * Get athlete profile by user ID (database user ID, not athlete ID)
+ *
+ * NOTE: This is distinct from getAthleteProfileAction in profile-actions.ts
+ * which accepts an athlete table ID and returns a richer ProfileViewData shape.
  */
-export async function getAthleteProfileAction(userId: number): Promise<ActionState<Athlete | null>> {
+export async function getAthleteProfileByUserIdAction(userId: number): Promise<ActionState<Athlete | null>> {
   try {
-    // Using singleton supabase client
-    
+    const { userId: clerkId } = await auth()
+
+    if (!clerkId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Verify the caller owns this profile or is a coach of this athlete
+    const { id: callerDbId, role: callerRole } = await getUserInfo(clerkId)
+
+    if (callerDbId !== userId) {
+      if (callerRole !== 'coach') {
+        return {
+          isSuccess: false,
+          message: "Access denied: you can only view your own profile"
+        }
+      }
+
+      // Coaches can only view athletes in their groups
+      const { data: coachRecord } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('user_id', callerDbId)
+        .single()
+
+      if (!coachRecord) {
+        return {
+          isSuccess: false,
+          message: "Access denied: coach record not found"
+        }
+      }
+
+      const { data: athleteRecord } = await supabase
+        .from('athletes')
+        .select('athlete_group_id')
+        .eq('user_id', userId)
+        .single()
+
+      if (athleteRecord?.athlete_group_id) {
+        const { data: group } = await supabase
+          .from('athlete_groups')
+          .select('id')
+          .eq('id', athleteRecord.athlete_group_id)
+          .eq('coach_id', coachRecord.id)
+          .single()
+
+        if (!group) {
+          return {
+            isSuccess: false,
+            message: "Access denied: athlete is not in your group"
+          }
+        }
+      } else {
+        return {
+          isSuccess: false,
+          message: "Access denied: athlete is not in your group"
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('athletes')
       .select('*')
@@ -844,6 +968,24 @@ export async function assignAthleteToGroupAction(
       }
     }
 
+    // Verify the athlete is either unassigned or already in one of this coach's groups
+    // Prevents coaches from stealing athletes belonging to other coaches
+    if (currentAthlete.athlete_group_id) {
+      const { data: ownedGroup } = await supabase
+        .from('athlete_groups')
+        .select('id')
+        .eq('id', currentAthlete.athlete_group_id)
+        .eq('coach_id', (user.coach as { id: number }).id)
+        .single()
+
+      if (!ownedGroup) {
+        return {
+          isSuccess: false,
+          message: "Access denied: this athlete belongs to another coach's group"
+        }
+      }
+    }
+
     // Update the athlete's group assignment
     const { data: athlete, error } = await supabase
       .from('athletes')
@@ -1038,6 +1180,21 @@ export async function removeAthleteFromGroupAction(
       }
     }
 
+    // Verify caller is a coach who owns this athlete's group
+    const dbUserId = await getDbUserId(userId)
+    const { data: callerUser } = await supabase
+      .from('users')
+      .select('role, coach:coaches(id)')
+      .eq('id', dbUserId)
+      .single()
+
+    if (!callerUser || callerUser.role !== 'coach' || !callerUser.coach) {
+      return {
+        isSuccess: false,
+        message: "Access denied: only coaches can remove athletes from groups"
+      }
+    }
+
     // Get current athlete info before updating (for history logging and workout cancellation)
     const { data: currentAthlete, error: currentError } = await supabase
       .from('athletes')
@@ -1059,6 +1216,21 @@ export async function removeAthleteFromGroupAction(
       return {
         isSuccess: false,
         message: "Athlete is not in any group"
+      }
+    }
+
+    // Verify the coach owns this athlete's group
+    const { data: ownedGroup } = await supabase
+      .from('athlete_groups')
+      .select('id')
+      .eq('id', previousGroupId)
+      .eq('coach_id', (callerUser.coach as { id: number }).id)
+      .single()
+
+    if (!ownedGroup) {
+      return {
+        isSuccess: false,
+        message: "Access denied: you don't own this athlete's group"
       }
     }
 
@@ -1393,24 +1565,14 @@ export async function inviteOrAttachAthleteAction(
         }
       }
 
-      // Promote 'individual' users to 'athlete' role
-      // Uses service client to bypass RLS (coach already verified above)
-      const { error: roleError } = await supabaseService
-        .from('users')
-        .update({ role: 'athlete' })
-        .eq('id', user_id)
-        .eq('role', 'individual')
+      // Create/update athlete profile + group assignment FIRST, then promote role.
+      // This ordering ensures that if role promotion fails, the user still has an
+      // athlete record with a group (the role can be fixed). The reverse (role promoted
+      // but no group) would leave the user in a worse limbo state.
 
-      if (roleError) {
-        console.error('Error promoting user role to athlete:', roleError)
-        return {
-          isSuccess: false,
-          message: "Failed to update user role"
-        }
-      }
-
+      let resultAthlete: Athlete | null = null
       if (!athlete_id) {
-        // Create athlete profile
+        // Create athlete profile with group assignment
         // Uses service client to bypass RLS (coach already verified above)
         const { data: newAthlete, error: athleteError } = await supabaseService
           .from('athletes')
@@ -1429,6 +1591,8 @@ export async function inviteOrAttachAthleteAction(
           }
         }
 
+        resultAthlete = newAthlete
+
         // Log the group assignment in history
         const historyResult = await createGroupHistoryEntryAction(
           newAthlete.id,
@@ -1439,12 +1603,6 @@ export async function inviteOrAttachAthleteAction(
 
         if (!historyResult.isSuccess) {
           console.warn('Failed to log group history for new athlete:', historyResult.message)
-        }
-
-        return {
-          isSuccess: true,
-          message: "Athlete profile created and assigned to group successfully",
-          data: { type: 'attached', athlete: newAthlete }
         }
       } else {
         // Athlete profile exists - update group assignment
@@ -1464,6 +1622,40 @@ export async function inviteOrAttachAthleteAction(
           }
         }
 
+        resultAthlete = updatedAthlete
+      }
+
+      // NOW promote 'individual' users to 'athlete' role (after group is set)
+      // Uses service client to bypass RLS (coach already verified above)
+      // Select clerk_id in response to invalidate cache only when promotion actually happens
+      const { data: promotedRows, error: roleError } = await supabaseService
+        .from('users')
+        .update({ role: 'athlete' })
+        .eq('id', user_id)
+        .eq('role', 'individual')
+        .select('clerk_id')
+
+      if (roleError) {
+        console.error('Error promoting user role to athlete:', roleError)
+        // Non-fatal: athlete record + group are already set correctly.
+        // The role can be corrected on next login or by admin.
+        console.warn('Athlete record created but role promotion failed — may need manual fix')
+      }
+
+      // Invalidate role cache only if a promotion actually occurred
+      if (promotedRows && promotedRows.length > 0 && promotedRows[0].clerk_id) {
+        const { invalidateUserCache } = await import('@/lib/user-cache')
+        invalidateUserCache(promotedRows[0].clerk_id)
+      }
+
+      if (!athlete_id) {
+        return {
+          isSuccess: true,
+          message: "Athlete profile created and assigned to group successfully",
+          data: { type: 'attached', athlete: resultAthlete }
+        }
+      } else {
+
         // Log the group change in history
         const historyResult = await createGroupHistoryEntryAction(
           athlete_id,
@@ -1481,7 +1673,7 @@ export async function inviteOrAttachAthleteAction(
           message: current_group_id
             ? "Athlete moved to new group successfully"
             : "Athlete re-added to group successfully",
-          data: { type: 'attached', athlete: updatedAthlete }
+          data: { type: 'attached', athlete: resultAthlete }
         }
       }
     } else {
@@ -1602,6 +1794,10 @@ export async function bulkAssignAthletesAction(
     const errors: string[] = []
 
     // Separate athletes into those to assign and those to skip
+    // NOTE: Only unassigned athletes (athlete_group_id === null) can be bulk-assigned.
+    // Athletes already in ANY group (including other coaches') are skipped.
+    // This prevents cross-coach athlete theft. The UI should further restrict
+    // the athlete list to those this coach has a relationship with.
     const athletesToAssign = (athletes || []).filter(athlete => {
       if (athlete.athlete_group_id !== null) {
         skipped.push(athlete.id)

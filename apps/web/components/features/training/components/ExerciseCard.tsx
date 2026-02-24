@@ -387,7 +387,7 @@ export function ExerciseCard({
                   e.stopPropagation()
                   onRemoveExercise?.()
                 }}
-                className="p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                className="p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -400,7 +400,7 @@ export function ExerciseCard({
                 onCompleteAllSets?.()
               }}
               className={cn(
-                "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 transition-all",
+                "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                 isAthlete && "hover:scale-110 active:scale-95",
                 isComplete
                   ? "bg-green-500 text-white hover:bg-green-600"

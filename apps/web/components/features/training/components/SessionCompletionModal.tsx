@@ -44,12 +44,12 @@ export function SessionCompletionModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in-0 duration-200">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative bg-card border border-border rounded-2xl w-full max-w-sm p-6 shadow-xl">
+      <div className="relative bg-card border border-border rounded-2xl w-full max-w-sm p-6 shadow-xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 duration-300">
         {/* Icon */}
         <div className={cn(
           "w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center",

@@ -663,7 +663,7 @@ export function SetRow({
           onClick={onComplete}
           aria-label={`Mark set ${set.setIndex} as ${set.completed ? 'incomplete' : 'complete'}`}
           className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all shrink-0 flex-shrink-0",
+            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-150 shrink-0 flex-shrink-0 active:scale-90",
             set.completed
               ? "bg-green-500 text-white"
               : "bg-background border border-border hover:border-primary hover:bg-primary hover:text-primary-foreground"

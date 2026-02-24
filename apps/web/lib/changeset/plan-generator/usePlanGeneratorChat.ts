@@ -86,21 +86,25 @@ export function usePlanGeneratorChat(
   // Local input state
   const [input, setInput] = useState('')
 
-  // Refs for stable callback access (prevent infinite loops)
-  const onPlanReadyRef = useRef(onPlanReady)
-  const onStatusChangeRef = useRef(onStatusChange)
-  const contextRef = useRef(context)
-  const supabaseRef = useRef(supabase)
-  const userIdRef = useRef(userId)
-
-  // Keep refs updated
+  // Track mounted state to guard against post-unmount operations
+  const isMountedRef = useRef(true)
   useEffect(() => {
-    onPlanReadyRef.current = onPlanReady
-    onStatusChangeRef.current = onStatusChange
-    contextRef.current = context
-    supabaseRef.current = supabase
-    userIdRef.current = userId
-  })
+    isMountedRef.current = true
+    return () => { isMountedRef.current = false }
+  }, [])
+
+  // Refs for stable callback access (prevent infinite loops)
+  // Direct assignment in render body — simpler than useEffect with no deps
+  const onPlanReadyRef = useRef(onPlanReady)
+  onPlanReadyRef.current = onPlanReady
+  const onStatusChangeRef = useRef(onStatusChange)
+  onStatusChangeRef.current = onStatusChange
+  const contextRef = useRef(context)
+  contextRef.current = context
+  const supabaseRef = useRef(supabase)
+  supabaseRef.current = supabase
+  const userIdRef = useRef(userId)
+  userIdRef.current = userId
 
   // Initialize plan generator state
   const planState = usePlanGeneratorState({
@@ -126,22 +130,19 @@ export function usePlanGeneratorChat(
   // Stream error state for surfacing AI errors to the user
   const [streamError, setStreamError] = useState<string | null>(null)
 
-  // Refs for plan state callbacks
+  // Refs for plan state callbacks — direct assignment in render body
   const upsertRef = useRef(upsert)
+  upsertRef.current = upsert
   const removeRef = useRef(remove)
+  removeRef.current = remove
   const clearRef = useRef(clear)
+  clearRef.current = clear
   const getCurrentPlanStateRef = useRef(getCurrentPlanState)
+  getCurrentPlanStateRef.current = getCurrentPlanState
   const setStatusRef = useRef(setStatus)
+  setStatusRef.current = setStatus
   const setMetadataRef = useRef(setMetadata)
-
-  useEffect(() => {
-    upsertRef.current = upsert
-    removeRef.current = remove
-    clearRef.current = clear
-    getCurrentPlanStateRef.current = getCurrentPlanState
-    setStatusRef.current = setStatus
-    setMetadataRef.current = setMetadata
-  })
+  setMetadataRef.current = setMetadata
 
   // Create handlers once using refs
   const handlers = useMemo<PlanGeneratorToolHandlers>(() => {
@@ -193,6 +194,8 @@ export function usePlanGeneratorChat(
     addToolOutput,
   } = useChat({
     transport,
+    // Throttle UI updates to reduce React re-renders during fast streaming
+    experimental_throttle: 50,
     // Automatically continue after tool calls complete
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     // Handle stream errors (network drops, 500s, token limits, timeouts)
@@ -250,6 +253,8 @@ export function usePlanGeneratorChat(
   // Effect-based fallback: detect unprocessed tool parts in messages
   // Handles cases where onToolCall doesn't fire (SDK race conditions, etc.)
   useEffect(() => {
+    if (!isMountedRef.current) return
+
     const lastMessage = messages[messages.length - 1]
     if (!lastMessage || lastMessage.role !== 'assistant') return
 
@@ -275,6 +280,7 @@ export function usePlanGeneratorChat(
       console.log('[PlanGeneratorChat] Effect fallback processing tool:', toolPart.toolName, toolPart.toolCallId)
 
       const processAsync = async () => {
+        if (!isMountedRef.current) return
         try {
           const toolArgs = (toolPart.input ?? {}) as Record<string, unknown>
           const result = await executePlanGeneratorTool(
@@ -283,6 +289,7 @@ export function usePlanGeneratorChat(
             handlersRef.current
           )
 
+          if (!isMountedRef.current) return
           const output = typeof result === 'string' ? result : JSON.stringify(result)
           addToolOutputRef.current({
             tool: toolPart.toolName!,
@@ -291,6 +298,7 @@ export function usePlanGeneratorChat(
           })
         } catch (err) {
           console.error('[PlanGeneratorChat] Effect fallback tool error:', err)
+          if (!isMountedRef.current) return
           addToolOutputRef.current({
             tool: toolPart.toolName!,
             toolCallId: toolPart.toolCallId!,

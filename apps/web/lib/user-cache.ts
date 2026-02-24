@@ -17,6 +17,7 @@ persistence between different serverless function invocations or across differen
 
 import { LRUCache } from "lru-cache"
 import supabase from "./supabase-server"
+import type { Database } from "@/types/database"
 
 /**
  * Cache configuration
@@ -35,11 +36,13 @@ const cacheOptions = {
  */
 const userIdCache = new LRUCache<string, number>(cacheOptions)
 
+type UserRole = Database["public"]["Enums"]["role"]
+
 /**
  * LRU cache instance for Clerk ID → User role mapping
  * Automatically cleared in non-production environments
  */
-const userRoleCache = new LRUCache<string, string>(cacheOptions)
+const userRoleCache = new LRUCache<string, UserRole>(cacheOptions)
 
 /**
  * Store interval ID to prevent multiple intervals on hot reload
@@ -157,7 +160,7 @@ export async function getDbUserId(clerkId: string): Promise<number> {
  * }
  * ```
  */
-export async function getUserRole(clerkId: string): Promise<string> {
+export async function getUserRole(clerkId: string): Promise<Database["public"]["Enums"]["role"]> {
   // Check cache first
   const cached = userRoleCache.get(clerkId)
   if (cached !== undefined) {
@@ -196,7 +199,7 @@ export async function getUserRole(clerkId: string): Promise<string> {
  * @returns Promise<{id: number, role: string}> - The database user ID and role
  * @throws Error if user not found or database error
  */
-export async function getUserInfo(clerkId: string): Promise<{id: number, role: string}> {
+export async function getUserInfo(clerkId: string): Promise<{id: number, role: Database["public"]["Enums"]["role"]}> {
   // Check both caches first
   const cachedId = userIdCache.get(clerkId)
   const cachedRole = userRoleCache.get(clerkId)
@@ -270,6 +273,7 @@ export function getCacheStats() {
  */
 export function clearUserCache(): void {
   userIdCache.clear()
+  userRoleCache.clear()
 }
 
 /**

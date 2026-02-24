@@ -272,7 +272,11 @@ function handleProposalTool(
     console.error(`[ProposalTool] ❌ Error:`, error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error
+        ? error.message
+        : (typeof error === 'object' && error !== null && 'message' in error)
+          ? String((error as { message: unknown }).message)
+          : 'Unknown error',
     }
   }
 }
@@ -416,7 +420,11 @@ export function createExecutionFailureResult(
 ): Record<string, unknown> {
   return {
     status: 'execution_failed',
-    error: error instanceof Error ? error.message : 'Unknown error',
+    error: error instanceof Error
+        ? error.message
+        : (typeof error === 'object' && error !== null && 'message' in error)
+          ? String((error as { message: unknown }).message)
+          : 'Unknown error',
     message: 'Failed to save changes. Please review the error and try again.',
   }
 }

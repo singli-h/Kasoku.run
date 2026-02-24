@@ -58,9 +58,6 @@ interface UserWebhookEvent {
     public_metadata?: {
       role?: string
     }
-    unsafe_metadata?: {
-      role?: string
-    }
   }
 }
 
@@ -188,9 +185,9 @@ async function handleUserCreated(data: UserWebhookEvent["data"]) {
     ? `${data.first_name.toLowerCase()}.${data.last_name.toLowerCase()}`
     : primaryEmail.split('@')[0])
 
-  // Determine role from metadata or default to 'athlete'
+  // Determine role from server-controlled public_metadata only (never trust unsafe_metadata)
   type UserRole = 'coach' | 'athlete' | 'individual'
-  const rawRole = data.public_metadata?.role || data.unsafe_metadata?.role || 'athlete'
+  const rawRole = data.public_metadata?.role || 'athlete'
   const role: UserRole = ['coach', 'athlete', 'individual'].includes(rawRole as string)
     ? (rawRole as UserRole)
     : 'athlete'
@@ -270,9 +267,9 @@ async function handleUserUpdated(data: UserWebhookEvent["data"]) {
     return
   }
 
-  // Determine role from metadata
+  // Determine role from server-controlled public_metadata only (never trust unsafe_metadata)
   type UserRole = 'coach' | 'athlete' | 'individual'
-  const rawRole = data.public_metadata?.role || data.unsafe_metadata?.role
+  const rawRole = data.public_metadata?.role
   const role: UserRole | undefined = rawRole && ['coach', 'athlete', 'individual'].includes(rawRole as string)
     ? (rawRole as UserRole)
     : undefined
@@ -474,20 +471,7 @@ async function handleOrganizationMembershipDeleted(data: OrganizationMembershipW
 }
 */
 
-// Handle preflight OPTIONS requests for CORS
-export async function OPTIONS(req: NextRequest) {
-  return NextResponse.json(
-    {},
-    {
-      status: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, svix-id, svix-timestamp, svix-signature",
-      },
-    }
-  )
-}
+// No OPTIONS handler needed — Clerk webhooks are server-to-server (no browser CORS preflight)
 
 async function ensureUserProfile(userId: number, role: string) {
   // Ensure athlete record exists for athletes, coaches, and individuals

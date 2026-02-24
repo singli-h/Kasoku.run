@@ -12,15 +12,77 @@
  * @see specs/005-ai-athlete-workout/spec.md
  */
 
-import { streamText, convertToModelMessages } from 'ai'
+import { streamText, convertToModelMessages, smoothStream } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
 import supabase from '@/lib/supabase-server'
 import { getDbUserId } from '@/lib/user-cache'
 import { checkServerRateLimit } from '@/lib/rate-limit-server'
-import { athleteDomainTools } from '@/lib/changeset/tools'
+import { athleteDomainTools, type AthleteToolName } from '@/lib/changeset/tools'
 import { buildAthleteSystemPrompt } from '@/lib/changeset/prompts/workout-athlete'
 import { executeGetWorkoutContext } from '@/lib/changeset/tool-implementations/workout-read-impl'
+
+// ============================================================================
+// Query Classification for Responsive Reasoning
+// ============================================================================
+
+type QueryIntent = 'log' | 'question' | 'modify'
+
+/** Tool subsets by intent — reduces tool schema tokens sent to OpenAI */
+const TOOLS_BY_INTENT: Record<QueryIntent, AthleteToolName[]> = {
+  // Logging: set tools + confirm (2-3 tools instead of 11)
+  log: [
+    'createWorkoutLogSetChangeRequest',
+    'updateWorkoutLogSetChangeRequest',
+    'confirmChangeSet',
+  ],
+  // Questions: read tools only (no proposals needed)
+  question: [
+    'getWorkoutContext',
+    'searchExercises',
+  ],
+  // Modifications: full tool set for swaps, additions, etc.
+  modify: [
+    'getWorkoutContext',
+    'searchExercises',
+    'createWorkoutLogSetChangeRequest',
+    'updateWorkoutLogSetChangeRequest',
+    'deleteWorkoutLogSetChangeRequest',
+    'createWorkoutLogExerciseChangeRequest',
+    'updateWorkoutLogExerciseChangeRequest',
+    'deleteWorkoutLogExerciseChangeRequest',
+    'updateWorkoutLogChangeRequest',
+    'confirmChangeSet',
+    'resetChangeSet',
+  ],
+}
+
+const REASONING_BY_INTENT: Record<QueryIntent, 'none' | 'low' | 'medium'> = {
+  log: 'none',
+  question: 'low',
+  modify: 'none',
+}
+
+// Patterns for classifying user intent
+const QUESTION_PATTERNS = /\b(why|what|how|explain|recommend|suggest|should i|tell me|difference|better|worse|benefit|alternative|technique|form|injury|pain|hurt)\b/i
+const MODIFY_PATTERNS = /\b(swap|replace|switch|add exercise|remove exercise|change exercise|reorder|superset|drop set)\b/i
+
+/**
+ * Classify the user's latest message to determine reasoning effort and active tools.
+ * Simple keyword heuristic — zero latency cost.
+ */
+function classifyQuery(messages: Array<{ role: string; content?: string }>): QueryIntent {
+  // Find the last user message
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i]
+    if (msg.role !== 'user' || !msg.content) continue
+    const text = typeof msg.content === 'string' ? msg.content : ''
+    if (MODIFY_PATTERNS.test(text)) return 'modify'
+    if (QUESTION_PATTERNS.test(text)) return 'question'
+    return 'log' // Default: assume logging (most common workout action)
+  }
+  return 'log'
+}
 
 export const maxDuration = 60
 
@@ -65,10 +127,14 @@ export async function POST(req: Request) {
       return new Response('User not found', { status: 404 })
     }
 
-    // Athlete + workout queries can run in parallel (both depend on dbUserId)
+    // Athlete + workout queries in parallel — expanded workout select includes
+    // all fields needed by context, avoiding a redundant query later
     const [athleteResult, workoutResult] = await Promise.all([
       supabase.from('athletes').select('id').eq('user_id', dbUserId).single(),
-      supabase.from('workout_logs').select('id, athlete_id, session_status').eq('id', workoutLogId).single(),
+      supabase.from('workout_logs')
+        .select('id, athlete_id, session_status, date_time, notes, session_plans(id, name)')
+        .eq('id', workoutLogId)
+        .single(),
     ])
 
     const { data: athlete, error: athleteError } = athleteResult
@@ -88,12 +154,19 @@ export async function POST(req: Request) {
       return new Response('Forbidden', { status: 403 })
     }
 
-    // Get workout context for system prompt
+    // Get workout context for system prompt — pass prefetched workout data to skip redundant query
     let workoutContext
     try {
       workoutContext = await executeGetWorkoutContext(
         { workoutLogId: String(workoutLogId), includeHistory: false },
-        supabase
+        supabase,
+        {
+          id: workout.id,
+          session_status: workout.session_status,
+          date_time: workout.date_time,
+          notes: workout.notes,
+          session_plans: workout.session_plans as unknown as { id: string; name: string } | null,
+        }
       )
     } catch (error) {
       console.error('[workout-assistant] Error fetching context:', error)
@@ -106,31 +179,63 @@ export async function POST(req: Request) {
     // Convert UI messages to model messages format
     const modelMessages = await convertToModelMessages(messages)
 
+    // Classify query intent for responsive reasoning + tool filtering
+    const intent = classifyQuery(messages)
+    const activeTools = TOOLS_BY_INTENT[intent]
+    const reasoningEffort = REASONING_BY_INTENT[intent]
+
     // Debug logging (development only)
     if (process.env.NODE_ENV === 'development') {
       console.log('[workout-assistant] Workout ID:', workoutLogId)
       console.log('[workout-assistant] Athlete ID:', athlete.id)
       console.log('[workout-assistant] Messages count:', modelMessages.length)
-      console.log('[workout-assistant] Tools available:', Object.keys(athleteDomainTools))
+      console.log('[workout-assistant] Intent:', intent, '→ reasoning:', reasoningEffort, '→ tools:', activeTools.length)
     }
 
-    // Stream response with tool support and reasoning mode
+    // Stream response with responsive reasoning and dynamic tool filtering
     const result = streamText({
       model: openai('gpt-5.2'),
       system: systemPrompt,
       messages: modelMessages,
       tools: athleteDomainTools,
+      // Dynamic tool filtering: only send relevant tools based on query intent
+      // Reduces tool schema tokens from ~1,650 (11 tools) to ~300-450 (2-3 tools) for logging
+      activeTools,
+      // Smooth word-level streaming for better perceived performance
+      experimental_transform: smoothStream(),
+      // Prevent stalled streams from hanging the UI
+      timeout: {
+        chunkMs: 5000,   // Abort if no chunk for 5s
+        stepMs: 15000,   // Abort any single tool step after 15s
+      },
+      // Step 0: use classified tools. Step 1+: expand to full set (follow-up after tool calls)
+      prepareStep: ({ stepNumber, messages: stepMessages }) => {
+        if (stepNumber > 0) {
+          // After tool calls, give model access to all tools for confirmChangeSet etc.
+          return { activeTools: Object.keys(athleteDomainTools) as AthleteToolName[] }
+        }
+        // Step 0: prune old messages for long conversations
+        if (stepMessages.length > 12) {
+          const systemMsgs = stepMessages.filter(m => m.role === 'system')
+          const nonSystemMsgs = stepMessages.filter(m => m.role !== 'system')
+          return { messages: [...systemMsgs, ...nonSystemMsgs.slice(-8)] }
+        }
+        return undefined
+      },
       providerOptions: {
         openai: {
-          reasoningEffort: 'low',       // Low effort for interactive chat responsiveness
-          reasoningSummary: 'auto',     // Stream condensed reasoning to client
+          reasoningEffort,             // Responsive: none for logging, low for questions
+          reasoningSummary: 'auto',    // Stream condensed reasoning to client
+          textVerbosity: 'low',        // Shorter responses = faster streaming completion
         },
       },
       onFinish: ({ text, toolCalls, usage, reasoning }) => {
-        console.log('[workout-assistant] Response text:', text?.substring(0, 200))
-        console.log('[workout-assistant] Reasoning:', reasoning ? JSON.stringify(reasoning).substring(0, 200) : 'none')
-        console.log('[workout-assistant] Tool calls:', toolCalls?.map((t) => t.toolName))
-        console.log('[workout-assistant] Tokens:', usage)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[workout-assistant] Response text:', text?.substring(0, 200))
+          console.log('[workout-assistant] Reasoning:', reasoning ? JSON.stringify(reasoning).substring(0, 200) : 'none')
+          console.log('[workout-assistant] Tool calls:', toolCalls?.map((t) => t.toolName))
+          console.log('[workout-assistant] Tokens:', usage)
+        }
       },
     })
 

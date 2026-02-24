@@ -12,12 +12,13 @@
  * @see docs/features/plans/individual/IMPLEMENTATION_PLAN.md
  */
 
-import { streamText, convertToModelMessages, type UIMessage } from 'ai'
+import { streamText, convertToModelMessages, smoothStream, type UIMessage } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 import supabase from '@/lib/supabase-server'
 import { getDbUserId } from '@/lib/user-cache'
+import { checkServerRateLimit } from '@/lib/rate-limit-server'
 import { coachDomainTools } from '@/lib/changeset/tools'
 import { buildPlanAssistantSystemPrompt } from '@/lib/changeset/prompts/plan-assistant'
 import { executeGetSessionContext } from '@/lib/changeset/tool-implementations/read-impl'
@@ -78,21 +79,37 @@ const PlanAssistantRequestSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    // Authenticate the request
-    const { userId } = await auth()
+    // Authenticate and parse body in parallel
+    const [authResult, rawBody] = await Promise.all([
+      auth(),
+      req.json(),
+    ])
+
+    const { userId } = authResult
     if (!userId) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const dbUserId = await getDbUserId(userId)
-    if (!dbUserId) {
+    // Rate limit: 20 requests per minute per user
+    const { allowed, remaining } = checkServerRateLimit(userId, 20, 60_000)
+    if (!allowed) {
+      return new Response('Too many requests. Please wait a moment.', {
+        status: 429,
+        headers: { 'X-RateLimit-Remaining': String(remaining) },
+      })
+    }
+
+    // Resolve DB user ID (throws if user not found)
+    let dbUserId: number
+    try {
+      dbUserId = await getDbUserId(userId)
+    } catch {
       return new Response('User not found', { status: 404 })
     }
 
-    // Parse and validate request body
+    // Validate request body
     let body: z.infer<typeof PlanAssistantRequestSchema>
     try {
-      const rawBody = await req.json()
       body = PlanAssistantRequestSchema.parse(rawBody)
     } catch (error) {
       console.error('[plan-assistant] Invalid request:', error)
@@ -167,76 +184,83 @@ export async function POST(req: Request) {
       })) ?? [],
     }
 
-    // Get week context if a week is selected
-    if (weekId) {
-      try {
-        const { data: weekData } = await supabase
-          .from('microcycles')
-          .select(`
-            id,
-            name,
-            start_date,
-            end_date,
-            session_plans (
+    // Fetch week and session context in parallel (both are independent after plan ownership check)
+    const [weekResult, sessionResult] = await Promise.all([
+      // Get week context if a week is selected
+      weekId ? (async () => {
+        try {
+          const { data: weekData } = await supabase
+            .from('microcycles')
+            .select(`
               id,
               name,
-              day,
-              session_plan_exercises (
+              start_date,
+              end_date,
+              session_plans (
                 id,
-                exercise_order,
-                exercise:exercises (
+                name,
+                day,
+                session_plan_exercises (
                   id,
-                  name
+                  exercise_order,
+                  exercise:exercises (
+                    id,
+                    name
+                  )
                 )
               )
-            )
-          `)
-          .eq('id', weekId)
-          .single()
+            `)
+            .eq('id', weekId)
+            .single()
 
-        if (weekData) {
-          weekContext = {
-            id: weekData.id,
-            name: weekData.name,
-            startDate: weekData.start_date,
-            endDate: weekData.end_date,
-            sessions: weekData.session_plans?.map((s: SessionPlanWithExercisesRow) => ({
-              id: s.id,
-              name: s.name,
-              day: s.day,
-              exerciseCount: s.session_plan_exercises?.length ?? 0,
-              exercises: s.session_plan_exercises?.map((e: SessionPlanExerciseRow) => ({
-                id: e.id,
-                name: e.exercise?.name ?? undefined,
+          if (weekData) {
+            return {
+              id: weekData.id,
+              name: weekData.name,
+              startDate: weekData.start_date,
+              endDate: weekData.end_date,
+              sessions: weekData.session_plans?.map((s: SessionPlanWithExercisesRow) => ({
+                id: s.id,
+                name: s.name,
+                day: s.day,
+                exerciseCount: s.session_plan_exercises?.length ?? 0,
+                exercises: s.session_plan_exercises?.map((e: SessionPlanExerciseRow) => ({
+                  id: e.id,
+                  name: e.exercise?.name ?? undefined,
+                })) ?? [],
               })) ?? [],
-            })) ?? [],
+            }
           }
+        } catch (error) {
+          console.error('[plan-assistant] Error fetching week context:', error)
         }
-      } catch (error) {
-        console.error('[plan-assistant] Error fetching week context:', error)
-      }
-    }
+        return undefined
+      })() : Promise.resolve(undefined),
 
-    // Get session context if a session is selected
-    if (sessionId) {
-      try {
-        // Verify session ownership
-        const { data: session, error: sessionError } = await supabase
-          .from('session_plans')
-          .select('id, user_id, name')
-          .eq('id', sessionId)
-          .single()
+      // Get session context if a session is selected
+      sessionId ? (async () => {
+        try {
+          const { data: session, error: sessionError } = await supabase
+            .from('session_plans')
+            .select('id, user_id, name')
+            .eq('id', sessionId)
+            .single()
 
-        if (!sessionError && session && session.user_id === dbUserId) {
-          sessionContext = await executeGetSessionContext(
-            { sessionId: String(sessionId), includeHistory: false },
-            supabase
-          )
+          if (!sessionError && session && session.user_id === dbUserId) {
+            return await executeGetSessionContext(
+              { sessionId: String(sessionId), includeHistory: false },
+              supabase
+            )
+          }
+        } catch (error) {
+          console.error('[plan-assistant] Error fetching session context:', error)
         }
-      } catch (error) {
-        console.error('[plan-assistant] Error fetching session context:', error)
-      }
-    }
+        return undefined
+      })() : Promise.resolve(undefined),
+    ])
+
+    weekContext = weekResult
+    sessionContext = sessionResult
 
     // Build system prompt with context
     const systemPrompt = buildPlanAssistantSystemPrompt({
@@ -250,6 +274,7 @@ export async function POST(req: Request) {
     })
 
     // Convert UI messages to model messages format
+    // Cast: Zod validates as unknown[], but convertToModelMessages expects UIMessage[]
     const modelMessages = await convertToModelMessages(messages as UIMessage[])
 
     // Debug logging (development only)
@@ -268,6 +293,20 @@ export async function POST(req: Request) {
       system: systemPrompt,
       messages: modelMessages,
       tools: coachDomainTools,
+      // Smooth word-level streaming for better perceived performance
+      experimental_transform: smoothStream(),
+      // Prevent stalled streams from hanging the UI
+      timeout: {
+        chunkMs: 5000,   // Abort if no chunk for 5s
+        stepMs: 15000,   // Abort any single tool step after 15s
+      },
+      // Prune old messages to prevent context bloat in longer conversations
+      prepareStep: ({ stepNumber, messages: stepMessages }) => {
+        if (stepNumber > 0 || stepMessages.length <= 12) return undefined
+        const systemMsgs = stepMessages.filter(m => m.role === 'system')
+        const nonSystemMsgs = stepMessages.filter(m => m.role !== 'system')
+        return { messages: [...systemMsgs, ...nonSystemMsgs.slice(-8)] }
+      },
       providerOptions: {
         openai: {
           reasoningEffort: 'low',

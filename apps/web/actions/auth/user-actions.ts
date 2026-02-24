@@ -145,16 +145,25 @@ export async function checkUserExistsAction(): Promise<ActionState<boolean>> {
 
 /**
  * Create a new user in Supabase from Clerk data
+ *
+ * Security: Verifies the caller is authenticated and matches the provided clerkUserId.
  */
 export async function createSupabaseUserAction(
-  clerkUserId: string, 
-  email: string, 
+  clerkUserId: string,
+  email: string,
   firstName?: string,
   lastName?: string,
   avatarUrl?: string
 ): Promise<ActionState<User>> {
   try {
-    // Using singleton supabase client
+    // Verify the caller is the same user they claim to be
+    const { userId: authenticatedUserId } = await auth()
+    if (!authenticatedUserId || authenticatedUserId !== clerkUserId) {
+      return {
+        isSuccess: false,
+        message: "Access denied"
+      }
+    }
 
     const userData: UserInsert = {
       clerk_id: clerkUserId,
@@ -231,18 +240,49 @@ export async function createSupabaseUserFromWebhookAction(
 
 /**
  * Update user information in Supabase
+ *
+ * Security: Verifies caller identity via auth() and strips sensitive fields
+ * (role, clerk_id, email, subscription_status) that must not be client-writable.
  */
 export async function updateSupabaseUserAction(
   clerkUserId: string,
   updates: Partial<UserInsert>
 ): Promise<ActionState<User>> {
   try {
-    // Using singleton supabase client and cached user lookup
+    // Verify the caller is the same user they claim to be
+    const { userId: authenticatedUserId } = await auth()
+    if (!authenticatedUserId || authenticatedUserId !== clerkUserId) {
+      return {
+        isSuccess: false,
+        message: "Access denied"
+      }
+    }
+
+    // Allowlist of fields that users can update on their own profile
+    const ALLOWED_FIELDS = [
+      'first_name', 'last_name', 'username', 'birthdate',
+      'sex', 'timezone', 'metadata', 'avatar_url'
+    ] as const
+
+    // Strip any fields not in the allowlist (prevents role escalation, etc.)
+    const sanitized = Object.fromEntries(
+      Object.entries(updates).filter(([key]) =>
+        (ALLOWED_FIELDS as readonly string[]).includes(key)
+      )
+    )
+
+    if (Object.keys(sanitized).length === 0) {
+      return {
+        isSuccess: false,
+        message: "No valid fields to update"
+      }
+    }
+
     const dbUserId = await getDbUserId(clerkUserId)
 
     const { data: user, error } = await supabase
       .from('users')
-      .update(updates)
+      .update(sanitized)
       .eq('id', dbUserId)
       .select()
       .single()
@@ -271,12 +311,22 @@ export async function updateSupabaseUserAction(
 
 /**
  * Get user by Clerk ID
+ *
+ * Security: Verifies the caller is authenticated and matches the requested clerkId.
  */
 export async function getUserByClerkIdAction(clerkId: string): Promise<ActionState<User | null>> {
   try {
-    // Using singleton supabase client and cached user lookup
+    // Verify the caller is the same user they are querying
+    const { userId: authenticatedUserId } = await auth()
+    if (!authenticatedUserId || authenticatedUserId !== clerkId) {
+      return {
+        isSuccess: false,
+        message: "Access denied"
+      }
+    }
+
     const dbUserId = await getDbUserId(clerkId)
-    
+
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
@@ -307,16 +357,13 @@ export async function getUserByClerkIdAction(clerkId: string): Promise<ActionSta
 
 /**
  * Check if the current user needs onboarding
+ *
+ * Security: Always uses auth() to determine the caller — never accepts external user IDs.
  */
-export async function checkUserNeedsOnboardingAction(providedUserId?: string): Promise<ActionState<boolean>> {
+export async function checkUserNeedsOnboardingAction(): Promise<ActionState<boolean>> {
   try {
-    let userId = providedUserId
-    
-    if (!userId) {
-      const { userId: authUserId } = await auth()
-      userId = authUserId || undefined
-    }
-    
+    const { userId } = await auth()
+
     if (!userId) {
       return {
         isSuccess: false,

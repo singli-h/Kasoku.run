@@ -107,6 +107,18 @@ export interface GetWorkoutContextInput {
 // ============================================================================
 
 /**
+ * Pre-fetched workout log data that can be passed to avoid redundant queries.
+ * The route already fetches workout_logs for ownership check — pass that here.
+ */
+export interface PrefetchedWorkoutLog {
+  id: number | string
+  session_status: string | null
+  date_time: string | null
+  notes: string | null
+  session_plans: { id: string; name: string } | null
+}
+
+/**
  * Executes the getWorkoutContext read tool.
  *
  * Fetches the workout log with all exercises and sets,
@@ -114,44 +126,17 @@ export interface GetWorkoutContextInput {
  *
  * @param input - Tool input parameters
  * @param supabase - Supabase client
+ * @param prefetchedWorkoutLog - Optional pre-fetched workout log data to skip redundant query
  * @returns Workout context for AI
  */
 export async function executeGetWorkoutContext(
   input: GetWorkoutContextInput,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  prefetchedWorkoutLog?: PrefetchedWorkoutLog
 ): Promise<WorkoutContext> {
   const { workoutLogId } = input
 
-  // Fetch workout log with session plan name
-  const { data: workoutLog, error: workoutError } = await supabase
-    .from('workout_logs')
-    .select(
-      `
-      id,
-      session_status,
-      date_time,
-      notes,
-      session_plans (
-        id,
-        name
-      )
-    `
-    )
-    .eq('id', workoutLogId)
-    .single()
-
-  if (workoutError || !workoutLog) {
-    throw new Error(`Workout not found: ${workoutLogId}`)
-  }
-
-  // Type assertion for nested join
-  const sessionPlan = workoutLog.session_plans as unknown as {
-    id: string
-    name: string
-  } | null
-
-  // Fetch workout exercises with linked session plan exercises
-  const { data: workoutExercises, error: exercisesError } = await supabase
+  const exercisesQuery = supabase
     .from('workout_log_exercises')
     .select(
       `
@@ -169,10 +154,46 @@ export async function executeGetWorkoutContext(
     .eq('workout_log_id', workoutLogId)
     .order('exercise_order', { ascending: true })
 
-  if (exercisesError) {
-    console.error('[executeGetWorkoutContext] Error fetching exercises:', exercisesError)
-    throw new Error('Failed to fetch workout exercises')
+  let workoutLog: PrefetchedWorkoutLog
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let workoutExercises: any[] | null
+
+  if (prefetchedWorkoutLog) {
+    // Route already fetched workout_logs for ownership — skip redundant query
+    workoutLog = prefetchedWorkoutLog
+    const { data, error: exercisesError } = await exercisesQuery
+    if (exercisesError) {
+      console.error('[executeGetWorkoutContext] Error fetching exercises:', exercisesError)
+      throw new Error('Failed to fetch workout exercises')
+    }
+    workoutExercises = data
+  } else {
+    // No prefetch — fetch workout log and exercises in parallel
+    const [workoutLogResult, exercisesResult] = await Promise.all([
+      supabase
+        .from('workout_logs')
+        .select('id, session_status, date_time, notes, session_plans(id, name)')
+        .eq('id', workoutLogId)
+        .single(),
+      exercisesQuery,
+    ])
+
+    const { data, error: workoutError } = workoutLogResult
+    if (workoutError || !data) {
+      throw new Error(`Workout not found: ${workoutLogId}`)
+    }
+    workoutLog = data as unknown as PrefetchedWorkoutLog
+
+    const { data: exData, error: exercisesError } = exercisesResult
+    if (exercisesError) {
+      console.error('[executeGetWorkoutContext] Error fetching exercises:', exercisesError)
+      throw new Error('Failed to fetch workout exercises')
+    }
+    workoutExercises = exData
   }
+
+  // Type assertion for nested join
+  const sessionPlan = workoutLog.session_plans as { id: string; name: string } | null
 
   // Collect IDs for parallel set queries
   const sessionPlanExerciseIds = (workoutExercises ?? [])

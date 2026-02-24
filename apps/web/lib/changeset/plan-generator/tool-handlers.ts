@@ -8,6 +8,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { searchExercises } from '@/lib/exercises'
 
 import type {
   ConfirmPlanChangeSetInput,
@@ -61,7 +62,6 @@ export interface PlanGeneratorToolHandlers {
   getPlanGenerationContext: () => PlanGenerationContext | null
   searchExercisesForPlan: (
     input: SearchExercisesForPlanInput,
-    supabase: SupabaseClient
   ) => Promise<ExerciseSearchResult[]>
   getCurrentPlanState: () => CurrentPlanState | null
 
@@ -178,18 +178,15 @@ export function createPlanGeneratorHandlers(
     // ========================================================================
 
     getPlanGenerationContext: () => {
-      console.log('[PlanGenerator] getPlanGenerationContext called')
       return options.context
     },
 
     searchExercisesForPlan: async (input: SearchExercisesForPlanInput) => {
-      console.log('[PlanGenerator] searchExercisesForPlan called', input)
       // Pass userId to include user's custom exercises in search results
       return executeSearchExercisesForPlan(input, options.supabase, options.userId)
     },
 
     getCurrentPlanState: () => {
-      console.log('[PlanGenerator] getCurrentPlanState called')
       return getCurrentPlanState()
     },
 
@@ -318,9 +315,6 @@ async function executeSearchExercisesForPlan(
 ): Promise<ExerciseSearchResult[]> {
   const { query, equipment, exclude_equipment, limit = 10 } = input
 
-  // Import unified search module
-  const { searchExercises } = await import('@/lib/exercises')
-
   // Execute unified search with 'ai' field set for equipment context
   const result = await searchExercises(supabase, {
     query: query?.trim() || undefined,
@@ -370,18 +364,14 @@ export async function executePlanGeneratorTool(
   args: Record<string, unknown>,
   handlers: PlanGeneratorToolHandlers
 ): Promise<unknown> {
-  console.log(`[PlanGenerator] Executing tool: ${toolName}`, args)
-
   switch (toolName as PlanGeneratorToolName) {
     // Read tools
     case 'getPlanGenerationContext':
       return handlers.getPlanGenerationContext()
 
     case 'searchExercisesForPlan':
-      // Note: supabase is captured in the handler closure
       return handlers.searchExercisesForPlan(
         args as SearchExercisesForPlanInput,
-        {} as SupabaseClient // Placeholder - actual client is in closure
       )
 
     case 'getCurrentPlanState':

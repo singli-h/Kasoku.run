@@ -109,9 +109,12 @@ export default function LandingHeader() {
       </div>
 
       {/* Mobile menu */}
-      {isMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background">
-          <div className="container mx-auto px-4 py-4 space-y-3">
+      <div
+        className={`md:hidden border-t border-border bg-background overflow-hidden transition-all duration-200 ease-out ${
+          isMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0 border-t-0"
+        }`}
+      >
+        <div className="container mx-auto px-4 py-4 space-y-3">
             {navLinks.map(link => (
               <Link
                 key={link.href}
@@ -148,7 +151,6 @@ export default function LandingHeader() {
             </div>
           </div>
         </div>
-      )}
     </header>
   )
 }

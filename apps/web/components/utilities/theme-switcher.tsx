@@ -36,7 +36,7 @@ export const ThemeSwitcher = ({ children, ...props }: ThemeSwitcherProps) => {
     return (
       <div
         className={cn(
-          "p-1 hover:cursor-pointer hover:opacity-50",
+          "p-1.5 rounded-md cursor-pointer transition-all duration-150 hover:bg-muted active:scale-95",
           props.className
         )}
       >
@@ -48,7 +48,7 @@ export const ThemeSwitcher = ({ children, ...props }: ThemeSwitcherProps) => {
   return (
     <div
       className={cn(
-        "p-1 hover:cursor-pointer hover:opacity-50",
+        "p-1.5 rounded-md cursor-pointer transition-all duration-150 hover:bg-muted active:scale-95",
         props.className
       )}
       onClick={() => handleChange(theme === "light" ? "dark" : "light")}

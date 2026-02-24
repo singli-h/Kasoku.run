@@ -180,6 +180,35 @@ function SessionAssistantContent({
   const transport = useMemo(() => new DefaultChatTransport({
     api: domain === 'workout' ? '/api/ai/workout-assistant' : '/api/ai/session-assistant',
     body: domain === 'workout' ? { workoutLogId: sessionId } : { sessionId },
+    // Truncate verbose tool results in older messages to reduce payload size
+    prepareSendMessagesRequest: ({ messages: msgs, body: reqBody }) => {
+      const KEEP_RECENT = 4
+      if (msgs.length <= KEEP_RECENT) {
+        return { body: { ...reqBody, messages: msgs } }
+      }
+
+      const trimmedMessages = msgs.map((msg, index) => {
+        // Keep recent messages untouched
+        if (index >= msgs.length - KEEP_RECENT) return msg
+        // Only process assistant messages with tool parts
+        if (msg.role !== 'assistant' || !msg.parts) return msg
+
+        const trimmedParts = msg.parts.map((part) => {
+          // Truncate tool output in older messages
+          const p = part as { type: string; state?: string; output?: unknown }
+          if (p.type.startsWith('tool-') && p.state === 'output-available' && p.output != null) {
+            const outputStr = typeof p.output === 'string' ? p.output : JSON.stringify(p.output)
+            if (outputStr.length > 200) {
+              return { ...part, output: outputStr.substring(0, 200) + '...[truncated]' }
+            }
+          }
+          return part
+        })
+        return { ...msg, parts: trimmedParts }
+      })
+
+      return { body: { ...reqBody, messages: trimmedMessages } }
+    },
   }), [sessionId, domain])
 
   // Track which tool calls have been processed (by onToolCall or effect fallback)
@@ -255,6 +284,8 @@ function SessionAssistantContent({
     addToolOutput,
   } = useChat({
     transport,
+    // Throttle UI updates to reduce React re-renders during fast streaming
+    experimental_throttle: 50,
     // Automatically send when all tool calls have results
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     // Handle stream errors (network drops, 500s, token limits, timeouts)
