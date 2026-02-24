@@ -130,6 +130,7 @@ function SessionAssistantContent({
   const [showBanner, setShowBanner] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
   const [executionError, setExecutionError] = useState<ExecutionError | undefined>()
+  const [streamError, setStreamError] = useState<string | null>(null)
   const [input, setInput] = useState('')
 
   // Pending tool call info for pause/resume (confirmChangeSet)
@@ -140,6 +141,12 @@ function SessionAssistantContent({
 
   // Track responded tool calls to prevent duplicate submissions (race condition guard)
   const respondedToolCallsRef = useRef<Set<string>>(new Set())
+
+  // Track mounted state to guard against post-unmount operations
+  const isMountedRef = useRef(true)
+  useEffect(() => {
+    return () => { isMountedRef.current = false }
+  }, [])
 
   const changeSet = useChangeSet()
 
@@ -158,6 +165,12 @@ function SessionAssistantContent({
   changeSetRef.current = changeSet
   const getTokenRef = useRef(getToken)
   getTokenRef.current = getToken
+
+  // Reuse a single Supabase client for all tool calls (avoid creating per-call)
+  // Use a wrapper that always reads latest getToken from ref to survive Clerk session refresh
+  const supabaseClientRef = useRef(
+    createClientSupabaseClient((...args) => getTokenRef.current(...args))
+  )
 
   // Create transport with API endpoint and ID in body
   // For session domain: /api/ai/session-assistant with sessionId
@@ -179,16 +192,27 @@ function SessionAssistantContent({
     transport,
     // Automatically send when all tool calls have results
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    // Handle stream errors (network drops, 500s, token limits, timeouts)
+    onError(error) {
+      console.error('[SessionAssistant] Stream error:', error)
+      if (isMountedRef.current) {
+        setStreamError(error.message || 'Something went wrong. Please try again.')
+        // Clear pending tool call so UI doesn't get stuck
+        setPendingToolCall(null)
+      }
+    },
     // Handle tool calls from the AI
     async onToolCall({ toolCall }) {
+      // Guard against post-unmount tool calls
+      if (!isMountedRef.current) return
+
       console.log('[SessionAssistant] onToolCall received:', toolCall.toolName)
 
-      // Create Supabase client for read operations
-      const supabase = createClientSupabaseClient(getTokenRef.current)
+      // Reuse Supabase client from ref (avoids creating a new client per tool call)
+      const supabase = supabaseClientRef.current
 
       try {
-        // AI SDK 6 uses 'input' for tool arguments
-        const toolArgs = (toolCall as { input?: unknown }).input ?? {}
+        const toolArgs = ((toolCall as { input?: unknown }).input ?? {}) as Record<string, unknown>
 
         const result = await handleToolCall(
           toolCall.toolName,
@@ -244,6 +268,7 @@ function SessionAssistantContent({
 
   // Derived state
   const isLoading = status === 'submitted' || status === 'streaming'
+  const hasError = status === 'error' || !!streamError
 
   /**
    * Handle form submission.
@@ -252,6 +277,8 @@ function SessionAssistantContent({
     e.preventDefault()
     if (!input.trim() || isLoading) return
 
+    // Clear any previous error when user sends a new message
+    setStreamError(null)
     sendMessage({ text: input })
     setInput('')
   }, [input, isLoading, sendMessage])
@@ -346,7 +373,7 @@ function SessionAssistantContent({
       setIsExecuting(false)
       setPendingToolCall(null)
     }
-  }, [changeSet, domain, exercises, sessionId, setExercises, onWorkoutUpdated, pendingToolCall, addToolOutput, sendMessage])
+  }, [changeSet, domain, exercises, sessionId, setExercises, onWorkoutUpdated, pendingToolCall, addToolOutput])
 
   /**
    * Handle user regeneration request (user clicked "Change" button).
@@ -412,16 +439,19 @@ function SessionAssistantContent({
    * Handle clearing the chat to start fresh.
    */
   const handleClearChat = useCallback(() => {
+    // Abort any in-flight stream first to prevent ghost tool calls
+    stop()
     // Clear messages
     setMessages([])
     // Clear any pending changeset
     changeSet.clear()
     setShowBanner(false)
     setExecutionError(undefined)
+    setStreamError(null)
     setPendingToolCall(null)
     // Clear responded tool calls tracking
     respondedToolCallsRef.current.clear()
-  }, [setMessages, changeSet])
+  }, [stop, setMessages, changeSet])
 
   // Context value for inline proposal section
   const contextValue = useMemo(
@@ -481,6 +511,8 @@ function SessionAssistantContent({
             onInputChange={setInput}
             onSubmit={handleSubmit}
             isLoading={isLoading}
+            streamError={streamError}
+            onRetry={() => setStreamError(null)}
             onStop={stop}
             onClearChat={handleClearChat}
             isExpanded={blockWideExpand?.isExpanded ?? false}
@@ -500,6 +532,8 @@ function SessionAssistantContent({
           onInputChange={setInput}
           onSubmit={handleSubmit}
           isLoading={isLoading}
+          streamError={streamError}
+          onRetry={() => setStreamError(null)}
           onStop={stop}
           onClearChat={handleClearChat}
           isExpanded={blockWideExpand?.isExpanded ?? false}

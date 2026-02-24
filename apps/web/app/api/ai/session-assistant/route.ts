@@ -12,39 +12,58 @@ import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
 import supabase from '@/lib/supabase-server'
 import { getDbUserId } from '@/lib/user-cache'
+import { checkServerRateLimit } from '@/lib/rate-limit-server'
 import { coachDomainTools } from '@/lib/changeset/tools'
 import { buildCoachSystemPrompt } from '@/lib/changeset/prompts/session-planner'
 import { executeGetSessionContext } from '@/lib/changeset/tool-implementations/read-impl'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 export async function POST(req: Request) {
   try {
-    // Authenticate the request
-    const { userId } = await auth()
+    // Authenticate and parse body in parallel
+    const [authResult, body] = await Promise.all([
+      auth(),
+      req.json(),
+    ])
+
+    const { userId } = authResult
     if (!userId) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const dbUserId = await getDbUserId(userId)
-    if (!dbUserId) {
-      return new Response('User not found', { status: 404 })
+    // Rate limit: 20 requests per minute per user
+    const { allowed, remaining } = checkServerRateLimit(userId, 20, 60_000)
+    if (!allowed) {
+      return new Response('Too many requests. Please wait a moment.', {
+        status: 429,
+        headers: { 'X-RateLimit-Remaining': String(remaining) },
+      })
     }
 
-    // Parse request body
-    const { messages, sessionId } = await req.json()
-
+    const { messages, sessionId } = body
     if (!sessionId) {
       return new Response('Session ID is required', { status: 400 })
     }
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return new Response('Messages array is required', { status: 400 })
+    }
+    if (messages.length > 100) {
+      return new Response('Too many messages', { status: 400 })
+    }
+
+    // Resolve DB user ID (throws if user not found)
+    let dbUserId: number
+    try {
+      dbUserId = await getDbUserId(userId)
+    } catch {
+      return new Response('User not found', { status: 404 })
+    }
 
     // Verify session ownership
-    const { data: session, error: sessionError } = await supabase
-      .from('session_plans')
-      .select('id, user_id, name')
-      .eq('id', sessionId)
-      .single()
+    const sessionResult = await supabase.from('session_plans').select('id, user_id, name').eq('id', sessionId).single()
 
+    const { data: session, error: sessionError } = sessionResult
     if (sessionError || !session) {
       return new Response('Session not found', { status: 404 })
     }
@@ -53,7 +72,7 @@ export async function POST(req: Request) {
       return new Response('Forbidden', { status: 403 })
     }
 
-    // Get session context for system prompt
+    // Fetch session context (non-blocking — AI can still use getSessionContext tool)
     let sessionContext
     try {
       sessionContext = await executeGetSessionContext(
@@ -62,7 +81,6 @@ export async function POST(req: Request) {
       )
     } catch (error) {
       console.error('[session-assistant] Error fetching context:', error)
-      // Continue without context - AI can still use getSessionContext tool
     }
 
     // Build system prompt with context

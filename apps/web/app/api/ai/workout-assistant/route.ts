@@ -17,51 +17,68 @@ import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
 import supabase from '@/lib/supabase-server'
 import { getDbUserId } from '@/lib/user-cache'
+import { checkServerRateLimit } from '@/lib/rate-limit-server'
 import { athleteDomainTools } from '@/lib/changeset/tools'
 import { buildAthleteSystemPrompt } from '@/lib/changeset/prompts/workout-athlete'
 import { executeGetWorkoutContext } from '@/lib/changeset/tool-implementations/workout-read-impl'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 export async function POST(req: Request) {
   try {
-    // Authenticate the request
-    const { userId } = await auth()
+    // Authenticate and parse body in parallel
+    const [authResult, body] = await Promise.all([
+      auth(),
+      req.json(),
+    ])
+
+    const { userId } = authResult
     if (!userId) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const dbUserId = await getDbUserId(userId)
-    if (!dbUserId) {
-      return new Response('User not found', { status: 404 })
+    // Rate limit: 20 requests per minute per user
+    const { allowed, remaining } = checkServerRateLimit(userId, 20, 60_000)
+    if (!allowed) {
+      return new Response('Too many requests. Please wait a moment.', {
+        status: 429,
+        headers: { 'X-RateLimit-Remaining': String(remaining) },
+      })
     }
 
-    // Parse request body
-    const { messages, workoutLogId } = await req.json()
-
+    const { messages, workoutLogId } = body
     if (!workoutLogId) {
       return new Response('Workout Log ID is required', { status: 400 })
     }
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return new Response('Messages array is required', { status: 400 })
+    }
+    if (messages.length > 100) {
+      return new Response('Too many messages', { status: 400 })
+    }
 
-    // Get athlete record for this user
-    const { data: athlete, error: athleteError } = await supabase
-      .from('athletes')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
+    // Resolve DB user ID (throws if user not found)
+    let dbUserId: number
+    try {
+      dbUserId = await getDbUserId(userId)
+    } catch {
+      return new Response('User not found', { status: 404 })
+    }
 
+    // Athlete + workout queries can run in parallel (both depend on dbUserId)
+    const [athleteResult, workoutResult] = await Promise.all([
+      supabase.from('athletes').select('id').eq('user_id', dbUserId).single(),
+      supabase.from('workout_logs').select('id, athlete_id, session_status').eq('id', workoutLogId).single(),
+    ])
+
+    const { data: athlete, error: athleteError } = athleteResult
     if (athleteError || !athlete) {
       console.error('[workout-assistant] Athlete not found for user:', dbUserId)
       return new Response('Athlete record not found', { status: 403 })
     }
 
-    // Verify workout ownership
-    const { data: workout, error: workoutError } = await supabase
-      .from('workout_logs')
-      .select('id, athlete_id, session_status')
-      .eq('id', workoutLogId)
-      .single()
-
+    // Verify workout ownership (fetched in parallel above)
+    const { data: workout, error: workoutError } = workoutResult
     if (workoutError || !workout) {
       return new Response('Workout not found', { status: 404 })
     }

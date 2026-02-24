@@ -122,6 +122,9 @@ export function usePlanGeneratorChat(
     logs,
   } = planState
 
+  // Stream error state for surfacing AI errors to the user
+  const [streamError, setStreamError] = useState<string | null>(null)
+
   // Refs for plan state callbacks
   const upsertRef = useRef(upsert)
   const removeRef = useRef(remove)
@@ -154,9 +157,9 @@ export function usePlanGeneratorChat(
         }
       },
       setMetadata: (...args) => setMetadataRef.current(...args),
-      context: contextRef.current,
-      supabase: supabaseRef.current,
-      userId: userIdRef.current,
+      get context() { return contextRef.current },
+      get supabase() { return supabaseRef.current },
+      get userId() { return userIdRef.current },
     })
   }, []) // Empty deps - handlers use refs
 
@@ -188,11 +191,16 @@ export function usePlanGeneratorChat(
     transport,
     // Automatically continue after tool calls complete
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    // Handle stream errors (network drops, 500s, token limits, timeouts)
+    onError(error) {
+      console.error('[PlanGeneratorChat] Stream error:', error)
+      setStreamError(error.message || 'Plan generation failed. Please try again.')
+    },
     async onToolCall({ toolCall }) {
       console.log('[PlanGeneratorChat] Tool call:', toolCall.toolName)
 
       try {
-        const toolArgs = (toolCall as { input?: unknown }).input ?? {}
+        const toolArgs = ((toolCall as { input?: unknown }).input ?? {}) as Record<string, unknown>
 
         const result = await executePlanGeneratorTool(
           toolCall.toolName,
@@ -228,6 +236,7 @@ export function usePlanGeneratorChat(
   // Actions
   const startGeneration = useCallback(() => {
     console.log('[PlanGeneratorChat] Starting generation')
+    setStreamError(null)
     setStatus('building')
     sendMessage({ text: 'Please create a training plan for me based on my profile and preferences.' })
   }, [sendMessage, setStatus])
@@ -248,6 +257,7 @@ export function usePlanGeneratorChat(
     (e: React.FormEvent) => {
       e.preventDefault()
       if (!input.trim() || isLoading) return
+      setStreamError(null)
       sendMessage({ text: input })
       setInput('')
     },
@@ -263,6 +273,7 @@ export function usePlanGeneratorChat(
     handleSubmit,
     isLoading,
     status,
+    streamError,
     week1OnlyMode,
     currentPlanState,
     pendingCount: getPendingCount(),

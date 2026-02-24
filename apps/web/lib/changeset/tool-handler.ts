@@ -33,8 +33,8 @@ export interface ToolHandlerContext {
   /** Current session ID for context */
   sessionId: string
 
-  /** Callback to show the approval widget */
-  showApprovalWidget: (title: string, description: string) => void
+  /** Callback to show the approval widget (metadata set via setMetadata before calling) */
+  showApprovalWidget: () => void
 
   /** Callback to execute read tools */
   executeReadTool: (
@@ -328,8 +328,8 @@ function handleConfirmChangeSet(
   // Transition to pending_approval
   context.changeSet.setStatus('pending_approval')
 
-  // Show approval widget
-  context.showApprovalWidget(title, description)
+  // Show approval widget (metadata already set via setMetadata above)
+  context.showApprovalWidget()
 
   // Return PAUSE to pause the AI stream
   // The client should NOT call addToolResult until user makes a decision
@@ -399,11 +399,10 @@ export function createApprovalResult(
   }
 
   // User clicked "Change" button - they want to revise the proposal
-  // IMPORTANT: The changeset is PRESERVED (not cleared)
-  // AI should ask what they want to change, then modify via upsert, then confirmChangeSet again
+  // Changeset is PRESERVED (not cleared) - AI modifies via upsert then re-confirms
   return {
     status: 'revision_requested',
-    message: 'User wants to revise this proposal. Your pending changes are still preserved in the buffer. Ask them what they would like to change, then use the proposal tools to update the changes (upsert will replace existing entries), and call confirmChangeSet again when ready for review.',
+    message: 'User wants changes. Ask what to modify, update via upsert, then confirmChangeSet again.',
   }
 }
 

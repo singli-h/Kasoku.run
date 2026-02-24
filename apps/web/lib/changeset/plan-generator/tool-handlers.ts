@@ -168,10 +168,9 @@ export function createPlanGeneratorHandlers(
     getCurrentPlanState,
     setStatus,
     setMetadata,
-    context,
-    supabase,
-    userId,
   } = options
+  // Access context, supabase, userId from options at call time (not destructured)
+  // to support getter-based lazy evaluation from React refs
 
   return {
     // ========================================================================
@@ -180,13 +179,13 @@ export function createPlanGeneratorHandlers(
 
     getPlanGenerationContext: () => {
       console.log('[PlanGenerator] getPlanGenerationContext called')
-      return context
+      return options.context
     },
 
     searchExercisesForPlan: async (input: SearchExercisesForPlanInput) => {
       console.log('[PlanGenerator] searchExercisesForPlan called', input)
       // Pass userId to include user's custom exercises in search results
-      return executeSearchExercisesForPlan(input, supabase, userId)
+      return executeSearchExercisesForPlan(input, options.supabase, options.userId)
     },
 
     getCurrentPlanState: () => {

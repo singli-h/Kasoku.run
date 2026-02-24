@@ -134,7 +134,6 @@ This document provides an in-depth, step-by-step illustration of user interactio
 1. User navigates to `/onboarding`.
 2. `OnboardingPage` mounts; gets `{ isLoaded, isSignedIn }` via `useAuth()`.
 3. `useEffect`:
-   - If `NEXT_PUBLIC_BYPASS_AUTH === 'true'` → skip auth checks.
    - If `isLoaded && !isSignedIn` → redirect to `/sign-in`.
 4. Render `<OnboardingFlow />` which handles internal step logic.
 

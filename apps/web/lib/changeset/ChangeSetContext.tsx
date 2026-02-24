@@ -13,6 +13,7 @@ import {
   createContext,
   useCallback,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -68,8 +69,9 @@ export function ChangeSetProvider({ children }: ChangeSetProviderProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
 
-  // ChangeSet ID (generated when first change is added)
+  // ChangeSet ID — use ref to avoid stale closure during rapid tool calls
   const [changesetId, setChangesetId] = useState<string | null>(null)
+  const changesetIdRef = useRef<string | null>(null)
 
   // Tool call ID for stream synchronization (set by confirmChangeSet)
   const [toolCallId, setToolCallId] = useState<string | undefined>(undefined)
@@ -83,10 +85,11 @@ export function ChangeSetProvider({ children }: ChangeSetProviderProps) {
       setBuffer((prev) => {
         const newBuffer = new Map(prev)
 
-        // Generate changeset ID if this is the first change
-        let currentChangesetId = changesetId
+        // Generate changeset ID if this is the first change (ref avoids stale closure)
+        let currentChangesetId = changesetIdRef.current
         if (!currentChangesetId) {
           currentChangesetId = generateChangeSetId()
+          changesetIdRef.current = currentChangesetId
           setChangesetId(currentChangesetId)
         }
 
@@ -109,7 +112,7 @@ export function ChangeSetProvider({ children }: ChangeSetProviderProps) {
         return newBuffer
       })
     },
-    [changesetId]
+    []
   )
 
   /**
@@ -132,6 +135,7 @@ export function ChangeSetProvider({ children }: ChangeSetProviderProps) {
     setStatus(null)
     setTitle('')
     setDescription('')
+    changesetIdRef.current = null
     setChangesetId(null)
     setToolCallId(undefined)
     resetTempIdCounter()

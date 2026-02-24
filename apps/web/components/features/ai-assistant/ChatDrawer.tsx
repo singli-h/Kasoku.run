@@ -12,7 +12,7 @@
  */
 
 import { useRef, useEffect, useCallback } from 'react'
-import { Bot, Send, X, Loader2, Mic, MicOff, RotateCcw, Maximize2, Minimize2, ArrowLeft } from 'lucide-react'
+import { Bot, Send, X, Loader2, Mic, MicOff, RotateCcw, Maximize2, Minimize2, ArrowLeft, AlertCircle } from 'lucide-react'
 import { Drawer } from 'vaul'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import { Button } from '@/components/ui/button'
@@ -33,6 +33,10 @@ interface ChatDrawerProps {
   onInputChange: (value: string) => void
   onSubmit: (e: React.FormEvent) => void
   isLoading?: boolean
+  /** Stream error message (network failure, timeout, etc.) */
+  streamError?: string | null
+  /** Callback to clear the error and allow retry */
+  onRetry?: () => void
   onStop?: () => void
   onClearChat?: () => void
   /** Whether the drawer is in expanded (full-screen) mode */
@@ -51,6 +55,8 @@ export function ChatDrawer({
   onInputChange,
   onSubmit,
   isLoading = false,
+  streamError,
+  onRetry,
   onStop,
   onClearChat,
   isExpanded = false,
@@ -140,8 +146,11 @@ export function ChatDrawer({
                   </div>
                   <div>
                     <h3 className="font-medium text-foreground">AI Assistant</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {isLoading ? 'Thinking...' : 'Ready to help'}
+                    <p className={cn(
+                      "text-xs",
+                      streamError ? "text-destructive" : "text-muted-foreground"
+                    )}>
+                      {streamError ? 'Error occurred' : isLoading ? 'Thinking...' : 'Ready to help'}
                     </p>
                   </div>
                 </>
@@ -218,6 +227,23 @@ export function ChatDrawer({
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span className="text-sm">AI is thinking...</span>
+                  </div>
+                )}
+                {streamError && (
+                  <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                    <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-destructive font-medium">Failed to get response</p>
+                      <p className="text-xs text-muted-foreground mt-1 break-words">{streamError}</p>
+                      {onRetry && (
+                        <button
+                          onClick={onRetry}
+                          className="text-xs text-primary hover:underline mt-2"
+                        >
+                          Dismiss and try again
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
