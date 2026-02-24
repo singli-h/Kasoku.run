@@ -18,7 +18,7 @@ import { Plus, Calendar, ChevronRight, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { EmptyTrainingState } from "./EmptyTrainingState"
-import { IndividualPlanPage } from "../individual/IndividualPlanPage"
+import { IndividualPlanPageWithAI } from "../individual/IndividualPlanPageWithAI"
 import type { MesocycleWithDetails } from "@/types/training"
 
 interface IndividualPlansHomeClientProps {
@@ -80,8 +80,8 @@ export function IndividualPlansHomeClient({
   if (activeBlock) {
     return (
       <div>
-        {/* Active block - directly embedded with block switcher */}
-        <IndividualPlanPage
+        {/* Active block - embedded with AI wrapper for full assistant support */}
+        <IndividualPlanPageWithAI
           trainingBlock={activeBlock}
           otherBlocks={{
             upcoming: upcomingBlocks,

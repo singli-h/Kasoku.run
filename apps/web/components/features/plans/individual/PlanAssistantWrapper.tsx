@@ -415,7 +415,7 @@ export function PlanAssistantWrapper({
       <BlockWideExpandContext.Provider value={blockWideExpandValue}>
         <SuccessFlashContext.Provider value={successFlashValue}>
           <PendingProposalContext.Provider value={pendingProposalValue}>
-            <SessionExercisesProvider initialExercises={[]}>
+            <SessionExercisesProvider key={selectedSessionId ?? 'no-session'} initialExercises={[]}>
               {children}
             </SessionExercisesProvider>
           </PendingProposalContext.Provider>
@@ -429,7 +429,7 @@ export function PlanAssistantWrapper({
     <BlockWideExpandContext.Provider value={blockWideExpandValue}>
       <SuccessFlashContext.Provider value={successFlashValue}>
         <PendingProposalContext.Provider value={pendingProposalValue}>
-          <SessionExercisesProvider initialExercises={exercises}>
+          <SessionExercisesProvider key={selectedSessionId} initialExercises={exercises}>
             <SessionAssistant
               sessionId={selectedSessionId}
               planId={String(trainingBlock.id)}
