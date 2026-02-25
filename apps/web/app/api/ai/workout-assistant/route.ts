@@ -28,20 +28,32 @@ import { executeGetWorkoutContext } from '@/lib/changeset/tool-implementations/w
 
 type QueryIntent = 'log' | 'question' | 'modify'
 
-/** Tool subsets by intent — reduces tool schema tokens sent to OpenAI */
+/**
+ * Tool subsets by intent — reduces tool schema tokens sent to OpenAI.
+ *
+ * Design principle: `log` must cover ALL common workout page actions
+ * (set logging, notes, basic adds). Only strip tools the model never
+ * needs for that intent. `question` is the aggressive strip — read-only.
+ *
+ * Verified against spec acceptance scenarios (US-1 through US-4).
+ */
 const TOOLS_BY_INTENT: Record<QueryIntent, AthleteToolName[]> = {
-  // Logging: set tools + confirm (2-3 tools instead of 11)
+  // Logging: set + exercise + notes + confirm (covers US-1, US-2.2, US-2.3, US-4)
+  // Strips only: getWorkoutContext (already in system prompt), resetChangeSet, delete tools
   log: [
     'createWorkoutLogSetChangeRequest',
     'updateWorkoutLogSetChangeRequest',
+    'createWorkoutLogExerciseChangeRequest',
+    'updateWorkoutLogChangeRequest',
+    'searchExercises',
     'confirmChangeSet',
   ],
-  // Questions: read tools only (no proposals needed)
+  // Questions: read tools only (covers US-3.1, US-3.2)
   question: [
     'getWorkoutContext',
     'searchExercises',
   ],
-  // Modifications: full tool set for swaps, additions, etc.
+  // Modifications: full tool set for swaps, complex changes (covers US-2.1, US-3.3)
   modify: [
     'getWorkoutContext',
     'searchExercises',
@@ -64,12 +76,19 @@ const REASONING_BY_INTENT: Record<QueryIntent, 'none' | 'low' | 'medium'> = {
 }
 
 // Patterns for classifying user intent
-const QUESTION_PATTERNS = /\b(why|what|how|explain|recommend|suggest|should i|tell me|difference|better|worse|benefit|alternative|technique|form|injury|pain|hurt)\b/i
-const MODIFY_PATTERNS = /\b(swap|replace|switch|add exercise|remove exercise|change exercise|reorder|superset|drop set)\b/i
+// Order matters: modify checked first, then question, then default to log
+const QUESTION_PATTERNS = /\b(why|what|how|explain|recommend|suggest|should i|tell me|difference|better|worse|benefit|alternative|technique|form|injury|pain|hurt|find|search|show me|give me)\b/i
+const MODIFY_PATTERNS = /\b(swap|replace|switch|instead|change exercise|remove exercise|reorder|superset|drop set)\b/i
 
 /**
  * Classify the user's latest message to determine reasoning effort and active tools.
  * Simple keyword heuristic — zero latency cost.
+ *
+ * Verified against spec scenarios:
+ * - US-1 (logging): all default to 'log' ✅
+ * - US-2 (modifications): "swap/replace/instead" → 'modify', "add X" → 'log' (has createExercise) ✅
+ * - US-3 (search): "what/find/show me" → 'question' ✅, follow-up "instead" → 'modify' ✅
+ * - US-4 (notes): default 'log' (has updateWorkoutLog) ✅
  */
 function classifyQuery(messages: Array<{ role: string; content?: string }>): QueryIntent {
   // Find the last user message

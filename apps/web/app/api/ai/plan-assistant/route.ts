@@ -19,9 +19,71 @@ import { z } from 'zod'
 import supabase from '@/lib/supabase-server'
 import { getDbUserId } from '@/lib/user-cache'
 import { checkServerRateLimit } from '@/lib/rate-limit-server'
-import { coachDomainTools } from '@/lib/changeset/tools'
+import { coachDomainTools, type CoachToolName } from '@/lib/changeset/tools'
 import { buildPlanAssistantSystemPrompt } from '@/lib/changeset/prompts/plan-assistant'
 import { executeGetSessionContext } from '@/lib/changeset/tool-implementations/read-impl'
+
+// ============================================================================
+// Query Classification for Responsive Reasoning
+// ============================================================================
+
+type QueryIntent = 'edit' | 'question' | 'structural'
+
+/** Tool subsets by intent — reduces tool schema tokens sent to OpenAI */
+const TOOLS_BY_INTENT: Record<QueryIntent, CoachToolName[]> = {
+  // Editing: exercise + set + confirm (most common action)
+  edit: [
+    'createSessionPlanExerciseChangeRequest',
+    'updateSessionPlanExerciseChangeRequest',
+    'deleteSessionPlanExerciseChangeRequest',
+    'createSessionPlanSetChangeRequest',
+    'updateSessionPlanSetChangeRequest',
+    'deleteSessionPlanSetChangeRequest',
+    'searchExercises',
+    'confirmChangeSet',
+  ],
+  // Questions: read tools only
+  question: [
+    'getSessionContext',
+    'searchExercises',
+  ],
+  // Structural: full tool set for block/week-wide changes, session creation
+  structural: [
+    'getSessionContext',
+    'searchExercises',
+    'createSessionPlanChangeRequest',
+    'updateSessionPlanChangeRequest',
+    'createSessionPlanExerciseChangeRequest',
+    'updateSessionPlanExerciseChangeRequest',
+    'deleteSessionPlanExerciseChangeRequest',
+    'createSessionPlanSetChangeRequest',
+    'updateSessionPlanSetChangeRequest',
+    'deleteSessionPlanSetChangeRequest',
+    'confirmChangeSet',
+    'resetChangeSet',
+  ],
+}
+
+const REASONING_BY_INTENT: Record<QueryIntent, 'none' | 'low' | 'medium'> = {
+  edit: 'none',
+  question: 'low',
+  structural: 'low',
+}
+
+const QUESTION_PATTERNS = /\b(why|what|how|explain|recommend|suggest|should i|tell me|difference|better|worse|benefit|alternative|technique|compare)\b/i
+const STRUCTURAL_PATTERNS = /\b(deload|block.wide|every session|every workout|all weeks|entire block|whole program|throughout|across all|replace all|volume|periodiz)\b/i
+
+function classifyPlanQuery(messages: Array<{ role: string; content?: string }>): QueryIntent {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i]
+    if (msg.role !== 'user' || !msg.content) continue
+    const text = typeof msg.content === 'string' ? msg.content : ''
+    if (STRUCTURAL_PATTERNS.test(text)) return 'structural'
+    if (QUESTION_PATTERNS.test(text)) return 'question'
+    return 'edit'
+  }
+  return 'edit'
+}
 
 export const maxDuration = 30
 
@@ -277,22 +339,26 @@ export async function POST(req: Request) {
     // Cast: Zod validates as unknown[], but convertToModelMessages expects UIMessage[]
     const modelMessages = await convertToModelMessages(messages as UIMessage[])
 
+    // Classify query intent for responsive reasoning + tool filtering
+    const intent = classifyPlanQuery(messages as Array<{ role: string; content?: string }>)
+    const activeTools = TOOLS_BY_INTENT[intent]
+    const reasoningEffort = REASONING_BY_INTENT[intent]
+
     // Debug logging (development only)
     if (process.env.NODE_ENV === 'development') {
       console.log('[plan-assistant] Context level:', aiContextLevel)
       console.log('[plan-assistant] Plan ID:', planId)
-      console.log('[plan-assistant] Week ID:', weekId)
-      console.log('[plan-assistant] Session ID:', sessionId)
-      console.log('[plan-assistant] Messages count:', modelMessages.length)
-      console.log('[plan-assistant] Tools available:', Object.keys(coachDomainTools))
+      console.log('[plan-assistant] Intent:', intent, '→ reasoning:', reasoningEffort, '→ tools:', activeTools.length)
     }
 
-    // Stream response with tool support
+    // Stream response with responsive reasoning and dynamic tool filtering
     const result = streamText({
       model: openai('gpt-5.2'),
       system: systemPrompt,
       messages: modelMessages,
       tools: coachDomainTools,
+      // Dynamic tool filtering: only send relevant tools based on query intent
+      activeTools,
       // Smooth word-level streaming for better perceived performance
       experimental_transform: smoothStream(),
       // Prevent stalled streams from hanging the UI
@@ -300,16 +366,21 @@ export async function POST(req: Request) {
         chunkMs: 5000,   // Abort if no chunk for 5s
         stepMs: 15000,   // Abort any single tool step after 15s
       },
-      // Prune old messages to prevent context bloat in longer conversations
+      // Step 0: use classified tools. Step 1+: expand to full set for confirmChangeSet etc.
       prepareStep: ({ stepNumber, messages: stepMessages }) => {
-        if (stepNumber > 0 || stepMessages.length <= 12) return undefined
-        const systemMsgs = stepMessages.filter(m => m.role === 'system')
-        const nonSystemMsgs = stepMessages.filter(m => m.role !== 'system')
-        return { messages: [...systemMsgs, ...nonSystemMsgs.slice(-8)] }
+        if (stepNumber > 0) {
+          return { activeTools: Object.keys(coachDomainTools) as CoachToolName[] }
+        }
+        if (stepMessages.length > 12) {
+          const systemMsgs = stepMessages.filter(m => m.role === 'system')
+          const nonSystemMsgs = stepMessages.filter(m => m.role !== 'system')
+          return { messages: [...systemMsgs, ...nonSystemMsgs.slice(-8)] }
+        }
+        return undefined
       },
       providerOptions: {
         openai: {
-          reasoningEffort: 'low',
+          reasoningEffort,
           reasoningSummary: 'auto',
         },
       },

@@ -8,25 +8,46 @@
 import { streamText } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
+import { z } from 'zod'
+import { checkServerRateLimit } from '@/lib/rate-limit-server'
 
 import {
   PLANNING_SYSTEM_PROMPT,
   buildPlanningPrompt,
-  type PlanningContext,
 } from '@/lib/init-pipeline/prompts'
 
 export const maxDuration = 60 // Increased for thinking model
 
 /**
- * Exercise library item for planning context
+ * Zod schema for validating init-plan request body.
  */
-interface ExerciseLibraryItem {
-  id: number
-  name: string
-  exercise_type?: string | null
-  equipment?: string[]
-  contraindications?: string[]
-}
+const InitPlanRequestSchema = z.object({
+  context: z.object({
+    user: z.object({
+      experience_level: z.string(),
+      primary_goal: z.string(),
+      secondary_goals: z.array(z.string()).optional(),
+    }),
+    preferences: z.object({
+      training_days: z.array(z.string()).min(1),
+      session_duration: z.number().int().min(15).max(180),
+      equipment: z.string(),
+      equipment_tags: z.array(z.string()).optional(),
+    }),
+    mesocycle: z.object({
+      name: z.string(),
+      duration_weeks: z.number().int().min(1).max(12),
+    }),
+    notes: z.string().optional(),
+  }),
+  exerciseLibrary: z.array(z.object({
+    id: z.number(),
+    name: z.string(),
+    exercise_type: z.string().nullable().optional(),
+    equipment: z.array(z.string()).optional(),
+    contraindications: z.array(z.string()).optional(),
+  })).default([]),
+})
 
 export async function POST(req: Request) {
   try {
@@ -36,25 +57,38 @@ export async function POST(req: Request) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    // Parse request - now includes exerciseLibrary
-    const { context, exerciseLibrary = [] } = (await req.json()) as {
-      context: PlanningContext
-      exerciseLibrary?: ExerciseLibraryItem[]
+    // Rate limit: 5 requests per minute (expensive reasoningEffort: 'high')
+    const { allowed, remaining } = checkServerRateLimit(userId, 5, 60_000)
+    if (!allowed) {
+      return new Response('Too many requests. Please wait a moment.', {
+        status: 429,
+        headers: { 'X-RateLimit-Remaining': String(remaining) },
+      })
     }
 
-    if (!context) {
-      return new Response('Context is required', { status: 400 })
+    // Validate request body
+    let body: z.infer<typeof InitPlanRequestSchema>
+    try {
+      body = InitPlanRequestSchema.parse(await req.json())
+    } catch (error) {
+      return new Response(
+        error instanceof z.ZodError ? JSON.stringify({ error: 'Invalid request', details: error.issues }) : 'Invalid request body',
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
-    console.log('[init-plan] Starting planning step')
-    console.log('[init-plan] Context:', {
-      experience: context.user.experience_level,
-      goal: context.user.primary_goal,
-      days: context.preferences.training_days.length,
-      duration: context.preferences.session_duration,
-      weeks: context.mesocycle.duration_weeks,
-    })
-    console.log('[init-plan] Exercise library size:', exerciseLibrary.length)
+    const { context, exerciseLibrary } = body
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[init-plan] Starting planning step')
+      console.log('[init-plan] Context:', {
+        experience: context.user.experience_level,
+        goal: context.user.primary_goal,
+        days: context.preferences.training_days.length,
+        weeks: context.mesocycle.duration_weeks,
+      })
+      console.log('[init-plan] Exercise library size:', exerciseLibrary.length)
+    }
 
     // Build prompt with exercise library
     const userPrompt = buildPlanningPrompt(context, exerciseLibrary)
@@ -66,12 +100,14 @@ export async function POST(req: Request) {
       messages: [{ role: 'user', content: userPrompt }],
       providerOptions: {
         openai: {
-          reasoningEffort: 'high', // Enable thinking mode for complex planning
+          reasoningEffort: 'high',
         },
       },
       onFinish: ({ text, usage }) => {
-        console.log('[init-plan] Complete, tokens:', usage)
-        console.log('[init-plan] Output preview:', text?.substring(0, 200))
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[init-plan] Complete, tokens:', usage)
+          console.log('[init-plan] Output preview:', text?.substring(0, 200))
+        }
       },
     })
 

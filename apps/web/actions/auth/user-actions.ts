@@ -206,37 +206,7 @@ export async function createSupabaseUserAction(
   }
 }
 
-/**
- * Create a new user from webhook data (used by Clerk webhooks)
- */
-export async function createSupabaseUserFromWebhookAction(
-  clerkUserId: string, 
-  email: string, 
-  firstName?: string,
-  lastName?: string,
-  avatarUrl?: string
-): Promise<ActionState<User>> {
-  try {
-    // Check if user already exists
-    const existsResult = await checkUserExistsAction()
-    if (existsResult.isSuccess && existsResult.data) {
-      // User already exists, return existing user
-      const userResult = await getCurrentUserAction()
-      if (userResult.isSuccess) {
-        return userResult
-      }
-    }
 
-    // Create new user
-    return await createSupabaseUserAction(clerkUserId, email, firstName, lastName, avatarUrl)
-  } catch (error) {
-    console.error('Error in createSupabaseUserFromWebhookAction:', error)
-    return {
-      isSuccess: false,
-      message: "Failed to create user from webhook"
-    }
-  }
-}
 
 /**
  * Update user information in Supabase
@@ -393,34 +363,6 @@ export async function checkUserNeedsOnboardingAction(): Promise<ActionState<bool
     return {
       isSuccess: false,
       message: "Failed to check onboarding status"
-    }
-  }
-}
-
-/**
- * Update user from webhook (used by Clerk webhooks)
- */
-export async function updateSupabaseUserFromWebhookAction(
-  clerkUserId: string,
-  email?: string,
-  firstName?: string,
-  lastName?: string,
-  avatarUrl?: string
-): Promise<ActionState<User>> {
-  try {
-    const updates: Partial<UserInsert> = {}
-    
-    if (email) updates.email = email
-    if (firstName) updates.first_name = firstName
-    if (lastName) updates.last_name = lastName
-    if (avatarUrl) updates.avatar_url = avatarUrl
-
-    return await updateSupabaseUserAction(clerkUserId, updates)
-  } catch (error) {
-    console.error('Error in updateSupabaseUserFromWebhookAction:', error)
-    return {
-      isSuccess: false,
-      message: "Failed to update user from webhook"
     }
   }
 }

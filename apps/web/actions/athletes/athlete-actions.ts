@@ -1383,6 +1383,21 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
       }
     }
 
+    // Verify the group belongs to this coach BEFORE any destructive operations
+    const { data: ownedGroup, error: ownershipError } = await supabase
+      .from('athlete_groups')
+      .select('id')
+      .eq('id', groupId)
+      .eq('coach_id', (user.coach as { id: number }).id)
+      .single()
+
+    if (ownershipError || !ownedGroup) {
+      return {
+        isSuccess: false,
+        message: "Group not found or you don't have permission to delete it"
+      }
+    }
+
     // Step 1: Handle assigned workouts for this group
     // Strategy: Cancel PAST workouts (audit trail), DELETE FUTURE workouts (avoid bloat)
     const today = new Date()
@@ -1562,6 +1577,24 @@ export async function inviteOrAttachAthleteAction(
         return {
           isSuccess: false,
           message: "Cannot invite a coach as an athlete"
+        }
+      }
+
+      // If the athlete is already in another coach's group, deny the reassignment
+      // Prevents cross-coach athlete theft via email invite
+      if (current_group_id && current_group_id !== groupId) {
+        const { data: ownedCurrentGroup } = await supabase
+          .from('athlete_groups')
+          .select('id')
+          .eq('id', current_group_id)
+          .eq('coach_id', (user.coach as { id: number }).id)
+          .single()
+
+        if (!ownedCurrentGroup) {
+          return {
+            isSuccess: false,
+            message: "This athlete already belongs to another coach's group"
+          }
         }
       }
 

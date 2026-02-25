@@ -316,8 +316,14 @@ async function handleUserUpdated(data: UserWebhookEvent["data"]) {
       // If role provided in metadata and different, update it
       if (role && role !== user.role) {
           console.log(`[handleUserUpdated] Updating role for user ${user.id} to ${role}`)
-          await supabaseService.from("users").update({ role: role }).eq("id", user.id)
-          await ensureUserProfile(user.id, role)
+          const { error: roleUpdateError } = await supabaseService.from("users").update({ role: role }).eq("id", user.id)
+          if (roleUpdateError) {
+            console.error(`[handleUserUpdated] Failed to update role for user ${user.id}:`, roleUpdateError)
+            // Use existing role for profile sync since update failed
+            await ensureUserProfile(user.id, user.role)
+          } else {
+            await ensureUserProfile(user.id, role)
+          }
       } else {
           // Ensure profiles exist for current role
           await ensureUserProfile(user.id, role || user.role)

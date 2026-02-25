@@ -39,8 +39,6 @@ import {
 import {
   getCurrentCoachProfileAction,
   createOrUpdateCoachProfileAction,
-  updateCoachProfileAction,
-  getCoachProfileAction,
 } from "@/actions/athletes/coach-management-actions"
 import {
   getAthletePBsAction,
@@ -194,23 +192,24 @@ export function useCurrentCoach(options?: { enabled?: boolean }) {
 }
 
 /**
- * Hook for fetching coach profile by user ID
+ * Hook for fetching current user's coach profile
+ * @deprecated Use useCurrentCoach instead — this is an alias for backwards compatibility
  */
-export function useCoachProfile(userId: number, options?: { enabled?: boolean }) {
+export function useCoachProfile(_userId?: number, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: ATHLETES_QUERY_KEYS.COACH_PROFILE(userId),
+    queryKey: ATHLETES_QUERY_KEYS.CURRENT_COACH,
     queryFn: async () => {
-      const result = await getCoachProfileAction(userId)
+      const result = await getCurrentCoachProfileAction()
       if (!result.isSuccess) {
         throw new Error(result.message)
       }
       return result.data
     },
-    staleTime: STALE_TIMES.COACH_PROFILE,
-    gcTime: CACHE_TIMES.COACH_PROFILE,
-    retry: RETRY_CONFIG.STANDARD.retries,
-    retryDelay: RETRY_CONFIG.STANDARD.retryDelay,
-    enabled: (options?.enabled ?? true) && userId > 0,
+    staleTime: STALE_TIMES.CURRENT_COACH,
+    gcTime: CACHE_TIMES.CURRENT_COACH,
+    retry: RETRY_CONFIG.CRITICAL.retries,
+    retryDelay: RETRY_CONFIG.CRITICAL.retryDelay,
+    enabled: options?.enabled ?? true,
   })
 }
 
@@ -641,23 +640,19 @@ export function useCoachMutations() {
 
   const updateProfile = useMutation({
     mutationFn: async ({
-      userId,
       updates,
     }: {
-      userId: number
-      updates: Parameters<typeof updateCoachProfileAction>[1]
+      userId?: number // kept for call-site compat, ignored — server resolves identity
+      updates: Parameters<typeof createOrUpdateCoachProfileAction>[0]
     }) => {
-      const result = await updateCoachProfileAction(userId, updates)
+      const result = await createOrUpdateCoachProfileAction(updates)
       if (!result.isSuccess) {
         throw new Error(result.message)
       }
       return result.data
     },
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ATHLETES_QUERY_KEYS.CURRENT_COACH })
-      queryClient.invalidateQueries({
-        queryKey: ATHLETES_QUERY_KEYS.COACH_PROFILE(variables.userId),
-      })
     },
   })
 
