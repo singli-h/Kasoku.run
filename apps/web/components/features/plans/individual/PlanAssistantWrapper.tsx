@@ -433,7 +433,11 @@ export function PlanAssistantWrapper({
             <SessionAssistant
               sessionId={selectedSessionId}
               planId={String(trainingBlock.id)}
+              domain="plan"
               dbUserId={dbUserId}
+              weekId={selectedWeek?.id ?? null}
+              exerciseId={selectedExerciseId ?? null}
+              aiContextLevel={aiContextLevel}
               useInlineMode={useInlineMode}
               autoCollapseChat={useInlineMode}
             >

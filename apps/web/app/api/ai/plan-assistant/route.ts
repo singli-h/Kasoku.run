@@ -71,7 +71,7 @@ const REASONING_BY_INTENT: Record<QueryIntent, 'none' | 'low' | 'medium'> = {
 }
 
 const QUESTION_PATTERNS = /\b(why|what|how|explain|recommend|suggest|should i|tell me|difference|better|worse|benefit|alternative|technique|compare)\b/i
-const STRUCTURAL_PATTERNS = /\b(deload|block.wide|every session|every workout|all weeks|entire block|whole program|throughout|across all|replace all|volume|periodiz)\b/i
+const STRUCTURAL_PATTERNS = /\b(deload|block.wide|every session|every workout|all weeks|entire block|whole program|throughout|across all|replace all|volume|periodiz)/i
 
 function classifyPlanQuery(messages: Array<{ role: string; content?: string }>): QueryIntent {
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -85,7 +85,7 @@ function classifyPlanQuery(messages: Array<{ role: string; content?: string }>):
   return 'edit'
 }
 
-export const maxDuration = 30
+export const maxDuration = 120
 
 /**
  * Row type for microcycle data from Supabase query
@@ -131,7 +131,7 @@ interface SessionPlanExerciseRow {
  * Ensures all required fields are present and properly typed.
  */
 const PlanAssistantRequestSchema = z.object({
-  messages: z.array(z.unknown()),
+  messages: z.array(z.unknown()).min(1).max(100),
   planId: z.coerce.number().int().positive('Plan ID must be a positive integer'),
   sessionId: z.string().nullable().optional(),
   weekId: z.number().nullable().optional(),

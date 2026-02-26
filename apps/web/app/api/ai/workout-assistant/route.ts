@@ -12,9 +12,10 @@
  * @see specs/005-ai-athlete-workout/spec.md
  */
 
-import { streamText, convertToModelMessages, smoothStream } from 'ai'
+import { streamText, convertToModelMessages, smoothStream, type UIMessage } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
+import { z } from 'zod'
 import supabase from '@/lib/supabase-server'
 import { getDbUserId } from '@/lib/user-cache'
 import { checkServerRateLimit } from '@/lib/rate-limit-server'
@@ -77,7 +78,7 @@ const REASONING_BY_INTENT: Record<QueryIntent, 'none' | 'low' | 'medium'> = {
 
 // Patterns for classifying user intent
 // Order matters: modify checked first, then question, then default to log
-const QUESTION_PATTERNS = /\b(why|what|how|explain|recommend|suggest|should i|tell me|difference|better|worse|benefit|alternative|technique|form|injury|pain|hurt|find|search|show me|give me)\b/i
+const QUESTION_PATTERNS = /\b(why|what|how|explain|recommend|suggest|should i|tell me|difference|better|worse|benefit|alternative|technique|form|injur|pain|hurt|find|search|show me|give me)/i
 const MODIFY_PATTERNS = /\b(swap|replace|switch|instead|change exercise|remove exercise|reorder|superset|drop set)\b/i
 
 /**
@@ -105,10 +106,15 @@ function classifyQuery(messages: Array<{ role: string; content?: string }>): Que
 
 export const maxDuration = 60
 
+const WorkoutAssistantRequestSchema = z.object({
+  messages: z.array(z.unknown()).min(1).max(100),
+  workoutLogId: z.string().min(1, 'Workout Log ID is required'),
+})
+
 export async function POST(req: Request) {
   try {
     // Authenticate and parse body in parallel
-    const [authResult, body] = await Promise.all([
+    const [authResult, rawBody] = await Promise.all([
       auth(),
       req.json(),
     ])
@@ -127,16 +133,21 @@ export async function POST(req: Request) {
       })
     }
 
+    // Validate request body
+    let body: z.infer<typeof WorkoutAssistantRequestSchema>
+    try {
+      body = WorkoutAssistantRequestSchema.parse(rawBody)
+    } catch (error) {
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid request body',
+          details: error instanceof z.ZodError ? error.issues : 'Failed to parse request'
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { messages, workoutLogId } = body
-    if (!workoutLogId) {
-      return new Response('Workout Log ID is required', { status: 400 })
-    }
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return new Response('Messages array is required', { status: 400 })
-    }
-    if (messages.length > 100) {
-      return new Response('Too many messages', { status: 400 })
-    }
 
     // Resolve DB user ID (throws if user not found)
     let dbUserId: number
@@ -196,10 +207,11 @@ export async function POST(req: Request) {
     const systemPrompt = buildAthleteSystemPrompt(workoutContext)
 
     // Convert UI messages to model messages format
-    const modelMessages = await convertToModelMessages(messages)
+    // Cast: Zod validates as unknown[], but convertToModelMessages expects UIMessage[]
+    const modelMessages = await convertToModelMessages(messages as UIMessage[])
 
     // Classify query intent for responsive reasoning + tool filtering
-    const intent = classifyQuery(messages)
+    const intent = classifyQuery(messages as Array<{ role: string; content?: string }>)
     const activeTools = TOOLS_BY_INTENT[intent]
     const reasoningEffort = REASONING_BY_INTENT[intent]
 

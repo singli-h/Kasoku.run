@@ -45,25 +45,36 @@ import type { ExecutionError, ChangeSet } from '@/lib/changeset/types'
  * Domain type for the assistant.
  * - 'session': Coach session planning (preset_exercise, preset_set)
  * - 'workout': Athlete workout logging (training_exercise, training_set)
+ * - 'plan': Plan-level assistant with context-aware prompts (block/week/session/exercise)
  */
-export type AssistantDomain = 'session' | 'workout'
+export type AssistantDomain = 'session' | 'workout' | 'plan'
 
 interface SessionAssistantProps {
   /** The session ID (session_plan ID for session domain, workout_log ID for workout domain) */
   sessionId: string
 
-  /** The plan ID (optional for workout domain) */
+  /** The plan ID (required for plan domain, optional for others) */
   planId?: string
 
   /**
    * Domain for the assistant.
    * - 'session' (default): Coach session planning
    * - 'workout': Athlete workout logging
+   * - 'plan': Plan-level assistant with multi-level context
    */
   domain?: AssistantDomain
 
   /** Database user ID for exercise search visibility filtering */
   dbUserId?: string
+
+  /** Week ID for plan domain context (microcycle ID) */
+  weekId?: number | null
+
+  /** Exercise ID for plan domain exercise-level context */
+  exerciseId?: string | null
+
+  /** AI context level for plan domain */
+  aiContextLevel?: 'block' | 'week' | 'session' | 'exercise'
 
   /**
    * Use inline mode for proposals.
@@ -107,8 +118,12 @@ export function SessionAssistant(props: SessionAssistantProps) {
  */
 function SessionAssistantContent({
   sessionId,
+  planId,
   domain = 'session',
   dbUserId,
+  weekId,
+  exerciseId,
+  aiContextLevel,
   useInlineMode = false,
   autoCollapseChat = true,
   onWorkoutUpdated,
@@ -174,12 +189,25 @@ function SessionAssistantContent({
     createClientSupabaseClient((...args) => getTokenRef.current(...args))
   )
 
-  // Create transport with API endpoint and ID in body
-  // For session domain: /api/ai/session-assistant with sessionId
-  // For workout domain: /api/ai/workout-assistant with workoutLogId
+  // Create transport with API endpoint and domain-specific body
+  // - session: /api/ai/session-assistant with sessionId
+  // - workout: /api/ai/workout-assistant with workoutLogId
+  // - plan: /api/ai/plan-assistant with planId + context fields
+  const apiUrl = domain === 'workout'
+    ? '/api/ai/workout-assistant'
+    : domain === 'plan'
+      ? '/api/ai/plan-assistant'
+      : '/api/ai/session-assistant'
+
+  const apiBody = domain === 'workout'
+    ? { workoutLogId: sessionId }
+    : domain === 'plan'
+      ? { planId: planId ? Number(planId) : undefined, sessionId, weekId, exerciseId, aiContextLevel }
+      : { sessionId }
+
   const transport = useMemo(() => new DefaultChatTransport({
-    api: domain === 'workout' ? '/api/ai/workout-assistant' : '/api/ai/session-assistant',
-    body: domain === 'workout' ? { workoutLogId: sessionId } : { sessionId },
+    api: apiUrl,
+    body: apiBody,
     // Truncate verbose tool results in older messages to reduce payload size
     prepareSendMessagesRequest: ({ messages: msgs, body: reqBody }) => {
       const KEEP_RECENT = 4
@@ -209,7 +237,8 @@ function SessionAssistantContent({
 
       return { body: { ...reqBody, messages: trimmedMessages } }
     },
-  }), [sessionId, domain])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- apiUrl and apiBody are derived from these deps
+  }), [sessionId, domain, planId, weekId, exerciseId, aiContextLevel])
 
   // Track which tool calls have been processed (by onToolCall or effect fallback)
   const processedToolCallsRef = useRef<Set<string>>(new Set())

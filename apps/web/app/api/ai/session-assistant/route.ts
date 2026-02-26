@@ -7,9 +7,10 @@
  * @see specs/002-ai-session-assistant/reference/20251221-session-v1-vision.md
  */
 
-import { streamText, convertToModelMessages, smoothStream } from 'ai'
+import { streamText, convertToModelMessages, smoothStream, type UIMessage } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
+import { z } from 'zod'
 import supabase from '@/lib/supabase-server'
 import { getDbUserId } from '@/lib/user-cache'
 import { checkServerRateLimit } from '@/lib/rate-limit-server'
@@ -64,7 +65,7 @@ const REASONING_BY_INTENT: Record<QueryIntent, 'none' | 'low' | 'medium'> = {
 }
 
 const QUESTION_PATTERNS = /\b(why|what|how|explain|recommend|suggest|should i|tell me|difference|better|worse|benefit|alternative|technique|compare)\b/i
-const PLAN_PATTERNS = /\b(build|create session|design|plan|program|periodiz|structure|template)\b/i
+const PLAN_PATTERNS = /\b(build|create.+session|new session|add session|design|plan|program|periodiz|structure|template)/i
 
 function classifyCoachQuery(messages: Array<{ role: string; content?: string }>): QueryIntent {
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -80,10 +81,15 @@ function classifyCoachQuery(messages: Array<{ role: string; content?: string }>)
 
 export const maxDuration = 60
 
+const SessionAssistantRequestSchema = z.object({
+  messages: z.array(z.unknown()).min(1).max(100),
+  sessionId: z.string().min(1, 'Session ID is required'),
+})
+
 export async function POST(req: Request) {
   try {
     // Authenticate and parse body in parallel
-    const [authResult, body] = await Promise.all([
+    const [authResult, rawBody] = await Promise.all([
       auth(),
       req.json(),
     ])
@@ -102,16 +108,21 @@ export async function POST(req: Request) {
       })
     }
 
+    // Validate request body
+    let body: z.infer<typeof SessionAssistantRequestSchema>
+    try {
+      body = SessionAssistantRequestSchema.parse(rawBody)
+    } catch (error) {
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid request body',
+          details: error instanceof z.ZodError ? error.issues : 'Failed to parse request'
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { messages, sessionId } = body
-    if (!sessionId) {
-      return new Response('Session ID is required', { status: 400 })
-    }
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return new Response('Messages array is required', { status: 400 })
-    }
-    if (messages.length > 100) {
-      return new Response('Too many messages', { status: 400 })
-    }
 
     // Resolve DB user ID + session query in parallel (saves ~30-100ms)
     let dbUserId: number
@@ -159,10 +170,11 @@ export async function POST(req: Request) {
     // Convert UI messages to model messages format
     // UIMessage format (from useChat): { role, parts: [{ type: 'text', text }] }
     // ModelMessage format (for streamText): { role, content: string }
-    const modelMessages = await convertToModelMessages(messages)
+    // Cast: Zod validates as unknown[], but convertToModelMessages expects UIMessage[]
+    const modelMessages = await convertToModelMessages(messages as UIMessage[])
 
     // Classify query intent for responsive reasoning + tool filtering
-    const intent = classifyCoachQuery(messages)
+    const intent = classifyCoachQuery(messages as Array<{ role: string; content?: string }>)
     const activeTools = TOOLS_BY_INTENT[intent]
     const reasoningEffort = REASONING_BY_INTENT[intent]
 
