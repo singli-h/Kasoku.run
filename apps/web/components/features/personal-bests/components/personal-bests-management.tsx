@@ -52,6 +52,7 @@ interface PersonalBest {
   created_at: string
   updated_at: string
   exercise?: { id: number; name: string; description?: string | null } | null
+  event?: { id: number; name: string | null } | null
 }
 
 // Map unit_id to display labels
@@ -224,7 +225,7 @@ export function PersonalBestsManagement() {
               {pbs.map((pb) => (
                 <TableRow key={pb.id}>
                   <TableCell className="font-medium">
-                    {pb.exercise?.name ?? (pb.event_id ? `Event ID: ${pb.event_id}` : 'Unknown Exercise')}
+                    {pb.exercise?.name ?? (pb.event?.name ?? (pb.event_id ? 'Unknown Event' : 'Unknown Exercise'))}
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     {formatPBValue(pb.value, pb.unit_id)}

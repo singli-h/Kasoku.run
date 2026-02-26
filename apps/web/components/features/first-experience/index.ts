@@ -23,5 +23,3 @@ export type {
   ProposedExercise,
   ProposedSet,
 } from './types'
-
-export { MOCK_PROPOSED_PLAN } from './types'

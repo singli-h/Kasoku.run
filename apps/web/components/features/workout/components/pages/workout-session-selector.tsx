@@ -6,6 +6,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { useSessionsToday, useSessionMutations } from '../../hooks/use-workout-queries'
 import { motion } from "framer-motion"
 import { 
@@ -188,10 +189,10 @@ export function WorkoutSessionSelector({
                 Refresh
               </Button>
               <Button variant="outline" asChild className="w-auto min-w-[140px] h-10">
-                <a href="/workout/history">
+                <Link href="/workout/history">
                   <Calendar className="h-4 w-4 mr-2" />
                   View History
-                </a>
+                </Link>
               </Button>
             </div>
           </CardContent>

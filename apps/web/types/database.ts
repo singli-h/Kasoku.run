@@ -1495,6 +1495,7 @@ export type Database = {
           p_training_goals?: string
           p_username: string
           p_weight?: number
+          p_group_id?: number
         }
         Returns: {
           created_user_id: number
@@ -1709,3 +1710,103 @@ export const Constants = {
     },
   },
 } as const
+
+// ============================================================================
+// Custom Type Aliases
+// These convenience aliases use the Tables helper type to create simpler type names
+// ============================================================================
+
+// Periodization types
+export type Macrocycle = Tables<'macrocycles'>
+export type MacrocycleInsert = TablesInsert<'macrocycles'>
+export type MacrocycleUpdate = TablesUpdate<'macrocycles'>
+
+export type Mesocycle = Tables<'mesocycles'>
+export type MesocycleInsert = TablesInsert<'mesocycles'>
+export type MesocycleUpdate = TablesUpdate<'mesocycles'>
+
+export type Microcycle = Tables<'microcycles'>
+export type MicrocycleInsert = TablesInsert<'microcycles'>
+export type MicrocycleUpdate = TablesUpdate<'microcycles'>
+
+// Exercise types
+export type Exercise = Tables<'exercises'>
+export type ExerciseInsert = TablesInsert<'exercises'>
+export type ExerciseUpdate = TablesUpdate<'exercises'>
+
+export type ExerciseType = Tables<'exercise_types'>
+export type Unit = Tables<'units'>
+
+// Session plan types (new naming convention)
+export type SessionPlan = Tables<'session_plans'>
+export type SessionPlanInsert = TablesInsert<'session_plans'>
+export type SessionPlanUpdate = TablesUpdate<'session_plans'>
+
+export type SessionPlanExercise = Tables<'session_plan_exercises'>
+export type SessionPlanExerciseInsert = TablesInsert<'session_plan_exercises'>
+export type SessionPlanExerciseUpdate = TablesUpdate<'session_plan_exercises'>
+
+export type SessionPlanSet = Tables<'session_plan_sets'>
+export type SessionPlanSetInsert = TablesInsert<'session_plan_sets'>
+export type SessionPlanSetUpdate = TablesUpdate<'session_plan_sets'>
+
+// Workout log types
+export type WorkoutLog = Tables<'workout_logs'>
+export type WorkoutLogInsert = TablesInsert<'workout_logs'>
+export type WorkoutLogUpdate = TablesUpdate<'workout_logs'>
+
+export type WorkoutLogExercise = Tables<'workout_log_exercises'>
+export type WorkoutLogExerciseInsert = TablesInsert<'workout_log_exercises'>
+export type WorkoutLogExerciseUpdate = TablesUpdate<'workout_log_exercises'>
+
+export type WorkoutLogSet = Tables<'workout_log_sets'>
+export type WorkoutLogSetInsert = TablesInsert<'workout_log_sets'>
+export type WorkoutLogSetUpdate = TablesUpdate<'workout_log_sets'>
+
+// Legacy aliases (deprecated - maps to new naming convention)
+/** @deprecated Use SessionPlan instead */
+export type ExercisePresetGroup = Tables<'session_plans'>
+/** @deprecated Use SessionPlanInsert instead */
+export type ExercisePresetGroupInsert = TablesInsert<'session_plans'>
+/** @deprecated Use SessionPlanUpdate instead */
+export type ExercisePresetGroupUpdate = TablesUpdate<'session_plans'>
+
+/** @deprecated Use SessionPlanExercise instead */
+export type ExercisePreset = Tables<'session_plan_exercises'>
+/** @deprecated Use SessionPlanExerciseInsert instead */
+export type ExercisePresetInsert = TablesInsert<'session_plan_exercises'>
+/** @deprecated Use SessionPlanExerciseUpdate instead */
+export type ExercisePresetUpdate = TablesUpdate<'session_plan_exercises'>
+
+/** @deprecated Use SessionPlanSet instead */
+export type ExercisePresetDetail = Tables<'session_plan_sets'>
+
+/** @deprecated Use WorkoutLogSet instead */
+export type ExerciseTrainingDetail = Tables<'workout_log_sets'>
+
+/** @deprecated Use WorkoutLog instead */
+export type ExerciseTrainingSession = Tables<'workout_logs'>
+/** @deprecated Use WorkoutLogInsert instead */
+export type ExerciseTrainingSessionInsert = TablesInsert<'workout_logs'>
+/** @deprecated Use WorkoutLogUpdate instead */
+export type ExerciseTrainingSessionUpdate = TablesUpdate<'workout_logs'>
+
+// Athlete and group types
+export type Athlete = Tables<'athletes'>
+export type AthleteInsert = TablesInsert<'athletes'>
+export type AthleteUpdate = TablesUpdate<'athletes'>
+
+export type AthleteGroup = Tables<'athlete_groups'>
+export type AthleteGroupInsert = TablesInsert<'athlete_groups'>
+export type AthleteGroupUpdate = TablesUpdate<'athlete_groups'>
+
+// User types
+export type User = Tables<'users'>
+export type UserInsert = TablesInsert<'users'>
+export type UserUpdate = TablesUpdate<'users'>
+export type UserRole = Database['public']['Enums']['role']
+
+// Coach types
+export type Coach = Tables<'coaches'>
+export type CoachInsert = TablesInsert<'coaches'>
+export type CoachUpdate = TablesUpdate<'coaches'>

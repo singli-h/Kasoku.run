@@ -45,7 +45,7 @@ export function SessionCard({
     }
   }
 
-  const status = mapSessionStatus(session.session_status)
+  const status = mapSessionStatus(session.session_status ?? undefined)
   const presetGroup = session.session_plan
 
   if (!presetGroup) {

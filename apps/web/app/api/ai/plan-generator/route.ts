@@ -99,11 +99,6 @@ export async function POST(req: Request) {
       tools: planGeneratorTools,
       // Smooth word-level streaming for better perceived performance
       experimental_transform: smoothStream(),
-      // Prevent stalled streams from hanging the UI
-      timeout: {
-        chunkMs: 8000,   // Longer chunk timeout for plan generation (more tool calls)
-        stepMs: 30000,   // Longer step timeout for complex plan generation
-      },
       providerOptions: {
         openai: {
           reasoningEffort: 'medium',    // Medium effort balances quality and speed for plan generation

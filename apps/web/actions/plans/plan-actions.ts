@@ -2261,7 +2261,7 @@ export async function getAthleteAssignedPlanAction(): Promise<ActionState<Athlet
 
       if (logs) {
         for (const log of logs) {
-          if (log.session_plan_id) {
+          if (log.session_plan_id && log.session_status) {
             logsBySessionPlanId[log.session_plan_id] = log.session_status
           }
         }

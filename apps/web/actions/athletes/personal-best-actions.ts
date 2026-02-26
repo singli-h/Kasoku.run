@@ -50,6 +50,10 @@ export async function getAthletePBsAction(
           id,
           name,
           description
+        ),
+        event:events(
+          id,
+          name
         )
       `)
       .eq("athlete_id", athleteId)
@@ -115,6 +119,10 @@ export async function getSpecificPBAction(
           id,
           name,
           description
+        ),
+        event:events(
+          id,
+          name
         )
       `)
       .eq("athlete_id", athleteId)
