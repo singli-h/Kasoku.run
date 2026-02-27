@@ -18,7 +18,7 @@ import {
   isCoordinationTool,
   isReadTool,
 } from './parser'
-import { transformToolInput, resetExecutionOrderCounter } from './transformations'
+import { transformToolInput } from './transformations'
 import { isTempId } from './buffer-utils'
 import type { ConfirmChangeSetInput, ResetChangeSetInput } from './tools'
 
@@ -351,11 +351,8 @@ function handleResetChangeSet(
 ): ToolHandlerResult {
   const reason = args.reason || 'User requested reset'
 
-  // Clear the buffer
+  // Clear the buffer (also resets execution order counter)
   context.changeSet.clear()
-
-  // Reset execution order counter
-  resetExecutionOrderCounter()
 
   console.log(`[handleResetChangeSet] Cleared buffer: ${reason}`)
 

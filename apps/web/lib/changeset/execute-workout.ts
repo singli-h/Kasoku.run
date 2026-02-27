@@ -60,6 +60,26 @@ export async function executeWorkoutChangeSet(
     console.log('[executeWorkoutChangeSet] Starting execution')
     console.log('[executeWorkoutChangeSet] ChangeRequests:', JSON.stringify(changeset.changeRequests, null, 2))
 
+    // SAFETY GUARD: Reject cross-workout changes (execution only supports single workout)
+    const crossWorkoutChanges = changeset.changeRequests.filter(r => {
+      if (r.entityType !== 'workout_log_exercise') return false
+      const targetId = (r.proposedData as Record<string, unknown> | null)?.workout_log_id as string | undefined
+      return targetId && targetId !== workoutLogId
+    })
+    if (crossWorkoutChanges.length > 0) {
+      console.error('[executeWorkoutChangeSet] SAFETY ABORT: Cross-workout changes detected.',
+        [...new Set(crossWorkoutChanges.map(r => (r.proposedData as Record<string, unknown>)?.workout_log_id))])
+      return {
+        status: 'execution_failed',
+        error: {
+          type: 'LOGIC_DATA',
+          code: 'CROSS_WORKOUT_NOT_SUPPORTED',
+          message: 'Changes targeting multiple workouts cannot be applied at once. Please modify one workout at a time.',
+          failedRequestIndex: changeset.changeRequests.indexOf(crossWorkoutChanges[0]),
+        },
+      }
+    }
+
     // Map to track temp IDs → real IDs for new entities
     const idMappings: Record<string, string> = {}
 

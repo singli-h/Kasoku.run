@@ -523,19 +523,16 @@ function SessionAssistantContent({
   const handleRegenerate = useCallback(() => {
     if (!pendingToolCall) return
 
-    // Guard against duplicate submissions (race condition)
-    if (respondedToolCallsRef.current.has(pendingToolCall.toolCallId)) {
-      console.warn('[handleRegenerate] Already responded to tool call:', pendingToolCall.toolCallId)
-      return
+    // Only send tool output if AI hasn't been notified yet (e.g. after execution_failed,
+    // respondedToolCallsRef already has this ID — skip addToolOutput but still clean up UI)
+    if (!respondedToolCallsRef.current.has(pendingToolCall.toolCallId)) {
+      respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
+      addToolOutput({
+        tool: pendingToolCall.toolName,
+        toolCallId: pendingToolCall.toolCallId,
+        output: JSON.stringify(createApprovalResult(false)),
+      })
     }
-    respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
-
-    // Return rejection result to AI - AI will naturally ask what to change
-    addToolOutput({
-      tool: pendingToolCall.toolName,
-      toolCallId: pendingToolCall.toolCallId,
-      output: JSON.stringify(createApprovalResult(false)),
-    })
 
     // Reset execution order so re-proposed changes start from 1
     resetExecutionOrderCounter()
@@ -553,19 +550,16 @@ function SessionAssistantContent({
   const handleDismiss = useCallback(() => {
     if (!pendingToolCall) return
 
-    // Guard against duplicate submissions (race condition)
-    if (respondedToolCallsRef.current.has(pendingToolCall.toolCallId)) {
-      console.warn('[handleDismiss] Already responded to tool call:', pendingToolCall.toolCallId)
-      return
+    // Only send tool output if AI hasn't been notified yet (e.g. after execution_failed,
+    // respondedToolCallsRef already has this ID — skip addToolOutput but still clean up UI)
+    if (!respondedToolCallsRef.current.has(pendingToolCall.toolCallId)) {
+      respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
+      addToolOutput({
+        tool: pendingToolCall.toolName,
+        toolCallId: pendingToolCall.toolCallId,
+        output: JSON.stringify(createApprovalResult(false)),
+      })
     }
-    respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
-
-    // Return rejection result to AI (no await)
-    addToolOutput({
-      tool: pendingToolCall.toolName,
-      toolCallId: pendingToolCall.toolCallId,
-      output: JSON.stringify(createApprovalResult(false)),
-    })
 
     // Clear everything
     changeSet.clear()
