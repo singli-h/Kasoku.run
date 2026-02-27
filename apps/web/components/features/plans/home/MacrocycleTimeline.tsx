@@ -39,7 +39,21 @@ export function MacrocycleTimeline({
   onPhaseClick,
   className
 }: MacrocycleTimelineProps) {
-  const totalWeeks = Math.max(...phases.map(p => p.endWeek))
+  const totalWeeks = phases.length > 0 ? Math.max(...phases.map(p => p.endWeek)) : 0
+
+  if (phases.length === 0) {
+    return (
+      <div className={cn("space-y-4", className)}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-muted-foreground">Training Timeline</h3>
+          <span className="text-xs text-muted-foreground">0 weeks</span>
+        </div>
+        <div className="relative h-8 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+          <span className="text-xs text-muted-foreground">No phases defined</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={cn("space-y-4", className)}>

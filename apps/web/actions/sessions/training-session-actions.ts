@@ -1632,7 +1632,7 @@ export async function getGroupSessionDataAction(sessionId: string): Promise<Acti
           id: session.id,
           name: presetGroup?.name || 'Untitled Session',
           date: session.date_time || new Date().toISOString(),
-          status: session.session_status,
+          status: session.session_status ?? 'assigned',
           athleteGroupId: athleteGroup.id
         },
         athletes,

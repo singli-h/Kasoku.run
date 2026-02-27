@@ -454,12 +454,17 @@ export async function getCoachDashboardDataAction(): Promise<
 
     // Step 2: Parallel queries that depend on athlete IDs
     const [activePlansResult, logsResult, lastWorkoutsResult] = await Promise.all([
-      // Count macrocycles created by this coach that are assigned to a group
+      // Count active macrocycles: today falls between start_date and end_date
+      // Plans with null dates are drafts and excluded
       supabase
         .from('macrocycles')
         .select('id')
         .eq('user_id', dbUserId)
-        .not('athlete_group_id', 'is', null),
+        .not('athlete_group_id', 'is', null)
+        .not('start_date', 'is', null)
+        .not('end_date', 'is', null)
+        .lte('start_date', new Date().toISOString())
+        .gte('end_date', new Date().toISOString()),
 
       // Recent workout logs across all coach's athletes
       athleteIds.length > 0

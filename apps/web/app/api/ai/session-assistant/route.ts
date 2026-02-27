@@ -196,11 +196,6 @@ export async function POST(req: Request) {
       stopWhen: stepCountIs(12),
       // Smooth word-level streaming for better perceived performance
       experimental_transform: smoothStream(),
-      // Prevent stalled streams from hanging the UI
-      timeout: {
-        chunkMs: 5000,   // Abort if no chunk for 5s
-        stepMs: 15000,   // Abort any single tool step after 15s
-      },
       // Step 0: use classified tools. Step 1+: expand to full set for confirmChangeSet etc.
       prepareStep: ({ stepNumber, messages: stepMessages }) => {
         if (stepNumber > 0) {
