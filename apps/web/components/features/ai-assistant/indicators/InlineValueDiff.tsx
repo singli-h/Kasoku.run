@@ -44,7 +44,7 @@ export function InlineValueDiff({
   // New value (no original)
   if (original === null || original === undefined) {
     return (
-      <span className={cn('font-medium text-green-700', className)}>
+      <span className={cn('font-medium text-green-700 dark:text-green-400', className)}>
         {formatValue(pending)}
       </span>
     )
@@ -58,9 +58,9 @@ export function InlineValueDiff({
   // Show diff: "old→new"
   return (
     <span className={cn('inline-flex items-center gap-0.5', className)}>
-      <span className="text-gray-400 line-through">{formatValue(original)}</span>
-      <span className="text-gray-400 mx-0.5">→</span>
-      <span className="font-medium text-amber-700">{formatValue(pending)}</span>
+      <span className="text-gray-400 dark:text-gray-500 line-through">{formatValue(original)}</span>
+      <span className="text-gray-400 dark:text-gray-500 mx-0.5">→</span>
+      <span className="font-medium text-amber-700 dark:text-amber-400">{formatValue(pending)}</span>
     </span>
   )
 }
@@ -82,7 +82,7 @@ export function InlineValueDiffCompact({
   // New value
   if (original === null || original === undefined) {
     return (
-      <span className={cn('text-green-700', className)}>
+      <span className={cn('text-green-700 dark:text-green-400', className)}>
         {formatValue(pending)}
       </span>
     )
@@ -95,9 +95,9 @@ export function InlineValueDiffCompact({
 
   // Compact diff
   return (
-    <span className={cn('text-amber-700', className)}>
+    <span className={cn('text-amber-700 dark:text-amber-400', className)}>
       {formatValue(pending)}
-      <sup className="text-[10px] text-gray-400 ml-0.5">
+      <sup className="text-[10px] text-gray-400 dark:text-gray-500 ml-0.5">
         was {formatValue(original)}
       </sup>
     </span>

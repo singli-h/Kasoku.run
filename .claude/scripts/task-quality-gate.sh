@@ -1,6 +1,7 @@
 #!/bin/bash
 # Quality gate for agent team task completion
-# Used by hooks to verify code quality before marking tasks done
+# Called by TaskCompleted hook — blocks task completion if checks fail
+# Exit code 2 = block the action and feed error back to Claude
 # Usage: .claude/scripts/task-quality-gate.sh
 
 set -e
@@ -10,21 +11,34 @@ cd "$PROJECT_ROOT"
 
 echo "Running quality gate checks..."
 
-# TypeScript compilation check
+# 1. TypeScript compilation check
 echo "  Checking TypeScript..."
-if npx tsc --noEmit --pretty 2>&1 | tail -20; then
-  echo "  TypeScript: PASS"
-else
-  echo "  TypeScript: FAIL"
-  exit 1
+TSC_OUTPUT=$(npx tsc --noEmit --pretty 2>&1 | tail -20)
+if [ $? -ne 0 ] || echo "$TSC_OUTPUT" | grep -q "error TS"; then
+  echo "  TypeScript: FAIL" >&2
+  echo "$TSC_OUTPUT" >&2
+  exit 2
 fi
+echo "  TypeScript: PASS"
 
-# Next.js lint check
+# 2. Next.js lint check
 echo "  Running lint..."
-if npx next lint --quiet 2>&1 | tail -10; then
-  echo "  Lint: PASS"
-else
-  echo "  Lint: FAIL (warnings only, continuing)"
+LINT_OUTPUT=$(npx next lint --quiet 2>&1 | tail -10)
+if [ $? -ne 0 ] && echo "$LINT_OUTPUT" | grep -q "Error"; then
+  echo "  Lint: FAIL" >&2
+  echo "$LINT_OUTPUT" >&2
+  exit 2
 fi
+echo "  Lint: PASS"
 
-echo "Quality gate passed."
+# 3. Unit tests
+echo "  Running tests..."
+TEST_OUTPUT=$(npm test -- --passWithNoTests 2>&1 | tail -20)
+if [ $? -ne 0 ]; then
+  echo "  Tests: FAIL" >&2
+  echo "$TEST_OUTPUT" >&2
+  exit 2
+fi
+echo "  Tests: PASS"
+
+echo "All quality gate checks passed."

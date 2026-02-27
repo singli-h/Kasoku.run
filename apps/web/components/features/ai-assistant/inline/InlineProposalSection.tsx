@@ -135,7 +135,7 @@ export function InlineProposalSection({
         <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500">
           <Check className="h-3 w-3 text-white" />
         </div>
-        <span className="text-sm font-medium text-emerald-700">
+        <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
           Changes applied
         </span>
       </div>
@@ -156,7 +156,7 @@ export function InlineProposalSection({
           <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500">
             <X className="h-3 w-3 text-white" />
           </div>
-          <span className="text-sm text-red-700 truncate">
+          <span className="text-sm text-red-700 dark:text-red-400 truncate">
             {formatErrorForUser(executionError)}
           </span>
         </div>
@@ -207,7 +207,7 @@ export function InlineProposalSection({
         'px-3 py-2 rounded-lg',
         'bg-muted/80',
         'border border-border',
-        'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)]',
+        'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]',
         'transition-all duration-200',
         className
       )}

@@ -127,7 +127,7 @@ export function ApprovalBanner({
         <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500">
           <Check className="h-3 w-3 text-white" />
         </div>
-        <span className="text-sm font-medium text-emerald-700">
+        <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
           Changes applied
         </span>
       </div>
@@ -148,14 +148,14 @@ export function ApprovalBanner({
           <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500">
             <X className="h-3 w-3 text-white" />
           </div>
-          <span className="text-sm text-red-700 truncate">
+          <span className="text-sm text-red-700 dark:text-red-400 truncate">
             {formatErrorForUser(executionError)}
           </span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => setState('pending')}
-            className="px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-500/10 rounded transition-colors"
+            className="px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10 rounded transition-colors"
           >
             Retry
           </button>
@@ -173,7 +173,7 @@ export function ApprovalBanner({
         'px-3 py-2 rounded-lg',
         'bg-muted/80',
         'border border-border',
-        'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)]',
+        'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]',
         'transition-all duration-200',
         className
       )}

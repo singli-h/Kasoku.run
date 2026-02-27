@@ -25,6 +25,7 @@ import { useChangeSet } from '@/lib/changeset/useChangeSet'
 import { handleToolCall, createApprovalResult, createExecutionFailureResult } from '@/lib/changeset/tool-handler'
 import { executeChangeSet } from '@/lib/changeset/execute'
 import { executeWorkoutChangeSet } from '@/lib/changeset/execute-workout'
+import { resetExecutionOrderCounter } from '@/lib/changeset/transformations'
 import { executeReadTool } from '@/lib/changeset/tool-implementations/read-impl'
 import { executeAthleteReadTool } from '@/lib/changeset/tool-implementations/workout-read-impl'
 // Note: Rejection prompts removed - AI naturally asks in chat what to change
@@ -160,9 +161,15 @@ function SessionAssistantContent({
   // Track mounted state to guard against post-unmount operations
   // Must set true in setup (not just useRef init) to survive React Strict Mode re-mount
   const isMountedRef = useRef(true)
+  // Ref for stop() to avoid dependency issues in cleanup effect
+  const stopRef = useRef<() => void>(() => {})
   useEffect(() => {
     isMountedRef.current = true
-    return () => { isMountedRef.current = false }
+    return () => {
+      isMountedRef.current = false
+      // Abort AI stream on unmount to prevent orphaned tool calls
+      stopRef.current()
+    }
   }, [])
 
   const changeSet = useChangeSet()
@@ -348,7 +355,8 @@ function SessionAssistantContent({
     },
   })
 
-  // Stable ref for addToolOutput (needed by effect fallback)
+  // Stable refs for cleanup and effect fallback
+  stopRef.current = stop
   const addToolOutputRef = useRef(addToolOutput)
   addToolOutputRef.current = addToolOutput
 
@@ -427,12 +435,8 @@ function SessionAssistantContent({
       return
     }
 
-    // Guard against duplicate submissions (race condition)
-    if (respondedToolCallsRef.current.has(pendingToolCall.toolCallId)) {
-      console.warn('[handleApprove] Already responded to tool call:', pendingToolCall.toolCallId)
-      return
-    }
-    respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
+    // Check if AI was already notified (allows retry without duplicate addToolOutput)
+    const alreadyRespondedToAI = respondedToolCallsRef.current.has(pendingToolCall.toolCallId)
 
     setIsExecuting(true)
     setExecutionError(undefined)
@@ -445,42 +449,45 @@ function SessionAssistantContent({
 
       if (result.status === 'approved') {
         // Success - update UI based on domain
-        if (domain === 'session' && result.updatedExercises && setExercises) {
-          // Session domain: Update shared exercises context directly
+        if (domain !== 'workout' && result.updatedExercises && setExercises) {
           setExercises(result.updatedExercises as SessionPlannerExercise[])
         } else if (domain === 'workout' && onWorkoutUpdated) {
-          // Workout domain: Trigger React Query cache invalidation
           try {
             await Promise.resolve(onWorkoutUpdated())
           } catch (refreshError) {
-            // Don't fail the operation if refresh fails - data was saved
             console.warn('[handleApprove] onWorkoutUpdated callback error:', refreshError)
           }
         }
 
-        // Return result to AI (no await to avoid deadlocks)
-        addToolOutput({
-          tool: pendingToolCall.toolName,
-          toolCallId: pendingToolCall.toolCallId,
-          output: JSON.stringify(createApprovalResult(true, changeSet.changeset.changeRequests)),
-        })
+        // Notify AI only if not already responded (retry skips this)
+        if (!alreadyRespondedToAI) {
+          respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
+          addToolOutput({
+            tool: pendingToolCall.toolName,
+            toolCallId: pendingToolCall.toolCallId,
+            output: JSON.stringify(createApprovalResult(true, changeSet.changeset.changeRequests)),
+          })
+        }
 
         // Clear changeset and hide banner
         changeSet.clear()
         setShowBanner(false)
+        setPendingToolCall(null)
       } else {
-        // Execution failed with a known error
+        // Execution failed - transition status and keep pendingToolCall for retry
+        changeSet.setStatus('execution_failed')
         setExecutionError(result.error)
 
-        // Return error to AI - it will understand from the error result
-        addToolOutput({
-          tool: pendingToolCall.toolName,
-          toolCallId: pendingToolCall.toolCallId,
-          output: JSON.stringify(createExecutionFailureResult(result.error)),
-        })
+        if (!alreadyRespondedToAI) {
+          respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
+          addToolOutput({
+            tool: pendingToolCall.toolName,
+            toolCallId: pendingToolCall.toolCallId,
+            output: JSON.stringify(createExecutionFailureResult(result.error)),
+          })
+        }
       }
     } catch (error) {
-      // Unexpected error - ensure we still report back to AI
       console.error('[handleApprove] Unexpected error:', error)
 
       const executionErr = {
@@ -489,18 +496,19 @@ function SessionAssistantContent({
         message: error instanceof Error ? error.message : 'Unknown error',
         failedRequestIndex: 0,
       }
+      changeSet.setStatus('execution_failed')
       setExecutionError(executionErr)
 
-      // Report error back to AI so it doesn't get stuck
-      addToolOutput({
-        tool: pendingToolCall.toolName,
-        toolCallId: pendingToolCall.toolCallId,
-        output: JSON.stringify(createExecutionFailureResult(executionErr)),
-      })
+      if (!alreadyRespondedToAI) {
+        respondedToolCallsRef.current.add(pendingToolCall.toolCallId)
+        addToolOutput({
+          tool: pendingToolCall.toolName,
+          toolCallId: pendingToolCall.toolCallId,
+          output: JSON.stringify(createExecutionFailureResult(executionErr)),
+        })
+      }
     } finally {
-      // ALWAYS reset state to prevent stuck UI
       setIsExecuting(false)
-      setPendingToolCall(null)
     }
   }, [changeSet, domain, exercises, sessionId, setExercises, onWorkoutUpdated, pendingToolCall, addToolOutput])
 
@@ -529,6 +537,8 @@ function SessionAssistantContent({
       output: JSON.stringify(createApprovalResult(false)),
     })
 
+    // Reset execution order so re-proposed changes start from 1
+    resetExecutionOrderCounter()
     // Transition changeset back to "building" state (NOT cleared)
     // AI can modify the existing changes via upsert operations
     changeSet.setStatus('building')

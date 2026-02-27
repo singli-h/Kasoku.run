@@ -55,6 +55,45 @@ export async function executeChangeSet(
       console.log(`[executeChangeSet] ${changeset.changeRequests.length} changes, ${currentExercises.length} existing exercises`)
     }
 
+    // SAFETY GUARD: Abort if exercises context is empty but changeset references existing entities.
+    // This prevents the destructive path where saveSessionWithExercisesAction deletes all DB data
+    // because the passed exercises list is empty (stale closure / missing context provider).
+    const hasExistingEntityChanges = changeset.changeRequests.some(
+      r => (r.operationType === 'update' || r.operationType === 'delete') && r.entityType === 'session_plan_exercise'
+    )
+    if (currentExercises.length === 0 && hasExistingEntityChanges) {
+      console.error('[executeChangeSet] SAFETY ABORT: exercises context is empty but changeset modifies existing exercises. This would delete all DB data.')
+      return {
+        status: 'execution_failed',
+        error: {
+          type: 'LOGIC_DATA',
+          code: 'EMPTY_EXERCISES_GUARD',
+          message: 'Cannot apply changes: exercise data not loaded. Please refresh the page and try again.',
+          failedRequestIndex: 0,
+        },
+      }
+    }
+
+    // SAFETY GUARD: Reject cross-session changes (execution only supports single session)
+    const crossSessionChanges = changeset.changeRequests.filter(r => {
+      if (r.entityType !== 'session_plan_exercise') return false
+      const targetId = (r.proposedData as Record<string, unknown> | null)?.session_plan_id as string | undefined
+      return targetId && targetId !== sessionId
+    })
+    if (crossSessionChanges.length > 0) {
+      console.error('[executeChangeSet] SAFETY ABORT: Cross-session changes detected.',
+        [...new Set(crossSessionChanges.map(r => (r.proposedData as Record<string, unknown>)?.session_plan_id))])
+      return {
+        status: 'execution_failed',
+        error: {
+          type: 'LOGIC_DATA',
+          code: 'CROSS_SESSION_NOT_SUPPORTED',
+          message: 'Changes targeting multiple sessions cannot be applied at once. Please modify one session at a time.',
+          failedRequestIndex: changeset.changeRequests.indexOf(crossSessionChanges[0]),
+        },
+      }
+    }
+
     // Build updated exercises list by applying changes
     const updatedExercises = applyChangesToExercises(
       changeset.changeRequests,
@@ -161,8 +200,78 @@ function applyChangesToExercises(
     }
   }
 
+  // STEP 2.5: Attach orphaned set creates to EXISTING exercises.
+  // Step 2 only consumes setsByParentId for exercise CREATES. When the AI adds sets
+  // to existing exercises (most common case: "add a 3rd set"), those set creates
+  // are still in setsByParentId. We need to attach them now.
+  for (const [parentId, setRequests] of setsByParentId) {
+    // Check if any exercise in the result has this ID (existing exercise, not a new create)
+    const exerciseIndex = exercises.findIndex(ex => String(ex.id) === parentId)
+    if (exerciseIndex === -1) continue
+
+    // Check if these sets were already consumed by an exercise create in Step 2
+    // (exercise creates consume their sets via setsByParentId.get(request.entityId))
+    // If the exercise already exists in the original list, the sets were NOT consumed.
+    const wasNewlyCreated = changeRequests.some(
+      r => r.entityType === 'session_plan_exercise' && r.operationType === 'create' && r.entityId === parentId
+    )
+    if (wasNewlyCreated) continue // Already handled in Step 2
+
+    // Build new sets from the set requests
+    const existingExercise = exercises[exerciseIndex]
+    const existingSetCount = existingExercise.sets.length
+
+    const newSets = setRequests.flatMap((setReq, reqIndex) => {
+      const setData = setReq.proposedData
+        ? convertKeysToCamelCase(setReq.proposedData)
+        : null
+
+      const setCount = Number(setData?.setCount ?? 1)
+      const result: SessionPlannerExercise['sets'] = []
+
+      for (let i = 0; i < setCount; i++) {
+        result.push({
+          id: `new_set_${Date.now()}_orphan_${reqIndex}_${i}`,
+          session_plan_exercise_id: parentId,
+          set_index: existingSetCount + result.length + 1,
+          reps: (setData?.reps as number) ?? null,
+          weight: (setData?.weight as number) ?? null,
+          distance: (setData?.distance as number) ?? null,
+          performing_time: (setData?.performingTime as number) ?? null,
+          rest_time: (setData?.restTime as number) ?? null,
+          tempo: (setData?.tempo as string) ?? null,
+          rpe: (setData?.rpe as number) ?? null,
+          resistance_unit_id: null,
+          power: (setData?.power as number) ?? null,
+          velocity: (setData?.velocity as number) ?? null,
+          effort: (setData?.effort as number) ?? null,
+          height: (setData?.height as number) ?? null,
+          resistance: (setData?.resistance as number) ?? null,
+          completed: false,
+          isEditing: false,
+        })
+      }
+
+      return result
+    })
+
+    if (newSets.length > 0) {
+      // Re-index all sets (existing + new)
+      const allSets = [...existingExercise.sets, ...newSets]
+      allSets.forEach((set, idx) => { set.set_index = idx + 1 })
+
+      exercises = exercises.map((ex, idx) =>
+        idx === exerciseIndex ? { ...ex, sets: allSets } : ex
+      )
+
+      if (DEBUG_EXEC) {
+        console.log(`[applyChanges] Attached ${newSets.length} new set(s) to existing exercise ${parentId}`)
+      }
+    }
+  }
+
   // STEP 3: Process set updates/deletes for existing exercises
-  // (Set creates were already handled inline with exercise creates)
+  // (Set creates were already handled inline with exercise creates or in Step 2.5)
   for (const request of changeRequests) {
     if (request.entityType === 'session_plan_set' && request.operationType !== 'create') {
       exercises = applySetChange(request, exercises)

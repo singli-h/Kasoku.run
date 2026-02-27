@@ -12,7 +12,7 @@
  * @see specs/005-ai-athlete-workout/spec.md
  */
 
-import { streamText, convertToModelMessages, smoothStream, type UIMessage } from 'ai'
+import { streamText, convertToModelMessages, smoothStream, stepCountIs, type UIMessage } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
@@ -70,6 +70,7 @@ const TOOLS_BY_INTENT: Record<QueryIntent, AthleteToolName[]> = {
   ],
 }
 
+// Reasoning effort per intent: 'none' = instant (no thinking), 'low' = light reasoning
 const REASONING_BY_INTENT: Record<QueryIntent, 'none' | 'low' | 'medium'> = {
   log: 'none',
   question: 'low',
@@ -232,6 +233,7 @@ export async function POST(req: Request) {
       // Dynamic tool filtering: only send relevant tools based on query intent
       // Reduces tool schema tokens from ~1,650 (11 tools) to ~300-450 (2-3 tools) for logging
       activeTools,
+      stopWhen: stepCountIs(12),
       // Smooth word-level streaming for better perceived performance
       experimental_transform: smoothStream(),
       // Prevent stalled streams from hanging the UI
@@ -257,7 +259,7 @@ export async function POST(req: Request) {
         openai: {
           reasoningEffort,             // Responsive: none for logging, low for questions
           reasoningSummary: 'auto',    // Stream condensed reasoning to client
-          textVerbosity: 'low',        // Shorter responses = faster streaming completion
+          textVerbosity: 'low',        // Shorter responses = faster streaming
         },
       },
       onFinish: ({ text, toolCalls, usage, reasoning }) => {

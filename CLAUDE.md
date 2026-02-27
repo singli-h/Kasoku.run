@@ -348,6 +348,44 @@ npm run lint        # Lint all apps
 
 ---
 
+# Scope Discipline (Anti-Drift Rules)
+
+These rules exist because of real incidents where Claude drifted from requirements.
+
+## Rule 1: Change Only What Was Asked
+
+- Fix ONLY the reported issue. Implement ONLY the requested feature.
+- If you notice adjacent improvements, **mention them in your summary** but do NOT implement unless the task explicitly includes them.
+- "While I was in there, I also..." is almost always wrong.
+
+## Rule 2: Announce Before You Code (Multi-File Changes)
+
+Before modifying 3+ files, state:
+1. Which files you will modify (and why each one)
+2. Which files you will NOT touch
+3. One-line summary of each change
+
+This is your contract. Do not deviate from it without stating why.
+
+## Rule 3: Minimal Diff, Maximum Effect
+
+- Prefer the smallest change that solves the problem
+- Do NOT refactor, rename, restyle, or reorganize code adjacent to your change
+- Do NOT add docstrings, comments, or type annotations to code you didn't change
+- Do NOT add error handling for scenarios that can't happen
+- 3 similar lines of code is better than a premature abstraction
+
+## Rule 4: Verify Scope Before Stopping
+
+Before you finish, run `git diff --stat` and check:
+- Are there files in the diff you didn't plan to change? → Revert them
+- Are there more lines changed than the task reasonably requires? → Trim
+- Did you add any "bonus" improvements? → Revert them
+
+Include the `git diff --stat` output in your final summary so the reviewer can see scope at a glance.
+
+---
+
 # Review Checklist
 
 Before completing any implementation:
@@ -358,3 +396,4 @@ Before completing any implementation:
 - [ ] Error states handled
 - [ ] Loading states implemented
 - [ ] Mobile responsive
+- [ ] `git diff --stat` shows ONLY files related to the task

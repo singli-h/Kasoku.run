@@ -271,7 +271,7 @@ export async function saveSessionWithExercisesAction(
       // - "new_" or "temp_" prefix = new item from client/AI
       // - UUID string matching existing DB ID = update
       // - Anything else = treat as new (safe fallback)
-      const isNewExercise = idStr.startsWith('new_') || idStr.startsWith('new-') || idStr.startsWith('temp_')
+      const isNewExercise = idStr.startsWith('new_') || idStr.startsWith('new-') || idStr.startsWith('temp_') || idStr.startsWith('temp-')
 
       if (isNewExercise) {
         exercisesToInsert.push(exercise)

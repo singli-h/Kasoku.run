@@ -32,6 +32,7 @@ import {
   resetTempIdCounter,
   sortByExecutionOrder,
 } from './buffer-utils'
+import { resetExecutionOrderCounter } from './transformations'
 
 /**
  * Context for ChangeSet state and operations.
@@ -139,6 +140,7 @@ export function ChangeSetProvider({ children }: ChangeSetProviderProps) {
     setChangesetId(null)
     setToolCallId(undefined)
     resetTempIdCounter()
+    resetExecutionOrderCounter()
   }, [])
 
   /**
@@ -188,13 +190,15 @@ export function ChangeSetProvider({ children }: ChangeSetProviderProps) {
    * This ensures a consistent ID is used across all changes in a session.
    */
   const getOrCreateChangesetId = useCallback((): string => {
-    if (changesetId) {
-      return changesetId
+    // Use ref first (survives same-render-cycle rapid calls, matches upsert pattern)
+    if (changesetIdRef.current) {
+      return changesetIdRef.current
     }
     const newId = generateChangeSetId()
+    changesetIdRef.current = newId
     setChangesetId(newId)
     return newId
-  }, [changesetId])
+  }, [])
 
   /**
    * Build the current ChangeSet object from state.

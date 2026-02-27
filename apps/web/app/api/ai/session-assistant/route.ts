@@ -7,7 +7,7 @@
  * @see specs/002-ai-session-assistant/reference/20251221-session-v1-vision.md
  */
 
-import { streamText, convertToModelMessages, smoothStream, type UIMessage } from 'ai'
+import { streamText, convertToModelMessages, smoothStream, stepCountIs, type UIMessage } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
@@ -58,6 +58,7 @@ const TOOLS_BY_INTENT: Record<QueryIntent, CoachToolName[]> = {
   ],
 }
 
+// Reasoning effort per intent: 'none' = instant (no thinking), 'low' = light reasoning
 const REASONING_BY_INTENT: Record<QueryIntent, 'none' | 'low' | 'medium'> = {
   edit: 'none',
   question: 'low',
@@ -192,6 +193,7 @@ export async function POST(req: Request) {
       tools: coachDomainTools,
       // Dynamic tool filtering: only send relevant tools based on query intent
       activeTools,
+      stopWhen: stepCountIs(12),
       // Smooth word-level streaming for better perceived performance
       experimental_transform: smoothStream(),
       // Prevent stalled streams from hanging the UI

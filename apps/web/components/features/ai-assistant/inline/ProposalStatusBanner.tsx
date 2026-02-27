@@ -44,8 +44,8 @@ export function ProposalStatusBanner({
         'rounded-xl border px-4 py-3',
         'animate-in fade-in-0 slide-in-from-top-1 duration-200',
         isSuccess
-          ? 'border-emerald-200/60 bg-emerald-50/50'
-          : 'border-rose-200/60 bg-rose-50/50'
+          ? 'border-emerald-200/60 bg-emerald-50/50 dark:border-emerald-800/60 dark:bg-emerald-950/30'
+          : 'border-rose-200/60 bg-rose-50/50 dark:border-rose-800/60 dark:bg-rose-950/30'
       )}
     >
       <div className="flex items-center justify-between gap-3">
@@ -54,19 +54,19 @@ export function ProposalStatusBanner({
           <div
             className={cn(
               'flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
-              isSuccess ? 'bg-emerald-100' : 'bg-rose-100'
+              isSuccess ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-rose-100 dark:bg-rose-900/50'
             )}
           >
             {isSuccess ? (
-              <Check className="h-3.5 w-3.5 text-emerald-600" />
+              <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             ) : (
-              <AlertCircle className="h-3.5 w-3.5 text-rose-600" />
+              <AlertCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
             )}
           </div>
           <span
             className={cn(
               'text-sm font-medium truncate',
-              isSuccess ? 'text-emerald-700' : 'text-rose-700'
+              isSuccess ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
             )}
           >
             {message}
@@ -81,7 +81,7 @@ export function ProposalStatusBanner({
                 variant="ghost"
                 size="sm"
                 onClick={onRetry}
-                className="h-7 px-2 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-100/50"
+                className="h-7 px-2 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-100/50 dark:hover:bg-rose-900/30"
               >
                 <RefreshCw className="mr-1 h-3 w-3" />
                 Retry
@@ -92,7 +92,7 @@ export function ProposalStatusBanner({
                 variant="ghost"
                 size="sm"
                 onClick={onDismiss}
-                className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-100/50"
+                className="h-7 w-7 p-0 text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-100/50 dark:hover:bg-rose-900/30"
               >
                 <X className="h-3.5 w-3.5" />
               </Button>

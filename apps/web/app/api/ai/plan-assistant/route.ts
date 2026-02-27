@@ -12,7 +12,7 @@
  * @see docs/features/plans/individual/IMPLEMENTATION_PLAN.md
  */
 
-import { streamText, convertToModelMessages, smoothStream, type UIMessage } from 'ai'
+import { streamText, convertToModelMessages, smoothStream, stepCountIs, type UIMessage } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
@@ -64,6 +64,7 @@ const TOOLS_BY_INTENT: Record<QueryIntent, CoachToolName[]> = {
   ],
 }
 
+// Reasoning effort per intent: 'none' = instant (no thinking), 'low' = light reasoning
 const REASONING_BY_INTENT: Record<QueryIntent, 'none' | 'low' | 'medium'> = {
   edit: 'none',
   question: 'low',
@@ -324,6 +325,18 @@ export async function POST(req: Request) {
     weekContext = weekResult
     sessionContext = sessionResult
 
+    // Verify session belongs to this plan (if provided)
+    if (sessionId && planData.microcycles) {
+      const planSessionIds = new Set(
+        planData.microcycles.flatMap((w: MicrocycleRow) =>
+          w.session_plans?.map((s: SessionPlanRow) => s.id) ?? []
+        )
+      )
+      if (!planSessionIds.has(sessionId)) {
+        return new Response('Session does not belong to this plan', { status: 403 })
+      }
+    }
+
     // Build system prompt with context
     const systemPrompt = buildPlanAssistantSystemPrompt({
       aiContextLevel,
@@ -359,6 +372,7 @@ export async function POST(req: Request) {
       tools: coachDomainTools,
       // Dynamic tool filtering: only send relevant tools based on query intent
       activeTools,
+      stopWhen: stepCountIs(15),
       // Smooth word-level streaming for better perceived performance
       experimental_transform: smoothStream(),
       // Prevent stalled streams from hanging the UI
@@ -380,8 +394,8 @@ export async function POST(req: Request) {
       },
       providerOptions: {
         openai: {
-          reasoningEffort,
-          reasoningSummary: 'auto',
+          reasoningEffort,             // Responsive: none for edits, low for questions/structural
+          reasoningSummary: 'auto',    // Stream condensed reasoning to client
         },
       },
       onFinish: ({ text, toolCalls, usage }) => {
