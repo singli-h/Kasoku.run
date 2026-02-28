@@ -7,8 +7,9 @@ import {
   Bot, Brain, Dumbbell,
   Sparkles, Zap, TrendingUp,
   Send, ArrowRightLeft, Trophy,
-  Calendar, Activity,
-  ShieldAlert, Settings, BookOpen, ClipboardList
+  Calendar, Activity, Layers,
+  ShieldAlert, Settings, ClipboardList,
+  Check, MessageCircle, Plus
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────
@@ -25,22 +26,36 @@ function useStepAnimation(
   const fadeIn = start + size * 0.15
   const fadeOut = start + size * 0.8
   const end = start + size
+  const isFirst = step === 0
   const isLast = step === total - 1
 
+  // First step starts visible immediately (no blank screen on entry)
   const opacity = useTransform(
     progress,
-    isLast ? [start, fadeIn, 1] : [start, fadeIn, fadeOut, end],
-    isLast ? [0, 1, 1] : [0, 1, 1, 0]
+    isFirst ? [0, fadeOut, end] :
+    isLast  ? [start, fadeIn, 1] :
+              [start, fadeIn, fadeOut, end],
+    isFirst ? [1, 1, 0] :
+    isLast  ? [0, 1, 1] :
+              [0, 1, 1, 0]
   )
   const y = useTransform(
     progress,
-    isLast ? [start, fadeIn, 1] : [start, fadeIn, fadeOut, end],
-    isLast ? [60, 0, 0] : [60, 0, 0, -40]
+    isFirst ? [0, fadeOut, end] :
+    isLast  ? [start, fadeIn, 1] :
+              [start, fadeIn, fadeOut, end],
+    isFirst ? [0, 0, -40] :
+    isLast  ? [60, 0, 0] :
+              [60, 0, 0, -40]
   )
   const scale = useTransform(
     progress,
-    isLast ? [start, fadeIn, 1] : [start, fadeIn, fadeOut, end],
-    isLast ? [0.96, 1, 1] : [0.96, 1, 1, 0.97]
+    isFirst ? [0, fadeOut, end] :
+    isLast  ? [start, fadeIn, 1] :
+              [start, fadeIn, fadeOut, end],
+    isFirst ? [1, 1, 0.97] :
+    isLast  ? [0.96, 1, 1] :
+              [0.96, 1, 1, 0.97]
   )
 
   return { opacity, y, scale }
@@ -74,13 +89,16 @@ function useDotAnimation(
 
 function PlanGenerationPanel() {
   return (
-    <div className="w-full max-w-lg rounded-2xl border border-border/30 bg-[#0a0a0b] overflow-hidden shadow-2xl shadow-black/40">
+    <div className="w-full max-w-lg rounded-2xl border border-border/30 bg-card overflow-hidden shadow-2xl shadow-black/10 dark:shadow-black/40">
       {/* Header */}
-      <div className="px-5 py-3 border-b border-border/20 flex items-center gap-2.5">
-        <div className="p-1.5 rounded-lg bg-primary/10">
-          <Bot className="w-4 h-4 text-primary" />
+      <div className="px-4 py-3 border-b border-border/20 flex items-center gap-2.5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+          <Bot className="h-5 w-5 text-primary" />
         </div>
-        <span className="text-sm font-semibold text-foreground">Kasoku AI</span>
+        <div>
+          <span className="text-sm font-medium text-foreground block">AI Assistant</span>
+          <span className="text-xs text-muted-foreground">Ready to help</span>
+        </div>
         <span className="ml-auto text-[10px] text-primary/50 uppercase tracking-[0.15em] font-medium">
           Plan Generator
         </span>
@@ -88,14 +106,16 @@ function PlanGenerationPanel() {
 
       {/* Chat */}
       <div className="p-5 flex flex-col gap-4">
-        <div className="self-end max-w-[85%] rounded-2xl rounded-br-sm bg-surface border border-border/40 px-4 py-3">
-          <p className="text-sm text-foreground leading-relaxed">
+        {/* User message — solid primary bg like real app */}
+        <div className="self-end max-w-[85%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-2.5">
+          <p className="text-sm leading-relaxed">
             Build a 12-week sprint program for my U18 group, peaking for nationals in March.
           </p>
         </div>
 
-        <div className="self-start max-w-[90%] rounded-2xl rounded-bl-sm bg-primary/[0.06] border border-primary/15 px-4 py-3">
-          <p className="text-sm text-foreground/90 leading-relaxed">
+        {/* AI message — bg-muted like real app */}
+        <div className="self-start max-w-[90%] rounded-2xl rounded-bl-sm bg-muted px-4 py-2.5">
+          <p className="text-sm text-foreground leading-relaxed">
             <span className="text-primary font-medium">Here&apos;s your periodized plan:</span>{" "}
             4 phases across 12 weeks. GPP builds base strength (wk 1–3),
             SPP targets sprint-specific power (wk 4–8), taper reduces volume (wk 9–11),
@@ -109,24 +129,30 @@ function PlanGenerationPanel() {
         </div>
       </div>
 
-      {/* Plan Approval Bar */}
-      <div className="px-5 py-3.5 border-t border-primary/20 bg-primary/[0.03] flex items-center gap-4">
-        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-1">
-          <span className="flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-muted-foreground/60" />
-            <span className="text-foreground font-semibold">12</span> weeks
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Dumbbell className="w-3.5 h-3.5 text-muted-foreground/60" />
-            <span className="text-foreground font-semibold">4</span>/wk
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-muted-foreground/60" />
-            <span className="text-foreground font-semibold">48</span> exercises
-          </span>
+      {/* Plan Approval Bar — matches real PlanApprovalBar card */}
+      <div className="px-5 py-4 border-t border-primary/20 bg-primary/5">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <Bot className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <div className="font-semibold text-foreground text-sm">Your AI Training Plan</div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+              <span><span className="font-medium text-foreground">12</span> weeks</span>
+              <span className="text-muted-foreground/50">·</span>
+              <span><span className="font-medium text-foreground">4</span> sessions/wk</span>
+              <span className="text-muted-foreground/50">·</span>
+              <span><span className="font-medium text-foreground">48</span> exercises</span>
+            </div>
+          </div>
         </div>
-        <div className="px-4 py-1.5 rounded-full bg-primary text-white text-xs font-semibold shadow-lg shadow-primary/30">
-          Apply Plan
+        <div className="flex gap-2">
+          <div className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-border text-sm font-medium text-foreground bg-background">
+            <MessageCircle className="w-4 h-4" /> Chat with AI
+          </div>
+          <div className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-primary text-white text-sm font-medium shadow-sm">
+            <Check className="w-4 h-4" /> Apply Plan
+          </div>
         </div>
       </div>
     </div>
@@ -214,7 +240,7 @@ function TrainingPlanPanel() {
   ]
 
   return (
-    <div className="w-full max-w-xl rounded-2xl border border-border/30 bg-[#0a0a0b] overflow-hidden shadow-2xl shadow-black/40">
+    <div className="w-full max-w-xl rounded-2xl border border-border/30 bg-card overflow-hidden shadow-2xl shadow-black/10 dark:shadow-black/40">
       {/* Macrocycle Timeline */}
       <div className="p-5 pb-4">
         <div className="flex items-center justify-between mb-3">
@@ -225,13 +251,13 @@ function TrainingPlanPanel() {
             <Trophy className="w-3 h-3" /> Nationals
           </span>
         </div>
-        <div className="flex h-7 rounded-lg overflow-hidden gap-px">
+        <div className="flex h-8 rounded-lg overflow-hidden gap-px">
           {phases.map((p) => (
             <div
               key={p.name}
               className={`${p.color} flex-1 flex items-center justify-center first:rounded-l-lg last:rounded-r-lg`}
             >
-              <span className="text-[9px] font-bold text-white/90 uppercase tracking-wider">
+              <span className="text-xs font-medium text-white/90 uppercase tracking-wider">
                 {p.name}
               </span>
             </div>
@@ -250,23 +276,26 @@ function TrainingPlanPanel() {
         ))}
       </div>
 
-      {/* Inline Proposal */}
-      <div className="mx-5 mb-4 rounded-lg border border-primary/25 bg-primary/[0.04] px-4 py-2.5 flex items-center gap-3">
-        <Bot className="w-4 h-4 text-primary flex-shrink-0" />
-        <span className="text-xs text-foreground/70 flex-1">
-          <span className="text-primary font-semibold">3 changes</span>{" "}
-          <span className="text-muted-foreground">·</span> +2 exercises, 1 update
+      {/* Inline Proposal — matches real InlineProposalSection */}
+      <div className="mx-5 mb-4 rounded-lg bg-muted/80 border border-border px-3 py-2 flex items-center gap-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-600 shadow-sm">
+          <Bot className="h-3.5 w-3.5 text-white" />
+        </div>
+        <span className="text-sm text-foreground/80 flex-1">
+          <span className="font-semibold tabular-nums">3 changes</span>{" "}
+          <span className="text-muted-foreground">|</span>{" "}
+          <span className="text-muted-foreground">+2 exercises, 1 update</span>
         </span>
-        <div className="px-3 py-1 rounded-md bg-primary/10 text-primary text-[11px] font-semibold border border-primary/20">
-          Apply
+        <div className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium flex items-center gap-1.5">
+          <Check className="w-3.5 h-3.5" /> Apply
         </div>
       </div>
 
-      {/* AI Context Scope */}
+      {/* AI Context Scope — matches real AIContextIndicator */}
       <div className="px-5 pb-4 flex items-center gap-2.5">
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20">
-          <BookOpen className="w-3 h-3 text-violet-400" />
-          <span className="text-[10px] text-violet-400 font-semibold">Block scope</span>
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-purple-500/10 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+          <Layers className="w-3 h-3" />
+          Block
         </div>
         <span className="text-[10px] text-muted-foreground/50">
           AI sees your entire program
@@ -288,57 +317,49 @@ function WorkoutPanel() {
   ]
 
   return (
-    <div className="w-full max-w-lg rounded-2xl border border-border/30 bg-[#0a0a0b] overflow-hidden shadow-2xl shadow-black/40">
+    <div className="w-full max-w-lg rounded-2xl border border-border/30 bg-card overflow-hidden shadow-2xl shadow-black/10 dark:shadow-black/40">
       {/* Exercise Header */}
       <div className="px-5 py-3.5 border-b border-border/20 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-1.5 rounded-lg bg-primary/10">
-            <Dumbbell className="w-4 h-4 text-primary" />
-          </div>
-          <span className="font-semibold text-foreground text-[15px]">Back Squat</span>
+          <span className="text-sm font-medium text-foreground">Back Squat</span>
         </div>
-        <span className="text-xs text-muted-foreground/50">3/4 sets</span>
+        <span className="text-[10px] text-muted-foreground">3/4 sets</span>
       </div>
 
-      {/* Set Table */}
-      <div className="px-5 py-3">
-        {/* Header */}
-        <div className="flex items-center text-[10px] text-muted-foreground/50 uppercase tracking-wider px-2 pb-2">
-          <span className="w-10">Set</span>
-          <span className="flex-1">Reps</span>
-          <span className="flex-1">Weight</span>
-          <span className="w-14 text-right">RPE</span>
-        </div>
-
-        {/* Completed Sets */}
+      {/* Set Rows */}
+      <div className="px-5 py-3 flex flex-col gap-1.5">
         {sets.map((s) => (
           <div
             key={s.num}
-            className={`flex items-center text-sm px-2 py-2 rounded-md ${
+            className={`flex items-center gap-2 py-1.5 px-1 rounded-md ${
               s.highlight ? "bg-primary/[0.04]" : ""
             }`}
           >
-            <span className="w-10 text-muted-foreground/50 text-xs">{s.num}</span>
-            <span className="flex-1 text-foreground/90">{s.reps}</span>
-            <span className="flex-1 text-foreground/90">{s.weight}</span>
-            <span className="w-14 text-right text-primary font-semibold">{s.rpe}</span>
+            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+              <span className="text-[10px] font-medium text-muted-foreground">{s.num}</span>
+            </div>
+            <div className="flex items-center gap-1.5 flex-1">
+              <span className="px-2 py-0.5 rounded bg-muted text-xs font-mono text-foreground">{s.reps} reps</span>
+              <span className="px-2 py-0.5 rounded bg-muted text-xs font-mono text-foreground">{s.weight}</span>
+              <span className="px-2 py-0.5 rounded bg-muted text-xs font-mono text-foreground">RPE {s.rpe}</span>
+            </div>
           </div>
         ))}
 
-        {/* Ghost Set Row — AI Suggested */}
-        <div className="flex items-center text-sm px-2 py-2 mt-1 rounded-md border border-dashed border-emerald-500/30 bg-emerald-500/[0.03]">
-          <span className="w-10">
-            <Bot className="w-3.5 h-3.5 text-emerald-400" />
-          </span>
-          <span className="flex-1 text-emerald-400/80">5</span>
-          <span className="flex-1 text-emerald-400/80">130kg</span>
-          <span className="w-14 text-right text-emerald-400 font-semibold">7</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-2 mt-1.5 mb-1">
-          <span className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wider">
-            AI Suggested
-          </span>
-          <span className="text-[10px] text-emerald-400/40">· Based on RPE trend</span>
+        {/* Ghost Set Row — stronger border like real GhostSetRow */}
+        <div className="relative flex items-center gap-2 py-1.5 px-1 mt-1 rounded-md border-2 border-dashed border-emerald-400 bg-emerald-50/6">
+          <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center">
+            <Plus className="w-3 h-3 text-emerald-400" />
+          </div>
+          <div className="flex items-center gap-1.5 flex-1">
+            <span className="px-2 py-0.5 rounded-md text-xs font-mono bg-emerald-500/10 text-emerald-400">5 reps</span>
+            <span className="px-2 py-0.5 rounded-md text-xs font-mono bg-emerald-500/10 text-emerald-400">130kg</span>
+            <span className="px-2 py-0.5 rounded-md text-xs font-mono bg-emerald-500/10 text-emerald-400">RPE 7</span>
+          </div>
+          {/* Floating AI badge */}
+          <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+            <Bot className="w-2.5 h-2.5" />
+          </div>
         </div>
       </div>
 
@@ -346,12 +367,12 @@ function WorkoutPanel() {
       <div className="px-5 pb-4 pt-1 flex flex-col gap-2.5">
         <div className="h-px bg-border/15" />
 
-        <div className="self-end max-w-[75%] rounded-2xl rounded-br-sm bg-surface border border-border/30 px-3.5 py-2">
-          <p className="text-xs text-foreground/90">Squat rack is taken. What should I do?</p>
+        <div className="self-end max-w-[75%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-3.5 py-2">
+          <p className="text-xs">Squat rack is taken. What should I do?</p>
         </div>
 
-        <div className="self-start max-w-[85%] rounded-2xl rounded-bl-sm bg-primary/[0.06] border border-primary/15 px-3.5 py-2">
-          <p className="text-xs text-foreground/85 leading-relaxed">
+        <div className="self-start max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-3.5 py-2">
+          <p className="text-xs text-foreground leading-relaxed">
             Swapping to <span className="text-primary font-semibold">Leg Press</span>.
             4 sets of 5 at similar intensity.
           </p>
@@ -382,11 +403,11 @@ function AnalyticsPanel() {
   ]
 
   const intensityColors = [
-    "bg-border/15",
-    "bg-emerald-900/50",
-    "bg-emerald-700/50",
-    "bg-emerald-500/60",
-    "bg-emerald-400/80",
+    "bg-muted/30",
+    "bg-green-500/20",
+    "bg-green-500/40",
+    "bg-green-500/60",
+    "bg-green-500/90",
   ]
 
   const stats = [
@@ -398,15 +419,15 @@ function AnalyticsPanel() {
   return (
     <div className="w-full max-w-lg flex flex-col gap-3">
       {/* Heatmap */}
-      <div className="rounded-2xl border border-border/30 bg-[#0a0a0b] p-5 shadow-2xl shadow-black/40">
-        <div className="text-sm font-semibold text-foreground mb-3">Training Consistency</div>
-        <div className="flex gap-[3px]">
+      <div className="rounded-2xl border border-border/30 bg-card p-5 shadow-2xl shadow-black/10 dark:shadow-black/40">
+        <div className="text-base font-semibold text-foreground mb-3">Workout Consistency</div>
+        <div className="flex gap-1">
           {weeks.map((week, wi) => (
-            <div key={wi} className="flex flex-col gap-[3px] flex-1">
+            <div key={wi} className="flex flex-col gap-1 flex-1">
               {week.map((intensity, di) => (
                 <div
                   key={di}
-                  className={`aspect-square rounded-[3px] ${intensityColors[intensity]}`}
+                  className={`aspect-square rounded-sm ${intensityColors[intensity]}`}
                 />
               ))}
             </div>
@@ -415,7 +436,7 @@ function AnalyticsPanel() {
         <div className="flex items-center justify-end gap-1 mt-2.5">
           <span className="text-[9px] text-muted-foreground/40 mr-1">Less</span>
           {intensityColors.map((color, i) => (
-            <div key={i} className={`w-2.5 h-2.5 rounded-[2px] ${color}`} />
+            <div key={i} className={`w-3 h-3 rounded-sm ${color}`} />
           ))}
           <span className="text-[9px] text-muted-foreground/40 ml-1">More</span>
         </div>
@@ -426,7 +447,7 @@ function AnalyticsPanel() {
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-xl border border-border/25 bg-[#0a0a0b] p-3.5 shadow-lg shadow-black/20"
+            className="rounded-xl border border-border/25 bg-card p-3.5 shadow-lg shadow-black/5 dark:shadow-black/20"
           >
             <stat.Icon className={`w-4 h-4 ${stat.accent} mb-2`} />
             <div className="text-lg font-bold text-foreground leading-none">{stat.value}</div>
@@ -503,6 +524,10 @@ const STEP_DATA = [
 const TOTAL_STEPS = STEP_DATA.length
 
 /* ────────────────────────────────────────────────────────
+   Aurora Drift — orb color palette per step
+   ──────────────────────────────────────────────────────── */
+
+/* ────────────────────────────────────────────────────────
    Main Component
    ──────────────────────────────────────────────────────── */
 
@@ -531,28 +556,81 @@ export default function ProductShowcase() {
   const d4 = useDotAnimation(scrollYProgress, 4, TOTAL_STEPS)
   const dotAnims = [d0, d1, d2, d3, d4]
 
-  // Ambient glow
-  const glowOpacity = useTransform(scrollYProgress, [0, 0.08, 0.92, 1], [0, 0.12, 0.12, 0])
+  // ── Aurora Drift: morphing gradient orbs ──
+  // Orb 1 (indigo) — drifts from bottom-left to center-right
+  const orb1X = useTransform(scrollYProgress, [0, 0.25, 0.5, 0.75, 1], ["10%", "25%", "45%", "60%", "70%"])
+  const orb1Y = useTransform(scrollYProgress, [0, 0.25, 0.5, 0.75, 1], ["70%", "55%", "40%", "30%", "20%"])
+  const orb1Scale = useTransform(scrollYProgress, [0, 0.3, 0.6, 1], [0.8, 1.1, 1.3, 1.6])
+  const orb1Opacity = useTransform(scrollYProgress, [0, 0.05, 0.9, 1], [0, 0.18, 0.18, 0.06])
+
+  // Orb 2 (violet) — rises from right, merges center at step 3
+  const orb2X = useTransform(scrollYProgress, [0, 0.2, 0.5, 0.8, 1], ["80%", "70%", "50%", "35%", "30%"])
+  const orb2Y = useTransform(scrollYProgress, [0, 0.2, 0.5, 0.8, 1], ["80%", "60%", "45%", "35%", "25%"])
+  const orb2Scale = useTransform(scrollYProgress, [0, 0.2, 0.5, 0.8, 1], [0.5, 0.8, 1.2, 1.0, 1.4])
+  const orb2Opacity = useTransform(scrollYProgress, [0, 0.15, 0.4, 0.9, 1], [0, 0.12, 0.16, 0.16, 0.05])
+
+  // Orb 3 (cyan/teal accent) — appears mid-scroll, subtle
+  const orb3X = useTransform(scrollYProgress, [0.3, 0.5, 0.7, 1], ["20%", "35%", "55%", "65%"])
+  const orb3Y = useTransform(scrollYProgress, [0.3, 0.5, 0.7, 1], ["30%", "50%", "35%", "45%"])
+  const orb3Scale = useTransform(scrollYProgress, [0.3, 0.5, 0.8, 1], [0.3, 0.7, 1.0, 0.9])
+  const orb3Opacity = useTransform(scrollYProgress, [0.25, 0.35, 0.7, 0.9, 1], [0, 0.1, 0.14, 0.14, 0.04])
+
+  // Overall aurora intensity ramps up through scroll
+  const auroraOpacity = useTransform(scrollYProgress, [0, 0.06, 0.85, 1], [0, 1, 1, 0.3])
 
   return (
     <section
       ref={containerRef}
       className="relative bg-background w-full z-20"
-      style={{ minHeight: `${TOTAL_STEPS * 120}vh` }}
+      style={{ minHeight: `${TOTAL_STEPS * 100}vh` }}
       aria-label="Product showcase — How Kasoku AI works"
     >
       {/* Sticky viewport */}
       <div className="sticky top-0 h-screen flex items-center overflow-hidden">
-        {/* Ambient glow behind panels */}
+
+        {/* ── Aurora Drift: scroll-driven morphing gradient orbs ── */}
         <motion.div
-          style={{ opacity: glowOpacity }}
-          className="absolute right-[15%] top-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-primary/[0.06] blur-[120px] pointer-events-none"
+          className="absolute inset-0 pointer-events-none overflow-hidden"
           aria-hidden="true"
-        />
+          style={{ opacity: prefersReducedMotion ? 0.12 : auroraOpacity }}
+        >
+          {/* Orb 1 — Indigo primary */}
+          <motion.div
+            style={{
+              left: prefersReducedMotion ? "40%" : orb1X,
+              top: prefersReducedMotion ? "45%" : orb1Y,
+              scale: prefersReducedMotion ? 1 : orb1Scale,
+              opacity: prefersReducedMotion ? 0.15 : orb1Opacity,
+            }}
+            className="absolute -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-indigo-500 blur-[120px] will-change-transform"
+          />
+
+          {/* Orb 2 — Violet accent */}
+          <motion.div
+            style={{
+              left: prefersReducedMotion ? "60%" : orb2X,
+              top: prefersReducedMotion ? "50%" : orb2Y,
+              scale: prefersReducedMotion ? 0.8 : orb2Scale,
+              opacity: prefersReducedMotion ? 0.1 : orb2Opacity,
+            }}
+            className="absolute -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] rounded-full bg-violet-500 blur-[110px] will-change-transform"
+          />
+
+          {/* Orb 3 — Cyan/teal accent, appears mid-scroll */}
+          <motion.div
+            style={{
+              left: prefersReducedMotion ? "40%" : orb3X,
+              top: prefersReducedMotion ? "40%" : orb3Y,
+              scale: prefersReducedMotion ? 0.6 : orb3Scale,
+              opacity: prefersReducedMotion ? 0.08 : orb3Opacity,
+            }}
+            className="absolute -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-cyan-400 blur-[100px] will-change-transform"
+          />
+        </motion.div>
 
         {/* Section overline — persistent */}
-        <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30" aria-hidden="true">
-          <span className="text-[10px] text-muted-foreground/30 uppercase tracking-[0.3em] font-mono">
+        <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30">
+          <span className="text-xs text-muted-foreground/60 uppercase tracking-[0.25em] font-mono">
             How It Works
           </span>
         </div>
@@ -595,7 +673,7 @@ export default function ProductShowcase() {
                 <div className="flex-1 w-full max-w-md lg:max-w-lg relative">
                   {/* Watermark step number */}
                   <span
-                    className="absolute -left-3 lg:-left-6 top-1/2 -translate-y-1/2 text-[100px] lg:text-[140px] font-heading font-black text-foreground/[0.02] select-none pointer-events-none leading-none"
+                    className="absolute -left-3 lg:-left-6 top-1/2 -translate-y-1/2 text-[100px] lg:text-[140px] font-heading font-black text-foreground/2 select-none pointer-events-none leading-none"
                     aria-hidden="true"
                   >
                     {data.num}

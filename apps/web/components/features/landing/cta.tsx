@@ -14,27 +14,27 @@ export default function CTA() {
       {/* Subtle radial ambient glow + Converging Lines */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden" aria-hidden="true">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, hsl(239 84% 67% / 0.05) 0%, transparent 60%)' }} />
-        <svg className="absolute inset-0 w-full h-full opacity-30 mix-blend-screen" viewBox="0 0 1920 1080" fill="none" preserveAspectRatio="xMidYMid slice">
+        <svg className="absolute inset-0 w-full h-full opacity-30 dark:mix-blend-screen mix-blend-multiply" viewBox="0 0 1920 1080" fill="none" preserveAspectRatio="xMidYMid slice">
           {/* Left Converging */}
           <motion.path
             d="M 0 0 C 400 300, 600 450, 960 540"
-            stroke="hsl(0 0% 25%)" strokeWidth="1"
+            stroke="hsl(var(--foreground) / 0.15)" strokeWidth="1"
             initial={{ pathLength: 0, opacity: 0 }} whileInView={{ pathLength: 1, opacity: 1 }} transition={{ duration: 1.5, ease: "easeOut" }}
           />
           <motion.path
             d="M 0 1080 C 400 780, 600 630, 960 540"
-            stroke="hsl(0 0% 25%)" strokeWidth="1"
+            stroke="hsl(var(--foreground) / 0.15)" strokeWidth="1"
             initial={{ pathLength: 0, opacity: 0 }} whileInView={{ pathLength: 1, opacity: 1 }} transition={{ duration: 1.5, ease: "easeOut", delay: 0.1 }}
           />
           {/* Right Converging */}
           <motion.path
             d="M 1920 0 C 1520 300, 1320 450, 960 540"
-            stroke="hsl(0 0% 25%)" strokeWidth="1"
+            stroke="hsl(var(--foreground) / 0.15)" strokeWidth="1"
             initial={{ pathLength: 0, opacity: 0 }} whileInView={{ pathLength: 1, opacity: 1 }} transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
           />
           <motion.path
             d="M 1920 1080 C 1520 780, 1320 630, 960 540"
-            stroke="hsl(0 0% 25%)" strokeWidth="1"
+            stroke="hsl(var(--foreground) / 0.15)" strokeWidth="1"
             initial={{ pathLength: 0, opacity: 0 }} whileInView={{ pathLength: 1, opacity: 1 }} transition={{ duration: 1.5, ease: "easeOut", delay: 0.3 }}
           />
           {/* Indigo Accent */}
