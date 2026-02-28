@@ -46,11 +46,17 @@ const InitGenerateRequestSchema = z.object({
 })
 
 export async function POST(req: Request) {
+  let userId: string | undefined
   try {
     // Authenticate
-    const { userId } = await auth()
+    userId = (await auth()).userId
     if (!userId) {
       return new Response('Unauthorized', { status: 401 })
+    }
+
+    // Kill switch: flip AI_ENABLED=false in Vercel dashboard to disable AI without redeploying
+    if (process.env.AI_ENABLED === 'false') {
+      return new Response('AI features are temporarily unavailable', { status: 503 })
     }
 
     // Rate limit: 5 requests per minute (expensive generateObject call)
@@ -87,6 +93,7 @@ export async function POST(req: Request) {
     // Generate structured output with simple schema
     const { object, usage } = await generateObject({
       model: openai('gpt-5.2'),
+      maxOutputTokens: 32768,
       schema: SimpleGeneratedPlanSchema,
       system: GENERATION_SYSTEM_PROMPT,
       prompt,
@@ -103,7 +110,7 @@ export async function POST(req: Request) {
 
     return Response.json({ plan: object })
   } catch (error) {
-    console.error('[init-generate] Error:', error)
+    console.error('[init-generate] Error:', { userId, error })
 
     // Check for AI SDK validation errors (includes Zod errors)
     const errorMessage = error instanceof Error ? error.message : String(error)

@@ -158,6 +158,9 @@ function SessionAssistantContent({
   // Track responded tool calls to prevent duplicate submissions (race condition guard)
   const respondedToolCallsRef = useRef<Set<string>>(new Set())
 
+  // Mutex to prevent double-approve race condition (rapid double-click on Apply button)
+  const executingMutexRef = useRef(false)
+
   // Track mounted state to guard against post-unmount operations
   // Must set true in setup (not just useRef init) to survive React Strict Mode re-mount
   const isMountedRef = useRef(true)
@@ -435,6 +438,10 @@ function SessionAssistantContent({
       return
     }
 
+    // Mutex guard: prevent concurrent execution from rapid double-clicks
+    if (executingMutexRef.current) return
+    executingMutexRef.current = true
+
     // Check if AI was already notified (allows retry without duplicate addToolOutput)
     const alreadyRespondedToAI = respondedToolCallsRef.current.has(pendingToolCall.toolCallId)
 
@@ -509,6 +516,7 @@ function SessionAssistantContent({
       }
     } finally {
       setIsExecuting(false)
+      executingMutexRef.current = false
     }
   }, [changeSet, domain, exercises, sessionId, setExercises, onWorkoutUpdated, pendingToolCall, addToolOutput])
 

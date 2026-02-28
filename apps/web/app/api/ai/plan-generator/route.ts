@@ -7,7 +7,7 @@
  * @see specs/010-individual-first-experience/agent-tools-plan.md
  */
 
-import { streamText, convertToModelMessages, smoothStream } from 'ai'
+import { streamText, convertToModelMessages, smoothStream, stepCountIs } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
 import supabase from '@/lib/supabase-server'
@@ -19,6 +19,7 @@ import { getPlanGeneratorSystemPrompt } from '@/lib/changeset/plan-generator/sys
 export const maxDuration = 60
 
 export async function POST(req: Request) {
+  let userId: string | undefined
   try {
     // Authenticate and parse body in parallel
     const [authResult, body] = await Promise.all([
@@ -26,9 +27,14 @@ export async function POST(req: Request) {
       req.json(),
     ])
 
-    const { userId } = authResult
+    userId = authResult.userId
     if (!userId) {
       return new Response('Unauthorized', { status: 401 })
+    }
+
+    // Kill switch: flip AI_ENABLED=false in Vercel dashboard to disable AI without redeploying
+    if (process.env.AI_ENABLED === 'false') {
+      return new Response('AI features are temporarily unavailable', { status: 503 })
     }
 
     // Rate limit: 10 requests per minute per user (plan generation is expensive)
@@ -94,9 +100,11 @@ export async function POST(req: Request) {
     // Stream response with tool support and reasoning mode
     const result = streamText({
       model: openai('gpt-5.2'),
+      maxOutputTokens: 16384,
       system: systemPrompt,
       messages: modelMessages,
       tools: planGeneratorTools,
+      stopWhen: stepCountIs(20),
       // Smooth word-level streaming for better perceived performance
       experimental_transform: smoothStream(),
       providerOptions: {
@@ -118,7 +126,7 @@ export async function POST(req: Request) {
     // Return streaming response with tool support
     return result.toUIMessageStreamResponse()
   } catch (error) {
-    console.error('[plan-generator] Error:', error)
+    console.error('[plan-generator] Error:', { userId, error })
     return new Response('Internal Server Error', { status: 500 })
   }
 }

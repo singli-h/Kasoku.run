@@ -2,7 +2,8 @@
 <ai_context>
 Marketing header for landing pages.
 Clean, minimal design with Syne display font for the logo.
-Orange accent for the brand and primary CTA.
+Electric Indigo accent for the brand and rose for primary CTAs.
+Transparent over hero, blur on scroll.
 </ai_context>
 */
 
@@ -23,6 +24,7 @@ import { ThemeSwitcher } from "../../utilities/theme-switcher"
 
 const navLinks = [
   { href: "#features", label: "Features" },
+  { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "FAQ" },
 ]
 
@@ -40,14 +42,14 @@ export default function LandingHeader() {
     <header
       className={`sticky top-0 z-50 transition-all duration-200 ${
         isScrolled
-          ? "bg-background/80 backdrop-blur-md border-b border-border/50"
-          : "bg-background"
+          ? "bg-background/80 backdrop-blur-xl border-b border-border/50"
+          : "bg-transparent"
       }`}
     >
       <div className="container mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="w-7 h-7 bg-orange-500 rounded-lg flex items-center justify-center">
+          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
             <BrainCircuit className="w-4 h-4 text-white" />
           </div>
           <span className="font-heading text-lg font-bold text-foreground">
@@ -61,7 +63,7 @@ export default function LandingHeader() {
             <Link
               key={link.href}
               href={link.href}
-              className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md"
+              className="px-3 py-1.5 text-sm font-body text-muted-foreground hover:text-foreground transition-colors rounded-md"
             >
               {link.label}
             </Link>
@@ -80,7 +82,7 @@ export default function LandingHeader() {
                 </Button>
               </SignInButton>
               <SignUpButton>
-                <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white">
+                <Button variant="rose" size="sm">
                   Join Beta
                 </Button>
               </SignUpButton>
@@ -119,7 +121,7 @@ export default function LandingHeader() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="block py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="block py-2 text-sm font-body text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 {link.label}
@@ -134,7 +136,7 @@ export default function LandingHeader() {
                   </Button>
                 </SignInButton>
                 <SignUpButton>
-                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="rose" className="w-full" onClick={() => setIsMenuOpen(false)}>
                     Join Beta
                   </Button>
                 </SignUpButton>

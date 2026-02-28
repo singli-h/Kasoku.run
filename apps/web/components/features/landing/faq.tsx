@@ -44,66 +44,60 @@ export default function FAQ() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-12">
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4 }}
-              className="text-sm font-semibold uppercase tracking-widest text-orange-600 dark:text-orange-400 mb-3"
-            >
-              FAQ
-            </motion.p>
+          <div className="text-center mb-16">
             <motion.h2
               initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.05 }}
-              className="font-heading text-3xl sm:text-4xl font-bold text-foreground tracking-tight"
+              transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.05 }}
+              className="font-heading text-4xl sm:text-5xl font-semibold text-foreground tracking-tight"
             >
-              Common questions
+              Frequently asked questions
             </motion.h2>
           </div>
 
           {/* FAQ Items */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             {faqs.map((faq, index) => {
               const isOpen = openIndex === index
               return (
                 <motion.div
-                  key={index}
+                  key={faq.question}
                   initial={{ opacity: 0, y: 12 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: index * 0.04 }}
-                  className="border border-border rounded-xl overflow-hidden bg-card"
+                  transition={{ type: "spring", stiffness: 100, damping: 20, delay: index * 0.08 }}
+                  className="border-b border-border/50 bg-background"
                 >
                   <button
                     onClick={() => setOpenIndex(isOpen ? null : index)}
-                    className="w-full px-5 py-4 text-left flex items-center justify-between gap-4 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    className="w-full py-6 text-left flex items-start justify-between gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background group"
                     aria-expanded={isOpen}
+                    aria-controls={`faq-answer-${index}`}
                   >
-                    <span className="font-medium text-foreground">
+                    <span className="font-heading font-semibold text-lg text-foreground group-hover:text-primary transition-colors">
                       {faq.question}
                     </span>
-                    <ChevronDown
-                      className={`h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform duration-200 ${
-                        isOpen ? 'rotate-180' : ''
-                      }`}
-                    />
+                    <motion.div
+                      animate={{ rotate: isOpen ? 180 : 0 }}
+                      transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                      className="mt-1"
+                    >
+                      <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </motion.div>
                   </button>
 
                   <motion.div
+                    id={`faq-answer-${index}`}
+                    role="region"
                     initial={false}
                     animate={{
                       height: isOpen ? 'auto' : 0,
                       opacity: isOpen ? 1 : 0,
                     }}
-                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                    transition={{ type: "spring", stiffness: 100, damping: 20 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-5 pb-4">
-                      <p className="text-muted-foreground leading-relaxed">
+                    <div className="pb-6 pr-8">
+                      <p className="text-base text-muted-foreground leading-relaxed font-sans">
                         {faq.answer}
                       </p>
                     </div>

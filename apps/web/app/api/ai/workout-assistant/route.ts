@@ -113,6 +113,7 @@ const WorkoutAssistantRequestSchema = z.object({
 })
 
 export async function POST(req: Request) {
+  let userId: string | undefined
   try {
     // Authenticate and parse body in parallel
     const [authResult, rawBody] = await Promise.all([
@@ -120,9 +121,14 @@ export async function POST(req: Request) {
       req.json(),
     ])
 
-    const { userId } = authResult
+    userId = authResult.userId
     if (!userId) {
       return new Response('Unauthorized', { status: 401 })
+    }
+
+    // Kill switch: flip AI_ENABLED=false in Vercel dashboard to disable AI without redeploying
+    if (process.env.AI_ENABLED === 'false') {
+      return new Response('AI features are temporarily unavailable', { status: 503 })
     }
 
     // Rate limit: 20 requests per minute per user
@@ -227,6 +233,7 @@ export async function POST(req: Request) {
     // Stream response with responsive reasoning and dynamic tool filtering
     const result = streamText({
       model: openai('gpt-5.2'),
+      maxOutputTokens: 16384,
       system: systemPrompt,
       messages: modelMessages,
       tools: athleteDomainTools,
@@ -270,7 +277,7 @@ export async function POST(req: Request) {
     // Return streaming response with tool support
     return result.toUIMessageStreamResponse()
   } catch (error) {
-    console.error('[workout-assistant] Error:', error)
+    console.error('[workout-assistant] Error:', { userId, error })
     return new Response('Internal Server Error', { status: 500 })
   }
 }

@@ -1,7 +1,7 @@
 /*
 <ai_context>
 Footer component for the Kasoku marketing site.
-Clean, minimal design with Kasoku branding.
+Clean, minimal design with indigo-themed Kasoku branding using design-system tokens.
 </ai_context>
 */
 
@@ -20,7 +20,7 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-orange-500 rounded-lg flex items-center justify-center">
+              <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
                 <BrainCircuit className="w-4 h-4 text-white" />
               </div>
               <span className="font-heading text-lg font-bold text-foreground">
@@ -33,9 +33,12 @@ export default function Footer() {
           </div>
 
           {/* Links */}
-          <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
+          <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm font-body">
             <Link href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
               Features
+            </Link>
+            <Link href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
+              Pricing
             </Link>
             <Link href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">
               FAQ
@@ -50,7 +53,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 pt-8 border-t border-border">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground font-body">
             &copy; {currentYear} Kasoku. All rights reserved.
           </p>
         </div>
