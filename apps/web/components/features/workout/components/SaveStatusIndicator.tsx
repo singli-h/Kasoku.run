@@ -80,9 +80,9 @@ export function SaveStatusIndicator() {
       "fixed bottom-4 right-4 z-50",
       "flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg",
       "transition-all duration-200",
-      (saveInfo.status === 'saving' || isRetrying) && "bg-blue-50 border border-blue-200 text-blue-700",
-      (saveInfo.status === 'saved' || saveInfo.status === 'idle') && saveInfo.failedItems.length === 0 && "bg-green-50 border border-green-200 text-green-700",
-      saveInfo.status === 'error' && "bg-red-50 border border-red-200 text-red-700"
+      (saveInfo.status === 'saving' || isRetrying) && "bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300",
+      (saveInfo.status === 'saved' || saveInfo.status === 'idle') && saveInfo.failedItems.length === 0 && "bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300",
+      saveInfo.status === 'error' && "bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300"
     )}>
       {/* Saving state - show count of pending changes */}
       {(saveInfo.status === 'saving' || isRetrying) && (
@@ -128,7 +128,7 @@ export function SaveStatusIndicator() {
           <button
             onClick={handleRetry}
             disabled={isRetrying}
-            className="flex items-center gap-1 mt-1 pl-6 text-xs font-medium text-red-700 hover:text-red-800 transition-colors"
+            className="flex items-center gap-1 mt-1 pl-6 text-xs font-medium text-red-700 dark:text-red-300 hover:text-red-800 dark:hover:text-red-200 transition-colors"
           >
             <RefreshCw className={cn("h-3 w-3", isRetrying && "animate-spin")} />
             Retry
@@ -144,7 +144,7 @@ export function SaveStatusIndicator() {
           <button
             onClick={handleRetry}
             disabled={isRetrying}
-            className="flex items-center gap-1 ml-2 text-xs font-medium text-red-700 hover:text-red-800 transition-colors"
+            className="flex items-center gap-1 ml-2 text-xs font-medium text-red-700 dark:text-red-300 hover:text-red-800 dark:hover:text-red-200 transition-colors"
           >
             <RefreshCw className={cn("h-3 w-3", isRetrying && "animate-spin")} />
             Retry

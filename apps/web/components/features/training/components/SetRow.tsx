@@ -334,55 +334,55 @@ export function SetRow({
           {gShowReps && gReps != null && (
             <div className={pillClass}>
               <span>{String(gReps)}</span>
-              <span className="text-emerald-500 text-xs">x</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-xs">x</span>
             </div>
           )}
           {gShowWeight && gWeight != null && (
             <div className={pillClass}>
               <span>{String(gWeight)}</span>
-              <span className="text-emerald-500 text-xs">kg</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-xs">kg</span>
             </div>
           )}
           {gShowDistance && gDistance != null && (
             <div className={pillClass}>
               <span>{String(gDistance)}</span>
-              <span className="text-emerald-500 text-xs">m</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-xs">m</span>
             </div>
           )}
           {gShowTime && gTime != null && (
             <div className={pillClass}>
               <span>{String(gTime)}</span>
-              <span className="text-emerald-500 text-xs">s</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-xs">s</span>
             </div>
           )}
           {gShowHeight && gHeight != null && (
             <div className={pillClass}>
               <span>{String(gHeight)}</span>
-              <span className="text-emerald-500 text-xs">cm</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-xs">cm</span>
             </div>
           )}
           {gShowResistance && gResistance != null && (
             <div className={pillClass}>
               <span>{String(gResistance)}</span>
-              <span className="text-emerald-500 text-xs">R</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-xs">R</span>
             </div>
           )}
           {gShowPower && gPower != null && (
             <div className={pillClass}>
               <span>{String(gPower)}</span>
-              <span className="text-emerald-500 text-xs">W</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-xs">W</span>
             </div>
           )}
           {gShowVelocity && gVelocity != null && (
             <div className={pillClass}>
               <span>{String(gVelocity)}</span>
-              <span className="text-emerald-500 text-xs">m/s</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-xs">m/s</span>
             </div>
           )}
           {gShowRestTime && gRestTime != null && (
             <div className={pillClass}>
               <span>{String(gRestTime)}</span>
-              <span className="text-emerald-500 text-xs">rest</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-xs">rest</span>
             </div>
           )}
           {gShowTempo && gTempo != null && (
@@ -393,19 +393,19 @@ export function SetRow({
           {gShowEffort && gEffort != null && (
             <div className={pillClass}>
               <span>{String(gEffort)}</span>
-              <span className="text-emerald-500 text-xs">%</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-xs">%</span>
             </div>
           )}
           {gShowRPE && gRpe != null && (
             <div className={pillClass}>
-              <span className="text-emerald-500 text-xs">RPE</span>
+              <span className="text-emerald-700 dark:text-emerald-400 text-xs">RPE</span>
               <span>{String(gRpe)}</span>
             </div>
           )}
 
           {/* Fallback if no fields have values */}
           {!gReps && !gWeight && !gDistance && !gTime && (
-            <div className={cn(pillClass, "text-emerald-500/70 italic")}>
+            <div className={cn(pillClass, "text-emerald-700 dark:text-emerald-400 italic")}>
               Pending...
             </div>
           )}

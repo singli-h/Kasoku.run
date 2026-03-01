@@ -29,7 +29,7 @@ export function OngoingSessionBanner({ session, onResume }: OngoingSessionBanner
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-full bg-amber-500/20">
-              <Dumbbell className="h-5 w-5 text-amber-600" />
+              <Dumbbell className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
               <div className="flex items-center gap-2">

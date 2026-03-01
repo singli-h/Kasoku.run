@@ -1,13 +1,12 @@
 "use client"
 
-import React, { useRef } from 'react'
+import { useRef } from 'react'
 import { motion, useReducedMotion, useScroll, useTransform, useSpring } from 'framer-motion'
 import type { Transition } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
-import LightningCanvas from './lightning-canvas'
 
 export default function Hero() {
   const { isSignedIn } = useAuth()
@@ -43,74 +42,35 @@ export default function Hero() {
       ref={containerRef}
       className="relative overflow-hidden bg-background h-screen flex flex-col items-center pt-32 pb-24"
     >
-      {/* Background — aurora orbs + dot grid + grain */}
+      {/* Background — indigo ambient orbs + grain texture */}
       <motion.div
         className="absolute inset-0 overflow-hidden pointer-events-none z-0"
         aria-hidden="true"
         style={{ opacity: prefersReducedMotion ? 0.5 : bgOpacity }}
       >
-        {/* Orb 1 — indigo, top-right, drift */}
+        {/* Orb 1 — indigo, top-right, slow drift */}
         <motion.div
-          className="absolute w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] lg:w-[700px] lg:h-[700px] rounded-full bg-indigo-600 blur-[60px] sm:blur-[90px] lg:blur-[115px]"
-          style={{ right: '-40px', top: '-60px', opacity: 0.16 }}
+          className="absolute w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] lg:w-[700px] lg:h-[700px] rounded-full bg-indigo-500 blur-[60px] sm:blur-[90px] lg:blur-[115px]"
+          style={{ right: '-40px', top: '-60px', opacity: 0.12 }}
           animate={prefersReducedMotion ? undefined : {
-            x: [0, 190, -135, 0],
-            y: [0, -110, 90, 0],
-            scale: [1, 1.16, 0.88, 1],
+            x: [0, 120, -80, 0],
+            y: [0, -70, 50, 0],
+            scale: [1, 1.08, 0.94, 1],
           }}
-          transition={{ repeat: Infinity, duration: 15, ease: 'easeInOut' }}
+          transition={{ repeat: Infinity, duration: 20, ease: 'easeInOut' }}
         />
 
-        {/* Orb 2 — violet, bottom-left, counter-drift */}
+        {/* Orb 2 — indigo, bottom-left, counter-drift */}
         <motion.div
-          className="absolute w-[280px] h-[280px] sm:w-[400px] sm:h-[400px] lg:w-[500px] lg:h-[500px] rounded-full bg-violet-600 blur-[50px] sm:blur-[80px] lg:blur-[100px]"
-          style={{ left: '-30px', bottom: '-20px', opacity: 0.12 }}
+          className="absolute w-[280px] h-[280px] sm:w-[400px] sm:h-[400px] lg:w-[500px] lg:h-[500px] rounded-full bg-indigo-600 blur-[50px] sm:blur-[80px] lg:blur-[100px]"
+          style={{ left: '-30px', bottom: '-20px', opacity: 0.08 }}
           animate={prefersReducedMotion ? undefined : {
-            x: [0, -165, 130, 0],
-            y: [0, 100, -140, 0],
-            scale: [1, 0.85, 1.17, 1],
+            x: [0, -100, 80, 0],
+            y: [0, 60, -90, 0],
+            scale: [1, 0.92, 1.1, 1],
           }}
-          transition={{ repeat: Infinity, duration: 19, ease: 'easeInOut' }}
+          transition={{ repeat: Infinity, duration: 25, ease: 'easeInOut' }}
         />
-
-        {/* Orb 3 — cyan accent, wanders center */}
-        <motion.div
-          className="absolute w-[220px] h-[220px] sm:w-[320px] sm:h-[320px] lg:w-[400px] lg:h-[400px] rounded-full bg-cyan-500 blur-[45px] sm:blur-[70px] lg:blur-[90px]"
-          style={{ left: '50%', bottom: '5%', opacity: 0.07 }}
-          animate={prefersReducedMotion ? undefined : {
-            x: [0, 110, -90, 0],
-            y: [0, -80, 70, 0],
-            scale: [1, 1.22, 0.83, 1],
-          }}
-          transition={{ repeat: Infinity, duration: 12, ease: 'easeInOut' }}
-        />
-
-        {/* Dot grid — reads as depth/space, faded via radial mask */}
-        <svg
-          className="absolute inset-0 w-full h-full"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <pattern id="dot-grid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
-              <circle cx="1" cy="1" r="0.8" fill="hsl(var(--foreground))" />
-            </pattern>
-            <radialGradient id="grid-fade" cx="50%" cy="42%" r="55%">
-              <stop offset="0%" stopColor="white" stopOpacity="0" />
-              <stop offset="35%" stopColor="white" stopOpacity="1" />
-              <stop offset="70%" stopColor="white" stopOpacity="1" />
-              <stop offset="100%" stopColor="white" stopOpacity="0" />
-            </radialGradient>
-            <mask id="grid-mask">
-              <rect width="100%" height="100%" fill="url(#grid-fade)" />
-            </mask>
-          </defs>
-          <rect
-            width="100%" height="100%"
-            fill="url(#dot-grid)"
-            mask="url(#grid-mask)"
-            opacity="0.04"
-          />
-        </svg>
 
         {/* Grain noise — physical surface texture */}
         <svg
@@ -148,12 +108,7 @@ export default function Hero() {
             animate="visible"
             className="font-heading text-6xl sm:text-7xl lg:text-8xl font-bold leading-[1.05] tracking-tight text-foreground"
           >
-            <motion.span variants={wordVariants} className="relative inline-block mr-4">
-              <span className="relative z-[2] hero-electric-text">Accelerate</span>
-              <span className="absolute -inset-x-[25%] -inset-y-[40%] z-[1] overflow-visible">
-                <LightningCanvas disabled={!!prefersReducedMotion} />
-              </span>
-            </motion.span>
+            <motion.span variants={wordVariants} className="inline-block mr-4 hero-electric-text">Accelerate</motion.span>
             <br />
             <motion.span variants={wordVariants} className="inline-block mr-4">Your</motion.span>
             <motion.span variants={wordVariants} className="inline-block text-primary">Training</motion.span>
@@ -200,8 +155,6 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-background to-transparent z-20 pointer-events-none" />
     </section>
   )
 }

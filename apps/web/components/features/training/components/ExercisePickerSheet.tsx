@@ -185,18 +185,18 @@ export function ExercisePickerSheet({
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "Warmup": return "bg-green-500/10 text-green-500"
-      case "Mobility": return "bg-teal-500/10 text-teal-500"
-      case "Gym": return "bg-red-500/10 text-red-500"
-      case "Isometric": return "bg-slate-500/10 text-slate-500"
-      case "Plyometric": return "bg-orange-500/10 text-orange-500"
-      case "Sprint": return "bg-blue-500/10 text-blue-500"
-      case "Drill": return "bg-amber-500/10 text-amber-500"
-      case "Circuit": return "bg-purple-500/10 text-purple-500"
-      case "Recovery": return "bg-emerald-500/10 text-emerald-500"
-      case "Speed": return "bg-blue-500/10 text-blue-500"
-      case "Strength": return "bg-red-500/10 text-red-500"
-      case "Conditioning": return "bg-purple-500/10 text-purple-500"
+      case "Warmup": return "bg-green-500/10 text-green-700 dark:text-green-400"
+      case "Mobility": return "bg-teal-500/10 text-teal-700 dark:text-teal-400"
+      case "Gym": return "bg-red-500/10 text-red-700 dark:text-red-400"
+      case "Isometric": return "bg-slate-500/10 text-slate-700 dark:text-slate-400"
+      case "Plyometric": return "bg-orange-500/10 text-orange-800 dark:text-orange-400"
+      case "Sprint": return "bg-blue-500/10 text-blue-700 dark:text-blue-400"
+      case "Drill": return "bg-amber-500/10 text-amber-800 dark:text-amber-400"
+      case "Circuit": return "bg-purple-500/10 text-purple-700 dark:text-purple-400"
+      case "Recovery": return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+      case "Speed": return "bg-blue-500/10 text-blue-700 dark:text-blue-400"
+      case "Strength": return "bg-red-500/10 text-red-700 dark:text-red-400"
+      case "Conditioning": return "bg-purple-500/10 text-purple-700 dark:text-purple-400"
       default: return "bg-muted text-muted-foreground"
     }
   }

@@ -129,10 +129,10 @@ function EmbeddedVideo({
 
   if (hasError) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg">
+      <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-800 rounded-lg">
         <div className="text-center p-4">
-          <AlertCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-600">Unable to load video</p>
+          <AlertCircle className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+          <p className="text-sm text-gray-600 dark:text-gray-400">Unable to load video</p>
         </div>
       </div>
     )
@@ -141,8 +141,8 @@ function EmbeddedVideo({
   return (
     <div className="relative w-full h-full">
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
-          <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
+          <Loader2 className="h-8 w-8 text-gray-400 dark:text-gray-500 animate-spin" />
         </div>
       )}
       
@@ -185,10 +185,10 @@ function DirectVideo({
 
   if (hasError) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg">
+      <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-800 rounded-lg">
         <div className="text-center p-4">
-          <AlertCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-600">Unable to load video</p>
+          <AlertCircle className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+          <p className="text-sm text-gray-600 dark:text-gray-400">Unable to load video</p>
         </div>
       </div>
     )
@@ -216,10 +216,10 @@ function DirectVideo({
  */
 function VideoFallback({ url, title }: { url: string; title?: string }) {
   return (
-    <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+    <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
       <div className="text-center p-6">
-        <Play className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-        <p className="text-sm text-gray-600 mb-4">
+        <Play className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           {title ? `${title} Demo` : "Exercise Demo Video"}
         </p>
         <Button

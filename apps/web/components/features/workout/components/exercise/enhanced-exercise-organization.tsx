@@ -196,14 +196,14 @@ export function EnhancedExerciseOrganization({
   const renderControls = () => (
     <div className="flex items-center justify-between mb-4">
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-1">
+        <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg p-1">
           <button
             onClick={() => setViewMode('grouped')}
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-              viewMode === 'grouped' 
-                ? "bg-white shadow-sm text-gray-900" 
-                : "text-gray-600 hover:text-gray-900"
+              viewMode === 'grouped'
+                ? "bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
             )}
           >
             <Grid3X3 className="h-4 w-4" />
@@ -213,9 +213,9 @@ export function EnhancedExerciseOrganization({
             onClick={() => setViewMode('list')}
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-              viewMode === 'list' 
-                ? "bg-white shadow-sm text-gray-900" 
-                : "text-gray-600 hover:text-gray-900"
+              viewMode === 'list'
+                ? "bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
             )}
           >
             <List className="h-4 w-4" />
@@ -225,7 +225,7 @@ export function EnhancedExerciseOrganization({
       </div>
       
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-gray-600 dark:text-gray-400">
           {overallStats.completed} / {overallStats.total} complete
         </span>
         

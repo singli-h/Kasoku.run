@@ -1644,13 +1644,13 @@ body {
   background: hsl(var(--primary) / 0.2);
 }
 
-/* Hero electric text glow — subtle charged baseline */
+/* Hero electric text glow — Electric Indigo #6366F1 */
 .hero-electric-text {
   text-shadow:
-    0 0 8px rgba(140, 160, 255, 0.15),
-    0 0 20px rgba(120, 140, 255, 0.08),
-    0 0 40px rgba(100, 120, 255, 0.04);
-  animation: electric-flicker 4s ease-in-out infinite;
+    0 0 8px rgba(99, 102, 241, 0.2),
+    0 0 24px rgba(99, 102, 241, 0.1),
+    0 0 48px rgba(99, 102, 241, 0.05);
+  animation: electric-flicker 5s ease-in-out infinite;
 }
 
 @keyframes electric-flicker {

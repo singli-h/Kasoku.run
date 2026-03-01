@@ -211,8 +211,8 @@ export function SetRow({
     // Remove spinner arrows for number inputs
     "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
     // Completed state styling
-    isCompleted ? "bg-green-50 border-green-200" : "bg-white border-gray-300 hover:border-gray-400",
-    "disabled:bg-gray-50 disabled:cursor-not-allowed"
+    isCompleted ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800" : "bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500",
+    "disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
   )
 
   // Calculate colspan for expanded details row
@@ -222,9 +222,9 @@ export function SetRow({
   return (
     <Fragment>
       <tr className={cn(
-        "border-b border-gray-200 hover:bg-gray-50 transition-colors duration-150",
-        isCompleted && "bg-green-50/50",
-        isExpanded && "bg-blue-50/30",
+        "border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150",
+        isCompleted && "bg-green-50/50 dark:bg-green-950/50",
+        isExpanded && "bg-blue-50/30 dark:bg-blue-950/30",
         className
       )}>
         {/* Expand icon - FIRST column (leftmost) */}
@@ -234,16 +234,16 @@ export function SetRow({
               type="button"
               onClick={() => onToggleExpand(detail.id)}
               className={cn(
-                "p-1 rounded hover:bg-gray-200 transition-colors",
+                "p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors",
                 "focus:outline-none focus:ring-2 focus:ring-blue-500"
               )}
               aria-label={isExpanded ? "Collapse details" : "Expand details"}
               aria-expanded={isExpanded}
             >
               {isExpanded ? (
-                <ChevronDown className="h-4 w-4 text-blue-600" />
+                <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               ) : (
-                <ChevronRight className="h-4 w-4 text-gray-500" />
+                <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               )}
             </button>
           ) : (
@@ -270,12 +270,12 @@ export function SetRow({
         </td>
 
         {/* Set number column */}
-        <td className="px-2 py-2 font-medium text-gray-900 w-10 text-center">
+        <td className="px-2 py-2 font-medium text-gray-900 dark:text-gray-100 w-10 text-center">
           <div className={cn(
             "w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold",
             isCompleted
               ? "bg-green-500 text-white"
-              : "bg-gray-100 text-gray-700"
+              : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
           )}>
             {index + 1}
           </div>
@@ -304,7 +304,7 @@ export function SetRow({
                   title={`${cfg.label}${cfg.unit ? ` (${cfg.unit})` : ''}`}
                 />
                 {cfg.unit && (
-                  <span className="text-xs text-gray-500 font-medium whitespace-nowrap">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
                     {cfg.unit}
                   </span>
                 )}
@@ -342,7 +342,7 @@ export function SetTableHeader({
 }) {
   return (
     <thead>
-      <tr className="bg-gray-50 border-b border-gray-200">
+      <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         {/* Expand column header - empty but takes space */}
         {showExpandColumn && (
           <th className="px-1 py-2 w-8">
@@ -350,11 +350,11 @@ export function SetTableHeader({
           </th>
         )}
         {showCheckbox && (
-          <th className="px-2 py-2 text-center font-medium text-gray-500 w-10">
+          <th className="px-2 py-2 text-center font-medium text-gray-500 dark:text-gray-400 w-10">
             <span className="text-xs">✓</span>
           </th>
         )}
-        <th className="px-2 py-2 text-left font-medium text-gray-500 w-10 text-center">
+        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-10 text-center">
           Set
         </th>
         {columns.map(cfg => (

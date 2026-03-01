@@ -56,7 +56,7 @@ export function WorkoutLoadingCard({
   return (
     <Card className={cn('w-full', className)}>
       <CardHeader className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
           {icon || <LoadingSpinner size="lg" />}
         </div>
         <CardTitle className="text-lg">{title}</CardTitle>
@@ -72,9 +72,9 @@ export function WorkoutLoadingCard({
               <span>Loading...</span>
               <span>{Math.round(progress)}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <motion.div
-                className="bg-blue-600 h-2 rounded-full"
+                className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full"
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.3 }}
@@ -171,7 +171,7 @@ export function WorkoutActionLoading({ action, className }: WorkoutActionLoading
     >
       <Card className="w-full max-w-sm mx-4">
         <CardContent className="p-6 text-center space-y-4">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
             {config.icon}
           </div>
           

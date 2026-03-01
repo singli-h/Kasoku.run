@@ -139,7 +139,7 @@ export function EnhancedSupersetIndicator({
     if (!showConnectivityLines || sortedExercises.length < 2) return null
 
     return (
-      <div className="absolute left-8 top-16 bottom-4 w-0.5 bg-gradient-to-b from-blue-300 to-blue-400 opacity-60" />
+      <div className="absolute left-8 top-16 bottom-4 w-0.5 bg-gradient-to-b from-blue-300 to-blue-400 dark:from-blue-600 dark:to-blue-500 opacity-60" />
     )
   }
 
@@ -147,7 +147,7 @@ export function EnhancedSupersetIndicator({
   const renderSupersetHeader = () => (
     <div className="relative">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-blue-100 rounded-t-lg" />
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 rounded-t-lg" />
       
       <CardHeader className="relative pb-4">
         <div className="flex items-center justify-between">
@@ -162,10 +162,10 @@ export function EnhancedSupersetIndicator({
             </motion.div>
 
             <div className="space-y-1">
-              <h3 className="text-xl font-bold text-gray-800">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
                 Superset {supersetId}
               </h3>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Badge variant="outline" className="text-xs">
                   {supersetStats.totalExercises} exercises
                 </Badge>
@@ -189,7 +189,7 @@ export function EnhancedSupersetIndicator({
               <div className="text-lg font-bold">
                 {supersetStats.completedExercises}/{supersetStats.totalExercises}
               </div>
-              <div className="text-xs text-gray-600">completed</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">completed</div>
             </div>
 
             {/* Action buttons */}
@@ -238,7 +238,7 @@ export function EnhancedSupersetIndicator({
 
         {/* Progress bar */}
         <div className="mt-4">
-          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
             <span>Superset Progress</span>
             <span>{Math.round((supersetStats.completedExercises / supersetStats.totalExercises) * 100)}%</span>
           </div>
@@ -274,7 +274,7 @@ export function EnhancedSupersetIndicator({
                   ? "bg-green-500 text-white border-green-500" 
                   : activeExercise === exercise.id
                     ? "bg-blue-500 text-white border-blue-500"
-                    : "bg-white text-gray-600 border-gray-300"
+                    : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600"
               )}>
                 {exercise.completed ? (
                   <CheckCircle2 className="h-4 w-4" />
@@ -303,7 +303,7 @@ export function EnhancedSupersetIndicator({
                   initial={{ opacity: 0, scale: 0 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.5 + index * 0.1 }}
-                  className="flex items-center gap-2 text-sm text-gray-500"
+                  className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
                 >
                   <ArrowRight className="h-4 w-4" />
                   <span>then</span>
@@ -319,11 +319,11 @@ export function EnhancedSupersetIndicator({
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg text-center"
+          className="mt-6 p-4 bg-green-50 dark:bg-green-950 border-2 border-green-200 dark:border-green-800 rounded-lg text-center"
         >
-          <CheckCircle2 className="h-8 w-8 text-green-600 mx-auto mb-2" />
-          <p className="text-green-800 font-semibold">Superset Complete!</p>
-          <p className="text-green-600 text-sm">
+          <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
+          <p className="text-green-800 dark:text-green-200 font-semibold">Superset Complete!</p>
+          <p className="text-green-600 dark:text-green-400 text-sm">
             Great job completing all {supersetStats.totalExercises} exercises
           </p>
         </motion.div>

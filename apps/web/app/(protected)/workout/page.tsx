@@ -1,15 +1,29 @@
 "use server"
 
 import { Suspense } from "react"
+import Link from "next/link"
+import { History } from "lucide-react"
 import { WorkoutPageContent } from "@/components/features/workout/components/pages/workout-page-content"
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
+import { Button } from "@/components/ui/button"
 
 export default async function WorkoutPage() {
   return (
-    <div className="container mx-auto p-4">
-      <Suspense fallback={<UnifiedPageSkeleton title="" variant="grid" />}>
+    <PageLayout
+      title="My Workouts"
+      description="Continue your workout or start a new session"
+      headerActions={
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/workout/history">
+            <History className="h-4 w-4 mr-2" />
+            View History
+          </Link>
+        </Button>
+      }
+    >
+      <Suspense fallback={<UnifiedPageSkeleton title="My Workouts" variant="grid" />}>
         <WorkoutPageContent />
       </Suspense>
-    </div>
+    </PageLayout>
   )
-} 
+}

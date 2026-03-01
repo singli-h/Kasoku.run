@@ -20,9 +20,6 @@ import { startTrainingSessionAction, skipWorkoutSessionAction } from '@/actions/
 import { useToast } from '@/hooks/use-toast'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { History } from 'lucide-react'
-import Link from 'next/link'
 
 // Import types
 import type {
@@ -159,20 +156,6 @@ export function WorkoutPageContent() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold">My Workouts</h1>
-                <p className="text-muted-foreground">Continue your workout or start a new session</p>
-              </div>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/workout/history">
-                  <History className="h-4 w-4 mr-2" />
-                  View History
-                </Link>
-              </Button>
-            </div>
-
             {/* Ongoing Session Banner - shown instead of auto-redirect */}
             {ongoingSession && (
               <OngoingSessionBanner

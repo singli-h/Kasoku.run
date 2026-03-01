@@ -51,41 +51,41 @@ const SESSION_STATUS_CONFIG = {
     icon: AlertCircle,
     label: "Assigned",
     variant: "secondary" as const,
-    bgColor: "bg-yellow-50",
-    textColor: "text-yellow-700",
-    borderColor: "border-yellow-200"
+    bgColor: "bg-yellow-50 dark:bg-yellow-950",
+    textColor: "text-yellow-700 dark:text-yellow-300",
+    borderColor: "border-yellow-200 dark:border-yellow-800"
   },
   ongoing: {
     icon: Clock,
-    label: "In Progress", 
+    label: "In Progress",
     variant: "default" as const,
-    bgColor: "bg-blue-50",
-    textColor: "text-blue-700",
-    borderColor: "border-blue-200"
+    bgColor: "bg-blue-50 dark:bg-blue-950",
+    textColor: "text-blue-700 dark:text-blue-300",
+    borderColor: "border-blue-200 dark:border-blue-800"
   },
   completed: {
     icon: CheckCircle,
     label: "Completed",
     variant: "outline" as const,
-    bgColor: "bg-green-50",
-    textColor: "text-green-700",
-    borderColor: "border-green-200"
+    bgColor: "bg-green-50 dark:bg-green-950",
+    textColor: "text-green-700 dark:text-green-300",
+    borderColor: "border-green-200 dark:border-green-800"
   },
   cancelled: {
     icon: XCircle,
     label: "Cancelled",
     variant: "destructive" as const,
-    bgColor: "bg-red-50",
-    textColor: "text-red-700",
-    borderColor: "border-red-200"
+    bgColor: "bg-red-50 dark:bg-red-950",
+    textColor: "text-red-700 dark:text-red-300",
+    borderColor: "border-red-200 dark:border-red-800"
   },
   unknown: {
     icon: AlertCircle,
     label: "Unknown",
     variant: "secondary" as const,
-    bgColor: "bg-gray-50",
-    textColor: "text-gray-700",
-    borderColor: "border-gray-200"
+    bgColor: "bg-gray-50 dark:bg-gray-900",
+    textColor: "text-gray-700 dark:text-gray-300",
+    borderColor: "border-gray-200 dark:border-gray-700"
   }
 }
 
@@ -268,18 +268,18 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
   if (sessionStatus === 'completed') {
     return (
       <div className={cn("max-w-4xl mx-auto p-6 space-y-6", className)}>
-        <Card className="bg-green-50 border-green-200">
+        <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="rounded-full bg-green-100 p-4 mb-4">
-              <Trophy className="h-8 w-8 text-green-600" />
+            <div className="rounded-full bg-green-100 dark:bg-green-900 p-4 mb-4">
+              <Trophy className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <h2 className="text-2xl font-bold text-green-900 mb-2">
+            <h2 className="text-2xl font-bold text-green-900 dark:text-green-100 mb-2">
               Workout Complete!
             </h2>
-            <p className="text-green-700 mb-1">
+            <p className="text-green-700 dark:text-green-300 mb-1">
               {session.session_plan?.name || "Session"}
             </p>
-            <div className="flex items-center gap-4 text-sm text-green-600 mb-6">
+            <div className="flex items-center gap-4 text-sm text-green-600 dark:text-green-400 mb-6">
               <span>{completionStats.completed}/{completionStats.total} exercises</span>
               {completionStats.total > 0 && (
                 <span>{completionStats.percentage}% completed</span>
@@ -307,10 +307,10 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {session.session_plan?.name || "Workout Session"}
               </h1>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                 {session.session_plan?.week && (
                   <span>Week {session.session_plan.week}</span>
                 )}
@@ -335,20 +335,20 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
 
           {/* Session Description */}
           {(session as any).description && (
-            <p className="text-gray-700 mt-2">{(session as any).description}</p>
+            <p className="text-gray-700 dark:text-gray-300 mt-2">{(session as any).description}</p>
           )}
 
           {/* Progress Bar */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Progress</span>
+              <span className="text-gray-600 dark:text-gray-400">Progress</span>
               <span className="font-medium">
                 {completionStats.completed}/{completionStats.total} exercises ({completionStats.percentage}%)
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${completionStats.percentage}%` }}
               />
             </div>
@@ -387,9 +387,9 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
 
       {/* Error Display */}
       {error && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-red-700">
+            <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
               <AlertCircle className="h-4 w-4" />
               <span className="font-medium">Error:</span>
               <span>{error.message}</span>
@@ -403,7 +403,7 @@ export function ExerciseDashboard({ session, exercises, className }: ExerciseDas
         {exerciseGroups.length === 0 ? (
           <Card>
             <CardContent className="pt-6">
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Dumbbell className="h-8 w-8 mx-auto mb-2" />
                 <p className="font-medium">No exercises in this session yet.</p>
                 <p className="text-sm mt-1">Add exercises from the session planner to get started.</p>

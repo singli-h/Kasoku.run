@@ -97,55 +97,55 @@ export function GhostSetRow({
         {showReps && reps != null && (
           <div className={pillClass}>
             <span>{String(reps)}</span>
-            <span className="text-emerald-500 text-xs">x</span>
+            <span className="text-emerald-700 dark:text-emerald-400 text-xs">x</span>
           </div>
         )}
         {showWeight && weight != null && (
           <div className={pillClass}>
             <span>{String(weight)}</span>
-            <span className="text-emerald-500 text-xs">kg</span>
+            <span className="text-emerald-700 dark:text-emerald-400 text-xs">kg</span>
           </div>
         )}
         {showDistance && distance != null && (
           <div className={pillClass}>
             <span>{String(distance)}</span>
-            <span className="text-emerald-500 text-xs">m</span>
+            <span className="text-emerald-700 dark:text-emerald-400 text-xs">m</span>
           </div>
         )}
         {showTime && performingTime != null && (
           <div className={pillClass}>
             <span>{String(performingTime)}</span>
-            <span className="text-emerald-500 text-xs">s</span>
+            <span className="text-emerald-700 dark:text-emerald-400 text-xs">s</span>
           </div>
         )}
         {showHeight && height != null && (
           <div className={pillClass}>
             <span>{String(height)}</span>
-            <span className="text-emerald-500 text-xs">cm</span>
+            <span className="text-emerald-700 dark:text-emerald-400 text-xs">cm</span>
           </div>
         )}
         {showResistance && resistance != null && (
           <div className={pillClass}>
             <span>{String(resistance)}</span>
-            <span className="text-emerald-500 text-xs">R</span>
+            <span className="text-emerald-700 dark:text-emerald-400 text-xs">R</span>
           </div>
         )}
         {showPower && power != null && (
           <div className={pillClass}>
             <span>{String(power)}</span>
-            <span className="text-emerald-500 text-xs">W</span>
+            <span className="text-emerald-700 dark:text-emerald-400 text-xs">W</span>
           </div>
         )}
         {showVelocity && velocity != null && (
           <div className={pillClass}>
             <span>{String(velocity)}</span>
-            <span className="text-emerald-500 text-xs">m/s</span>
+            <span className="text-emerald-700 dark:text-emerald-400 text-xs">m/s</span>
           </div>
         )}
         {showRestTime && restTime != null && (
           <div className={pillClass}>
             <span>{String(restTime)}</span>
-            <span className="text-emerald-500 text-xs">rest</span>
+            <span className="text-emerald-700 dark:text-emerald-400 text-xs">rest</span>
           </div>
         )}
         {showTempo && tempo != null && (
@@ -156,19 +156,19 @@ export function GhostSetRow({
         {showEffort && effort != null && (
           <div className={pillClass}>
             <span>{String(effort)}</span>
-            <span className="text-emerald-500 text-xs">%</span>
+            <span className="text-emerald-700 dark:text-emerald-400 text-xs">%</span>
           </div>
         )}
         {showRPE && rpe != null && (
           <div className={pillClass}>
-            <span className="text-emerald-500 text-xs">RPE</span>
+            <span className="text-emerald-700 dark:text-emerald-400 text-xs">RPE</span>
             <span>{String(rpe)}</span>
           </div>
         )}
 
         {/* Fallback if no fields have values */}
         {!reps && !weight && !distance && !performingTime && (
-          <div className={cn(pillClass, "text-emerald-500/70 italic")}>
+          <div className={cn(pillClass, "text-emerald-700 dark:text-emerald-400 italic")}>
             Pending...
           </div>
         )}

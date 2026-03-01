@@ -426,7 +426,7 @@ export function WorkoutView({
                   className={cn(
                     "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5",
                     saveStatus === 'saving' && "opacity-70 cursor-not-allowed",
-                    saveStatus === 'saved' ? "bg-green-100 text-green-700" : "bg-muted text-foreground hover:bg-muted/80"
+                    saveStatus === 'saved' ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300" : "bg-muted text-foreground hover:bg-muted/80"
                   )}
                 >
                   {saveStatus === 'saving' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
@@ -451,7 +451,7 @@ export function WorkoutView({
               )}
 
               {isCompleted && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm font-medium">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium">
                   Completed
                 </div>
               )}
