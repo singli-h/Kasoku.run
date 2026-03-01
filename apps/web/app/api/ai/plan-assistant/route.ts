@@ -86,7 +86,7 @@ function classifyPlanQuery(messages: Array<{ role: string; content?: string }>):
   return 'edit'
 }
 
-export const maxDuration = 120
+export const maxDuration = 60
 
 /**
  * Row type for microcycle data from Supabase query
