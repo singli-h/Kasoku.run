@@ -50,8 +50,8 @@ export default function Hero() {
       >
         {/* Orb 1 — indigo, top-right, drift */}
         <motion.div
-          className="absolute w-[700px] h-[700px] rounded-full bg-indigo-600 blur-[115px]"
-          style={{ right: '-60px', top: '-40px', opacity: 0.16 }}
+          className="absolute w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] lg:w-[700px] lg:h-[700px] rounded-full bg-indigo-600 blur-[60px] sm:blur-[90px] lg:blur-[115px]"
+          style={{ right: '-40px', top: '-60px', opacity: 0.16 }}
           animate={prefersReducedMotion ? undefined : {
             x: [0, 190, -135, 0],
             y: [0, -110, 90, 0],
@@ -62,8 +62,8 @@ export default function Hero() {
 
         {/* Orb 2 — violet, bottom-left, counter-drift */}
         <motion.div
-          className="absolute w-[500px] h-[500px] rounded-full bg-violet-600 blur-[100px]"
-          style={{ left: '-20px', bottom: '0px', opacity: 0.12 }}
+          className="absolute w-[280px] h-[280px] sm:w-[400px] sm:h-[400px] lg:w-[500px] lg:h-[500px] rounded-full bg-violet-600 blur-[50px] sm:blur-[80px] lg:blur-[100px]"
+          style={{ left: '-30px', bottom: '-20px', opacity: 0.12 }}
           animate={prefersReducedMotion ? undefined : {
             x: [0, -165, 130, 0],
             y: [0, 100, -140, 0],
@@ -74,7 +74,7 @@ export default function Hero() {
 
         {/* Orb 3 — cyan accent, wanders center */}
         <motion.div
-          className="absolute w-[400px] h-[400px] rounded-full bg-cyan-500 blur-[90px]"
+          className="absolute w-[220px] h-[220px] sm:w-[320px] sm:h-[320px] lg:w-[400px] lg:h-[400px] rounded-full bg-cyan-500 blur-[45px] sm:blur-[70px] lg:blur-[90px]"
           style={{ left: '50%', bottom: '5%', opacity: 0.07 }}
           animate={prefersReducedMotion ? undefined : {
             x: [0, 110, -90, 0],

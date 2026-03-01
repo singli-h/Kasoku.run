@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from 'react'
+import React, { useRef } from 'react'
 import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion'
 import type { MotionValue } from 'framer-motion'
 import {
@@ -417,10 +417,10 @@ function AnalyticsPanel() {
   ]
 
   return (
-    <div className="w-full max-w-lg flex flex-col gap-3">
+    <div className="w-full max-w-lg flex flex-col gap-2 sm:gap-3">
       {/* Heatmap */}
-      <div className="rounded-2xl border border-border/30 bg-card p-5 shadow-2xl shadow-black/10 dark:shadow-black/40">
-        <div className="text-base font-semibold text-foreground mb-3">Workout Consistency</div>
+      <div className="rounded-2xl border border-border/30 bg-card p-3 sm:p-5 shadow-2xl shadow-black/10 dark:shadow-black/40">
+        <div className="text-sm sm:text-base font-semibold text-foreground mb-2 sm:mb-3">Workout Consistency</div>
         <div className="flex gap-1">
           {weeks.map((week, wi) => (
             <div key={wi} className="flex flex-col gap-1 flex-1">
@@ -443,21 +443,21 @@ function AnalyticsPanel() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-xl border border-border/25 bg-card p-3.5 shadow-lg shadow-black/5 dark:shadow-black/20"
+            className="rounded-xl border border-border/25 bg-card p-2.5 sm:p-3.5 shadow-lg shadow-black/5 dark:shadow-black/20"
           >
-            <stat.Icon className={`w-4 h-4 ${stat.accent} mb-2`} />
-            <div className="text-lg font-bold text-foreground leading-none">{stat.value}</div>
+            <stat.Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${stat.accent} mb-1.5 sm:mb-2`} />
+            <div className="text-base sm:text-lg font-bold text-foreground leading-none">{stat.value}</div>
             <div className="text-[10px] text-muted-foreground/50 mt-1">{stat.label}</div>
           </div>
         ))}
       </div>
 
-      {/* New Memory Card */}
-      <div className="rounded-xl border border-primary/20 bg-primary/[0.03] p-4 flex items-start gap-3 shadow-lg shadow-primary/[0.08]">
+      {/* New Memory Card — hidden on mobile to prevent overflow */}
+      <div className="hidden sm:flex rounded-xl border border-primary/20 bg-primary/[0.03] p-4 items-start gap-3 shadow-lg shadow-primary/[0.08]">
         <div className="p-1.5 rounded-lg bg-primary/10 mt-0.5 flex-shrink-0">
           <Sparkles className="w-4 h-4 text-primary" />
         </div>
@@ -535,6 +535,15 @@ export default function ProductShowcase() {
   const containerRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useReducedMotion()
 
+  // Shorter scroll distance on mobile (content stacks vertically, less needed per step)
+  const [vhPerStep, setVhPerStep] = React.useState(100)
+  React.useEffect(() => {
+    const update = () => setVhPerStep(window.innerWidth < 768 ? 70 : 100)
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
@@ -582,7 +591,7 @@ export default function ProductShowcase() {
     <section
       ref={containerRef}
       className="relative bg-background w-full z-20"
-      style={{ minHeight: `${TOTAL_STEPS * 100}vh` }}
+      style={{ minHeight: `${TOTAL_STEPS * vhPerStep}vh` }}
       aria-label="Product showcase — How Kasoku AI works"
     >
       {/* Sticky viewport */}
@@ -668,7 +677,7 @@ export default function ProductShowcase() {
               }}
               className="absolute inset-0 flex items-center pointer-events-none"
             >
-              <div className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-16 xl:px-20 flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12 xl:gap-20">
+              <div className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-16 xl:px-20 flex flex-col lg:flex-row items-center justify-between gap-4 sm:gap-6 lg:gap-12 xl:gap-20">
                 {/* Text Side */}
                 <div className="flex-1 w-full max-w-md lg:max-w-lg relative">
                   {/* Watermark step number */}
@@ -682,13 +691,13 @@ export default function ProductShowcase() {
                   <span className="text-[11px] text-primary/40 font-mono tracking-[0.2em] uppercase mb-4 block relative z-10">
                     {data.num}
                   </span>
-                  <h3 className="font-heading text-3xl sm:text-4xl lg:text-[2.75rem] xl:text-5xl font-bold text-foreground leading-[1.08] mb-1 relative z-10">
+                  <h3 className="font-heading text-2xl sm:text-4xl lg:text-[2.75rem] xl:text-5xl font-bold text-foreground leading-[1.08] mb-1 relative z-10">
                     {data.title}
                   </h3>
-                  <h3 className="font-heading text-3xl sm:text-4xl lg:text-[2.75rem] xl:text-5xl font-bold text-primary leading-[1.08] mb-5 relative z-10">
+                  <h3 className="font-heading text-2xl sm:text-4xl lg:text-[2.75rem] xl:text-5xl font-bold text-primary leading-[1.08] mb-3 sm:mb-5 relative z-10">
                     {data.subtitle}
                   </h3>
-                  <p className="text-base sm:text-[17px] text-muted-foreground font-sans leading-relaxed max-w-sm relative z-10">
+                  <p className="text-sm sm:text-[17px] text-muted-foreground font-sans leading-relaxed max-w-sm relative z-10 line-clamp-3 sm:line-clamp-none">
                     {data.description}
                   </p>
                 </div>
