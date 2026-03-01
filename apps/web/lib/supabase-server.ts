@@ -51,22 +51,37 @@ import type { Database } from "@/types/database"
  * - Each request gets proper user context via auth() call
  * - RLS policies work correctly with this approach
  */
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  {
-    // Fresh JWT token for each request - NEVER cache this
-    async accessToken() {
-      try {
-        return (await auth()).getToken()
-      } catch {
-        // Not in a request context (e.g., module initialization, Realtime setup)
-        // Return null to proceed without auth - actual requests will have context
-        return null
+let _supabase: ReturnType<typeof createClient<Database>> | null = null
+
+function getSupabase() {
+  if (!_supabase) {
+    _supabase = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        // Fresh JWT token for each request - NEVER cache this
+        async accessToken() {
+          try {
+            return (await auth()).getToken()
+          } catch {
+            // Not in a request context (e.g., module initialization, Realtime setup)
+            // Return null to proceed without auth - actual requests will have context
+            return null
+          }
+        },
       }
-    },
+    )
   }
-)
+  return _supabase
+}
+
+// Proxy that lazily initializes the Supabase client on first property access.
+// This prevents build failures when env vars are not set during Next.js static analysis.
+const supabase = new Proxy({} as ReturnType<typeof createClient<Database>>, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getSupabase(), prop, receiver)
+  },
+})
 
 export default supabase
 
