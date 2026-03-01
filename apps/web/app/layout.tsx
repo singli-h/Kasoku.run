@@ -246,7 +246,7 @@ export default function RootLayout({
           <GlobalErrorBoundary>
             <Providers
               attribute="class"
-              defaultTheme="system"
+              defaultTheme="dark"
               enableSystem={true}
               disableTransitionOnChange
             >
