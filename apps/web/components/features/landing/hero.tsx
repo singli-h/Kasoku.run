@@ -109,10 +109,14 @@ export default function Hero() {
             animate="visible"
             className="font-heading text-6xl sm:text-7xl lg:text-8xl font-bold leading-[1.05] tracking-tight text-foreground"
           >
-            <motion.span variants={wordVariants} className="relative inline-block mr-4">
+            <motion.span variants={wordVariants} className="inline-block mr-4">
               <ElectricArcs disabled={!!prefersReducedMotion} />
-              <span className="invisible select-none" data-electric-text aria-hidden="true">Accelerate</span>
-              <span className="sr-only">Accelerate</span>
+              <span
+                className="hero-electric-text"
+                style={prefersReducedMotion ? undefined : { filter: 'url(#electric-crackle)' }}
+              >
+                Accelerate
+              </span>
             </motion.span>
             <br />
             <motion.span variants={wordVariants} className="inline-block mr-4">Your</motion.span>
