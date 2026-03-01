@@ -156,9 +156,9 @@ export default function Hero() {
               </Button>
             )}
             <Button asChild size="lg" variant="ghost" className="h-14 px-8 text-base font-body tracking-wide rounded-full border border-border/50 hover:border-primary/50 transition-colors">
-              <Link href="#features">
+              <a href="#how-it-works">
                 See How It Works
-              </Link>
+              </a>
             </Button>
           </motion.div>
         </div>

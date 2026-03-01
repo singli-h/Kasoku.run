@@ -589,6 +589,7 @@ export default function ProductShowcase() {
 
   return (
     <section
+      id="how-it-works"
       ref={containerRef}
       className="relative bg-background w-full z-20"
       style={{ minHeight: `${TOTAL_STEPS * vhPerStep}vh` }}
