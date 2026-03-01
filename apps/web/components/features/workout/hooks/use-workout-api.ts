@@ -427,7 +427,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
       })
 
       // Pass values directly to server action (including null for cleared fields)
-      // Convert effort from 0-100 (UI percentage) to 0-1 (database)
+      // Effort is already in DB format (0-1) — conversion happens in handleUpdateSet
       const dbSetData = {
         set_index: setData.set_index,
         reps: setData.reps,
@@ -439,7 +439,7 @@ export function useWorkoutApi(config: WorkoutApiConfig = {}) {
         resistance: setData.resistance,
         velocity: setData.velocity,
         height: setData.height,
-        effort: setData.effort != null ? setData.effort / 100 : null, // Convert percentage to decimal
+        effort: setData.effort ?? null,
         tempo: setData.tempo,
         rpe: setData.rpe,
         completed: setData.completed

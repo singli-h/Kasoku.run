@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { motion, useReducedMotion, useScroll, useTransform, useSpring } from 'framer-motion'
 import type { Transition } from 'framer-motion'
+import ElectricArcs from './electric-arcs'
 import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
@@ -108,7 +109,10 @@ export default function Hero() {
             animate="visible"
             className="font-heading text-6xl sm:text-7xl lg:text-8xl font-bold leading-[1.05] tracking-tight text-foreground"
           >
-            <motion.span variants={wordVariants} className="inline-block mr-4 hero-electric-text">Accelerate</motion.span>
+            <motion.span variants={wordVariants} className="relative inline-block mr-4">
+              <ElectricArcs disabled={!!prefersReducedMotion} />
+              <span className="relative z-2 hero-electric-text">Accelerate</span>
+            </motion.span>
             <br />
             <motion.span variants={wordVariants} className="inline-block mr-4">Your</motion.span>
             <motion.span variants={wordVariants} className="inline-block text-primary">Training</motion.span>

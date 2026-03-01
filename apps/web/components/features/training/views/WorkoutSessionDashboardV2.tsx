@@ -174,8 +174,8 @@ function WorkoutSessionContentV2({
             performing_time: planSet.performing_time ?? null,
             rest_time: planSet.rest_time ?? null,
             rpe: planSet.rpe ?? null,
-            // Convert effort from database (0-1) to UI (0-100)
-            effort: planSet.effort != null ? planSet.effort * 100 : null,
+            // Keep effort in DB format (0-1) — legacyToTrainingExercises handles conversion to UI (0-100)
+            effort: planSet.effort ?? null,
             tempo: planSet.tempo ?? null,
             power: planSet.power ?? null,
             velocity: planSet.velocity ?? null,
@@ -270,9 +270,15 @@ function WorkoutSessionContentV2({
       : field === 'restTime' ? 'rest_time'
         : field
 
+    // Convert effort from UI format (0-100) to DB format (0-1) for consistent state storage
+    // The adapter (legacyToTrainingExercises) converts back to UI format for display
+    const dbValue = dbField === 'effort' && typeof value === 'number'
+      ? value / 100
+      : value
+
     // Update the set in the exercise's workout_log_sets array
     const updatedSets = exercise.workout_log_sets.map((set, idx) =>
-      idx === setIndex ? { ...set, [dbField]: value } : set
+      idx === setIndex ? { ...set, [dbField]: dbValue } : set
     )
 
     updateExercise(exerciseId as string, { workout_log_sets: updatedSets })

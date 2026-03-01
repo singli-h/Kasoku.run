@@ -251,15 +251,22 @@ export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDet
                                       className="border-b"
                                     >
                                       <td className="py-2 px-2 font-medium">{setIndex + 1}</td>
-                                      {activeColumns.map(col => (
-                                        <td key={col.key} className="py-2 px-2 text-center">
-                                          {detail[col.key] !== null && detail[col.key] !== undefined
-                                            ? (typeof detail[col.key] === 'number'
-                                                ? Number(detail[col.key]).toFixed(col.key === 'velocity' ? 2 : 0)
-                                                : detail[col.key])
-                                            : "-"}
-                                        </td>
-                                      ))}
+                                      {activeColumns.map(col => {
+                                        let displayValue = detail[col.key]
+                                        // Convert effort from DB format (0-1) to UI percentage (0-100)
+                                        if (col.key === 'effort' && typeof displayValue === 'number') {
+                                          displayValue = displayValue * 100
+                                        }
+                                        return (
+                                          <td key={col.key} className="py-2 px-2 text-center">
+                                            {displayValue !== null && displayValue !== undefined
+                                              ? (typeof displayValue === 'number'
+                                                  ? Number(displayValue).toFixed(col.key === 'velocity' ? 2 : 0)
+                                                  : displayValue)
+                                              : "-"}
+                                          </td>
+                                        )
+                                      })}
                                       <td className="py-2 px-2 text-center">
                                         {detail.completed ? (
                                           <Badge variant="default" className="bg-green-500 text-white">

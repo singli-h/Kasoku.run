@@ -1249,7 +1249,8 @@ function ExerciseRow({
       rpe: set.rpe ?? null,
       restTime: set.rest_time ?? null,
       tempo: set.tempo ?? null,
-      effort: set.effort ?? null,
+      // Convert effort from DB format (0-1) to UI format (0-100) for display
+      effort: set.effort != null ? set.effort * 100 : null,
       resistance: set.resistance ?? null,
       completed: false,
       metadata: set.metadata as any, // Json type from DB - will be validated by SetRow

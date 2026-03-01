@@ -1646,23 +1646,39 @@ body {
 
 /* Hero electric text glow — Electric Indigo #6366F1 */
 .hero-electric-text {
+  color: #4338ca;
   text-shadow:
-    0 0 8px rgba(99, 102, 241, 0.2),
-    0 0 24px rgba(99, 102, 241, 0.1),
-    0 0 48px rgba(99, 102, 241, 0.05);
-  animation: electric-flicker 5s ease-in-out infinite;
+    0 0 4px rgba(99, 102, 241, 0.5),
+    0 0 12px rgba(99, 102, 241, 0.3),
+    0 0 30px rgba(99, 102, 241, 0.15);
+  animation: electric-flicker 3s ease-in-out infinite;
+}
+
+.dark .hero-electric-text {
+  color: #c7d2fe;
+  text-shadow:
+    0 0 4px rgba(99, 102, 241, 0.9),
+    0 0 12px rgba(99, 102, 241, 0.6),
+    0 0 30px rgba(99, 102, 241, 0.4),
+    0 0 60px rgba(99, 102, 241, 0.25),
+    0 0 100px rgba(99, 102, 241, 0.15);
 }
 
 @keyframes electric-flicker {
   0%, 100% { opacity: 1; }
-  47% { opacity: 1; }
-  48% { opacity: 0.94; }
-  49% { opacity: 1; }
+  15% { opacity: 1; }
+  16% { opacity: 0.88; }
+  17% { opacity: 1; }
+  42% { opacity: 1; }
+  43% { opacity: 0.92; }
+  44% { opacity: 1; }
+  44.5% { opacity: 0.85; }
+  45% { opacity: 1; }
   72% { opacity: 1; }
-  73% { opacity: 0.96; }
+  73% { opacity: 0.9; }
   73.5% { opacity: 1; }
-  74% { opacity: 0.92; }
-  74.5% { opacity: 1; }
+  74% { opacity: 0.87; }
+  75% { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
