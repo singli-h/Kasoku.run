@@ -441,12 +441,15 @@ function applySetChange(
       // Update set(s)
       const setIndex = proposedData?.setIndex as number | undefined
       const applyToAll = proposedData?.applyToAllSets as boolean | undefined
+      // If neither setIndex nor applyToAllSets is provided, default to updating all sets
+      // (the AI specified the parent exercise but no specific set — intent is all sets)
+      const effectiveApplyToAll = applyToAll || (setIndex === undefined)
 
       return exercises.map((ex) => {
         if (String(ex.id) === parentExerciseId) {
           const updatedSets = ex.sets.map((set) => {
             // Apply to specific set or all sets
-            if (applyToAll || set.set_index === setIndex) {
+            if (effectiveApplyToAll || set.set_index === setIndex) {
               return {
                 ...set,
                 reps: proposedData?.reps !== undefined ? (proposedData.reps as number) : set.reps,

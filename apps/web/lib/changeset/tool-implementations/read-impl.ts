@@ -47,6 +47,13 @@ export interface SessionContext {
       rpe: number | null
       restTime: number | null
       tempo: string | null
+      distance: number | null
+      performingTime: number | null
+      effort: number | null
+      power: number | null
+      velocity: number | null
+      height: number | null
+      resistance: number | null
     }>
   }>
 }
@@ -116,7 +123,14 @@ export async function executeGetSessionContext(
         weight,
         rpe,
         rest_time,
-        tempo
+        tempo,
+        distance,
+        performing_time,
+        effort,
+        power,
+        velocity,
+        height,
+        resistance
       )
     `
     )
@@ -141,6 +155,13 @@ export async function executeGetSessionContext(
         rpe: number | null
         rest_time: number | null
         tempo: string | null
+        distance: number | null
+        performing_time: number | null
+        effort: number | null
+        power: number | null
+        velocity: number | null
+        height: number | null
+        resistance: number | null
       }>
 
       return {
@@ -161,6 +182,13 @@ export async function executeGetSessionContext(
               rpe: detail.rpe,
               restTime: detail.rest_time,
               tempo: detail.tempo,
+              distance: detail.distance,
+              performingTime: detail.performing_time,
+              effort: detail.effort,
+              power: detail.power,
+              velocity: detail.velocity,
+              height: detail.height,
+              resistance: detail.resistance,
             })) ?? [],
       }
     }) ?? []

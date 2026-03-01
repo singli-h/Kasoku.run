@@ -162,9 +162,22 @@ const RULES = `## Rules
 - Always call confirmChangeSet after proposing changes with a clear title and description.
 - Use IDs exactly as shown in context — never fabricate IDs.
 
+### Modifying Existing Sets (CRITICAL)
+- **Use updateSessionPlanSetChangeRequest** to modify existing sets. NEVER delete and re-create sets just to change a value.
+- **Only include changed fields**. If the user says "increase reps by 1", ONLY set the new reps value. Do NOT include weight, rpe, restTime, tempo, or other fields — they are preserved automatically when omitted.
+- **Use applyToAllSets=true** when the user wants to change the same field across all sets of an exercise (e.g., "increase reps for bench press").
+- **Cross-exercise changes** (e.g., "increase reps for ALL exercises"): issue one updateSessionPlanSetChangeRequest per exercise, each with applyToAllSets=true. Loop through all exercise IDs from context.
+- **Read set details from context** before modifying. The current set values (reps, weight, rpe, etc.) are shown in the session context above. Use these to calculate new values (e.g., current 10 reps + 1 = set reps to 11).
+- **Adding a set**: When adding a set to an exercise that already has sets, copy the parameters from existing sets (same reps, weight, rpe, etc.) unless the user specifies different values.
+
 ### Supersets
 - Group exercises by assigning the same supersetId (numeric: "1", "2", "3").
 - Check context for existing IDs. New superset = next available number. Add to existing = same ID. Remove = null.
+
+### Speed/Timing Exercises
+- For sprints, timing splits, and timed exercises: use performingTime for the time (supports decimals, e.g., 7.23s), distance for the rep distance (e.g., 60m).
+- Each split/rep = one set. E.g., "4×60m sprints" = 1 exercise with 4 sets, each with distance=60 and appropriate restTime.
+- Use velocity for speed-based metrics if provided.
 
 ### Exercise Grouping
 - Different stimulus → SEPARATE exercises. Training method → SAME exercise with multiple sets.
@@ -216,9 +229,17 @@ ${sessionList || 'No sessions in this week.'}`)
     const exerciseList = sessionContext.exercises
       .map((ex, idx) => {
         const setCount = ex.sets.length
-        const setInfo = setCount > 0 ? `${setCount} sets` : 'no sets'
         const supersetInfo = ex.supersetId ? ` [SS:${ex.supersetId}]` : ''
-        return `${idx + 1}. ${ex.exerciseName} (ID: ${ex.id}) - ${setInfo}${supersetInfo}`
+        const notesInfo = ex.notes ? ` Notes: ${ex.notes}` : ''
+
+        // Include compact set details so the AI knows current values
+        let setDetails = 'no sets'
+        if (setCount > 0) {
+          setDetails = ex.sets.map(s => formatSetCompact(s)).join('; ')
+        }
+
+        return `${idx + 1}. ${ex.exerciseName} (ID: ${ex.id})${supersetInfo}${notesInfo}
+   Sets: ${setDetails}`
       })
       .join('\n')
 
@@ -238,6 +259,32 @@ ${exerciseList || 'No exercises in this session yet.'}`)
   }
 
   return sections.join('\n\n')
+}
+
+/**
+ * Format a set as a compact string for the system prompt.
+ * e.g. "Set 1: 10 reps × 80kg @ RPE 8, rest 90s"
+ */
+function formatSetCompact(set: SessionContext['exercises'][0]['sets'][0]): string {
+  const parts: string[] = [`Set ${set.setIndex}:`]
+
+  if (set.reps != null) parts.push(`${set.reps} reps`)
+  if (set.weight != null) parts.push(`× ${set.weight}kg`)
+  if (set.distance != null) parts.push(`${set.distance}m`)
+  if (set.performingTime != null) parts.push(`${set.performingTime}s duration`)
+  if (set.rpe != null) parts.push(`@ RPE ${set.rpe}`)
+  if (set.effort != null) parts.push(`effort ${Math.round(set.effort * 100)}%`)
+  if (set.power != null) parts.push(`power ${set.power}`)
+  if (set.velocity != null) parts.push(`velocity ${set.velocity}`)
+  if (set.height != null) parts.push(`height ${set.height}`)
+  if (set.resistance != null) parts.push(`resistance ${set.resistance}`)
+  if (set.restTime != null) parts.push(`rest ${set.restTime}s`)
+  if (set.tempo) parts.push(`tempo ${set.tempo}`)
+
+  // If only "Set N:" with no data, show that
+  if (parts.length === 1) parts.push('(no parameters)')
+
+  return parts.join(' ')
 }
 
 /**

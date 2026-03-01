@@ -76,13 +76,12 @@ export const createWorkoutLogSetChangeRequestSchema = z.object({
     .number()
     .optional()
     .transform(emptyNumToUndefined)
-    .describe('Distance in meters (for cardio exercises)'),
+    .describe('Distance in meters (for sprints, cardio, throws, jumps)'),
   performingTime: z
     .number()
-    .int()
     .optional()
     .transform(emptyNumToUndefined)
-    .describe('Duration in seconds (for timed exercises)'),
+    .describe('Time in seconds with decimals (e.g., 7.23 for a freelap split, 45 for a timed hold)'),
   power: z
     .number()
     .optional()
@@ -159,12 +158,13 @@ export const updateWorkoutLogSetChangeRequestSchema = z.object({
   distance: z
     .number()
     .optional()
-    .transform(emptyNumToUndefined),
+    .transform(emptyNumToUndefined)
+    .describe('Distance in meters'),
   performingTime: z
     .number()
-    .int()
     .optional()
-    .transform(emptyNumToUndefined),
+    .transform(emptyNumToUndefined)
+    .describe('Time in seconds with decimals (e.g., 7.23 for a sprint split)'),
   power: z
     .number()
     .optional()

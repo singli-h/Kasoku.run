@@ -194,13 +194,12 @@ export const createSetChangeRequestSchema = z.object({
     .describe('Number of sets to add. Each set will have the same parameters.'),
   reps: z.number().int().optional().transform(emptyNumToUndefined).describe('Repetitions per set'),
   weight: z.number().optional().transform(emptyNumToUndefined).describe('Weight in kg'),
-  distance: z.number().optional().transform(emptyNumToUndefined).describe('Distance in meters (for cardio)'),
+  distance: z.number().optional().transform(emptyNumToUndefined).describe('Distance in meters (for sprints, cardio, throws, jumps)'),
   performingTime: z
     .number()
-    .int()
     .optional()
     .transform(emptyNumToUndefined)
-    .describe('Duration in seconds (for timed exercises)'),
+    .describe('Time in seconds with decimals (e.g., 7.23 for a 60m sprint split, 45 for a timed hold)'),
   restTime: z.number().int().optional().transform(emptyNumToUndefined).describe('Rest between sets in seconds'),
   rpe: z.number().int().min(1).max(10).optional().transform(emptyNumToUndefined).describe('Rate of Perceived Exertion (1-10)'),
   tempo: z.string().optional().transform(emptyToUndefined).describe("Tempo string format: 'eccentric-pause-concentric-pause' (e.g., '3-0-2-0')"),
@@ -256,7 +255,7 @@ export const updateSetChangeRequestSchema = z.object({
   reps: z.number().int().optional().transform(emptyNumToUndefined).describe('New repetitions value'),
   weight: z.number().optional().transform(emptyNumToUndefined).describe('New weight in kg'),
   distance: z.number().optional().transform(emptyNumToUndefined).describe('New distance in meters'),
-  performingTime: z.number().int().optional().transform(emptyNumToUndefined).describe('New duration in seconds'),
+  performingTime: z.number().optional().transform(emptyNumToUndefined).describe('New time in seconds with decimals (e.g., 7.23 for a sprint split)'),
   restTime: z.number().int().optional().transform(emptyNumToUndefined).describe('New rest time in seconds'),
   rpe: z.number().int().min(1).max(10).optional().transform(emptyNumToUndefined).describe('New RPE (1-10)'),
   tempo: z.string().optional().transform(emptyToUndefined).describe('New tempo string'),

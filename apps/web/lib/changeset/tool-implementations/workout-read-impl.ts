@@ -31,6 +31,7 @@ export interface SetParameters {
   rpe: number | null
   distance?: number | null
   performingTime?: number | null
+  restTime?: number | null
   power?: number | null
   velocity?: number | null
   height?: number | null
@@ -217,6 +218,7 @@ export async function executeGetWorkoutContext(
             rpe,
             distance,
             performing_time,
+            rest_time,
             power,
             velocity,
             height,
@@ -241,6 +243,7 @@ export async function executeGetWorkoutContext(
             completed,
             distance,
             performing_time,
+            rest_time,
             power,
             velocity,
             height,
@@ -262,6 +265,7 @@ export async function executeGetWorkoutContext(
       rpe: number | null
       distance: number | null
       performing_time: number | null
+      rest_time: number | null
       power: number | null
       velocity: number | null
       height: number | null
@@ -293,6 +297,7 @@ export async function executeGetWorkoutContext(
       completed: boolean | null
       distance: number | null
       performing_time: number | null
+      rest_time: number | null
       power: number | null
       velocity: number | null
       height: number | null
@@ -361,6 +366,7 @@ export async function executeGetWorkoutContext(
           rpe: prescribed?.rpe ?? null,
           distance: prescribed?.distance ?? null,
           performingTime: prescribed?.performing_time ?? null,
+          restTime: prescribed?.rest_time ?? null,
           power: prescribed?.power ?? null,
           velocity: prescribed?.velocity ?? null,
           height: prescribed?.height ?? null,
@@ -374,6 +380,7 @@ export async function executeGetWorkoutContext(
               completed: actual.completed ?? false,
               distance: actual.distance,
               performingTime: actual.performing_time,
+              restTime: actual.rest_time,
               power: actual.power,
               velocity: actual.velocity,
               height: actual.height,

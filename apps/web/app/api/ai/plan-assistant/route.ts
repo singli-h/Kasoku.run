@@ -33,6 +33,7 @@ type QueryIntent = 'edit' | 'question' | 'structural'
 const TOOLS_BY_INTENT: Record<QueryIntent, CoachToolName[]> = {
   // Editing: exercise + set + confirm (most common action)
   edit: [
+    'getSessionContext',
     'createSessionPlanExerciseChangeRequest',
     'updateSessionPlanExerciseChangeRequest',
     'deleteSessionPlanExerciseChangeRequest',

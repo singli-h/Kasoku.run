@@ -13,7 +13,7 @@
  * @see specs/005-ai-athlete-workout/spec.md
  */
 
-import type { WorkoutContext } from '../tool-implementations/workout-read-impl'
+import type { WorkoutContext, SetParameters } from '../tool-implementations/workout-read-impl'
 
 /**
  * System prompt for the Athlete Workout AI assistant.
@@ -44,9 +44,14 @@ const RULES = `## Rules
 
 ### Logging Sets
 - **Log a set**: createWorkoutLogSetChangeRequest with workoutLogExerciseId + setIndex from context.
-- **Add extra sets**: Same tool, use the next setIndex (e.g., 3 sets exist → setIndex: 4).
-- **Update a logged set**: updateWorkoutLogSetChangeRequest with the workoutLogSetId shown in context.
+- **Add extra sets**: Same tool, use the next setIndex (e.g., 3 sets exist → setIndex: 4). Copy parameters from existing sets (same weight, reps, etc.) unless the athlete says otherwise.
+- **Update a logged set**: updateWorkoutLogSetChangeRequest with the workoutLogSetId shown in context. Only include changed fields — other fields are preserved automatically.
 - **Skip a set**: createWorkoutLogSetChangeRequest with completed: false.
+- **Skip an exercise**: Mark ALL sets of that exercise as completed: false using createWorkoutLogSetChangeRequest for each unlogged set.
+
+### Speed/Timing Exercises
+- For sprints, freelap splits, timed exercises: use performingTime for the time (supports decimals like 7.23s), distance for rep distance (e.g., 60m).
+- Each split/rep = one set. "Log my 60m splits: 7.2, 7.4, 7.1" → 3 createWorkoutLogSetChangeRequest calls with performingTime for each.
 
 ### Exercises
 - **Add new exercise**: createWorkoutLogExerciseChangeRequest. Do NOT use this for adding sets.
@@ -89,14 +94,12 @@ function buildContextSection(context: WorkoutContext): string {
         .map((set) => {
           const prescribed = set.prescribed
           const actual = set.actual
-          const prescribedStr = prescribed.reps
-            ? `${prescribed.reps}×${prescribed.weight ?? '?'}kg`
-            : 'not specified'
+          const prescribedStr = formatWorkoutSet(prescribed)
           // Include workoutLogSetId for logged sets (needed for updateWorkoutLogSetChangeRequest)
           const setIdStr = actual ? ` (workoutLogSetId: "${set.id}")` : ''
           const actualStr = actual
             ? actual.completed
-              ? `${actual.reps}×${actual.weight ?? '?'}kg RPE${actual.rpe ?? '?'}`
+              ? formatWorkoutSet(actual)
               : 'skipped'
             : 'not logged'
           return `   Set ${set.setIndex}${setIdStr}: prescribed ${prescribedStr} → ${actualStr}`
@@ -113,6 +116,27 @@ Session: ${context.session.name} (workoutLogId: "${context.session.id}")
 Status: ${context.session.sessionStatus} | Progress: ${progressInfo}${context.session.notes ? `\nNotes: ${context.session.notes}` : ''}
 
 ${exerciseList || 'No exercises in this workout.'}`
+}
+
+/**
+ * Formats a set's data as a compact string for context display.
+ * Handles both prescribed and actual sets with all field types.
+ */
+function formatWorkoutSet(data: SetParameters & { completed?: boolean }): string {
+  const parts: string[] = []
+
+  if (data.reps != null) parts.push(`${data.reps}`)
+  if (data.weight != null) parts.push(`× ${data.weight}kg`)
+  if (data.distance != null) parts.push(`${data.distance}m`)
+  if (data.performingTime != null) parts.push(`${data.performingTime}s`)
+  if (data.rpe != null) parts.push(`RPE${data.rpe}`)
+  if (data.power != null) parts.push(`power:${data.power}`)
+  if (data.velocity != null) parts.push(`vel:${data.velocity}`)
+  if (data.height != null) parts.push(`h:${data.height}`)
+  if (data.resistance != null) parts.push(`res:${data.resistance}`)
+  if (data.restTime != null) parts.push(`rest ${data.restTime}s`)
+
+  return parts.length > 0 ? parts.join(' ') : 'not specified'
 }
 
 // DEPRECATED: These functions are no longer needed with goal-oriented prompting.

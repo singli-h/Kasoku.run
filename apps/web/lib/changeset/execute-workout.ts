@@ -170,6 +170,9 @@ async function applyWorkoutSetChange(
         rpe: proposedData?.rpe as number | undefined,
         tempo: proposedData?.tempo as string | undefined,
         resistance: proposedData?.resistance as number | undefined,
+        power: proposedData?.power as number | undefined,
+        velocity: proposedData?.velocity as number | undefined,
+        height: proposedData?.height as number | undefined,
       }
 
       const result = await addExercisePerformanceAction(workoutLogExerciseId, setData)
@@ -187,7 +190,15 @@ async function applyWorkoutSetChange(
     case 'update': {
       // Update existing set - use entityId (which contains the set ID for updates)
       // Note: currentData may be null if not provided by the transformation layer
-      const setId = request.entityId ?? (request.currentData?.id as string | undefined)
+      let setId = request.entityId ?? (request.currentData?.id as string | undefined)
+
+      // Handle composite entityId (e.g., "workout_exercise:abc:set:2")
+      // This happens when the AI uses workoutLogExerciseId+setIndex instead of workoutLogSetId
+      if (setId && setId.startsWith('workout_exercise:')) {
+        console.warn(`[applyWorkoutSetChange] Composite entityId not supported for workout set update: ${setId}. ` +
+          'The AI should use workoutLogSetId for updates. Skipping.')
+        return
+      }
 
       if (!setId) {
         console.warn('[applyWorkoutSetChange] Missing set ID for update, skipping')
@@ -205,6 +216,9 @@ async function applyWorkoutSetChange(
         tempo: proposedData?.tempo as string | undefined,
         resistance: proposedData?.resistance as number | undefined,
         completed: proposedData?.completed as boolean | undefined,
+        power: proposedData?.power as number | undefined,
+        velocity: proposedData?.velocity as number | undefined,
+        height: proposedData?.height as number | undefined,
       }
 
       // Filter out undefined values
