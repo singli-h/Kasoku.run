@@ -1643,3 +1643,30 @@ body {
 .ProseMirror ::selection {
   background: hsl(var(--primary) / 0.2);
 }
+
+/* Hero electric text glow — subtle charged baseline */
+.hero-electric-text {
+  text-shadow:
+    0 0 8px rgba(140, 160, 255, 0.15),
+    0 0 20px rgba(120, 140, 255, 0.08),
+    0 0 40px rgba(100, 120, 255, 0.04);
+  animation: electric-flicker 4s ease-in-out infinite;
+}
+
+@keyframes electric-flicker {
+  0%, 100% { opacity: 1; }
+  47% { opacity: 1; }
+  48% { opacity: 0.94; }
+  49% { opacity: 1; }
+  72% { opacity: 1; }
+  73% { opacity: 0.96; }
+  73.5% { opacity: 1; }
+  74% { opacity: 0.92; }
+  74.5% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-electric-text {
+    animation: none;
+  }
+}

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
+import LightningCanvas from './lightning-canvas'
 
 export default function Hero() {
   const { isSignedIn } = useAuth()
@@ -147,7 +148,12 @@ export default function Hero() {
             animate="visible"
             className="font-heading text-6xl sm:text-7xl lg:text-8xl font-bold leading-[1.05] tracking-tight text-foreground"
           >
-            <motion.span variants={wordVariants} className="inline-block mr-4">Accelerate</motion.span>
+            <motion.span variants={wordVariants} className="relative inline-block mr-4">
+              <span className="relative z-[2] hero-electric-text">Accelerate</span>
+              <span className="absolute -inset-x-[25%] -inset-y-[40%] z-[1] overflow-visible">
+                <LightningCanvas disabled={!!prefersReducedMotion} />
+              </span>
+            </motion.span>
             <br />
             <motion.span variants={wordVariants} className="inline-block mr-4">Your</motion.span>
             <motion.span variants={wordVariants} className="inline-block text-primary">Training</motion.span>
