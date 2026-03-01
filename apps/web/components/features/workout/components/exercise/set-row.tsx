@@ -360,7 +360,7 @@ export function SetTableHeader({
         {columns.map(cfg => (
           <th
             key={cfg.key}
-            className="px-2 py-2 text-left font-medium text-gray-500 w-20"
+            className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-20"
             title={cfg.unit ? `${cfg.label} (${cfg.unit})` : cfg.label}
           >
             <div className="flex flex-col items-start">

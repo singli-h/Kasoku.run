@@ -111,7 +111,8 @@ export default function Hero() {
           >
             <motion.span variants={wordVariants} className="relative inline-block mr-4">
               <ElectricArcs disabled={!!prefersReducedMotion} />
-              <span className="relative z-2 hero-electric-text">Accelerate</span>
+              <span className="invisible select-none" data-electric-text aria-hidden="true">Accelerate</span>
+              <span className="sr-only">Accelerate</span>
             </motion.span>
             <br />
             <motion.span variants={wordVariants} className="inline-block mr-4">Your</motion.span>

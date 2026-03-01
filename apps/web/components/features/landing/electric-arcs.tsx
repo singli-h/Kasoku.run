@@ -30,7 +30,6 @@ export default function ElectricArcs({ disabled }: { disabled?: boolean }) {
   const dimKeyRef = useRef('')
   const rafRef = useRef<number>(0)
 
-  /* Sample all filled text pixels (the entire letter body) */
   const calcTextPixels = useCallback((w: number, h: number, font: string) => {
     const key = `${w}x${h}:${font}`
     if (key === dimKeyRef.current) return
@@ -55,16 +54,13 @@ export default function ElectricArcs({ disabled }: { disabled?: boolean }) {
 
     for (let y = 0; y < ih; y += 3) {
       for (let x = 0; x < iw; x += 3) {
-        if (d[(y * iw + x) * 4 + 3] > 128) {
-          pts.push({ x, y })
-        }
+        if (d[(y * iw + x) * 4 + 3] > 128) pts.push({ x, y })
       }
     }
 
     textPixelsRef.current = pts
   }, [])
 
-  /* Spawn arcs between random points INSIDE the text body */
   const spawnArcs = useCallback(() => {
     const pixels = textPixelsRef.current
     if (pixels.length < 20) return
@@ -75,10 +71,7 @@ export default function ElectricArcs({ disabled }: { disabled?: boolean }) {
     for (let n = 0; n < count; n++) {
       const a = pixels[Math.floor(Math.random() * pixels.length)]
       const b = pixels[Math.floor(Math.random() * pixels.length)]
-      const dx = b.x - a.x
-      const dy = b.y - a.y
-      const len = Math.sqrt(dx * dx + dy * dy)
-
+      const len = Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2)
       if (len < 15 || len > 90) continue
 
       arcsRef.current.push({
@@ -93,7 +86,6 @@ export default function ElectricArcs({ disabled }: { disabled?: boolean }) {
 
   useEffect(() => {
     if (disabled) return
-
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -101,39 +93,98 @@ export default function ElectricArcs({ disabled }: { disabled?: boolean }) {
     const parent = canvas.parentElement
     if (!parent) return
 
-    const textEl = parent.querySelector('.hero-electric-text') as HTMLElement | null
+    const textEl = parent.querySelector('[data-electric-text]') as HTMLElement | null
+    let cw = 0
+    let ch = 0
 
-    const ro = new ResizeObserver(([e]) => {
+    const measure = () => {
       const dpr = window.devicePixelRatio || 1
-      const w = e.contentRect.width
-      const h = e.contentRect.height
-      canvas.width = w * dpr
-      canvas.height = h * dpr
+      cw = parent.clientWidth
+      ch = parent.clientHeight
+      canvas.width = cw * dpr
+      canvas.height = ch * dpr
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
       if (textEl) {
         const s = getComputedStyle(textEl)
-        calcTextPixels(Math.round(w), Math.round(h), `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`)
+        calcTextPixels(cw, ch, `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`)
       }
+    }
+
+    // Ensure web fonts are loaded before sampling text pixels
+    document.fonts.ready.then(() => {
+      dimKeyRef.current = ''
+      measure()
     })
+
+    const ro = new ResizeObserver(() => measure())
     ro.observe(parent)
 
     let nextSpawn = performance.now() + 200
 
     const draw = () => {
       const now = performance.now()
-      const w = parent.clientWidth
-      const h = parent.clientHeight
 
-      ctx.clearRect(0, 0, w, h)
+      if (!cw || !ch || !fontRef.current) {
+        rafRef.current = requestAnimationFrame(draw)
+        return
+      }
 
+      ctx.clearRect(0, 0, cw, ch)
+
+      const isDark = document.documentElement.classList.contains('dark')
+      const textColor = isDark ? '#c7d2fe' : '#4338ca'
+
+      // Spawn arcs
       if (now > nextSpawn && textPixelsRef.current.length > 0) {
         spawnArcs()
         nextSpawn = now + 60 + Math.random() * 180
       }
 
-      // 1) Draw all arcs normally
-      ctx.globalCompositeOperation = 'source-over'
+      // Subtle flicker
+      const flicker = 1 - 0.08 * Math.sin(now / 500) * Math.sin(now / 313)
+      ctx.globalAlpha = Math.max(0.88, flicker)
+
+      // 1) Draw base text with glow — this IS the visible "Accelerate"
+      ctx.font = fontRef.current
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = textColor
+
+      if (isDark) {
+        ctx.save()
+        ctx.shadowColor = 'rgba(99, 102, 241, 0.9)'
+        ctx.shadowBlur = 4
+        ctx.fillText('Accelerate', cw / 2, ch / 2)
+        ctx.shadowColor = 'rgba(99, 102, 241, 0.6)'
+        ctx.shadowBlur = 12
+        ctx.fillText('Accelerate', cw / 2, ch / 2)
+        ctx.shadowColor = 'rgba(99, 102, 241, 0.4)'
+        ctx.shadowBlur = 30
+        ctx.fillText('Accelerate', cw / 2, ch / 2)
+        ctx.shadowColor = 'rgba(99, 102, 241, 0.2)'
+        ctx.shadowBlur = 60
+        ctx.fillText('Accelerate', cw / 2, ch / 2)
+        ctx.restore()
+      } else {
+        ctx.save()
+        ctx.shadowColor = 'rgba(99, 102, 241, 0.5)'
+        ctx.shadowBlur = 4
+        ctx.fillText('Accelerate', cw / 2, ch / 2)
+        ctx.shadowColor = 'rgba(99, 102, 241, 0.3)'
+        ctx.shadowBlur = 12
+        ctx.fillText('Accelerate', cw / 2, ch / 2)
+        ctx.restore()
+      }
+
+      // Crisp text on top
+      ctx.shadowBlur = 0
+      ctx.fillText('Accelerate', cw / 2, ch / 2)
+
+      ctx.globalAlpha = 1
+
+      // 2) Draw arcs — source-atop: only renders where text pixels exist
+      ctx.globalCompositeOperation = 'source-atop'
 
       arcsRef.current = arcsRef.current.filter(arc => {
         const age = now - arc.birth
@@ -143,44 +194,30 @@ export default function ElectricArcs({ disabled }: { disabled?: boolean }) {
         const fade = progress < 0.1
           ? progress / 0.1
           : 1 - ((progress - 0.1) / 0.9) ** 2
-
         const alpha = arc.opacity * fade
         if (alpha < 0.01) return true
 
         const pts = arc.points
 
-        // Outer glow
+        // Indigo glow stroke
         ctx.beginPath()
         ctx.moveTo(pts[0].x, pts[0].y)
         for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
-        ctx.strokeStyle = `rgba(99, 102, 241, ${alpha * 0.5})`
-        ctx.lineWidth = arc.width * 4
-        ctx.shadowColor = 'rgba(99, 102, 241, 0.6)'
-        ctx.shadowBlur = 12
+        ctx.strokeStyle = `rgba(129, 140, 248, ${alpha * 0.6})`
+        ctx.lineWidth = arc.width * 3
         ctx.stroke()
 
-        // Core — white hot
+        // White-hot core
         ctx.beginPath()
         ctx.moveTo(pts[0].x, pts[0].y)
         for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
-        ctx.strokeStyle = `rgba(220, 225, 255, ${alpha * 0.9})`
+        ctx.strokeStyle = `rgba(224, 231, 255, ${alpha * 0.9})`
         ctx.lineWidth = arc.width
-        ctx.shadowColor = 'rgba(180, 190, 255, 0.8)'
-        ctx.shadowBlur = 4
         ctx.stroke()
 
-        ctx.shadowBlur = 0
         return true
       })
 
-      // 2) MASK — clip everything to text shape
-      // 'destination-in' keeps only existing pixels where the new fill has alpha
-      ctx.globalCompositeOperation = 'destination-in'
-      ctx.font = fontRef.current
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillStyle = '#fff'
-      ctx.fillText('Accelerate', w / 2, h / 2)
       ctx.globalCompositeOperation = 'source-over'
 
       rafRef.current = requestAnimationFrame(draw)
