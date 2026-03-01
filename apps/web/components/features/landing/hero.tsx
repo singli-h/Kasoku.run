@@ -22,7 +22,7 @@ export default function Hero() {
 
   const springTransition: Transition = prefersReducedMotion
     ? { duration: 0 }
-    : { type: 'spring', stiffness: 100, damping: 15 }
+    : { type: 'spring', stiffness: 170, damping: 26 }
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -155,9 +155,9 @@ export default function Hero() {
 
           {/* Subtitle */}
           <motion.p
-            initial={{ opacity: 0, filter: 'blur(4px)' }}
-            animate={{ opacity: 1, filter: 'blur(0px)' }}
-            transition={{ type: 'spring', stiffness: 80, damping: 20, delay: 0.8 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 170, damping: 26, delay: 0.8 }}
             className="mt-8 text-xl sm:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-sans"
           >
             Periodization that adapts to your athletes.<br /> Built for coaches who demand precision.

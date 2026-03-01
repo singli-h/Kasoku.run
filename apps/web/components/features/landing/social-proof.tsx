@@ -9,7 +9,7 @@ export default function SocialProof() {
         <motion.p
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
-          transition={{ type: "spring", stiffness: 80, damping: 20 }}
+          transition={{ type: "spring", stiffness: 170, damping: 26 }}
           className="text-center text-lg text-muted-foreground font-sans max-w-xl mx-auto leading-relaxed"
         >
           Purpose-built for track &amp; field coaches and their athletes.

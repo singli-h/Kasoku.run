@@ -48,7 +48,7 @@ export default function FAQ() {
             <motion.h2
               initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.05 }}
+              transition={{ type: "spring", stiffness: 170, damping: 26, delay: 0.05 }}
               className="font-heading text-4xl sm:text-5xl font-semibold text-foreground tracking-tight"
             >
               Frequently asked questions
@@ -64,7 +64,7 @@ export default function FAQ() {
                   key={faq.question}
                   initial={{ opacity: 0, y: 12 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ type: "spring", stiffness: 100, damping: 20, delay: index * 0.08 }}
+                  transition={{ type: "spring", stiffness: 170, damping: 26, delay: index * 0.08 }}
                   className="border-b border-border/50 bg-background"
                 >
                   <button
@@ -93,7 +93,7 @@ export default function FAQ() {
                       height: isOpen ? 'auto' : 0,
                       opacity: isOpen ? 1 : 0,
                     }}
-                    transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                    transition={{ type: "spring", stiffness: 170, damping: 26 }}
                     className="overflow-hidden"
                   >
                     <div className="pb-6 pr-8">

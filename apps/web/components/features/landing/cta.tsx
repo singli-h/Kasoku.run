@@ -52,7 +52,7 @@ export default function CTA() {
           <motion.h2
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 100, damping: 20 }}
+            transition={{ type: "spring", stiffness: 170, damping: 26 }}
             className="font-heading text-5xl sm:text-6xl font-bold tracking-tight text-foreground"
           >
             Ready to accelerate?
@@ -61,7 +61,7 @@ export default function CTA() {
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
+            transition={{ type: "spring", stiffness: 170, damping: 26, delay: 0.08 }}
             className="mt-6 text-xl text-muted-foreground font-sans"
           >
             Start building smarter training plans today.
@@ -70,7 +70,7 @@ export default function CTA() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.2 }}
+            transition={{ type: "spring", stiffness: 170, damping: 26, delay: 0.15 }}
             className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center"
           >
             <Button asChild size="lg" variant="rose" className="h-14 px-8 text-base font-body tracking-wide rounded-full">

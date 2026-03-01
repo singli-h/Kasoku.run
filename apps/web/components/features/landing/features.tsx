@@ -61,7 +61,7 @@ export default function Features() {
           <motion.h2
             initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 100, damping: 20 }}
+            transition={{ type: "spring", stiffness: 170, damping: 26 }}
             className="font-heading text-4xl sm:text-5xl font-semibold text-foreground tracking-tight"
           >
             What makes Kasoku different
@@ -69,7 +69,7 @@ export default function Features() {
           <motion.p
             initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
+            transition={{ type: "spring", stiffness: 170, damping: 26, delay: 0.08 }}
             className="mt-6 text-xl text-muted-foreground font-sans max-w-[680px]"
           >
             A training platform built by coaches,<br />for coaches and their athletes.
@@ -83,10 +83,10 @@ export default function Features() {
             return (
               <motion.div
                 key={feature.title}
-                initial={{ opacity: 0, scale: 0.96 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ margin: "-80px" }}
-                transition={{ type: "spring", stiffness: 100, damping: 15, delay: index * 0.08 }}
+                transition={{ type: "spring", stiffness: 170, damping: 26, delay: index * 0.06 }}
                 className="group p-8 rounded-2xl border border-border bg-card hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1"
               >
                 <div className="mb-6 relative w-12 h-12 flex items-center justify-center">
@@ -110,7 +110,7 @@ export default function Features() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.4 }}
+          transition={{ type: "spring", stiffness: 170, damping: 26, delay: 0.3 }}
           className="mt-20 flex flex-col md:flex-row rounded-2xl overflow-hidden border border-border/50 bg-surface"
         >
           {/* For Athletes */}
