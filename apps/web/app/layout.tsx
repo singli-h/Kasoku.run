@@ -18,12 +18,24 @@ import { cn } from "@/lib/utils"
 import { ClerkProvider } from "@clerk/nextjs"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import type { Metadata, Viewport } from "next"
-import { Inter, Syne, Outfit } from "next/font/google"
+import localFont from "next/font/local"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"] })
-const syne = Syne({ subsets: ["latin"], variable: "--font-syne", display: "swap" })
-const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit", display: "swap" })
+const inter = localFont({
+  src: "./fonts/inter-latin-wght-normal.woff2",
+  variable: "--font-inter",
+  display: "swap",
+})
+const syne = localFont({
+  src: "./fonts/syne-latin-wght-normal.woff2",
+  variable: "--font-syne",
+  display: "swap",
+})
+const outfit = localFont({
+  src: "./fonts/outfit-latin-wght-normal.woff2",
+  variable: "--font-outfit",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: {
@@ -149,10 +161,11 @@ export const viewport: Viewport = {
   ],
 }
 
-// REMOVED: force-dynamic was here but it causes ALL pages to skip caching
-// This should be applied selectively to pages that need real-time data
-// (e.g., dashboard, active workout sessions) - not to the entire app
-// Individual pages can add: export const dynamic = 'force-dynamic'
+// ClerkProvider wraps the entire app, which requires NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+// at render time. No page can be statically prerendered without it, so all routes
+// must be dynamic. To enable SSG for marketing pages, they would need to be moved
+// outside the ClerkProvider boundary.
+export const dynamic = "force-dynamic"
 
 export default function RootLayout({
   children
@@ -219,13 +232,7 @@ export default function RootLayout({
           <meta name="msapplication-TileImage" content="/icons/ms-icon-144x144.png" />
           <meta name="msapplication-config" content="/browserconfig.xml" />
           
-          {/* Preload critical resources */}
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-          
-          {/* Performance hints */}
-          <link rel="dns-prefetch" href="//fonts.googleapis.com" />
-          <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+          {/* Fonts are self-hosted via next/font/local - no external font requests needed */}
         </head>
         <body
           className={cn(
