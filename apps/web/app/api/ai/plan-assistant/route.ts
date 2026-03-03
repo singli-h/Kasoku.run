@@ -383,7 +383,7 @@ export async function POST(req: Request) {
 
     // Stream response with responsive reasoning and dynamic tool filtering
     const result = streamText({
-      model: openai('gpt-5.2'),
+      model: openai('gpt-5.3'),
       maxOutputTokens: 16384,
       system: systemPrompt,
       messages: modelMessages,

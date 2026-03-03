@@ -103,7 +103,11 @@ export const createWorkoutLogSetChangeRequestSchema = z.object({
     .transform(emptyNumToUndefined)
     .describe('Resistance level'),
   reasoning: z.string().describe('Why this performance is being logged'),
-})
+}).refine(
+  (data) => data.reps !== undefined || data.weight !== undefined ||
+            data.distance !== undefined || data.performingTime !== undefined,
+  { message: 'At least one of reps, weight, distance, or performingTime is required when creating a set.' }
+)
 
 export type CreateWorkoutLogSetInput = z.infer<typeof createWorkoutLogSetChangeRequestSchema>
 

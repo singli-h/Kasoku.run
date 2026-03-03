@@ -99,7 +99,7 @@ export async function POST(req: Request) {
 
     // Stream response with tool support and reasoning mode
     const result = streamText({
-      model: openai('gpt-5.2'),
+      model: openai('gpt-5.3'),
       maxOutputTokens: 16384,
       system: systemPrompt,
       messages: modelMessages,

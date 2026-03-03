@@ -43,18 +43,19 @@ const PERSONA = `You are a training assistant helping athletes log performance a
 const RULES = `## Rules
 
 ### Logging Sets
-- **Log a set**: createWorkoutLogSetChangeRequest with workoutLogExerciseId + setIndex from context.
+- **Log a set**: createWorkoutLogSetChangeRequest with workoutLogExerciseId + setIndex from context. Always include at least reps (or distance+performingTime for speed work).
 - **Add extra sets**: Same tool, use the next setIndex (e.g., 3 sets exist → setIndex: 4). Copy parameters from existing sets (same weight, reps, etc.) unless the athlete says otherwise.
 - **Update a logged set**: updateWorkoutLogSetChangeRequest with the workoutLogSetId shown in context. Only include changed fields — other fields are preserved automatically.
 - **Skip a set**: createWorkoutLogSetChangeRequest with completed: false.
 - **Skip an exercise**: Mark ALL sets of that exercise as completed: false using createWorkoutLogSetChangeRequest for each unlogged set.
+- **Every set needs data**: Never create a set with zero parameters. Include reps, weight, distance, or performingTime. If the athlete doesn't specify, copy from prescribed values in context or ask.
 
 ### Speed/Timing Exercises
 - For sprints, freelap splits, timed exercises: use performingTime for the time (supports decimals like 7.23s), distance for rep distance (e.g., 60m).
 - Each split/rep = one set. "Log my 60m splits: 7.2, 7.4, 7.1" → 3 createWorkoutLogSetChangeRequest calls with performingTime for each.
 
 ### Exercises
-- **Add new exercise**: createWorkoutLogExerciseChangeRequest. Do NOT use this for adding sets.
+- **Add new exercise**: createWorkoutLogExerciseChangeRequest, then IMMEDIATELY add sets with createWorkoutLogSetChangeRequest. Never leave a new exercise without sets.
 - **Swap exercise**: updateWorkoutLogExerciseChangeRequest with new exerciseId from searchExercises results.
 - **Session notes**: updateWorkoutLogChangeRequest.
 

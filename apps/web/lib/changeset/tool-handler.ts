@@ -18,7 +18,7 @@ import {
   isCoordinationTool,
   isReadTool,
 } from './parser'
-import { transformToolInput } from './transformations'
+import { transformToolInput, validateChangeRequest } from './transformations'
 import { isTempId } from './buffer-utils'
 import type { ConfirmChangeSetInput, ResetChangeSetInput } from './tools'
 
@@ -227,6 +227,9 @@ function handleProposalTool(
           { sessionId: context.sessionId, changesetId }
         )
 
+        // Validate before buffering (same as single-request path)
+        validateChangeRequest(changeRequest)
+
         console.log(`[ProposalTool] ChangeRequest ${i + 1}/${setCount}:`, JSON.stringify(changeRequest, null, 2))
         context.changeSet.upsert(changeRequest)
 
@@ -251,6 +254,9 @@ function handleProposalTool(
       { ...args, reasoning: args.reasoning as string },
       { sessionId: context.sessionId, changesetId }
     )
+
+    // Validate the change request before buffering
+    validateChangeRequest(changeRequest)
 
     // Log the resulting ChangeRequest
     console.log(`[ProposalTool] ChangeRequest:`, JSON.stringify(changeRequest, null, 2))
@@ -290,6 +296,11 @@ function handleCoordinationTool(
   context: ToolHandlerContext
 ): ToolHandlerResult | 'PAUSE' {
   if (toolName === 'confirmChangeSet') {
+    // Validate: every new exercise must have at least one set
+    const validationError = validateExercisesHaveSets(context)
+    if (validationError) {
+      return validationError
+    }
     return handleConfirmChangeSet(args as ConfirmChangeSetInput, context)
   }
 
@@ -525,6 +536,47 @@ function extractTempIdForDeletion(
   // The entityId might be like "exercise:temp-550e8400-...:set:1"
   if (entityId && entityId.startsWith('exercise:temp-')) {
     return entityId
+  }
+
+  return null
+}
+
+/**
+ * Validates that every newly created exercise in the changeset buffer has at least one set.
+ * Called before confirmChangeSet to give the AI a chance to self-correct.
+ *
+ * @returns ToolHandlerResult error if validation fails, null if valid
+ */
+function validateExercisesHaveSets(
+  context: ToolHandlerContext
+): ToolHandlerResult | null {
+  const buffer = context.changeSet.snapshot()
+
+  const exerciseEntityTypes = ['session_plan_exercise', 'workout_log_exercise']
+  const setEntityTypes = ['session_plan_set', 'workout_log_set']
+
+  const newExercises = buffer.filter(
+    r => r.operationType === 'create' && exerciseEntityTypes.includes(r.entityType)
+  )
+
+  for (const exercise of newExercises) {
+    const hasSet = buffer.some(r => {
+      if (r.operationType !== 'create' || !setEntityTypes.includes(r.entityType)) return false
+      // Check if the set's parent exercise ID matches this exercise's entityId
+      const rawData = r.proposedData as Record<string, unknown> | null
+      const parentId = (
+        rawData?.session_plan_exercise_id ??
+        rawData?.workout_log_exercise_id
+      ) as string | undefined
+      return parentId === exercise.entityId
+    })
+
+    if (!hasSet) {
+      return {
+        success: false,
+        error: `The new exercise has no sets. Every exercise must have at least one set. Please add sets using createSessionPlanSetChangeRequest or createWorkoutLogSetChangeRequest before confirming.`,
+      }
+    }
   }
 
   return null

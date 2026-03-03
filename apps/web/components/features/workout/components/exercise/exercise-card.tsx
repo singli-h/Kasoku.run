@@ -154,7 +154,11 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
   // Handle set completion toggle
   const toggleSetCompletion = (setIndex: number) => {
     const detail = exercise.workout_log_sets?.[setIndex]
-    if (!detail?.id) return // Need a valid detail ID
+    if (!detail?.id) {
+      // New set without DB ID — toggle via local state update
+      updateSetData(setIndex, 'completed', !detail?.completed)
+      return
+    }
 
     toggleSetComplete(exercise.id, detail.id)
   }
@@ -395,6 +399,19 @@ export function ExerciseCard({ exercise, className, isSuperset = false }: Exerci
             )
           })}
         </div>
+      )}
+
+      {/* Add Set Button */}
+      {!exercise.completed && (
+        <button
+          onClick={() => {
+            const nextIndex = sets.length
+            updateSetData(nextIndex, 'set_index', nextIndex + 1)
+          }}
+          className="w-full py-1.5 px-1 text-xs text-muted-foreground hover:text-primary hover:bg-muted/50 transition-colors flex items-center justify-center gap-1"
+        >
+          <span className="text-sm">+</span> Add Set
+        </button>
       )}
 
       {/* Video Embed (if enabled and available) */}

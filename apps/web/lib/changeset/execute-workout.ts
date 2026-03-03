@@ -80,7 +80,10 @@ export async function executeWorkoutChangeSet(
       }
     }
 
-    // Map to track temp IDs → real IDs for new entities
+    // Map to track temp IDs → real IDs for new entities.
+    // SAFETY NOTE: Concurrent writes in Phase 1 are safe because applyWorkoutSetChange
+    // uses UUID-stripping (stripTempPrefix) to resolve IDs, NOT idMappings lookups.
+    // idMappings is populated for backward compatibility only.
     const idMappings: Record<string, string> = {}
 
     // Sort by execution order (exercises before sets)
@@ -88,28 +91,45 @@ export async function executeWorkoutChangeSet(
       (a, b) => a.executionOrder - b.executionOrder
     )
 
-    // Process each change request
-    // NOTE: proposedData is already in snake_case format from transformations
-    // We use it directly to avoid conversion bugs with field name mappings
-    for (const request of sortedRequests) {
-      console.log(`[executeWorkoutChangeSet] Processing: ${request.operationType} ${request.entityType} (entityId: ${request.entityId})`)
+    // Phased parallel execution: exercises must exist before their sets (FK dependency),
+    // but operations within each phase are independent and can run concurrently.
+    // NOTE: proposedData is already in snake_case format from transformations.
 
-      // Use snake_case data directly - no conversion needed
-      const proposedData = request.proposedData
+    // Phase 1: Create exercises (parallel — independent of each other)
+    const exerciseCreates = sortedRequests.filter(
+      r => r.entityType === 'workout_log_exercise' && r.operationType === 'create'
+    )
+    if (exerciseCreates.length > 0) {
+      console.log(`[executeWorkoutChangeSet] Phase 1: Creating ${exerciseCreates.length} exercise(s) in parallel`)
+      await Promise.all(
+        exerciseCreates.map(r => applyWorkoutExerciseChange(r, r.proposedData, idMappings, workoutLogId))
+      )
+    }
 
-      switch (request.entityType) {
-        case 'workout_log_exercise':
-          await applyWorkoutExerciseChange(request, proposedData, idMappings, workoutLogId)
-          break
+    // Phase 2: Set operations (parallel — upsert by set_index, independent across exercises)
+    const setOps = sortedRequests.filter(
+      r => r.entityType === 'workout_log_set'
+    )
+    if (setOps.length > 0) {
+      console.log(`[executeWorkoutChangeSet] Phase 2: Processing ${setOps.length} set operation(s) in parallel`)
+      await Promise.all(
+        setOps.map(r => applyWorkoutSetChange(r, r.proposedData, idMappings))
+      )
+    }
 
-        case 'workout_log_set':
-          await applyWorkoutSetChange(request, proposedData, idMappings)
-          break
-
-        case 'workout_log':
-          await applyWorkoutLogChange(request, proposedData, workoutLogId)
-          break
-      }
+    // Phase 3: Exercise updates/deletes + log updates (parallel — order doesn't matter)
+    const remaining = sortedRequests.filter(
+      r => !exerciseCreates.includes(r) && !setOps.includes(r)
+    )
+    if (remaining.length > 0) {
+      console.log(`[executeWorkoutChangeSet] Phase 3: Processing ${remaining.length} remaining operation(s) in parallel`)
+      await Promise.all(
+        remaining.map(r => {
+          if (r.entityType === 'workout_log_exercise') return applyWorkoutExerciseChange(r, r.proposedData, idMappings, workoutLogId)
+          if (r.entityType === 'workout_log') return applyWorkoutLogChange(r, r.proposedData, workoutLogId)
+          return Promise.resolve()
+        })
+      )
     }
 
     // Note: Revalidation is handled by:

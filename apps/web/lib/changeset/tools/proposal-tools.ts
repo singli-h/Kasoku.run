@@ -204,7 +204,11 @@ export const createSetChangeRequestSchema = z.object({
   rpe: z.number().int().min(1).max(10).optional().transform(emptyNumToUndefined).describe('Rate of Perceived Exertion (1-10)'),
   tempo: z.string().optional().transform(emptyToUndefined).describe("Tempo string format: 'eccentric-pause-concentric-pause' (e.g., '3-0-2-0')"),
   reasoning: z.string().describe('Why these sets are being added'),
-})
+}).refine(
+  (data) => data.reps !== undefined || data.weight !== undefined ||
+            data.distance !== undefined || data.performingTime !== undefined,
+  { message: 'At least one of reps, weight, distance, or performingTime is required when creating a set.' }
+)
 
 export type CreateSetInput = z.infer<typeof createSetChangeRequestSchema>
 

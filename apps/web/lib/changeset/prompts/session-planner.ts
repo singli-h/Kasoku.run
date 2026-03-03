@@ -89,7 +89,8 @@ These rules must always be followed:
 
 - **Call confirmChangeSet()** when you have changes ready for review. Provide a clear title and description.
 - **Use resetChangeSet()** to clear all pending changes and start fresh.
-- **For new exercises with sets**: Create the exercise first, then use the returned entityId (e.g., "temp-550e8400-...") as sessionPlanExerciseId when creating sets.
+- **For new exercises with sets**: Create the exercise first, then IMMEDIATELY add sets using createSessionPlanSetChangeRequest with the returned entityId (e.g., "temp-550e8400-...") as sessionPlanExerciseId. Never leave a new exercise without sets.
+- **Every set needs data**: Always include at least reps (or distance+performingTime for speed work). If the user says "add 3 sets of face pull" without specifying parameters, use reasonable defaults (e.g., 10-12 reps for accessories, 5-8 reps for compounds) and include restTime (60-90s).
 - **For existing exercises**: Use their numeric ID from the session context.
 - **Never omit sessionPlanExerciseId** when creating sets - the system needs it to associate sets with exercises.`
 
@@ -176,13 +177,26 @@ const EXERCISE_GROUPING = `## Exercise Grouping
 
 /**
  * Builds the context section with current session state.
+ * Shows full set details (reps, weight, RPE, rest, etc.) so the AI
+ * can see current values without needing to call getSessionContext.
  */
 function buildContextSection(context: SessionContext): string {
   const exerciseList = context.exercises
     .map((ex, idx) => {
-      const setCount = ex.sets.length
-      const setInfo = setCount > 0 ? `${setCount} sets` : 'no sets'
-      return `${idx + 1}. ${ex.exerciseName} (ID: ${ex.id}) - ${setInfo}`
+      const setDetails = ex.sets.length > 0
+        ? ex.sets.map(set => {
+            const parts: string[] = []
+            if (set.reps != null) parts.push(`${set.reps} reps`)
+            if (set.weight != null) parts.push(`${set.weight}kg`)
+            if (set.distance != null) parts.push(`${set.distance}m`)
+            if (set.performingTime != null) parts.push(`${set.performingTime}s`)
+            if (set.rpe != null) parts.push(`RPE ${set.rpe}`)
+            if (set.restTime != null) parts.push(`rest ${set.restTime}s`)
+            if (set.tempo) parts.push(`tempo ${set.tempo}`)
+            return `Set ${set.setIndex}: ${parts.join(' × ') || 'not specified'}`
+          }).join('; ')
+        : 'no sets'
+      return `${idx + 1}. ${ex.exerciseName} (ID: ${ex.id})\n   ${setDetails}`
     })
     .join('\n')
 

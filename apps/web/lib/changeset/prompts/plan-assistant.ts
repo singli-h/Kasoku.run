@@ -154,7 +154,8 @@ For block-wide changes: summarize scope first ("X exercises across Y weeks"), ap
 const RULES = `## Rules
 
 ### Tool Usage
-- **Add exercise**: createSessionPlanExerciseChangeRequest. Then use the returned entityId (e.g., "temp-...") as sessionPlanExerciseId when creating sets.
+- **Add exercise**: createSessionPlanExerciseChangeRequest, then IMMEDIATELY add sets using createSessionPlanSetChangeRequest with the returned entityId (e.g., "temp-...") as sessionPlanExerciseId. Never leave a new exercise without sets.
+- **Every set needs data**: Always include at least reps (or distance+performingTime for speed work). If the user doesn't specify parameters, use reasonable defaults (e.g., 10-12 reps for accessories, 5-8 reps for compounds) and include restTime and applicable fields using your professional knowledge.
 - **Swap exercise**: updateSessionPlanExerciseChangeRequest with new exerciseId from searchExercises.
 - **Add/update sets**: Always include sessionPlanExerciseId (use numeric ID from context for existing exercises).
 - **Session metadata**: updateSessionPlanChangeRequest for name/description.

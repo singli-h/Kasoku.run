@@ -184,9 +184,12 @@ function applyChangesToExercises(
     }
   }
 
-  // Report orphaned sets as warnings (but don't fail the execution)
+  // Fail execution if sets cannot be matched to exercises
   if (orphanedSets.length > 0) {
-    console.error(`[applyChanges] ${orphanedSets.length} set(s) could not be grouped with exercises. These sets will be lost.`)
+    console.error(`[applyChanges] ${orphanedSets.length} set(s) could not be grouped with exercises.`)
+    throw new Error(
+      `${orphanedSets.length} set(s) could not be matched to an exercise. This usually means the AI referenced an invalid exercise ID. Please try again.`
+    )
   }
 
   if (DEBUG_EXEC) {
