@@ -252,7 +252,6 @@ export const SetDetailsSchema = z.object({
     .optional()
     .nullable(),
   performing_time: z.number()
-    .int("Performing time must be an integer")
     .min(0, "Performing time must be 0 or greater")
     .optional()
     .nullable(),

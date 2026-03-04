@@ -80,7 +80,7 @@ const REASONING_BY_INTENT: Record<QueryIntent, 'none' | 'low' | 'medium'> = {
 // Patterns for classifying user intent
 // Order matters: modify checked first, then question, then default to log
 const QUESTION_PATTERNS = /\b(why|what|how|explain|recommend|suggest|should i|tell me|difference|better|worse|benefit|alternative|technique|form|injur|pain|hurt|find|search|show me|give me)/i
-const MODIFY_PATTERNS = /\b(swap|replace|switch|instead|change exercise|remove exercise|reorder|superset|drop set)\b/i
+const MODIFY_PATTERNS = /\b(swap|replace|switch|instead|change exercise|remove exercise|remove set|delete|reorder|superset|drop set|undo)\b/i
 
 /**
  * Classify the user's latest message to determine reasoning effort and active tools.

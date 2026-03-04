@@ -102,6 +102,13 @@ export const createWorkoutLogSetChangeRequestSchema = z.object({
     .optional()
     .transform(emptyNumToUndefined)
     .describe('Resistance level'),
+  effort: z
+    .number()
+    .min(0)
+    .max(100)
+    .optional()
+    .transform(emptyNumToUndefined)
+    .describe('Effort percentage (0-100)'),
   reasoning: z.string().describe('Why this performance is being logged'),
 }).refine(
   (data) => data.reps !== undefined || data.weight !== undefined ||
@@ -185,6 +192,13 @@ export const updateWorkoutLogSetChangeRequestSchema = z.object({
     .number()
     .optional()
     .transform(emptyNumToUndefined),
+  effort: z
+    .number()
+    .min(0)
+    .max(100)
+    .optional()
+    .transform(emptyNumToUndefined)
+    .describe('Corrected effort percentage (0-100)'),
   reasoning: z.string().describe('Why this correction is being made'),
 })
 
