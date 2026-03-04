@@ -508,7 +508,7 @@ export function ExerciseCard({
               />
             ))}
 
-            {!isAthlete && (
+            {onAddSet && (
               <button
                 onClick={onAddSet}
                 className="w-full flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground hover:text-primary border border-dashed border-border rounded-lg hover:border-primary transition-colors"

@@ -252,6 +252,44 @@ function WorkoutSessionContentV2({
     updateExercise(exerciseId as string, { workout_log_sets: updatedSets })
   }, [exercises, updateExercise])
 
+  // Handle add set to an exercise
+  const handleAddSet = useCallback((exerciseId: number | string) => {
+    const exercise = exercises.find(e => e.id === exerciseId)
+    if (!exercise) return
+
+    const existingSets = exercise.workout_log_sets || []
+    const nextIndex = existingSets.length + 1
+
+    const newSet: WorkoutLogSet = {
+      id: '',
+      workout_log_id: '',
+      workout_log_exercise_id: String(exerciseId),
+      session_plan_exercise_id: '',
+      set_index: nextIndex,
+      completed: false,
+      reps: null,
+      weight: null,
+      performing_time: null,
+      distance: null,
+      power: null,
+      velocity: null,
+      effort: null,
+      height: null,
+      resistance: null,
+      resistance_unit_id: null,
+      tempo: null,
+      metadata: null,
+      rpe: null,
+      rest_time: null,
+      created_at: null,
+      updated_at: null,
+    }
+
+    updateExercise(exerciseId as string, {
+      workout_log_sets: [...existingSets, newSet]
+    })
+  }, [exercises, updateExercise])
+
   // Handle update set
   const handleUpdateSet = useCallback((
     exerciseId: number | string,
@@ -432,6 +470,7 @@ function WorkoutSessionContentV2({
         onFinishSession={handleFinishSession}
         onSaveSession={handleSaveSession}
         onAbandonSession={handleAbandonSession}
+        onAddSet={handleAddSet}
         aiChangesByExercise={aiChangesByExercise}
       />
 

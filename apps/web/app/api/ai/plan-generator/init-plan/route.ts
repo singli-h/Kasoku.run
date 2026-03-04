@@ -101,7 +101,7 @@ export async function POST(req: Request) {
 
     // Stream response with GPT-5.3 thinking mode for deep reasoning
     const result = streamText({
-      model: openai('gpt-5.3'),
+      model: openai('gpt-5.2'),
       maxOutputTokens: 32768,
       system: PLANNING_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
