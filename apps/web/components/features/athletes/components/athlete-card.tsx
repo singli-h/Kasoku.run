@@ -168,8 +168,11 @@ export function AthleteCard({
             )}
           </div>
 
-          {events.length > 0 && (
+          {(events.length > 0 || athlete.event_group) && (
             <div className="flex items-center gap-1.5 mt-1">
+              {athlete.event_group && (
+                <span className="px-1.5 py-0 bg-muted rounded text-[10px] font-mono h-5 inline-flex items-center">{athlete.event_group}</span>
+              )}
               {events.slice(0, 3).map((event, idx) => (
                 <Badge key={idx} variant="secondary" className="text-[10px] px-1.5 py-0 h-5 font-normal">
                   {event}

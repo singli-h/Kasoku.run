@@ -147,7 +147,6 @@ export function createMesocycleMetadata(input: Partial<MesocycleMetadata>): Meso
 
 export interface MacrocycleWithDetails extends Macrocycle {
   mesocycles?: MesocycleWithDetails[]
-  athlete_group?: AthleteGroup | null
   user?: any // User type from other modules
 }
 
@@ -208,7 +207,6 @@ export interface CreateMacrocycleForm {
   description?: string
   start_date: string
   end_date: string
-  athlete_group_id?: number
 }
 
 export interface CreateMesocycleForm {
@@ -226,6 +224,7 @@ export interface CreateMicrocycleForm {
   start_date: string
   end_date: string
   mesocycle_id?: number
+  athlete_group_id?: number | null
   sessions?: CreateSessionForm[]
 }
 

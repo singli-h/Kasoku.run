@@ -12,6 +12,7 @@ export interface MicrocycleFormData {
   id?: number
   mesocycle_id?: number | null
   user_id?: number | null
+  athlete_group_id?: number | null
   name: string | null
   description: string | null
   start_date: string | null

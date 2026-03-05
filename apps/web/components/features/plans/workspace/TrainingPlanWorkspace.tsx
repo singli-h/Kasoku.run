@@ -5,7 +5,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, ChevronRight, Plus, Edit, Trash2 } from "lucide-react"
+import { Calendar, ChevronRight, Plus, Edit, Trash2, Sparkles } from "lucide-react"
 import { EditMesocycleDialog, type MesocycleFormData } from "./components/EditMesocycleDialog"
 import { EditMicrocycleDialog, type MicrocycleFormData } from "./components/EditMicrocycleDialog"
 import { EditRaceDialog } from "./components/EditRaceDialog"
@@ -81,13 +81,14 @@ interface Event {
   date?: string
 }
 
-interface TrainingPlan {
+export interface TrainingPlan {
   macrocycle: {
     id: number
     name: string | null
     description: string | null
     start_date: string | null
     end_date: string | null
+    planning_context?: unknown | null
   }
   mesocycles: Mesocycle[]
   events: Event[]
@@ -102,6 +103,7 @@ type HistoryState = {
 interface TrainingPlanWorkspaceProps {
   initialPlan: TrainingPlan
   onPlanUpdate?: (plan: TrainingPlan) => void
+  onGenerateWeek?: (microcycleId: number) => void
 }
 
 /**
@@ -170,7 +172,7 @@ function isCurrentWeek(micro: Microcycle): boolean {
   return today >= startDate && today <= endDate
 }
 
-export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPlanWorkspaceProps) {
+export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, onGenerateWeek }: TrainingPlanWorkspaceProps) {
   const router = useRouter()
   const [plan, setPlan] = useState(initialPlan)
 
@@ -1091,17 +1093,30 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                   <div className="min-w-0 flex-1">
                     <h2 className="text-lg font-semibold truncate">{selectedMicro.name} Sessions</h2>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0 ml-2 bg-transparent"
-                    onClick={() => {
-                      setEditingSession(null)
-                      setSessionDialogOpen(true)
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    {onGenerateWeek && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 bg-transparent"
+                        onClick={() => onGenerateWeek(selectedMicro.id)}
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Generate
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="bg-transparent"
+                      onClick={() => {
+                        setEditingSession(null)
+                        setSessionDialogOpen(true)
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-3">
                   {selectedMicro.sessions.map((session) => {
@@ -1401,17 +1416,30 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate }: TrainingPla
                       <div className="min-w-0 flex-1">
                         <h2 className="text-lg font-semibold truncate">{selectedMicro.name} Sessions</h2>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="shrink-0 ml-2 bg-transparent"
-                        onClick={() => {
-                          setEditingSession(null)
-                          setSessionDialogOpen(true)
-                        }}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        {onGenerateWeek && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 bg-transparent"
+                            onClick={() => onGenerateWeek(selectedMicro.id)}
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Generate
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-transparent"
+                          onClick={() => {
+                            setEditingSession(null)
+                            setSessionDialogOpen(true)
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-3">
                       {selectedMicro.sessions.map((session) => {

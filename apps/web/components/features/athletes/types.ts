@@ -12,6 +12,7 @@ export interface AthleteWithDetails {
   height: number | null
   training_goals: string | null
   weight: number | null
+  event_group?: string | null
   user?: {
     id: number
     first_name: string | null

@@ -43,6 +43,10 @@ Be efficient — build the complete Week 1 before confirming.`
 export function getPlanGeneratorSystemPrompt(options?: {
   mesocycleId?: string
   mesocycleName?: string
+  planningContext?: string
+  phaseContext?: string
+  recentInsights?: string[]
+  athleteEventGroups?: string[]
 }): string {
   let prompt = PLAN_GENERATOR_SYSTEM_PROMPT
 
@@ -52,6 +56,19 @@ export function getPlanGeneratorSystemPrompt(options?: {
 - Name: ${options.mesocycleName ?? 'Training Program'}
 
 Use this mesocycle_id when creating microcycles.`
+  }
+
+  if (options?.planningContext) {
+    prompt += `\n\n## Season Planning Context\n${options.planningContext}`
+  }
+  if (options?.phaseContext) {
+    prompt += `\n\n## Current Phase Focus\n${options.phaseContext}`
+  }
+  if (options?.recentInsights?.length) {
+    prompt += `\n\n## Recent Weeks\n` + options.recentInsights.join('\n')
+  }
+  if (options?.athleteEventGroups?.length) {
+    prompt += `\n\n## Athletes: ${options.athleteEventGroups.join(', ')} specialists`
   }
 
   return prompt

@@ -2,9 +2,10 @@ import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
-import { MesoWizard } from "@/components/features/plans/components/mesowizard/MesoWizard"
 import { QuickStartWizard } from "@/components/features/plans/components/mesowizard/QuickStartWizard"
+import { CoachSeasonWizard } from "@/components/features/plans/coach-wizard/CoachSeasonWizard"
 import { hasActiveTrainingBlockAction } from "@/actions/plans/plan-actions"
+import { getCoachAthleteGroupsAction } from "@/actions/athletes/athlete-actions"
 
 export default async function NewPlanPage() {
   // Protect this page and get user role in a single call
@@ -20,11 +21,19 @@ export default async function NewPlanPage() {
     }
   }
 
+  // For coaches, fetch groups for the wizard
+  let coachGroups: Array<{ id: number; name: string }> = []
+  if (!isIndividual) {
+    const groupsResult = await getCoachAthleteGroupsAction()
+    coachGroups = (groupsResult.isSuccess ? groupsResult.data ?? [] : [])
+      .map(g => ({ id: g.id, name: g.group_name ?? `Group ${g.id}` }))
+  }
+
   // Terminology based on role
-  const pageTitle = isIndividual ? "Create Training Block" : "Create New Training Plan"
+  const pageTitle = isIndividual ? "Create Training Block" : "Create New Season Plan"
   const pageDescription = isIndividual
     ? "Set up your personalized training block"
-    : "Design a new macrocycle, mesocycle, or microcycle"
+    : "Create a new training season plan with AI-assisted setup"
 
   return (
     <PageLayout
@@ -32,7 +41,7 @@ export default async function NewPlanPage() {
       description={pageDescription}
     >
       <Suspense fallback={<UnifiedPageSkeleton title="Create Plan" variant="form" />}>
-        {isIndividual ? <QuickStartWizard /> : <MesoWizard />}
+        {isIndividual ? <QuickStartWizard /> : <CoachSeasonWizard coachGroups={coachGroups} />}
       </Suspense>
     </PageLayout>
   )

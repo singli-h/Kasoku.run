@@ -70,6 +70,10 @@ interface PlanAssistantPromptParams {
   selectedWeekId?: number | null
   selectedSessionId?: string | null
   selectedExerciseId?: string | null
+  planningContext?: string
+  phaseContext?: string
+  recentInsights?: string[]
+  athleteEventGroups?: string[]
 }
 
 /**
@@ -87,13 +91,28 @@ export function buildPlanAssistantSystemPrompt(params: PlanAssistantPromptParams
   const contextSection = buildContextSection(params)
   const levelGuidance = buildLevelGuidance(params.aiContextLevel)
 
-  return `${PERSONA}
+  let prompt = `${PERSONA}
 
 ${levelGuidance}
 
 ${RULES}
 
 ${contextSection}`
+
+  if (params.planningContext) {
+    prompt += `\n\n## Season Planning Context\n${params.planningContext}`
+  }
+  if (params.phaseContext) {
+    prompt += `\n\n## Current Phase Focus\n${params.phaseContext}`
+  }
+  if (params.recentInsights?.length) {
+    prompt += `\n\n## Recent Weeks\n` + params.recentInsights.join('\n')
+  }
+  if (params.athleteEventGroups?.length) {
+    prompt += `\n\n## Athletes: ${params.athleteEventGroups.join(', ')} specialists`
+  }
+
+  return prompt
 }
 
 const PERSONA = `You are a strength and conditioning coach assistant helping manage training plans. Be concise and action-oriented. Propose changes using tools, then call confirmChangeSet for review.`

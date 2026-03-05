@@ -47,7 +47,6 @@ export function PlanReview({ planData, onBack, onComplete }: PlanReviewProps) {
           description: planData.description || '',
           start_date: format(planData.startDate, 'yyyy-MM-dd'),
           end_date: format(planData.endDate, 'yyyy-MM-dd'),
-          athlete_group_id: planData.athleteGroupId || undefined,
         })
       } else if (planData.type === 'mesocycle') {
         if (!planData.macrocycleId) {

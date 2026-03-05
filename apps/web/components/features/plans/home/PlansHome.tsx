@@ -118,7 +118,7 @@ export async function PlansHome() {
       id: macro.id!.toString(),
       name: macro.name || "Untitled Plan",
       state: computedState,
-      group: macro.athlete_group?.group_name || undefined,
+      group: undefined, // athlete_group_id moved to microcycles
       start: macro.start_date!,
       end: macro.end_date!,
       raceAnchors,

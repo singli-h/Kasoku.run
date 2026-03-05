@@ -39,11 +39,6 @@ export const MacrocycleSchema = z.object({
     .regex(dateRegex, dateMessage),
   end_date: z.string()
     .regex(dateRegex, dateMessage),
-  athlete_group_id: z.number()
-    .int("Athlete group ID must be an integer")
-    .positive("Athlete group ID must be positive")
-    .optional()
-    .nullable()
 }).refine(validateDateRange, {
   message: "End date must be after start date",
   path: ["end_date"]
@@ -96,7 +91,12 @@ export const MicrocycleSchema = z.object({
     .regex(dateRegex, dateMessage),
   mesocycle_id: z.number()
     .int("Mesocycle ID must be an integer")
-    .positive("Mesocycle ID must be positive")
+    .positive("Mesocycle ID must be positive"),
+  athlete_group_id: z.number()
+    .int("Athlete group ID must be an integer")
+    .positive("Athlete group ID must be positive")
+    .optional()
+    .nullable()
 }).refine(validateDateRange, {
   message: "End date must be after start date",
   path: ["end_date"]

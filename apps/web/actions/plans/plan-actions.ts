@@ -158,7 +158,6 @@ export async function createMacrocycleAction(
       description: formData.description || null,
       start_date: formData.start_date,
       end_date: formData.end_date,
-      athlete_group_id: formData.athlete_group_id || null,
       user_id: dbUserId
     }
 
@@ -211,7 +210,6 @@ export async function getMacrocyclesAction(): Promise<ActionState<MacrocycleWith
       .from('macrocycles')
       .select(`
         *,
-        athlete_group:athlete_groups(*),
         mesocycles(
           *,
           microcycles(
@@ -274,7 +272,6 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
       .from('macrocycles')
       .select(`
         *,
-        athlete_group:athlete_groups(*),
         races(
           id,
           name,
@@ -979,6 +976,7 @@ export async function createMicrocycleAction(
       start_date: formData.start_date,
       end_date: formData.end_date,
       mesocycle_id: formData.mesocycle_id || null,
+      athlete_group_id: formData.athlete_group_id ?? null,
       user_id: dbUserId
     }
 
@@ -1391,7 +1389,6 @@ export async function copyMacrocycleAsTemplateAction(
       description: originalMacrocycle.description,
       start_date: newStartDate,
       end_date: newEndDate,
-      athlete_group_id: athleteGroupId || null,
       user_id: dbUserId
     }
 
@@ -1458,6 +1455,7 @@ export async function copyMacrocycleAsTemplateAction(
               start_date: microStartDate.toISOString().split('T')[0],
               end_date: microEndDate.toISOString().split('T')[0],
               mesocycle_id: newMesocycle.id,
+              athlete_group_id: athleteGroupId || null,
               user_id: dbUserId
             }
 
@@ -1979,7 +1977,7 @@ export async function createQuickTrainingBlockAction(
     }
 
     // 1. Create the mesocycle (Training Block)
-    // Note: mesocycles don't have athlete_group_id - that's on macrocycles
+    // Note: mesocycles don't have athlete_group_id - that's on microcycles
     // Individual users create standalone mesocycles without parent macrocycle
     const mesocycleData: MesocycleInsert = {
       name: input.name,
@@ -2164,74 +2162,79 @@ export async function getAthleteAssignedPlanAction(): Promise<ActionState<Athlet
       return { isSuccess: true, message: "No group assigned", data: null }
     }
 
-    // 2. Get the most recent macrocycle assigned to this group
-    const { data: macrocycle, error: macroError } = await supabase
-      .from('macrocycles')
+    // 2. Find microcycles assigned to this group, walking up to get macrocycle name
+    const today = new Date().toISOString().split('T')[0]
+
+    const { data: microcycles, error: microError } = await supabase
+      .from('microcycles')
       .select(`
         id,
         name,
-        mesocycles (
+        start_date,
+        end_date,
+        mesocycles!inner (
           id,
           name,
-          start_date,
-          end_date,
-          microcycles (
+          macrocycles!inner (
             id,
-            name,
-            start_date,
-            end_date,
-            session_plans (
-              id,
-              name,
-              day,
-              week
-            )
+            name
           )
+        ),
+        session_plans (
+          id,
+          name,
+          day,
+          week
         )
       `)
       .eq('athlete_group_id', athlete.athlete_group_id)
       .order('start_date', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      .limit(10)
 
-    if (macroError) {
-      console.error('[getAthleteAssignedPlanAction] Macrocycle error:', macroError)
-      return { isSuccess: false, message: "Failed to fetch assigned plan" }
+    if (microError) {
+      console.error('[getAthleteAssignedPlanAction] Microcycle error:', microError)
+      return { isSuccess: false, message: 'Failed to fetch assigned plan' }
     }
 
-    if (!macrocycle) {
-      return { isSuccess: true, message: "No plan assigned to your group", data: null }
+    if (!microcycles || microcycles.length === 0) {
+      return { isSuccess: true, message: 'No plan assigned to your group', data: null }
     }
 
-    // 3. Flatten all session plan IDs and determine current week
-    const today = new Date().toISOString().split('T')[0]
-    const allMicrocycles = (macrocycle.mesocycles ?? [])
-      .flatMap(meso => meso.microcycles ?? [])
-      .sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''))
+    // Sort ascending for index logic
+    const sortedMicros = [...microcycles].sort((a, b) =>
+      (a.start_date ?? '').localeCompare(b.start_date ?? '')
+    )
 
-    const totalWeeks = allMicrocycles.length
+    const totalWeeks = sortedMicros.length
 
-    // Find the current week index (0-based) by checking which microcycle contains today
+    // Find the current week index
     let currentWeekIndex = 0
-    for (let i = 0; i < allMicrocycles.length; i++) {
-      const micro = allMicrocycles[i]
+    for (let i = 0; i < sortedMicros.length; i++) {
+      const micro = sortedMicros[i]
       if (micro.start_date && micro.end_date) {
         if (today >= micro.start_date && today <= micro.end_date) {
           currentWeekIndex = i
           break
         }
-        // If today is past this microcycle, advance
         if (today > micro.end_date) {
           currentWeekIndex = i + 1
         }
       }
     }
-    // Clamp to valid range
     currentWeekIndex = Math.min(currentWeekIndex, totalWeeks - 1)
     currentWeekIndex = Math.max(currentWeekIndex, 0)
 
-    // 4. Get sessions for current + next week
-    const relevantMicrocycles = allMicrocycles.slice(
+    // Extract macrocycle name via the joined chain
+    const firstMicro = sortedMicros[0]
+    const meso = Array.isArray(firstMicro.mesocycles)
+      ? firstMicro.mesocycles[0]
+      : firstMicro.mesocycles
+    const macro = meso
+      ? (Array.isArray(meso.macrocycles) ? meso.macrocycles[0] : meso.macrocycles)
+      : null
+
+    // 3. Get sessions for current + next week
+    const relevantMicrocycles = sortedMicros.slice(
       currentWeekIndex,
       Math.min(currentWeekIndex + 2, totalWeeks)
     )
@@ -2239,13 +2242,13 @@ export async function getAthleteAssignedPlanAction(): Promise<ActionState<Athlet
     const relevantSessions = relevantMicrocycles.flatMap(micro =>
       (micro.session_plans ?? []).map(sp => ({
         ...sp,
-        microIndex: allMicrocycles.indexOf(micro)
+        microIndex: sortedMicros.indexOf(micro)
       }))
     )
 
     const sessionPlanIds = relevantSessions.map(sp => sp.id)
 
-    // 5. Query workout_logs for this athlete to get completion status
+    // 4. Query workout_logs for this athlete to get completion status
     let logsBySessionPlanId: Record<string, string> = {}
     if (sessionPlanIds.length > 0) {
       const { data: logs, error: logError } = await supabase
@@ -2256,7 +2259,6 @@ export async function getAthleteAssignedPlanAction(): Promise<ActionState<Athlet
 
       if (logError) {
         console.error('[getAthleteAssignedPlanAction] Workout log error:', logError)
-        // Non-fatal — we can still show sessions without status
       }
 
       if (logs) {
@@ -2268,7 +2270,7 @@ export async function getAthleteAssignedPlanAction(): Promise<ActionState<Athlet
       }
     }
 
-    // 6. Build the response
+    // 5. Build the response
     const sessions: AthleteSessionView[] = relevantSessions.map(sp => {
       const logStatus = logsBySessionPlanId[sp.id]
       let status: AthleteSessionView['status']
@@ -2279,7 +2281,6 @@ export async function getAthleteAssignedPlanAction(): Promise<ActionState<Athlet
       } else if (logStatus === 'assigned') {
         status = 'assigned'
       } else {
-        // No workout_log → session is upcoming (not yet assigned/started)
         status = 'upcoming'
       }
 
@@ -2287,7 +2288,7 @@ export async function getAthleteAssignedPlanAction(): Promise<ActionState<Athlet
         id: sp.id,
         name: sp.name,
         day: sp.day,
-        week: sp.microIndex + 1, // 1-based week number
+        week: sp.microIndex + 1,
         status,
       }
     })
@@ -2296,8 +2297,8 @@ export async function getAthleteAssignedPlanAction(): Promise<ActionState<Athlet
       isSuccess: true,
       message: "Assigned plan retrieved",
       data: {
-        planName: macrocycle.name || 'Training Plan',
-        currentWeek: currentWeekIndex + 1, // 1-based
+        planName: macro?.name || 'Training Plan',
+        currentWeek: currentWeekIndex + 1,
         totalWeeks,
         sessions,
       }
@@ -2309,4 +2310,63 @@ export async function getAthleteAssignedPlanAction(): Promise<ActionState<Athlet
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
   }
-} 
+}
+
+// ============================================================================
+// PLANNING CONTEXT ACTIONS
+// ============================================================================
+
+/**
+ * Save planning context for a macrocycle (AI-facing season direction).
+ * planning_context is freeform JSONB -- AI reads it whole at inference time.
+ * Note: getMacrocycleByIdAction uses select('*') so planning_context is
+ * automatically returned without query changes.
+ */
+export async function saveMacroPlanningContextAction(
+  macrocycleId: number,
+  context: Record<string, unknown>
+): Promise<ActionState<void>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) return { isSuccess: false, message: 'Not authenticated' }
+    const dbUserId = await getDbUserId(userId)
+
+    const { error } = await supabase
+      .from('macrocycles')
+      .update({ planning_context: context as unknown as Json })
+      .eq('id', macrocycleId)
+      .eq('user_id', dbUserId)
+
+    if (error) return { isSuccess: false, message: error.message }
+    return { isSuccess: true, message: 'Context saved', data: undefined }
+  } catch (e) {
+    return { isSuccess: false, message: String(e) }
+  }
+}
+
+/**
+ * Save planning context for a mesocycle phase.
+ * Writes to mesocycles.planning_context (dedicated JSONB column, NOT metadata).
+ * metadata retains its own purpose: phase color, deload flag, UI state.
+ */
+export async function saveMesoPlanningContextAction(
+  mesocycleId: number,
+  planningContext: string
+): Promise<ActionState<void>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) return { isSuccess: false, message: 'Not authenticated' }
+    const dbUserId = await getDbUserId(userId)
+
+    const { error } = await supabase
+      .from('mesocycles')
+      .update({ planning_context: { text: planningContext } })
+      .eq('id', mesocycleId)
+      .eq('user_id', dbUserId)
+
+    if (error) return { isSuccess: false, message: error.message }
+    return { isSuccess: true, message: 'Phase context saved', data: undefined }
+  } catch (e) {
+    return { isSuccess: false, message: String(e) }
+  }
+}

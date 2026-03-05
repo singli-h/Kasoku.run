@@ -1,11 +1,13 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { TrainingPlanWorkspace } from "@/components/features/plans/workspace/TrainingPlanWorkspace"
+import { CoachPlanPageWithAI } from "@/components/features/plans/coach-workspace/CoachPlanPageWithAI"
 import { IndividualPlanPageWithAI } from "@/components/features/plans/individual"
 import { UnifiedPageSkeleton, PageLayout } from "@/components/layout"
 import { getMacrocycleByIdAction, getMesocycleByIdAction, getUserMesocyclesAction } from "@/actions/plans/plan-actions"
 import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
 import { getExercisesAction } from "@/actions/library/exercise-actions"
+import { getCoachAthleteGroupsAction } from "@/actions/athletes/athlete-actions"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { FeatureErrorBoundary } from "@/components/error-boundary"
 import type { MesocycleWithDetails } from "@/types/training"
@@ -56,6 +58,7 @@ interface MacrocycleData {
   description: string | null
   start_date: string | null
   end_date: string | null
+  planning_context?: unknown | null
   mesocycles?: MesocycleData[]
 }
 
@@ -126,11 +129,15 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
     )
   }
 
-  // For coaches, fetch macrocycle with full hierarchy
-  const [macrocycleResult, racesResult] = await Promise.all([
+  // For coaches, fetch macrocycle with full hierarchy + coach groups
+  const [macrocycleResult, racesResult, groupsResult] = await Promise.all([
     getMacrocycleByIdAction(planId),
-    getRacesByMacrocycleAction(planId)
+    getRacesByMacrocycleAction(planId),
+    getCoachAthleteGroupsAction()
   ])
+
+  const coachGroups = (groupsResult.isSuccess ? groupsResult.data ?? [] : [])
+    .map(g => ({ id: g.id, name: g.group_name ?? `Group ${g.id}` }))
 
   // Handle errors
   if (!macrocycleResult.isSuccess || !macrocycleResult.data) {
@@ -153,7 +160,8 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
       name: rawPlanData.name,
       description: rawPlanData.description,
       start_date: rawPlanData.start_date,
-      end_date: rawPlanData.end_date
+      end_date: rawPlanData.end_date,
+      planning_context: rawPlanData.planning_context ?? null
     },
     events: races.map(race => ({
       id: race.id,
@@ -228,7 +236,7 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
   return (
     <FeatureErrorBoundary featureName="Training Plan" customMessage="Something went wrong while loading your training plan. Please try again.">
       <Suspense fallback={<UnifiedPageSkeleton title="Training Plan" variant="grid" />}>
-        <TrainingPlanWorkspace initialPlan={planData} />
+        <CoachPlanPageWithAI initialPlan={planData} coachGroups={coachGroups} />
       </Suspense>
     </FeatureErrorBoundary>
   )

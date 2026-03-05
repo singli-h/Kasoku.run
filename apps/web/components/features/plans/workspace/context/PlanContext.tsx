@@ -10,7 +10,7 @@ interface PlanData {
     start_date: string | null
     end_date: string | null
     user_id: number | null
-    athlete_group_id: number | null
+    planning_context?: unknown | null
     created_at: string | null
   }
   mesocycles: Array<{

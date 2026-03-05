@@ -31,6 +31,10 @@ const PlanGeneratorRequestSchema = z.object({
   ).min(1).max(100),
   mesocycleId: z.coerce.number().int().positive('Mesocycle ID must be a positive integer'),
   mesocycleName: z.string().max(200).optional(),
+  planningContext: z.string().max(5000).optional(),
+  phaseContext: z.string().max(10000).optional(),
+  recentInsights: z.array(z.string().max(1000)).max(3).optional(),
+  athleteEventGroups: z.array(z.string().max(50)).max(10).optional(),
 })
 
 export async function POST(req: Request) {
@@ -83,7 +87,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const { messages, mesocycleId, mesocycleName } = validatedBody
+    const { messages, mesocycleId, mesocycleName, planningContext, phaseContext, recentInsights, athleteEventGroups } = validatedBody
 
     // Verify mesocycle ownership
     const { data: mesocycle, error: mesocycleError } = await supabase
@@ -100,10 +104,14 @@ export async function POST(req: Request) {
       return new Response('Forbidden', { status: 403 })
     }
 
-    // Build system prompt with mesocycle context
+    // Build system prompt with mesocycle context + optional planning context chain
     const systemPrompt = getPlanGeneratorSystemPrompt({
       mesocycleId: String(mesocycleId),
       mesocycleName: mesocycleName ?? mesocycle.name ?? undefined,
+      planningContext,
+      phaseContext,
+      recentInsights,
+      athleteEventGroups,
     })
 
     // Convert UI messages to model messages format

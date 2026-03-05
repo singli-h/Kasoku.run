@@ -216,25 +216,8 @@ export async function assignPlanToAthletesAction(
       return { isSuccess: false, message: `Failed to assign plan: ${errorDetail}` }
     }
 
-    // Update macrocycle to associate with groups if applicable
-    // This is non-critical metadata - don't fail the whole operation if it fails
-    if (input.groupIds && input.groupIds.length > 0) {
-      try {
-        // For now, just associate with the first group (MVP limitation)
-        const { error: macroUpdateError } = await supabase
-          .from('macrocycles')
-          .update({ athlete_group_id: input.groupIds[0] })
-          .eq('id', input.macrocycleId)
-
-        if (macroUpdateError) {
-          console.warn('[assignPlanToAthletesAction] Failed to update macrocycle group association:', macroUpdateError)
-          // Don't fail - workouts are assigned, this is just metadata
-        }
-      } catch (macroError) {
-        console.warn('[assignPlanToAthletesAction] Error updating macrocycle:', macroError)
-        // Don't fail - workouts are assigned
-      }
-    }
+    // Note: athlete_group_id now lives on microcycles (not macrocycles).
+    // Group association is set at microcycle creation time, not during assignment.
 
     // Revalidate relevant paths
     revalidatePath('/plans')
