@@ -51,8 +51,6 @@ export function CoachSeasonWizard({ coachGroups }: CoachSeasonWizardProps) {
 
       await saveMacroPlanningContextAction(macrocycleId, {
         text: state.planningContext,
-        groups: groupIds,
-        phases: state.phases,
       })
 
       router.push(`/plans/${macrocycleId}`)

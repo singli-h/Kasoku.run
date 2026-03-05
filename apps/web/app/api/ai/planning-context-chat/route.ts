@@ -18,7 +18,7 @@
  *   mode?:             'setup' | 'generate' | 'insights' (defaults to 'setup')
  */
 
-import { streamText, smoothStream, type UIMessage, convertToModelMessages } from 'ai'
+import { streamText, smoothStream, type ModelMessage } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
@@ -117,12 +117,18 @@ export async function POST(req: Request) {
       systemParts.push(`\n## Imported Training Document\n${validated.importText}`)
     }
 
-    const modelMessages = await convertToModelMessages(validated.messages as unknown as UIMessage[])
+    // Map validated messages directly to ModelMessage format.
+    // Unlike routes that receive UIMessage from useChat hook, this route
+    // receives simple {role, content} from a manual fetch call.
+    const messages: ModelMessage[] = validated.messages.map(m => ({
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+    }))
 
     const result = streamText({
       model: openai('gpt-4o'),
       system: systemParts.join('\n\n'),
-      messages: modelMessages,
+      messages,
       experimental_transform: smoothStream(),
     })
 

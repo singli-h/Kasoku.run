@@ -53,7 +53,7 @@ export function Step1Import({ onComplete }: Step1ImportProps) {
         />
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            MVP: AI extracts best-effort context. You can edit and refine after creation.
+            You can edit and refine this after creation in the Season Context panel.
           </p>
           <p className="text-xs text-muted-foreground tabular-nums">
             {context.length.toLocaleString()} / 10,000

@@ -52,7 +52,7 @@ export function Step3Groups({ coachGroups, onComplete, onBack, isCreating }: Ste
         <Button variant="outline" onClick={onBack} disabled={isCreating} className="flex-1">Back</Button>
         <Button
           onClick={() => onComplete(selected)}
-          disabled={isCreating}
+          disabled={isCreating || selected.length === 0}
           className="flex-1"
         >
           {isCreating ? 'Creating season...' : 'Create Season Plan'}

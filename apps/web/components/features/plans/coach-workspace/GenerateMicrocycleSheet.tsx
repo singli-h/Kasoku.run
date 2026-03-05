@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Sparkles, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Sparkles, Loader2, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react'
 import { getMicrocycleGenerationContextAction } from '@/actions/plans/generate-microcycle-action'
 import type { MicrocycleGenerationContext } from '@/actions/plans/generate-microcycle-action'
 import { useToast } from '@/hooks/use-toast'
@@ -28,6 +28,7 @@ export function GenerateMicrocycleSheet({
   const [generating, setGenerating] = useState(false)
   const [aiResponse, setAiResponse] = useState('')
   const [contextExpanded, setContextExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
   const { toast } = useToast()
 
   const loadContext = useCallback(async () => {
@@ -49,10 +50,17 @@ export function GenerateMicrocycleSheet({
     }
   }, [onOpenChange, context, loadContext])
 
+  async function handleCopy() {
+    await navigator.clipboard.writeText(aiResponse)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   async function handleGenerate() {
     if (!context) return
     setGenerating(true)
     setAiResponse('')
+    setCopied(false)
 
     const messages = [{
       role: 'user' as const,
@@ -136,14 +144,14 @@ export function GenerateMicrocycleSheet({
                   onClick={() => setContextExpanded(e => !e)}
                   className="w-full flex items-center justify-between px-3 py-2 text-sm text-left"
                 >
-                  <span className="font-medium text-muted-foreground">AI knows:</span>
+                  <span className="font-medium text-muted-foreground">AI context</span>
                   {contextExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
                 {contextExpanded && (
                   <div className="px-3 pb-3 space-y-1 text-xs text-muted-foreground">
                     {context.macroContext && <p>Season: {context.macroContext.slice(0, 100)}...</p>}
                     {context.mesoContext && <p>Phase: {context.mesoContext.slice(0, 80)}</p>}
-                    {context.athleteEventGroups.length > 0 && <p>Groups: {context.athleteEventGroups.join(', ')}</p>}
+                    {context.athleteEventGroups.length > 0 && <p>Events: {context.athleteEventGroups.join(', ')}</p>}
                     {context.upcomingRaces.length > 0 && <p>Races: {context.upcomingRaces.join(', ')}</p>}
                     {context.recentInsights.length > 0 && <p>Last {context.recentInsights.length} weeks loaded</p>}
                     {!context.macroContext && !context.mesoContext && (
@@ -168,13 +176,29 @@ export function GenerateMicrocycleSheet({
 
               {aiResponse && (
                 <div className="space-y-3">
-                  <div className="border rounded-lg p-4 bg-muted/30">
-                    <p className="text-xs text-muted-foreground mb-2 font-medium">AI Suggestion</p>
-                    <pre className="text-sm whitespace-pre-wrap font-mono leading-relaxed">{aiResponse}</pre>
+                  <div className="border rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                      <p className="text-xs text-muted-foreground font-medium">AI Suggestion</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCopy}
+                        className="h-7 gap-1 text-xs text-muted-foreground"
+                      >
+                        {copied ? <><Check className="h-3 w-3" />Copied</> : <><Copy className="h-3 w-3" />Copy</>}
+                      </Button>
+                    </div>
+                    <div className="px-4 pb-4">
+                      <pre className="text-sm whitespace-pre-wrap font-mono leading-relaxed">{aiResponse}</pre>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Review the suggestion above, then add sessions manually using the + button in the workspace.
-                  </p>
+
+                  <div className="bg-muted/50 rounded-lg px-3 py-2 text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium">Next steps:</p>
+                    <p>Use the <span className="font-mono bg-muted px-1 rounded">+</span> button in the workspace to create each session from this suggestion.</p>
+                    <p className="text-muted-foreground/70">Auto-create from AI output is coming soon.</p>
+                  </div>
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -182,8 +206,10 @@ export function GenerateMicrocycleSheet({
                     disabled={generating}
                     className="gap-1"
                   >
-                    <Sparkles className="h-3 w-3" />
-                    Regenerate
+                    {generating
+                      ? <><Loader2 className="h-3 w-3 animate-spin" />Regenerating...</>
+                      : <><Sparkles className="h-3 w-3" />Regenerate</>
+                    }
                   </Button>
                 </div>
               )}

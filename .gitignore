@@ -19,6 +19,10 @@ build
 .DS_Store
 *.pem
 
+# data files
+*.csv
+conversation.txt
+
 # debug
 npm-debug.log*
 yarn-debug.log*

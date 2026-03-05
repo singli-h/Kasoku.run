@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { AlertTriangle } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 import { TrainingPlanWorkspace, type TrainingPlan } from '../workspace/TrainingPlanWorkspace'
 import { SeasonContextPanel } from './SeasonContextPanel'
 import { GroupTabsBar } from './GroupTabsBar'
@@ -32,26 +33,16 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
   const [generateSheetOpen, setGenerateSheetOpen] = useState(false)
   const [selectedMicrocycleId, setSelectedMicrocycleId] = useState<number | null>(null)
-
-  // Extract planning_context text from the JSONB field
-  const planningContextText = (() => {
+  const [planningContext, setPlanningContext] = useState<string | null>(() => {
     const ctx = initialPlan.macrocycle.planning_context
     if (!ctx) return null
     if (typeof ctx === 'string') return ctx
     return (ctx as Record<string, unknown>)?.text as string ?? null
-  })()
+  })
+  const { toast } = useToast()
 
-  // Extract group IDs stored in planning_context by wizard
-  const storedGroupIds = (() => {
-    const ctx = initialPlan.macrocycle.planning_context as Record<string, unknown> | null
-    const groups = ctx?.groups
-    return Array.isArray(groups) ? groups as number[] : []
-  })()
-
-  // Prefer real group objects passed from the page server component
-  const coachGroups = propGroups && propGroups.length > 0
-    ? propGroups.filter(g => storedGroupIds.length === 0 || storedGroupIds.includes(g.id))
-    : storedGroupIds.map(id => ({ id, name: `Group ${id}` }))
+  // Use coach groups from server — no fallback to Group {id}
+  const coachGroups = propGroups ?? []
 
   return (
     <ErrorBoundary fallbackRender={({ error, resetErrorBoundary }) => (
@@ -61,7 +52,8 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
         <div className="px-4 pt-4">
           <SeasonContextPanel
             macrocycleId={initialPlan.macrocycle.id}
-            planningContext={planningContextText}
+            planningContext={planningContext}
+            onContextUpdate={setPlanningContext}
           />
           <GroupTabsBar
             groups={coachGroups}
@@ -74,7 +66,7 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
           initialPlan={initialPlan}
           onGenerateWeek={(microcycleId) => {
             if (selectedGroupId === null) {
-              alert('Select a group tab before generating a week.')
+              toast({ title: 'Select a group first', description: 'Pick a group tab above to generate sessions for that group.', variant: 'destructive' })
               return
             }
             setSelectedMicrocycleId(microcycleId)
