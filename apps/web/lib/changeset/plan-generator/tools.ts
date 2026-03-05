@@ -213,10 +213,11 @@ export const createSessionPlanExerciseSchema = z.object({
   exercise_id: z.string().describe('ID of the exercise from the library'),
   exercise_name: z.string().describe('Name of the exercise (for display)'),
   exercise_order: z.number().int().min(1).describe('Order in the session (1-based)'),
-  superset_group: z
-    .string()
+  superset_id: z
+    .number()
+    .nullable()
     .optional()
-    .describe('Superset group identifier (e.g., "A", "B") - exercises with same group are supersets'),
+    .describe('Superset ID — exercises with same superset_id are supersets'),
   notes: z.string().optional().describe('Exercise-specific notes or cues'),
   reasoning: z.string().optional().describe('AI reasoning for this exercise selection'),
 })
@@ -236,7 +237,7 @@ export const updateSessionPlanExerciseSchema = z.object({
   exercise_id: z.string().optional().describe('Updated exercise ID'),
   exercise_name: z.string().optional().describe('Updated exercise name'),
   exercise_order: z.number().int().min(1).optional().describe('Updated order'),
-  superset_group: z.string().optional().describe('Updated superset group'),
+  superset_id: z.number().nullable().optional().describe('Updated superset ID'),
   notes: z.string().optional().describe('Updated notes'),
   reasoning: z.string().optional().describe('AI reasoning for this update'),
 })
@@ -272,12 +273,12 @@ export const deleteSessionPlanExerciseTool = tool({
  */
 export const createSessionPlanSetSchema = z.object({
   session_plan_exercise_id: z.string().describe('ID of the parent session plan exercise'),
-  set_number: z.number().int().min(1).describe('Set number (1-based)'),
+  set_index: z.number().int().min(1).describe('Set index (1-based)'),
   reps: z.number().int().min(1).optional().describe('Target repetitions'),
+  weight: z.number().nullable().optional().describe('Weight in kg, null for bodyweight'),
   rpe: z.number().min(1).max(10).optional().describe('Target RPE (1-10 scale)'),
-  rest_seconds: z.number().int().min(0).optional().describe('Rest time in seconds after this set'),
+  rest_time: z.number().int().min(0).optional().describe('Rest time in seconds after this set'),
   tempo: z.string().optional().describe('Tempo notation (e.g., "3-1-2-0" for eccentric-pause-concentric-pause)'),
-  notes: z.string().optional().describe('Set-specific notes'),
   reasoning: z.string().optional().describe('AI reasoning for this set prescription'),
 })
 
@@ -293,12 +294,12 @@ export const createSessionPlanSetTool = tool({
  */
 export const updateSessionPlanSetSchema = z.object({
   entity_id: z.string().describe('ID of the session plan set to update'),
-  set_number: z.number().int().min(1).optional().describe('Updated set number'),
+  set_index: z.number().int().min(1).optional().describe('Updated set index'),
   reps: z.number().int().min(1).optional().describe('Updated target reps'),
+  weight: z.number().nullable().optional().describe('Updated weight in kg, null for bodyweight'),
   rpe: z.number().min(1).max(10).optional().describe('Updated target RPE'),
-  rest_seconds: z.number().int().min(0).optional().describe('Updated rest time'),
+  rest_time: z.number().int().min(0).optional().describe('Updated rest time in seconds'),
   tempo: z.string().optional().describe('Updated tempo'),
-  notes: z.string().optional().describe('Updated notes'),
   reasoning: z.string().optional().describe('AI reasoning for this update'),
 })
 

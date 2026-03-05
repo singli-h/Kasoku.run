@@ -13,6 +13,19 @@ import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
 import type { Database } from "@/types/database"
 
+// Cached helper: resolves Clerk userId -> coach ID in a single call
+// (getDbUserId is already LRU-cached, so this adds only one DB round-trip)
+async function getCoachId(userId: string): Promise<number | null> {
+  const dbUserId = await getDbUserId(userId)
+  if (!dbUserId) return null
+  const { data } = await supabase
+    .from('coaches')
+    .select('id')
+    .eq('user_id', dbUserId)
+    .maybeSingle()
+  return data?.id ?? null
+}
+
 // Define knowledge base types from database
 type KnowledgeBaseCategory = Database['public']['Tables']['knowledge_base_categories']['Row']
 type KnowledgeBaseCategoryInsert = Database['public']['Tables']['knowledge_base_categories']['Insert']
@@ -49,17 +62,8 @@ export async function getKnowledgeBaseCategoriesAction(): Promise<ActionState<Kn
       }
     }
 
-    // Get current user's database ID from cache
-    const dbUserId = await getDbUserId(userId)
-
-    // Get coach ID for the current user
-    const { data: coach, error: coachError } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (coachError || !coach) {
+    const coachId = await getCoachId(userId)
+    if (!coachId) {
       return {
         isSuccess: false,
         message: "Coach profile not found"
@@ -69,7 +73,7 @@ export async function getKnowledgeBaseCategoriesAction(): Promise<ActionState<Kn
     const { data: categories, error } = await supabase
       .from('knowledge_base_categories')
       .select('*')
-      .eq('coach_id', coach.id)
+      .eq('coach_id', coachId)
       .order('name', { ascending: true })
 
     if (error) {
@@ -110,17 +114,8 @@ export async function createKnowledgeBaseCategoryAction(
       }
     }
 
-    // Get current user's database ID from cache
-    const dbUserId = await getDbUserId(userId)
-
-    // Get coach ID for the current user
-    const { data: coach, error: coachError } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (coachError || !coach) {
+    const coachId = await getCoachId(userId)
+    if (!coachId) {
       return {
         isSuccess: false,
         message: "Coach profile not found"
@@ -131,7 +126,7 @@ export async function createKnowledgeBaseCategoryAction(
       .from('knowledge_base_categories')
       .insert({
         ...data,
-        coach_id: coach.id
+        coach_id: coachId
       })
       .select()
       .single()
@@ -175,17 +170,8 @@ export async function updateKnowledgeBaseCategoryAction(
       }
     }
 
-    // Get current user's database ID from cache
-    const dbUserId = await getDbUserId(userId)
-
-    // Get coach ID for the current user
-    const { data: coach, error: coachError } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (coachError || !coach) {
+    const coachId = await getCoachId(userId)
+    if (!coachId) {
       return {
         isSuccess: false,
         message: "Coach profile not found"
@@ -196,7 +182,7 @@ export async function updateKnowledgeBaseCategoryAction(
       .from('knowledge_base_categories')
       .update(data)
       .eq('id', id)
-      .eq('coach_id', coach.id) // Ensure coach owns this category
+      .eq('coach_id', coachId) // Ensure coach owns this category
       .select()
       .single()
 
@@ -236,17 +222,8 @@ export async function deleteKnowledgeBaseCategoryAction(id: number): Promise<Act
       }
     }
 
-    // Get current user's database ID from cache
-    const dbUserId = await getDbUserId(userId)
-
-    // Get coach ID for the current user
-    const { data: coach, error: coachError } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (coachError || !coach) {
+    const coachId = await getCoachId(userId)
+    if (!coachId) {
       return {
         isSuccess: false,
         message: "Coach profile not found"
@@ -257,7 +234,7 @@ export async function deleteKnowledgeBaseCategoryAction(id: number): Promise<Act
       .from('knowledge_base_categories')
       .delete()
       .eq('id', id)
-      .eq('coach_id', coach.id) // Ensure coach owns this category
+      .eq('coach_id', coachId) // Ensure coach owns this category
 
     if (error) {
       console.error("Error deleting knowledge base category:", error)
@@ -299,17 +276,8 @@ export async function getKnowledgeBaseArticlesAction(): Promise<ActionState<Arti
       }
     }
 
-    // Get current user's database ID from cache
-    const dbUserId = await getDbUserId(userId)
-
-    // Get coach ID for the current user
-    const { data: coach, error: coachError } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (coachError || !coach) {
+    const coachId = await getCoachId(userId)
+    if (!coachId) {
       return {
         isSuccess: false,
         message: "Coach profile not found"
@@ -322,7 +290,7 @@ export async function getKnowledgeBaseArticlesAction(): Promise<ActionState<Arti
         *,
         category:knowledge_base_categories(*)
       `)
-      .eq('coach_id', coach.id)
+      .eq('coach_id', coachId)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -363,17 +331,8 @@ export async function getKnowledgeBaseArticlesByCategoryAction(
       }
     }
 
-    // Get current user's database ID from cache
-    const dbUserId = await getDbUserId(userId)
-
-    // Get coach ID for the current user
-    const { data: coach, error: coachError } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (coachError || !coach) {
+    const coachId = await getCoachId(userId)
+    if (!coachId) {
       return {
         isSuccess: false,
         message: "Coach profile not found"
@@ -386,7 +345,7 @@ export async function getKnowledgeBaseArticlesByCategoryAction(
         *,
         category:knowledge_base_categories(*)
       `)
-      .eq('coach_id', coach.id)
+      .eq('coach_id', coachId)
       .eq('category_id', categoryId)
       .order('created_at', { ascending: false })
 
@@ -426,17 +385,8 @@ export async function getKnowledgeBaseArticleAction(id: number): Promise<ActionS
       }
     }
 
-    // Get current user's database ID from cache
-    const dbUserId = await getDbUserId(userId)
-
-    // Get coach ID for the current user
-    const { data: coach, error: coachError } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (coachError || !coach) {
+    const coachId = await getCoachId(userId)
+    if (!coachId) {
       return {
         isSuccess: false,
         message: "Coach profile not found"
@@ -450,7 +400,7 @@ export async function getKnowledgeBaseArticleAction(id: number): Promise<ActionS
         category:knowledge_base_categories(*)
       `)
       .eq('id', id)
-      .eq('coach_id', coach.id)
+      .eq('coach_id', coachId)
       .single()
 
     if (error) {
@@ -491,17 +441,8 @@ export async function createKnowledgeBaseArticleAction(
       }
     }
 
-    // Get current user's database ID from cache
-    const dbUserId = await getDbUserId(userId)
-
-    // Get coach ID for the current user
-    const { data: coach, error: coachError } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (coachError || !coach) {
+    const coachId = await getCoachId(userId)
+    if (!coachId) {
       return {
         isSuccess: false,
         message: "Coach profile not found"
@@ -512,7 +453,7 @@ export async function createKnowledgeBaseArticleAction(
       .from('knowledge_base_articles')
       .insert({
         ...data,
-        coach_id: coach.id
+        coach_id: coachId
       })
       .select()
       .single()
@@ -556,17 +497,8 @@ export async function updateKnowledgeBaseArticleAction(
       }
     }
 
-    // Get current user's database ID from cache
-    const dbUserId = await getDbUserId(userId)
-
-    // Get coach ID for the current user
-    const { data: coach, error: coachError } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (coachError || !coach) {
+    const coachId = await getCoachId(userId)
+    if (!coachId) {
       return {
         isSuccess: false,
         message: "Coach profile not found"
@@ -577,7 +509,7 @@ export async function updateKnowledgeBaseArticleAction(
       .from('knowledge_base_articles')
       .update(data)
       .eq('id', id)
-      .eq('coach_id', coach.id) // Ensure coach owns this article
+      .eq('coach_id', coachId) // Ensure coach owns this article
       .select()
       .single()
 
@@ -617,17 +549,8 @@ export async function deleteKnowledgeBaseArticleAction(id: number): Promise<Acti
       }
     }
 
-    // Get current user's database ID from cache
-    const dbUserId = await getDbUserId(userId)
-
-    // Get coach ID for the current user
-    const { data: coach, error: coachError } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (coachError || !coach) {
+    const coachId = await getCoachId(userId)
+    if (!coachId) {
       return {
         isSuccess: false,
         message: "Coach profile not found"
@@ -638,7 +561,7 @@ export async function deleteKnowledgeBaseArticleAction(id: number): Promise<Acti
       .from('knowledge_base_articles')
       .delete()
       .eq('id', id)
-      .eq('coach_id', coach.id) // Ensure coach owns this article
+      .eq('coach_id', coachId) // Ensure coach owns this article
 
     if (error) {
       console.error("Error deleting knowledge base article:", error)

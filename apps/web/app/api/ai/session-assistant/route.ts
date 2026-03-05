@@ -83,7 +83,12 @@ function classifyCoachQuery(messages: Array<{ role: string; content?: string }>)
 export const maxDuration = 60
 
 const SessionAssistantRequestSchema = z.object({
-  messages: z.array(z.unknown()).min(1).max(100),
+  messages: z.array(
+    z.object({
+      role: z.enum(['user', 'assistant', 'system']),
+      content: z.string().max(8000),
+    })
+  ).min(1).max(100),
   sessionId: z.string().min(1, 'Session ID is required'),
 })
 
@@ -178,7 +183,7 @@ export async function POST(req: Request) {
     // UIMessage format (from useChat): { role, parts: [{ type: 'text', text }] }
     // ModelMessage format (for streamText): { role, content: string }
     // Cast: Zod validates as unknown[], but convertToModelMessages expects UIMessage[]
-    const modelMessages = await convertToModelMessages(messages as UIMessage[])
+    const modelMessages = await convertToModelMessages(messages as unknown as UIMessage[])
 
     // Classify query intent for responsive reasoning + tool filtering
     const intent = classifyCoachQuery(messages as Array<{ role: string; content?: string }>)

@@ -42,7 +42,11 @@ export interface OnboardingActionData {
  * Generate a unique username by checking if it exists and adding a suffix if needed.
  */
 async function generateUniqueUsername(baseUsername: string): Promise<string> {
-  // Sanitize the username: lowercase, remove special chars, limit length
+  // Sanitize the username: lowercase, alphanumeric only, limit length.
+  // IMPORTANT: The [^a-z0-9] regex strips % and _ characters, which is what
+  // makes the LIKE query below safe from wildcard injection. If this regex is
+  // ever changed to allow _ (a common request), the LIKE pattern must also
+  // escape % and _ in the username before use.
   let username = baseUsername
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '')
@@ -53,28 +57,24 @@ async function generateUniqueUsername(baseUsername: string): Promise<string> {
     username = username.padEnd(3, '0')
   }
 
-  // Check if username exists
-  const { data: existingUser } = await supabase
+  // Fetch all taken usernames matching the base pattern in ONE query
+  const { data: takenRows } = await supabase
     .from('users')
-    .select('id')
-    .eq('username', username)
-    .maybeSingle()
+    .select('username')
+    .like('username', `${username}%`)
 
-  if (!existingUser) {
+  const taken = new Set((takenRows || []).map(row => row.username))
+
+  // If the base username is available, use it directly
+  if (!taken.has(username)) {
     return username
   }
 
-  // Username exists, try adding numeric suffix
+  // Find the first available numeric suffix
   for (let i = 1; i <= 999; i++) {
-    const candidateUsername = `${username.slice(0, 17)}${i}`
-    const { data: existing } = await supabase
-      .from('users')
-      .select('id')
-      .eq('username', candidateUsername)
-      .maybeSingle()
-
-    if (!existing) {
-      return candidateUsername
+    const candidate = `${username.slice(0, 17)}${i}`
+    if (!taken.has(candidate)) {
+      return candidate
     }
   }
 

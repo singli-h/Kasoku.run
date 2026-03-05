@@ -287,25 +287,32 @@ async function handleUserUpdated(data: UserWebhookEvent["data"]) {
   )
 
   if (rpcError) {
-    // Fallback to direct update if RPC doesn't exist
-    console.warn(`[handleUserUpdated] RPC not available, using direct update:`, rpcError.message)
-    const { error } = await supabaseService
-      .from("users")
-      .update({
-        email: primaryEmail,
-        first_name: data.first_name || null,
-        last_name: data.last_name || null,
-        avatar_url: data.image_url || null,
-      })
-      .eq("clerk_id", data.id)
+    if (rpcError.code === 'PGRST202') {
+      // RPC function not found — fallback to direct update
+      console.warn(`[handleUserUpdated] update_user_from_webhook RPC not found, falling back to direct update`)
+      const { error } = await supabaseService
+        .from("users")
+        .update({
+          email: primaryEmail,
+          first_name: data.first_name || null,
+          last_name: data.last_name || null,
+          avatar_url: data.image_url || null,
+        })
+        .eq("clerk_id", data.id)
 
-    if (error) {
-      console.error(`[handleUserUpdated] Error updating user ${data.id}:`, error)
-      throw error
+      if (error) {
+        console.error(`[handleUserUpdated] Error updating user ${data.id}:`, error)
+        throw error
+      }
+    } else {
+      // Transient or real DB error — throw so Clerk retries
+      console.error(`[handleUserUpdated] RPC failed for user ${data.id}:`, rpcError)
+      throw new Error(`RPC update_user_from_webhook failed: ${rpcError.message}`)
     }
   }
 
-  // Get user to check role and ensure profiles
+  // Get user ID and current role for profile sync
+  // Role from webhook payload takes priority; fall back to DB value
   const { data: user } = await supabaseService
       .from("users")
       .select("id, role")
@@ -313,21 +320,20 @@ async function handleUserUpdated(data: UserWebhookEvent["data"]) {
       .maybeSingle()
 
   if (user) {
+      const effectiveRole = role || user.role
+
       // If role provided in metadata and different, update it
       if (role && role !== user.role) {
           console.log(`[handleUserUpdated] Updating role for user ${user.id} to ${role}`)
           const { error: roleUpdateError } = await supabaseService.from("users").update({ role: role }).eq("id", user.id)
           if (roleUpdateError) {
             console.error(`[handleUserUpdated] Failed to update role for user ${user.id}:`, roleUpdateError)
-            // Use existing role for profile sync since update failed
-            await ensureUserProfile(user.id, user.role)
-          } else {
-            await ensureUserProfile(user.id, role)
+            throw new Error(`Failed to update role: ${roleUpdateError.message}`)
           }
-      } else {
-          // Ensure profiles exist for current role
-          await ensureUserProfile(user.id, role || user.role)
       }
+
+      // Ensure profiles exist for the effective role
+      await ensureUserProfile(user.id, effectiveRole)
   }
 
   console.log(`[handleUserUpdated] User updated in database: ${primaryEmail}`)
@@ -480,34 +486,38 @@ async function handleOrganizationMembershipDeleted(data: OrganizationMembershipW
 // No OPTIONS handler needed — Clerk webhooks are server-to-server (no browser CORS preflight)
 
 async function ensureUserProfile(userId: number, role: string) {
+  const profileOps: Promise<void>[] = []
+
   // Ensure athlete record exists for athletes, coaches, and individuals
   // Individuals need athlete records for workout logging foreign key constraints
   if (role === 'athlete' || role === 'coach' || role === 'individual') {
-    const { data: existingAthlete } = await supabaseService
-      .from('athletes')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle()
-    
-    if (!existingAthlete) {
-      console.log(`[ensureUserProfile] Creating athlete record for user ${userId}`)
-      const { error } = await supabaseService.from('athletes').insert({ user_id: userId })
-      if (error) console.error(`[ensureUserProfile] Error creating athlete record:`, error)
-    }
+    profileOps.push(
+      (async () => {
+        console.log(`[ensureUserProfile] Upserting athlete record for user ${userId}`)
+        const { error } = await supabaseService
+          .from('athletes')
+          .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true })
+        if (error && error.code !== '23505') {
+          throw new Error(`Failed to create athlete profile: ${error.message}`)
+        }
+      })()
+    )
   }
 
   // Ensure coach record exists only for coaches
   if (role === 'coach') {
-    const { data: existingCoach } = await supabaseService
-      .from('coaches')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle()
-    
-    if (!existingCoach) {
-      console.log(`[ensureUserProfile] Creating coach record for user ${userId}`)
-      const { error } = await supabaseService.from('coaches').insert({ user_id: userId })
-      if (error) console.error(`[ensureUserProfile] Error creating coach record:`, error)
-    }
+    profileOps.push(
+      (async () => {
+        console.log(`[ensureUserProfile] Upserting coach record for user ${userId}`)
+        const { error } = await supabaseService
+          .from('coaches')
+          .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true })
+        if (error && error.code !== '23505') {
+          throw new Error(`Failed to create coach profile: ${error.message}`)
+        }
+      })()
+    )
   }
+
+  await Promise.all(profileOps)
 } 

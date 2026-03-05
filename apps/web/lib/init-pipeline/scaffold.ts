@@ -109,12 +109,12 @@ export function scaffoldPlan(
               { length: ex.sets },
               (_, setIndex) => ({
                 id: generateId(),
-                set_number: setIndex + 1,
+                set_index: setIndex + 1,
                 reps: ex.reps,
+                weight: ex.weight,
                 rpe: ex.rpe,
-                rest_seconds: ex.rest_time,
+                rest_time: ex.rest_time,
                 tempo: undefined,
-                notes: undefined,
               })
             )
 
@@ -123,7 +123,7 @@ export function scaffoldPlan(
               exercise_id: String(ex.exercise_id),
               exercise_name: exerciseName,
               exercise_order: exIndex,
-              superset_group: undefined,
+              superset_id: null,
               notes: undefined,
               session_plan_sets: sets,
             }

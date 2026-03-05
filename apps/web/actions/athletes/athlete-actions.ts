@@ -148,49 +148,29 @@ export async function createOrUpdateAthleteProfileAction(
     // Get database user ID from cache
     const dbUserId = await getDbUserId(userId)
 
-    // Check if athlete profile already exists
-    const { data: existingAthlete } = await supabase
-      .from('athletes')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
+    // Atomic upsert — avoids TOCTOU race from SELECT-then-INSERT
     const completeAthleteData = {
       ...athleteData,
       user_id: dbUserId
     }
 
-    let result
-    if (existingAthlete) {
-      // Update existing profile
-      result = await supabase
-        .from('athletes')
-        .update(completeAthleteData)
-        .eq('user_id', dbUserId)
-        .select()
-        .single()
-    } else {
-      // Create new profile
-      result = await supabase
-        .from('athletes')
-        .insert(completeAthleteData)
-        .select()
-        .single()
-    }
-
-    const { data: athlete, error } = result
+    const { data: athlete, error } = await supabase
+      .from('athletes')
+      .upsert(completeAthleteData, { onConflict: 'user_id' })
+      .select()
+      .single()
 
     if (error) {
       console.error('Error creating/updating athlete profile:', error)
       return {
         isSuccess: false,
-        message: `Failed to ${existingAthlete ? 'update' : 'create'} athlete profile: ${error.message}`
+        message: `Failed to save athlete profile: ${error.message}`
       }
     }
 
     return {
       isSuccess: true,
-      message: `Athlete profile ${existingAthlete ? 'updated' : 'created'} successfully`,
+      message: "Athlete profile saved successfully",
       data: athlete
     }
   } catch (error) {

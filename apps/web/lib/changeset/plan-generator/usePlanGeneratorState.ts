@@ -448,22 +448,24 @@ export function usePlanGeneratorState(
                   const sData = s.proposedData as Record<string, unknown>
                   return {
                     id: s.entityId!,
-                    set_number: (sData.set_number as number) ?? idx + 1,
+                    // TODO: remove set_number/rest_seconds fallbacks once all in-flight
+                    // sessions from before the March 2026 field rename have expired.
+                    set_index: (sData.set_index as number) ?? (sData.set_number as number) ?? idx + 1,
                     reps: sData.reps as number | undefined,
+                    weight: (sData.weight as number | null | undefined) ?? null,
                     rpe: sData.rpe as number | undefined,
-                    rest_seconds: sData.rest_seconds as number | undefined,
+                    rest_time: (sData.rest_time as number | undefined) ?? (sData.rest_seconds as number | undefined),
                     tempo: sData.tempo as string | undefined,
-                    notes: sData.notes as string | undefined,
                   }
                 })
-                .sort((a, b) => a.set_number - b.set_number)
+                .sort((a, b) => a.set_index - b.set_index)
 
               return {
                 id: exId,
                 exercise_id: exData.exercise_id as string,
                 exercise_name: exData.exercise_name as string,
                 exercise_order: exData.exercise_order as number,
-                superset_group: exData.superset_group as string | undefined,
+                superset_id: (exData.superset_id as number | null) ?? null,
                 notes: exData.notes as string | undefined,
                 session_plan_sets: sets,
               }

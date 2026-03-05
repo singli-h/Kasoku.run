@@ -318,21 +318,6 @@ export async function updateRaceAction(
 
     const validatedData = validationResult.data
 
-    // Verify ownership before update
-    const { data: existingRace } = await supabase
-      .from('races')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (!existingRace) {
-      return {
-        isSuccess: false,
-        message: "Race not found or you don't have permission to update it"
-      }
-    }
-
     const updateData: RaceUpdate = {
       ...(validatedData.name !== undefined && { name: validatedData.name }),
       ...(validatedData.type !== undefined && { type: validatedData.type }),
@@ -343,19 +328,27 @@ export async function updateRaceAction(
       updated_at: new Date().toISOString()
     }
 
+    // Ownership check via the update itself (no pre-fetch needed)
     const { data: race, error } = await supabase
       .from('races')
       .update(updateData)
       .eq('id', id)
       .eq('user_id', dbUserId)
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Error updating race:', error)
       return {
         isSuccess: false,
         message: `Failed to update race: ${error.message}`
+      }
+    }
+
+    if (!race) {
+      return {
+        isSuccess: false,
+        message: "Race not found or you don't have permission to update it"
       }
     }
 
@@ -391,26 +384,21 @@ export async function deleteRaceAction(
 
     const dbUserId = await getDbUserId(userId)
 
-    // Verify ownership before deletion
-    const { data: existingRace } = await supabase
+    // Ownership check via the delete itself (no pre-fetch needed)
+    const { data: deleted, error } = await supabase
       .from('races')
-      .select('id')
+      .delete()
       .eq('id', id)
       .eq('user_id', dbUserId)
-      .single()
+      .select('id')
+      .maybeSingle()
 
-    if (!existingRace) {
+    if (!deleted && !error) {
       return {
         isSuccess: false,
         message: "Race not found or you don't have permission to delete it"
       }
     }
-
-    const { error } = await supabase
-      .from('races')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', dbUserId)
 
     if (error) {
       console.error('Error deleting race:', error)

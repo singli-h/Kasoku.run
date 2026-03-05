@@ -108,7 +108,12 @@ function classifyQuery(messages: Array<{ role: string; content?: string }>): Que
 export const maxDuration = 60
 
 const WorkoutAssistantRequestSchema = z.object({
-  messages: z.array(z.unknown()).min(1).max(100),
+  messages: z.array(
+    z.object({
+      role: z.enum(['user', 'assistant', 'system']),
+      content: z.string().max(8000),
+    })
+  ).min(1).max(100),
   workoutLogId: z.string().min(1, 'Workout Log ID is required'),
 })
 
@@ -215,7 +220,7 @@ export async function POST(req: Request) {
 
     // Convert UI messages to model messages format
     // Cast: Zod validates as unknown[], but convertToModelMessages expects UIMessage[]
-    const modelMessages = await convertToModelMessages(messages as UIMessage[])
+    const modelMessages = await convertToModelMessages(messages as unknown as UIMessage[])
 
     // Classify query intent for responsive reasoning + tool filtering
     const intent = classifyQuery(messages as Array<{ role: string; content?: string }>)

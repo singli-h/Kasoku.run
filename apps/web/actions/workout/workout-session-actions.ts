@@ -345,7 +345,7 @@ export async function getPastSessionsAction(
       dateFilter = dateFilter.lte('date_time', endDate)
     }
 
-    // 5. Get total count with same status filter
+    // 5. Build count query with same status filter
     let countQuery = supabase
       .from('workout_logs')
       .select('*', { count: 'exact', head: true })
@@ -357,17 +357,21 @@ export async function getPastSessionsAction(
       countQuery = countQuery.in('session_status', statuses)
     }
 
-    const { count, error: countError } = await countQuery
+    // 6. Run count and data queries in parallel (independent)
+    const [countResult, dataResult] = await Promise.all([
+      countQuery,
+      dateFilter
+        .order('date_time', { ascending: false })
+        .range((page - 1) * limit, page * limit - 1),
+    ])
+
+    const { count, error: countError } = countResult
+    const { data: sessions, error } = dataResult
 
     if (countError) {
       console.error('Error counting sessions:', countError)
       return { isSuccess: false, message: "Failed to count sessions" }
     }
-
-    // 6. Get paginated sessions
-    const { data: sessions, error } = await dateFilter
-      .order('date_time', { ascending: false })
-      .range((page - 1) * limit, page * limit - 1)
 
     if (error) {
       console.error('Error fetching past sessions:', error)

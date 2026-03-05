@@ -43,12 +43,12 @@ export const ENTITY_EXECUTION_ORDER: Record<PlanGeneratorEntityType, number> = {
  */
 export interface SessionPlanSetData {
   id: string
-  set_number: number
+  set_index: number
   reps?: number
+  weight?: number | null
   rpe?: number
-  rest_seconds?: number
+  rest_time?: number
   tempo?: string
-  notes?: string
 }
 
 /**
@@ -59,7 +59,7 @@ export interface SessionPlanExerciseData {
   exercise_id: string
   exercise_name: string
   exercise_order: number
-  superset_group?: string
+  superset_id?: number | null
   notes?: string
   session_plan_sets: SessionPlanSetData[]
 }

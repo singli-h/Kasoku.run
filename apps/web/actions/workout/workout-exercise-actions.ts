@@ -50,12 +50,22 @@ export async function addWorkoutExerciseAction(
 
     const dbUserId = await getDbUserId(userId)
 
-    // Verify workout ownership
-    const { data: workout, error: workoutError } = await supabase
-      .from('workout_logs')
-      .select('id, athlete_id')
-      .eq('id', workoutLogId)
-      .single()
+    // Verify workout and athlete ownership in parallel (independent queries)
+    const [workoutResult, athleteResult] = await Promise.all([
+      supabase
+        .from('workout_logs')
+        .select('id, athlete_id')
+        .eq('id', workoutLogId)
+        .single(),
+      supabase
+        .from('athletes')
+        .select('id')
+        .eq('user_id', dbUserId)
+        .single(),
+    ])
+
+    const { data: workout, error: workoutError } = workoutResult
+    const { data: athlete } = athleteResult
 
     if (workoutError || !workout) {
       return {
@@ -63,13 +73,6 @@ export async function addWorkoutExerciseAction(
         message: 'Workout not found',
       }
     }
-
-    // Verify athlete ownership
-    const { data: athlete } = await supabase
-      .from('athletes')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
 
     if (!athlete || workout.athlete_id !== athlete.id) {
       return {
@@ -157,18 +160,28 @@ export async function updateWorkoutExerciseAction(
 
     const dbUserId = await getDbUserId(userId)
 
-    // Get the exercise with workout info for ownership verification
-    const { data: existingExercise, error: fetchError } = await supabase
-      .from('workout_log_exercises')
-      .select(`
-        id,
-        workout_log_id,
-        workout_logs!inner (
-          athlete_id
-        )
-      `)
-      .eq('id', workoutLogExerciseId)
-      .single()
+    // Get exercise info and athlete in parallel (independent queries)
+    const [exerciseResult, athleteResult] = await Promise.all([
+      supabase
+        .from('workout_log_exercises')
+        .select(`
+          id,
+          workout_log_id,
+          workout_logs!inner (
+            athlete_id
+          )
+        `)
+        .eq('id', workoutLogExerciseId)
+        .single(),
+      supabase
+        .from('athletes')
+        .select('id')
+        .eq('user_id', dbUserId)
+        .single(),
+    ])
+
+    const { data: existingExercise, error: fetchError } = exerciseResult
+    const { data: athlete } = athleteResult
 
     if (fetchError || !existingExercise) {
       return {
@@ -176,13 +189,6 @@ export async function updateWorkoutExerciseAction(
         message: 'Exercise not found',
       }
     }
-
-    // Verify athlete ownership
-    const { data: athlete } = await supabase
-      .from('athletes')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
 
     const workoutLog = existingExercise.workout_logs as unknown as { athlete_id: number }
     if (!athlete || workoutLog.athlete_id !== athlete.id) {
@@ -247,12 +253,22 @@ export async function updateWorkoutNotesAction(
 
     const dbUserId = await getDbUserId(userId)
 
-    // Get workout for ownership verification
-    const { data: workout, error: fetchError } = await supabase
-      .from('workout_logs')
-      .select('id, athlete_id')
-      .eq('id', workoutLogId)
-      .single()
+    // Get workout and athlete in parallel (independent queries)
+    const [workoutResult, athleteResult] = await Promise.all([
+      supabase
+        .from('workout_logs')
+        .select('id, athlete_id')
+        .eq('id', workoutLogId)
+        .single(),
+      supabase
+        .from('athletes')
+        .select('id')
+        .eq('user_id', dbUserId)
+        .single(),
+    ])
+
+    const { data: workout, error: fetchError } = workoutResult
+    const { data: athlete } = athleteResult
 
     if (fetchError || !workout) {
       return {
@@ -260,13 +276,6 @@ export async function updateWorkoutNotesAction(
         message: 'Workout not found',
       }
     }
-
-    // Verify athlete ownership
-    const { data: athlete } = await supabase
-      .from('athletes')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
 
     if (!athlete || workout.athlete_id !== athlete.id) {
       return {

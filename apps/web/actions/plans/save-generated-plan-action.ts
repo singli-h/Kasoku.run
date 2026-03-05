@@ -3,8 +3,8 @@
 /**
  * Save Generated Plan Action
  *
- * Saves an AI-generated training plan directly to the database.
- * Creates the mesocycle and all child entities in one flow.
+ * Saves an AI-generated training plan via a single atomic Postgres RPC call.
+ * Replaces ~89 sequential DB round-trips with 1 call to save_generated_plan().
  * Used by the Init Pipeline after user approves the plan.
  */
 
@@ -44,355 +44,16 @@ interface SaveGeneratedPlanInput {
 interface SaveGeneratedPlanResult {
   /** Created mesocycle ID */
   mesocycleId: number
-  /** IDs of created microcycles */
-  microcycleIds: number[]
   /** ID of first session plan (for reference) */
   firstSessionId: string | null
   /** ID of first workout log (for redirect to workout logger) */
   firstWorkoutLogId: string | null
+  /** Warning message if a non-critical step failed (e.g. workout scheduling) */
+  warning?: string
 }
 
 // ============================================================================
-// Action
-// ============================================================================
-
-export async function saveGeneratedPlanAction(
-  input: SaveGeneratedPlanInput
-): Promise<ActionState<SaveGeneratedPlanResult>> {
-  let mesocycleId: number | null = null
-  // Track created session plan IDs for rollback (session_plans.microcycle_id is SET NULL, not CASCADE)
-  const createdSessionPlanIds: string[] = []
-  // Track created workout log IDs for reliable rollback
-  const createdWorkoutLogIds: string[] = []
-
-  // Authenticate early — before try block so db client is available in catch for rollback
-  const { userId } = await auth()
-  if (!userId) {
-    return { isSuccess: false, message: 'Unauthorized' }
-  }
-
-  const dbUserId = await getDbUserId(userId)
-  if (!dbUserId) {
-    return { isSuccess: false, message: 'User not found' }
-  }
-
-  // Use service role client for DB writes. The save operation involves 200+
-  // sequential inserts that can take 30-60s total. Clerk JWTs expire in 60s,
-  // making the RLS-authenticated client unreliable for this long-running write.
-  // Auth is already validated above via auth() + getDbUserId().
-  const db = supabaseService
-
-  try {
-
-    console.log('[saveGeneratedPlanAction] Creating mesocycle and plan...')
-    console.log('[saveGeneratedPlanAction] Block name:', input.mesocycle.name)
-    console.log('[saveGeneratedPlanAction] Weeks to create:', input.plan.microcycles.length)
-
-    // ========================================
-    // Calculate end date
-    // ========================================
-    const startDate = new Date(input.mesocycle.startDate)
-    const endDate = new Date(startDate)
-    endDate.setDate(endDate.getDate() + (input.mesocycle.durationWeeks * 7) - 1)
-
-    // ========================================
-    // Create Mesocycle (Training Block)
-    // ========================================
-    const { data: mesocycle, error: mesoError } = await db
-      .from('mesocycles')
-      .insert({
-        name: input.mesocycle.name,
-        description: input.mesocycle.description || `${input.mesocycle.focus} focused training block`,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-        macrocycle_id: null, // Individual users don't use macrocycles
-        user_id: dbUserId,
-        metadata: {
-          focus: input.mesocycle.focus,
-          equipment: input.mesocycle.equipment,
-          createdVia: 'init-pipeline',
-        },
-      })
-      .select('id')
-      .single()
-
-    if (mesoError || !mesocycle) {
-      console.error('[saveGeneratedPlanAction] Mesocycle insert error:', mesoError)
-      return { isSuccess: false, message: 'Failed to create training block' }
-    }
-
-    mesocycleId = mesocycle.id
-    console.log('[saveGeneratedPlanAction] Created mesocycle:', mesocycleId)
-
-    const microcycleIds: number[] = []
-    let firstSessionId: string | null = null
-
-    // Track session plans for workout_log creation
-    const sessionPlanRecords: Array<{
-      sessionPlanId: string
-      weekNumber: number
-      dayOfWeek: number
-    }> = []
-
-    // ========================================
-    // Get athlete ID for workout_log assignment
-    // ========================================
-    const { data: athlete } = await db
-      .from('athletes')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
-    if (!athlete) {
-      console.error('[saveGeneratedPlanAction] No athlete record found for user:', dbUserId)
-      return {
-        isSuccess: false,
-        message: 'Unable to create workout schedule — athlete profile not found. Please contact support.',
-      }
-    }
-
-    // ========================================
-    // Insert all child entities
-    // ========================================
-    const totalWeeks = input.plan.microcycles.length
-
-    for (const microcycle of input.plan.microcycles) {
-      // ----------------------------------------
-      // Insert Microcycle (Week)
-      // ----------------------------------------
-
-      // Calculate week start/end dates
-      const weekStart = new Date(startDate)
-      weekStart.setDate(weekStart.getDate() + (microcycle.week_number - 1) * 7)
-      const weekEnd = new Date(weekStart)
-      weekEnd.setDate(weekEnd.getDate() + 6)
-
-      // Progressive volume/intensity ramp (deload week gets lower values)
-      const isDeload = microcycle.is_deload || microcycle.week_number === totalWeeks
-      const volume = isDeload ? 3 : Math.min(5 + microcycle.week_number - 1, 8)
-      const intensity = isDeload ? 4 : Math.min(5 + microcycle.week_number - 1, 8)
-
-      const { data: mcData, error: mcError } = await db
-        .from('microcycles')
-        .insert({
-          mesocycle_id: mesocycleId,
-          name: microcycle.name,
-          user_id: dbUserId,
-          start_date: weekStart.toISOString().split('T')[0],
-          end_date: weekEnd.toISOString().split('T')[0],
-          volume,
-          intensity,
-        })
-        .select('id')
-        .single()
-
-      if (mcError) {
-        console.error('[saveGeneratedPlanAction] Microcycle insert error:', mcError)
-        throw new Error(`Failed to create week ${microcycle.week_number}: ${mcError.message}`)
-      }
-
-      const dbMicrocycleId = mcData.id
-      microcycleIds.push(dbMicrocycleId)
-
-      console.log(`[saveGeneratedPlanAction] Created microcycle: ${dbMicrocycleId} (Week ${microcycle.week_number})`)
-
-      // ----------------------------------------
-      // Insert Sessions
-      // ----------------------------------------
-      for (const session of microcycle.session_plans) {
-        // Convert day_of_week string to number for database
-        const dayNumber = dayNameToNumber(session.day_of_week)
-
-        const { data: spData, error: spError } = await db
-          .from('session_plans')
-          .insert({
-            microcycle_id: dbMicrocycleId,
-            user_id: dbUserId,
-            name: session.name,
-            day: dayNumber,
-            description: session.notes, // session.notes contains the AI's description
-          })
-          .select('id')
-          .single()
-
-        if (spError) {
-          console.error('[saveGeneratedPlanAction] Session insert error:', spError)
-          throw new Error(`Failed to create session ${session.name}: ${spError.message}`)
-        }
-
-        const sessionPlanId = spData.id
-        createdSessionPlanIds.push(sessionPlanId)
-
-        // Track session for workout_log creation
-        sessionPlanRecords.push({
-          sessionPlanId,
-          weekNumber: microcycle.week_number,
-          dayOfWeek: dayNumber,
-        })
-
-        // Track first session for redirect
-        if (!firstSessionId && microcycle.week_number === 1) {
-          firstSessionId = sessionPlanId
-        }
-
-        console.log(`[saveGeneratedPlanAction] Created session: ${sessionPlanId} (${session.name})`)
-
-        // ----------------------------------------
-        // Insert Exercises
-        // ----------------------------------------
-        for (const exercise of session.session_plan_exercises) {
-          const { data: exData, error: exError } = await db
-            .from('session_plan_exercises')
-            .insert({
-              session_plan_id: sessionPlanId,
-              exercise_id: exercise.exercise_id === 'custom' ? null : parseInt(exercise.exercise_id),
-              exercise_order: exercise.exercise_order,
-              notes: exercise.notes,
-            })
-            .select('id')
-            .single()
-
-          if (exError) {
-            console.error('[saveGeneratedPlanAction] Exercise insert error:', exError)
-            throw new Error(`Failed to create exercise ${exercise.exercise_name}: ${exError.message}`)
-          }
-
-          const exerciseId = exData.id
-
-          // ----------------------------------------
-          // Insert Sets
-          // ----------------------------------------
-          const setsToInsert = exercise.session_plan_sets.map((set) => ({
-            session_plan_exercise_id: exerciseId,
-            set_index: set.set_number,
-            reps: set.reps != null ? Math.round(set.reps) : null,
-            rpe: set.rpe != null ? Math.round(set.rpe) : null,
-            rest_time: set.rest_seconds != null ? Math.round(set.rest_seconds) : null,
-          }))
-
-          const { error: setsError } = await db
-            .from('session_plan_sets')
-            .insert(setsToInsert)
-
-          if (setsError) {
-            console.error('[saveGeneratedPlanAction] Sets insert error:', setsError)
-            throw new Error(`Failed to create sets for ${exercise.exercise_name}: ${setsError.message}`)
-          }
-        }
-      }
-    }
-
-    // ========================================
-    // Create workout_logs for all sessions
-    // ========================================
-    let firstWorkoutLogId: string | null = null
-
-    console.log('[saveGeneratedPlanAction] Creating workout_logs for athlete:', athlete.id)
-
-    const workoutLogInserts = sessionPlanRecords.map((record) => {
-      // Calculate scheduled date: startDate + (weekNumber - 1) * 7 + dayOffset
-      const scheduledDate = new Date(startDate)
-      const weekOffset = (record.weekNumber - 1) * 7
-
-      // Calculate days from Monday (day 1) to the target day
-      // dayOfWeek: 0=Sun, 1=Mon, 2=Tue, etc.
-      // We want Monday (1) to be offset 0, Tuesday (2) to be offset 1, etc.
-      // Sunday (0) should be offset 6 (end of week)
-      const dayOffset = record.dayOfWeek === 0 ? 6 : record.dayOfWeek - 1
-
-      scheduledDate.setDate(scheduledDate.getDate() + weekOffset + dayOffset)
-
-      return {
-        session_plan_id: record.sessionPlanId,
-        athlete_id: athlete.id,
-        date_time: scheduledDate.toISOString(),
-        session_status: 'assigned' as const,
-      }
-    })
-
-    // Sort by date to ensure first entry is chronologically earliest
-    workoutLogInserts.sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
-
-    if (workoutLogInserts.length > 0) {
-      const { data: workoutLogs, error: wlError } = await db
-        .from('workout_logs')
-        .insert(workoutLogInserts)
-        .select('id')
-
-      if (wlError) {
-        console.error('[saveGeneratedPlanAction] workout_logs insert error:', wlError)
-        // Don't fail the whole operation, just log it
-      } else {
-        console.log(`[saveGeneratedPlanAction] Created ${workoutLogs?.length || 0} workout_logs`)
-        // Track IDs for rollback and get first workout log for redirect
-        if (workoutLogs && workoutLogs.length > 0) {
-          createdWorkoutLogIds.push(...workoutLogs.map(wl => String(wl.id)))
-          firstWorkoutLogId = String(workoutLogs[0].id)
-        }
-      }
-    }
-
-    console.log('[saveGeneratedPlanAction] Plan saved successfully')
-    console.log('[saveGeneratedPlanAction] Mesocycle ID:', mesocycleId)
-    console.log('[saveGeneratedPlanAction] Microcycles created:', microcycleIds.length)
-    console.log('[saveGeneratedPlanAction] First session ID:', firstSessionId)
-    console.log('[saveGeneratedPlanAction] First workout log ID:', firstWorkoutLogId)
-
-    // Revalidate relevant paths
-    revalidatePath('/workout')
-    revalidatePath('/plans')
-    revalidatePath(`/plans/${mesocycleId}`)
-    revalidatePath('/dashboard')
-
-    return {
-      isSuccess: true,
-      message: 'Plan saved successfully',
-      data: {
-        mesocycleId,
-        microcycleIds,
-        firstSessionId,
-        firstWorkoutLogId,
-      },
-    }
-  } catch (error) {
-    console.error('[saveGeneratedPlanAction] Error:', error)
-
-    // Rollback: delete all created entities in reverse order
-    // Note: session_plans.microcycle_id FK is ON DELETE SET NULL (not CASCADE),
-    // so we must delete session_plans explicitly to avoid orphans.
-    if (mesocycleId) {
-      console.warn('[saveGeneratedPlanAction] Rolling back mesocycle:', mesocycleId)
-      try {
-        // 1. Delete workout_logs by tracked IDs (more reliable than session_plan_id filter)
-        if (createdWorkoutLogIds.length > 0) {
-          await db.from('workout_logs').delete().in('id', createdWorkoutLogIds)
-        } else if (createdSessionPlanIds.length > 0) {
-          // Fallback: delete by session_plan_id if we didn't get to track workout_log IDs
-          await db.from('workout_logs').delete().in('session_plan_id', createdSessionPlanIds)
-        }
-        // 2. Delete session_plans (cascades to exercises/sets via FK)
-        if (createdSessionPlanIds.length > 0) {
-          await db.from('session_plans').delete().in('id', createdSessionPlanIds)
-        }
-        // 3. Delete microcycles
-        await db.from('microcycles').delete().eq('mesocycle_id', mesocycleId)
-        // 4. Delete mesocycle
-        await db.from('mesocycles').delete().eq('id', mesocycleId)
-        console.log('[saveGeneratedPlanAction] Rollback complete')
-      } catch (rollbackError) {
-        console.error('[saveGeneratedPlanAction] Rollback failed:', rollbackError)
-      }
-    }
-
-    return {
-      isSuccess: false,
-      message: error instanceof Error ? error.message : 'Failed to save plan',
-    }
-  }
-}
-
-// ============================================================================
-// Helper
+// Day name to number mapping (matches scaffold's day_of_week strings)
 // ============================================================================
 
 const DAY_NAME_TO_NUMBER: Record<string, number> = {
@@ -405,6 +66,159 @@ const DAY_NAME_TO_NUMBER: Record<string, number> = {
   saturday: 6,
 }
 
-function dayNameToNumber(dayName: string): number {
-  return DAY_NAME_TO_NUMBER[dayName.toLowerCase()] ?? 1
+// ============================================================================
+// Action
+// ============================================================================
+
+export async function saveGeneratedPlanAction(
+  input: SaveGeneratedPlanInput
+): Promise<ActionState<SaveGeneratedPlanResult>> {
+  try {
+    // Authenticate
+    const { userId } = await auth()
+    if (!userId) {
+      return { isSuccess: false, message: 'Unauthorized' }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+    if (!dbUserId) {
+      return { isSuccess: false, message: 'User not found' }
+    }
+
+    // Validate startDate before parsing — new Date('not-a-date').toISOString() throws RangeError
+    const startDateMs = Date.parse(input.mesocycle.startDate)
+    if (isNaN(startDateMs)) {
+      return { isSuccess: false, message: 'Invalid start date' }
+    }
+    const startDateStr = new Date(startDateMs).toISOString().split('T')[0]
+
+    // Validate durationWeeks is a positive integer
+    if (!Number.isInteger(input.mesocycle.durationWeeks) || input.mesocycle.durationWeeks < 1) {
+      return { isSuccess: false, message: 'Invalid plan duration' }
+    }
+
+    // Look up athlete ID
+    const db = supabaseService
+    const { data: athlete } = await db
+      .from('athletes')
+      .select('id')
+      .eq('user_id', dbUserId)
+      .single()
+
+    if (!athlete) {
+      return {
+        isSuccess: false,
+        message: 'Unable to create workout schedule — athlete profile not found. Please contact support.',
+      }
+    }
+
+    // Build the JSONB payload for the RPC
+    const totalWeeks = input.plan.microcycles.length
+
+    const payload = {
+      mesocycle: {
+        name: input.mesocycle.name,
+        description: input.mesocycle.description || `${input.mesocycle.focus} focused training block`,
+        focus: input.mesocycle.focus,
+        equipment: input.mesocycle.equipment,
+        startDate: startDateStr,
+        durationWeeks: input.mesocycle.durationWeeks,
+      },
+      microcycles: input.plan.microcycles.map((mc) => {
+        const isDeload = mc.is_deload || mc.week_number === totalWeeks
+
+        return {
+          weekNumber: mc.week_number,
+          name: mc.name,
+          isDeload,
+          sessionPlans: mc.session_plans.map((sp) => {
+            const dayNumber = DAY_NAME_TO_NUMBER[sp.day_of_week.toLowerCase()] ?? 1
+
+            return {
+              name: sp.name,
+              day: dayNumber,
+              description: sp.notes,
+              exercises: sp.session_plan_exercises.map((ex) => {
+                // Parse exercise ID — non-numeric IDs (other than 'custom') are treated as null
+                const parsedId = ex.exercise_id === 'custom' ? null : Number(ex.exercise_id)
+                const exerciseId = (parsedId !== null && !isNaN(parsedId)) ? parsedId : null
+
+                return {
+                  exerciseId,
+                  exerciseOrder: ex.exercise_order,
+                  notes: ex.notes ?? null,
+                  sets: ex.session_plan_sets.map((set) => ({
+                    setIndex: set.set_index,
+                    reps: set.reps != null ? Math.round(set.reps) : null,
+                    weight: set.weight != null ? set.weight : null,
+                    rpe: set.rpe != null ? Math.round(set.rpe) : null,
+                    restTime: set.rest_time != null ? Math.round(set.rest_time) : null,
+                    tempo: set.tempo ?? null,
+                  })),
+                }
+              }),
+            }
+          }),
+        }
+      }),
+    }
+
+    console.log('[saveGeneratedPlanAction] Calling save_generated_plan RPC...')
+    console.log('[saveGeneratedPlanAction] Block:', input.mesocycle.name, `(${totalWeeks} weeks)`)
+
+    // Call the atomic RPC — single DB round-trip
+    // Type assertion needed until `supabase gen types` is re-run after applying the migration
+    // TODO: remove `as any` after running: supabase db push && supabase gen types typescript --local
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: result, error: rpcError } = await (db as any)
+      .rpc('save_generated_plan', {
+        p_user_id: dbUserId,
+        p_athlete_id: athlete.id,
+        p_payload: payload,
+      })
+      .single()
+
+    if (rpcError) {
+      console.error('[saveGeneratedPlanAction] RPC error:', rpcError)
+      return { isSuccess: false, message: 'Failed to save plan' }
+    }
+
+    // The RPC returns { success, mesocycle_id, first_session_id, first_workout_log_id, message, warning }
+    const row = result as {
+      success: boolean
+      mesocycle_id: number | null
+      first_session_id: string | null
+      first_workout_log_id: string | null
+      message: string | null
+      warning: string | null
+    }
+
+    if (!row.success || !row.mesocycle_id) {
+      console.error('[saveGeneratedPlanAction] RPC returned failure:', row.message)
+      return { isSuccess: false, message: row.message || 'Failed to save plan' }
+    }
+
+    console.log('[saveGeneratedPlanAction] Plan saved. Mesocycle ID:', row.mesocycle_id)
+
+    // Revalidate relevant paths
+    revalidatePath('/workout')
+    revalidatePath('/plans')
+    revalidatePath(`/plans/${row.mesocycle_id}`)
+    revalidatePath('/dashboard')
+
+    return {
+      isSuccess: true,
+      message: row.warning ? 'Plan saved with warnings' : 'Plan saved successfully',
+      data: {
+        mesocycleId: row.mesocycle_id,
+        firstSessionId: row.first_session_id,
+        firstWorkoutLogId: row.first_workout_log_id,
+        warning: row.warning ?? undefined,
+      },
+    }
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[saveGeneratedPlanAction] Unexpected error:', msg)
+    return { isSuccess: false, message: 'Failed to save plan' }
+  }
 }

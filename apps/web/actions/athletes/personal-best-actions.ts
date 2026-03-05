@@ -234,20 +234,8 @@ export async function updatePBAction(
       return { isSuccess: false, message: "Not authenticated" }
     }
 
-    const dbUserId = await getDbUserId(userId)
-
-    // RLS will handle authorization, but we fetch first to ensure it exists
-    const { data: existing, error: fetchError } = await supabase
-      .from("athlete_personal_bests")
-      .select("id, athlete_id")
-      .eq("id", id)
-      .single()
-
-    if (fetchError || !existing) {
-      console.error("[updatePBAction] PB not found:", fetchError)
-      return { isSuccess: false, message: "Personal best not found" }
-    }
-
+    // Chain .select() onto the update to get athlete_id for revalidation
+    // (no pre-fetch needed -- RLS handles authorization)
     const { data, error } = await supabase
       .from("athlete_personal_bests")
       .update(updates)
@@ -257,11 +245,12 @@ export async function updatePBAction(
 
     if (error) {
       console.error("[updatePBAction] DB error:", error)
-      return { isSuccess: false, message: "Failed to update personal best" }
+      const message = error.code === "PGRST116" ? "Personal best not found" : "Failed to update personal best"
+      return { isSuccess: false, message }
     }
 
     revalidatePath("/athletes")
-    revalidatePath(`/athletes/${existing.athlete_id}`)
+    revalidatePath(`/athletes/${data.athlete_id}`)
     revalidatePath("/workout")
 
     return {
@@ -288,32 +277,23 @@ export async function deletePBAction(id: number): Promise<ActionState<void>> {
       return { isSuccess: false, message: "Not authenticated" }
     }
 
-    const dbUserId = await getDbUserId(userId)
-
-    // Fetch the PB to get athlete_id for revalidation
-    const { data: pb, error: fetchError } = await supabase
-      .from("athlete_personal_bests")
-      .select("id, athlete_id")
-      .eq("id", id)
-      .single()
-
-    if (fetchError || !pb) {
-      console.error("[deletePBAction] PB not found:", fetchError)
-      return { isSuccess: false, message: "Personal best not found" }
-    }
-
-    const { error } = await supabase
+    // Chain .select('athlete_id') onto the delete to get athlete_id for revalidation
+    // (no pre-fetch needed)
+    const { data: deleted, error } = await supabase
       .from("athlete_personal_bests")
       .delete()
       .eq("id", id)
+      .select("athlete_id")
+      .single()
 
     if (error) {
       console.error("[deletePBAction] DB error:", error)
-      return { isSuccess: false, message: "Failed to delete personal best" }
+      const message = error.code === "PGRST116" ? "Personal best not found" : "Failed to delete personal best"
+      return { isSuccess: false, message }
     }
 
     revalidatePath("/athletes")
-    revalidatePath(`/athletes/${pb.athlete_id}`)
+    revalidatePath(`/athletes/${deleted.athlete_id}`)
     revalidatePath("/workout")
 
     return {
@@ -644,8 +624,15 @@ export async function processSessionForPBsAction(
     let detected = 0
     let updated = 0
 
-    // Process each sprint set - check BOTH total time AND split times for PBs
-    // A 40m session might have a 20m split that's faster than any standalone 20m time
+    // ========================================
+    // Sprint PB Detection — batch approach
+    // ========================================
+    // Phase 1: Collect all (exerciseId, distance) → best time candidates in-memory
+    const standardDistances = new Set([10, 20, 30, 40, 50, 60, 80, 100])
+    // Map key: `${exerciseId}-${distance}`, value: { time, metadata }
+    const sprintCandidates = new Map<string, { exerciseId: number; distance: number; time: number; metadata: Record<string, unknown> }>()
+    const sprintExerciseIds = new Set<number>()
+
     for (const set of sprintSets) {
       const metadata = set.metadata as {
         time?: number
@@ -658,17 +645,16 @@ export async function processSessionForPBsAction(
         }>
       }
 
-      // Use the actual exercise from the workout_log_exercise
       const exerciseId = set.workout_log_exercise?.exercise_id
       if (!exerciseId) {
         console.log(`[processSessionForPBsAction] Skipping set ${set.id} - no exercise_id`)
         continue
       }
 
-      // Track which distances we've checked to avoid duplicates
+      sprintExerciseIds.add(exerciseId)
       const checkedDistances = new Set<number>()
 
-      // 1. Check total time at total distance (main result)
+      // 1. Total time at total distance
       const totalDistance = set.distance ||
         (metadata?.splits?.length
           ? metadata.splits.reduce((sum, s) => sum + s.distance, 0)
@@ -677,31 +663,24 @@ export async function processSessionForPBsAction(
 
       if (totalDistance && totalTime && totalTime > 0) {
         checkedDistances.add(totalDistance)
-        const result = await detectSprintPBInternal(
-          sessionId,
-          athlete.id,
-          exerciseId,
-          totalDistance,
-          totalTime,
-          set.metadata as Record<string, unknown>
-        )
-
-        if (result.isSuccess && result.data) {
-          detected++
-          if (result.message.includes("updated")) {
-            updated++
-          }
+        const key = `${exerciseId}-${totalDistance}`
+        const existing = sprintCandidates.get(key)
+        if (!existing || totalTime < existing.time) {
+          sprintCandidates.set(key, {
+            exerciseId,
+            distance: totalDistance,
+            time: totalTime,
+            metadata: set.metadata as Record<string, unknown>,
+          })
         }
       }
 
-      // 2. Check each split's cumulative time for potential PBs at intermediate distances
-      // E.g., a 40m session's 20m split (3.31s) might be faster than any 20m standalone (3.34s)
+      // 2. Split cumulative times at standard distances
       if (metadata?.splits?.length) {
         let cumulativeDistance = 0
         let cumulativeTime = 0
 
         for (const split of metadata.splits) {
-          // Calculate cumulative values
           cumulativeDistance += split.distance
           const splitCumulativeTime = split.cumulative_time ?? split.cumulativeTime
           if (splitCumulativeTime !== undefined) {
@@ -710,36 +689,96 @@ export async function processSessionForPBsAction(
             cumulativeTime += split.time
           }
 
-          // Skip if we already checked this distance (e.g., total distance)
-          if (checkedDistances.has(cumulativeDistance)) {
-            continue
-          }
+          if (checkedDistances.has(cumulativeDistance)) continue
           checkedDistances.add(cumulativeDistance)
+          if (!standardDistances.has(cumulativeDistance)) continue
 
-          // Only check standard sprint distances for split PBs
-          const standardDistances = [10, 20, 30, 40, 50, 60, 80, 100]
-          if (!standardDistances.includes(cumulativeDistance)) {
-            continue
-          }
-
-          // Check if this split time is a PB for this distance
-          const splitResult = await detectSprintPBInternal(
-            sessionId,
-            athlete.id,
-            exerciseId,
-            cumulativeDistance,
-            cumulativeTime,
-            { ...set.metadata as Record<string, unknown>, split_pb: true }
-          )
-
-          if (splitResult.isSuccess && splitResult.data) {
-            detected++
-            if (splitResult.message.includes("updated")) {
-              updated++
-            }
-            console.log(`[processSessionForPBsAction] Found split PB: ${cumulativeDistance}m in ${cumulativeTime.toFixed(2)}s`)
+          const key = `${exerciseId}-${cumulativeDistance}`
+          const existing = sprintCandidates.get(key)
+          if (!existing || cumulativeTime < existing.time) {
+            sprintCandidates.set(key, {
+              exerciseId,
+              distance: cumulativeDistance,
+              time: cumulativeTime,
+              metadata: { ...set.metadata as Record<string, unknown>, split_pb: true },
+            })
           }
         }
+      }
+    }
+
+    // Phase 2: Batch-fetch all existing sprint PBs (1 query instead of N)
+    const existingSprintPBMap = new Map<string, PersonalBest>()
+
+    if (sprintExerciseIds.size > 0) {
+      const { data: existingSprintPBs, error: sprintPBError } = await supabase
+        .from("athlete_personal_bests")
+        .select("*")
+        .eq("athlete_id", athlete.id)
+        .in("exercise_id", Array.from(sprintExerciseIds))
+        .not("distance", "is", null)
+
+      if (sprintPBError) {
+        console.error("[processSessionForPBsAction] Sprint PB batch fetch error:", sprintPBError)
+      } else {
+        for (const pb of existingSprintPBs || []) {
+          if (pb.exercise_id && pb.distance !== null) {
+            existingSprintPBMap.set(`${pb.exercise_id}-${pb.distance}`, pb)
+          }
+        }
+      }
+    }
+
+    // Phase 3: Compare in-memory and collect upsert rows
+    const sprintUpsertRows: PersonalBestInsert[] = []
+    const today = new Date().toISOString().split("T")[0]
+
+    for (const [key, candidate] of sprintCandidates) {
+      const existingPB = existingSprintPBMap.get(key)
+
+      if (!existingPB || candidate.time < Number(existingPB.value)) {
+        const enrichedMetadata = {
+          ...(candidate.metadata || {}),
+          distance_meters: candidate.distance,
+        }
+        const pbRow = {
+          ...(existingPB ? { id: existingPB.id } : {}),
+          athlete_id: athlete.id,
+          exercise_id: candidate.exerciseId,
+          distance: candidate.distance,
+          value: candidate.time,
+          unit_id: 5, // seconds
+          achieved_date: today,
+          session_id: sessionId,
+          verified: false,
+          notes: existingPB
+            ? `Auto-detected ${candidate.distance}m sprint (previous: ${existingPB.value}s)`
+            : `Auto-detected ${candidate.distance}m sprint from session`,
+          metadata: JSON.parse(JSON.stringify(enrichedMetadata)),
+        }
+        sprintUpsertRows.push(pbRow)
+
+        detected++
+        if (existingPB) {
+          updated++
+          console.log(`[processSessionForPBsAction] Updated PB: ${candidate.distance}m improved from ${existingPB.value}s to ${candidate.time.toFixed(2)}s`)
+        } else {
+          console.log(`[processSessionForPBsAction] Created new PB: ${candidate.distance}m in ${candidate.time.toFixed(2)}s`)
+        }
+        if (candidate.metadata.split_pb) {
+          console.log(`[processSessionForPBsAction] Found split PB: ${candidate.distance}m in ${candidate.time.toFixed(2)}s`)
+        }
+      }
+    }
+
+    // Phase 4: Single upsert call for all sprint PBs
+    if (sprintUpsertRows.length > 0) {
+      const { error: sprintUpsertError } = await supabase
+        .from("athlete_personal_bests")
+        .upsert(sprintUpsertRows)
+
+      if (sprintUpsertError) {
+        console.error("[processSessionForPBsAction] Sprint PB batch upsert error:", sprintUpsertError)
       }
     }
 
@@ -802,20 +841,35 @@ export async function processSessionForPBsAction(
         }
       }
 
-      // Check each exercise's max weight against existing PBs
-      for (const [exerciseId, { weight, reps, exerciseName }] of exerciseMaxWeight) {
-        // Look for existing weight PB for this exercise (unit_id=3 for kg, no distance)
-        const { data: existingPB } = await supabase
+      // Batch-fetch all existing gym PBs for the exercises in this session (1 query instead of N)
+      const gymExerciseIds = Array.from(exerciseMaxWeight.keys())
+      const existingGymPBMap = new Map<number, PersonalBest>()
+
+      if (gymExerciseIds.length > 0) {
+        const { data: existingGymPBs } = await supabase
           .from("athlete_personal_bests")
           .select("*")
           .eq("athlete_id", athlete.id)
-          .eq("exercise_id", exerciseId)
+          .in("exercise_id", gymExerciseIds)
           .eq("unit_id", 3)
           .is("distance", null)
-          .maybeSingle()
+
+        for (const pb of existingGymPBs || []) {
+          if (pb.exercise_id) {
+            existingGymPBMap.set(pb.exercise_id, pb)
+          }
+        }
+      }
+
+      // Compare in-memory and collect rows to upsert
+      const gymUpsertRows: PersonalBestInsert[] = []
+
+      for (const [exerciseId, { weight, reps, exerciseName }] of exerciseMaxWeight) {
+        const existingPB = existingGymPBMap.get(exerciseId)
 
         if (!existingPB || weight > Number(existingPB.value)) {
-          const pbData = {
+          const pbRow = {
+            ...(existingPB ? { id: existingPB.id } : {}),
             athlete_id: athlete.id,
             exercise_id: exerciseId,
             value: weight,
@@ -826,38 +880,27 @@ export async function processSessionForPBsAction(
             notes: `Auto-detected: ${weight}kg${reps ? ` x ${reps} reps` : ''} — ${exerciseName}`,
             metadata: JSON.parse(JSON.stringify({ reps, type: 'gym_weight' })),
           }
+          gymUpsertRows.push(pbRow)
 
-          if (!existingPB) {
-            const { error: insertError } = await supabase
-              .from("athlete_personal_bests")
-              .insert(pbData)
-
-            if (insertError) {
-              console.error(`[processSessionForPBsAction] Gym PB insert error for ${exerciseName}:`, insertError)
-            } else {
-              detected++
-              console.log(`[processSessionForPBsAction] New gym PB: ${exerciseName} ${weight}kg`)
-            }
+          if (existingPB) {
+            detected++
+            updated++
+            console.log(`[processSessionForPBsAction] Updated gym PB: ${exerciseName} ${weight}kg (was ${existingPB.value}kg)`)
           } else {
-            const { error: updateError } = await supabase
-              .from("athlete_personal_bests")
-              .update({
-                value: weight,
-                achieved_date: pbData.achieved_date,
-                session_id: sessionId,
-                notes: pbData.notes,
-                metadata: pbData.metadata,
-              })
-              .eq("id", existingPB.id)
-
-            if (updateError) {
-              console.error(`[processSessionForPBsAction] Gym PB update error for ${exerciseName}:`, updateError)
-            } else {
-              detected++
-              updated++
-              console.log(`[processSessionForPBsAction] Updated gym PB: ${exerciseName} ${weight}kg (was ${existingPB.value}kg)`)
-            }
+            detected++
+            console.log(`[processSessionForPBsAction] New gym PB: ${exerciseName} ${weight}kg`)
           }
+        }
+      }
+
+      // Single upsert call for all gym PBs
+      if (gymUpsertRows.length > 0) {
+        const { error: upsertError } = await supabase
+          .from("athlete_personal_bests")
+          .upsert(gymUpsertRows)
+
+        if (upsertError) {
+          console.error("[processSessionForPBsAction] Gym PB batch upsert error:", upsertError)
         }
       }
     }

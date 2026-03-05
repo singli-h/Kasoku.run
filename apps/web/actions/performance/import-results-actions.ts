@@ -293,10 +293,20 @@ export async function bulkImportResultsAction(
     // Track affected events for PB recalculation
     const affectedEventIds = new Set<number>()
 
-    let imported = 0
     let skipped = 0
 
     const now = new Date().toISOString()
+
+    // Collect all valid rows for batch insert (instead of inserting one at a time)
+    const rowsToInsert: Array<{
+      athlete_id: number
+      event_id: number
+      value: number
+      unit_id: number
+      achieved_date: string
+      metadata: Json
+      verified: boolean
+    }> = []
 
     for (const result of input.results) {
       // Check for duplicate
@@ -327,34 +337,45 @@ export async function bulkImportResultsAction(
         metadata.wind_legal = isWindLegal(result.wind)
       }
 
-      // Insert result
+      rowsToInsert.push({
+        athlete_id: athlete.id,
+        event_id: result.eventId,
+        value: result.value,
+        unit_id: getUnitIdForEvent(result.eventId),
+        achieved_date: result.date,
+        metadata: metadata as unknown as Json,
+        verified: false,
+      })
+
+      existingKeys.add(key)
+      affectedEventIds.add(result.eventId)
+    }
+
+    // Single batch insert for all rows
+    let imported = 0
+    if (rowsToInsert.length > 0) {
       const { error: insertError } = await supabase
         .from("athlete_personal_bests")
-        .insert({
-          athlete_id: athlete.id,
-          event_id: result.eventId,
-          value: result.value,
-          unit_id: getUnitIdForEvent(result.eventId),
-          achieved_date: result.date,
-          metadata: metadata as unknown as Json,
-          verified: false,
-        })
+        .insert(rowsToInsert)
 
       if (insertError) {
-        console.error("[bulkImportResultsAction] Insert error:", insertError)
-        // Continue with other results
+        console.error("[bulkImportResultsAction] Batch insert error:", insertError)
+        // If batch fails, none were imported
+        imported = 0
       } else {
-        imported++
-        existingKeys.add(key)
-        affectedEventIds.add(result.eventId)
+        imported = rowsToInsert.length
       }
     }
 
-    // Recalculate PB flags for all affected events
+    // Recalculate PB flags for all affected events in parallel
     // This ensures correct is_pb and is_fastest considering wind-legal status
     let newPBs = 0
-    for (const eventId of affectedEventIds) {
-      await recalculatePBFlagsForEvent(athlete.id, eventId)
+    if (imported > 0) {
+      await Promise.all(
+        [...affectedEventIds].map(eventId =>
+          recalculatePBFlagsForEvent(athlete.id, eventId)
+        )
+      )
     }
 
     // Count actual PBs from recalculated data

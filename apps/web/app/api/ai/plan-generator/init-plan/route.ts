@@ -52,8 +52,9 @@ const InitPlanRequestSchema = z.object({
 export async function POST(req: Request) {
   let userId: string | undefined
   try {
-    // Authenticate
-    userId = (await auth()).userId
+    // Authenticate and parse body in parallel
+    const [authResult, rawBody] = await Promise.all([auth(), req.json()])
+    userId = authResult.userId
     if (!userId) {
       return new Response('Unauthorized', { status: 401 })
     }
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
     // Validate request body
     let body: z.infer<typeof InitPlanRequestSchema>
     try {
-      body = InitPlanRequestSchema.parse(await req.json())
+      body = InitPlanRequestSchema.parse(rawBody)
     } catch (error) {
       return new Response(
         error instanceof z.ZodError ? JSON.stringify({ error: 'Invalid request', details: error.issues }) : 'Invalid request body',

@@ -318,107 +318,132 @@ export async function saveSessionWithExercisesAction(
       }
     }
 
-    // Step 5: Update existing session_plan_exercises
-    for (const exercise of exercisesToUpdate) {
-      const dbId = String(exercise.id)
+    // Step 5: Batch-update existing session_plan_exercises
+    if (exercisesToUpdate.length > 0) {
+      const updatedExerciseIds = exercisesToUpdate.map(ex => String(ex.id))
 
-      // Update the exercise record
-      const { error: updateExerciseError } = await supabase
-        .from('session_plan_exercises')
-        .update({
-          exercise_id: exercise.exercise_id,
-          exercise_order: exercise.exercise_order,
-          superset_id: toSupersetIdNumber(exercise.superset_id),
-          notes: exercise.notes
-        })
-        .eq('id', dbId)
-
-      if (updateExerciseError) {
-        console.error(`[saveSession] Error updating exercise ${dbId}:`, updateExerciseError)
-        await rollbackChanges(exercisesSnapshot, setsSnapshot, createdExerciseIds, deletedExerciseIds)
-        return {
-          isSuccess: false,
-          message: `Failed to update exercise: ${updateExerciseError.message}`
-        }
-      }
-
-      // Delete existing session_plan_sets for this exercise (will re-insert with updated values)
-      const { error: deleteOldSetsError } = await supabase
-        .from('session_plan_sets')
-        .delete()
-        .eq('session_plan_exercise_id', dbId)
-
-      if (deleteOldSetsError) {
-        console.error(`[saveSession] Error deleting old sets for exercise ${dbId}:`, deleteOldSetsError)
-        // Continue anyway - sets may already be deleted
-      }
-
-      // Insert updated session_plan_sets
-      if (exercise.sets && exercise.sets.length > 0) {
-        const { error: insertSetsError } = await supabase
-          .from('session_plan_sets')
-          .insert(mapSetsToInsert(exercise.sets, dbId))
-
-        if (insertSetsError) {
-          console.error(`[saveSession] Error inserting sets for exercise ${dbId}:`, insertSetsError)
-          await rollbackChanges(exercisesSnapshot, setsSnapshot, createdExerciseIds, deletedExerciseIds)
-          return {
-            isSuccess: false,
-            message: `Failed to save exercise sets: ${insertSetsError.message}`
-          }
-        }
-      }
-    }
-
-    // Step 6: Insert new session_plan_exercises
-    for (const exercise of exercisesToInsert) {
-      if (DEBUG_SAVE) {
-        console.log(`[saveSession] New exercise: ${exercise.exercise?.name}, sets: ${exercise.sets?.length ?? 0}`)
-      }
-
-      // Insert the exercise record
-      const exerciseData: SessionPlanExerciseInsert = {
+      // 5a: Batch-upsert all exercise records at once
+      const exerciseUpsertData = exercisesToUpdate.map(exercise => ({
+        id: String(exercise.id),
         session_plan_id: sessionId,
         exercise_id: exercise.exercise_id,
         exercise_order: exercise.exercise_order,
         superset_id: toSupersetIdNumber(exercise.superset_id),
         notes: exercise.notes
-      }
+      }))
 
-      const { data: newExercise, error: insertExerciseError } = await supabase
+      const { error: upsertExercisesError } = await supabase
         .from('session_plan_exercises')
-        .insert(exerciseData)
-        .select('id')
-        .single()
+        .upsert(exerciseUpsertData, { onConflict: 'id' })
 
-      if (insertExerciseError || !newExercise) {
-        console.error('[saveSession] Error inserting exercise:', insertExerciseError)
+      if (upsertExercisesError) {
+        console.error('[saveSession] Error batch-upserting exercises:', upsertExercisesError)
         await rollbackChanges(exercisesSnapshot, setsSnapshot, createdExerciseIds, deletedExerciseIds)
         return {
           isSuccess: false,
-          message: `Failed to add exercise: ${insertExerciseError?.message}`
+          message: `Failed to update exercises: ${upsertExercisesError.message}`
         }
       }
 
-      // Track for potential rollback
-      createdExerciseIds.push(newExercise.id)
+      // 5b: Batch-delete all existing sets for updated exercises in one call
+      const { error: batchDeleteSetsError } = await supabase
+        .from('session_plan_sets')
+        .delete()
+        .in('session_plan_exercise_id', updatedExerciseIds)
 
-      // Insert session_plan_sets for the new exercise
-      if (exercise.sets && exercise.sets.length > 0) {
-        const { error: insertSetsError } = await supabase
+      if (batchDeleteSetsError) {
+        console.error('[saveSession] Error batch-deleting sets:', batchDeleteSetsError)
+        // Continue anyway - sets may already be deleted
+      }
+
+      // 5c: Batch-insert all new sets for updated exercises in one call
+      const allUpdatedSets = exercisesToUpdate.flatMap(exercise =>
+        exercise.sets && exercise.sets.length > 0
+          ? mapSetsToInsert(exercise.sets, String(exercise.id))
+          : []
+      )
+
+      if (allUpdatedSets.length > 0) {
+        const { error: batchInsertSetsError } = await supabase
           .from('session_plan_sets')
-          .insert(mapSetsToInsert(exercise.sets, newExercise.id))
+          .insert(allUpdatedSets)
 
-        if (insertSetsError) {
-          console.error('[saveSession] Error inserting sets for new exercise:', insertSetsError)
+        if (batchInsertSetsError) {
+          console.error('[saveSession] Error batch-inserting sets for updated exercises:', batchInsertSetsError)
           await rollbackChanges(exercisesSnapshot, setsSnapshot, createdExerciseIds, deletedExerciseIds)
           return {
             isSuccess: false,
-            message: `Failed to save exercise sets: ${insertSetsError.message}`
+            message: `Failed to save exercise sets: ${batchInsertSetsError.message}`
           }
         }
-      } else if (DEBUG_SAVE) {
-        console.warn(`[saveSession] No sets for new exercise ${newExercise.id}`)
+      }
+    }
+
+    // Step 6: Batch-insert new session_plan_exercises
+    if (exercisesToInsert.length > 0) {
+      if (DEBUG_SAVE) {
+        exercisesToInsert.forEach(ex =>
+          console.log(`[saveSession] New exercise: ${ex.exercise?.name}, sets: ${ex.sets?.length ?? 0}`)
+        )
+      }
+
+      // 6a: Batch-insert all new exercises at once
+      const newExerciseData = exercisesToInsert.map(exercise => ({
+        session_plan_id: sessionId,
+        exercise_id: exercise.exercise_id,
+        exercise_order: exercise.exercise_order,
+        superset_id: toSupersetIdNumber(exercise.superset_id),
+        notes: exercise.notes
+      }))
+
+      const { data: insertedExercises, error: batchInsertExError } = await supabase
+        .from('session_plan_exercises')
+        .insert(newExerciseData)
+        .select('id, exercise_order')
+
+      if (batchInsertExError || !insertedExercises) {
+        console.error('[saveSession] Error batch-inserting exercises:', batchInsertExError)
+        await rollbackChanges(exercisesSnapshot, setsSnapshot, createdExerciseIds, deletedExerciseIds)
+        return {
+          isSuccess: false,
+          message: `Failed to add exercises: ${batchInsertExError?.message}`
+        }
+      }
+
+      // Track all new IDs for potential rollback
+      createdExerciseIds.push(...insertedExercises.map(ex => ex.id))
+
+      // 6b: Map returned exercise IDs to sets using exercise_order as correlation key
+      const orderToIdMap = new Map(insertedExercises.map(ex => [ex.exercise_order, ex.id]))
+      const allNewSets: SessionPlanSetInsert[] = []
+
+      for (const exercise of exercisesToInsert) {
+        const newExId = orderToIdMap.get(exercise.exercise_order)
+        if (!newExId) {
+          console.error(`[saveSession] Could not correlate exercise_order ${exercise.exercise_order} to inserted ID`)
+          continue
+        }
+        if (exercise.sets && exercise.sets.length > 0) {
+          allNewSets.push(...mapSetsToInsert(exercise.sets, newExId))
+        } else if (DEBUG_SAVE) {
+          console.warn(`[saveSession] No sets for new exercise ${newExId}`)
+        }
+      }
+
+      // 6c: Batch-insert all sets for new exercises in one call
+      if (allNewSets.length > 0) {
+        const { error: batchInsertNewSetsError } = await supabase
+          .from('session_plan_sets')
+          .insert(allNewSets)
+
+        if (batchInsertNewSetsError) {
+          console.error('[saveSession] Error batch-inserting sets for new exercises:', batchInsertNewSetsError)
+          await rollbackChanges(exercisesSnapshot, setsSnapshot, createdExerciseIds, deletedExerciseIds)
+          return {
+            isSuccess: false,
+            message: `Failed to save exercise sets: ${batchInsertNewSetsError.message}`
+          }
+        }
       }
     }
 

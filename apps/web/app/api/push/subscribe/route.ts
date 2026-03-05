@@ -46,18 +46,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Upsert subscription (update if exists, insert if not)
-    const { error: subscriptionError } = await supabase
-      .from('push_subscriptions')
-      .upsert({
-        user_id: dbUserId,
-        endpoint: body.endpoint,
-        p256dh: body.keys.p256dh,
-        auth: body.keys.auth,
-        user_agent: request.headers.get('user-agent') || null
-      }, {
-        onConflict: 'user_id,endpoint'
-      })
+    // Upsert subscription and default reminder preferences in parallel
+    const [{ error: subscriptionError }, { error: prefsError }] = await Promise.all([
+      supabase
+        .from('push_subscriptions')
+        .upsert({
+          user_id: dbUserId,
+          endpoint: body.endpoint,
+          p256dh: body.keys.p256dh,
+          auth: body.keys.auth,
+          user_agent: request.headers.get('user-agent') || null
+        }, {
+          onConflict: 'user_id,endpoint'
+        }),
+      supabase
+        .from('reminder_preferences')
+        .upsert({
+          user_id: dbUserId,
+          workout_reminders_enabled: true,
+          preferred_time: '09:00:00'
+        }, {
+          onConflict: 'user_id',
+          ignoreDuplicates: true
+        }),
+    ])
 
     if (subscriptionError) {
       console.error('[push/subscribe] Subscription error:', subscriptionError)
@@ -66,18 +78,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
-
-    // Create default reminder preferences if not exists
-    const { error: prefsError } = await supabase
-      .from('reminder_preferences')
-      .upsert({
-        user_id: dbUserId,
-        workout_reminders_enabled: true,
-        preferred_time: '09:00:00'
-      }, {
-        onConflict: 'user_id',
-        ignoreDuplicates: true
-      })
 
     if (prefsError) {
       // Log but don't fail - subscription was saved successfully

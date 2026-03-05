@@ -133,7 +133,12 @@ interface SessionPlanExerciseRow {
  * Ensures all required fields are present and properly typed.
  */
 const PlanAssistantRequestSchema = z.object({
-  messages: z.array(z.unknown()).min(1).max(100),
+  messages: z.array(
+    z.object({
+      role: z.enum(['user', 'assistant', 'system']),
+      content: z.string().max(8000),
+    })
+  ).min(1).max(100),
   planId: z.coerce.number().int().positive('Plan ID must be a positive integer'),
   sessionId: z.string().nullable().optional(),
   weekId: z.number().nullable().optional(),
@@ -169,14 +174,6 @@ export async function POST(req: Request) {
       })
     }
 
-    // Resolve DB user ID (throws if user not found)
-    let dbUserId: number
-    try {
-      dbUserId = await getDbUserId(userId)
-    } catch {
-      return new Response('User not found', { status: 404 })
-    }
-
     // Validate request body
     let body: z.infer<typeof PlanAssistantRequestSchema>
     try {
@@ -197,37 +194,50 @@ export async function POST(req: Request) {
 
     const { messages, planId, sessionId, weekId, exerciseId, aiContextLevel = 'session' } = body
 
-    // Fetch plan with ownership check and context in a single query
+    // Resolve DB user ID + fetch plan in parallel (saves ~30-100ms)
+    let dbUserId: number
     let sessionContext
     let weekContext
     let planContext
 
-    const { data: planData, error: planError } = await supabase
-      .from('mesocycles')
-      .select(`
-        id,
-        user_id,
-        name,
-        description,
-        start_date,
-        end_date,
-        microcycles (
-          id,
-          name,
-          start_date,
-          end_date,
-          session_plans (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let planData: any
+    try {
+      const [dbUserIdResult, planResult] = await Promise.all([
+        getDbUserId(userId),
+        supabase
+          .from('mesocycles')
+          .select(`
             id,
+            user_id,
             name,
-            day
-          )
-        )
-      `)
-      .eq('id', planId)
-      .single()
+            description,
+            start_date,
+            end_date,
+            microcycles (
+              id,
+              name,
+              start_date,
+              end_date,
+              session_plans (
+                id,
+                name,
+                day
+              )
+            )
+          `)
+          .eq('id', planId)
+          .single(),
+      ])
 
-    if (planError || !planData) {
-      return new Response('Plan not found', { status: 404 })
+      dbUserId = dbUserIdResult
+
+      if (planResult.error || !planResult.data) {
+        return new Response('Plan not found', { status: 404 })
+      }
+      planData = planResult.data
+    } catch {
+      return new Response('User not found', { status: 404 })
     }
 
     if (planData.user_id !== dbUserId) {
@@ -254,7 +264,29 @@ export async function POST(req: Request) {
       })) ?? [],
     }
 
-    // Fetch week and session context in parallel (both are independent after plan ownership check)
+    // Verify week belongs to this plan BEFORE fetching context (prevents IDOR)
+    if (weekId && planData.microcycles) {
+      const planWeekIds = new Set(
+        planData.microcycles.map((w: MicrocycleRow) => w.id)
+      )
+      if (!planWeekIds.has(weekId)) {
+        return new Response('Week does not belong to this plan', { status: 403 })
+      }
+    }
+
+    // Verify session belongs to this plan BEFORE fetching context (prevents IDOR)
+    if (sessionId && planData.microcycles) {
+      const planSessionIds = new Set(
+        planData.microcycles.flatMap((w: MicrocycleRow) =>
+          w.session_plans?.map((s: SessionPlanRow) => s.id) ?? []
+        )
+      )
+      if (!planSessionIds.has(sessionId)) {
+        return new Response('Session does not belong to this plan', { status: 403 })
+      }
+    }
+
+    // Fetch week and session context in parallel (both are independent after ownership + membership checks)
     const [weekResult, sessionResult] = await Promise.all([
       // Get week context if a week is selected
       weekId ? (async () => {
@@ -332,28 +364,6 @@ export async function POST(req: Request) {
     weekContext = weekResult
     sessionContext = sessionResult
 
-    // Verify week belongs to this plan (prevents IDOR — user can't pass arbitrary weekId)
-    if (weekId && planData.microcycles) {
-      const planWeekIds = new Set(
-        planData.microcycles.map((w: MicrocycleRow) => w.id)
-      )
-      if (!planWeekIds.has(weekId)) {
-        return new Response('Week does not belong to this plan', { status: 403 })
-      }
-    }
-
-    // Verify session belongs to this plan (if provided)
-    if (sessionId && planData.microcycles) {
-      const planSessionIds = new Set(
-        planData.microcycles.flatMap((w: MicrocycleRow) =>
-          w.session_plans?.map((s: SessionPlanRow) => s.id) ?? []
-        )
-      )
-      if (!planSessionIds.has(sessionId)) {
-        return new Response('Session does not belong to this plan', { status: 403 })
-      }
-    }
-
     // Build system prompt with context
     const systemPrompt = buildPlanAssistantSystemPrompt({
       aiContextLevel,
@@ -367,7 +377,7 @@ export async function POST(req: Request) {
 
     // Convert UI messages to model messages format
     // Cast: Zod validates as unknown[], but convertToModelMessages expects UIMessage[]
-    const modelMessages = await convertToModelMessages(messages as UIMessage[])
+    const modelMessages = await convertToModelMessages(messages as unknown as UIMessage[])
 
     // Classify query intent for responsive reasoning + tool filtering
     const intent = classifyPlanQuery(messages as Array<{ role: string; content?: string }>)

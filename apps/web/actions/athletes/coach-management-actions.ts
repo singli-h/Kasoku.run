@@ -93,49 +93,29 @@ export async function createOrUpdateCoachProfileAction(
     // Get current user's database ID from cache
     const dbUserId = await getDbUserId(userId)
 
-    // Check if coach profile already exists
-    const { data: existingCoach } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('user_id', dbUserId)
-      .single()
-
+    // Atomic upsert — avoids TOCTOU race from SELECT-then-INSERT
     const completeCoachData = {
       ...coachData,
       user_id: dbUserId
     }
 
-    let result
-    if (existingCoach) {
-      // Update existing profile
-      result = await supabase
-        .from('coaches')
-        .update(completeCoachData)
-        .eq('user_id', dbUserId)
-        .select()
-        .single()
-    } else {
-      // Create new profile
-      result = await supabase
-        .from('coaches')
-        .insert(completeCoachData)
-        .select()
-        .single()
-    }
-
-    const { data: coach, error } = result
+    const { data: coach, error } = await supabase
+      .from('coaches')
+      .upsert(completeCoachData, { onConflict: 'user_id' })
+      .select()
+      .single()
 
     if (error) {
       console.error('Error creating/updating coach profile:', error)
       return {
         isSuccess: false,
-        message: `Failed to ${existingCoach ? 'update' : 'create'} coach profile: ${error.message}`
+        message: `Failed to save coach profile: ${error.message}`
       }
     }
 
     return {
       isSuccess: true,
-      message: `Coach profile ${existingCoach ? 'updated' : 'created'} successfully`,
+      message: "Coach profile saved successfully",
       data: coach
     }
   } catch (error) {

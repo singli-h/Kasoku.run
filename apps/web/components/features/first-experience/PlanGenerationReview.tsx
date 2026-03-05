@@ -76,8 +76,8 @@ function convertToProposedBlock(plan: ScaffoldedPlan | null, mesocycle: Mesocycl
       const exercises: ProposedExercise[] = session.session_plan_exercises.map((exercise) => {
         const sets: ProposedSet[] = exercise.session_plan_sets.map((set) => ({
           reps: set.reps ?? 10,
-          weight: null,
-          restSeconds: set.rest_seconds ?? 60,
+          weight: set.weight ?? null,
+          restSeconds: set.rest_time ?? 60,
           rpe: set.rpe ?? null,
         }))
 
@@ -259,7 +259,7 @@ export function PlanGenerationReview({
         focus: mesocycle.goal_type || setupContext.focus,
         durationWeeks: mesocycle.duration_weeks,
         startDate,
-        equipment: setupContext.equipment[0],
+        equipment: setupContext.equipment.join(', '),
         description: simplePlan?.plan_description,
       },
       plan: scaffoldedPlan,

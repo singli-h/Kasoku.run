@@ -123,6 +123,9 @@ interface ExerciseRowProps {
 function ExerciseRow({ exercise, index }: ExerciseRowProps) {
   const setCount = exercise.sets.length
   const reps = exercise.sets[0]?.reps || 0
+  const weight = exercise.sets[0]?.weight
+  const rpe = exercise.sets[0]?.rpe
+  const restSeconds = exercise.sets[0]?.restSeconds
 
   return (
     <motion.div
@@ -131,15 +134,26 @@ function ExerciseRow({ exercise, index }: ExerciseRowProps) {
       transition={{ delay: index * 0.03 }}
       className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50"
     >
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground w-5">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-xs text-muted-foreground w-5 shrink-0">
           {index + 1}.
         </span>
-        <span className="text-sm font-medium">{exercise.exerciseName}</span>
+        <span className="text-sm font-medium truncate">{exercise.exerciseName}</span>
       </div>
-      <span className="text-sm text-muted-foreground">
-        {setCount} × {reps}
-      </span>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0 ml-2">
+        <span className="font-medium text-foreground">
+          {setCount} × {reps}
+        </span>
+        {weight != null && weight > 0 && (
+          <span>{weight}kg</span>
+        )}
+        {rpe != null && (
+          <span>RPE {rpe}</span>
+        )}
+        {restSeconds != null && restSeconds > 0 && (
+          <span>{restSeconds}s</span>
+        )}
+      </div>
     </motion.div>
   )
 }

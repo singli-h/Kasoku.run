@@ -7,9 +7,10 @@
  * @see specs/010-individual-first-experience/agent-tools-plan.md
  */
 
-import { streamText, convertToModelMessages, smoothStream, stepCountIs } from 'ai'
+import { streamText, convertToModelMessages, smoothStream, stepCountIs, type UIMessage } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { auth } from '@clerk/nextjs/server'
+import { z } from 'zod'
 import supabase from '@/lib/supabase-server'
 import { getDbUserId } from '@/lib/user-cache'
 import { checkServerRateLimit } from '@/lib/rate-limit-server'
@@ -17,6 +18,20 @@ import { planGeneratorTools } from '@/lib/changeset/plan-generator/tools'
 import { getPlanGeneratorSystemPrompt } from '@/lib/changeset/plan-generator/system-prompt'
 
 export const maxDuration = 60
+
+/**
+ * Zod schema for validating plan generator request body.
+ */
+const PlanGeneratorRequestSchema = z.object({
+  messages: z.array(
+    z.object({
+      role: z.enum(['user', 'assistant', 'system']),
+      content: z.string().max(8000),
+    })
+  ).min(1).max(100),
+  mesocycleId: z.coerce.number().int().positive('Mesocycle ID must be a positive integer'),
+  mesocycleName: z.string().max(200).optional(),
+})
 
 export async function POST(req: Request) {
   let userId: string | undefined
@@ -54,18 +69,21 @@ export async function POST(req: Request) {
       return new Response('User not found', { status: 404 })
     }
 
-    // Validate request body
-    const { messages, mesocycleId, mesocycleName } = body
+    // Validate request body with Zod
+    let validatedBody: z.infer<typeof PlanGeneratorRequestSchema>
+    try {
+      validatedBody = PlanGeneratorRequestSchema.parse(body)
+    } catch (error) {
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid request body',
+          details: error instanceof z.ZodError ? error.issues : 'Failed to parse request'
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
 
-    if (!mesocycleId) {
-      return new Response('Mesocycle ID is required', { status: 400 })
-    }
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return new Response('Messages array is required', { status: 400 })
-    }
-    if (messages.length > 100) {
-      return new Response('Too many messages', { status: 400 })
-    }
+    const { messages, mesocycleId, mesocycleName } = validatedBody
 
     // Verify mesocycle ownership
     const { data: mesocycle, error: mesocycleError } = await supabase
@@ -84,12 +102,12 @@ export async function POST(req: Request) {
 
     // Build system prompt with mesocycle context
     const systemPrompt = getPlanGeneratorSystemPrompt({
-      mesocycleId,
-      mesocycleName: mesocycleName ?? mesocycle.name,
+      mesocycleId: String(mesocycleId),
+      mesocycleName: mesocycleName ?? mesocycle.name ?? undefined,
     })
 
     // Convert UI messages to model messages format
-    const modelMessages = await convertToModelMessages(messages)
+    const modelMessages = await convertToModelMessages(messages as unknown as UIMessage[])
 
     if (process.env.NODE_ENV === 'development') {
       console.log('[plan-generator] Messages count:', modelMessages.length)
