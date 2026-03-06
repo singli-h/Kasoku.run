@@ -338,6 +338,31 @@ Also check `20260113120000_fix_rls_coach_workout_and_ai_memories.sql` — coach 
 
 ---
 
+## Athlete Lifecycle & Plan Assignment (2026-03-06)
+
+`athlete_group_id` on microcycles is the link between group athletes and their training plan.
+
+### Assignment scenarios
+
+| Scenario | Behavior | Status |
+|----------|----------|--------|
+| Athlete in Group A opens `/program` | RLS: `microcycles.athlete_group_id = A` → shows plan | Works |
+| New athlete joins Group A | Coach adds via roster → RLS immediately grants access | Works |
+| Athlete moves A → B | Coach moves via roster → sees B's plan, loses A's | Works |
+| Athlete removed from all groups | No group match → "No program assigned" | Works |
+| Coach creates microcycle with group tab | `selectedGroupId` passed as `athlete_group_id` | **V1.1 fix** |
+| Coach creates microcycle on "All" tab | `athlete_group_id = NULL` (unassigned/shared) | Works |
+
+**Critical**: Without D16 fix, microcycles created in workspace get `athlete_group_id = NULL`, so group athletes never see them via RLS. This is the highest priority V1.1 fix.
+
+### Cross-group generation coherence (D17)
+
+When generating for Group B after Group A, the AI needs Group A's sessions as context to produce ONE coherent program adapted per schedule. Without this, groups get completely independent (and possibly contradictory) sessions.
+
+Query pattern: `session_plans WHERE microcycle_id IN (SELECT id FROM microcycles WHERE mesocycle_id = X AND athlete_group_id != currentGroup AND start_date/end_date overlap)`.
+
+---
+
 ## Code Impact Inventory
 
 **24 files need updates** after `macrocycles.athlete_group_id` is removed:
@@ -527,6 +552,16 @@ AI context panel collapses to icon on iPad. Hidden behind [AI] button on mobile.
 
 2. **Multi-coach clubs** (Pattern C, V2): Head coach context cascade to assistants — deferred.
 
+3. ~~**Wizard phase defaults when no keywords detected**~~ **RESOLVED (2026-03-06)**: Fall back to duration-based periodization templates when context text has no phase keywords. See D14.
+
+4. ~~**Coach input before AI generation**~~ **RESOLVED (2026-03-06)**: Add a "week-specific notes" textarea in GenerateMicrocycleSheet. Ephemeral — appended to AI prompt, not persisted. See D15.
+
+5. ~~**Microcycle group assignment from workspace**~~ **RESOLVED (2026-03-06)**: When coach creates microcycle with a group tab selected, pass `selectedGroupId` as `athlete_group_id`. "All" tab → NULL. See D16.
+
+6. ~~**Cross-group session coherence**~~ **RESOLVED (2026-03-06)**: When generating for Group B, include Group A's existing sessions for the same week as AI context. See D17.
+
+7. ~~**Mesocycle phase-specific AI context**~~ **RESOLVED (2026-03-06)**: Mesocycles need an inline `planning_context` editor in the workspace. Without this, AI only reads season-level context but not phase-specific coaching intent. See D18.
+
 ---
 
 ## Decisions Log
@@ -546,3 +581,10 @@ AI context panel collapses to icon on iPad. Hidden behind [AI] button on mobile.
 | D11 | Schedule constraints format? | Freeform text in planning_context — not a structured `scheduleByGroup` array. AI reads prose intent, not array values. | 2026-03-05 |
 | D12 | Group tabs mental model? | "Track filters" — view/filter over shared sessions, not separate plan objects. No plan explosion. | 2026-03-05 |
 | D13 | ai_memories usage? | Not used in this feature. Existing table remains unused for now. | 2026-03-05 |
+| D14 | Phase defaults when no keywords? | Duration-based templates: ≤12wk → GPP+Comp, 13-20wk → GPP+SPP+Comp+Taper, 21+wk → 5-phase split. Coach edits freely. Keyword inference takes priority when detected. | 2026-03-06 |
+| D15 | Coach input before AI generation? | Add "week-specific notes" textarea in GenerateMicrocycleSheet between context preview and Generate button. Ephemeral — appended to AI prompt, not persisted to DB. Coach writes "focus on blocks, 3 athletes have meets Saturday" and AI incorporates it. | 2026-03-06 |
+| D16 | How does athlete_group_id get set on microcycles? | Workspace passes `selectedGroupId` from GroupTabsBar to microcycle creation. "All" tab → NULL (unassigned). Athletes only see microcycles matching their group's ID via RLS. | 2026-03-06 |
+| D17 | Cross-group session coherence? | When generating for Group B, query existing session_plans for the same mesocycle+week under other groups. Include in AI prompt: "For GHS you already planned: [sessions]. Now adapt for PC." Ensures ONE program adapted per schedule. | 2026-03-06 |
+| D18 | Mesocycle phase-specific context? | Add inline `planning_context` editor on mesocycle cards in workspace. Coach writes phase focus (e.g. "SPP: speed development, reduce volume, increase intensity"). Feeds into AI context chain at position #2. | 2026-03-06 |
+| D19 | Wizard onboarding clarity? | Phases section labeled "Starting phases (add more anytime)". Plan page gets one-time callout explaining workflow: select group → generate week → review. No interactive tutorial (V2). | 2026-03-06 |
+| D20 | Batch multi-group generation? | V2. MVP: generate per group sequentially. Coach reviews each. D17 ensures cross-group coherence. | 2026-03-06 |

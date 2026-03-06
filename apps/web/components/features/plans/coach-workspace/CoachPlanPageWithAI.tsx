@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Sparkles, X } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { extractPlanningContextText } from '@/lib/utils'
 import { TrainingPlanWorkspace, type TrainingPlan } from '../workspace/TrainingPlanWorkspace'
 import { SeasonContextPanel } from './SeasonContextPanel'
 import { GroupTabsBar } from './GroupTabsBar'
 import { GenerateMicrocycleSheet } from './GenerateMicrocycleSheet'
+import { WeeklyInsightsPanel } from './WeeklyInsightsPanel'
 
 interface CoachPlanPageWithAIProps {
   initialPlan: TrainingPlan
@@ -33,13 +35,22 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
   const [generateSheetOpen, setGenerateSheetOpen] = useState(false)
   const [selectedMicrocycleId, setSelectedMicrocycleId] = useState<number | null>(null)
-  const [planningContext, setPlanningContext] = useState<string | null>(() => {
-    const ctx = initialPlan.macrocycle.planning_context
-    if (!ctx) return null
-    if (typeof ctx === 'string') return ctx
-    return (ctx as Record<string, unknown>)?.text as string ?? null
-  })
+  const [insightsOpen, setInsightsOpen] = useState(false)
+  const [insightsMicrocycleId, setInsightsMicrocycleId] = useState<number | null>(null)
+  const [planningContext, setPlanningContext] = useState<string | null>(
+    () => extractPlanningContextText(initialPlan.macrocycle.planning_context)
+  )
+  const [showCallout, setShowCallout] = useState(false)
   const { toast } = useToast()
+
+  // Check localStorage for callout dismissal on mount
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem('kasoku:coach-plan-callout-dismissed')) {
+        setShowCallout(true)
+      }
+    } catch {}
+  }, [])
 
   // Use coach groups from server — no fallback to Group {id}
   const coachGroups = propGroups ?? []
@@ -50,6 +61,25 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
     )}>
       <div className="flex flex-col">
         <div className="px-4 pt-4">
+          {showCallout && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-start gap-3 mb-4">
+              <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div className="flex-1 text-sm">
+                <p className="font-medium">Your season plan is ready</p>
+                <p className="text-muted-foreground text-xs mt-1">Select a group tab, then click Generate on any week to create AI-powered sessions. Add phase focus on each phase header for better results.</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCallout(false)
+                  try { localStorage.setItem('kasoku:coach-plan-callout-dismissed', '1') } catch {}
+                }}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Dismiss callout"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
           <SeasonContextPanel
             macrocycleId={initialPlan.macrocycle.id}
             planningContext={planningContext}
@@ -64,6 +94,7 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
 
         <TrainingPlanWorkspace
           initialPlan={initialPlan}
+          selectedGroupId={selectedGroupId}
           onGenerateWeek={(microcycleId) => {
             if (selectedGroupId === null) {
               toast({ title: 'Select a group first', description: 'Pick a group tab above to generate sessions for that group.', variant: 'destructive' })
@@ -72,14 +103,28 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
             setSelectedMicrocycleId(microcycleId)
             setGenerateSheetOpen(true)
           }}
+          onReviewWeek={(microcycleId) => {
+            setInsightsMicrocycleId(microcycleId)
+            setInsightsOpen(true)
+          }}
         />
 
         {selectedMicrocycleId !== null && selectedGroupId !== null && (
           <GenerateMicrocycleSheet
+            key={`gen-${selectedMicrocycleId}-${selectedGroupId}`}
             microcycleId={selectedMicrocycleId}
             athleteGroupId={selectedGroupId}
             open={generateSheetOpen}
             onOpenChange={setGenerateSheetOpen}
+          />
+        )}
+
+        {insightsMicrocycleId !== null && (
+          <WeeklyInsightsPanel
+            key={`insights-${insightsMicrocycleId}`}
+            microcycleId={insightsMicrocycleId}
+            open={insightsOpen}
+            onOpenChange={setInsightsOpen}
           />
         )}
       </div>

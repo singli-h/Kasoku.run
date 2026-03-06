@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import { getDbUserId } from '@/lib/user-cache'
 import supabase from '@/lib/supabase-server'
 import type { ActionState } from '@/types'
+import { extractPlanningContextText } from '@/lib/utils'
 
 export interface MicrocycleGenerationContext {
   macroContext: string | null
@@ -14,6 +15,7 @@ export interface MicrocycleGenerationContext {
   scheduleNotes: string | null
   microcycleName: string | null
   groupName: string | null
+  otherGroupSessions: string[] // e.g. ["GHS (3x/week): Mon Speed End, Wed Strength, Fri Race Prep"]
 }
 
 /**
@@ -27,9 +29,9 @@ export async function getMicrocycleGenerationContextAction(
   try {
     const { userId } = await auth()
     if (!userId) return { isSuccess: false, message: 'Not authenticated' }
-    await getDbUserId(userId)
+    const dbUserId = await getDbUserId(userId)
 
-    // 1. Get microcycle + meso + macro chain in one query
+    // 1. Get microcycle + meso + macro chain in one query (scoped to owner)
     const { data: micro, error: microError } = await supabase
       .from('microcycles')
       .select(`
@@ -42,54 +44,87 @@ export async function getMicrocycleGenerationContextAction(
         )
       `)
       .eq('id', microcycleId)
+      .eq('user_id', dbUserId)
       .single()
 
-    if (microError || !micro) return { isSuccess: false, message: 'Microcycle not found' }
+    if (microError || !micro) return { isSuccess: false, message: 'Microcycle not found or access denied' }
 
     const meso = Array.isArray(micro.mesocycles) ? micro.mesocycles[0] : micro.mesocycles
     const macro = Array.isArray(meso?.macrocycles) ? meso.macrocycles[0] : meso?.macrocycles
 
-    // 2. Last 3 weekly_insights for this group (completed microcycles before this one)
-    const { data: pastMicros } = await supabase
-      .from('microcycles')
-      .select('weekly_insights, start_date, name')
-      .eq('athlete_group_id', athleteGroupId)
-      .not('weekly_insights', 'is', null)
-      .lt('start_date', micro.start_date ?? new Date().toISOString())
-      .order('start_date', { ascending: false })
-      .limit(3)
+    // Queries 2-6 are independent — run in parallel
+    const [
+      { data: pastMicros },
+      { data: athletes },
+      { data: races },
+      { data: group },
+      { data: siblingMicros },
+    ] = await Promise.all([
+      // 2. Last 3 weekly_insights for this group
+      supabase
+        .from('microcycles')
+        .select('weekly_insights, start_date, name')
+        .eq('athlete_group_id', athleteGroupId)
+        .not('weekly_insights', 'is', null)
+        .lt('start_date', micro.start_date ?? new Date().toISOString())
+        .order('start_date', { ascending: false })
+        .limit(3),
+      // 3. Distinct event_groups for athletes in this group
+      supabase
+        .from('athletes')
+        .select('event_group')
+        .eq('athlete_group_id', athleteGroupId)
+        .not('event_group', 'is', null),
+      // 4. Upcoming races within microcycle date range
+      supabase
+        .from('races')
+        .select('name, date, type')
+        .gte('date', micro.start_date ?? '')
+        .lte('date', micro.end_date ?? '')
+        .order('date'),
+      // 5. Group name
+      supabase
+        .from('athlete_groups')
+        .select('group_name')
+        .eq('id', athleteGroupId)
+        .single(),
+      // 6. Sibling microcycles for cross-group coherence
+      supabase
+        .from('microcycles')
+        .select('id, athlete_group_id, start_date, end_date, athlete_groups(group_name)')
+        .eq('mesocycle_id', meso?.id)
+        .neq('athlete_group_id', athleteGroupId),
+    ])
 
-    // 3. Distinct event_groups for athletes in this group
-    const { data: athletes } = await supabase
-      .from('athletes')
-      .select('event_group')
-      .eq('athlete_group_id', athleteGroupId)
-      .not('event_group', 'is', null)
+    // Filter to overlapping date ranges in JS (Supabase can't do cross-column range filters easily)
+    const overlapping = (siblingMicros ?? []).filter(sm => {
+      if (!sm.start_date || !sm.end_date || !micro.start_date || !micro.end_date) return false
+      return sm.start_date <= micro.end_date && sm.end_date >= micro.start_date
+    })
 
-    // 4. Upcoming races within microcycle date range
-    const { data: races } = await supabase
-      .from('races')
-      .select('name, date, type')
-      .gte('date', micro.start_date ?? '')
-      .lte('date', micro.end_date ?? '')
-      .order('date')
+    let otherGroupSessionsFormatted: string[] = []
+    if (overlapping.length > 0) {
+      const siblingIds = overlapping.map(sm => sm.id)
+      const { data: sibSessions } = await supabase
+        .from('session_plans')
+        .select('name, day, microcycle_id')
+        .in('microcycle_id', siblingIds)
+        .order('day')
 
-    // 5. Group name
-    const { data: group } = await supabase
-      .from('athlete_groups')
-      .select('group_name')
-      .eq('id', athleteGroupId)
-      .single()
+      // Group sessions by microcycle, format as readable strings
+      for (const sm of overlapping) {
+        const sessions = (sibSessions ?? []).filter(s => s.microcycle_id === sm.id)
+        const groupObj = Array.isArray(sm.athlete_groups) ? sm.athlete_groups[0] : sm.athlete_groups
+        const gName = groupObj?.group_name ?? `Group ${sm.athlete_group_id}`
+        if (sessions.length > 0) {
+          const sessionList = sessions.map(s => `Day${s.day ?? '?'} ${s.name ?? 'Session'}`).join(', ')
+          otherGroupSessionsFormatted.push(`${gName} (${sessions.length}x/week): ${sessionList}`)
+        }
+      }
+    }
 
-    // Extract planning_context text from macrocycle (dedicated JSONB column)
-    const macroCtx = macro?.planning_context
-    const macroContext = macroCtx
-      ? (typeof macroCtx === 'string' ? macroCtx : (macroCtx as Record<string, unknown>)?.text as string ?? JSON.stringify(macroCtx))
-      : null
-
-    // Extract planning_context from mesocycle's dedicated column (not metadata)
-    const mesoCtx = meso?.planning_context as Record<string, unknown> | null
-    const mesoContext = mesoCtx?.text ? String(mesoCtx.text) : null
+    const macroContext = extractPlanningContextText(macro?.planning_context)
+    const mesoContext = extractPlanningContextText(meso?.planning_context)
     // Schedule notes live in the freeform planning_context text -- AI reads them inline
     const scheduleNotes: string | null = null
 
@@ -116,6 +151,7 @@ export async function getMicrocycleGenerationContextAction(
         scheduleNotes,
         microcycleName: micro.name,
         groupName: group?.group_name ?? null,
+        otherGroupSessions: otherGroupSessionsFormatted,
       },
     }
   } catch (e) {

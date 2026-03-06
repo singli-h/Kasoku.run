@@ -48,6 +48,7 @@ interface MesocycleData {
   description: string | null
   start_date: string | null
   end_date: string | null
+  planning_context?: unknown | null
   metadata: WorkspaceMetadata | null
   microcycles?: MicrocycleData[]
 }

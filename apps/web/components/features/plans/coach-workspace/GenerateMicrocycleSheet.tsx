@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { Sparkles, Loader2, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react'
 import { getMicrocycleGenerationContextAction } from '@/actions/plans/generate-microcycle-action'
 import type { MicrocycleGenerationContext } from '@/actions/plans/generate-microcycle-action'
@@ -29,6 +30,7 @@ export function GenerateMicrocycleSheet({
   const [aiResponse, setAiResponse] = useState('')
   const [contextExpanded, setContextExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [weekNotes, setWeekNotes] = useState('')
   const { toast } = useToast()
 
   const loadContext = useCallback(async () => {
@@ -43,12 +45,12 @@ export function GenerateMicrocycleSheet({
     }
   }, [microcycleId, athleteGroupId, toast])
 
-  const handleOpenChange = useCallback((newOpen: boolean) => {
-    onOpenChange(newOpen)
-    if (newOpen && !context) {
+  // Load context when sheet opens — onOpenChange does NOT fire when parent sets open=true
+  useEffect(() => {
+    if (open && !context && !loadingContext) {
       loadContext()
     }
-  }, [onOpenChange, context, loadContext])
+  }, [open, context, loadingContext, loadContext])
 
   async function handleCopy() {
     await navigator.clipboard.writeText(aiResponse)
@@ -64,7 +66,7 @@ export function GenerateMicrocycleSheet({
 
     const messages = [{
       role: 'user' as const,
-      content: `Generate a training week for ${context.groupName ?? 'this group'} — ${microcycleName ?? 'upcoming week'}.`,
+      content: `Generate a training week for ${context.groupName ?? 'this group'} — ${microcycleName ?? 'upcoming week'}.${weekNotes.trim() ? `\n\nCoach notes for this week:\n${weekNotes.trim()}` : ''}`,
     }]
 
     const body = {
@@ -76,6 +78,7 @@ export function GenerateMicrocycleSheet({
       athleteEventGroups: context.athleteEventGroups.length ? context.athleteEventGroups : undefined,
       upcomingRaces: context.upcomingRaces.length ? context.upcomingRaces : undefined,
       scheduleNotes: context.scheduleNotes ?? undefined,
+      otherGroupSessions: context.otherGroupSessions.length ? context.otherGroupSessions : undefined,
     }
 
     try {
@@ -96,15 +99,8 @@ export function GenerateMicrocycleSheet({
         const { done, value } = await reader.read()
         if (done) break
         const chunk = decoder.decode(value)
-        // Parse Vercel AI SDK data stream format (0:"text" lines)
-        const lines = chunk.split('\n').filter(l => l.startsWith('0:'))
-        for (const line of lines) {
-          try {
-            const text = JSON.parse(line.slice(2)) as string
-            accumulated += text
-            setAiResponse(accumulated)
-          } catch { /* skip malformed chunks */ }
-        }
+        accumulated += chunk
+        setAiResponse(accumulated)
       }
     } catch (e) {
       toast({ title: 'Generation failed', description: String(e), variant: 'destructive' })
@@ -114,7 +110,7 @@ export function GenerateMicrocycleSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col gap-0 p-0">
         <SheetHeader className="px-6 py-4 border-b">
           <SheetTitle className="flex items-center gap-2">
@@ -154,11 +150,26 @@ export function GenerateMicrocycleSheet({
                     {context.athleteEventGroups.length > 0 && <p>Events: {context.athleteEventGroups.join(', ')}</p>}
                     {context.upcomingRaces.length > 0 && <p>Races: {context.upcomingRaces.join(', ')}</p>}
                     {context.recentInsights.length > 0 && <p>Last {context.recentInsights.length} weeks loaded</p>}
+                    {context.otherGroupSessions.length > 0 && (
+                      <p>Other groups: {context.otherGroupSessions.map(s => s.split(':')[0]).join(', ')}</p>
+                    )}
                     {!context.macroContext && !context.mesoContext && (
                       <p className="text-amber-600">No planning context yet — add it in Season Context panel for better results.</p>
                     )}
                   </div>
                 )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Week-specific notes (optional)</label>
+                <Textarea
+                  value={weekNotes}
+                  onChange={(e) => setWeekNotes(e.target.value)}
+                  placeholder="e.g. Focus on acceleration, reduce volume — 3 athletes racing Saturday..."
+                  rows={3}
+                  className="text-sm resize-none"
+                  maxLength={2000}
+                />
               </div>
 
               {!aiResponse && (

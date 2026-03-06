@@ -30,13 +30,18 @@ export async function getMicrocycleWorkoutSummaryAction(
   try {
     const { userId } = await auth()
     if (!userId) return { isSuccess: false, message: 'Not authenticated' }
-    await getDbUserId(userId)
+    const dbUserId = await getDbUserId(userId)
 
     const { data: micro } = await supabase
       .from('microcycles')
       .select('name, start_date, end_date')
       .eq('id', microcycleId)
+      .eq('user_id', dbUserId)
       .single()
+
+    if (!micro) {
+      return { isSuccess: false, message: 'Microcycle not found or access denied' }
+    }
 
     const { data: logs } = await supabase
       .from('workout_logs')

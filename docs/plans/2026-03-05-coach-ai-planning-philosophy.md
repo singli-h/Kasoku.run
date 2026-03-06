@@ -96,18 +96,28 @@ Group tabs (GHS / PC / SiChuan) are **view filters over a shared session set**. 
 
 ## MVP Scope Guard
 
-**In scope:**
+**In scope (MVP — shipped 2026-03-06):**
 - Loops A, B, C
 - Group tabs as filters
-- SeasonContextPanel (macro context)
+- SeasonContextPanel (macro context + AI chat)
 - GenerateMicrocycleSheet (AI generation via streaming)
-- CoachSeasonWizard (3-step: describe → phases → groups)
-- event_group on athletes
+- WeeklyInsightsPanel (Loop C — AI drafts, coach edits, saves)
+- CoachSeasonWizard (single-page: describe → phases → groups, localStorage persistence)
+- event_group on athletes (inline editor on roster + cards)
 - Full RLS (coach own, individual own, athlete view)
 - `planning_context` on macrocycles and mesocycles (dedicated columns)
 - `weekly_insights` + `coach_notes` on microcycles
+- IDOR fix on workout summary action (user_id ownership check)
 
-**Out of scope until explicitly requested (do not add):**
+**In scope (V1.1 — in progress):**
+- Duration-based phase templates when no keywords detected (D14)
+- Pre-generation "week notes" textarea in GenerateMicrocycleSheet (D15)
+- Pass selectedGroupId → microcycle.athlete_group_id on creation (D16)
+- Cross-group session context in AI generation prompt (D17)
+- Mesocycle planning_context inline editor in workspace (D18)
+- One-time onboarding callout on plan page (D19)
+
+**Out of scope (V2):**
 - `session_type: shared | variant` schema column
 - Schedule-aware session greying (parse training days from context)
 - Template linking / "Derived from Program X"
@@ -116,6 +126,9 @@ Group tabs (GHS / PC / SiChuan) are **view filters over a shared session set**. 
 - Cross-season AI memory (`ai_memories` table)
 - Individual athlete overrides on group sessions
 - Mobile evaluate mode
+- Batch multi-group generation (D20)
+- Interactive tutorial/guide with slides
+- AI chat inside wizard (before plan exists)
 
 ---
 

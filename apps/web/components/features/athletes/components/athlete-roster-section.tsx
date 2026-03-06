@@ -36,12 +36,130 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { updateAthleteProfileAction } from "@/actions/athletes/athlete-actions"
 
 import { AthleteCard } from "./athlete-card"
 import { GroupFilterChips } from "./group-filter-chips"
 import type { AthleteWithDetails, GroupWithCount, BulkOperationState } from "../types"
+
+const EVENT_GROUP_OPTIONS = [
+  { value: "SS", label: "SS (Short Sprints)" },
+  { value: "MS", label: "MS (Mid Sprints)" },
+  { value: "LS", label: "LS (Long Sprints)" },
+  { value: "Hurdles", label: "Hurdles" },
+  { value: "Jumps", label: "Jumps" },
+  { value: "Throws", label: "Throws" },
+  { value: "Distance", label: "Distance" },
+  { value: "Multi-events", label: "Multi-events" },
+] as const
+
+/**
+ * Inline editor for athlete event_group field.
+ * Shows preset options and allows custom text input.
+ */
+function EventGroupEditor({
+  athleteId,
+  userId,
+  currentValue,
+  onSaved,
+}: {
+  athleteId: number
+  userId: number | null
+  currentValue: string | null | undefined
+  onSaved: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [customValue, setCustomValue] = useState("")
+  const [saving, setSaving] = useState(false)
+  const { toast } = useToast()
+
+  const handleSelect = async (value: string | null) => {
+    if (!userId) return
+    setSaving(true)
+    const result = await updateAthleteProfileAction(userId, { event_group: value })
+    setSaving(false)
+    if (result.isSuccess) {
+      setOpen(false)
+      setCustomValue("")
+      onSaved()
+    } else {
+      toast({ title: "Error", description: result.message, variant: "destructive" })
+    }
+  }
+
+  const handleCustomSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (customValue.trim()) {
+      handleSelect(customValue.trim())
+    }
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors",
+            "hover:bg-muted border border-transparent hover:border-border",
+            currentValue ? "font-medium" : "text-muted-foreground"
+          )}
+        >
+          {currentValue || "Set"}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-2" align="start">
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground px-1 pb-1">Event Group</p>
+          {EVENT_GROUP_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              disabled={saving}
+              onClick={() => handleSelect(option.value)}
+              className={cn(
+                "w-full text-left px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors",
+                currentValue === option.value && "bg-muted font-medium"
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+          {currentValue && (
+            <button
+              disabled={saving}
+              onClick={() => handleSelect(null)}
+              className="w-full text-left px-2 py-1.5 rounded text-sm text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              Clear
+            </button>
+          )}
+          <div className="border-t pt-1.5 mt-1.5">
+            <form onSubmit={handleCustomSubmit} className="flex gap-1">
+              <Input
+                value={customValue}
+                onChange={(e) => setCustomValue(e.target.value)}
+                placeholder="Custom..."
+                className="h-7 text-xs"
+                maxLength={50}
+                disabled={saving}
+              />
+              <Button type="submit" size="sm" className="h-7 px-2 text-xs" disabled={saving || !customValue.trim()}>
+                Set
+              </Button>
+            </form>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 interface AthleteRosterSectionProps {
   athletes: AthleteWithDetails[]
@@ -293,6 +411,7 @@ export function AthleteRosterSection({
                 onLongPress={handleEnterSelectionMode}
                 onBulkOperation={onBulkOperation}
                 onGroupFilter={onGroupFilterChange}
+                onDataReload={onDataReload}
               />
             ))}
 
@@ -319,6 +438,7 @@ export function AthleteRosterSection({
                 <TableHead>Group</TableHead>
                 <TableHead>Age</TableHead>
                 <TableHead>Sex</TableHead>
+                <TableHead>Event Group</TableHead>
                 <TableHead>Events</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -373,6 +493,14 @@ export function AthleteRosterSection({
                     </TableCell>
                     <TableCell>
                       {athlete.user?.sex || '—'}
+                    </TableCell>
+                    <TableCell>
+                      <EventGroupEditor
+                        athleteId={athlete.id}
+                        userId={athlete.user_id}
+                        currentValue={athlete.event_group}
+                        onSaved={() => onDataReload?.()}
+                      />
                     </TableCell>
                     <TableCell>
                       {events.length > 0 ? (

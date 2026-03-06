@@ -5,7 +5,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, ChevronRight, Plus, Edit, Trash2, Sparkles } from "lucide-react"
+import { Calendar, ChevronRight, ChevronDown, ChevronUp, Plus, Edit, Trash2, Sparkles, BarChart3, Check, Loader2 } from "lucide-react"
 import { EditMesocycleDialog, type MesocycleFormData } from "./components/EditMesocycleDialog"
 import { EditMicrocycleDialog, type MicrocycleFormData } from "./components/EditMicrocycleDialog"
 import { EditRaceDialog } from "./components/EditRaceDialog"
@@ -21,10 +21,12 @@ import {
   updateMicrocycleAction,
   deleteMicrocycleAction,
   updateMacrocycleAction,
+  saveMesoPlanningContextAction,
 } from "@/actions/plans/plan-actions"
 import { createRaceAction, updateRaceAction, deleteRaceAction } from "@/actions/plans/race-actions"
 import { Copy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { extractPlanningContextText } from "@/lib/utils"
 
 // Training plan workspace component - interfaces for data structure
 export interface Session {
@@ -61,6 +63,7 @@ interface Mesocycle {
   description: string | null
   start_date: string | null
   end_date: string | null
+  planning_context?: unknown | null
   metadata: {
     phase?: "GPP" | "SPP" | "Taper" | "Competition"
     color?: string
@@ -103,7 +106,86 @@ type HistoryState = {
 interface TrainingPlanWorkspaceProps {
   initialPlan: TrainingPlan
   onPlanUpdate?: (plan: TrainingPlan) => void
+  selectedGroupId?: number | null
   onGenerateWeek?: (microcycleId: number) => void
+  onReviewWeek?: (microcycleId: number) => void
+}
+
+/** Inline editor for mesocycle planning_context (phase focus) */
+function MesoPlanningContextEditor({ mesocycleId, planningContext, onSaved }: {
+  mesocycleId: number
+  planningContext: unknown | null
+  onSaved?: (text: string) => void
+}) {
+  const extracted = extractPlanningContextText(planningContext) ?? ''
+  const [expanded, setExpanded] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(extracted)
+  const [saving, setSaving] = useState(false)
+
+  // Sync value when prop changes externally (e.g. parent refetch)
+  useEffect(() => {
+    if (!editing) setValue(extracted)
+  }, [extracted, editing])
+
+  const preview = value
+    ? value.slice(0, 80) + (value.length > 80 ? '...' : '')
+    : 'Add phase focus...'
+
+  async function handleSave() {
+    setSaving(true)
+    const result = await saveMesoPlanningContextAction(mesocycleId, value)
+    setSaving(false)
+    if (result.isSuccess) {
+      setEditing(false)
+      onSaved?.(value)
+    }
+  }
+
+  return (
+    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        <span className="truncate">{expanded ? 'Phase focus' : preview}</span>
+      </button>
+      {expanded && (
+        <div className="mt-2 space-y-2">
+          {editing ? (
+            <>
+              <textarea
+                value={value}
+                onChange={e => setValue(e.target.value)}
+                className="w-full min-h-[60px] rounded-md border bg-background px-3 py-2 text-xs font-mono resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+                placeholder="e.g. SPP: speed development, reduce volume, increase intensity"
+                maxLength={2000}
+              />
+              <div className="flex items-center gap-2">
+                <Button size="sm" className="h-6 text-xs px-2 gap-1" onClick={handleSave} disabled={saving}>
+                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                  {saving ? 'Saving' : 'Save'}
+                </Button>
+                <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => { setValue(extracted); setEditing(false) }}>
+                  Cancel
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-start gap-2">
+              <p className="text-xs text-muted-foreground whitespace-pre-wrap flex-1">
+                {value || 'No phase focus set.'}
+              </p>
+              <Button size="sm" variant="ghost" className="h-6 text-xs px-2 shrink-0" onClick={() => setEditing(true)}>
+                Edit
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /**
@@ -172,7 +254,7 @@ function isCurrentWeek(micro: Microcycle): boolean {
   return today >= startDate && today <= endDate
 }
 
-export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, onGenerateWeek }: TrainingPlanWorkspaceProps) {
+export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroupId, onGenerateWeek, onReviewWeek }: TrainingPlanWorkspaceProps) {
   const router = useRouter()
   const [plan, setPlan] = useState(initialPlan)
 
@@ -401,6 +483,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, onGenerateWee
           start_date: microcycle.start_date || new Date().toISOString().split('T')[0],
           end_date: microcycle.end_date || new Date().toISOString().split('T')[0],
           mesocycle_id: selectedMeso.id,
+          athlete_group_id: selectedGroupId ?? null,
         })
 
         if (!result.isSuccess) {
@@ -919,6 +1002,18 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, onGenerateWee
                     <span>Vol: {meso.avgVolume || 0}/10</span>
                     <span>Int: {meso.avgIntensity || 0}/10</span>
                   </div>
+                  <MesoPlanningContextEditor
+                    mesocycleId={meso.id}
+                    planningContext={meso.planning_context}
+                    onSaved={(text) => {
+                      setPlan(prev => ({
+                        ...prev,
+                        mesocycles: prev.mesocycles.map(m =>
+                          m.id === meso.id ? { ...m, planning_context: { text } } : m
+                        ),
+                      }))
+                    }}
+                  />
                 </div>
               ))}
             </div>
@@ -1094,6 +1189,17 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, onGenerateWee
                     <h2 className="text-lg font-semibold truncate">{selectedMicro.name} Sessions</h2>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    {onReviewWeek && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1.5"
+                        onClick={() => onReviewWeek(selectedMicro.id)}
+                      >
+                        <BarChart3 className="h-3.5 w-3.5" />
+                        Insights
+                      </Button>
+                    )}
                     {onGenerateWeek && (
                       <Button
                         size="sm"
@@ -1265,6 +1371,18 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, onGenerateWee
                           <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         </div>
                       </div>
+                      <MesoPlanningContextEditor
+                        mesocycleId={meso.id}
+                        planningContext={meso.planning_context}
+                        onSaved={(text) => {
+                          setPlan(prev => ({
+                            ...prev,
+                            mesocycles: prev.mesocycles.map(m =>
+                              m.id === meso.id ? { ...m, planning_context: { text } } : m
+                            ),
+                          }))
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
@@ -1417,6 +1535,17 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, onGenerateWee
                         <h2 className="text-lg font-semibold truncate">{selectedMicro.name} Sessions</h2>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        {onReviewWeek && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="gap-1.5"
+                            onClick={() => onReviewWeek(selectedMicro.id)}
+                          >
+                            <BarChart3 className="h-3.5 w-3.5" />
+                            Insights
+                          </Button>
+                        )}
                         {onGenerateWeek && (
                           <Button
                             size="sm"
