@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -50,7 +50,13 @@ export function WeeklyInsightsPanel({
   const [editableObservations, setEditableObservations] = useState('')
   const [editableAdjustments, setEditableAdjustments] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
   const { toast } = useToast()
+
+  // Abort streaming on unmount
+  useEffect(() => {
+    return () => { abortRef.current?.abort() }
+  }, [])
 
   // Reset state when microcycleId changes or sheet reopens with different insights
   useEffect(() => {
@@ -83,6 +89,10 @@ export function WeeklyInsightsPanel({
 
     // Now stream AI insights
     setPanelState('generating')
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     try {
       const res = await fetch('/api/ai/planning-context-chat', {
         method: 'POST',
@@ -96,6 +106,7 @@ export function WeeklyInsightsPanel({
           ],
           mode: 'insights',
         }),
+        signal: controller.signal,
       })
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -117,6 +128,7 @@ export function WeeklyInsightsPanel({
       populateEditFields(parsed)
       setPanelState('editing')
     } catch (e) {
+      if (controller.signal.aborted) return
       setError(String(e))
       setPanelState('idle')
     }

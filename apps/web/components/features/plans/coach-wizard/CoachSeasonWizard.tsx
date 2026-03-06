@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDown, Plus, X } from 'lucide-react'
 import { createMacrocycleAction, saveMacroPlanningContextAction, createMesocycleAction } from '@/actions/plans/plan-actions'
@@ -25,7 +24,6 @@ interface WizardState {
   endDate: string
   planningContext: string
   phases: Phase[]
-  selectedGroupIds: number[]
 }
 
 interface CoachSeasonWizardProps {
@@ -150,7 +148,6 @@ export function CoachSeasonWizard({ coachGroups }: CoachSeasonWizardProps) {
       endDate: draft?.endDate ?? '',
       planningContext: draft?.planningContext ?? '',
       phases: draft?.phases ?? DEFAULT_PHASES,
-      selectedGroupIds: draft?.selectedGroupIds ?? coachGroups.map(g => g.id),
     }
   })
 
@@ -208,9 +205,12 @@ export function CoachSeasonWizard({ coachGroups }: CoachSeasonWizardProps) {
       const macrocycleId = result.data.id
 
       // Save planning context
-      await saveMacroPlanningContextAction(macrocycleId, {
+      const ctxResult = await saveMacroPlanningContextAction(macrocycleId, {
         text: state.planningContext,
       })
+      if (!ctxResult.isSuccess) {
+        toast({ title: 'Warning: planning context not saved', description: ctxResult.message, variant: 'destructive' })
+      }
 
       // Auto-create mesocycles from phases (distribute dates proportionally, in parallel)
       if (state.phases.length > 0) {
@@ -266,13 +266,6 @@ export function CoachSeasonWizard({ coachGroups }: CoachSeasonWizardProps) {
 
   function addPhase() {
     update('phases', [...state.phases, { name: '', weeks: 4 }])
-  }
-
-  // ── Group helpers ────────────────────────────────────────────────────────
-
-  function toggleGroup(id: number) {
-    const ids = state.selectedGroupIds
-    update('selectedGroupIds', ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])
   }
 
   const totalWeeks = state.phases.reduce((s, p) => s + p.weeks, 0)
@@ -391,23 +384,19 @@ export function CoachSeasonWizard({ coachGroups }: CoachSeasonWizardProps) {
       {coachGroups.length > 0 && (
         <section className="space-y-3">
           <div>
-            <h2 className="text-lg font-semibold">Groups</h2>
+            <h2 className="text-lg font-semibold">Your groups</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              All your groups appear as tabs in the workspace for filtering.
+              These groups will appear as tabs in the plan workspace. You can manage groups in Settings.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             {coachGroups.map(group => (
-              <label
+              <span
                 key={group.id}
-                className="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer hover:bg-accent/50 transition-colors"
+                className="px-3 py-1.5 border rounded-lg text-sm bg-muted/50"
               >
-                <Checkbox
-                  checked={state.selectedGroupIds.includes(group.id)}
-                  onCheckedChange={() => toggleGroup(group.id)}
-                />
-                <span className="text-sm">{group.name}</span>
-              </label>
+                {group.name}
+              </span>
             ))}
           </div>
         </section>

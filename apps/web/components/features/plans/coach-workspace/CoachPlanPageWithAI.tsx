@@ -35,6 +35,7 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
   const [generateSheetOpen, setGenerateSheetOpen] = useState(false)
   const [selectedMicrocycleId, setSelectedMicrocycleId] = useState<number | null>(null)
+  const [selectedMicrocycleName, setSelectedMicrocycleName] = useState<string | null>(null)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [insightsMicrocycleId, setInsightsMicrocycleId] = useState<number | null>(null)
   const [planningContext, setPlanningContext] = useState<string | null>(
@@ -95,12 +96,13 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
         <TrainingPlanWorkspace
           initialPlan={initialPlan}
           selectedGroupId={selectedGroupId}
-          onGenerateWeek={(microcycleId) => {
+          onGenerateWeek={(microcycleId, microcycleName) => {
             if (selectedGroupId === null) {
               toast({ title: 'Select a group first', description: 'Pick a group tab above to generate sessions for that group.', variant: 'destructive' })
               return
             }
             setSelectedMicrocycleId(microcycleId)
+            setSelectedMicrocycleName(microcycleName)
             setGenerateSheetOpen(true)
           }}
           onReviewWeek={(microcycleId) => {
@@ -114,6 +116,7 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
             key={`gen-${selectedMicrocycleId}-${selectedGroupId}`}
             microcycleId={selectedMicrocycleId}
             athleteGroupId={selectedGroupId}
+            microcycleName={selectedMicrocycleName}
             open={generateSheetOpen}
             onOpenChange={setGenerateSheetOpen}
           />

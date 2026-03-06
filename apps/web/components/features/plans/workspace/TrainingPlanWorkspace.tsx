@@ -107,7 +107,7 @@ interface TrainingPlanWorkspaceProps {
   initialPlan: TrainingPlan
   onPlanUpdate?: (plan: TrainingPlan) => void
   selectedGroupId?: number | null
-  onGenerateWeek?: (microcycleId: number) => void
+  onGenerateWeek?: (microcycleId: number, microcycleName: string | null) => void
   onReviewWeek?: (microcycleId: number) => void
 }
 
@@ -1205,7 +1205,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                         size="sm"
                         variant="outline"
                         className="gap-1.5 bg-transparent"
-                        onClick={() => onGenerateWeek(selectedMicro.id)}
+                        onClick={() => onGenerateWeek(selectedMicro.id, selectedMicro.name)}
                       >
                         <Sparkles className="h-3.5 w-3.5" />
                         Generate
@@ -1551,7 +1551,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                             size="sm"
                             variant="outline"
                             className="gap-1.5 bg-transparent"
-                            onClick={() => onGenerateWeek(selectedMicro.id)}
+                            onClick={() => onGenerateWeek(selectedMicro.id, selectedMicro.name)}
                           >
                             <Sparkles className="h-3.5 w-3.5" />
                             Generate

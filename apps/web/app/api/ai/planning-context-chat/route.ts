@@ -30,7 +30,7 @@ export const maxDuration = 60
 const RequestSchema = z.object({
   messages: z.array(
     z.object({
-      role: z.enum(['user', 'assistant', 'system']),
+      role: z.enum(['user', 'assistant']),
       content: z.string().max(10000),
     })
   ).min(1).max(50),
@@ -40,6 +40,7 @@ const RequestSchema = z.object({
   athleteEventGroups: z.array(z.string().max(50)).max(10).optional(),
   upcomingRaces: z.array(z.string().max(200)).max(10).optional(),
   scheduleNotes: z.string().max(1000).optional(),
+  otherGroupSessions: z.array(z.string().max(500)).max(10).optional(),
   importText: z.string().max(20000).optional(),
   mode: z.enum(['setup', 'generate', 'insights']).default('setup'),
 })
@@ -113,6 +114,9 @@ export async function POST(req: Request) {
     if (validated.scheduleNotes) {
       systemParts.push(`\n## Training Schedule\n${validated.scheduleNotes}`)
     }
+    if (validated.otherGroupSessions?.length) {
+      systemParts.push(`\n## Other Groups This Week (avoid scheduling conflicts)\n${validated.otherGroupSessions.join('\n')}`)
+    }
     if (validated.importText) {
       systemParts.push(`\n## Imported Training Document\n${validated.importText}`)
     }
@@ -121,7 +125,7 @@ export async function POST(req: Request) {
     // Unlike routes that receive UIMessage from useChat hook, this route
     // receives simple {role, content} from a manual fetch call.
     const messages: ModelMessage[] = validated.messages.map(m => ({
-      role: m.role as 'user' | 'assistant' | 'system',
+      role: m.role as 'user' | 'assistant',
       content: m.content,
     }))
 

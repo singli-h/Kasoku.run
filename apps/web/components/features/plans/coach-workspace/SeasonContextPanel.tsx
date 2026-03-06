@@ -33,6 +33,12 @@ export function SeasonContextPanel({ macrocycleId, planningContext, onContextUpd
   const [streaming, setStreaming] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  // Abort streaming on unmount
+  useEffect(() => {
+    return () => { abortRef.current?.abort() }
+  }, [])
 
   async function handleSave() {
     setSaving(true)
@@ -73,6 +79,10 @@ export function SeasonContextPanel({ macrocycleId, planningContext, onContextUpd
     const assistantIndex = updatedMessages.length
     setMessages(prev => [...prev, { role: 'assistant', content: '' }])
 
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     try {
       const res = await fetch('/api/ai/planning-context-chat', {
         method: 'POST',
@@ -82,6 +92,7 @@ export function SeasonContextPanel({ macrocycleId, planningContext, onContextUpd
           macroContext: value || undefined,
           mode: 'setup',
         }),
+        signal: controller.signal,
       })
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -102,6 +113,7 @@ export function SeasonContextPanel({ macrocycleId, planningContext, onContextUpd
         })
       }
     } catch (e) {
+      if (controller.signal.aborted) return
       toast({ title: 'Chat failed', description: String(e), variant: 'destructive' })
       // Remove empty assistant message on error
       setMessages(prev => prev.filter((_, i) => i !== assistantIndex))

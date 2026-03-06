@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -31,7 +31,13 @@ export function GenerateMicrocycleSheet({
   const [contextExpanded, setContextExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
   const [weekNotes, setWeekNotes] = useState('')
+  const abortRef = useRef<AbortController | null>(null)
   const { toast } = useToast()
+
+  // Abort streaming on unmount
+  useEffect(() => {
+    return () => { abortRef.current?.abort() }
+  }, [])
 
   const loadContext = useCallback(async () => {
     if (!athleteGroupId) return
@@ -81,11 +87,16 @@ export function GenerateMicrocycleSheet({
       otherGroupSessions: context.otherGroupSessions.length ? context.otherGroupSessions : undefined,
     }
 
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     try {
       const res = await fetch('/api/ai/planning-context-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: controller.signal,
       })
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -103,6 +114,7 @@ export function GenerateMicrocycleSheet({
         setAiResponse(accumulated)
       }
     } catch (e) {
+      if (controller.signal.aborted) return
       toast({ title: 'Generation failed', description: String(e), variant: 'destructive' })
     } finally {
       setGenerating(false)
