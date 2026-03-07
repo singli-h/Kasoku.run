@@ -3,658 +3,619 @@
 import { motion } from "framer-motion"
 import {
   ArrowRight,
+  BookOpen,
+  Bot,
   Brain,
-  Calendar,
   CheckCircle2,
-  Clock,
-  FileSpreadsheet,
-  Layers,
-  MessageSquare,
-  Repeat2,
-  Shield,
+  ChevronDown,
+  Cpu,
   Sparkles,
-  Timer,
   TrendingUp,
-  Users,
+  User,
   Zap,
 } from "lucide-react"
 
 const spring = { type: "spring" as const, stiffness: 170, damping: 26 }
 
-/* ─── data ─── */
-
-const painPoints = [
-  {
-    icon: FileSpreadsheet,
-    label: "Spreadsheet chaos",
-    detail: "Copy-pasting sessions across weeks, managing multiple tabs for athlete groups (LS/SS/MS/SH), version confusion",
-  },
-  {
-    icon: Repeat2,
-    label: "Duplication for every group",
-    detail: "Same warm-up block repeated across columns — one typo means inconsistent prescriptions",
-  },
-  {
-    icon: Clock,
-    label: "No execution tracking",
-    detail: "The plan says 2x60m @90% — did the athlete actually hit it? No way to know from a CSV",
-  },
-  {
-    icon: Users,
-    label: "No individual adaptation",
-    detail: "When an athlete misses a session or needs modification, the spreadsheet doesn't adjust",
-  },
-]
-
-const transformSteps = [
-  {
-    phase: "Before",
-    icon: FileSpreadsheet,
-    color: "text-red-400",
-    bg: "bg-red-500/10 border-red-500/20",
-    items: [
-      "One giant CSV per season",
-      "Copy-paste warm-ups across 5 columns",
-      "Group prescriptions buried in free text",
-      "No record of what actually happened",
-      "Manual adjustments scattered in notes",
-    ],
-  },
-  {
-    phase: "After",
-    icon: Zap,
-    color: "text-primary",
-    bg: "bg-primary/10 border-primary/20",
-    items: [
-      "Structured season → phase → week → session",
-      "Shared warm-up blocks, group-specific main sets",
-      "Per-athlete prescription with RPE, tempo, effort",
-      "Every rep logged with completion tracking",
-      "AI suggests adjustments based on actual data",
-    ],
-  },
-]
-
-const planningHierarchy = [
-  {
-    level: "Macrocycle",
-    desc: "Full season plan anchored to competition dates",
-    detail: "Nov 2023 → Aug 2024 season with race targets",
-    icon: Calendar,
-  },
-  {
-    level: "Mesocycle",
-    desc: "Training phases with distinct focus",
-    detail: "GPP → SPP → Pre-Comp → Competition → Taper",
-    icon: Layers,
-  },
-  {
-    level: "Microcycle",
-    desc: "Weekly plan with volume & intensity controls",
-    detail: "Volume: 7/10, Intensity: 6/10 — adjustable per week",
-    icon: TrendingUp,
-  },
-  {
-    level: "Session",
-    desc: "Daily workout with full exercise prescription",
-    detail: "Warm-up + Drills + Sprint Work + Cool Down",
-    icon: Timer,
-  },
-]
-
-const aiFeatures = [
-  {
-    icon: Brain,
-    title: "Season Setup Interview",
-    desc: "AI asks about your philosophy, competition calendar, athlete profiles — builds the season structure for you",
-    tag: "Coach flow",
-  },
-  {
-    icon: Sparkles,
-    title: "Microcycle Generation",
-    desc: "Generate a full week of sessions from phase goals, volume/intensity targets, and athlete group needs",
-    tag: "AI generates",
-  },
-  {
-    icon: MessageSquare,
-    title: "Session Assistant",
-    desc: "\"Add 3x60m @90% with 8min rest for short sprinters\" — AI proposes changes, you review and approve",
-    tag: "Chat interface",
-  },
-  {
-    icon: Shield,
-    title: "Human in the Loop",
-    desc: "Every AI change is a proposal. Nothing hits the database until the coach clicks approve.",
-    tag: "You stay in control",
-  },
-]
-
-const coachWorkflow = [
-  { step: "1", title: "Tell AI your season goals", desc: "Competition dates, athlete groups, training philosophy" },
-  { step: "2", title: "AI builds your season structure", desc: "Macrocycle with phases, volume/intensity curves" },
-  { step: "3", title: "Generate weekly sessions", desc: "AI creates sessions per group — you review & tweak" },
-  { step: "4", title: "Assign to athletes", desc: "Push plans to athlete groups, they see sessions on their phone" },
-  { step: "5", title: "Athletes log workouts", desc: "Every rep tracked — RPE, tempo, completion status" },
-  { step: "6", title: "AI weekly insights", desc: "Completion rates, suggested adjustments, red flags" },
-]
+const fadeUp = (delay = 0) => ({
+  initial: { opacity: 0, y: 18 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { margin: "-40px" as const },
+  transition: { ...spring, delay },
+})
 
 /* ─── page ─── */
 
 export default function DemoPage() {
   return (
-    <div className="relative bg-background">
-      {/* ── HERO ── */}
-      <section className="relative overflow-hidden pt-32 pb-20">
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-primary blur-[120px] opacity-[0.07] -top-40 -right-20" />
-          <div className="absolute w-[400px] h-[400px] rounded-full bg-indigo-600 blur-[100px] opacity-[0.05] bottom-0 -left-20" />
+    <div className="bg-background">
+
+      {/* ════════════════════════════════════════
+          HERO
+      ════════════════════════════════════════ */}
+      <section className="relative overflow-hidden min-h-[85vh] flex flex-col items-center justify-center pt-20 pb-12 px-4 text-center">
+        {/* ambient */}
+        <div className="absolute inset-0 pointer-events-none" aria-hidden>
+          <div className="absolute w-[500px] h-[500px] rounded-full bg-primary blur-[130px] opacity-[0.08] -top-40 left-1/2 -translate-x-1/2" />
         </div>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: -12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...spring, delay: 0.1 }}
-            >
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-surface text-sm font-medium text-muted-foreground font-body">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
-                Coach Demo
+
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, delay: 0.1 }}
+          className="relative z-10"
+        >
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-surface text-xs font-medium text-muted-foreground font-body">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
+            Coach Demo · Kasoku
+          </span>
+        </motion.div>
+
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, delay: 0.2 }}
+          className="relative z-10 mt-6 font-heading text-4xl sm:text-6xl font-bold tracking-tight text-foreground leading-[1.06]"
+        >
+          The AI that thinks
+          <br />
+          <span className="text-primary">like a sprint coach.</span>
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, delay: 0.35 }}
+          className="relative z-10 mt-5 text-base sm:text-lg text-muted-foreground max-w-sm mx-auto font-sans leading-relaxed"
+        >
+          Plan seasons. Track athletes. Brief your squad.
+          All in one place — with AI that actually knows your athletes.
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2 }}
+          className="relative z-10 mt-12 flex flex-col items-center gap-1 text-muted-foreground/50"
+        >
+          <span className="text-[10px] font-mono tracking-widest uppercase">scroll to explore</span>
+          <ChevronDown className="w-4 h-4 animate-bounce" />
+        </motion.div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          AI CHAT DEMO
+      ════════════════════════════════════════ */}
+      <section className="py-16 sm:py-24 border-t border-border/20 bg-surface/30">
+        <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
+
+          <motion.div {...fadeUp()}>
+            <SectionLabel icon={Bot} label="AI Planning Assistant" />
+            <h2 className="mt-4 font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
+              Type what you want.
+              <br />
+              Get a real session.
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground font-sans">
+              Tell the AI your group, phase, and goal. It speaks your language.
+            </p>
+          </motion.div>
+
+          {/* ── Chat window ── */}
+          <motion.div
+            {...fadeUp(0.1)}
+            className="mt-8 rounded-2xl border border-border bg-card overflow-hidden shadow-xl shadow-black/5"
+          >
+            {/* titlebar */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-surface">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
+              <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/70" />
+              <span className="ml-2 text-xs text-muted-foreground font-mono">
+                AI Plan Assistant · SS Group · SPP Phase
               </span>
-            </motion.div>
+            </div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...spring, delay: 0.2 }}
-              className="mt-8 font-heading text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-foreground leading-[1.08]"
-            >
-              From Spreadsheet
-              <br />
-              <span className="text-primary">to System</span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...spring, delay: 0.4 }}
-              className="mt-8 text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-sans"
-            >
-              Your training plans deserve more than a CSV.
-              <br />
-              Kasoku gives sprint coaches AI-powered periodization with full
-              athlete tracking — without losing control.
-            </motion.p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── PAIN POINTS ── */}
-      <section className="py-24 border-t border-border/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader
-            title="We know the spreadsheet struggle"
-            subtitle="These problems compound across a full season"
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-14">
-            {painPoints.map((p, i) => (
-              <motion.div
-                key={p.label}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ margin: "-60px" }}
-                transition={{ ...spring, delay: i * 0.08 }}
-                className="p-6 rounded-2xl border border-border bg-card"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="rounded-xl bg-red-500/10 p-2.5 border border-red-500/20 shrink-0">
-                    <p.icon className="w-5 h-5 text-red-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-heading font-semibold text-foreground">
-                      {p.label}
-                    </h3>
-                    <p className="mt-2 text-muted-foreground text-sm leading-relaxed font-sans">
-                      {p.detail}
-                    </p>
-                  </div>
+            <div className="p-4 sm:p-5 space-y-4">
+              {/* Coach message */}
+              <div className="flex items-start gap-3 justify-end">
+                <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%]">
+                  <p className="text-sm font-sans leading-relaxed">
+                    Generate Tuesday's session for the SS group. SPP phase, high intensity. Focus on acceleration mechanics.
+                  </p>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── BEFORE / AFTER ── */}
-      <section className="py-24 border-t border-border/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader
-            title="The transformation"
-            subtitle="Same coaching intent, dramatically better tooling"
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-14">
-            {transformSteps.map((col, ci) => (
-              <motion.div
-                key={col.phase}
-                initial={{ opacity: 0, x: ci === 0 ? -20 : 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ margin: "-60px" }}
-                transition={{ ...spring, delay: ci * 0.12 }}
-                className={`rounded-2xl border p-8 ${col.bg}`}
-              >
-                <div className="flex items-center gap-3 mb-6">
-                  <col.icon className={`w-6 h-6 ${col.color}`} />
-                  <h3 className={`text-2xl font-heading font-bold ${col.color}`}>
-                    {col.phase}
-                  </h3>
+                <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+                  <User className="w-3.5 h-3.5 text-primary" />
                 </div>
-                <ul className="space-y-4">
-                  {col.items.map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-foreground/80 font-sans">
-                      <span className={`mt-1 ${col.color}`}>
-                        {col.phase === "Before" ? (
-                          <span className="block w-1.5 h-1.5 rounded-full bg-red-400 mt-1" />
-                        ) : (
-                          <CheckCircle2 className="w-4 h-4" />
-                        )}
-                      </span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+              </div>
 
-      {/* ── PLANNING HIERARCHY ── */}
-      <section className="py-24 border-t border-border/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader
-            title="Structured like you think"
-            subtitle="Season → Phase → Week → Session — the periodization hierarchy coaches already use"
-          />
-          <div className="mt-14 max-w-3xl mx-auto space-y-4">
-            {planningHierarchy.map((item, i) => (
-              <motion.div
-                key={item.level}
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ margin: "-40px" }}
-                transition={{ ...spring, delay: i * 0.1 }}
-                className="relative"
-              >
-                <div
-                  className="flex items-start gap-5 p-6 rounded-2xl border border-border bg-card hover:border-primary/40 transition-colors"
-                  style={{ marginLeft: `${i * 28}px` }}
-                >
-                  <div className="rounded-xl bg-primary/10 p-2.5 border border-primary/20 shrink-0">
-                    <item.icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-3">
-                      <h3 className="text-lg font-heading font-semibold text-foreground">
-                        {item.level}
-                      </h3>
-                      <span className="text-sm text-muted-foreground font-sans">
-                        {item.desc}
+              {/* AI response */}
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-surface border border-border flex items-center justify-center shrink-0">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <div className="flex-1 space-y-3">
+                  <p className="text-xs text-muted-foreground font-sans">
+                    Based on your SPP phase goals and last 3 weeks of SS data (avg 88% completion, fatigue trending up slightly):
+                  </p>
+
+                  {/* Generated session card */}
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 overflow-hidden">
+                    <div className="px-4 py-3 bg-primary/10 border-b border-primary/20 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-heading font-bold text-foreground">
+                          Tuesday — Short Sprinters (SS)
+                        </p>
+                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                          SPP Phase · High Intensity · ~90 min
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-mono bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                        AI Draft
                       </span>
                     </div>
-                    <p className="mt-1.5 text-sm text-muted-foreground/70 font-mono">
-                      {item.detail}
-                    </p>
+
+                    <div className="p-4 space-y-3">
+                      {/* Warm-up */}
+                      <SessionBlock
+                        label="WARM-UP"
+                        items={[
+                          { name: "Tempo Run", prescription: "10 × 100m" },
+                          { name: "A-Skip", prescription: "3 × 20m" },
+                          { name: "B-Skip", prescription: "3 × 30m" },
+                          { name: "Strides zero step", prescription: "3 × 30m" },
+                        ]}
+                      />
+                      {/* Main set */}
+                      <SessionBlock
+                        label="ACCELERATION BLOCK"
+                        accent
+                        items={[
+                          { name: "Block Starts", prescription: "6 × 30m @95% [full rec]" },
+                          { name: "Flying 20s", prescription: "4 × 20m @100% [8 min]" },
+                          { name: "CSD", prescription: "2×40m, 2×60m @90% [10 min]" },
+                        ]}
+                      />
+                      {/* AI note */}
+                      <div className="rounded-lg bg-surface border border-border/60 px-3 py-2 flex items-start gap-2">
+                        <Brain className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-muted-foreground font-sans leading-relaxed">
+                          High CNS demand — volume reduced 15% vs last week given recent fatigue trend. Monitor closely.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="px-4 py-3 border-t border-primary/10 flex items-center gap-2">
+                      <button className="flex-1 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-semibold flex items-center justify-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Approve
+                      </button>
+                      <button className="h-8 px-3 rounded-lg bg-surface border border-border text-xs font-sans text-muted-foreground">
+                        Edit
+                      </button>
+                      <button className="h-8 px-3 rounded-lg bg-surface border border-border text-xs font-sans text-muted-foreground">
+                        Regenerate
+                      </button>
+                    </div>
                   </div>
                 </div>
-                {i < planningHierarchy.length - 1 && (
-                  <div
-                    className="absolute w-px h-4 bg-border/50"
-                    style={{ left: `${(i + 1) * 28 + 32}px`, bottom: "-16px" }}
-                  />
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── AI FEATURES ── */}
-      <section className="py-24 border-t border-border/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader
-            title="AI that respects your expertise"
-            subtitle="The AI proposes. You decide. Nothing happens without your approval."
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-14">
-            {aiFeatures.map((f, i) => (
-              <motion.div
-                key={f.title}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ margin: "-60px" }}
-                transition={{ ...spring, delay: i * 0.08 }}
-                className="p-8 rounded-2xl border border-border bg-card hover:border-primary/40 transition-colors group"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="rounded-xl bg-primary/10 p-2.5 border border-primary/20">
-                    <f.icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <span className="text-xs font-mono text-muted-foreground bg-surface px-2 py-1 rounded-md border border-border/50">
-                    {f.tag}
-                  </span>
-                </div>
-                <h3 className="text-xl font-heading font-semibold text-foreground mb-2">
-                  {f.title}
-                </h3>
-                <p className="text-muted-foreground text-sm leading-relaxed font-sans">
-                  {f.desc}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── COACH WORKFLOW ── */}
-      <section className="py-24 border-t border-border/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader
-            title="Your workflow in Kasoku"
-            subtitle="From season planning to weekly insights — end to end"
-          />
-          <div className="mt-14 max-w-3xl mx-auto">
-            <div className="relative">
-              {/* Vertical line */}
-              <div className="absolute left-6 top-0 bottom-0 w-px bg-border/40" />
-
-              <div className="space-y-8">
-                {coachWorkflow.map((s, i) => (
-                  <motion.div
-                    key={s.step}
-                    initial={{ opacity: 0, x: -16 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ margin: "-40px" }}
-                    transition={{ ...spring, delay: i * 0.08 }}
-                    className="relative flex items-start gap-5 pl-0"
-                  >
-                    <div className="relative z-10 w-12 h-12 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-heading font-bold text-primary">
-                        {s.step}
-                      </span>
-                    </div>
-                    <div className="pt-2">
-                      <h3 className="text-lg font-heading font-semibold text-foreground">
-                        {s.title}
-                      </h3>
-                      <p className="mt-1 text-sm text-muted-foreground font-sans">
-                        {s.desc}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
               </div>
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* ── SPEAKING HIS LANGUAGE ── */}
-      <section className="py-24 border-t border-border/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader
-            title="Built for sprint coaches"
-            subtitle="Not a generic fitness app — built for track & field periodization"
-          />
-          <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { label: "Event group differentiation", detail: "LS / SS / MS / SH — prescribe per group within one session" },
-              { label: "Sprint-specific metrics", detail: "Splits, reaction time, velocity curves, wind-legal PB detection" },
-              { label: "Intensity prescriptions", detail: "Percentage-based effort (@80%, @90%), RPE, tempo notation" },
-              { label: "Rest protocols", detail: "Walk-back recovery, timed rest, HR-based recovery thresholds" },
-              { label: "Drill library", detail: "A-skips, B-skips, wickets, block starts — all in the exercise database" },
-              { label: "Competition anchoring", detail: "Season plan built backwards from target race dates" },
-            ].map((item, i) => (
-              <motion.div
-                key={item.label}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ margin: "-40px" }}
-                transition={{ ...spring, delay: i * 0.06 }}
-                className="p-5 rounded-xl border border-border bg-card"
-              >
-                <h4 className="text-sm font-heading font-semibold text-foreground mb-1">
-                  {item.label}
-                </h4>
-                <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                  {item.detail}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CSV COMPARISON ── */}
-      <section className="py-24 border-t border-border/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader
-            title="Your CSV, reimagined"
-            subtitle="Here's what one of your sessions looks like in Kasoku"
-          />
-          <div className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {/* CSV side */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ margin: "-60px" }}
-              transition={spring}
-              className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 overflow-hidden"
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <FileSpreadsheet className="w-4 h-4 text-red-400" />
-                <span className="text-sm font-mono text-red-400">
-                  Training Plan 2023-24.csv
+            {/* input bar */}
+            <div className="px-4 py-3 border-t border-border bg-surface flex items-center gap-2">
+              <div className="flex-1 h-9 rounded-xl bg-card border border-border px-3 flex items-center">
+                <span className="text-xs text-muted-foreground/50 font-sans">
+                  Ask anything about your plan...
                 </span>
               </div>
-              <pre className="text-xs text-foreground/60 font-mono whitespace-pre-wrap leading-relaxed overflow-x-auto">
-{`WU
-10 x 100m tempo run
-5x4 x long arm swing
-3x20m steps zero step
-3 x 20m Normal A-skip
-3 x 30m normal B-Skips
-2 x 30m one leg 1-2-3-cycle
-3 x 30m dribbling
-3x20m ankling
-
-Static Stretching 15'
-Dynamic Stretching 15'
-
-SS/MS: CSD @80% 2x20m, 2x30m,
-  2x40m [wk back]
-  rest 10'
-  2x50m, 2x60m, 2x80m @80%
-
-SH: CSD 2x1h, 2x3h, 2x5h,
-  2x7h+30m
-
-LS: 15 x 200m M:36", F:39"
-  [90 jog]`}
-              </pre>
-            </motion.div>
-
-            {/* Kasoku side */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ margin: "-60px" }}
-              transition={spring}
-              className="rounded-2xl border border-primary/20 bg-primary/5 p-6"
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Zap className="w-4 h-4 text-primary" />
-                <span className="text-sm font-mono text-primary">
-                  Kasoku Session View
-                </span>
-              </div>
-              <div className="space-y-3">
-                {/* Warm-up section */}
-                <div className="rounded-lg bg-card border border-border p-3">
-                  <div className="text-xs font-heading font-semibold text-primary mb-2">
-                    WARM-UP
-                  </div>
-                  <div className="space-y-1 text-xs text-foreground/70 font-sans">
-                    <div className="flex justify-between">
-                      <span>Tempo Run</span>
-                      <span className="text-muted-foreground">10 x 100m</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Long Arm Swing</span>
-                      <span className="text-muted-foreground">5 x 4 reps</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>A-Skip</span>
-                      <span className="text-muted-foreground">3 x 20m</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>B-Skip</span>
-                      <span className="text-muted-foreground">3 x 30m</span>
-                    </div>
-                  </div>
-                </div>
-                {/* Main set — SS/MS */}
-                <div className="rounded-lg bg-card border border-border p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="text-xs font-heading font-semibold text-primary">
-                      MAIN SET
-                    </div>
-                    <span className="text-[10px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                      SS / MS
-                    </span>
-                  </div>
-                  <div className="space-y-1 text-xs text-foreground/70 font-sans">
-                    <div className="flex justify-between">
-                      <span>Crouching Start Drive</span>
-                      <span className="text-muted-foreground">2x20m, 2x30m, 2x40m @80%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Speed Work</span>
-                      <span className="text-muted-foreground">2x50m, 2x60m, 2x80m @80%</span>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground/60 mt-1">
-                      Rest: walk-back + 10min between blocks
-                    </div>
-                  </div>
-                </div>
-                {/* Tracking indicator */}
-                <div className="flex items-center gap-2 pt-2 border-t border-border/30">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="text-[11px] text-emerald-500 font-sans">
-                    Every set logged with completion, RPE, actual times
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── QUESTIONS TO DISCUSS ── */}
-      <section className="py-24 border-t border-border/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto">
-            <SectionHeader
-              title="What we'd love your feedback on"
-              subtitle="We're building this for coaches like you — your input shapes the product"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ margin: "-60px" }}
-              transition={spring}
-              className="mt-14 space-y-4"
-            >
-              {[
-                "Does the Season → Phase → Week → Session hierarchy match how you think about planning?",
-                "When you differentiate LS/SS/MS/SH groups — what does that workflow actually look like day-to-day?",
-                "What's the single most painful thing about managing training plans in spreadsheets?",
-                "Would you trust AI to draft a week's sessions if you could review and edit everything before it goes live?",
-                "How do you currently track what athletes actually did vs. what was prescribed?",
-              ].map((q, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-4 p-5 rounded-xl border border-border bg-card"
-                >
-                  <div className="rounded-full bg-primary/10 w-8 h-8 flex items-center justify-center shrink-0">
-                    <span className="text-xs font-heading font-bold text-primary">
-                      {i + 1}
-                    </span>
-                  </div>
-                  <p className="text-foreground font-sans pt-1">{q}</p>
-                </div>
-              ))}
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ── */}
-      <section className="py-24 border-t border-border/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ margin: "-60px" }}
-            transition={spring}
-            className="max-w-2xl mx-auto text-center"
-          >
-            <h2 className="font-heading text-4xl sm:text-5xl font-bold text-foreground tracking-tight">
-              Ready to try it with
-              <br />
-              <span className="text-primary">one training block?</span>
-            </h2>
-            <p className="mt-6 text-lg text-muted-foreground font-sans">
-              Import your next mesocycle. See how it feels. No commitment.
-            </p>
-            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="/sign-up"
-                className="inline-flex items-center justify-center gap-2 h-14 px-8 rounded-full bg-primary text-primary-foreground font-body font-medium text-base hover:opacity-90 transition-opacity"
-              >
-                Start Free Trial
-                <ArrowRight className="w-4 h-4" />
-              </a>
+              <button className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shrink-0">
+                <ArrowRight className="w-4 h-4 text-primary-foreground" />
+              </button>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* bottom spacing */}
-      <div className="h-16" />
+      {/* ════════════════════════════════════════
+          AI MEMORY
+      ════════════════════════════════════════ */}
+      <section className="py-16 sm:py-24 border-t border-border/20">
+        <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
+
+          <motion.div {...fadeUp()}>
+            <SectionLabel icon={Cpu} label="Contextual Memory" />
+            <h2 className="mt-4 font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
+              AI that remembers
+              <br />
+              your entire season.
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground font-sans">
+              Every suggestion is informed by your season goals, phase focus,
+              and what your athletes actually did last week. Not generic — yours.
+            </p>
+          </motion.div>
+
+          {/* Memory chain */}
+          <div className="mt-8 space-y-3">
+            {[
+              {
+                delay: 0.05,
+                label: "Season Context",
+                tag: "Set once",
+                content: "Peak for HK Open Feb 2025. SS group: 4 athletes targeting sub-10.8. Philosophy: max velocity focus in SPP.",
+                color: "border-indigo-500/30 bg-indigo-500/5",
+                dot: "bg-indigo-400",
+              },
+              {
+                delay: 0.12,
+                label: "Phase Goals",
+                tag: "Per mesocycle",
+                content: "SPP Phase 2 · Acceleration & max-V. Volume: 7/10. Intensity: 9/10. Key sessions: block starts + flying 20s.",
+                color: "border-primary/30 bg-primary/5",
+                dot: "bg-primary",
+              },
+              {
+                delay: 0.19,
+                label: "Last 3 Weeks",
+                tag: "Auto-generated insights",
+                content: "Avg completion 88%. Fatigue trending up wk 6→7→8. Wong Ka Wai flagged hamstring tightness. Volume slightly high.",
+                color: "border-amber-500/30 bg-amber-500/5",
+                dot: "bg-amber-400",
+              },
+              {
+                delay: 0.26,
+                label: "AI Suggestion",
+                tag: "Today",
+                content: "Volume reduced 15%. Block starts prioritised over volume runs. CNS recovery note auto-added.",
+                color: "border-emerald-500/30 bg-emerald-500/5",
+                dot: "bg-emerald-400",
+              },
+            ].map((m) => (
+              <motion.div
+                key={m.label}
+                {...fadeUp(m.delay)}
+                className={`rounded-xl border p-4 ${m.color}`}
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className={`w-2 h-2 rounded-full ${m.dot}`} />
+                  <span className="text-xs font-heading font-semibold text-foreground">
+                    {m.label}
+                  </span>
+                  <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+                    {m.tag}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground font-sans leading-relaxed pl-4">
+                  {m.content}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.p
+            {...fadeUp(0.3)}
+            className="mt-4 text-xs text-center text-muted-foreground/60 font-mono"
+          >
+            This chain feeds into every AI response automatically
+          </motion.p>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          KNOWLEDGE BASE
+      ════════════════════════════════════════ */}
+      <section className="py-16 sm:py-24 border-t border-border/20 bg-surface/30">
+        <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
+
+          <motion.div {...fadeUp()}>
+            <SectionLabel icon={BookOpen} label="Knowledge Base" />
+            <h2 className="mt-4 font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
+              Your coaching library.
+              <br />
+              On their phone.
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground font-sans">
+              Write once. Your athletes access drill guides, race strategies,
+              and mindset notes anytime. The AI reads it too — so your philosophy
+              shapes every generated session.
+            </p>
+          </motion.div>
+
+          <div className="mt-8 grid grid-cols-1 gap-4">
+
+            {/* Coach side */}
+            <motion.div {...fadeUp(0.08)} className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-border bg-surface flex items-center justify-between">
+                <span className="text-xs font-heading font-semibold text-foreground">
+                  Coach — Knowledge Base
+                </span>
+                <button className="text-[10px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  + New Article
+                </button>
+              </div>
+              <div className="p-3 space-y-2">
+                {[
+                  { title: "Block Start Progressions", tag: "Drills", reads: "12 reads" },
+                  { title: "Race-Day Mental Prep", tag: "Mindset", reads: "8 reads" },
+                  { title: "SPP Phase Philosophy", tag: "Training", reads: "15 reads" },
+                ].map((article) => (
+                  <div
+                    key={article.title}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background hover:border-primary/30 transition-colors"
+                  >
+                    <BookOpen className="w-4 h-4 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-heading font-semibold text-foreground truncate">
+                        {article.title}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-mono">
+                        {article.tag} · {article.reads}
+                      </p>
+                    </div>
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground -rotate-90" />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* AI uses it */}
+            <motion.div
+              {...fadeUp(0.13)}
+              className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-start gap-3"
+            >
+              <Brain className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-heading font-semibold text-foreground mb-1">
+                  AI reads your articles too
+                </p>
+                <p className="text-xs text-muted-foreground font-sans leading-relaxed">
+                  When generating sessions, the AI references your coaching
+                  philosophy and drill library — so output aligns with how you
+                  actually coach, not a generic template.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Athlete side */}
+            <motion.div {...fadeUp(0.18)} className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-border bg-surface">
+                <span className="text-xs font-heading font-semibold text-foreground">
+                  Athlete — Resources Tab
+                </span>
+              </div>
+              <div className="p-3 space-y-2">
+                {[
+                  { title: "Block Start Progressions", tag: "Drill Guide", new: true },
+                  { title: "Race-Day Mental Prep", tag: "Mindset" },
+                ].map((article) => (
+                  <div
+                    key={article.title}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background"
+                  >
+                    <BookOpen className="w-4 h-4 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-heading font-semibold text-foreground truncate">
+                          {article.title}
+                        </p>
+                        {article.new && (
+                          <span className="text-[9px] font-mono bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full shrink-0">
+                            NEW
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground font-mono">
+                        {article.tag} · From Coach
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          ATHLETE TRACKING
+      ════════════════════════════════════════ */}
+      <section className="py-16 sm:py-24 border-t border-border/20">
+        <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
+
+          <motion.div {...fadeUp()}>
+            <SectionLabel icon={TrendingUp} label="Athlete Tracking" />
+            <h2 className="mt-4 font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
+              See what
+              <br />
+              actually happened.
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground font-sans">
+              Planning tools tell you what was prescribed. Kasoku tells you
+              what was done — rep by rep, with RPE and athlete notes.
+            </p>
+          </motion.div>
+
+          <div className="mt-8 space-y-3">
+            {[
+              {
+                delay: 0.06,
+                name: "Chan Siu Ming",
+                group: "SS · Week 8",
+                completion: 92,
+                rpe: "8.2",
+                note: "All sets completed. Felt strong off the blocks.",
+                status: "on-track",
+              },
+              {
+                delay: 0.12,
+                name: "Wong Ka Wai",
+                group: "SS · Week 8",
+                completion: 67,
+                rpe: "9.1",
+                note: "Skipped flying 20s — hamstring tightness mid-session.",
+                status: "flag",
+              },
+              {
+                delay: 0.18,
+                name: "Lee Tsz Hin",
+                group: "SS · Week 8",
+                completion: 100,
+                rpe: "7.8",
+                note: "PB on flying 20m split. Ready for next progression.",
+                status: "pb",
+              },
+            ].map((athlete) => (
+              <motion.div
+                key={athlete.name}
+                {...fadeUp(athlete.delay)}
+                className="rounded-xl border border-border bg-card p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-heading font-semibold text-foreground">
+                      {athlete.name}
+                    </p>
+                    <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                      {athlete.group}
+                    </p>
+                  </div>
+                  <StatusBadge status={athlete.status} />
+                </div>
+
+                {/* Completion bar */}
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${athlete.completion}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-mono text-muted-foreground shrink-0">
+                    {athlete.completion}% done
+                  </span>
+                </div>
+
+                <div className="mt-2.5 flex items-start gap-2">
+                  <span className="text-[10px] font-mono text-muted-foreground shrink-0 mt-0.5">
+                    RPE {athlete.rpe}
+                  </span>
+                  <span className="text-muted-foreground/40 text-[10px]">·</span>
+                  <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
+                    {athlete.note}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Weekly insights callout */}
+          <motion.div
+            {...fadeUp(0.25)}
+            className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-start gap-3"
+          >
+            <Zap className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-heading font-semibold text-foreground mb-1">
+                AI Weekly Insights — auto-generated every Sunday
+              </p>
+              <p className="text-xs text-muted-foreground font-sans leading-relaxed">
+                Completion rates, flagged athletes, suggested adjustments for next week.
+                The AI writes the weekly brief so you don't have to.
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          CTA
+      ════════════════════════════════════════ */}
+      <section className="py-16 sm:py-24 border-t border-border/20 bg-surface/30">
+        <div className="container mx-auto px-4 sm:px-6 max-w-sm text-center">
+          <motion.div {...fadeUp()}>
+            <h2 className="font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
+              Try it with one
+              <br />
+              <span className="text-primary">training block.</span>
+            </h2>
+            <p className="mt-4 text-sm text-muted-foreground font-sans">
+              No commitment. Set up your season in 10 minutes.
+            </p>
+            <a
+              href="/sign-up"
+              className="mt-8 inline-flex items-center justify-center gap-2 w-full h-12 sm:h-14 rounded-full bg-primary text-primary-foreground font-body font-semibold text-sm sm:text-base hover:opacity-90 transition-opacity"
+            >
+              Start Free
+              <ArrowRight className="w-4 h-4" />
+            </a>
+          </motion.div>
+        </div>
+      </section>
+
+      <div className="h-10" />
     </div>
   )
 }
 
-/* ─── shared section header ─── */
+/* ─── sub-components ─── */
 
-function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
+function SectionLabel({
+  icon: Icon,
+  label,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+}) {
   return (
-    <div className="max-w-2xl">
-      <motion.h2
-        initial={{ opacity: 0, y: 12 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={spring}
-        className="font-heading text-4xl sm:text-5xl font-semibold text-foreground tracking-tight"
-      >
-        {title}
-      </motion.h2>
-      <motion.p
-        initial={{ opacity: 0, y: 12 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ ...spring, delay: 0.08 }}
-        className="mt-5 text-xl text-muted-foreground font-sans"
-      >
-        {subtitle}
-      </motion.p>
+    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-surface text-xs font-medium text-muted-foreground font-body">
+      <Icon className="w-3.5 h-3.5 text-primary" />
+      {label}
     </div>
+  )
+}
+
+function SessionBlock({
+  label,
+  items,
+  accent,
+}: {
+  label: string
+  items: { name: string; prescription: string }[]
+  accent?: boolean
+}) {
+  return (
+    <div className={`rounded-lg p-3 ${accent ? "bg-primary/10 border border-primary/20" : "bg-card border border-border"}`}>
+      <p className={`text-[10px] font-heading font-bold tracking-wide mb-2 ${accent ? "text-primary" : "text-muted-foreground"}`}>
+        {label}
+      </p>
+      <div className="space-y-1.5">
+        {items.map(({ name, prescription }) => (
+          <div key={name} className="flex items-start justify-between gap-2">
+            <span className="text-[11px] text-foreground/80 font-sans">
+              {name}
+            </span>
+            <span className="text-[10px] text-muted-foreground font-mono shrink-0 text-right">
+              {prescription}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    "on-track": { label: "On Track", cls: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
+    flag: { label: "Flagged", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
+    pb: { label: "New PB", cls: "bg-primary/10 text-primary border-primary/20" },
+  }
+  const { label, cls } = map[status] ?? map["on-track"]
+  return (
+    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${cls} shrink-0`}>
+      {label}
+    </span>
   )
 }
