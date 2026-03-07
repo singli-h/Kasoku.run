@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { motion } from "framer-motion"
 import {
   ArrowRight,
@@ -35,7 +36,7 @@ export default function DemoPage() {
       ════════════════════════════════════════ */}
       <section className="relative overflow-hidden min-h-[85vh] flex flex-col items-center justify-center pt-20 pb-12 px-4 text-center">
         {/* ambient */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden>
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           <div className="absolute w-[500px] h-[500px] rounded-full bg-primary blur-[130px] opacity-[0.08] -top-40 left-1/2 -translate-x-1/2" />
         </div>
 
@@ -78,7 +79,7 @@ export default function DemoPage() {
           transition={{ delay: 1.2 }}
           className="relative z-10 mt-12 flex flex-col items-center gap-1 text-muted-foreground/50"
         >
-          <span className="text-[10px] font-mono tracking-widest uppercase">scroll to explore</span>
+          <span className="text-[11px] font-mono tracking-widest uppercase">scroll to explore</span>
           <ChevronDown className="w-4 h-4 animate-bounce" />
         </motion.div>
       </section>
@@ -146,11 +147,11 @@ export default function DemoPage() {
                         <p className="text-xs font-heading font-bold text-foreground">
                           Tuesday — Short Sprinters (SS)
                         </p>
-                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                        <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
                           SPP Phase · High Intensity · ~90 min
                         </p>
                       </div>
-                      <span className="text-[10px] font-mono bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                      <span className="text-[11px] font-mono bg-primary/20 text-primary px-2 py-0.5 rounded-full">
                         AI Draft
                       </span>
                     </div>
@@ -179,7 +180,7 @@ export default function DemoPage() {
                       {/* AI note */}
                       <div className="rounded-lg bg-surface border border-border/60 px-3 py-2 flex items-start gap-2">
                         <Brain className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                        <p className="text-[10px] text-muted-foreground font-sans leading-relaxed">
+                        <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
                           High CNS demand — volume reduced 15% vs last week given recent fatigue trend. Monitor closely.
                         </p>
                       </div>
@@ -187,14 +188,14 @@ export default function DemoPage() {
 
                     {/* Actions */}
                     <div className="px-4 py-3 border-t border-primary/10 flex items-center gap-2">
-                      <button className="flex-1 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-semibold flex items-center justify-center gap-1.5">
+                      <button type="button" className="flex-1 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-semibold flex items-center justify-center gap-1.5">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Approve
                       </button>
-                      <button className="h-8 px-3 rounded-lg bg-surface border border-border text-xs font-sans text-muted-foreground">
+                      <button type="button" className="h-8 px-3 rounded-lg bg-surface border border-border text-xs font-sans text-muted-foreground">
                         Edit
                       </button>
-                      <button className="h-8 px-3 rounded-lg bg-surface border border-border text-xs font-sans text-muted-foreground">
+                      <button type="button" className="h-8 px-3 rounded-lg bg-surface border border-border text-xs font-sans text-muted-foreground">
                         Regenerate
                       </button>
                     </div>
@@ -210,7 +211,7 @@ export default function DemoPage() {
                   Ask anything about your plan...
                 </span>
               </div>
-              <button className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shrink-0">
+              <button type="button" aria-label="Send message" className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shrink-0">
                 <ArrowRight className="w-4 h-4 text-primary-foreground" />
               </button>
             </div>
@@ -283,7 +284,7 @@ export default function DemoPage() {
                   <span className="text-xs font-heading font-semibold text-foreground">
                     {m.label}
                   </span>
-                  <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+                  <span className="ml-auto text-[11px] font-mono text-muted-foreground">
                     {m.tag}
                   </span>
                 </div>
@@ -331,7 +332,7 @@ export default function DemoPage() {
                 <span className="text-xs font-heading font-semibold text-foreground">
                   Coach — Knowledge Base
                 </span>
-                <button className="text-[10px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                <button className="text-[11px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                   + New Article
                 </button>
               </div>
@@ -350,7 +351,7 @@ export default function DemoPage() {
                       <p className="text-xs font-heading font-semibold text-foreground truncate">
                         {article.title}
                       </p>
-                      <p className="text-[10px] text-muted-foreground font-mono">
+                      <p className="text-[11px] text-muted-foreground font-mono">
                         {article.tag} · {article.reads}
                       </p>
                     </div>
@@ -406,7 +407,7 @@ export default function DemoPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-muted-foreground font-mono">
+                      <p className="text-[11px] text-muted-foreground font-mono">
                         {article.tag} · From Coach
                       </p>
                     </div>
@@ -438,35 +439,45 @@ export default function DemoPage() {
           </motion.div>
 
           <div className="mt-8 space-y-3">
-            {[
-              {
-                delay: 0.06,
-                name: "Chan Siu Ming",
-                group: "SS · Week 8",
-                completion: 92,
-                rpe: "8.2",
-                note: "All sets completed. Felt strong off the blocks.",
-                status: "on-track",
-              },
-              {
-                delay: 0.12,
-                name: "Wong Ka Wai",
-                group: "SS · Week 8",
-                completion: 67,
-                rpe: "9.1",
-                note: "Skipped flying 20s — hamstring tightness mid-session.",
-                status: "flag",
-              },
-              {
-                delay: 0.18,
-                name: "Lee Tsz Hin",
-                group: "SS · Week 8",
-                completion: 100,
-                rpe: "7.8",
-                note: "PB on flying 20m split. Ready for next progression.",
-                status: "pb",
-              },
-            ].map((athlete) => (
+            {(
+              [
+                {
+                  delay: 0.06,
+                  name: "Athlete A",
+                  group: "SS · Week 8",
+                  completion: 92,
+                  rpe: "8.2",
+                  note: "All sets completed. Felt strong off the blocks.",
+                  status: "on-track" as const,
+                },
+                {
+                  delay: 0.12,
+                  name: "Athlete B",
+                  group: "SS · Week 8",
+                  completion: 67,
+                  rpe: "9.1",
+                  note: "Skipped flying 20s — hamstring tightness mid-session.",
+                  status: "flag" as const,
+                },
+                {
+                  delay: 0.18,
+                  name: "Athlete C",
+                  group: "SS · Week 8",
+                  completion: 100,
+                  rpe: "7.8",
+                  note: "PB on flying 20m split. Ready for next progression.",
+                  status: "pb" as const,
+                },
+              ] satisfies {
+                delay: number
+                name: string
+                group: string
+                completion: number
+                rpe: string
+                note: string
+                status: "on-track" | "flag" | "pb"
+              }[]
+            ).map((athlete) => (
               <motion.div
                 key={athlete.name}
                 {...fadeUp(athlete.delay)}
@@ -477,7 +488,7 @@ export default function DemoPage() {
                     <p className="text-sm font-heading font-semibold text-foreground">
                       {athlete.name}
                     </p>
-                    <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                    <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
                       {athlete.group}
                     </p>
                   </div>
@@ -498,11 +509,11 @@ export default function DemoPage() {
                 </div>
 
                 <div className="mt-2.5 flex items-start gap-2">
-                  <span className="text-[10px] font-mono text-muted-foreground shrink-0 mt-0.5">
+                  <span className="text-[11px] font-mono text-muted-foreground shrink-0 mt-0.5">
                     RPE {athlete.rpe}
                   </span>
-                  <span className="text-muted-foreground/40 text-[10px]">·</span>
-                  <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
+                  <span className="text-muted-foreground/40 text-[11px]">·</span>
+                  <p className="text-xs text-muted-foreground font-sans leading-relaxed">
                     {athlete.note}
                   </p>
                 </div>
@@ -543,13 +554,13 @@ export default function DemoPage() {
             <p className="mt-4 text-sm text-muted-foreground font-sans">
               No commitment. Set up your season in 10 minutes.
             </p>
-            <a
+            <Link
               href="/sign-up"
               className="mt-8 inline-flex items-center justify-center gap-2 w-full h-12 sm:h-14 rounded-full bg-primary text-primary-foreground font-body font-semibold text-sm sm:text-base hover:opacity-90 transition-opacity"
             >
               Start Free
               <ArrowRight className="w-4 h-4" />
-            </a>
+            </Link>
           </motion.div>
         </div>
       </section>
@@ -587,16 +598,16 @@ function SessionBlock({
 }) {
   return (
     <div className={`rounded-lg p-3 ${accent ? "bg-primary/10 border border-primary/20" : "bg-card border border-border"}`}>
-      <p className={`text-[10px] font-heading font-bold tracking-wide mb-2 ${accent ? "text-primary" : "text-muted-foreground"}`}>
+      <p className={`text-[11px] font-heading font-bold tracking-wide mb-2 ${accent ? "text-primary" : "text-muted-foreground"}`}>
         {label}
       </p>
       <div className="space-y-1.5">
         {items.map(({ name, prescription }) => (
           <div key={name} className="flex items-start justify-between gap-2">
-            <span className="text-[11px] text-foreground/80 font-sans">
+            <span className="text-xs text-foreground/80 font-sans">
               {name}
             </span>
-            <span className="text-[10px] text-muted-foreground font-mono shrink-0 text-right">
+            <span className="text-[11px] text-muted-foreground font-mono shrink-0 text-right">
               {prescription}
             </span>
           </div>
@@ -606,7 +617,7 @@ function SessionBlock({
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { status: "on-track" | "flag" | "pb" }) {
   const map: Record<string, { label: string; cls: string }> = {
     "on-track": { label: "On Track", cls: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
     flag: { label: "Flagged", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
@@ -614,7 +625,7 @@ function StatusBadge({ status }: { status: string }) {
   }
   const { label, cls } = map[status] ?? map["on-track"]
   return (
-    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${cls} shrink-0`}>
+    <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full border ${cls} shrink-0`}>
       {label}
     </span>
   )
