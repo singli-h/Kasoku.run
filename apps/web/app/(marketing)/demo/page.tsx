@@ -1,15 +1,20 @@
 "use client"
 
 import Link from "next/link"
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import {
   ArrowRight,
-  BookOpen,
   Bot,
   Brain,
+  Calendar,
+  Check,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Cpu,
+  Layers,
+  RefreshCw,
+  Smartphone,
   Sparkles,
   TrendingUp,
   User,
@@ -18,24 +23,35 @@ import {
 
 const spring = { type: "spring" as const, stiffness: 170, damping: 26 }
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 18 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { margin: "-40px" as const },
-  transition: { ...spring, delay },
-})
-
 /* ─── page ─── */
 
 export default function DemoPage() {
+  const prefersReducedMotion = useReducedMotion()
+
+  const fadeUp = (delay = 0) => {
+    if (prefersReducedMotion) {
+      return {
+        initial: { opacity: 1, y: 0 },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: { margin: "-40px" as const },
+        transition: { duration: 0 },
+      }
+    }
+    return {
+      initial: { opacity: 0, y: 18 },
+      whileInView: { opacity: 1, y: 0 },
+      viewport: { margin: "-40px" as const },
+      transition: { ...spring, delay },
+    }
+  }
+
   return (
     <div className="bg-background">
 
       {/* ════════════════════════════════════════
           HERO
       ════════════════════════════════════════ */}
-      <section className="relative overflow-hidden min-h-[85vh] flex flex-col items-center justify-center pt-20 pb-12 px-4 text-center">
-        {/* ambient */}
+      <section className="relative overflow-hidden flex flex-col items-center justify-center pt-28 pb-16 px-4 text-center">
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           <div className="absolute w-[500px] h-[500px] rounded-full bg-primary blur-[130px] opacity-[0.08] -top-40 left-1/2 -translate-x-1/2" />
         </div>
@@ -48,7 +64,7 @@ export default function DemoPage() {
         >
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-surface text-xs font-medium text-muted-foreground font-body">
             <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
-            Coach Demo · Kasoku
+            Track & Field · Sprint Coach
           </span>
         </motion.div>
 
@@ -72,22 +88,105 @@ export default function DemoPage() {
           Plan seasons. Track athletes. Brief your squad.
           All in one place — with AI that actually knows your athletes.
         </motion.p>
+      </section>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2 }}
-          className="relative z-10 mt-12 flex flex-col items-center gap-1 text-muted-foreground/50"
-        >
-          <span className="text-[11px] font-mono tracking-widest uppercase">scroll to explore</span>
-          <ChevronDown className="w-4 h-4 animate-bounce" />
-        </motion.div>
+      {/* ════════════════════════════════════════
+          SEASON BUILDER
+      ════════════════════════════════════════ */}
+      <section className="py-16 sm:py-24 border-t border-border/20 bg-surface/30">
+        <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
+
+          <motion.div {...fadeUp()}>
+            <SectionLabel icon={Calendar} label="Season Structure" />
+            <h2 className="mt-4 font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
+              Your whole season.
+              <br />
+              Structured in minutes.
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground font-sans">
+              Build from macrocycle down to daily sessions. AI fills each phase
+              with sessions based on your goals — you stay in full control.
+            </p>
+          </motion.div>
+
+          {/* Macrocycle timeline */}
+          <motion.div
+            {...fadeUp(0.1)}
+            className="mt-8 rounded-2xl border border-border bg-card overflow-hidden"
+          >
+            <div className="px-4 py-3 border-b border-border bg-surface flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-heading font-semibold text-foreground">
+                  2025/26 Season · Macrocycle
+                </span>
+              </div>
+              <span className="text-xs font-mono text-muted-foreground">Oct → Aug</span>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {/* Phase blocks */}
+              <div>
+                <p className="text-xs font-mono text-muted-foreground mb-2">Training Phases</p>
+                <div className="relative overflow-hidden">
+                  <div className="flex gap-1 overflow-x-auto pb-1">
+                    {[
+                      { label: "GPP", weeks: "8w", color: "bg-indigo-500/20 border-indigo-500/30 text-indigo-400" },
+                      { label: "SPP 1", weeks: "10w", color: "bg-primary/20 border-primary/30 text-primary" },
+                      { label: "SPP 2", weeks: "10w", color: "bg-primary/30 border-primary/40 text-primary", active: true },
+                      { label: "Pre-Comp", weeks: "6w", color: "bg-amber-500/20 border-amber-500/30 text-amber-400" },
+                      { label: "Comp", weeks: "8w", color: "bg-emerald-500/20 border-emerald-500/30 text-emerald-400" },
+                      { label: "Taper", weeks: "4w", color: "bg-rose-500/20 border-rose-500/30 text-rose-400" },
+                    ].map((phase) => (
+                      <div
+                        key={phase.label}
+                        className={`rounded-lg border px-2.5 py-2 shrink-0 ${phase.color} ${phase.active ? "ring-1 ring-primary/50" : ""}`}
+                      >
+                        <p className="text-xs font-heading font-bold whitespace-nowrap">{phase.label}</p>
+                        <p className="text-[11px] font-mono opacity-70">{phase.weeks}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-card to-transparent pointer-events-none" aria-hidden="true" />
+                </div>
+                <PhaseLabel />
+              </div>
+
+              {/* Current week grid */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-mono text-muted-foreground">Week 23 · SPP Phase 2</p>
+                  <span className="text-[11px] font-mono text-primary">5/6 sessions planned</span>
+                </div>
+                <div className="grid grid-cols-6 gap-1">
+                  {[
+                    { day: "MON", type: "Speed", color: "bg-primary/10 border-primary/20 text-primary", done: true },
+                    { day: "TUE", type: "Max-V", color: "bg-primary/10 border-primary/20 text-primary", done: true, active: true },
+                    { day: "WED", type: "Off", color: "bg-border/30 border-border/40 text-muted-foreground/50", done: false },
+                    { day: "THU", type: "Gym", color: "bg-indigo-500/10 border-indigo-500/20 text-indigo-400", done: false },
+                    { day: "FRI", type: "Speed", color: "bg-primary/10 border-primary/20 text-primary", done: false },
+                    { day: "SAT", type: "Test", color: "bg-amber-500/10 border-amber-500/20 text-amber-400", done: false },
+                  ].map((s) => (
+                    <div
+                      key={s.day}
+                      className={`rounded-lg border p-1.5 text-center ${s.color} ${s.active ? "ring-1 ring-primary" : ""}`}
+                    >
+                      <p className="text-[11px] font-mono text-muted-foreground">{s.day}</p>
+                      <p className="text-[11px] font-heading font-semibold leading-tight mt-0.5">{s.type}</p>
+                      {s.done && <div className="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500 mx-auto" />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </section>
 
       {/* ════════════════════════════════════════
           AI CHAT DEMO
       ════════════════════════════════════════ */}
-      <section className="py-16 sm:py-24 border-t border-border/20 bg-surface/30">
+      <section className="py-16 sm:py-24 border-t border-border/20">
         <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
 
           <motion.div {...fadeUp()}>
@@ -102,7 +201,6 @@ export default function DemoPage() {
             </p>
           </motion.div>
 
-          {/* ── Chat window ── */}
           <motion.div
             {...fadeUp(0.1)}
             className="mt-8 rounded-2xl border border-border bg-card overflow-hidden shadow-xl shadow-black/5"
@@ -140,34 +238,31 @@ export default function DemoPage() {
                     Based on your SPP phase goals and last 3 weeks of SS data (avg 88% completion, fatigue trending up slightly):
                   </p>
 
-                  {/* Generated session card */}
                   <div className="rounded-xl border border-primary/20 bg-primary/5 overflow-hidden">
                     <div className="px-4 py-3 bg-primary/10 border-b border-primary/20 flex items-center justify-between">
                       <div>
                         <p className="text-xs font-heading font-bold text-foreground">
                           Tuesday — Short Sprinters (SS)
                         </p>
-                        <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">
                           SPP Phase · High Intensity · ~90 min
                         </p>
                       </div>
-                      <span className="text-[11px] font-mono bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-mono bg-primary/20 text-primary px-2 py-0.5 rounded-full">
                         AI Draft
                       </span>
                     </div>
 
                     <div className="p-4 space-y-3">
-                      {/* Warm-up */}
                       <SessionBlock
                         label="WARM-UP"
                         items={[
-                          { name: "Tempo Run", prescription: "10 × 100m" },
+                          { name: "Run-Throughs", prescription: "5 × 60m @55%" },
                           { name: "A-Skip", prescription: "3 × 20m" },
                           { name: "B-Skip", prescription: "3 × 30m" },
                           { name: "Strides zero step", prescription: "3 × 30m" },
                         ]}
                       />
-                      {/* Main set */}
                       <SessionBlock
                         label="ACCELERATION BLOCK"
                         accent
@@ -177,26 +272,32 @@ export default function DemoPage() {
                           { name: "CSD", prescription: "2×40m, 2×60m @90% [10 min]" },
                         ]}
                       />
-                      {/* AI note */}
                       <div className="rounded-lg bg-surface border border-border/60 px-3 py-2 flex items-start gap-2">
                         <Brain className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
+                        <p className="text-xs text-muted-foreground font-sans leading-relaxed">
                           High CNS demand — volume reduced 15% vs last week given recent fatigue trend. Monitor closely.
                         </p>
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="px-4 py-3 border-t border-primary/10 flex items-center gap-2">
-                      <button type="button" className="flex-1 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-semibold flex items-center justify-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Approve
+                    {/* ApprovalBanner — matches real app UI */}
+                    <div className="mx-3 mb-3 mt-1 px-3 py-2 rounded-lg bg-muted/80 border border-border shadow-[inset_0_1px_0_hsl(var(--border)/0.5)] flex items-center gap-2">
+                      {/* Bot icon square */}
+                      <div className="w-5 h-5 rounded-md bg-primary flex items-center justify-center shrink-0">
+                        <Bot className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-xs font-heading font-bold text-foreground">3</span>
+                      <span className="text-xs text-muted-foreground font-sans">changes</span>
+                      <span className="text-muted-foreground/40 text-xs">|</span>
+                      <span className="text-xs font-mono text-muted-foreground flex-1">+2 sets, 1 update</span>
+                      {/* Change + Apply */}
+                      <button type="button" className="flex items-center gap-1 h-7 px-2 rounded-md text-xs font-sans text-muted-foreground hover:text-primary transition-colors">
+                        <RefreshCw className="w-3 h-3" />
+                        Change
                       </button>
-                      <button type="button" className="h-8 px-3 rounded-lg bg-surface border border-border text-xs font-sans text-muted-foreground">
-                        Edit
-                      </button>
-                      <button type="button" className="h-8 px-3 rounded-lg bg-surface border border-border text-xs font-sans text-muted-foreground">
-                        Regenerate
+                      <button type="button" className="flex items-center gap-1 h-7 px-2.5 rounded-md bg-primary text-white text-xs font-heading font-semibold">
+                        <Check className="w-3 h-3" />
+                        Apply
                       </button>
                     </div>
                   </div>
@@ -204,7 +305,6 @@ export default function DemoPage() {
               </div>
             </div>
 
-            {/* input bar */}
             <div className="px-4 py-3 border-t border-border bg-surface flex items-center gap-2">
               <div className="flex-1 h-9 rounded-xl bg-card border border-border px-3 flex items-center">
                 <span className="text-xs text-muted-foreground/50 font-sans">
@@ -220,202 +320,277 @@ export default function DemoPage() {
       </section>
 
       {/* ════════════════════════════════════════
-          AI MEMORY
-      ════════════════════════════════════════ */}
-      <section className="py-16 sm:py-24 border-t border-border/20">
-        <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
-
-          <motion.div {...fadeUp()}>
-            <SectionLabel icon={Cpu} label="Contextual Memory" />
-            <h2 className="mt-4 font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
-              AI that remembers
-              <br />
-              your entire season.
-            </h2>
-            <p className="mt-3 text-sm sm:text-base text-muted-foreground font-sans">
-              Every suggestion is informed by your season goals, phase focus,
-              and what your athletes actually did last week. Not generic — yours.
-            </p>
-          </motion.div>
-
-          {/* Memory chain */}
-          <div className="mt-8 space-y-3">
-            {[
-              {
-                delay: 0.05,
-                label: "Season Context",
-                tag: "Set once",
-                content: "Peak for HK Open Feb 2025. SS group: 4 athletes targeting sub-10.8. Philosophy: max velocity focus in SPP.",
-                color: "border-indigo-500/30 bg-indigo-500/5",
-                dot: "bg-indigo-400",
-              },
-              {
-                delay: 0.12,
-                label: "Phase Goals",
-                tag: "Per mesocycle",
-                content: "SPP Phase 2 · Acceleration & max-V. Volume: 7/10. Intensity: 9/10. Key sessions: block starts + flying 20s.",
-                color: "border-primary/30 bg-primary/5",
-                dot: "bg-primary",
-              },
-              {
-                delay: 0.19,
-                label: "Last 3 Weeks",
-                tag: "Auto-generated insights",
-                content: "Avg completion 88%. Fatigue trending up wk 6→7→8. Wong Ka Wai flagged hamstring tightness. Volume slightly high.",
-                color: "border-amber-500/30 bg-amber-500/5",
-                dot: "bg-amber-400",
-              },
-              {
-                delay: 0.26,
-                label: "AI Suggestion",
-                tag: "Today",
-                content: "Volume reduced 15%. Block starts prioritised over volume runs. CNS recovery note auto-added.",
-                color: "border-emerald-500/30 bg-emerald-500/5",
-                dot: "bg-emerald-400",
-              },
-            ].map((m) => (
-              <motion.div
-                key={m.label}
-                {...fadeUp(m.delay)}
-                className={`rounded-xl border p-4 ${m.color}`}
-              >
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className={`w-2 h-2 rounded-full ${m.dot}`} />
-                  <span className="text-xs font-heading font-semibold text-foreground">
-                    {m.label}
-                  </span>
-                  <span className="ml-auto text-[11px] font-mono text-muted-foreground">
-                    {m.tag}
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-muted-foreground font-sans leading-relaxed pl-4">
-                  {m.content}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.p
-            {...fadeUp(0.3)}
-            className="mt-4 text-xs text-center text-muted-foreground/60 font-mono"
-          >
-            This chain feeds into every AI response automatically
-          </motion.p>
-        </div>
-      </section>
-
-      {/* ════════════════════════════════════════
-          KNOWLEDGE BASE
+          AI-GENERATED WEEK VIEW
       ════════════════════════════════════════ */}
       <section className="py-16 sm:py-24 border-t border-border/20 bg-surface/30">
         <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
 
           <motion.div {...fadeUp()}>
-            <SectionLabel icon={BookOpen} label="Knowledge Base" />
+            <SectionLabel icon={Sparkles} label="AI Week Generation" />
             <h2 className="mt-4 font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
-              Your coaching library.
+              One prompt.
               <br />
-              On their phone.
+              A full week of sessions.
             </h2>
             <p className="mt-3 text-sm sm:text-base text-muted-foreground font-sans">
-              Write once. Your athletes access drill guides, race strategies,
-              and mindset notes anytime. The AI reads it too — so your philosophy
-              shapes every generated session.
+              Ask AI to generate the whole week for your group. Every session
+              lands ready to review — edit any detail before approving.
             </p>
           </motion.div>
 
-          <div className="mt-8 grid grid-cols-1 gap-4">
-
-            {/* Coach side */}
-            <motion.div {...fadeUp(0.08)} className="rounded-2xl border border-border bg-card overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-surface flex items-center justify-between">
+          <motion.div
+            {...fadeUp(0.1)}
+            className="mt-8 rounded-2xl border border-border bg-card overflow-hidden"
+          >
+            <div className="px-4 py-3 border-b border-border bg-surface flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
                 <span className="text-xs font-heading font-semibold text-foreground">
-                  Coach — Knowledge Base
+                  AI Generated Week · SS Group · SPP Phase 2
                 </span>
-                <button className="text-[11px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                  + New Article
-                </button>
               </div>
-              <div className="p-3 space-y-2">
-                {[
-                  { title: "Block Start Progressions", tag: "Drills", reads: "12 reads" },
-                  { title: "Race-Day Mental Prep", tag: "Mindset", reads: "8 reads" },
-                  { title: "SPP Phase Philosophy", tag: "Training", reads: "15 reads" },
-                ].map((article) => (
-                  <div
-                    key={article.title}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background hover:border-primary/30 transition-colors"
-                  >
-                    <BookOpen className="w-4 h-4 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-heading font-semibold text-foreground truncate">
-                        {article.title}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground font-mono">
-                        {article.tag} · {article.reads}
-                      </p>
-                    </div>
-                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground -rotate-90" />
+              <span className="text-xs font-mono bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
+                Pending Review
+              </span>
+            </div>
+
+            <div className="p-3 space-y-2">
+              {[
+                {
+                  day: "MON",
+                  label: "Speed Endurance",
+                  tag: "Speed",
+                  tagColor: "bg-primary/10 text-primary",
+                  duration: "90 min",
+                  exercises: ["6 × 200m @80%", "3 × 300m @75%"],
+                },
+                {
+                  day: "TUE",
+                  label: "Max Velocity",
+                  tag: "Max-V",
+                  tagColor: "bg-primary/10 text-primary",
+                  duration: "90 min",
+                  exercises: ["Flying 40s 4 × 40m @100%", "Flying 60s 3 × 60m @98%"],
+                  highlight: true,
+                },
+                {
+                  day: "WED",
+                  label: "Active Recovery",
+                  tag: "Recovery",
+                  tagColor: "bg-emerald-500/10 text-emerald-500",
+                  duration: "45 min",
+                  exercises: ["Easy jog 20 min", "Mobility + static stretch"],
+                },
+                {
+                  day: "THU",
+                  label: "Gym — Power",
+                  tag: "Strength",
+                  tagColor: "bg-indigo-500/10 text-indigo-400",
+                  duration: "60 min",
+                  exercises: ["Power clean 4×3", "Nordic curls 3×6", "Sled push 4×20m"],
+                },
+                {
+                  day: "FRI",
+                  label: "Flying Sprints",
+                  tag: "Speed",
+                  tagColor: "bg-primary/10 text-primary",
+                  duration: "75 min",
+                  exercises: ["4 × 20m flying @100%", "CSD 2×40m, 2×60m @90%"],
+                },
+                {
+                  day: "SAT",
+                  label: "Time Trial",
+                  tag: "Test",
+                  tagColor: "bg-amber-500/10 text-amber-400",
+                  duration: "60 min",
+                  exercises: ["60m time trial", "Block start practice"],
+                },
+              ].map((session, i) => (
+                <motion.div
+                  key={session.day}
+                  {...fadeUp(i * 0.05)}
+                  className={`rounded-xl border p-3 flex items-start gap-3 ${session.highlight ? "border-primary/30 bg-primary/5" : "border-border bg-background"}`}
+                >
+                  <div className="w-10 shrink-0 text-center">
+                    <p className="text-[11px] font-mono text-muted-foreground">{session.day}</p>
                   </div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* AI uses it */}
-            <motion.div
-              {...fadeUp(0.13)}
-              className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-start gap-3"
-            >
-              <Brain className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-heading font-semibold text-foreground mb-1">
-                  AI reads your articles too
-                </p>
-                <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                  When generating sessions, the AI references your coaching
-                  philosophy and drill library — so output aligns with how you
-                  actually coach, not a generic template.
-                </p>
-              </div>
-            </motion.div>
-
-            {/* Athlete side */}
-            <motion.div {...fadeUp(0.18)} className="rounded-2xl border border-border bg-card overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-surface">
-                <span className="text-xs font-heading font-semibold text-foreground">
-                  Athlete — Resources Tab
-                </span>
-              </div>
-              <div className="p-3 space-y-2">
-                {[
-                  { title: "Block Start Progressions", tag: "Drill Guide", new: true },
-                  { title: "Race-Day Mental Prep", tag: "Mindset" },
-                ].map((article) => (
-                  <div
-                    key={article.title}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background"
-                  >
-                    <BookOpen className="w-4 h-4 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-heading font-semibold text-foreground truncate">
-                          {article.title}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs font-heading font-semibold text-foreground">
+                        {session.label}
+                      </p>
+                      <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded ${session.tagColor}`}>
+                        {session.tag}
+                      </span>
+                      <span className="text-[11px] font-mono text-muted-foreground ml-auto">
+                        {session.duration}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 space-y-0.5">
+                      {session.exercises.map((ex) => (
+                        <p key={ex} className="text-xs text-muted-foreground font-sans">
+                          · {ex}
                         </p>
-                        {article.new && (
-                          <span className="text-[9px] font-mono bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full shrink-0">
-                            NEW
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground font-mono">
-                        {article.tag} · From Coach
-                      </p>
+                      ))}
                     </div>
                   </div>
-                ))}
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="px-4 py-3 border-t border-border bg-surface flex items-center gap-2">
+              <button type="button" className="flex-1 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-heading font-semibold flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Approve All & Push to Athletes
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          ATHLETE PHONE VIEW
+      ════════════════════════════════════════ */}
+      <section className="py-16 sm:py-24 border-t border-border/20 bg-surface/30">
+        <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
+
+          <motion.div {...fadeUp()}>
+            <SectionLabel icon={Smartphone} label="Athlete Experience" />
+            <h2 className="mt-4 font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
+              What your athletes
+              <br />
+              see on their phone.
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground font-sans">
+              Coach approves the plan → athletes get it instantly. They log every
+              set live during the session. You see the data as it comes in.
+            </p>
+          </motion.div>
+
+          {/* Phone mockup */}
+          <motion.div
+            {...fadeUp(0.1)}
+            className="mt-8 mx-auto max-w-xs"
+          >
+            {/* Phone frame */}
+            <div className="rounded-4xl border-2 border-border bg-card shadow-2xl shadow-black/10 overflow-hidden">
+              {/* Status bar */}
+              <div className="bg-surface px-5 pt-3 pb-2 flex items-center justify-between">
+                <span className="text-[10px] font-mono text-muted-foreground">9:41</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-12 h-1.5 rounded-full bg-border" />
+                </div>
               </div>
-            </motion.div>
-          </div>
+
+              {/* App header */}
+              <div className="bg-surface border-b border-border px-4 py-3">
+                <p className="text-[11px] font-mono text-muted-foreground">Tuesday · SPP Phase 2</p>
+                <p className="text-sm font-heading font-bold text-foreground mt-0.5">
+                  Acceleration Block
+                </p>
+              </div>
+
+              {/* Green progress bar — matches real WorkoutView */}
+              <div className="h-[2px] bg-border">
+                <div className="h-full bg-emerald-500 transition-all" style={{ width: "38%" }} />
+              </div>
+
+              <div className="bg-background">
+                {/* Section divider — matches real SectionDivider */}
+                <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
+                  <div className="h-px flex-1 bg-border/50" />
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide">Warm-Up</span>
+                  <div className="h-px flex-1 bg-border/50" />
+                </div>
+
+                {/* ExerciseCard — collapsed, all done */}
+                <div className="px-3 py-2 border-b border-border/30 flex items-center gap-2">
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs font-sans flex-1 text-muted-foreground line-through">Tempo Run</span>
+                  <span className="text-[10px] font-mono text-muted-foreground">3/3</span>
+                  {/* Completion circle — green = done */}
+                  <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                    <Check className="w-3.5 h-3.5 text-white" />
+                  </div>
+                </div>
+
+                {/* Section divider */}
+                <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
+                  <div className="h-px flex-1 bg-border/50" />
+                  <span className="text-[10px] font-mono text-primary uppercase tracking-wide">Acceleration Block</span>
+                  <div className="h-px flex-1 bg-border/50" />
+                </div>
+
+                {/* ExerciseCard — expanded, in progress */}
+                <div className="border-b border-border/30">
+                  {/* Card header row */}
+                  <div className="px-3 py-2 flex items-center gap-2">
+                    <ChevronDown className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="text-xs font-heading font-semibold flex-1 text-foreground">Block Starts</span>
+                    <span className="text-[10px] font-mono text-muted-foreground">2/6</span>
+                    {/* Completion circle — number, not done yet */}
+                    <div className="w-6 h-6 rounded-full border border-border bg-card flex items-center justify-center shrink-0">
+                      <span className="text-[10px] font-mono text-foreground">1</span>
+                    </div>
+                  </div>
+                  {/* 2px exercise progress bar */}
+                  <div className="h-[2px] bg-border mx-3 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500" style={{ width: "33%" }} />
+                  </div>
+
+                  {/* SetRows — matches real layout */}
+                  <div className="px-3 py-2 space-y-2">
+                    {/* Set 1 — done */}
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <div className="h-8 w-14 rounded border border-border bg-card flex items-center justify-center">
+                          <span className="text-[11px] font-mono text-muted-foreground/50 line-through">30m</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-muted-foreground">@95%</span>
+                        <div className="h-8 w-10 rounded border border-border bg-card flex items-center justify-center ml-auto">
+                          <span className="text-[11px] font-mono text-muted-foreground/50">8</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-muted-foreground">RPE</span>
+                      </div>
+                    </div>
+                    {/* Set 2 — active */}
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-full border-2 border-primary flex items-center justify-center shrink-0">
+                        <span className="text-[10px] font-mono font-bold text-primary">2</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <div className="h-8 w-14 rounded border border-primary/40 bg-primary/5 ring-1 ring-primary/30 flex items-center justify-center">
+                          <span className="text-[11px] font-mono text-foreground">30m</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-muted-foreground">@95%</span>
+                        <div className="h-8 w-10 rounded border border-border bg-card flex items-center justify-center ml-auto">
+                          <span className="text-[11px] font-mono text-muted-foreground/30">—</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-muted-foreground">RPE</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Next exercise — collapsed */}
+                <div className="px-3 py-2 flex items-center gap-2">
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs font-sans flex-1 text-foreground">Flying 20s</span>
+                  <span className="text-[10px] font-mono text-muted-foreground">0/4</span>
+                  <div className="w-6 h-6 rounded-full border border-border bg-card flex items-center justify-center shrink-0">
+                    <span className="text-[10px] font-mono text-muted-foreground">2</span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-center text-muted-foreground/50 font-sans py-2 border-t border-border/30">
+                  Tap circle to complete set · Data syncs to coach
+                </p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -438,114 +613,197 @@ export default function DemoPage() {
             </p>
           </motion.div>
 
-          <div className="mt-8 space-y-3">
-            {(
-              [
-                {
-                  delay: 0.06,
-                  name: "Athlete A",
-                  group: "SS · Week 8",
-                  completion: 92,
-                  rpe: "8.2",
-                  note: "All sets completed. Felt strong off the blocks.",
-                  status: "on-track" as const,
-                },
-                {
-                  delay: 0.12,
-                  name: "Athlete B",
-                  group: "SS · Week 8",
-                  completion: 67,
-                  rpe: "9.1",
-                  note: "Skipped flying 20s — hamstring tightness mid-session.",
-                  status: "flag" as const,
-                },
-                {
-                  delay: 0.18,
-                  name: "Athlete C",
-                  group: "SS · Week 8",
-                  completion: 100,
-                  rpe: "7.8",
-                  note: "PB on flying 20m split. Ready for next progression.",
-                  status: "pb" as const,
-                },
-              ] satisfies {
-                delay: number
-                name: string
-                group: string
-                completion: number
-                rpe: string
-                note: string
-                status: "on-track" | "flag" | "pb"
-              }[]
-            ).map((athlete) => (
-              <motion.div
-                key={athlete.name}
-                {...fadeUp(athlete.delay)}
-                className="rounded-xl border border-border bg-card p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-heading font-semibold text-foreground">
-                      {athlete.name}
-                    </p>
-                    <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                      {athlete.group}
-                    </p>
-                  </div>
-                  <StatusBadge status={athlete.status} />
-                </div>
+          {/* Real coach dashboard UI — matches CoachDashboardView */}
+          <motion.div {...fadeUp(0.06)} className="mt-8 rounded-2xl border border-border bg-card overflow-hidden">
 
-                {/* Completion bar */}
-                <div className="mt-3 flex items-center gap-3">
-                  <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${athlete.completion}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-mono text-muted-foreground shrink-0">
-                    {athlete.completion}% done
-                  </span>
-                </div>
+            {/* Stats row */}
+            <div className="px-4 py-3 border-b border-border bg-surface flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                <span className="text-xs font-sans text-muted-foreground">
+                  <span className="text-foreground font-semibold">8</span> athletes
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span className="text-xs font-sans text-muted-foreground">
+                  <span className="text-foreground font-semibold">2</span> active plans
+                </span>
+              </div>
+            </div>
 
-                <div className="mt-2.5 flex items-start gap-2">
-                  <span className="text-[11px] font-mono text-muted-foreground shrink-0 mt-0.5">
-                    RPE {athlete.rpe}
-                  </span>
-                  <span className="text-muted-foreground/40 text-[11px]">·</span>
-                  <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                    {athlete.note}
+            {/* Athletes section */}
+            <div className="px-4 pt-3 pb-1">
+              <p className="text-[11px] font-mono text-muted-foreground uppercase tracking-widest mb-1">Athletes</p>
+            </div>
+            <div className="divide-y divide-border">
+              {([
+                { name: "Marcus O.", active: true, ago: "2 hours ago", status: "on-track" as const },
+                { name: "Jaylen T.", active: true, ago: "1 hour ago", status: "on-track" as const },
+                { name: "Kai W.", active: false, ago: "2 days ago", status: "flag" as const },
+                { name: "Devon A.", active: true, ago: "3 hours ago", status: "pb" as const },
+              ]).map((a) => (
+                <div key={a.name} className="flex items-center justify-between px-4 py-2.5 hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${a.active ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
+                    <span className="text-sm font-sans text-foreground">{a.name}</span>
+                    <span className="text-xs text-muted-foreground font-sans">{a.ago}</span>
+                  </div>
+                  <StatusBadge status={a.status} />
+                </div>
+              ))}
+            </div>
+
+            {/* Recent activity */}
+            <div className="px-4 pt-3 pb-1 border-t border-border mt-1">
+              <p className="text-[11px] font-mono text-muted-foreground uppercase tracking-widest mb-1">Recent Activity</p>
+            </div>
+            <div className="divide-y divide-border">
+              {[
+                { name: "Marcus O.", session: "Acceleration Block", dot: "bg-emerald-500", ago: "2h ago" },
+                { name: "Devon A.", session: "Acceleration Block", dot: "bg-blue-500", ago: "1h ago" },
+                { name: "Jaylen T.", session: "Flying 20s", dot: "bg-emerald-500", ago: "3h ago" },
+              ].map((a, i) => (
+                <div key={i} className="flex items-center justify-between px-4 py-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <div className={`w-2 h-2 rounded-full shrink-0 mt-1 ${a.dot}`} />
+                    <div>
+                      <span className="text-xs font-sans text-foreground">{a.name}</span>
+                      <p className="text-xs text-muted-foreground font-sans">{a.session}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground font-sans shrink-0">{a.ago}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            {...fadeUp(0.2)}
+            className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="w-4 h-4 text-primary shrink-0" />
+              <p className="text-xs font-heading font-semibold text-foreground">
+                AI Weekly Insight — Week 23
+              </p>
+              <span className="ml-auto text-[11px] font-mono text-muted-foreground">Auto-generated</span>
+            </div>
+            <p className="text-xs text-muted-foreground font-sans leading-relaxed italic border-l-2 border-primary/30 pl-3">
+              &quot;Kai W. shows recurring hamstring tightness — reduce acceleration volume 20% next week. Devon A. hit a new PB on Flying 30s (3.41s). Overall completion 88%. Recommend adding 1 extra recovery day before Saturday&apos;s time trial.&quot;
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          AI MEMORY
+      ════════════════════════════════════════ */}
+      <section className="py-16 sm:py-24 border-t border-border/20 bg-surface/30">
+        <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
+
+          <motion.div {...fadeUp()}>
+            <SectionLabel icon={Cpu} label="Contextual Memory" />
+            <h2 className="mt-4 font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
+              AI that remembers
+              <br />
+              your entire season.
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground font-sans">
+              Every suggestion is informed by your season goals, phase focus,
+              and what your athletes actually did last week. Not generic — yours.
+            </p>
+          </motion.div>
+
+          <div className="mt-8 space-y-0">
+            {[
+              {
+                delay: 0.05,
+                stepNum: 1,
+                label: "Season Goal",
+                tag: "Written once",
+                content: "Peak for HK Open Feb 2025. SS group: 4 athletes targeting sub-10.8. Philosophy: max velocity focus in SPP.",
+                color: "border-indigo-500/30 bg-indigo-500/5",
+                dot: "bg-indigo-400",
+              },
+              {
+                delay: 0.12,
+                stepNum: 2,
+                label: "Phase Focus",
+                tag: "Updated each block",
+                content: "SPP Phase 2 · Acceleration & max-V. Volume: 7/10. Intensity: 9/10. Key sessions: block starts + flying 20s.",
+                color: "border-primary/30 bg-primary/5",
+                dot: "bg-primary",
+              },
+              {
+                delay: 0.19,
+                stepNum: 3,
+                label: "Last 3 Weeks",
+                tag: "Auto-tracked",
+                content: "Avg completion 88%. Fatigue trending up wk 6→7→8. Athlete B flagged hamstring tightness. Volume slightly high.",
+                color: "border-amber-500/30 bg-amber-500/5",
+                dot: "bg-amber-400",
+              },
+              {
+                delay: 0.26,
+                stepNum: 4,
+                label: "AI Output",
+                tag: "Informed by 1→2→3",
+                content: "Volume reduced 15%. Block starts prioritised over volume runs. CNS recovery note auto-added to session.",
+                color: "border-emerald-500/30 bg-emerald-500/5",
+                dot: "bg-emerald-400",
+              },
+            ].map((m, idx, arr) => (
+              <div key={m.label}>
+                <motion.div
+                  {...fadeUp(m.delay)}
+                  className={`rounded-xl border p-4 ${m.color}`}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-5 h-5 rounded-full bg-surface border border-border flex items-center justify-center shrink-0">
+                      <span className="text-[10px] font-mono font-bold text-muted-foreground">{m.stepNum}</span>
+                    </div>
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${m.dot}`} />
+                    <span className="text-xs font-heading font-semibold text-foreground">
+                      {m.label}
+                    </span>
+                    <span className="ml-auto text-xs font-mono text-muted-foreground shrink-0">
+                      {m.tag}
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground font-sans leading-relaxed pl-4">
+                    {m.content}
                   </p>
-                </div>
-              </motion.div>
+                </motion.div>
+                {idx < arr.length - 1 && (
+                  <div className="flex justify-center text-muted-foreground/40 text-sm">↓</div>
+                )}
+              </div>
             ))}
           </div>
 
-          {/* Weekly insights callout */}
-          <motion.div
-            {...fadeUp(0.25)}
-            className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-start gap-3"
+          <motion.p
+            {...fadeUp(0.3)}
+            className="mt-4 text-xs text-center text-muted-foreground font-sans"
           >
-            <Zap className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-heading font-semibold text-foreground mb-1">
-                AI Weekly Insights — auto-generated every Sunday
-              </p>
-              <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                Completion rates, flagged athletes, suggested adjustments for next week.
-                The AI writes the weekly brief so you don't have to.
-              </p>
-            </div>
-          </motion.div>
+            This chain feeds into every AI response automatically
+          </motion.p>
         </div>
       </section>
 
       {/* ════════════════════════════════════════
           CTA
       ════════════════════════════════════════ */}
-      <section className="py-16 sm:py-24 border-t border-border/20 bg-surface/30">
-        <div className="container mx-auto px-4 sm:px-6 max-w-sm text-center">
+      <section className="py-16 sm:py-24 border-t border-border/20">
+        <div className="container mx-auto px-4 sm:px-6 max-w-md text-center">
           <motion.div {...fadeUp()}>
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground/60 font-mono mb-6">
+              <span>Season planning</span>
+              <span className="text-border">·</span>
+              <span>AI session generation</span>
+              <span className="text-border">·</span>
+              <span>Live athlete tracking</span>
+            </div>
             <h2 className="font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
               Try it with one
               <br />
@@ -561,12 +819,29 @@ export default function DemoPage() {
               Start Free
               <ArrowRight className="w-4 h-4" />
             </Link>
+            <p className="mt-5 text-xs text-muted-foreground font-sans">
+              Want a walkthrough?{" "}
+              <a href="mailto:hello@kasoku.run" className="text-primary underline underline-offset-2">
+                Book a 15-min call
+              </a>
+            </p>
           </motion.div>
         </div>
       </section>
 
       <div className="h-10" />
     </div>
+  )
+}
+
+/* ─── helpers ─── */
+
+/** Tiny label showing which phase is currently active */
+function PhaseLabel() {
+  return (
+    <p className="mt-1.5 text-[11px] font-mono text-primary">
+      ↑ Currently in SPP Phase 2
+    </p>
   )
 }
 
@@ -598,7 +873,7 @@ function SessionBlock({
 }) {
   return (
     <div className={`rounded-lg p-3 ${accent ? "bg-primary/10 border border-primary/20" : "bg-card border border-border"}`}>
-      <p className={`text-[11px] font-heading font-bold tracking-wide mb-2 ${accent ? "text-primary" : "text-muted-foreground"}`}>
+      <p className={`text-xs font-heading font-bold tracking-wide mb-2 ${accent ? "text-primary" : "text-muted-foreground"}`}>
         {label}
       </p>
       <div className="space-y-1.5">
@@ -607,7 +882,7 @@ function SessionBlock({
             <span className="text-xs text-foreground/80 font-sans">
               {name}
             </span>
-            <span className="text-[11px] text-muted-foreground font-mono shrink-0 text-right">
+            <span className="text-xs text-muted-foreground font-mono shrink-0 text-right">
               {prescription}
             </span>
           </div>
@@ -618,14 +893,14 @@ function SessionBlock({
 }
 
 function StatusBadge({ status }: { status: "on-track" | "flag" | "pb" }) {
-  const map: Record<string, { label: string; cls: string }> = {
+  const map: Record<"on-track" | "flag" | "pb", { label: string; cls: string }> = {
     "on-track": { label: "On Track", cls: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
     flag: { label: "Flagged", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
     pb: { label: "New PB", cls: "bg-primary/10 text-primary border-primary/20" },
   }
-  const { label, cls } = map[status] ?? map["on-track"]
+  const { label, cls } = map[status]
   return (
-    <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full border ${cls} shrink-0`}>
+    <span className={`text-xs font-mono px-2 py-0.5 rounded-full border ${cls} shrink-0`}>
       {label}
     </span>
   )

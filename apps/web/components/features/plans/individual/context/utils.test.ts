@@ -214,12 +214,14 @@ describe('isWeekCurrent', () => {
 
   it('returns true when today is exactly the end date', () => {
     const today = new Date()
-    const dateStr = today.toISOString().split('T')[0]
+    // Use local date string (YYYY-MM-DD) to avoid UTC offset issues
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const dateStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
     const start = new Date(today)
     start.setDate(start.getDate() - 6)
 
     const week = mockWeek({
-      start_date: start.toISOString().split('T')[0],
+      start_date: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
       end_date: dateStr,
     })
     expect(isWeekCurrent(week)).toBe(true)

@@ -77,9 +77,8 @@ export function isWeekCurrent(week: MicrocycleWithDetails): boolean {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const start = new Date(week.start_date)
-  const end = new Date(week.end_date)
-  start.setHours(0, 0, 0, 0)
+  const start = new Date(week.start_date + 'T00:00:00')
+  const end = new Date(week.end_date + 'T00:00:00')
   end.setHours(23, 59, 59, 999)
 
   return today >= start && today <= end
@@ -94,7 +93,7 @@ export function isWeekPast(week: MicrocycleWithDetails): boolean {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const end = new Date(week.end_date)
+  const end = new Date(week.end_date + 'T00:00:00')
   end.setHours(23, 59, 59, 999)
 
   return today > end
@@ -109,8 +108,7 @@ export function isWeekFuture(week: MicrocycleWithDetails): boolean {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const start = new Date(week.start_date)
-  start.setHours(0, 0, 0, 0)
+  const start = new Date(week.start_date + 'T00:00:00')
 
   return today < start
 }
