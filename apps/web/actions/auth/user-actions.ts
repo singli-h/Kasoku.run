@@ -180,7 +180,7 @@ export async function createSupabaseUserAction(
 
     const { data: user, error } = await supabase
       .from('users')
-      .insert(userData)
+      .upsert(userData, { onConflict: 'clerk_id', ignoreDuplicates: false })
       .select()
       .single()
 
@@ -295,7 +295,24 @@ export async function getUserByClerkIdAction(clerkId: string): Promise<ActionSta
       }
     }
 
-    const dbUserId = await getDbUserId(clerkId)
+    let dbUserId: number
+    try {
+      dbUserId = await getDbUserId(clerkId)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('not found')) {
+        return {
+          isSuccess: true,
+          message: "User not found",
+          data: null
+        }
+      }
+      console.error('Error fetching user by Clerk ID:', err)
+      return {
+        isSuccess: false,
+        message: "Failed to fetch user"
+      }
+    }
 
     const { data: user, error } = await supabase
       .from('users')
@@ -342,8 +359,17 @@ export async function checkUserNeedsOnboardingAction(): Promise<ActionState<bool
     }
 
     const userResult = await getUserByClerkIdAction(userId)
-    
-    if (!userResult.isSuccess || !userResult.data) {
+
+    // DB error (not a "not found") — don't silently redirect to onboarding
+    if (!userResult.isSuccess) {
+      return {
+        isSuccess: false,
+        message: userResult.message || "Failed to check onboarding status"
+      }
+    }
+
+    // User truly not in DB yet — needs onboarding
+    if (!userResult.data) {
       return {
         isSuccess: true,
         message: "User not found, needs onboarding",
