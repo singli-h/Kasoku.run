@@ -1,0 +1,943 @@
+## Overview
+
+This is a **Training Planner & Tracker** application - a fitness tracking platform that helps track and field coaches and athletes manage training plans, track performance, and monitor progress. The application uses a **Next.js** frontend.
+
+## Tech Stack
+
+- **Frontend**: Next.js 15.2, React 19, Tailwind CSS, Shadcn/ui, Framer Motion
+- **Backend**: 
+  - Node.js / Next.js: Supabase (PostgreSQL), Server Actions
+  - Supabase Edge Functions for specialized backend services
+- **Auth**: Clerk + Supabase integration
+- **Payments**: Stripe
+- **Task Management**: Task Master AI with MCP integration
+- **Deployment**: 
+  - Next.js: Vercel
+  - Edge Functions: Supabase
+
+## Project Structure
+
+```
+kasoku-monorepo/
+├── package.json                    # Root workspace config
+├── package-lock.json              # Root dependency locks
+├── turbo.json                     # Turborepo configuration
+├── README.md                      # Project documentation
+├── .env.example                   # Environment variables template
+├── .gitignore                     # Git ignore rules
+│
+├── .taskmaster/                   # Task Master AI configuration
+│   ├── config.json               # Task Master settings
+│   ├── tasks/                    # Generated tasks
+│   ├── docs/                     # PRD and documentation
+│   ├── reports/                  # Complexity analysis reports
+│   └── templates/                # Task templates
+│
+├── .cursor/                       # Cursor AI configuration
+│   ├── rules/                    # Development rules and guidelines
+│   └── mcp.json                  # MCP configuration for Task Master
+│
+├── apps/                          # Monorepo applications
+│   ├── web/                      # Next.js frontend application
+│   │   ├── package.json          # Web app dependencies
+│   │   ├── .env.local            # Environment variables (not in git)
+│   │   ├── next.config.mjs       # Next.js configuration
+│   │   ├── tailwind.config.ts    # Tailwind CSS configuration
+│   │   ├── tsconfig.json         # TypeScript configuration
+│   │   ├── middleware.ts         # Clerk middleware
+│   │   │
+│   │   ├── app/                  # Next.js App Router
+│   │   │   ├── layout.tsx        # Root layout
+│   │   │   ├── page.tsx          # Home page
+│   │   │   ├── globals.css       # Global styles
+│   │   │   ├── (auth)/           # Clerk authentication routes
+│   │   │   ├── (marketing)/      # Marketing pages
+│   │   │   ├── (protected)/      # Protected app routes
+│   │   │   └── api/              # API routes
+│   │   │       ├── auth/         # Clerk webhooks
+│   │   │       ├── stripe/       # Stripe webhooks
+│   │   │       └── users/        # User management APIs
+│   │   │
+│   │   ├── actions/              # Centralized server actions
+│   │   │   ├── auth/             # Auth-related actions
+│   │   │   ├── dashboard/        # Dashboard data actions
+│   │   │   ├── performance/      # Performance tracking actions
+│   │   │   ├── training/         # Training plan actions
+│   │   │   └── users/            # User management actions
+│   │   │
+│   │   ├── components/           # Shared components
+│   │   │   ├── ui/               # Shadcn/ui components
+│   │   │   ├── composed/         # Composed UI components - Complex reusable patterns
+│   │   │   │   ├── data-table.tsx        # Reusable across features
+│   │   │   │   ├── list-container.tsx    # List management patterns
+│   │   │   │   ├── animated-gradient-text.tsx
+│   │   │   │   └── hero-video-dialog.tsx
+│   │   │   ├── layout/           # Layout & navigation components
+│   │   │   │   ├── header/       # Header components
+│   │   │   │   ├── sidebar/      # Sidebar components
+│   │   │   │   └── footer/       # Footer components
+│   │   │   ├── features/         # Business Feature Components (Self-contained mini-projects)
+│   │   │   │   ├── athletes/     # Athlete management feature
+│   │   │   │   │   ├── components/ # Athlete-specific components
+│   │   │   │   │   ├── hooks/    # Athlete-specific hooks
+│   │   │   │   │   ├── types/    # Athlete-specific types
+│   │   │   │   │   ├── utils/    # Athlete-specific utilities
+│   │   │   │   │   └── constants/ # Athlete-specific constants
+│   │   │   │   ├── chat/         # AI Chat feature
+│   │   │   │   │   ├── components/ # Chat-specific components
+│   │   │   │   │   ├── hooks/    # Chat-specific hooks
+│   │   │   │   │   ├── types/    # Chat-specific types
+│   │   │   │   │   ├── utils/    # Chat-specific utilities
+│   │   │   │   │   └── constants/ # Chat-specific constants
+│   │   │   │   ├── dashboard/    # Dashboard functionality
+│   │   │   │   │   ├── components/ # Dashboard components
+│   │   │   │   │   ├── constants/ # Dashboard configuration
+│   │   │   │   │   └── types/    # Dashboard types
+│   │   │   │   ├── exercise/     # Exercise management
+│   │   │   │   ├── knowledge-base/ # Knowledge base feature
+│   │   │   │   ├── landing/      # Marketing & Landing Page Components
+│   │   │   │   │   ├── about.tsx # About page components
+│   │   │   │   │   ├── cta.tsx   # Call-to-action components
+│   │   │   │   │   ├── faq.tsx   # FAQ components
+│   │   │   │   │   ├── features.tsx # Features showcase
+│   │   │   │   │   ├── hero.tsx  # Hero section
+│   │   │   │   │   ├── pricing.tsx # Pricing page
+│   │   │   │   │   └── testimonials.tsx # Testimonials
+│   │   │   │   ├── onboarding/   # User onboarding feature
+│   │   │   │   │   ├── components/ # Onboarding components
+│   │   │   │   │   ├── steps/    # Onboarding wizard steps
+│   │   │   │   │   └── utils/    # Onboarding utilities
+│   │   │   │   ├── performance/  # Performance analytics
+│   │   │   │   │   ├── components/ # Performance components
+│   │   │   │   │   └── types/    # Performance types
+│   │   │   │   ├── plans/        # Training plans management
+│   │   │   │   │   ├── components/ # Plan components
+│   │   │   │   │   └── mesowizard/ # Plan creation wizard
+│   │   │   │   ├── sessions/     # Training sessions
+│   │   │   │   ├── settings/     # User settings
+│   │   │   │   │   ├── components/ # Settings components
+│   │   │   │   │   ├── settings-prd.md # Product requirements
+│   │   │   │   │   └── settings-documentation.md # Technical overview
+│   │   │   │   └── workout/      # Workout tracking
+│   │   │   │       ├── components/ # Workout components
+│   │   │   │       ├── context/  # Workout context
+│   │   │   │       ├── hooks/    # Workout hooks
+│   │   │   │       └── utils/    # Workout utilities
+│   │   │   └── utilities/        # Utility components
+│   │   │       ├── providers/    # React providers
+│   │   │       ├── posthog/      # Analytics components
+│   │   │       └── theme/        # Theme components
+│   │   │
+│   │   ├── lib/                  # Utility libraries
+│   │   │   ├── utils.ts          # General utilities
+│   │   │   ├── supabase-client.ts # Supabase client setup
+│   │   │   ├── supabase-server.ts # Supabase server setup
+│   │   │   ├── stripe.ts         # Stripe configuration
+│   │   │   └── user-cache.ts     # User caching utilities
+│   │   │
+│   │   ├── hooks/                # Global React hooks only
+│   │   │   ├── use-mobile.tsx    # Global mobile detection
+│   │   │   ├── use-toast.ts      # Global toast notifications
+│   │   │   ├── use-copy-to-clipboard.tsx # Global clipboard utility
+│   │   │   └── index.ts          # Re-export all hooks
+│   │   │
+│   │   ├── types/                # Global TypeScript type definitions
+│   │   │   ├── server-action-types.ts # Action state types
+│   │   │   ├── database.ts       # Database types
+│   │   │   ├── api.ts            # API types
+│   │   │   ├── composed.ts       # Composed component types
+│   │   │   ├── conversations.ts  # Chat conversation types
+│   │   │   ├── training.ts       # Training-specific types
+│   │   │   └── index.ts          # Re-export all types
+│   │   │
+│   │   ├── __tests__/            # Test files
+│   │   ├── docs/                 # Documentation
+│   │   ├── eslint-rules/         # Custom ESLint rules
+│   │   └── public/               # Static assets
+│
+└── node_modules/                  # Shared dependencies
+```
+
+## Development Philosophy
+
+### Modular Architecture
+Each feature is in its own folder under `apps/web/components/features/`.
+Include a PRD (`[feature]-prd.md`), IMPORTANT TO USE the `.taskmaster/templates/example_prd.txt` as TEMPLATE, and overview (`[feature]-documentation.md`) in each feature module.
+
+### Component Organization
+Uses a **Hybrid Architecture** approach with clear boundaries:
+- **ui/**: Design system primitives (shadcn/ui) - building blocks
+- **composed/**: Complex reusable patterns built from ui/ components
+- **features/**: Complete business capabilities with their own components, hooks, types
+- **marketing/**: Marketing-focused pages and content
+- **layout/**: Structural app layout components  
+- **utilities/**: Cross-cutting concerns and infrastructure
+
+### Monorepo Management
+Monorepo structure (Turborepo): `apps/web`, 
+
+### Progress Notes
+What to Capture:
+- Date and developer name/handle
+- Brief description of work completed (e.g., "Integrated performance tracking API and verified CRUD operations")
+- Any blockers or decisions made (e.g., "Opted to defer advanced analytics until V2 due to complexity")
+
+Format:
+```
+YYYY-MM-DD – @DeveloperName  
+- Completed: [Short summary of implementation]  
+- Decisions: [Any design/tech choices or trade-offs]  
+- Blockers/Notes: [Outstanding issues or needed follow-ups]
+```
+
+Frequency:
+- Add one entry per significant development session or milestone
+- On merge to main or feature completion, ensure final progress note reflects "Feature Complete" with date, time, and any post-merge steps (testing, deployment)
+
+## Rules
+
+Follow these rules when building the app.
+
+### General Rules
+
+- Use `@` to import anything from the app unless otherwise specified
+- Use kebab case for all files and folders unless otherwise specified
+- Don't update shadcn components unless otherwise specified
+
+#### Env Rules
+
+- If you update environment variables, update the `.env.example` file
+- All environment variables should go in `.env.local` in the `apps/web/` directory
+- Do not expose environment variables to the frontend
+- Use `NEXT_PUBLIC_` prefix for environment variables that need to be accessed from the frontend
+- You may import environment variables in server actions and components by using `process.env.VARIABLE_NAME`
+
+#### Type Rules
+
+Follow these rules when working with types.
+
+- When importing global types, use `@/types`
+- When importing feature-specific types, use relative imports within the feature
+- Name files like `example-types.ts`
+- Global types should go in `types` folder at the root
+- Feature-specific types should go in `features/[feature]/types`
+- Make sure to export the types in appropriate `index.ts` files
+- Prefer interfaces over type aliases
+- Database types should be defined in `@/types/database.ts` or separate type files
+
+##### Organization
+
+- All components be named using kebab case like `example-component.tsx` unless otherwise specified
+- Put components in `/_components` in the route if one-off components
+- Put components in `/components` from the root if shared components
+- Feature-specific components should go in `/components/features/[feature]/components`
+- Each feature should have its own hooks, types, utils, and constants folders
+
+### Frontend Rules
+
+Follow these rules when working on the frontend.
+
+It uses Next.js 15.2, React 19, Tailwind, Shadcn, and Framer Motion.
+
+#### General Rules
+
+- Use `lucide-react` for icons
+- useSidebar must be used within a SidebarProvider
+
+#### Components
+
+- Use divs instead of other html tags unless otherwise specified
+- Separate the main parts of a component's html with an extra blank line for visual spacing
+- Always tag a component with either `use server` or `use client` at the top, including layouts and pages
+
+##### Organization
+
+- All components be named using kebab case like `example-component.tsx` unless otherwise specified
+- Put components in `/_components` in the route if one-off components
+- Put components in `/components` from the root if shared components
+
+##### Data Fetching
+
+- Fetch data in server components and pass the data down as props to client components.
+- Use server actions from `/actions` to mutate data
+
+##### Server Components
+
+- Use `"use server"` at the top of the file.
+- Implement Suspense for asynchronous data fetching to show loading states while data is being fetched.
+- If no asynchronous logic is required for a given server component, you do not need to wrap the component in `<Suspense>`. You can simply return the final UI directly since there is no async boundary needed.
+- If asynchronous fetching is required, you can use a `<Suspense>` boundary and a fallback to indicate a loading state while data is loading.
+- Server components cannot be imported into client components. If you want to use a server component in a client component, you must pass the as props using the "children" prop
+- params in server pages should be awaited such as `const { courseId } = await params` where the type is `params: Promise<{ courseId: string }>` (Next.js 15 async params)
+
+Example of a server layout:
+
+```tsx
+"use server"
+
+export default async function ExampleServerLayout({
+  children
+}: {
+  children: React.ReactNode
+}) {
+  return children
+}
+```
+
+Example of a server page (with async logic):
+
+```tsx
+"use server"
+
+import { Suspense } from "react"
+import { SomeAction } from "@/actions/some-actions"
+import SomeComponent from "./_components/some-component"
+import SomeSkeleton from "./_components/some-skeleton"
+
+export default async function ExampleServerPage() {
+  return (
+    <Suspense fallback={<SomeSkeleton className="some-class" />}>
+      <SomeComponentFetcher />
+    </Suspense>
+  )
+}
+
+async function SomeComponentFetcher() {
+  const { data } = await SomeAction()
+  return <SomeComponent className="some-class" initialData={data || []} />
+}
+```
+
+Example of a server page (no async logic required):
+
+```tsx
+"use server"
+
+import SomeClientComponent from "./_components/some-client-component"
+
+// In this case, no asynchronous work is being done, so no Suspense or fallback is required.
+export default async function ExampleServerPage() {
+  return <SomeClientComponent initialData={[]} />
+}
+```
+
+Example of a server component:
+
+```tsx
+"use server"
+
+interface ExampleServerComponentProps {
+  // Your props here
+}
+
+export async function ExampleServerComponent({
+  props
+}: ExampleServerComponentProps) {
+  // Your code here
+}
+```
+
+##### Client Components
+
+- Use `"use client"` at the top of the file
+- Client components can safely rely on props passed down from server components, or handle UI interactions without needing <Suspense> if there's no async logic.
+- Never use server actions in client components. If you need to create a new server action, create it in `/actions`
+
+Example of a client page:
+
+```tsx
+"use client"
+
+export default function ExampleClientPage() {
+  // Your code here
+}
+```
+
+Example of a client component:
+
+```tsx
+"use client"
+
+interface ExampleClientComponentProps {
+  initialData: any[]
+}
+
+export default function ExampleClientComponent({
+  initialData
+}: ExampleClientComponentProps) {
+  // Client-side logic here
+  return <div>{initialData.length} items</div>
+}
+```
+
+### Backend Rules
+
+Follow these rules when working on the backend.
+
+It uses PostgreSQL, Supabase, and Server Actions.
+
+#### General Rules
+
+- Never generate migrations. You do not have to do anything in the `db/migrations` folder including migrations and metadata. Ignore it.
+
+#### Organization
+
+#### Schemas
+
+- When importing schemas, use `@/db/schema`
+- Name files like `example-schema.ts`
+- All schemas should go in `db/schema`
+- Make sure to export the schema in `db/schema/index.ts`
+- Make sure to add the schema to the `schema` object in `db/db.ts`
+- If using a userId, always use `userId: text("user_id").notNull()`
+- Always include createdAt and updatedAt columns in all tables
+- Make sure to cascade delete when necessary
+- Use enums for columns that have a limited set of possible values such as:
+
+```ts
+import { pgEnum } from "drizzle-orm/pg-core"
+
+export const membershipEnum = pgEnum("membership", ["free", "pro"])
+
+membership: membershipEnum("membership").notNull().default("free")
+```
+
+Example of a schema:
+
+`db/schema/todos-schema.ts`
+
+```ts
+import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+
+export const todosTable = pgTable("todos", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  content: text("content").notNull(),
+  completed: boolean("completed").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date())
+})
+
+export type InsertTodo = typeof todosTable.$inferInsert
+export type SelectTodo = typeof todosTable.$inferSelect
+```
+
+And exporting it:
+
+`db/schema/index.ts`
+
+```ts
+export * from "./todos-schema"
+```
+
+And adding it to the schema in `db/db.ts`:
+
+`db/db.ts`
+
+```ts
+import { todosTable } from "@/db/schema"
+
+const schema = {
+  todos: todosTable
+}
+```
+
+And a more complex schema:
+
+```ts
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+
+export const chatsTable = pgTable("chats", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date())
+})
+
+export type InsertChat = typeof chatsTable.$inferInsert
+export type SelectChat = typeof chatsTable.$inferSelect
+```
+
+```ts
+import { pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { chatsTable } from "./chats-schema"
+
+export const roleEnum = pgEnum("role", ["assistant", "user"])
+
+export const messagesTable = pgTable("messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  chatId: uuid("chat_id")
+    .references(() => chatsTable.id, { onDelete: "cascade" })
+    .notNull(),
+  content: text("content").notNull(),
+  role: roleEnum("role").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date())
+})
+
+export type InsertMessage = typeof messagesTable.$inferInsert
+export type SelectMessage = typeof messagesTable.$inferSelect
+```
+
+And exporting it:
+
+`db/schema/index.ts`
+
+```ts
+export * from "./chats-schema"
+export * from "./messages-schema"
+```
+
+And adding it to the schema in `db/db.ts`:
+
+`db/db.ts`
+
+```ts
+import { chatsTable, messagesTable } from "@/db/schema"
+
+const schema = {
+  chats: chatsTable,
+  messages: messagesTable
+}
+```
+
+#### Server Actions
+
+- When importing actions, use `@/actions/[domain]` for domain-specific actions
+- Actions are centralized in the `actions` folder but organized by feature domain
+- Name files like `example-actions.ts`
+- All actions should go in the `actions` folder under their respective domain
+- Only write the needed actions
+- Return an ActionState with the needed data type from actions
+- Include Action at the end of function names `Ex: exampleFunction -> exampleFunctionAction`
+
+```ts
+export type ActionState<T> =
+  | { isSuccess: true; message: string; data: T }
+  | { isSuccess: false; message: string; data?: never }
+```
+
+Example of an action:
+
+`actions/db/todos-actions.ts`
+
+```ts
+"use server"
+
+import { db } from "@/db/db"
+import { InsertTodo, SelectTodo, todosTable } from "@/db/schema/todos-schema"
+import { ActionState } from "@/types"
+import { eq } from "drizzle-orm"
+
+export async function createTodoAction(
+  todo: InsertTodo
+): Promise<ActionState<SelectTodo>> {
+  try {
+    const [newTodo] = await db.insert(todosTable).values(todo).returning()
+    return {
+      isSuccess: true,
+      message: "Todo created successfully",
+      data: newTodo
+    }
+  } catch (error) {
+    console.error("Error creating todo:", error)
+    return { isSuccess: false, message: "Failed to create todo" }
+  }
+}
+
+export async function getTodosAction(
+  userId: string
+): Promise<ActionState<SelectTodo[]>> {
+  try {
+    const todos = await db.query.todos.findMany({
+      where: eq(todosTable.userId, userId)
+    })
+    return {
+      isSuccess: true,
+      message: "Todos retrieved successfully",
+      data: todos
+    }
+  } catch (error) {
+    console.error("Error getting todos:", error)
+    return { isSuccess: false, message: "Failed to get todos" }
+  }
+}
+
+export async function updateTodoAction(
+  id: string,
+  data: Partial<InsertTodo>
+): Promise<ActionState<SelectTodo>> {
+  try {
+    const [updatedTodo] = await db
+      .update(todosTable)
+      .set(data)
+      .where(eq(todosTable.id, id))
+      .returning()
+
+    return {
+      isSuccess: true,
+      message: "Todo updated successfully",
+      data: updatedTodo
+    }
+  } catch (error) {
+    console.error("Error updating todo:", error)
+    return { isSuccess: false, message: "Failed to update todo" }
+  }
+}
+
+export async function deleteTodoAction(id: string): Promise<ActionState<void>> {
+  try {
+    await db.delete(todosTable).where(eq(todosTable.id, id))
+    return {
+      isSuccess: true,
+      message: "Todo deleted successfully",
+      data: undefined
+    }
+  } catch (error) {
+    console.error("Error deleting todo:", error)
+    return { isSuccess: false, message: "Failed to delete todo" }
+  }
+}
+```
+
+### Auth Rules
+
+Follow these rules when working on auth.
+
+It uses Clerk for authentication.
+
+#### General Rules
+
+- Import the auth helper with `import { auth } from "@clerk/nextjs/server"` in server components
+- await the auth helper in server actions
+
+#### User ID Handling & Permission Checking
+
+**CRITICAL: Clerk User ID vs Database User ID**
+
+- **Clerk User ID**: External authentication ID from Clerk (string format like `user_abc123`)
+- **Database User ID**: Internal user table primary key (integer format like `42`)
+- **These are DIFFERENT values and cannot be used interchangeably**
+
+**For Permission Checking:**
+
+- ✅ **DO**: Use database user ID for permission checks
+  ```typescript
+  // Get database user ID for permission checking
+  const userIdResult = await getCurrentUserIdAction()
+  if (userIdResult.isSuccess) {
+    const currentUser = {
+      id: userIdResult.data.toString(), // Database ID
+      // ... other properties
+    }
+  }
+  ```
+
+- ❌ **DON'T**: Use Clerk user ID for permission checks
+  ```typescript
+  // WRONG - This will break permission checking
+  const { user } = useUser()
+  const currentUser = {
+    id: user.id, // This is Clerk ID, not database ID
+    // ... other properties  
+  }
+  ```
+
+**When to Use Each ID:**
+
+- **Clerk User ID**: Authentication, session management, Clerk webhooks
+- **Database User ID**: Permission checking, content ownership, foreign key relationships
+
+**Required Pattern for Author-Only Features:**
+
+1. Fetch current user's database ID: `getCurrentUserIdAction()`
+2. Compare against content author ID (always database ID)
+3. Show/hide edit/delete options based on match
+
+**Example Implementation:**
+```typescript
+const [currentDbUserId, setCurrentDbUserId] = useState<number | null>(null)
+
+// Load current user's database ID
+useEffect(() => {
+  async function loadUserId() {
+    if (user && currentDbUserId === null) {
+      const userIdResult = await getCurrentUserIdAction()
+      if (userIdResult.isSuccess) {
+        setCurrentDbUserId(userIdResult.data)
+      }
+    }
+  }
+  loadUserId()
+}, [user, currentDbUserId])
+
+// Create currentUser for permission checking
+const currentUser = user && currentDbUserId !== null ? {
+  id: currentDbUserId.toString(), // Use database ID
+  name: `${user.firstName} ${user.lastName}`,
+  // ... other Clerk properties
+} : undefined
+```
+
+**This pattern applies to:**
+- Comment edit/delete permissions
+- Task/article author permissions  
+- Any user-owned content permissions
+- Profile/account access controls
+
+### Payments Rules
+
+Follow these rules when working on payments.
+
+It uses Stripe for payments.
+
+### Analytics Rules
+
+Follow these rules when working on analytics.
+
+It uses PostHog for analytics.
+
+### Model Context Protocol (MCP) Rules
+
+Follow these rules when using Model Context Protocol (MCP) to give AI Agents access to third party systems.
+
+It uses Model Context Protocol (MCP) for the AI Agents SDK to access other systems. 
+
+### Edge Functions Rules
+
+Follow these rules when working with Supabase Edge Functions.
+
+The application uses Supabase Edge Functions for specialized backend services like dashboard exercises and exercise management.
+
+#### General Rules
+
+- Edge functions are located in `apps/edge-functions/supabase/functions/`
+- Use TypeScript for all edge functions
+- Follow the shared CORS configuration in `_shared/cors.ts`
+- Always handle errors gracefully and return appropriate HTTP status codes
+- Use environment variables for configuration
+
+#### Organization
+
+- Each function should be in its own directory under `functions/`
+- Use descriptive names like `dashboardExercises`, `exercises`
+- Include proper TypeScript types for request/response data
+- Document function purpose and usage in comments
+
+#### Development
+
+- Test functions locally using `supabase functions serve`
+- Deploy functions using `supabase functions deploy`
+- Configure environment variables in Supabase dashboard
+- Use the shared CORS configuration for consistent cross-origin handling
+
+Example edge function structure:
+
+```typescript
+// apps/edge-functions/supabase/functions/exercises/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { corsHeaders } from "../_shared/cors.ts"
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    // Function logic here
+    const data = await req.json()
+    
+    return new Response(
+      JSON.stringify({ success: true, data }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200 
+      }
+    )
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500 
+      }
+    )
+  }
+})
+```
+
+### Storage Rules
+
+Follow these rules when working with Supabase Storage.
+
+It uses Supabase Storage for file uploads, downloads, and management.
+
+## General Rules
+
+- Always use environment variables for bucket names to maintain consistency across environments
+- Never hardcode bucket names in the application code
+- Always handle file size limits and allowed file types at the application level
+- Use the `upsert` method instead of `upload` when you want to replace existing files
+- Always implement proper error handling for storage operations
+- Use content-type headers when uploading files to ensure proper file handling
+
+## Organization
+
+### Buckets
+
+- Name buckets in kebab-case: `user-uploads`, `profile-images`
+- Create separate buckets for different types of files (e.g., `profile-images`, `documents`, `attachments`)
+- Document bucket purposes in a central location
+- Set appropriate bucket policies (public/private) based on access requirements
+- Implement RLS (Row Level Security) policies for buckets that need user-specific access
+- Make sure to let me know instructions for setting up RLS policies on Supabase since you can't do this yourself, including the SQL scripts I need to run in the editor
+
+### File Structure
+
+- Organize files in folders based on their purpose and ownership
+- Use predictable, collision-resistant naming patterns
+- Structure: `{bucket}/{userId}/{purpose}/{filename}`
+- Example: `profile-images/123e4567-e89b/avatar/profile.jpg`
+- Include timestamps in filenames when version history is important
+- Example: `documents/123e4567-e89b/contracts/2024-02-13-contract.pdf`
+
+## Actions
+
+- When importing storage actions, use `@/actions/storage`
+- Name files like `example-storage-actions.ts`
+- Include Storage at the end of function names `Ex: uploadFile -> uploadFileStorage`
+- Follow the same ActionState pattern as DB actions
+
+Example of a storage action:
+
+```ts
+"use server"
+
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { ActionState } from "@/types"
+
+export async function uploadFileStorage(
+  bucket: string,
+  path: string,
+  file: File
+): Promise<ActionState<{ path: string }>> {
+  try {
+    const supabase = createClientComponentClient()
+
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, {
+        upsert: false,
+        contentType: file.type
+      })
+
+    if (error) throw error
+
+    return {
+      isSuccess: true,
+      message: "File uploaded successfully",
+      data: { path: data.path }
+    }
+  } catch (error) {
+    console.error("Error uploading file:", error)
+    return { isSuccess: false, message: "Failed to upload file" }
+  }
+}
+```
+
+## File Handling
+
+### Upload Rules
+
+- Always validate file size before upload
+- Implement file type validation using both extension and MIME type
+- Generate unique filenames to prevent collisions
+- Set appropriate content-type headers
+- Handle existing files appropriately (error or upsert)
+
+Example validation:
+
+```ts
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+
+function validateFile(file: File): boolean {
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error("File size exceeds limit")
+  }
+
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    throw new Error("File type not allowed")
+  }
+
+  return true
+}
+```
+
+### Download Rules
+
+- Always handle missing files gracefully
+- Implement proper error handling for failed downloads
+- Use signed URLs for private files
+
+### Delete Rules
+
+- Implement soft deletes when appropriate
+- Clean up related database records when deleting files
+- Handle bulk deletions carefully
+- Verify ownership before deletion
+- Always delete all versions/transforms of a file
+
+## Security
+
+### Bucket Policies
+
+- Make buckets private by default
+- Only make buckets public when absolutely necessary
+- Use RLS policies to restrict access to authorized users
+- Example RLS policy:
+
+```sql
+CREATE POLICY "Users can only access their own files"
+ON storage.objects
+FOR ALL
+USING (auth.uid()::text = (storage.foldername(name))[1]);
+```
+
+### Access Control
+
+- Generate short-lived signed URLs for private files
+- Implement proper CORS policies
+- Use separate buckets for public and private files
+- Never expose internal file paths
+- Validate user permissions before any operation
+
+## Error Handling
+
+- Implement specific error types for common storage issues
+- Always provide meaningful error messages
+- Implement retry logic for transient failures
+- Log storage errors separately for monitoring
+
+## Optimization
+
+- Implement progressive upload for large files
+- Clean up temporary files and failed uploads
+- Use batch operations when handling multiple files
+
+
+- Implement progressive upload for large files
+- Clean up temporary files and failed uploads
+- Use batch operations when handling multiple files
+

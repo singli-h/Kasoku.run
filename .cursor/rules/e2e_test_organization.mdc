@@ -1,0 +1,97 @@
+---
+description: E2E test organization principles and mandatory workflow
+globs: **/__tests__/e2e/**/*
+alwaysApply: true
+---
+
+# E2E Test Organization - MANDATORY Rules
+
+**⚠️ CRITICAL: Always reference [`apps/web/__tests__/e2e/TEST_GUIDELINES.md`](../../apps/web/__tests__/e2e/TEST_GUIDELINES.md) when planning, creating, or finishing E2E tests.**
+
+## Core Principles (MANDATORY)
+
+1. **One Folder Per Page/Feature** - Each page gets its own directory: `__tests__/e2e/[feature-name]/`
+2. **One TEST_PLAN.md Per Page** - Single doc with plan, checklist, status tracking, issues log, execution history
+3. **Test Files Only** - No reports, summaries, or redundant docs in page folders (archive to `_archive/`)
+4. **Clean Structure** - Only `TEST_PLAN.md` + `[page-name].e2e.ts` in each page folder
+
+## Required Folder Structure
+
+```
+__tests__/e2e/
+├── TEST_GUIDELINES.md           # ⚠️ ALWAYS REFERENCE THIS FIRST
+├── helpers/                     # Shared utilities
+├── [feature-name]/              # One folder per page
+│   ├── TEST_PLAN.md            # Single doc: plan + tracking
+│   └── [feature-name].e2e.ts   # Test file only
+└── _archive/                    # Old reports (archived)
+```
+
+## TEST_PLAN.md Template (MUST Follow)
+
+Every `TEST_PLAN.md` must include these sections:
+- **📊 Test Status Overview** (table: Category | Tests | Status)
+- **🎯 Critical Priority Tests** (checklist)
+- **✅ Test Checklist** (all test cases)
+- **🐛 Issues Log** (table: ID | Description | Status | Priority)
+- **📈 Test Execution History** (table: Date | Tester | Results | Notes)
+- **🎯 Next Steps**
+
+## Workflow (MANDATORY)
+
+### When Creating New Test Suite
+1. **Reference TEST_GUIDELINES.md** first
+2. Create folder: `__tests__/e2e/[feature-name]/`
+3. Create `TEST_PLAN.md` using template
+4. Create test file: `[feature-name].e2e.ts`
+5. Document test cases in TEST_PLAN.md (planning phase)
+6. Implement tests in `.e2e.ts`
+7. Update status in TEST_PLAN.md as tests are completed
+
+### When Adding Tests
+1. Add test case to TEST_PLAN.md checklist
+2. Implement test in `.e2e.ts`
+3. Update status table in TEST_PLAN.md
+4. Log issues in Issues Log if found
+5. Update execution history after running tests
+
+### When Finishing Test Session
+1. **Update TEST_PLAN.md completely:**
+   - Mark completed tests with ✅
+   - Update all status tables
+   - Log all issues found
+   - Add execution history entry
+2. **Clean up:**
+   - No temporary files in page folder
+   - Archive old reports to `_archive/` if needed
+   - Only TEST_PLAN.md + test file in folder
+
+## What NOT to Do
+
+- ❌ Create multiple doc files per page (reports, summaries, etc.)
+- ❌ Leave old reports in page folders (archive them)
+- ❌ Skip updating TEST_PLAN.md status
+- ❌ Create test files without TEST_PLAN.md
+- ❌ Mix test files from different pages in one folder
+
+## AI Agent Checklist (MANDATORY)
+
+When working on E2E tests, always:
+- [ ] **Reference TEST_GUIDELINES.md** (`apps/web/__tests__/e2e/TEST_GUIDELINES.md`)
+- [ ] Create/update TEST_PLAN.md first (if new page)
+- [ ] Use TEST_PLAN.md template structure
+- [ ] Update status tables as tests are completed
+- [ ] Log all issues in Issues Log section
+- [ ] Update execution history after test runs
+- [ ] Keep page folder clean (only TEST_PLAN.md + test file)
+- [ ] Archive old reports to `_archive/` if needed
+
+## File Naming
+
+- **Test files:** `[page-name].e2e.ts` (kebab-case)
+- **Plan files:** `TEST_PLAN.md` (always uppercase, consistent name)
+- **Helper files:** Keep in `helpers/` folder
+
+---
+
+**Remember:** Consistency is key. Every page follows the same structure. Always reference `TEST_GUIDELINES.md` for the complete workflow and template.

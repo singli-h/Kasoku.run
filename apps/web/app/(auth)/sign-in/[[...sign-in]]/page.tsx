@@ -1,0 +1,35 @@
+/*
+<ai_context>
+This client page provides the sign-in form from Clerk.
+</ai_context>
+*/
+
+"use client"
+
+import { SignIn } from "@clerk/nextjs"
+import { dark } from "@clerk/themes"
+import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
+
+export default function SignInPage() {
+  const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  // Prevent hydration mismatch by only rendering after mount
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    // Return a basic SignIn component during SSR to prevent hydration mismatch
+    return <SignIn forceRedirectUrl="/auth/session" signUpUrl="/sign-up" />
+  }
+
+  return (
+    <SignIn
+      forceRedirectUrl="/auth/session"
+      signUpUrl="/sign-up"
+      appearance={{ baseTheme: theme === "dark" ? dark : undefined }}
+    />
+  )
+} 

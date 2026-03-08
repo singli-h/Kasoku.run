@@ -1,0 +1,336 @@
+# AI Athlete Workout Assistant - Tool Contracts
+# Feature: 005-ai-athlete-workout
+# Date: 2026-01-01
+# Format: OpenAPI-inspired tool schema definitions
+
+openapi: 3.0.0
+info:
+  title: Athlete Workout Assistant Tools
+  version: 1.0.0
+  description: AI tool schemas for athlete workout logging and modification
+
+tools:
+  # ============================================================================
+  # Read Tools
+  # ============================================================================
+
+  getWorkoutContext:
+    description: Get the current workout with all exercises, sets, and prescribed vs actual data
+    category: read
+    parameters:
+      type: object
+      required:
+        - workoutLogId
+      properties:
+        workoutLogId:
+          type: string
+          description: ID of the workout log
+        includeHistory:
+          type: boolean
+          default: false
+          description: Include previous performance data for exercises
+    returns:
+      type: object
+      properties:
+        session:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            sessionStatus: { type: string, enum: [assigned, ongoing, completed] }
+            dateTime: { type: string }
+            notes: { type: string, nullable: true }
+        exercises:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              workoutLogExerciseId: { type: integer }
+              exerciseName: { type: string }
+              exerciseOrder: { type: integer }
+              prescribed: { $ref: '#/components/schemas/SetParameters' }
+              sets:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    setIndex: { type: integer }
+                    prescribed: { $ref: '#/components/schemas/SetParameters' }
+                    actual: { $ref: '#/components/schemas/ActualSetData', nullable: true }
+        progress:
+          type: object
+          properties:
+            totalSets: { type: integer }
+            completedSets: { type: integer }
+            skippedSets: { type: integer }
+
+  getExerciseHistory:
+    description: Get athlete's recent performance history for an exercise
+    category: read
+    priority: P2
+    parameters:
+      type: object
+      required:
+        - exerciseId
+      properties:
+        exerciseId:
+          type: string
+          description: Exercise library ID
+        limit:
+          type: integer
+          default: 5
+          maximum: 10
+          description: Number of recent sessions to include
+    returns:
+      type: object
+      properties:
+        exerciseId: { type: string }
+        exerciseName: { type: string }
+        recentSessions:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string }
+              sets:
+                type: array
+                items: { $ref: '#/components/schemas/SetParameters' }
+              estimatedMax: { type: number, nullable: true }
+        personalRecords:
+          type: object
+          properties:
+            maxWeight: { $ref: '#/components/schemas/PersonalRecord' }
+            maxReps: { $ref: '#/components/schemas/PersonalRecord' }
+            maxVolume: { $ref: '#/components/schemas/PersonalRecord' }
+
+  searchExercises:
+    description: Search the exercise library (reused from coach domain)
+    category: read
+    note: Already implemented in lib/changeset/tools/read-tools.ts
+
+  # ============================================================================
+  # Proposal Tools (Athlete Domain)
+  # ============================================================================
+
+  createTrainingSetChangeRequest:
+    description: Log the athlete's actual performance for a set
+    category: proposal
+    entityType: workout_log_set
+    operationType: create
+    parameters:
+      type: object
+      required:
+        - workoutLogExerciseId
+        - setIndex
+        - reasoning
+      properties:
+        workoutLogExerciseId:
+          type: string
+          description: Workout log exercise ID
+        setIndex:
+          type: integer
+          minimum: 1
+          description: Which set (1-based)
+        reps:
+          type: integer
+          minimum: 0
+          description: Actual reps (0 = skipped)
+        weight:
+          type: number
+          description: Actual weight used (kg)
+        rpe:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: How hard it felt
+        completed:
+          type: boolean
+          default: true
+        distance:
+          type: number
+          description: Distance in meters
+        performingTime:
+          type: integer
+          description: Duration in seconds
+        power:
+          type: number
+        velocity:
+          type: number
+        height:
+          type: number
+        resistance:
+          type: number
+        reasoning:
+          type: string
+          description: Why this performance is being logged
+
+  updateTrainingSetChangeRequest:
+    description: Update performance data that was already logged
+    category: proposal
+    entityType: workout_log_set
+    operationType: update
+    parameters:
+      type: object
+      required:
+        - workoutLogSetId
+        - reasoning
+      properties:
+        workoutLogSetId:
+          type: string
+          description: ID of the workout log set to update
+        reps:
+          type: integer
+        weight:
+          type: number
+        rpe:
+          type: integer
+          minimum: 1
+          maximum: 10
+        completed:
+          type: boolean
+        reasoning:
+          type: string
+
+  createTrainingExerciseChangeRequest:
+    description: Add a new exercise to the workout
+    category: proposal
+    entityType: workout_log_exercise
+    operationType: create
+    parameters:
+      type: object
+      required:
+        - workoutLogId
+        - exerciseId
+        - exerciseName
+        - reasoning
+      properties:
+        workoutLogId:
+          type: string
+          description: Parent workout log ID
+        exerciseId:
+          type: string
+          description: ID from exercise library
+        exerciseName:
+          type: string
+          description: Name for display
+        exerciseOrder:
+          type: integer
+          description: Position in workout
+        notes:
+          type: string
+        reasoning:
+          type: string
+
+  updateTrainingExerciseChangeRequest:
+    description: Update an exercise in the workout (swap, reorder, notes)
+    category: proposal
+    entityType: workout_log_exercise
+    operationType: update
+    parameters:
+      type: object
+      required:
+        - workoutLogExerciseId
+        - reasoning
+      properties:
+        workoutLogExerciseId:
+          type: string
+          description: ID of the workout log exercise
+        exerciseId:
+          type: string
+          description: New exercise ID (for swapping)
+        exerciseName:
+          type: string
+          description: New exercise name (required when swapping)
+        exerciseOrder:
+          type: integer
+        notes:
+          type: string
+        reasoning:
+          type: string
+
+  updateTrainingSessionChangeRequest:
+    description: Update the athlete's workout session notes
+    category: proposal
+    entityType: workout_log
+    operationType: update
+    parameters:
+      type: object
+      required:
+        - workoutLogId
+        - reasoning
+      properties:
+        workoutLogId:
+          type: string
+          description: ID of the workout log
+        notes:
+          type: string
+          description: Session notes
+        reasoning:
+          type: string
+
+  # ============================================================================
+  # Coordination Tools (Reused from Coach Domain)
+  # ============================================================================
+
+  confirmChangeSet:
+    description: Submit all pending changes for user review
+    category: coordination
+    note: Already implemented in lib/changeset/tools/coordination-tools.ts
+
+  resetChangeSet:
+    description: Clear all pending changes and start fresh
+    category: coordination
+    note: Already implemented in lib/changeset/tools/coordination-tools.ts
+
+# ============================================================================
+# Shared Schemas
+# ============================================================================
+
+components:
+  schemas:
+    SetParameters:
+      type: object
+      properties:
+        reps: { type: integer, nullable: true }
+        weight: { type: number, nullable: true }
+        rpe: { type: integer, nullable: true }
+
+    ActualSetData:
+      type: object
+      properties:
+        reps: { type: integer, nullable: true }
+        weight: { type: number, nullable: true }
+        rpe: { type: integer, nullable: true }
+        completed: { type: boolean }
+
+    PersonalRecord:
+      type: object
+      properties:
+        value: { type: number }
+        date: { type: string }
+        weight: { type: number }
+
+# ============================================================================
+# Tool Summary
+# ============================================================================
+
+summary:
+  read_tools: 3
+  proposal_tools: 5
+  coordination_tools: 2
+  total: 10
+
+  reused_from_coach:
+    - searchExercises
+    - confirmChangeSet
+    - resetChangeSet
+
+  new_for_athlete:
+    - getWorkoutContext
+    - getExerciseHistory (P2)
+    - createTrainingSetChangeRequest
+    - updateTrainingSetChangeRequest
+    - createTrainingExerciseChangeRequest
+    - updateTrainingExerciseChangeRequest
+    - updateTrainingSessionChangeRequest

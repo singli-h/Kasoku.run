@@ -1,0 +1,22 @@
+/*
+<ai_context>
+TypeScript configuration specifically for test files.
+Extends the main tsconfig.json but uses react-jsx for JSX transformation,
+which is required for test files using React components.
+</ai_context>
+*/
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["vitest/globals", "jest", "@testing-library/jest-dom"]
+  },
+  "include": [
+    "**/__tests__/**/*.ts",
+    "**/__tests__/**/*.tsx",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ]
+}
