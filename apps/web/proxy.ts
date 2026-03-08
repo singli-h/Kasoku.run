@@ -57,11 +57,12 @@ const isProtectedRoute = createRouteMatcher([
 const isPublicRoute = createRouteMatcher([
   "/",
   "/about(.*)",
-  "/contact(.*)", 
+  "/contact(.*)",
   "/pricing(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/api(.*)"
+  "/signup(.*)",
+  "/api(.*)",
 ])
 
 // The onboarding route itself
