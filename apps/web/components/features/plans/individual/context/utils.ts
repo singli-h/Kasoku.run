@@ -33,7 +33,7 @@ export function getAIContextLevel(params: AIContextDetectionParams): AIContextLe
 
   if (selectedExerciseId) return 'exercise'
   if (selectedSessionId) return 'session'
-  if (selectedWeekId) return 'week'
+  if (selectedWeekId != null) return 'week'
   return 'block'
 }
 

@@ -11,6 +11,7 @@ with their associated session_plan_exercises and session_plan_sets.
 import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
+import { revalidatePath } from "next/cache"
 import { ActionState } from "@/types"
 import type { Database } from "@/types/database"
 import { addDays, startOfWeek, parseISO } from "date-fns"
@@ -271,11 +272,13 @@ export async function saveSessionPlanAction(
       }
     }
 
-    // If we have errors, return them (but sessions were saved)
+    // PARTIAL SAVE WARNING: Sessions and exercises are already committed above.
+    // Without DB transactions, a failure in later steps (exercises/sets) means
+    // partial data exists. Retrying would create duplicates.
     if (errors.length > 0) {
       return {
         isSuccess: false,
-        message: `Failed to save some data: ${errors.join('; ')}`
+        message: `Sessions saved but some exercises/sets failed to save. Avoid retrying to prevent duplicates. Details: ${errors.join('; ')}`
       }
     }
 
@@ -317,6 +320,9 @@ export async function saveSessionPlanAction(
         }
       }
     }
+
+    revalidatePath('/plans', 'page')
+    revalidatePath('/plans/[id]', 'page')
 
     return {
       isSuccess: true,
@@ -377,7 +383,7 @@ export async function getSessionPlansByMicrocycleAction(
 
     // Convert database format to MesoWizard format
     const sessionPlans: SessionPlanData[] = (presetGroups || []).map(group => ({
-      id: `session-${group.week}-${group.day}`,
+      id: String(group.id),
       name: group.name || `Session ${group.week}-${group.day}`,
       description: group.description || '',
       day: group.day || 1,
@@ -470,6 +476,9 @@ export async function updateSessionPlanAction(
         message: `Failed to update session plan: ${error.message}`
       }
     }
+
+    revalidatePath('/plans', 'page')
+    revalidatePath('/plans/[id]', 'page')
 
     return {
       isSuccess: true,
@@ -572,6 +581,9 @@ export async function deleteSessionPlanAction(
       ? ` (${cancelledCount} pending assignments cancelled)`
       : ''
 
+    revalidatePath('/plans', 'page')
+    revalidatePath('/plans/[id]', 'page')
+
     return {
       isSuccess: true,
       message: `Session plan deleted successfully${cancelledMessage}`,
@@ -605,6 +617,7 @@ export async function saveAsTemplateAction(
     }
 
     const savedSessions: SessionPlan[] = []
+    const warnings: string[] = []
 
     // Save each session as a template (session_plan)
     for (const session of planData.sessions) {
@@ -655,6 +668,7 @@ export async function saveAsTemplateAction(
 
         if (exerciseError || !savedExercisePreset) {
           console.error('Error saving template exercise preset:', exerciseError)
+          warnings.push(`Exercise ${exercise.exerciseId} in "${session.name}" failed to save`)
           continue
         }
 
@@ -685,6 +699,7 @@ export async function saveAsTemplateAction(
 
           if (detailError) {
             console.error('Error saving template exercise preset detail:', detailError)
+            warnings.push(`Set ${set.setIndex} for exercise ${exercise.exerciseId} in "${session.name}" failed to save`)
           }
         }
       }
@@ -692,9 +707,14 @@ export async function saveAsTemplateAction(
       savedSessions.push(savedSession)
     }
 
+    revalidatePath('/plans', 'page')
+    revalidatePath('/plans/[id]', 'page')
+
     return {
       isSuccess: true,
-      message: `Successfully saved ${savedSessions.length} template sessions`,
+      message: warnings.length > 0
+        ? `Template saved with warnings: ${warnings.join(', ')}`
+        : `Successfully saved ${savedSessions.length} template sessions`,
       data: savedSessions
     }
   } catch (error) {
@@ -871,6 +891,9 @@ export async function createPlanFromTemplateAction(
         }
       }
     }
+
+    revalidatePath('/plans', 'page')
+    revalidatePath('/plans/[id]', 'page')
 
     return {
       isSuccess: true,
@@ -1052,6 +1075,9 @@ export async function copySessionAction(
       }
     }
 
+    revalidatePath('/plans', 'page')
+    revalidatePath('/plans/[id]', 'page')
+
     return {
       isSuccess: true,
       message: "Session copied successfully",
@@ -1138,6 +1164,9 @@ export async function createSingleSessionAction(
         message: `Failed to create session: ${sessionError?.message}`
       }
     }
+
+    revalidatePath('/plans', 'page')
+    revalidatePath('/plans/[id]', 'page')
 
     return {
       isSuccess: true,

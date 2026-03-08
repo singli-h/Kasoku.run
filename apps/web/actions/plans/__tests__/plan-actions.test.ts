@@ -2,8 +2,10 @@
  * Tests for deleteMesocycleAction cascade delete.
  *
  * The function deletes a mesocycle and all dependent entities in reverse
- * dependency order: session_plan_sets -> session_plan_exercises ->
- * session_plans -> microcycles -> mesocycles.
+ * dependency order: workout_logs (assigned, delete) -> session_plan_sets ->
+ * session_plan_exercises -> session_plans -> microcycles -> mesocycles.
+ * Completed/in-progress workout_logs have their session_plan_id nullified
+ * to preserve history.
  */
 
 import { deleteMesocycleAction } from "../plan-actions"
@@ -118,6 +120,10 @@ function setFullHierarchyResponses() {
     "session_plans:select": { data: [{ id: "sp-1" }, { id: "sp-2" }], error: null },
     "session_plan_exercises:select": { data: [{ id: "ex-1" }, { id: "ex-2" }], error: null },
 
+    // workout_logs cleanup (before cascade deletes)
+    "workout_logs:delete": { data: null, error: null },   // assigned logs deleted
+    "workout_logs:select": { data: null, error: null },   // active logs nullified (update resolves as select in mock)
+
     // Delete phase (reverse order)
     "session_plan_sets:delete": { data: null, error: null },
     "session_plan_exercises:delete": { data: null, error: null },
@@ -155,13 +161,15 @@ describe("deleteMesocycleAction", () => {
     // The gather phase comes first (selects), then the delete phase.
     const deleteOps = callLog.filter((c) => c.operation === "delete")
 
-    // Expecting 5 deletes in this exact order:
-    //   1. session_plan_sets  (sets first)
-    //   2. session_plan_exercises
-    //   3. session_plans
-    //   4. microcycles
-    //   5. mesocycles (the target itself, last)
+    // Expecting 6 deletes in this exact order:
+    //   1. workout_logs (assigned logs removed before cascade)
+    //   2. session_plan_sets  (sets first)
+    //   3. session_plan_exercises
+    //   4. session_plans
+    //   5. microcycles
+    //   6. mesocycles (the target itself, last)
     expect(deleteOps.map((c) => c.table)).toEqual([
+      "workout_logs",
       "session_plan_sets",
       "session_plan_exercises",
       "session_plans",
@@ -226,6 +234,10 @@ describe("deleteMesocycleAction", () => {
       "microcycles:select": { data: [{ id: 1 }], error: null },
       "session_plans:select": { data: [{ id: "sp-1" }], error: null },
       "session_plan_exercises:select": { data: [{ id: "ex-1" }], error: null },
+
+      // workout_logs cleanup
+      "workout_logs:delete": { data: null, error: null },
+      "workout_logs:select": { data: null, error: null },
 
       // Cascade deletes succeed
       "session_plan_sets:delete": { data: null, error: null },

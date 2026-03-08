@@ -802,6 +802,30 @@ export async function deleteMesocycleAction(id: number): Promise<ActionState<boo
       )
     }
 
+    // Clean up workout_logs that reference session_plans being deleted
+    if (sessionPlanIds.length > 0) {
+      // Delete assigned (not-yet-started) workout_logs — safe to remove
+      const { error: assignedLogsError } = await supabase
+        .from('workout_logs')
+        .delete()
+        .in('session_plan_id', sessionPlanIds as any)
+        .eq('session_status', 'assigned')
+
+      if (assignedLogsError) {
+        console.error('Error deleting assigned workout_logs:', assignedLogsError)
+      }
+
+      // Nullify session_plan_id on completed/in-progress logs to preserve history
+      const { error: activeLogsError } = await supabase
+        .from('workout_logs')
+        .update({ session_plan_id: null })
+        .in('session_plan_id', sessionPlanIds as any)
+
+      if (activeLogsError) {
+        console.error('Error nullifying workout_log session_plan_id:', activeLogsError)
+      }
+    }
+
     // Delete in reverse dependency order
     if (exerciseIds.length > 0) {
       const { error: setsError } = await supabase
@@ -1410,6 +1434,9 @@ export async function copyMacrocycleAsTemplateAction(
     const newStart = new Date(newStartDate)
     const daysDiff = Math.floor((newStart.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24))
 
+    // Track partial copy failures
+    const warnings: string[] = []
+
     // Copy mesocycles
     if (originalMacrocycle.mesocycles && originalMacrocycle.mesocycles.length > 0) {
       for (const mesocycle of originalMacrocycle.mesocycles) {
@@ -1437,6 +1464,7 @@ export async function copyMacrocycleAsTemplateAction(
 
         if (mesoError || !newMesocycle) {
           console.error('Error copying mesocycle:', mesoError)
+          warnings.push(`Failed to copy mesocycle "${mesocycle.name}": ${mesoError?.message || 'unknown error'}`)
           continue
         }
 
@@ -1467,6 +1495,7 @@ export async function copyMacrocycleAsTemplateAction(
 
             if (microError || !newMicrocycle) {
               console.error('Error copying microcycle:', microError)
+              warnings.push(`Failed to copy microcycle "${microcycle.name}": ${microError?.message || 'unknown error'}`)
               continue
             }
 
@@ -1496,6 +1525,7 @@ export async function copyMacrocycleAsTemplateAction(
 
                 if (presetError || !newPresetGroup) {
                   console.error('Error copying preset group:', presetError)
+                  warnings.push(`Failed to copy session plan "${presetGroup.name}": ${presetError?.message || 'unknown error'}`)
                   continue
                 }
 
@@ -1518,6 +1548,7 @@ export async function copyMacrocycleAsTemplateAction(
 
                     if (presetInsertError || !newPreset) {
                       console.error('Error copying exercise preset:', presetInsertError)
+                      warnings.push(`Failed to copy exercise preset: ${presetInsertError?.message || 'unknown error'}`)
                       continue
                     }
 
@@ -1557,7 +1588,9 @@ export async function copyMacrocycleAsTemplateAction(
 
     return {
       isSuccess: true,
-      message: "Macrocycle template copied successfully",
+      message: warnings.length > 0
+        ? `Macrocycle copied with warnings: ${warnings.join('; ')}`
+        : "Macrocycle template copied successfully",
       data: newMacrocycle
     }
   } catch (error) {

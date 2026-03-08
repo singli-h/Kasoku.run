@@ -43,6 +43,16 @@ export async function getMicrocycleWorkoutSummaryAction(
       return { isSuccess: false, message: 'Microcycle not found or access denied' }
     }
 
+    const { data: athlete } = await supabase
+      .from('athletes')
+      .select('id')
+      .eq('user_id', dbUserId)
+      .single()
+
+    if (!athlete) {
+      return { isSuccess: false, message: 'Athlete profile not found' }
+    }
+
     const { data: logs } = await supabase
       .from('workout_logs')
       .select(`
@@ -50,6 +60,7 @@ export async function getMicrocycleWorkoutSummaryAction(
         session_plans!inner ( name, microcycle_id )
       `)
       .eq('session_plans.microcycle_id', microcycleId)
+      .eq('athlete_id', athlete.id)
 
     if (!logs?.length) {
       return { isSuccess: false, message: 'No workout data for this microcycle' }

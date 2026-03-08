@@ -102,14 +102,14 @@ describe('getAIContextLevel', () => {
     })).toBe('exercise')
   })
 
-  it('treats weekId of 0 as falsy, returning "block"', () => {
-    // weekId 0 is falsy in JS, so getAIContextLevel returns "block"
-    // This documents the actual behavior: weekId 0 is treated as unselected
+  it('treats weekId of 0 as a valid selection, returning "week"', () => {
+    // weekId 0 is a valid numeric ID (uses nullish check, not truthiness)
+    // Consistent with PlanContext.tsx which uses !== null
     expect(getAIContextLevel({
-      selectedWeekId: 0 as unknown as number,
+      selectedWeekId: 0,
       selectedSessionId: null,
       selectedExerciseId: null,
-    })).toBe('block')
+    })).toBe('week')
   })
 })
 
@@ -273,6 +273,12 @@ describe('isWeekFuture', () => {
 // findTodayWorkout
 // ============================================================================
 
+// Day convention: All storage paths use 0-6 (JS Date.getDay(): 0=Sunday, 6=Saturday).
+// - save-generated-plan-action.ts DAY_NAME_TO_NUMBER: sunday=0, monday=1, ..., saturday=6
+// - QuickStartWizard.tsx DAYS_OF_WEEK: Mon=1, Tue=2, ..., Sat=6, Sun=0
+// - findTodayWorkout correctly uses new Date().getDay() (0-6) to match.
+// NOTE: session-plan-actions.ts interface comments claim "1-7 (Monday to Sunday)"
+// but the actual values written are 0-6 from the UI. Those comments are misleading.
 describe('findTodayWorkout', () => {
   it('returns null for empty array', () => {
     expect(findTodayWorkout([])).toBeNull()
