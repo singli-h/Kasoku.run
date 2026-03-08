@@ -8,6 +8,7 @@ history pagination, and status updates following 2025 best practices.
 
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
@@ -450,6 +451,8 @@ export async function updateTrainingSessionStatusAction(
       return { isSuccess: false, message: "Failed to update session status" }
     }
 
+    revalidatePath('/workout', 'page')
+
     // 5. Auto-detect PBs when session is completed
     if (status === 'completed') {
       // Process session for personal bests asynchronously
@@ -519,6 +522,8 @@ export async function startTrainingSessionAction(
       console.error('Error starting session:', error)
       return { isSuccess: false, message: "Failed to start session" }
     }
+
+    revalidatePath('/workout', 'page')
 
     return {
       isSuccess: true,
@@ -602,6 +607,8 @@ export async function skipWorkoutSessionAction(
       console.error('Error skipping session:', error)
       return { isSuccess: false, message: "Failed to skip session" }
     }
+
+    revalidatePath('/workout', 'page')
 
     return {
       isSuccess: true,

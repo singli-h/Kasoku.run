@@ -147,7 +147,7 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
   }
 
   const rawPlanData = macrocycleResult.data as MacrocycleData
-  const races = racesResult.isSuccess ? racesResult.data : []
+  const races = racesResult.isSuccess && racesResult.data ? racesResult.data : []
 
   // Log race fetching errors for debugging (non-blocking)
   if (!racesResult.isSuccess) {

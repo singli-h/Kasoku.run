@@ -12,8 +12,8 @@ import { ErrorFallback } from "@/components/layout/error-fallback"
 
 interface GlobalErrorBoundaryProps {
   children: React.ReactNode
-  fallback?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>
-  onError?: (error: Error, errorInfo: { componentStack?: string | null }) => void
+  fallback?: React.ComponentType<{ error: unknown; resetErrorBoundary: () => void }>
+  onError?: (error: unknown, errorInfo: { componentStack?: string | null }) => void
 }
 
 /**
@@ -34,7 +34,7 @@ export function GlobalErrorBoundary({
   fallback = ErrorFallback,
   onError
 }: GlobalErrorBoundaryProps) {
-  const handleError = (error: Error, errorInfo: { componentStack?: string | null }) => {
+  const handleError = (error: unknown, errorInfo: { componentStack?: string | null }) => {
     // Log error to console in development
     if (process.env.NODE_ENV === 'development') {
       console.error('[GlobalErrorBoundary] Caught error:', error)

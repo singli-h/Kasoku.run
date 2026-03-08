@@ -27,6 +27,10 @@ jest.mock("@/actions/athletes/personal-best-actions", () => ({
   processSessionForPBsAction: jest.fn(),
 }))
 
+jest.mock("next/cache", () => ({
+  revalidatePath: jest.fn(),
+}))
+
 // ---------------------------------------------------------------------------
 // Chainable Supabase mock factory
 // ---------------------------------------------------------------------------

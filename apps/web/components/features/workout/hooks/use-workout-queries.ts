@@ -156,8 +156,6 @@ export function useWorkoutSessionDetails(
   sessionId: string,
   options?: UseWorkoutSessionDetailsOptions
 ) {
-  const queryClient = useQueryClient()
-
   const query = useQuery<WorkoutLogWithDetails>({
     queryKey: WORKOUT_QUERY_KEYS.SESSION_DETAILS(sessionId.toString()),
     queryFn: async () => {
@@ -187,17 +185,7 @@ export function useWorkoutSessionDetails(
     refetchOnReconnect: true,    // Auto-refresh on network reconnect
   })
 
-  // Invalidate and refetch session details
-  const refetch = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: WORKOUT_QUERY_KEYS.SESSION_DETAILS(sessionId.toString())
-    })
-  }, [queryClient, sessionId])
-
-  return {
-    ...query,
-    refetch,
-  }
+  return query
 }
 
 // Hook for session mutations

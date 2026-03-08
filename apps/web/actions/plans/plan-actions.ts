@@ -371,6 +371,8 @@ export async function updateMacrocycleAction(
       }
     }
 
+    revalidatePath('/plans', 'page')
+
     return {
       isSuccess: true,
       message: "Macrocycle updated successfully",
@@ -820,6 +822,7 @@ export async function deleteMesocycleAction(id: number): Promise<ActionState<boo
         .from('workout_logs')
         .update({ session_plan_id: null })
         .in('session_plan_id', sessionPlanIds as any)
+        .not('session_status', 'eq', 'assigned')
 
       if (activeLogsError) {
         console.error('Error nullifying workout_log session_plan_id:', activeLogsError)
@@ -1945,6 +1948,7 @@ export async function hasActiveTrainingBlockAction(): Promise<ActionState<boolea
       .from('mesocycles')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', dbUserId)
+      .is('macrocycle_id', null)  // Individual's personal blocks only
       .lte('start_date', today)
       .gte('end_date', today)
 
