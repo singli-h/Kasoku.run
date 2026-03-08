@@ -180,6 +180,10 @@ export async function saveSessionPlanAction(
           }
         }
 
+        // Push to map BEFORE the insert array so indices stay aligned
+        // (both arrays grow together, only after validation passes)
+        exerciseToSessionMap.push({ sessionIdx, exerciseIdx })
+
         exerciseInserts.push({
           session_plan_id: savedSession.id,
           exercise_id: exercise.exerciseId,
@@ -187,8 +191,6 @@ export async function saveSessionPlanAction(
           notes: exercise.notes,
           superset_id: supersetId
         })
-
-        exerciseToSessionMap.push({ sessionIdx, exerciseIdx })
       }
     }
 
@@ -544,18 +546,26 @@ export async function deleteSessionPlanAction(
       }
     }
 
-    // Soft delete by setting deleted flag
-    const { error } = await supabase
+    // Soft delete by setting deleted flag — verify ownership via select
+    const { data: deletedRows, error } = await supabase
       .from('session_plans')
       .update({ deleted: true })
       .eq('id', sessionId)
       .eq('user_id', dbUserId)
+      .select('id')
 
     if (error) {
       console.error('Error deleting session plan:', error)
       return {
         isSuccess: false,
         message: `Failed to delete session plan: ${error.message}`
+      }
+    }
+
+    if (!deletedRows || deletedRows.length === 0) {
+      return {
+        isSuccess: false,
+        message: "Session plan not found or you don't have permission to delete it"
       }
     }
 
@@ -616,95 +626,131 @@ export async function saveAsTemplateAction(
       }
     }
 
-    const savedSessions: SessionPlan[] = []
     const warnings: string[] = []
 
-    // Save each session as a template (session_plan)
-    for (const session of planData.sessions) {
-      // Create the template session (session_plan)
-      const sessionData: SessionPlanInsert = {
-        name: session.name,
-        description: session.description,
-        date: new Date().toISOString().split('T')[0],
-        day: session.day,
-        week: session.week,
-        session_mode: 'template', // Special mode for templates
-        microcycle_id: null,
-        athlete_group_id: null, // Templates are global
-        user_id: null, // Templates are global
-        is_template: true // Mark as template
+    const dbUserId = await getDbUserId(userId)
+
+    // Step 1: Batch insert all template sessions
+    const sessionInserts: SessionPlanInsert[] = planData.sessions.map(session => ({
+      name: session.name,
+      description: session.description,
+      date: new Date().toISOString().split('T')[0],
+      day: session.day,
+      week: session.week,
+      session_mode: 'template' as const,
+      microcycle_id: null,
+      athlete_group_id: null,
+      user_id: dbUserId, // Templates are owned by the creator
+      is_template: true
+    }))
+
+    const { data: savedSessions, error: sessionError } = await supabase
+      .from('session_plans')
+      .insert(sessionInserts)
+      .select()
+
+    if (sessionError || !savedSessions || savedSessions.length === 0) {
+      console.error('Error batch saving template sessions:', sessionError)
+      return {
+        isSuccess: false,
+        message: `Failed to save template sessions: ${sessionError?.message}`
       }
+    }
 
-      const { data: savedSession, error: sessionError } = await supabase
-        .from('session_plans')
-        .insert(sessionData)
-        .select()
-        .single()
+    // Step 2: Batch insert all exercises across all sessions
+    const exerciseInserts: ExercisePresetInsert[] = []
+    // Track which exercise belongs to which session/exercise index for set mapping
+    const exerciseMapping: { sessionIdx: number; exerciseIdx: number }[] = []
 
-      if (sessionError || !savedSession) {
-        console.error('Error saving template session:', sessionError)
-        return {
-          isSuccess: false,
-          message: `Failed to save template session "${session.name}": ${sessionError?.message}`
+    for (let sessionIdx = 0; sessionIdx < planData.sessions.length; sessionIdx++) {
+      const session = planData.sessions[sessionIdx]
+      const savedSession = savedSessions[sessionIdx]
+
+      for (let exerciseIdx = 0; exerciseIdx < session.exercises.length; exerciseIdx++) {
+        const exercise = session.exercises[exerciseIdx]
+
+        if (!exercise.exerciseId) {
+          warnings.push(`Exercise in "${session.name}" is missing exerciseId`)
+          continue
         }
-      }
 
-      // Save exercises for this template session
-      for (const exercise of session.exercises) {
-        // Create the exercise preset
-        const exercisePresetData: ExercisePresetInsert = {
+        exerciseMapping.push({ sessionIdx, exerciseIdx })
+        exerciseInserts.push({
           session_plan_id: savedSession.id,
           exercise_id: exercise.exerciseId,
           exercise_order: exercise.order,
           notes: exercise.notes,
           superset_id: exercise.supersetId ? parseInt(exercise.supersetId.replace('superset-', '')) : null
-        }
+        })
+      }
+    }
 
-        const { data: savedExercisePreset, error: exerciseError } = await supabase
-          .from('session_plan_exercises')
-          .insert(exercisePresetData)
-          .select()
-          .single()
+    if (exerciseInserts.length > 0) {
+      const { data: savedExercises, error: exerciseError } = await supabase
+        .from('session_plan_exercises')
+        .insert(exerciseInserts)
+        .select()
 
-        if (exerciseError || !savedExercisePreset) {
-          console.error('Error saving template exercise preset:', exerciseError)
-          warnings.push(`Exercise ${exercise.exerciseId} in "${session.name}" failed to save`)
-          continue
-        }
+      if (exerciseError || !savedExercises) {
+        console.error('Error batch saving template exercises:', exerciseError)
+        warnings.push(`Failed to save exercises: ${exerciseError?.message}`)
+      } else {
+        // Step 3: Batch insert all sets across all exercises
+        const setInserts: Array<{
+          session_plan_exercise_id: string
+          set_index: number
+          reps: number | null
+          weight: number | null
+          distance: number | null
+          performing_time: number | null
+          power: number | null
+          velocity: number | null
+          resistance: number | null
+          resistance_unit_id: number | null
+          tempo: string | null
+          effort: number | null
+          rpe: number | null
+          height: number | null
+          metadata: string | null
+        }> = []
 
-        // Save exercise preset details (sets) for template
-        for (const set of exercise.sets) {
-          const setDetailData = {
-            session_plan_exercise_id: savedExercisePreset.id,
-            set_index: set.setIndex,
-            reps: set.reps || null,
-            weight: set.weight || null,
-            distance: set.distance || null,
-            performing_time: set.performing_time || null,
-            power: set.power || null,
-            velocity: set.velocity || null,
-            resistance: set.resistance || null,
-            resistance_unit_id: set.resistance_unit_id || null,
-            tempo: set.tempo || null,
-            // FIX: Use set.effort, not set.rpe (different fields)
-            effort: set.effort != null ? set.effort / 100 : null,
-            rpe: set.rpe || null,
-            height: set.height || null,
-            metadata: set.metadata ? JSON.stringify(set.metadata) : null
+        for (let i = 0; i < savedExercises.length; i++) {
+          const savedExercise = savedExercises[i]
+          const { sessionIdx, exerciseIdx } = exerciseMapping[i]
+          const exercise = planData.sessions[sessionIdx].exercises[exerciseIdx]
+
+          for (const set of exercise.sets) {
+            setInserts.push({
+              session_plan_exercise_id: savedExercise.id,
+              set_index: set.setIndex,
+              reps: set.reps || null,
+              weight: set.weight || null,
+              distance: set.distance || null,
+              performing_time: set.performing_time || null,
+              power: set.power || null,
+              velocity: set.velocity || null,
+              resistance: set.resistance || null,
+              resistance_unit_id: set.resistance_unit_id || null,
+              tempo: set.tempo || null,
+              effort: set.effort != null ? set.effort / 100 : null,
+              rpe: set.rpe || null,
+              height: set.height || null,
+              metadata: set.metadata ? JSON.stringify(set.metadata) : null
+            })
           }
+        }
 
-          const { error: detailError } = await supabase
+        if (setInserts.length > 0) {
+          const { error: setsError } = await supabase
             .from('session_plan_sets')
-            .insert(setDetailData)
+            .insert(setInserts)
 
-          if (detailError) {
-            console.error('Error saving template exercise preset detail:', detailError)
-            warnings.push(`Set ${set.setIndex} for exercise ${exercise.exerciseId} in "${session.name}" failed to save`)
+          if (setsError) {
+            console.error('Error batch saving template sets:', setsError)
+            warnings.push(`Failed to save some sets: ${setsError.message}`)
           }
         }
       }
-
-      savedSessions.push(savedSession)
     }
 
     revalidatePath('/plans', 'page')
@@ -731,6 +777,18 @@ export async function saveAsTemplateAction(
  */
 export async function getTemplatesAction(): Promise<ActionState<SessionPlan[]>> {
   try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "Not authenticated"
+      }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Only return templates owned by this user
     const { data: templates, error } = await supabase
       .from('session_plans')
       .select(`
@@ -743,6 +801,7 @@ export async function getTemplatesAction(): Promise<ActionState<SessionPlan[]>> 
       `)
       .eq('is_template', true)
       .eq('deleted', false)
+      .eq('user_id', dbUserId)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -840,53 +899,63 @@ export async function createPlanFromTemplateAction(
       }
     }
 
-    // Copy exercises from template to new plan
+    // Copy exercises from template to new plan (batch insert)
     if (template.session_plan_exercises && template.session_plan_exercises.length > 0) {
-      for (const templatePreset of template.session_plan_exercises) {
-        const newPresetData: ExercisePresetInsert = {
+      // Step 1: Batch insert all exercises
+      const exerciseInserts: ExercisePresetInsert[] = template.session_plan_exercises.map(
+        (templatePreset: any) => ({
           session_plan_id: newPlan.id,
           exercise_id: templatePreset.exercise_id,
           exercise_order: templatePreset.exercise_order,
           notes: templatePreset.notes,
           superset_id: templatePreset.superset_id
+        })
+      )
+
+      const { data: savedExercises, error: exercisesError } = await supabase
+        .from('session_plan_exercises')
+        .insert(exerciseInserts)
+        .select()
+
+      if (exercisesError || !savedExercises) {
+        console.error('Error batch copying exercises from template:', exercisesError)
+      } else {
+        // Step 2: Batch insert all sets across all exercises
+        const setInserts: Array<Record<string, any>> = []
+
+        for (let i = 0; i < savedExercises.length; i++) {
+          const savedExercise = savedExercises[i]
+          const templatePreset = template.session_plan_exercises[i] as any
+
+          if (templatePreset.session_plan_sets && templatePreset.session_plan_sets.length > 0) {
+            for (const detail of templatePreset.session_plan_sets) {
+              setInserts.push({
+                session_plan_exercise_id: savedExercise.id,
+                set_index: detail.set_index,
+                reps: detail.reps,
+                weight: detail.weight,
+                distance: detail.distance,
+                performing_time: detail.performing_time,
+                power: detail.power,
+                velocity: detail.velocity,
+                resistance: detail.resistance,
+                resistance_unit_id: detail.resistance_unit_id,
+                tempo: detail.tempo,
+                effort: detail.effort,
+                height: detail.height,
+                metadata: detail.metadata
+              })
+            }
+          }
         }
 
-        const { data: newPreset, error: presetError } = await supabase
-          .from('session_plan_exercises')
-          .insert(newPresetData)
-          .select()
-          .single()
-
-        if (presetError || !newPreset) {
-          console.error('Error copying preset from template:', presetError)
-          continue
-        }
-
-        // Copy preset details from template
-        if (templatePreset.session_plan_sets && templatePreset.session_plan_sets.length > 0) {
-          const detailsData = templatePreset.session_plan_sets.map(detail => ({
-            session_plan_exercise_id: newPreset.id,
-            set_index: detail.set_index,
-            reps: detail.reps,
-            weight: detail.weight,
-            distance: detail.distance,
-            performing_time: detail.performing_time,
-            power: detail.power,
-            velocity: detail.velocity,
-            resistance: detail.resistance,
-            resistance_unit_id: detail.resistance_unit_id,
-            tempo: detail.tempo,
-            effort: detail.effort,
-            height: detail.height,
-            metadata: detail.metadata
-          }))
-
-          const { error: detailsError } = await supabase
+        if (setInserts.length > 0) {
+          const { error: setsError } = await supabase
             .from('session_plan_sets')
-            .insert(detailsData)
+            .insert(setInserts)
 
-          if (detailsError) {
-            console.error('Error copying preset details from template:', detailsError)
+          if (setsError) {
+            console.error('Error batch copying sets from template:', setsError)
           }
         }
       }
@@ -923,18 +992,29 @@ export async function deleteTemplateAction(templateId: string): Promise<ActionSt
       }
     }
 
-    // Soft delete the template
-    const { error } = await supabase
+    const dbUserId = await getDbUserId(userId)
+
+    // Soft delete the template — require ownership via user_id
+    const { data: updated, error } = await supabase
       .from('session_plans')
       .update({ deleted: true })
       .eq('id', templateId)
       .eq('is_template', true)
+      .eq('user_id', dbUserId)
+      .select('id')
 
     if (error) {
       console.error('Error deleting template:', error)
       return {
         isSuccess: false,
         message: `Failed to delete template: ${error.message}`
+      }
+    }
+
+    if (!updated || updated.length === 0) {
+      return {
+        isSuccess: false,
+        message: "Template not found or you don't have permission to delete it"
       }
     }
 
@@ -990,6 +1070,14 @@ export async function copySessionAction(
       return {
         isSuccess: false,
         message: "Session not found"
+      }
+    }
+
+    // Ownership check: if source is not a template, require ownership
+    if (!sourceSession.is_template && sourceSession.user_id !== dbUserId) {
+      return {
+        isSuccess: false,
+        message: "You don't have permission to copy this session"
       }
     }
 

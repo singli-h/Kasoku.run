@@ -1,5 +1,3 @@
-"use server"
-
 import React from "react"
 
 // This layout is now a simple pass-through.

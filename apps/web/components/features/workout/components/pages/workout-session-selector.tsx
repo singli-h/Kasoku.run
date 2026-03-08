@@ -64,8 +64,17 @@ export function WorkoutSessionSelector({
 
   // Handle starting or continuing a session
   const handleStartSession = async (session: WorkoutLogWithDetails) => {
+    if (!session.session_plan) {
+      toast({
+        title: "Error",
+        description: "Session plan data is missing",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
-      const presetGroup = session.session_plan!
+      const presetGroup = session.session_plan
       setStartingSessionId(presetGroup.id)
       
       if ((session as any).session_status === 'ongoing') {
