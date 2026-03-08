@@ -88,7 +88,7 @@ export function FeatureErrorBoundary({
     )
   }
 
-  const handleError = (error: Error, errorInfo: { componentStack?: string | null }) => {
+  const handleError = (error: unknown, errorInfo: { componentStack?: string | null }) => {
     // Log error to console in development
     if (process.env.NODE_ENV === 'development') {
       console.error(`[FeatureErrorBoundary${featureName ? `:${featureName}` : ''}] Caught error:`, error)
