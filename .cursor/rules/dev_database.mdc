@@ -1,0 +1,312 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+### Database Schema Change Management
+
+Follow this process whenever making changes to the Supabase database schema, RLS policies, functions, or indexes.
+
+#### Database Change Workflow
+
+1. **Schema Changes in Supabase**
+   - Make changes in Supabase SQL Editor or via migrations
+   - Test changes thoroughly in development environment
+   - Document the change reason and impact
+
+2. **Update Type Definitions**
+   - Update `apps/web/types/database.ts` with new/modified interfaces
+   - Ensure all Insert, Update, and Select types are current
+   - Add new composite types for complex queries if needed
+   - Run TypeScript checks to ensure no breaking changes
+
+3. **Update Documentation**
+   - Update `apps/backend/database-schema.md` with:
+     - New table schemas
+     - Updated RLS policies
+     - New indexes and their purposes
+     - Performance considerations
+   - Document any breaking changes or migration steps
+
+4. **Update Server Actions**
+   - Modify or create new server actions in `apps/web/actions/`
+   - Update existing actions if table structures changed
+   - Ensure proper error handling for new constraints
+   - Test all affected server actions
+
+5. **Update Library Functions**
+   - Modify `apps/web/lib/supabase.ts` if client setup or utilities need changes
+   - Keep only client setup and pure utilities in lib
+   - Move business logic to appropriate actions directories
+
+6. **Testing and Validation**
+   - Test all affected functionality
+   - Verify RLS policies work as expected
+   - Check performance of new indexes
+   - Validate type safety throughout the application
+
+#### File Update Checklist
+
+When database schema changes, ensure these files are updated:
+
+- [ ] `apps/web/types/database.ts` - Type definitions
+- [ ] `apps/backend/database-schema.md` - Schema documentation  
+- [ ] `apps/web/lib/supabase.ts` - Client utilities (if needed)
+- [ ] `apps/web/actions/[domain]/` - Affected server actions
+- [ ] `apps/backend/README.md` - Implementation guidance (if needed)
+
+#### Best Practices
+
+- **Always update types before implementing features** - Prevents runtime errors
+- **Document RLS policy rationale** - Helps future developers understand security model
+- **Test RLS policies with different user roles** - Ensure proper data isolation
+- **Use consistent naming conventions** - Keep table/column names aligned with TypeScript interfaces
+- **Version control database changes** - Consider using Supabase migrations for complex changes
+
+### Supabase Architecture & Organization
+
+This project follows a **strict separation of concerns** for Supabase interactions. Understanding where to place database-related code is critical for maintainability and consistency.
+
+#### Core Architecture Principles
+
+1. **Three-Layer Structure**
+   - **`lib/supabase.ts`**: Infrastructure & utilities only
+   - **`actions/[domain]/`**: Business logic & authenticated operations  
+   - **`app/api/`**: External integrations & webhooks only
+
+2. **Clear Boundaries**
+   - No business logic in `lib/`
+   - No direct Supabase clients in components
+   - All database operations go through server actions
+
+3. **Type-First Approach**
+   - All database operations are strongly typed
+   - Types must stay synchronized with actual schema
+   - Use ActionState pattern for consistent error handling
+
+#### Where to Place Different Types of Code
+
+**`apps/web/lib/supabase.ts` - Infrastructure Only**
+```typescript
+// ✅ CORRECT - Client setup and configuration
+export function createServerSupabaseClient() {
+  return createClient<Database>(supabaseUrl, supabaseAnonKey)
+}
+
+// ✅ CORRECT - Pure utility functions
+export function isSupabaseError(error: any) {
+  return error && typeof error === 'object' && 'code' in error
+}
+
+// ✅ CORRECT - Infrastructure helpers
+export async function setOrganizationContext(orgId: number) {
+  // RLS context setting
+}
+
+// ❌ WRONG - Business logic (move to actions)
+export async function createUser(userData: UserInsert) {
+  // This belongs in actions/auth/user-actions.ts
+}
+
+// ❌ WRONG - Complex queries (move to actions)
+export async function getUserWithMemberships(clerkId: string) {
+  // This belongs in actions/auth/user-actions.ts
+}
+```
+
+**`apps/web/actions/[domain]/` - Business Logic**
+```typescript
+// ✅ CORRECT - Authenticated business operations
+export async function getCurrentUserAction(): Promise<ActionState<User>> {
+  const { userId } = await auth() // Authentication required
+  // ... business logic
+}
+
+// ✅ CORRECT - Complex data operations
+export async function createOrganizationAction(data: OrganizationInsert) {
+  // Multi-step business process with validation
+}
+
+// ✅ CORRECT - Data access with business rules
+export async function getOrganizationTasksAction(orgId: number, filters?: TaskFilters) {
+  // Permission checks, filtering, transformation
+}
+
+// ❌ WRONG - Simple client creation (belongs in lib)
+export function createClient() {
+  // This belongs in lib/supabase.ts
+}
+```
+
+**`apps/web/app/api/` - External Integrations Only**
+```typescript
+// ✅ CORRECT - Webhook handling
+export async function POST(req: NextRequest) {
+  // Clerk webhook processing
+  // Calls actions for business logic
+}
+
+// ✅ CORRECT - Third-party service callbacks
+export async function handleStripeWebhook() {
+  // External service integration
+}
+
+// ❌ WRONG - Complex business logic (use actions instead)
+export async function createUserAndOrganization() {
+  // This should be orchestrated through actions
+}
+```
+
+#### File Organization Standards
+
+**Domain-Based Action Organization**
+```
+apps/web/actions/
+├── auth/                 # Authentication & user management
+│   ├── user-actions.ts      # User CRUD operations
+│   ├── organization-actions.ts  # Organization management
+│   ├── auth-helpers.ts      # Permission checking
+│   └── index.ts            # Export all auth actions
+├── tasks/                # Task management domain
+│   ├── task-actions.ts      # Task CRUD operations
+│   ├── task-queries.ts      # Complex task queries
+│   └── index.ts
+├── billing/              # Payment domain
+│   ├── stripe-actions.ts
+│   └── subscription-actions.ts
+└── shared/               # Cross-domain utilities
+    ├── upload-actions.ts
+    └── notification-actions.ts
+```
+
+**Consistent Naming Conventions**
+- Server Actions: `[operation][entity]Action` (e.g., `createUserAction`, `getUserMembershipsAction`)
+- Helper Functions: `[verb][noun]` (e.g., `isSupabaseError`, `setOrganizationContext`)
+- Type Files: `[domain]-types.ts` (e.g., `auth-types.ts`, `task-types.ts`)
+
+#### Migration Guide for Existing Code
+
+**When Refactoring Supabase Code:**
+
+1. **Identify the Code Type**
+   - Is it client setup? → Keep in `lib/supabase.ts`
+   - Does it have business logic? → Move to `actions/[domain]/`
+   - Is it an external webhook? → Keep in `app/api/`
+
+2. **Move Functions Systematically**
+   ```bash
+   # Example migration
+   # FROM: lib/supabase.ts
+   export async function createUser(userData) { ... }
+   
+   # TO: actions/auth/user-actions.ts  
+   export async function createUserAction(userData): Promise<ActionState<User>> { ... }
+   ```
+
+3. **Update All Imports**
+   ```typescript
+   // Update imports throughout the codebase
+   // FROM: import { createUser } from '@/lib/supabase'
+   // TO: import { createUserAction } from '@/actions/auth'
+   ```
+
+4. **Add Authentication & Error Handling**
+   ```typescript
+   export async function createUserAction(...): Promise<ActionState<User>> {
+     try {
+       const { userId } = await auth() // Add authentication
+       
+       if (!userId) {
+         return { isSuccess: false, message: "Not authenticated" }
+       }
+       
+       // ... business logic
+       
+       return { isSuccess: true, message: "Success", data: result }
+     } catch (error) {
+       return { isSuccess: false, message: "Error occurred" }
+     }
+   }
+   ```
+
+#### Common Anti-Patterns to Avoid
+
+**❌ Don't: Mix Infrastructure with Business Logic**
+```typescript
+// lib/supabase.ts - WRONG
+export async function createUserWithOrganization(userData, orgData) {
+  const user = await createUser(userData)
+  const org = await createOrganization(orgData)
+  await addUserToOrganization(user.id, org.id)
+  // This is business logic, not infrastructure
+}
+```
+
+**❌ Don't: Direct Supabase Calls in Components**
+```typescript
+// components/user-profile.tsx - WRONG
+export function UserProfile() {
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from('users').select('*').eq('id', userId)
+    // Components should call server actions, not Supabase directly
+  }, [])
+}
+```
+
+**❌ Don't: Business Logic in API Routes**
+```typescript
+// app/api/users/route.ts - WRONG
+export async function POST(req: NextRequest) {
+  const userData = await req.json()
+  
+  // Complex validation logic...
+  // Multi-step database operations...
+  // Business rule enforcement...
+  
+  // This should be in actions/auth/user-actions.ts
+}
+```
+
+#### Testing Strategy
+
+**Unit Testing Structure**
+```
+tests/
+├── lib/
+│   └── supabase.test.ts        # Test utilities only
+├── actions/
+│   ├── auth/
+│   │   ├── user-actions.test.ts    # Test business logic
+│   │   └── auth-helpers.test.ts
+│   └── tasks/
+│       └── task-actions.test.ts
+└── api/
+    └── webhooks/
+        └── clerk.test.ts       # Test webhook handling
+```
+
+**What to Test Where**
+- **`lib/` tests**: Client creation, error detection, utilities
+- **`actions/` tests**: Business logic, authentication, data transformation
+- **`api/` tests**: Webhook signature verification, external integration handling
+
+#### Performance Considerations
+
+**Query Optimization Guidelines**
+- Use specific `select()` clauses instead of `select('*')`
+- Implement pagination for large datasets
+- Add appropriate indexes based on query patterns
+- Use RLS policies efficiently (avoid overly complex conditions)
+
+**Caching Strategy**
+- Cache static data (roles, organization settings) in server actions
+- Use React Query for client-side caching of action results
+- Implement proper cache invalidation strategies
+
+This architecture ensures:
+- **Maintainability**: Clear boundaries make code easier to understand and modify
+- **Security**: All database access goes through authenticated server actions
+- **Type Safety**: Consistent patterns with strong TypeScript integration
+- **Testability**: Separated concerns enable focused unit testing
+- **Performance**: Optimized queries and proper caching strategies 

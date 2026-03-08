@@ -1,0 +1,1669 @@
+/*
+<ai_context>
+Server actions for exercise library management and exercise presets.
+Handles exercise CRUD operations, exercise types, and preset group management.
+</ai_context>
+*/
+
+"use server"
+
+import { auth } from "@clerk/nextjs/server"
+import supabase from "@/lib/supabase-server"
+import { getDbUserId } from "@/lib/user-cache"
+import type { ExerciseSearchItem } from "@/lib/exercises"
+import { ActionState } from "@/types"
+import {
+  Exercise, ExerciseInsert, ExerciseUpdate,
+  ExerciseType,
+  Unit,
+  SessionPlan, SessionPlanInsert,
+  ExercisePreset, ExercisePresetInsert, ExercisePresetUpdate,
+  SessionPlanSet,
+  ExerciseWithDetails,
+  SessionPlanWithDetails,
+  CreateSessionForm,
+  ExerciseFilters,
+  PaginatedExercises
+} from "@/types/training"
+
+function mapExerciseSearchItemToDetails(exercise: ExerciseSearchItem): ExerciseWithDetails {
+  return {
+    id: exercise.id,
+    name: exercise.name,
+    description: exercise.description,
+    exercise_type_id: exercise.exerciseTypeId ?? null,
+    unit_id: exercise.unitId ?? null,
+    video_url: exercise.videoUrl ?? null,
+    visibility: exercise.visibility ?? 'global',
+    owner_user_id: exercise.ownerUserId ?? null,
+    created_at: exercise.createdAt ?? null,
+    updated_at: exercise.updatedAt ?? null,
+    is_archived: exercise.isArchived ?? false,
+    embedding: null,
+    search_tsv: null,
+    exercise_type: exercise.exerciseType ? {
+      id: exercise.exerciseType.id,
+      type: exercise.exerciseType.type,
+      description: exercise.exerciseType.description ?? null,
+    } : null,
+    unit: exercise.unit ? {
+      id: exercise.unit.id,
+      name: exercise.unit.name,
+    } : null,
+    tags: exercise.tags ?? [],
+  } as ExerciseWithDetails
+}
+
+// ============================================================================
+// EXERCISE LIBRARY ACTIONS
+// ============================================================================
+
+/**
+ * Get all exercises with optional filtering
+ * Returns global exercises + user's private exercises
+ */
+export async function getExercisesAction(filters?: ExerciseFilters): Promise<ActionState<ExerciseWithDetails[]>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID from cache
+    const dbUserId = await getDbUserId(userId)
+
+    const { searchExercises, MAX_LIMIT } = await import('@/lib/exercises')
+
+    const pageSize = MAX_LIMIT
+    let offset = 0
+    let hasMore = true
+    let results: ExerciseSearchItem[] = []
+
+    while (hasMore) {
+      const page = await searchExercises(supabase, {
+        query: filters?.search,
+        exerciseTypeId: filters?.exercise_type_id,
+        equipmentTagIds: filters?.equipment_tag_ids,
+        userId: String(dbUserId),
+        limit: pageSize,
+        offset,
+        fields: 'full',
+      })
+
+      results = results.concat(page.exercises)
+      offset += pageSize
+      hasMore = page.hasMore && page.exercises.length > 0
+    }
+
+    if (filters?.unit_id) {
+      results = results.filter((exercise) => exercise.unitId === filters.unit_id)
+    }
+
+    if (filters?.tag_ids?.length) {
+      const tagIds = new Set(filters.tag_ids)
+      results = results.filter((exercise) =>
+        (exercise.tags ?? []).some((tag) => tagIds.has(tag.id))
+      )
+    }
+
+    const transformedExercises = results.map(mapExerciseSearchItemToDetails)
+
+    return {
+      isSuccess: true,
+      message: "Exercises retrieved successfully",
+      data: transformedExercises
+    }
+  } catch (error) {
+    console.error('Error in getExercisesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Search exercises with pagination - optimized for exercise picker
+ * Returns paginated results for efficient loading of large exercise libraries
+ *
+ * Uses unified search module from lib/exercises for consistent behavior
+ * across all search consumers (UI picker, API routes, AI tools).
+ */
+export async function searchExercisesAction(
+  filters?: ExerciseFilters
+): Promise<ActionState<PaginatedExercises>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID from cache
+    const dbUserId = await getDbUserId(userId)
+
+    // Import unified search module
+    const { searchExercises } = await import('@/lib/exercises')
+
+    // Execute unified search
+    const result = await searchExercises(supabase, {
+      query: filters?.search,
+      exerciseTypeId: filters?.exercise_type_id,
+      equipmentTagIds: filters?.equipment_tag_ids,
+      userId: String(dbUserId), // Convert to string for unified search
+      limit: filters?.limit ?? 20,
+      offset: filters?.offset ?? 0,
+      fields: 'picker',
+    })
+
+    // Transform to ExerciseWithDetails format for backward compatibility
+    // Note: Using type assertion since picker only needs subset of fields
+    const transformedExercises = result.exercises.map((exercise) => ({
+      id: exercise.id,
+      name: exercise.name,
+      description: exercise.description,
+      video_url: exercise.videoUrl ?? null,
+      exercise_type_id: exercise.exerciseTypeId ?? null,
+      unit_id: null, // Not included in picker field set
+      visibility: exercise.visibility ?? 'global',
+      exercise_type: exercise.exerciseType ? {
+        id: exercise.exerciseType.id,
+        type: exercise.exerciseType.type,
+        description: exercise.exerciseType.description,
+      } : null,
+      tags: [], // Skip tags for search performance
+      unit: null, // Skip unit for search performance
+    })) as unknown as ExerciseWithDetails[]
+
+    return {
+      isSuccess: true,
+      message: "Exercises retrieved successfully",
+      data: {
+        exercises: transformedExercises,
+        total: result.total,
+        hasMore: result.hasMore
+      }
+    }
+  } catch (error) {
+    console.error('Error in searchExercisesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Get a specific exercise by ID
+ */
+export async function getExerciseByIdAction(id: number): Promise<ActionState<ExerciseWithDetails>> {
+  try {
+    // Using singleton supabase client
+
+    const { data: exercise, error } = await supabase
+      .from('exercises')
+      .select(`
+        *,
+        exercise_type:exercise_types(*),
+        unit:units(*),
+        tags:exercise_tags(
+          tag:tags(*)
+        )
+      `)
+      .eq('id', id)
+      .single()
+
+    if (error) {
+      console.error('Error fetching exercise:', error)
+      if (error.code === 'PGRST116') {
+        return {
+          isSuccess: false,
+          message: "Exercise not found"
+        }
+      }
+      return {
+        isSuccess: false,
+        message: `Failed to fetch exercise: ${error.message}`
+      }
+    }
+
+    // Transform the data to match our expected interface
+    const transformedExercise = {
+      ...exercise,
+      tags: exercise.tags?.map((tag: any) => tag.tag) || []
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercise retrieved successfully",
+      data: transformedExercise
+    }
+  } catch (error) {
+    console.error('Error in getExerciseByIdAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Create a new exercise
+ */
+export async function createExerciseAction(
+  exerciseData: ExerciseInsert
+): Promise<ActionState<Exercise>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID from cache
+    const dbUserId = await getDbUserId(userId)
+
+    // Custom exercises should be private and owned by the creator
+    const completeExerciseData = {
+      ...exerciseData,
+      owner_user_id: dbUserId,
+      visibility: 'private' as const
+    }
+
+    const { data: exercise, error } = await supabase
+      .from('exercises')
+      .insert(completeExerciseData)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating exercise:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to create exercise: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercise created successfully",
+      data: exercise
+    }
+  } catch (error) {
+    console.error('Error in createExerciseAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Update an existing exercise
+ */
+export async function updateExerciseAction(
+  id: number,
+  updates: Partial<ExerciseUpdate>
+): Promise<ActionState<Exercise>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID from cache
+    const dbUserId = await getDbUserId(userId)
+
+    // First, check if the exercise exists and if user owns it
+    const { data: existingExercise, error: fetchError } = await supabase
+      .from('exercises')
+      .select('id, owner_user_id, visibility')
+      .eq('id', id)
+      .single()
+
+    if (fetchError) {
+      console.error('Error fetching exercise:', fetchError)
+      return {
+        isSuccess: false,
+        message: "Exercise not found"
+      }
+    }
+
+    // Only allow updates to custom exercises (owned by user)
+    if (existingExercise.owner_user_id !== dbUserId) {
+      return {
+        isSuccess: false,
+        message: "You can only update exercises you created"
+      }
+    }
+
+    const { data: exercise, error } = await supabase
+      .from('exercises')
+      .update(updates)
+      .eq('id', id)
+      .eq('owner_user_id', dbUserId) // Double-check ownership
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating exercise:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to update exercise: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercise updated successfully",
+      data: exercise
+    }
+  } catch (error) {
+    console.error('Error in updateExerciseAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Delete an exercise
+ */
+export async function deleteExerciseAction(id: number): Promise<ActionState<boolean>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID from cache
+    const dbUserId = await getDbUserId(userId)
+
+    // First, check if the exercise exists and if user owns it
+    const { data: existingExercise, error: fetchError } = await supabase
+      .from('exercises')
+      .select('id, owner_user_id, visibility')
+      .eq('id', id)
+      .single()
+
+    if (fetchError) {
+      console.error('Error fetching exercise:', fetchError)
+      return {
+        isSuccess: false,
+        message: "Exercise not found"
+      }
+    }
+
+    // Only allow deletion of custom exercises (owned by user)
+    if (existingExercise.owner_user_id !== dbUserId) {
+      return {
+        isSuccess: false,
+        message: "You can only delete exercises you created"
+      }
+    }
+
+    // First, remove any tag associations
+    await supabase
+      .from('exercise_tags')
+      .delete()
+      .eq('exercise_id', id)
+
+    // Then delete the exercise
+    const { error } = await supabase
+      .from('exercises')
+      .delete()
+      .eq('id', id)
+      .eq('owner_user_id', dbUserId) // Double-check ownership
+
+    if (error) {
+      console.error('Error deleting exercise:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to delete exercise: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercise deleted successfully",
+      data: true
+    }
+  } catch (error) {
+    console.error('Error in deleteExerciseAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+// ============================================================================
+// EXERCISE TYPE ACTIONS
+// ============================================================================
+
+/**
+ * Get all exercise types
+ */
+export async function getExerciseTypesAction(): Promise<ActionState<ExerciseType[]>> {
+  try {
+    // Using singleton supabase client
+
+    const { data: exerciseTypes, error } = await supabase
+      .from('exercise_types')
+      .select('id, type, description')
+      .order('type', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching exercise types:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch exercise types: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercise types retrieved successfully",
+      data: exerciseTypes || []
+    }
+  } catch (error) {
+    console.error('Error in getExerciseTypesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Get all equipment tags for filtering
+ * Returns tags with category = 'equipment'
+ *
+ * Uses unified search module from lib/exercises for consistent behavior.
+ */
+export async function getEquipmentTagsAction(): Promise<ActionState<{ id: number; name: string }[]>> {
+  try {
+    // Import unified search module
+    const { getEquipmentTags } = await import('@/lib/exercises')
+
+    const tags = await getEquipmentTags(supabase)
+
+    return {
+      isSuccess: true,
+      message: "Equipment tags retrieved successfully",
+      data: tags
+    }
+  } catch (error) {
+    console.error('Error in getEquipmentTagsAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Create a new exercise type
+ */
+export async function createExerciseTypeAction(
+  type: string,
+  description?: string
+): Promise<ActionState<ExerciseType>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Using singleton supabase client
+
+    const { data: exerciseType, error } = await supabase
+      .from('exercise_types')
+      .insert({ type, description })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating exercise type:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to create exercise type: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercise type created successfully",
+      data: exerciseType
+    }
+  } catch (error) {
+    console.error('Error in createExerciseTypeAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+
+// ============================================================================
+// UNIT MANAGEMENT ACTIONS
+// ============================================================================
+
+/**
+ * Get all units
+ */
+export async function getUnitsAction(): Promise<ActionState<Unit[]>> {
+  try {
+    // Using singleton supabase client
+
+    const { data: units, error } = await supabase
+      .from('units')
+      .select('id, name, description')
+      .order('name', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching units:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch units: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Units retrieved successfully",
+      data: units || []
+    }
+  } catch (error) {
+    console.error('Error in getUnitsAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Create a new unit
+ */
+export async function createUnitAction(
+  name: string,
+  description?: string
+): Promise<ActionState<Unit>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Using singleton supabase client
+
+    const { data: unit, error } = await supabase
+      .from('units')
+      .insert({ name, description })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating unit:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to create unit: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Unit created successfully",
+      data: unit
+    }
+  } catch (error) {
+    console.error('Error in createUnitAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+// ============================================================================
+// EXERCISE IMPORT/EXPORT ACTIONS
+// ============================================================================
+
+/**
+ * Export exercises to JSON format
+ */
+export async function exportExercisesAction(): Promise<ActionState<any>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Using singleton supabase client
+
+    const { data: exercises, error } = await supabase
+      .from('exercises')
+      .select(`
+        *,
+        exercise_type:exercise_types(*),
+        unit:units(*),
+        tags:exercise_tags(
+          tag:tags(*)
+        )
+      `)
+      .order('name', { ascending: true })
+
+    if (error) {
+      console.error('Error exporting exercises:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to export exercises: ${error.message}`
+      }
+    }
+
+    // Transform the data for export
+    const exportData = {
+      exercises: exercises?.map(exercise => ({
+        ...exercise,
+        tags: exercise.tags?.map((tag: any) => tag.tag) || []
+      })) || [],
+      exported_at: new Date().toISOString(),
+      version: "1.0"
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercises exported successfully",
+      data: exportData
+    }
+  } catch (error) {
+    console.error('Error in exportExercisesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Import exercises from JSON format
+ */
+export async function importExercisesAction(
+  exercisesData: any[]
+): Promise<ActionState<{ imported: number; errors: string[] }>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Using singleton supabase client
+    
+    let imported = 0
+    const errors: string[] = []
+
+    for (const exerciseData of exercisesData) {
+      try {
+        // Extract the exercise data without tags
+        const { tags, ...exerciseFields } = exerciseData
+        
+        // Create the exercise
+        const { data: exercise, error: exerciseError } = await supabase
+          .from('exercises')
+          .insert(exerciseFields)
+          .select()
+          .single()
+
+        if (exerciseError) {
+          errors.push(`Failed to import exercise "${exerciseData.name}": ${exerciseError.message}`)
+          continue
+        }
+
+        // Add tags if they exist
+        if (tags && tags.length > 0 && exercise) {
+          for (const tag of tags) {
+            // First, ensure the tag exists
+            const { data: existingTag } = await supabase
+              .from('tags')
+              .select('id')
+              .eq('name', tag.name)
+              .single()
+
+            let tagId = existingTag?.id
+
+            if (!tagId) {
+              // Create the tag if it doesn't exist
+              const { data: newTag, error: tagError } = await supabase
+                .from('tags')
+                .insert({ name: tag.name })
+                .select('id')
+                .single()
+
+              if (tagError) {
+                errors.push(`Failed to create tag "${tag.name}" for exercise "${exerciseData.name}": ${tagError.message}`)
+                continue
+              }
+              
+              tagId = newTag?.id
+            }
+
+            if (tagId) {
+              // Create the exercise-tag relationship
+              await supabase
+                .from('exercise_tags')
+                .insert({
+                  exercise_id: exercise.id,
+                  tag_id: tagId
+                })
+            }
+          }
+        }
+
+        imported++
+      } catch (error) {
+        errors.push(`Failed to import exercise "${exerciseData.name}": ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: `Import completed: ${imported} exercises imported${errors.length > 0 ? ` with ${errors.length} errors` : ''}`,
+      data: { imported, errors }
+    }
+  } catch (error) {
+    console.error('Error in importExercisesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+// ============================================================================
+// EXERCISE PRESET GROUP ACTIONS (Training Sessions)
+// ============================================================================
+
+/**
+ * Create a new exercise preset group (training session)
+ */
+export async function createSessionPlanAction(
+  sessionData: CreateSessionForm,
+  microcycleId?: number,
+  athleteGroupId?: number
+): Promise<ActionState<SessionPlan>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
+
+    const presetGroupData: SessionPlanInsert = {
+      name: sessionData.name,
+      description: sessionData.description || null,
+      date: sessionData.date,
+      session_mode: sessionData.session_mode,
+      week: sessionData.week,
+      day: sessionData.day,
+      microcycle_id: microcycleId || null,
+      athlete_group_id: athleteGroupId || null,
+      user_id: dbUserId
+    }
+
+    const { data: presetGroup, error } = await supabase
+      .from('session_plans')
+      .insert(presetGroupData)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating exercise preset group:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to create training session: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Training session created successfully",
+      data: presetGroup
+    }
+  } catch (error) {
+    console.error('Error in createSessionPlanAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Get a specific exercise preset group with all details
+ */
+export async function getSessionPlanByIdAction(
+  id: string
+): Promise<ActionState<SessionPlanWithDetails>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
+
+    console.log('[getSessionPlanByIdAction] Fetching session:', id, 'for user:', dbUserId, 'clerkId:', userId)
+    
+    // Split query into simpler parts to avoid RLS timeout on complex nested queries
+    // 1. Get session plan with basic relations
+    const { data: presetGroup, error: sessionError } = await supabase
+      .from('session_plans')
+      .select(`
+        *,
+        microcycle:microcycles(*),
+        athlete_group:athlete_groups(*)
+      `)
+      .eq('id', id)
+      .eq('deleted', false)
+      .single()
+
+    console.log('[getSessionPlanByIdAction] Session query result:', { 
+      hasData: !!presetGroup, 
+      error: sessionError ? { code: sessionError.code, message: sessionError.message } : null,
+      sessionUserId: presetGroup?.user_id,
+      sessionGroupId: presetGroup?.athlete_group_id
+    })
+
+    if (sessionError) {
+      console.error('[getSessionPlanByIdAction] Error fetching session plan:', JSON.stringify(sessionError, null, 2))
+      console.error('[getSessionPlanByIdAction] Error details:', {
+        code: sessionError.code,
+        message: sessionError.message,
+        hint: sessionError.hint,
+        details: sessionError.details,
+      })
+      if (sessionError.code === 'PGRST116') {
+        // PGRST116 = no rows found - could be RLS blocking or session doesn't exist
+        console.warn('[getSessionPlanByIdAction] Session not found - checking if RLS issue for session:', id, 'user:', dbUserId)
+        return {
+          isSuccess: false,
+          message: "Training session not found"
+        }
+      }
+      return {
+        isSuccess: false,
+        message: `Failed to fetch training session: ${sessionError.message}`
+      }
+    }
+
+    if (!presetGroup) {
+      console.error('[getSessionPlanByIdAction] No data returned from query')
+      return {
+        isSuccess: false,
+        message: "Training session not found"
+      }
+    }
+
+    // Explicit ownership check (defense in depth alongside RLS)
+    // Allow access if: user owns the plan OR it's a template
+    const isOwner = presetGroup.user_id === dbUserId
+    const isTemplate = presetGroup.is_template === true
+
+    if (!isOwner && !isTemplate) {
+      // For non-owners of non-templates, verify they have group-based access
+      // (athlete in the group or coach of the group)
+      let hasGroupAccess = false
+
+      if (presetGroup.athlete_group_id) {
+        // Check if user is an athlete in this group
+        const { data: athleteInGroup } = await supabase
+          .from('athletes')
+          .select('id')
+          .eq('user_id', dbUserId)
+          .eq('athlete_group_id', presetGroup.athlete_group_id)
+          .maybeSingle()
+
+        if (athleteInGroup) {
+          hasGroupAccess = true
+        } else {
+          // Check if user is a coach of this group
+          const { data: coachOfGroup } = await supabase
+            .from('coaches')
+            .select('id')
+            .eq('user_id', dbUserId)
+            .maybeSingle()
+
+          if (coachOfGroup) {
+            const { data: groupCoach } = await supabase
+              .from('athlete_groups')
+              .select('id')
+              .eq('id', presetGroup.athlete_group_id)
+              .eq('coach_id', coachOfGroup.id)
+              .maybeSingle()
+
+            hasGroupAccess = !!groupCoach
+          }
+        }
+      }
+
+      if (!hasGroupAccess) {
+        console.warn('[getSessionPlanByIdAction] User does not have access:', {
+          userId: dbUserId,
+          sessionUserId: presetGroup.user_id,
+          isTemplate,
+          athleteGroupId: presetGroup.athlete_group_id
+        })
+        return {
+          isSuccess: false,
+          message: "Not authorized to access this training session"
+        }
+      }
+    }
+
+    // 2. Get exercises separately to avoid nested RLS timeout
+    const { data: exercises, error: exercisesError } = await supabase
+      .from('session_plan_exercises')
+      .select(`
+        *,
+        exercise:exercises(
+          *,
+          exercise_type:exercise_types(*),
+          unit:units(*)
+        )
+      `)
+      .eq('session_plan_id', id)
+      .order('exercise_order', { ascending: true })
+
+    if (exercisesError) {
+      console.error('[getSessionPlanByIdAction] Error fetching exercises:', exercisesError)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch exercises: ${exercisesError.message}`
+      }
+    }
+
+    // 3. Get sets for all exercises (make this optional to avoid timeout)
+    const exerciseIds = exercises?.map(e => e.id) || []
+    let sets: any[] = []
+    
+    if (exerciseIds.length > 0) {
+      const { data: setsData, error: setsError } = await supabase
+        .from('session_plan_sets')
+        .select('*')
+        .in('session_plan_exercise_id', exerciseIds)
+        .order('session_plan_exercise_id', { ascending: true })
+        .order('set_index', { ascending: true })
+
+      if (setsError) {
+        // Log error but don't fail - sets can be loaded later if needed
+        console.warn('[getSessionPlanByIdAction] Error fetching sets (non-fatal):', setsError)
+        // Continue with empty sets array - page can still load
+      } else {
+        sets = setsData || []
+      }
+    }
+
+    // 4. Combine the data into the expected format
+    const presetGroupWithDetails = {
+      ...presetGroup,
+      session_plan_exercises: (exercises || []).map(exercise => ({
+        ...exercise,
+        session_plan_sets: sets.filter(set => set.session_plan_exercise_id === exercise.id)
+      }))
+    }
+
+    return {
+      isSuccess: true,
+      message: "Training session retrieved successfully",
+      data: presetGroupWithDetails
+    }
+  } catch (error) {
+    console.error('Error in getSessionPlanByIdAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Add an exercise to a preset group
+ */
+export async function addExerciseToPresetGroupAction(
+  presetGroupId: string,
+  exerciseId: number,
+  presetOrder: number,
+  notes?: string,
+  supersetId?: number
+): Promise<ActionState<ExercisePreset>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Using singleton supabase client
+
+    const presetData: ExercisePresetInsert = {
+      session_plan_id: presetGroupId,
+      exercise_id: exerciseId,
+      exercise_order: presetOrder,
+      notes: notes || null,
+      superset_id: supersetId || null
+    }
+
+    const { data: preset, error } = await supabase
+      .from('session_plan_exercises')
+      .insert(presetData)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error adding exercise to preset group:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to add exercise to training session: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercise added to training session successfully",
+      data: preset
+    }
+  } catch (error) {
+    console.error('Error in addExerciseToPresetGroupAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+// ============================================================================
+// EXERCISE PRESET DETAIL ACTIONS
+// ============================================================================
+
+/**
+ * Add exercise preset details (sets/reps specifications) to an exercise preset
+ */
+export async function addSessionPlanSetsAction(
+  presetId: string,
+  details: SessionPlanSet[]
+): Promise<ActionState<SessionPlanSet[]>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Using singleton supabase client
+
+    // Prepare the details data for insertion
+    const detailsData = details.map((detail, index) => ({
+      session_plan_exercise_id: presetId,
+      set_index: detail.set_index || index + 1,
+      reps: detail.reps,
+      weight: detail.weight,
+      distance: detail.distance,
+      performing_time: detail.performing_time,
+      rest_time: detail.rest_time,
+      rpe: detail.rpe,
+      effort: detail.effort,
+      power: detail.power,
+      velocity: detail.velocity,
+      resistance: detail.resistance,
+      resistance_unit_id: detail.resistance_unit_id,
+      height: detail.height,
+      tempo: detail.tempo,
+      metadata: detail.metadata
+    }))
+
+    const { data: insertedDetails, error } = await supabase
+      .from('session_plan_sets')
+      .insert(detailsData)
+      .select()
+
+    if (error) {
+      console.error('Error adding exercise preset details:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to add preset details: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercise preset details added successfully",
+      data: insertedDetails || []
+    }
+  } catch (error) {
+    console.error('Error in addSessionPlanSetsAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Update exercise preset details
+ */
+export async function updateSessionPlanSetsAction(
+  detailId: string,
+  updates: Partial<SessionPlanSet>
+): Promise<ActionState<SessionPlanSet>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Using singleton supabase client
+
+    const { data: detail, error } = await supabase
+      .from('session_plan_sets')
+      .update(updates)
+      .eq('id', detailId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating exercise preset detail:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to update preset detail: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercise preset detail updated successfully",
+      data: detail
+    }
+  } catch (error) {
+    console.error('Error in updateSessionPlanSetsAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Remove exercise preset details
+ */
+export async function removeSessionPlanSetsAction(
+  presetId: string
+): Promise<ActionState<boolean>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Using singleton supabase client
+
+    const { error } = await supabase
+      .from('session_plan_sets')
+      .delete()
+      .eq('session_plan_exercise_id', presetId)
+
+    if (error) {
+      console.error('Error removing exercise preset details:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to remove preset details: ${error.message}`
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Exercise preset details removed successfully",
+      data: true
+    }
+  } catch (error) {
+    console.error('Error in removeSessionPlanSetsAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+// ============================================================================
+// SESSION PROGRESSION AND ADAPTATION ACTIONS
+// ============================================================================
+
+/**
+ * Apply automatic progression to exercise preset details based on performance
+ */
+export async function applyProgressionToPresetAction(
+  presetId: string,
+  progressionType: 'weight' | 'reps' | 'volume',
+  progressionValue: number,
+  targetSets?: number[]
+): Promise<ActionState<SessionPlanSet[]>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Using singleton supabase client
+
+    // Get existing preset details
+    const { data: details, error: fetchError } = await supabase
+      .from('session_plan_sets')
+      .select('id, session_plan_exercise_id, resistance_unit_id, set_index, reps, weight, distance, performing_time, rest_time, rpe, effort, power, velocity, resistance, height, tempo, metadata, created_at')
+      .eq('session_plan_exercise_id', presetId)
+      .order('set_index', { ascending: true })
+
+    if (fetchError || !details) {
+      return {
+        isSuccess: false,
+        message: `Failed to fetch preset details: ${fetchError?.message}`
+      }
+    }
+
+    // Apply progression to each set (or specific sets if targetSets provided)
+    const updatedDetails = details.map((detail, index) => {
+      const shouldUpdate = !targetSets || targetSets.includes(detail.set_index || index + 1)
+      
+      if (!shouldUpdate) return detail
+
+      const updates: Partial<SessionPlanSet> = {}
+
+      switch (progressionType) {
+        case 'weight':
+          if (detail.weight) {
+            updates.weight = Number((detail.weight + progressionValue).toFixed(2))
+          }
+          break
+        case 'reps':
+          if (detail.reps) {
+            updates.reps = Math.max(1, detail.reps + progressionValue)
+          }
+          break
+        case 'volume':
+          // Increase both weight and reps proportionally
+          if (detail.weight && detail.reps) {
+            const volumeIncrease = progressionValue / 100 // percentage increase
+            updates.weight = Number((detail.weight * (1 + volumeIncrease)).toFixed(2))
+            updates.reps = Math.max(1, Math.round(detail.reps * (1 + volumeIncrease)))
+          }
+          break
+      }
+
+      return { ...detail, ...updates }
+    })
+
+    // Update each detail in the database
+    const updatePromises = updatedDetails.map(detail => 
+      supabase
+        .from('session_plan_sets')
+        .update({
+          reps: detail.reps,
+          weight: detail.weight,
+          distance: detail.distance,
+          performing_time: detail.performing_time,
+          rest_time: detail.rest_time,
+          rpe: detail.rpe,
+          effort: detail.effort,
+          power: detail.power,
+          velocity: detail.velocity,
+          resistance: detail.resistance,
+          height: detail.height,
+          tempo: detail.tempo,
+          metadata: detail.metadata
+        })
+        .eq('id', detail.id)
+        .select()
+        .single()
+    )
+
+    const results = await Promise.all(updatePromises)
+    
+    // Check for any errors
+    const errors = results.filter(result => result.error)
+    if (errors.length > 0) {
+      console.error('Errors during progression update:', errors)
+      return {
+        isSuccess: false,
+        message: `Failed to apply progression: ${errors[0].error?.message}`
+      }
+    }
+
+    const updatedData = results.map(result => result.data).filter((data): data is NonNullable<typeof data> => data !== null)
+
+    return {
+      isSuccess: true,
+      message: `${progressionType} progression applied successfully`,
+      data: updatedData
+    }
+  } catch (error) {
+    console.error('Error in applyProgressionToPresetAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Copy a session template with automatic adaptations
+ */
+export async function copySessionWithAdaptationsAction(
+  originalSessionId: string,
+  newDate: string,
+  adaptations?: {
+    weightIncrease?: number
+    repIncrease?: number
+    volumeIncrease?: number
+    restTimeDecrease?: number
+  }
+): Promise<ActionState<SessionPlan>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
+
+    // Get the original session with all its details
+    // RLS policy handles access control - no need for explicit user_id filter
+    const { data: originalSession, error: fetchError } = await supabase
+      .from('session_plans')
+      .select(`
+        *,
+        session_plan_exercises(
+          *,
+          exercise:exercises(*),
+          session_plan_sets(*)
+        )
+      `)
+      .eq('id', originalSessionId)
+      .eq('deleted', false)
+      .single()
+
+    if (fetchError || !originalSession) {
+      return {
+        isSuccess: false,
+        message: "Original session not found"
+      }
+    }
+
+    // Create new session
+    const newSessionData = {
+      name: `${originalSession.name} (Adapted)`,
+      description: originalSession.description,
+      date: newDate,
+      session_mode: originalSession.session_mode,
+      week: originalSession.week,
+      day: originalSession.day,
+      microcycle_id: originalSession.microcycle_id,
+      athlete_group_id: originalSession.athlete_group_id,
+      user_id: dbUserId
+    }
+
+    const { data: newSession, error: sessionError } = await supabase
+      .from('session_plans')
+      .insert(newSessionData)
+      .select()
+      .single()
+
+    if (sessionError || !newSession) {
+      return {
+        isSuccess: false,
+        message: `Failed to create new session: ${sessionError?.message}`
+      }
+    }
+
+    // Copy and adapt exercise presets
+    if (originalSession.session_plan_exercises && originalSession.session_plan_exercises.length > 0) {
+      for (const preset of originalSession.session_plan_exercises) {
+        // Create new preset
+        const newPresetData = {
+          exercise_id: preset.exercise_id,
+          session_plan_id: newSession.id,
+          exercise_order: preset.exercise_order,
+          notes: preset.notes,
+          superset_id: preset.superset_id
+        }
+
+        const { data: newPreset, error: presetError } = await supabase
+          .from('session_plan_exercises')
+          .insert(newPresetData)
+          .select()
+          .single()
+
+        if (presetError || !newPreset) {
+          console.error('Error copying preset:', presetError)
+          continue
+        }
+
+        // Copy and adapt preset details
+        if (preset.session_plan_sets && preset.session_plan_sets.length > 0) {
+                     const adaptedDetails = preset.session_plan_sets.map(detail => {
+             const adaptedDetail = { ...detail }
+            
+            // Apply adaptations
+            if (adaptations?.weightIncrease && detail.weight) {
+              adaptedDetail.weight = Number((detail.weight + adaptations.weightIncrease).toFixed(2))
+            }
+            
+            if (adaptations?.repIncrease && detail.reps) {
+              adaptedDetail.reps = detail.reps + adaptations.repIncrease
+            }
+            
+            if (adaptations?.volumeIncrease && detail.weight && detail.reps) {
+              const volumeMultiplier = 1 + (adaptations.volumeIncrease / 100)
+              adaptedDetail.weight = Number((detail.weight * volumeMultiplier).toFixed(2))
+              adaptedDetail.reps = Math.round(detail.reps * volumeMultiplier)
+            }
+            
+            if (adaptations?.restTimeDecrease && detail.rest_time) {
+              adaptedDetail.rest_time = Math.max(30, detail.rest_time - adaptations.restTimeDecrease)
+            }
+
+            return {
+              session_plan_exercise_id: newPreset.id,
+              set_index: adaptedDetail.set_index,
+              reps: adaptedDetail.reps,
+              weight: adaptedDetail.weight,
+              distance: adaptedDetail.distance,
+              performing_time: adaptedDetail.performing_time,
+              rest_time: adaptedDetail.rest_time,
+              rpe: adaptedDetail.rpe,
+              effort: adaptedDetail.effort,
+              power: adaptedDetail.power,
+              velocity: adaptedDetail.velocity,
+              resistance: adaptedDetail.resistance,
+              resistance_unit_id: adaptedDetail.resistance_unit_id,
+              height: adaptedDetail.height,
+              tempo: adaptedDetail.tempo,
+              metadata: adaptedDetail.metadata
+            }
+          })
+
+          await supabase
+            .from('session_plan_sets')
+            .insert(adaptedDetails)
+        }
+      }
+    }
+
+    return {
+      isSuccess: true,
+      message: "Session copied with adaptations successfully",
+      data: newSession
+    }
+  } catch (error) {
+    console.error('Error in copySessionWithAdaptationsAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+// ============================================================================
+// SESSION COMPLETION AND FEEDBACK ACTIONS
+// ============================================================================
+
+/**
+ * Get session count analytics for a user
+ */
+export async function getSessionCountAnalyticsAction(
+  timeRange?: {
+    start_date: string
+    end_date: string
+  }
+): Promise<ActionState<{
+  total_sessions: number
+  sessions_by_week: { [week: number]: number }
+  sessions_by_day: { [day: number]: number }
+}>> {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    // Get database user ID using the cache utility
+    const dbUserId = await getDbUserId(userId)
+
+    let query = supabase
+      .from('session_plans')
+      .select('week, day, date')
+      .eq('user_id', dbUserId)
+
+    // Apply time range filter if provided
+    if (timeRange) {
+      query = query
+        .gte('date', timeRange.start_date)
+        .lte('date', timeRange.end_date)
+    }
+
+    const { data: sessions, error } = await query
+
+    if (error) {
+      console.error('Error fetching session analytics:', error)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch analytics: ${error.message}`
+      }
+    }
+
+    // Calculate analytics
+    const total_sessions = sessions?.length || 0
+    
+    const sessions_by_week: { [week: number]: number } = {}
+    const sessions_by_day: { [day: number]: number } = {}
+
+    sessions?.forEach(session => {
+      if (session.week) {
+        sessions_by_week[session.week] = (sessions_by_week[session.week] || 0) + 1
+      }
+      if (session.day) {
+        sessions_by_day[session.day] = (sessions_by_day[session.day] || 0) + 1
+      }
+    })
+
+    const analytics = {
+      total_sessions,
+      sessions_by_week,
+      sessions_by_day
+    }
+
+    return {
+      isSuccess: true,
+      message: "Session analytics retrieved successfully",
+      data: analytics
+    }
+  } catch (error) {
+    console.error('Error in getSessionCountAnalyticsAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+} 

@@ -1,0 +1,84 @@
+# Fix Critical Issues: Sessions Page & Data Fetching Patterns
+
+## Problem Statement
+
+The Kasoku Training application has several critical issues that are preventing users from properly using the sessions page and other features:
+
+1. **Sessions Page Broken**: The GroupSessionDashboard component is a 692-line monolith that fails to load properly due to poor error handling and state management
+2. **Data Fetching Issues**: Inconsistent patterns across the app with potential RLS violations
+3. **Layout Problems**: Header duplication and inconsistent page structures
+4. **Authentication Patterns**: Some components still use clerk_id directly instead of proper user.id mapping
+
+## Project Goals
+
+### Primary Goal
+Fix the sessions page to be fully functional with proper error handling, loading states, and modular architecture.
+
+### Secondary Goals
+- Standardize data fetching patterns across all pages
+- Fix layout inconsistencies and header duplication
+- Implement proper authentication patterns throughout the app
+
+## Technical Requirements
+
+### Sessions Page Refactor
+- Break down the 692-line GroupSessionDashboard into smaller, focused components
+- Implement proper error boundaries and loading states
+- Use React Query for state management
+- Add mobile-responsive design
+
+### Data Fetching Standards
+- All server actions must use the singleton supabase client from lib/supabase-server.ts
+- Implement RLS pattern with getUserContextAction for all user-scoped operations
+- Add comprehensive error handling and retry mechanisms
+
+### Layout Standardization
+- Ensure consistent ProtectedLayout usage without header duplication
+- Implement proper page containers and spacing
+- Add error boundaries at page level
+
+### Authentication Improvements
+- Audit and fix any direct clerk_id usage
+- Implement consistent authentication error handling
+- Add proper loading states for authentication flows
+
+## User Stories
+
+### As a Coach
+- I want to create and run group sprint sessions without the page breaking
+- I want clear error messages when data fails to load
+- I want the interface to work properly on mobile devices
+- I want reliable performance tracking for my athletes
+
+### As an Athlete
+- I want to view my training plans without encountering loading errors
+- I want a consistent experience across all pages
+- I want proper feedback when actions fail or succeed
+
+### As a Developer
+- I want modular, maintainable code that follows established patterns
+- I want consistent error handling across all components
+- I want proper TypeScript types for all data structures
+
+## Success Criteria
+
+1. **Sessions page loads without errors** and allows full session workflow
+2. **All pages follow consistent data fetching patterns** using the established RLS helper
+3. **No header duplication** across protected pages
+4. **Comprehensive error handling** with user-friendly messages
+5. **Mobile-responsive design** for all session functionality
+6. **Proper authentication flows** using user.id instead of clerk_id where appropriate
+
+## Technical Constraints
+
+- Must maintain existing database schema
+- Must preserve current authentication system (Clerk + Supabase)
+- Must follow established TypeScript patterns
+- Must maintain backward compatibility for existing user data
+
+## Out of Scope
+
+- Database schema changes
+- New feature development
+- Performance optimization beyond basic improvements
+- UI/UX redesign (focus on fixing functionality) 

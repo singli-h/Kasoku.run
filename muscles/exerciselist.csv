@@ -1,0 +1,238 @@
+temp_id,exercise_type,name,description,video_url,visibility,equipment_tags,region_tag,goal_tag,modality_tag,intensity_tag,contraindication_tags
+E002,Gym,Front Squat,Upright barbell squat emphasizing quads and core,,global,barbell,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain|low back pain
+E003,Gym,Goblet Squat,Dumbbell/kettlebell squat for bracing and depth,,global,dumbbell|kettlebell,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain|low back pain
+E004,Gym,Box Squat,Squat to box for controlled depth and posterior chain,,global,barbell|bench,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain|low back pain
+E005,Gym,Split Squat,Stationary lunge for unilateral leg strength,,global,bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain|low back pain
+E007,Gym,Bulgarian Split Squat (Dumbbell),Rear-foot-elevated split squat with dumbbells,,global,bench|dumbbell,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain|low back pain
+E009,Gym,Walking Lunge (Dumbbell),Walking lunge loaded with dumbbells,,global,dumbbell,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain
+E010,Gym,Reverse Lunge,Backward step lunge to reduce knee stress,,global,bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain
+E011,Gym,Reverse Lunge (Dumbbell),Reverse lunge loaded with dumbbells,,global,dumbbell,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain
+E012,Gym,Step-Up,Step onto bench/box for unilateral leg drive,,global,bench|bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain
+E013,Gym,Step-Up (Dumbbell),Loaded step-up with dumbbells,,global,bench|dumbbell,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain
+E015,Gym,Hack Squat (Machine),Machine squat emphasizing quads,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain|low back pain
+E016,Gym,Smith Machine Squat,Guided squat pattern for strength work,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain|low back pain
+E019,Gym,Romanian Deadlift (Dumbbell),Dumbbell hinge emphasizing hamstrings,,global,dumbbell,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E020,Gym,Stiff-Leg Deadlift,Hinge with minimal knee bend for hamstrings,,global,barbell,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E021,Gym,Good Morning,Barbell hip hinge with trunk control demands,,global,barbell,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E022,Gym,Hip Thrust (Barbell),Glute-dominant hip extension on bench,,global,barbell|bench,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E023,Gym,Glute Bridge,Floor hip extension focusing glutes,,global,bodyweight,Lower Body,Strength,Weight Training,Low Intensity,low back pain
+E024,Gym,Glute Bridge (Barbell),Loaded floor glute bridge,,global,barbell,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E025,Gym,Single-Leg Glute Bridge,Unilateral hip extension for glute control,,global,bodyweight,Lower Body,Strength,Weight Training,Low Intensity,low back pain
+E026,Gym,Hamstring Curl (Machine),Machine knee flexion for hamstrings,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,
+E027,Gym,Seated Hamstring Curl (Machine),Seated curl for hamstrings,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,
+E028,Gym,Leg Extension (Machine),Machine knee extension for quads,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain
+E029,Gym,Standing Calf Raise,Standing calf raise for ankle plantarflexors,,global,bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,achilles issues
+E030,Gym,Calf Raise (Machine),Machine calf raise for loading calves,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,achilles issues
+E031,Gym,Seated Calf Raise (Machine),Seated calf raise biasing soleus,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,achilles issues
+E032,Gym,Tibialis Raise,Tibialis anterior strengthening for shin/ankle balance,,global,resistance band|bodyweight,Lower Body,Strength,Weight Training,Low Intensity,
+E033,Gym,Back Extension,Hip extension on machine/bench for posterior chain,,global,machine|bench,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E034,Gym,Single-Leg RDL (Dumbbell),Unilateral hinge for hamstrings and balance,,global,dumbbell,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E036,Gym,Adductor Machine,Machine adduction for groin strength,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,
+E037,Gym,Abductor Machine,Machine abduction for hip stabilizers,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,
+E039,Gym,Bench Press (Dumbbell),Dumbbell press for pecs and shoulder stability,,global,dumbbell|bench,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E042,Gym,Push-Up (Band-Resisted),Band-resisted push-up for progressive load,,global,bodyweight|resistance band,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E047,Gym,Rear Delt Fly (Dumbbell),Posterior shoulder isolation,,global,dumbbell,Upper Body,Strength,Weight Training,Low Intensity,shoulder pain
+E048,Gym,Chest Fly (Cable),Cable fly for pec isolation,,global,cable,Upper Body,Strength,Weight Training,Low Intensity,shoulder pain
+E049,Gym,Chest Fly (Machine),Machine fly for pec isolation,,global,machine,Upper Body,Strength,Weight Training,Low Intensity,shoulder pain
+E051,Gym,Chin-Up,Supinated pull-up biasing biceps,,global,bodyweight|pull-up bar,Upper Body,Strength,Weight Training,High Intensity,shoulder pain
+E053,Gym,Lat Pulldown (Cable),Cable pulldown variant,,global,cable,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E054,Gym,Seated Cable Row,Horizontal row for mid-back,,global,cable,Upper Body,Strength,Weight Training,Moderate Intensity,low back pain
+E055,Gym,Row (Machine),Machine row for back strength,,global,machine,Upper Body,Strength,Weight Training,Moderate Intensity,low back pain
+E057,Gym,One-Arm Dumbbell Row,Unilateral row for lats and trunk control,,global,dumbbell,Upper Body,Strength,Weight Training,Moderate Intensity,low back pain
+E058,Gym,Face Pull,Cable pull to improve scap/shoulder health,,global,cable,Upper Body,Strength,Weight Training,Low Intensity,shoulder pain
+E059,Gym,Shrug (Dumbbell),Trap isolation for shoulder girdle strength,,global,dumbbell,Upper Body,Strength,Weight Training,Low Intensity,
+E061,Gym,Hammer Curl (Dumbbell),Neutral-grip curl for brachialis/forearm,,global,dumbbell,Upper Body,Strength,Weight Training,Low Intensity,
+E062,Gym,Triceps Pushdown (Cable),Cable elbow extension for triceps,,global,cable,Upper Body,Strength,Weight Training,Low Intensity,
+E063,Gym,Overhead Triceps Extension (Cable),Cable overhead triceps work,,global,cable,Upper Body,Strength,Weight Training,Low Intensity,shoulder pain
+E064,Gym,Triceps Extension (Dumbbell),Single dumbbell overhead triceps extension,,global,dumbbell,Upper Body,Strength,Weight Training,Low Intensity,
+E065,Gym,Farmer Carry,Loaded carry for grip and trunk stability,,global,dumbbell|kettlebell,Full Body,Strength,Weight Training,Moderate Intensity,low back pain
+E066,Gym,Suitcase Carry,Single-side carry for anti-lateral flexion,,global,dumbbell|kettlebell,Core,Strength,Weight Training,Moderate Intensity,low back pain
+E067,Gym,Overhead Carry,Carry with weight overhead for shoulder stability,,global,dumbbell|kettlebell,Full Body,Strength,Weight Training,Moderate Intensity,low back pain|shoulder pain
+E068,Gym,Turkish Get-Up,Full-body kettlebell skill for stability/control,,global,kettlebell,Full Body,Strength,Weight Training,Moderate Intensity,
+E069,Gym,Kettlebell Swing,Hip-hinge power endurance with kettlebell,,global,kettlebell,Full Body,Power,Weight Training,High Intensity,low back pain
+E070,Gym,Kettlebell Clean,Kettlebell pull to rack for power/coordination,,global,kettlebell,Full Body,Power,Weight Training,Moderate Intensity,low back pain|shoulder pain
+E071,Gym,Kettlebell Snatch,Overhead kettlebell lift for power/skill,,global,kettlebell,Full Body,Power,Weight Training,High Intensity,low back pain|shoulder pain
+E072,Gym,Woodchop (Cable),Rotational core strength using cable,,global,cable,Core,Strength,Weight Training,Moderate Intensity,
+E073,Gym,Low-to-High Lift (Cable),Diagonal lift pattern for core/shoulder linkage,,global,cable,Core,Strength,Weight Training,Moderate Intensity,
+E074,Gym,Pallof Press,Anti-rotation core press,,global,cable|resistance band,Core,Strength,Weight Training,Low Intensity,
+E076,Gym,Bird Dog,Quadruped trunk stability drill,,global,bodyweight,Core,Strength,Weight Training,Low Intensity,
+E078,Gym,Hollow Body Rock,Dynamic hollow body rocking for anterior core control.,,global,bodyweight,Core,Strength,Weight Training,Moderate Intensity,
+E079,Gym,Hanging Knee Raise,Core and hip flexor strength from hang,,global,pull-up bar,Core,Strength,Weight Training,Moderate Intensity,
+E080,Gym,Back Squat (Speed-Strength),Faster intent squats with moderate load,,global,barbell,Lower Body,Power,Weight Training,Moderate Intensity,knee pain|low back pain
+E081,Gym,Deadlift (Speed-Strength),Fast intent pulls with moderate load,,global,barbell,Lower Body,Power,Weight Training,Moderate Intensity,low back pain
+E082,Gym,Jump Shrug (Barbell),Explosive triple-extension shrug,,global,barbell,Full Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E083,Gym,High Pull (Barbell),Explosive pull emphasizing second pull,,global,barbell,Full Body,Power,Weight Training,High Intensity,
+E084,Gym,Hang Power Clean,Explosive clean from hang,,global,barbell,Full Body,Power,Weight Training,High Intensity,low back pain|shoulder pain
+E085,Gym,Push Press,Leg-driven overhead press for power,,global,barbell,Upper Body,Power,Weight Training,High Intensity,shoulder pain
+E086,Gym,Medicine Ball Chest Pass,Explosive chest pass for upper power,,global,medicine ball,Upper Body,Power,Weight Training,High Intensity,
+E087,Gym,Medicine Ball Overhead Slam,Explosive slam for trunk/lat power,,global,medicine ball,Full Body,Power,Weight Training,High Intensity,shoulder pain
+E088,Gym,Medicine Ball Rotational Throw,Rotational throw for trunk power,,global,medicine ball,Core,Power,Weight Training,High Intensity,shoulder pain
+E089,Gym,Medicine Ball Scoop Toss,Lower-body to trunk power transfer throw,,global,medicine ball,Lower Body,Power,Weight Training,High Intensity,
+E090,Gym,Sled Push,Forward push for leg drive and conditioning,,global,sled,Lower Body,Strength,Weight Training,High Intensity,achilles issues|knee pain
+E091,Gym,Sled Pull (Forward),Forward drag for posterior chain and conditioning,,global,sled,Lower Body,Strength,Weight Training,High Intensity,achilles issues|knee pain
+E092,Gym,Sled Pull (Backward),Backward drag emphasizing quads,,global,sled,Lower Body,Strength,Weight Training,High Intensity,achilles issues|knee pain
+E094,Gym,Half-Kneeling Row (Cable),Half-kneeling row for trunk stability,,global,cable,Upper Body,Strength,Weight Training,Moderate Intensity,low back pain
+E095,Gym,Single-Arm Cable Press (Split Stance),Split stance press with cable resistance,,global,cable,Upper Body,Strength,Weight Training,Moderate Intensity,
+E096,Gym,Single-Arm Cable Rotational Press,Rotational press for core/upper linkage,,global,cable,Core,Strength,Weight Training,Moderate Intensity,
+E099,Plyometric,Drop Jump,Quick rebound jump from low drop,,global,plyo box|bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E100,Plyometric,Pogo Jumps,Fast ankle hops emphasizing stiffness,,global,bodyweight,Lower Body,Power,Weight Training,Moderate Intensity,achilles issues|knee pain
+E101,Plyometric,Single-Leg Pogo Hops,Ankle hops on one leg,,global,bodyweight,Lower Body,Power,Weight Training,Moderate Intensity,achilles issues|knee pain
+E102,Plyometric,Countermovement Jump,Max vertical jump with arm swing optional,,global,bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E104,Plyometric,Tuck Jump,Explosive jump bringing knees upward,,global,bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E105,Plyometric,Broad Jump,Horizontal power jump for distance,,global,bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E106,Plyometric,Single-Leg Broad Jump,Unilateral horizontal jump,,global,bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E107,Plyometric,Bounds (Linear),Repeated long strides for elastic power,,global,bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E109,Plyometric,Skater Hops,Lateral single-leg hops,,global,bodyweight,Lower Body,Power,Weight Training,Moderate Intensity,achilles issues|knee pain
+E110,Plyometric,Split Jumps (Scissor Jumps),Alternating lunge jumps for elastic power,,global,bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E111,Plyometric,Step-Up Jump,Explosive step-up into jump,,global,plyo box|bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E112,Plyometric,Hurdle Hops,Repeated hops over hurdles,,global,hurdles|bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E113,Plyometric,Hurdle Quick Hops,Lower amplitude fast hops over hurdles,,global,hurdles|bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E114,Plyometric,Standing Long Jump (Reactive),Reactive long jump emphasizing stiffness,,global,bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E115,Plyometric,Depth Drop,Step off box and stick landing for stiffness control,,global,plyo box|bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,achilles issues|knee pain
+E116,Plyometric,Bounding Over Mini-Hurdles,Bounds through spaced hurdles,,global,hurdles|bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E117,Plyometric,Medicine Ball Vertical Toss,Explosive toss upward for triple-extension,,global,medicine ball,Full Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E118,Plyometric,Medicine Ball Overhead Backward Throw,Explosive backward throw for full-body power,,global,medicine ball,Full Body,Power,Weight Training,High Intensity,achilles issues|knee pain|shoulder pain
+E119,Plyometric,Medicine Ball Side Throw,Explosive lateral throw for rotational power,,global,medicine ball,Core,Power,Weight Training,High Intensity,achilles issues|knee pain|shoulder pain
+E120,Plyometric,Jump Rope (Fast),Fast skipping for ankle stiffness and rhythm,,global,bodyweight,Lower Body,Endurance,Weight Training,Moderate Intensity,achilles issues|knee pain
+E121,Plyometric,Alternate Leg Hops,Alternating single-leg hops forward,,global,bodyweight,Lower Body,Power,Weight Training,High Intensity,achilles issues|knee pain
+E124,Plyometric,Depth Jump to Sprint,Depth jump then accelerate for power transfer,,global,plyo box|bodyweight,Lower Body,Power,Running,High Intensity,achilles issues|knee pain
+E125,Plyometric,Ankling Hops,Small amplitude hops for ankle stiffness,,global,bodyweight,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E127,Isometric,Side Plank (Extended),Longer-duration side plank hold,,global,bodyweight,Core,Strength,Weight Training,Low Intensity,
+E129,Isometric,Wall Sit,Quad endurance isometric hold,,global,bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,
+E131,Isometric,Isometric Lunge Hold,Hold lunge position for stability and strength,,global,bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain
+E132,Isometric,Glute Bridge Hold,Hold top of bridge for glute endurance,,global,bodyweight,Lower Body,Strength,Weight Training,Low Intensity,low back pain
+E133,Isometric,Single-Leg Bridge Hold,Unilateral bridge hold for glute/ham endurance,,global,bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,
+E137,Isometric,Isometric RDL Hold,Hinge hold near knee level for hamstrings,,global,barbell|dumbbell,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E138,Isometric,Isometric Mid-Thigh Pull,Max pull against immovable bar at mid-thigh,,global,barbell,Full Body,Strength,Weight Training,High Intensity,low back pain
+E139,Isometric,Isometric Squat (Overcoming),Max squat push into pins/immovable resistance,,global,barbell,Lower Body,Strength,Weight Training,High Intensity,knee pain|low back pain
+E140,Isometric,Isometric Bench Press (Overcoming),Max press into pins/immovable resistance,,global,barbell|bench,Upper Body,Strength,Weight Training,High Intensity,shoulder pain
+E141,Isometric,Pallof Press Hold,Anti-rotation hold at full extension,,global,cable|resistance band,Core,Strength,Weight Training,Low Intensity,
+E142,Isometric,Copenhagen Hold,Adductor-focused hold,,global,bench|bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,
+E143,Isometric,Single-Leg Calf Raise Hold,Unilateral calf hold for ankle stiffness,,global,bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,achilles issues
+E144,Isometric,Scapular Retraction Hold,Hold retracted scap position for posture,,global,cable|resistance band,Upper Body,Strength,Weight Training,Low Intensity,
+E148,Drill,Butt Kicks,Heel recovery drill for cyclical mechanics,,global,bodyweight,Lower Body,Power,Running,Low Intensity,achilles issues|knee pain
+E149,Drill,Ankling,Low amplitude drill for ankle stiffness,,global,bodyweight,Lower Body,Power,Running,Low Intensity,achilles issues|knee pain
+E150,Drill,Straight-Leg Run,Cyclic drill emphasizing front-side mechanics,,global,bodyweight,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E151,Drill,Wall Drill (A-Position),Acceleration posture drill against wall,,global,bodyweight,Lower Body,Strength,Running,Low Intensity,achilles issues|knee pain
+E152,Drill,Wall Drill March,Wall march focusing on hip projection,,global,bodyweight,Lower Body,Strength,Running,Low Intensity,achilles issues|knee pain
+E153,Drill,Wall Drill Switch,Fast switch drill for acceleration mechanics,,global,bodyweight,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E155,Drill,Hurdle Mobility Series,Dynamic mobility over/around hurdles,,global,hurdles,Lower Body,Flexibility,Running,Low Intensity,achilles issues|knee pain
+E156,Drill,Fast Feet (In-Place),Quick contacts for coordination,,global,bodyweight,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E157,Drill,Aggressive Pawback Drill,Drill cueing down/back strike timing,,global,bodyweight,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E158,Drill,Dribble Run (Low),Progressive dribble for contact timing (low),,global,bodyweight,Lower Body,Power,Running,Low Intensity,achilles issues|knee pain
+E159,Drill,Dribble Run (Medium),Progressive dribble for contact timing (medium),,global,bodyweight,Lower Body,Power,Running,Low Intensity,achilles issues|knee pain
+E160,Drill,Dribble Run (High),Progressive dribble for contact timing (high),,global,bodyweight,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E161,Drill,Acceleration Arm Drill,Arm action drill for acceleration rhythm,,global,bodyweight,Upper Body,Power,Running,Low Intensity,achilles issues|knee pain
+E162,Drill,Marching A-Drill,March emphasizing posture and hip projection,,global,bodyweight,Lower Body,Strength,Running,Low Intensity,achilles issues|knee pain
+E163,Drill,Carioca,Crossover drill for hip mobility and coordination,,global,bodyweight,Lower Body,Flexibility,Running,Low Intensity,achilles issues|knee pain
+E164,Drill,Ladder Quick Steps,Foot speed patterns using agility ladder,,global,agility ladder,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E165,Warmup,Dynamic Warm-Up (General),Full-body dynamic warm-up sequence,,global,bodyweight,Full Body,Flexibility,Running,Low Intensity,
+E166,Mobility,Leg Swings (Front-Back),Dynamic hip mobility swings,,global,bodyweight,Lower Body,Flexibility,Running,Low Intensity,low back pain
+E167,Mobility,Leg Swings (Side-to-Side),Frontal-plane hip mobility swings,,global,bodyweight,Lower Body,Flexibility,Running,Low Intensity,low back pain
+E168,Mobility,Hip Circles,Dynamic hip capsule mobility,,global,bodyweight,Lower Body,Flexibility,Running,Low Intensity,
+E169,Mobility,World's Greatest Stretch,Dynamic lunge + rotation mobility,,global,bodyweight,Full Body,Flexibility,Running,Low Intensity,
+E170,Mobility,Walking Knee Hug,Dynamic glute/hip mobility,,global,bodyweight,Lower Body,Flexibility,Running,Low Intensity,
+E171,Mobility,Walking Quad Stretch,Dynamic quad mobility,,global,bodyweight,Lower Body,Flexibility,Running,Low Intensity,
+E172,Mobility,Walking Hamstring Sweep,Dynamic hamstring mobility sweep,,global,bodyweight,Lower Body,Flexibility,Running,Low Intensity,
+E173,Mobility,Ankle Rockers,Ankle dorsiflexion mobility drill,,global,bodyweight,Lower Body,Flexibility,Running,Low Intensity,achilles issues
+E177,Mobility,Glute Stretch (Figure-4),Glute/piriformis stretch,,global,bodyweight,Lower Body,Flexibility,Running,Low Intensity,
+E179,Mobility,Thoracic Rotation (Open Book),T-spine mobility drill,,global,bodyweight,Upper Body,Flexibility,Running,Low Intensity,
+E180,Mobility,Arm Circles,Shoulder warm-up circles,,global,bodyweight,Upper Body,Flexibility,Running,Low Intensity,shoulder pain
+E181,Warmup,Pull-Apart (Band),Scapular activation with band,,global,resistance band,Upper Body,Strength,Weight Training,Low Intensity,shoulder pain
+E182,Warmup,Glute Activation (Band Walk),Lateral band walk for glute med activation,,global,resistance band,Lower Body,Strength,Weight Training,Low Intensity,
+E183,Warmup,Monster Walk (Band),Band walk forward/backward for hip activation,,global,resistance band,Lower Body,Strength,Weight Training,Low Intensity,
+E184,Warmup,Skipping,Easy skipping for rhythm and tissue prep,,global,bodyweight,Lower Body,Endurance,Running,Low Intensity,achilles issues
+E185,Warmup,Strides (60–80m),Controlled fast strides to prepare CNS,,global,bodyweight,Lower Body,Power,Running,Moderate Intensity,achilles issues
+E186,Drill,A-Skip to Run,Transition drill from skip into running,,global,bodyweight,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E192,Sprint,Resisted Sprint (Band),Sprint with band resistance,,global,resistance band,Lower Body,Power,Running,High Intensity,achilles issues|knee pain
+E200,Circuit,Bicycle Crunch,Core endurance drill with rotation,,global,bodyweight,Core,Strength,Weight Training,Moderate Intensity,
+E201,Gym,Hip Thrust (Machine),Machine hip thrust for glute-focused hip extension.,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E202,Gym,Nordic Hamstring Curl (Assisted),Assisted Nordic curl emphasizing hamstring eccentric strength.,,global,bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,
+E203,Gym,Glute Ham Raise,Machine hip and knee extension for posterior chain strength.,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,
+E204,Gym,Split Squat (Barbell),Barbell-loaded split squat for unilateral strength.,,global,barbell,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain|low back pain
+E205,Gym,Incline Barbell Bench Press,Incline barbell press emphasizing upper chest.,,global,barbell|bench,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E206,Gym,Close-Grip Bench Press,Bench press with narrow grip to emphasize triceps.,,global,barbell|bench,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E207,Gym,Landmine Press (Single-Arm),Angled single-arm press for shoulder-friendly strength.,,global,barbell,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E208,Gym,Landmine Row (Single-Arm),Single-arm landmine row for back strength and control.,,global,barbell,Upper Body,Strength,Weight Training,Moderate Intensity,low back pain
+E209,Gym,Chest Supported Row (Dumbbell),Row with torso supported to reduce lower back load.,,global,dumbbell|bench,Upper Body,Strength,Weight Training,Moderate Intensity,low back pain
+E210,Gym,Lateral Raise (Cable),Cable lateral raise for continuous shoulder tension.,,global,cable,Upper Body,Strength,Weight Training,Low Intensity,
+E211,Gym,Reverse Fly (Cable),Reverse fly for posterior shoulder and upper back.,,global,cable,Upper Body,Strength,Weight Training,Low Intensity,shoulder pain
+E212,Gym,Pull-Up (Assisted Band),Band-assisted pull-up to scale vertical pulling strength.,,global,bodyweight|pull-up bar|resistance band,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E213,Gym,Incline Push-Up,Incline push-up to reduce loading and improve control.,,global,bodyweight|bench,Upper Body,Strength,Weight Training,Low Intensity,shoulder pain
+E214,Gym,Decline Push-Up,Decline push-up for greater upper-body loading.,,global,bodyweight|bench,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E215,Gym,Step-Down,Controlled step-down for knee and hip stability.,,global,bodyweight|bench,Lower Body,Strength,Weight Training,Low Intensity,knee pain
+E216,Gym,Sled Drag (Lateral),Lateral sled drag for frontal-plane strength and conditioning.,,global,sled,Lower Body,Strength,Weight Training,High Intensity,achilles issues|knee pain
+E217,Gym,Single-Leg Calf Raise (Dumbbell),Unilateral calf raise with dumbbell loading.,,global,dumbbell,Lower Body,Strength,Weight Training,Moderate Intensity,achilles issues
+E218,Gym,Hip Abduction (Band),Band-resisted hip abduction for glute med activation.,,global,resistance band,Lower Body,Strength,Weight Training,Low Intensity,
+E219,Gym,Hip Adduction (Band),Band-resisted hip adduction for groin activation.,,global,resistance band,Lower Body,Strength,Weight Training,Low Intensity,
+E220,Drill,Cone Zig-Zag Drill,Agility drill with directional changes around cones.,,global,cones,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E221,Drill,Mini-Hurdle Quick Steps,Quick steps through mini-hurdles for rhythm and coordination.,,global,hurdles,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E222,Drill,Acceleration Build-Up (20-40m),Progressive acceleration build-up over 20-40 meters.,,global,bodyweight,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E223,Sprint,Curve Sprint,Max-velocity sprinting on a curve for track specificity.,,global,bodyweight,Lower Body,Power,Running,High Intensity,achilles issues|knee pain
+E224,Sprint,Tempo Run (Extensive),Submaximal tempo runs for aerobic and technical work.,,global,bodyweight,Lower Body,Endurance,Running,Moderate Intensity,achilles issues|knee pain
+E225,Sprint,Split 200s,Split 200 meter reps for speed endurance development.,,global,bodyweight,Lower Body,Endurance,Running,High Intensity,achilles issues|knee pain
+E226,Mobility,Hip Airplane,Single-leg hinge with rotation to improve hip control.,,global,bodyweight,Lower Body,Flexibility,Running,Low Intensity,
+E227,Warmup,Shoulder External Rotation (Band),Band external rotation for rotator cuff activation.,,global,resistance band,Upper Body,Strength,Weight Training,Low Intensity,shoulder pain
+E228,Mobility,Cat-Cow Spine Mobilization,Gentle spinal flexion/extension mobility drill.,,global,bodyweight,Core,Flexibility,Running,Low Intensity,
+E229,Circuit,Bear Crawl,Ground-based crawl for core and shoulder stability.,,global,bodyweight,Full Body,Strength,Weight Training,Moderate Intensity,
+E230,Gym,Trap Bar Deadlift,Deadlift variation using trap bar for neutral grip pulling.,,global,barbell,Lower Body,Strength,Weight Training,High Intensity,low back pain
+E231,Mobility,Ankle Dorsiflexion Mobilization,Wall-based ankle mobility for dorsiflexion range.,,global,bodyweight,Lower Body,Flexibility,Weight Training,Low Intensity,achilles issues
+E232,Mobility,90/90 Hip Switch,Seated hip rotation switches for internal and external mobility.,,global,bodyweight,Lower Body,Flexibility,Weight Training,Low Intensity,
+E233,Mobility,Half-Kneeling Hip Flexor Mobilization,Half-kneeling hip flexor mobilization with glute squeeze.,,global,bodyweight,Lower Body,Flexibility,Weight Training,Low Intensity,
+E234,Mobility,Thoracic Extension on Bench,Bench-supported thoracic extension for upper back mobility.,,global,bench|bodyweight,Upper Body,Flexibility,Weight Training,Low Intensity,
+E235,Mobility,Shoulder CARs,Controlled articular rotations for shoulder mobility.,,global,bodyweight,Upper Body,Flexibility,Weight Training,Low Intensity,shoulder pain
+E236,Mobility,Cossack Squat,Side-to-side squat for adductor and hip mobility.,,global,bodyweight,Lower Body,Flexibility,Weight Training,Low Intensity,knee pain|low back pain
+E237,Mobility,Spiderman Lunge with Reach,Dynamic lunge with thoracic reach for full-body mobility.,,global,bodyweight,Full Body,Flexibility,Weight Training,Low Intensity,knee pain
+E238,Mobility,Hamstring Floss (Band),Band-assisted hamstring flossing drill.,,global,resistance band,Lower Body,Flexibility,Weight Training,Low Intensity,
+E239,Mobility,Wall Ankle Rockers,Ankle rocker drill for dorsiflexion mobility.,,global,bodyweight,Lower Body,Flexibility,Weight Training,Low Intensity,achilles issues
+E240,Mobility,Quadruped Thoracic Rotation,T-spine rotation from quadruped position.,,global,bodyweight,Upper Body,Flexibility,Weight Training,Low Intensity,
+E241,Mobility,Hip Internal Rotation Drill,Seated hip internal rotation control drill.,,global,bodyweight,Lower Body,Flexibility,Weight Training,Low Intensity,
+E242,Mobility,Scapular Wall Slides,Wall slides to improve scapular control and shoulder mobility.,,global,bodyweight,Upper Body,Flexibility,Weight Training,Low Intensity,
+E243,Mobility,Shoulder Flexion Wall Slide,Wall slide to improve shoulder flexion range.,,global,bodyweight,Upper Body,Flexibility,Weight Training,Low Intensity,shoulder pain
+E244,Mobility,Adductor Rock Back,Quadruped rock back to open adductors.,,global,bodyweight,Lower Body,Flexibility,Weight Training,Low Intensity,
+E245,Mobility,Wrist Mobility Circles,Gentle wrist circles for joint mobility.,,global,bodyweight,Upper Body,Flexibility,Weight Training,Low Intensity,
+E246,Recovery,Recovery Walk,Low-intensity walk for circulation and recovery.,,global,bodyweight,Full Body,Recovery,Recovery,Low Intensity,
+E247,Recovery,Easy Bike Flush,Easy spin to promote recovery and circulation.,,global,machine,Full Body,Recovery,Recovery,Low Intensity,
+E248,Recovery,Easy Rowing,Low-intensity rowing for recovery work.,,global,machine,Full Body,Recovery,Recovery,Low Intensity,
+E249,Recovery,Breathing Reset (90/90),Supine 90/90 breathing for nervous system reset.,,global,bodyweight,Core,Recovery,Recovery,Low Intensity,
+E250,Recovery,Legs Up the Wall,Supine legs-up position for relaxation and recovery.,,global,bodyweight,Lower Body,Recovery,Recovery,Low Intensity,
+E251,Recovery,Light Run (Recovery),Very easy run for aerobic recovery.,,global,bodyweight,Lower Body,Recovery,Running,Low Intensity,achilles issues|knee pain
+E252,Recovery,Pool Walk,Low-impact walking in water for recovery.,,global,bodyweight,Lower Body,Recovery,Recovery,Low Intensity,
+E253,Recovery,Recovery Stretch Flow,Gentle full-body stretch sequence for recovery.,,global,bodyweight,Full Body,Recovery,Recovery,Low Intensity,
+E254,Recovery,Diaphragmatic Breathing,Slow breathing drill to reduce stress and aid recovery.,,global,bodyweight,Core,Recovery,Recovery,Low Intensity,
+E255,Recovery,Progressive Muscle Relaxation,Tension-release sequence for full-body recovery.,,global,bodyweight,Full Body,Recovery,Recovery,Low Intensity,
+E256,Gym,Single-Leg Box Squat,Box squat to bench for unilateral control and strength.,,global,bodyweight|bench,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain|low back pain
+E257,Gym,Pullover (Cable),Straight-arm pullover for lat strength and shoulder control.,,global,cable,Upper Body,Strength,Weight Training,Low Intensity,
+E258,Gym,Hip Thrust (Dumbbell),Dumbbell hip thrust for glute strength and control.,,global,dumbbell|bench,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E259,Plyometric,Lateral Skips for Distance,Explosive lateral skips for power and coordination.,,global,bodyweight,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E260,Drill,Falling Start Sprint,Falling start drill to teach acceleration mechanics.,,global,bodyweight,Lower Body,Power,Running,Moderate Intensity,achilles issues|knee pain
+E261,Gym,Sumo Deadlift,Wide-stance deadlift emphasizing hip adductors and glutes.,,global,barbell,Lower Body,Strength,Weight Training,High Intensity,low back pain
+E262,Gym,Power Clean,Explosive full clean from floor to front rack.,,global,barbell,Full Body,Power,Weight Training,High Intensity,low back pain|shoulder pain
+E263,Gym,Cable Pull-Through,Hip hinge with cable for glute and hamstring activation.,,global,cable,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E264,Gym,Reverse Hyper,Posterior chain extension on reverse hyper machine.,,global,machine,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E265,Gym,Preacher Curl (Dumbbell),Isolated bicep curl on preacher bench.,,global,dumbbell|bench,Upper Body,Strength,Weight Training,Low Intensity,
+E266,Gym,Skull Crusher (Barbell),Lying tricep extension with barbell.,,global,barbell|bench,Upper Body,Strength,Weight Training,Low Intensity,
+E267,Gym,Ab Wheel Rollout,Anti-extension core rollout with ab wheel.,,global,ab wheel,Core,Strength,Weight Training,Moderate Intensity,low back pain
+E268,Gym,Inverted Row,Bodyweight row using bar or rings.,,global,bodyweight|pull-up bar,Upper Body,Strength,Weight Training,Moderate Intensity,
+E269,Gym,T-Bar Row,Chest-supported or bent-over row using T-bar.,,global,barbell,Upper Body,Strength,Weight Training,Moderate Intensity,low back pain
+E270,Gym,Lateral Lunge,Side lunge for adductor and lateral hip strength.,,global,bodyweight,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain
+E271,Gym,Lateral Lunge (Dumbbell),Loaded side lunge with dumbbells.,,global,dumbbell,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain
+E272,Gym,Deficit Deadlift,Deadlift from elevated platform for increased range.,,global,barbell,Lower Body,Strength,Weight Training,High Intensity,low back pain
+E273,Gym,Rack Pull (Barbell),Partial deadlift from rack pins.,,global,barbell,Lower Body,Strength,Weight Training,High Intensity,low back pain
+E274,Gym,Pendlay Row,Strict barbell row from floor each rep.,,global,barbell,Upper Body,Strength,Weight Training,Moderate Intensity,low back pain
+E275,Gym,Floor Press (Barbell),Bench press from floor limiting range of motion.,,global,barbell,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E276,Gym,Floor Press (Dumbbell),Dumbbell press from floor for shoulder-friendly pressing.,,global,dumbbell,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E277,Gym,Arnold Press (Dumbbell),Rotating shoulder press for full delt development.,,global,dumbbell,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E278,Gym,Snatch (Barbell),Full Olympic snatch from floor to overhead.,,global,barbell,Full Body,Power,Weight Training,High Intensity,low back pain|shoulder pain
+E279,Gym,Clean and Jerk,Full Olympic clean followed by jerk overhead.,,global,barbell,Full Body,Power,Weight Training,High Intensity,low back pain|shoulder pain
+E280,Gym,Romanian Deadlift (Barbell),Barbell RDL for hamstring and posterior chain.,,global,barbell,Lower Body,Strength,Weight Training,Moderate Intensity,low back pain
+E281,Gym,Internal Rotation (Band),Band internal rotation for shoulder balance.,,global,resistance band,Upper Body,Strength,Weight Training,Low Intensity,shoulder pain
+E282,Gym,Front Raise (Dumbbell),Dumbbell front raise for anterior deltoid.,,global,dumbbell,Upper Body,Strength,Weight Training,Low Intensity,shoulder pain
+E283,Gym,Shrug (Barbell),Barbell shrug for upper trap development.,,global,barbell,Upper Body,Strength,Weight Training,Moderate Intensity,
+E284,Gym,Seated Row (Machine),Machine-based horizontal row for mid-back.,,global,machine,Upper Body,Strength,Weight Training,Moderate Intensity,
+E285,Gym,Leg Curl (Dumbbell),Prone dumbbell curl for hamstring isolation.,,global,dumbbell|bench,Lower Body,Strength,Weight Training,Low Intensity,
+E286,Gym,Split Squat (Dumbbell),Stationary split squat with dumbbell loading.,,global,dumbbell,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain
+E287,Gym,Goblet Squat (Kettlebell),Kettlebell front-loaded squat for depth and bracing.,,global,kettlebell,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain|low back pain
+E288,Gym,Sumo Squat (Dumbbell),Wide-stance squat holding dumbbell between legs.,,global,dumbbell,Lower Body,Strength,Weight Training,Moderate Intensity,knee pain
+E289,Gym,Tricep Dip (Weighted),Weighted parallel bar dip for triceps and chest.,,global,bodyweight|dip station,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain
+E290,Gym,Close-Grip Push-Up,Push-up with narrow hand placement for triceps emphasis.,,global,bodyweight,Upper Body,Strength,Weight Training,Moderate Intensity,shoulder pain

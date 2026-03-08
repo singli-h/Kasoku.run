@@ -1,0 +1,5 @@
+export { default as Hero } from './hero'
+export { default as Features } from './features'
+export { default as SocialProof } from './social-proof'
+export { default as CTA } from './cta'
+export { default as FAQ } from './faq'
