@@ -72,7 +72,7 @@ function PlanPageFallback({
     completed: MesocycleWithDetails[]
   }
   exerciseLibrary?: ExerciseLibraryItem[]
-  error: Error
+  error: unknown
   resetErrorBoundary: () => void
 }) {
   const router = useRouter()
@@ -109,11 +109,11 @@ function PlanPageFallback({
             </button>
           </div>
         </div>
-        {error && process.env.NODE_ENV === 'development' && (
+        {!!error && process.env.NODE_ENV === 'development' && (
           <div className="max-w-7xl mx-auto mt-2">
             <pre className="text-xs text-left bg-muted p-3 rounded-md overflow-auto max-h-32">
-              {error.message}
-              {error.stack && `\n\n${error.stack}`}
+              {error instanceof Error ? error.message : String(error)}
+              {error instanceof Error && error.stack && `\n\n${error.stack}`}
             </pre>
           </div>
         )}

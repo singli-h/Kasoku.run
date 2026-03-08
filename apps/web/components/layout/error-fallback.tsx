@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface ErrorFallbackProps {
-  error: Error
+  error: unknown
   resetErrorBoundary: () => void
 }
 
@@ -34,7 +34,7 @@ export function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps)
             <details className="rounded-md bg-muted p-3 text-sm">
               <summary className="cursor-pointer font-medium">Error Details</summary>
               <pre className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">
-                {error.message}
+                {error instanceof Error ? error.message : String(error)}
               </pre>
             </details>
           )}

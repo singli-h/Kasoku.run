@@ -16,7 +16,7 @@ interface CoachPlanPageWithAIProps {
   coachGroups?: Array<{ id: number; name: string }>
 }
 
-function CoachPlanFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+function CoachPlanFallback({ error, resetErrorBoundary }: { error: unknown; resetErrorBoundary: () => void }) {
   return (
     <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-3 flex items-center gap-3">
       <AlertTriangle className="h-5 w-5 text-destructive" />
