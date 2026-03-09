@@ -39,7 +39,9 @@ import {
   Download,
   Share,
   Plus,
-  ExternalLink
+  ExternalLink,
+  Trash2,
+  AlertTriangle
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { format } from "date-fns"
@@ -293,6 +295,9 @@ export function ProfileSettingsPage() {
   const { toast } = useToast()
   const { theme, setTheme } = useTheme()
   const [themeMounted, setThemeMounted] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Theme mounting effect to prevent hydration mismatch
   useEffect(() => {
@@ -696,6 +701,23 @@ export function ProfileSettingsPage() {
       loadReminderPreferences()
     }
   }, [clerkLoaded, clerkUser])
+
+  const handleDeleteAccount = async () => {
+    if (!clerkUser) return
+    setIsDeleting(true)
+    try {
+      await clerkUser.delete()
+      // Clerk auto-signs out after deletion; middleware redirects to /sign-in
+    } catch (error) {
+      console.error('[handleDeleteAccount] Failed to delete account:', error)
+      toast({
+        title: 'Failed to delete account',
+        description: 'Please try again or contact support if the problem persists.',
+        variant: 'destructive',
+      })
+      setIsDeleting(false)
+    }
+  }
 
   // Loading state
   if (!clerkLoaded || isLoading) {
@@ -1125,6 +1147,138 @@ export function ProfileSettingsPage() {
                     className="w-full"
                   >
                     Got it
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Delete Account Confirmation Modal */}
+        <AnimatePresence>
+          {showDeleteModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+              onClick={() => !isDeleting && setShowDeleteModal(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 100, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 100, scale: 0.95 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="bg-background rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="relative p-6 pb-4 border-b border-destructive/20 bg-destructive/5">
+                  {!isDeleting && (
+                    <button
+                      onClick={() => setShowDeleteModal(false)}
+                      className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors"
+                    >
+                      <X className="w-5 h-5 text-muted-foreground" />
+                    </button>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
+                      <AlertTriangle className="w-6 h-6 text-destructive" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">Delete your account?</h3>
+                      <p className="text-sm text-muted-foreground">This action is permanent and cannot be undone</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-6 space-y-4">
+                  {/* Role-specific consequence summary */}
+                  <div className="rounded-xl bg-muted/50 p-4 space-y-2 text-sm text-muted-foreground">
+                    {profileData.role === 'coach' && (
+                      <>
+                        <p className="font-medium text-foreground text-xs uppercase tracking-wider">You will permanently lose:</p>
+                        <p>• All athlete groups, training plans, and knowledge base content</p>
+                        <p>• All AI coaching memories for your athletes</p>
+                        <p>• Your own workout history and personal records</p>
+                        <p className="text-green-700 dark:text-green-400 pt-1 border-t border-border/50">
+                          ✓ Your athletes keep their own workout logs
+                        </p>
+                      </>
+                    )}
+                    {profileData.role === 'athlete' && (
+                      <>
+                        <p className="font-medium text-foreground text-xs uppercase tracking-wider">You will permanently lose:</p>
+                        <p>• All your workout logs and performance data</p>
+                        <p>• All personal bests, race records, and AI memories</p>
+                        <p className="text-green-700 dark:text-green-400 pt-1 border-t border-border/50">
+                          ✓ Your coach's plans and groups are not affected
+                        </p>
+                      </>
+                    )}
+                    {profileData.role === 'individual' && (
+                      <>
+                        <p className="font-medium text-foreground text-xs uppercase tracking-wider">You will permanently lose:</p>
+                        <p>• All workout logs, personal bests, and training plans</p>
+                        <p>• All AI performance memories and coaching notes</p>
+                        <p className="text-amber-700 dark:text-amber-400 pt-1 border-t border-border/50">
+                          ⚠ Custom exercises will be detached but not deleted
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Email confirmation */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Type your email to confirm:{' '}
+                      <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                        {clerkUser?.emailAddresses?.[0]?.emailAddress}
+                      </span>
+                    </label>
+                    <input
+                      type="email"
+                      value={deleteConfirmEmail}
+                      onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                      placeholder="Enter your email address"
+                      disabled={isDeleting}
+                      className="w-full h-11 px-4 text-sm rounded-xl border border-input bg-muted/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-destructive/20 focus:border-destructive transition-all disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 border-t border-border flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => { setShowDeleteModal(false); setDeleteConfirmEmail('') }}
+                    disabled={isDeleting}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteAccount}
+                    disabled={
+                      isDeleting ||
+                      deleteConfirmEmail !== clerkUser?.emailAddresses?.[0]?.emailAddress
+                    }
+                    className="flex-1 flex items-center gap-2"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4" />
+                        Delete my account
+                      </>
+                    )}
                   </Button>
                 </div>
               </motion.div>
@@ -1575,6 +1729,126 @@ export function ProfileSettingsPage() {
                 </BentoCard>
               </>
             )}
+          </div>
+        </AnimatedSection>
+
+        {/* ================================================================ */}
+        {/* SECTION 7: Danger Zone */}
+        {/* ================================================================ */}
+        <AnimatedSection delay={0.6} className="mb-12">
+          <SectionHeader
+            title="Danger Zone"
+            subtitle="Irreversible actions — read carefully before proceeding"
+            icon={<AlertTriangle className="w-5 h-5 text-destructive" />}
+          />
+
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6">
+            <div className="flex items-start justify-between gap-6">
+              <div className="flex-1">
+                <p className="font-semibold text-foreground">Delete Account</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Permanently deletes your account and all associated data. This cannot be undone.
+                </p>
+
+                {/* Role-specific impact summary */}
+                <div className="mt-4 space-y-1.5">
+                  {profileData.role === 'coach' && (
+                    <>
+                      <p className="text-xs font-medium text-destructive uppercase tracking-wider mb-2">What will be deleted</p>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>All athlete groups you manage and their membership histories</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>All training plans (macrocycles, mesocycles, microcycles, sessions) you created</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>Your full knowledge base library — all articles and categories</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>All AI coaching memories and performance insights for your athletes</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>Your own workout logs, personal bests, and race records</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400 mt-3 pt-3 border-t border-border/50">
+                        <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>Your athletes' personal workout logs are <strong>not</strong> deleted — they retain all their own data</span>
+                      </div>
+                    </>
+                  )}
+
+                  {profileData.role === 'athlete' && (
+                    <>
+                      <p className="text-xs font-medium text-destructive uppercase tracking-wider mb-2">What will be deleted</p>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>All your workout logs and performance tracking data</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>All your personal bests and race records</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>Your training cycle history and AI performance memories</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>Your notification preferences and push subscriptions</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400 mt-3 pt-3 border-t border-border/50">
+                        <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>Your coach's training plans and group structure are <strong>not</strong> affected</span>
+                      </div>
+                    </>
+                  )}
+
+                  {profileData.role === 'individual' && (
+                    <>
+                      <p className="text-xs font-medium text-destructive uppercase tracking-wider mb-2">What will be deleted</p>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>All your workout logs and performance data</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>All your personal bests and race records</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>Your personal training plans (all macrocycles, mesocycles, microcycles and sessions)</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>Your AI performance memories and coaching notes</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-destructive/70" />
+                        <span>Your notification preferences and push subscriptions</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400 mt-3 pt-3 border-t border-border/50">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>Custom exercises you created will be detached from your account but remain in the system (they may be shared with others)</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteModal(true)}
+                className="shrink-0 flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Account
+              </Button>
+            </div>
           </div>
         </AnimatedSection>
 
