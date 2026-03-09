@@ -47,18 +47,22 @@ const isProtectedRoute = createRouteMatcher([
   "/tasks(.*)",
   "/kb(.*)",
   "/copilot(.*)",
-  "/onboarding(.*)"
+  "/onboarding(.*)",
+  "/sessions(.*)",
+  "/templates(.*)",
+  "/program(.*)",
 ])
 
 // Routes that should skip onboarding check (public and auth routes)
 const isPublicRoute = createRouteMatcher([
   "/",
   "/about(.*)",
-  "/contact(.*)", 
+  "/contact(.*)",
   "/pricing(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/api(.*)"
+  "/signup(.*)",
+  "/api(.*)",
 ])
 
 // The onboarding route itself

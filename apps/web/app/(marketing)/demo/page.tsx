@@ -1,5 +1,7 @@
 "use client"
 
+import { SplitTimeChart } from "@/components/features/performance/components/sprint/SplitTimeChart"
+import { BenchmarkReferenceCard } from "@/components/features/performance/components/sprint/BenchmarkReferenceCard"
 import Link from "next/link"
 import { motion, useReducedMotion } from "framer-motion"
 import {
@@ -19,9 +21,58 @@ import {
   TrendingUp,
   User,
   Zap,
+  Activity,
 } from "lucide-react"
 
 const spring = { type: "spring" as const, stiffness: 170, damping: 26 }
+
+const DEMO_SPRINT_SESSIONS = [
+  {
+    id: "s1",
+    date: "2026-01-11T12:00:00Z",
+    totalDistance: 40,
+    totalTime: 5.50,
+    isPB: true,
+    splits: [
+      { distance: 20, time: 3.31, cumulativeTime: 3.31 },
+      { distance: 40, time: 2.19, cumulativeTime: 5.50 },
+    ],
+  },
+  {
+    id: "s2",
+    date: "2025-12-30T12:00:00Z",
+    totalDistance: 40,
+    totalTime: 5.61,
+    isPB: false,
+    splits: [
+      { distance: 20, time: 3.38, cumulativeTime: 3.38 },
+      { distance: 40, time: 2.23, cumulativeTime: 5.61 },
+    ],
+  },
+]
+
+const DEMO_COMPETITION_PBS = [
+  {
+    eventId: 24,
+    eventName: "60m",
+    distance: 60,
+    value: 7.17,
+    date: "2025-08-13",
+    isWindLegal: true,
+    isIndoor: false,
+    wind: 0.3,
+  },
+]
+
+const DEMO_ATHLETE_METRICS = {
+  time60m: 7.17,
+  reactionTime: 0.171,
+  topSpeed: 9.13,
+  strideLengthMaxV: 1.98,
+  strideFrequencyMaxV: 4.62,
+  bestTime: 5.50,
+  bestDistance: 40,
+}
 
 /* ─── page ─── */
 
@@ -693,6 +744,43 @@ export default function DemoPage() {
               &quot;Kai W. shows recurring hamstring tightness — reduce acceleration volume 20% next week. Devon A. hit a new PB on Flying 30s (3.41s). Overall completion 88%. Recommend adding 1 extra recovery day before Saturday&apos;s time trial.&quot;
             </p>
           </motion.div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          SPRINT PERFORMANCE
+      ════════════════════════════════════════ */}
+      <section className="py-16 sm:py-24 border-t border-border/20">
+        <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
+
+          <motion.div {...fadeUp()}>
+            <SectionLabel icon={Activity} label="Sprint Performance" />
+            <h2 className="mt-4 font-heading text-2xl sm:text-4xl font-bold text-foreground tracking-tight">
+              See exactly where
+              <br />
+              time is lost.
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground font-sans">
+              Freelap split data mapped against elite benchmarks. Know your acceleration phase,
+              max velocity, and where you stack up — session by session.
+            </p>
+          </motion.div>
+
+          <motion.div {...fadeUp(0.1)} className="mt-10 space-y-4">
+            <SplitTimeChart
+              sessions={DEMO_SPRINT_SESSIONS}
+              showBenchmarks={['10.00', '11.00']}
+              competitionPBs={DEMO_COMPETITION_PBS}
+              showCompetitionPBs={true}
+            />
+            <BenchmarkReferenceCard
+              athleteMetrics={DEMO_ATHLETE_METRICS}
+              competitionPBs={DEMO_COMPETITION_PBS}
+              gender="male"
+              targetStandard="11.00"
+            />
+          </motion.div>
+
         </div>
       </section>
 

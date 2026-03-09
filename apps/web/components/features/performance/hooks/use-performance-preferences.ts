@@ -21,7 +21,7 @@ export interface PerformancePreferences {
 }
 
 const DEFAULT_PREFERENCES: PerformancePreferences = {
-  sprintTimeRange: '30d',
+  sprintTimeRange: 'all',
   sprintTargetStandard: '11.00',
   showCompetitionPBs: true,
   showBenchmarks: ['10.00', '11.00'],

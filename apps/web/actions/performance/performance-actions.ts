@@ -447,7 +447,7 @@ interface WorkoutLogWithExercises {
  * Fetches from workout_log_sets with Freelap metadata
  */
 export async function getSprintAnalyticsAction(
-  timeRange: '7d' | '30d' | '90d' | 'all' = '30d'
+  timeRange: '7d' | '30d' | '90d' | 'all' = 'all'
 ): Promise<ActionState<SprintAnalyticsData>> {
   try {
     const { userId } = await auth()
@@ -506,7 +506,7 @@ export async function getSprintAnalyticsAction(
     }
 
     // Query workout_log_sets with sprint metadata
-    let query = supabase
+    const query = supabase
       .from('workout_log_sets')
       .select(`
         id,
@@ -525,10 +525,6 @@ export async function getSprintAnalyticsAction(
       `)
       .not('metadata', 'is', null)
       .order('created_at', { ascending: false })
-
-    if (startDate) {
-      query = query.gte('created_at', startDate.toISOString())
-    }
 
     const { data: sets, error } = await query
 

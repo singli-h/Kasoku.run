@@ -59,21 +59,21 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_memories_athlete"
+            foreignKeyName: "ai_memories_athlete_id_fkey"
             columns: ["athlete_id"]
             isOneToOne: false
             referencedRelation: "athletes"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_memories_coach"
+            foreignKeyName: "ai_memories_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "coaches"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_memories_group"
+            foreignKeyName: "ai_memories_group_id_fkey"
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "athlete_groups"
@@ -154,14 +154,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_agh_athlete_id"
+            foreignKeyName: "athlete_group_histories_athlete_id_fkey"
             columns: ["athlete_id"]
             isOneToOne: false
             referencedRelation: "athletes"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_agh_group_id"
+            foreignKeyName: "athlete_group_histories_group_id_fkey"
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "athlete_groups"
@@ -336,17 +336,17 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "athletes_athlete_group_id_fkey"
+            columns: ["athlete_group_id"]
+            isOneToOne: false
+            referencedRelation: "athlete_groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "athletes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_athletes_group"
-            columns: ["athlete_group_id"]
-            isOneToOne: false
-            referencedRelation: "athlete_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -437,14 +437,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_et_exercise"
+            foreignKeyName: "exercise_tags_exercise_id_fkey"
             columns: ["exercise_id"]
             isOneToOne: false
             referencedRelation: "exercises"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_et_tag"
+            foreignKeyName: "exercise_tags_tag_id_fkey"
             columns: ["tag_id"]
             isOneToOne: false
             referencedRelation: "tags"
@@ -524,6 +524,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "exercises_exercise_type_id_fkey"
+            columns: ["exercise_type_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_types"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "exercises_owner_user_id_fkey"
             columns: ["owner_user_id"]
             isOneToOne: false
@@ -531,14 +538,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_exercise_type"
-            columns: ["exercise_type_id"]
-            isOneToOne: false
-            referencedRelation: "exercise_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_exercise_unit"
+            foreignKeyName: "exercises_unit_id_fkey"
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "units"
@@ -576,14 +576,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_kb_articles_category_id"
+            foreignKeyName: "knowledge_base_articles_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "knowledge_base_categories"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_kb_articles_coach_id"
+            foreignKeyName: "knowledge_base_articles_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "coaches"
@@ -621,7 +621,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_kb_categories_coach_id"
+            foreignKeyName: "knowledge_base_categories_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "coaches"
@@ -721,7 +721,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_mesocycles_macrocycle"
+            foreignKeyName: "mesocycles_macrocycle_id_fkey"
             columns: ["macrocycle_id"]
             isOneToOne: false
             referencedRelation: "macrocycles"
@@ -790,17 +790,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_microcycles_mesocycle"
-            columns: ["mesocycle_id"]
-            isOneToOne: false
-            referencedRelation: "mesocycles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "microcycles_athlete_group_id_fkey"
             columns: ["athlete_group_id"]
             isOneToOne: false
             referencedRelation: "athlete_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "microcycles_mesocycle_id_fkey"
+            columns: ["mesocycle_id"]
+            isOneToOne: false
+            referencedRelation: "mesocycles"
             referencedColumns: ["id"]
           },
           {
@@ -978,14 +978,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_ep_exercise"
+            foreignKeyName: "session_plan_exercises_exercise_id_fkey"
             columns: ["exercise_id"]
             isOneToOne: false
             referencedRelation: "exercises"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_session_plan_exercises_session_plan"
+            foreignKeyName: "session_plan_exercises_session_plan_id_fkey"
             columns: ["session_plan_id"]
             isOneToOne: false
             referencedRelation: "session_plans"
@@ -1059,14 +1059,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_epd_unit"
+            foreignKeyName: "session_plan_sets_resistance_unit_id_fkey"
             columns: ["resistance_unit_id"]
             isOneToOne: false
             referencedRelation: "units"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_session_plan_sets_session_plan_exercise"
+            foreignKeyName: "session_plan_sets_session_plan_exercise_id_fkey"
             columns: ["session_plan_exercise_id"]
             isOneToOne: false
             referencedRelation: "session_plan_exercises"
@@ -1125,14 +1125,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_session_plans_athlete_group"
+            foreignKeyName: "session_plans_athlete_group_id_fkey"
             columns: ["athlete_group_id"]
             isOneToOne: false
             referencedRelation: "athlete_groups"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_session_plans_microcycle"
+            foreignKeyName: "session_plans_microcycle_id_fkey"
             columns: ["microcycle_id"]
             isOneToOne: false
             referencedRelation: "microcycles"
@@ -1189,7 +1189,6 @@ export type Database = {
           birthdate: string | null
           clerk_id: string
           created_at: string
-          deleted_at: string | null
           email: string
           first_name: string | null
           id: number
@@ -1208,7 +1207,6 @@ export type Database = {
           birthdate?: string | null
           clerk_id: string
           created_at?: string
-          deleted_at?: string | null
           email: string
           first_name?: string | null
           id?: number
@@ -1227,7 +1225,6 @@ export type Database = {
           birthdate?: string | null
           clerk_id?: string
           created_at?: string
-          deleted_at?: string | null
           email?: string
           first_name?: string | null
           id?: number
@@ -1376,17 +1373,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_etd_unit"
-            columns: ["resistance_unit_id"]
-            isOneToOne: false
-            referencedRelation: "units"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "fk_workout_log_sets_session_plan_exercise"
             columns: ["session_plan_exercise_id"]
             isOneToOne: false
             referencedRelation: "session_plan_exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_log_sets_resistance_unit_id_fkey"
+            columns: ["resistance_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
             referencedColumns: ["id"]
           },
           {
@@ -1416,7 +1413,7 @@ export type Database = {
           notes: string | null
           session_mode: string | null
           session_plan_id: string | null
-          session_status: Database["public"]["Enums"]["session_status"]
+          session_status: Database["public"]["Enums"]["session_status"] | null
           updated_at: string | null
         }
         Insert: {
@@ -1429,7 +1426,7 @@ export type Database = {
           notes?: string | null
           session_mode?: string | null
           session_plan_id?: string | null
-          session_status: Database["public"]["Enums"]["session_status"]
+          session_status?: Database["public"]["Enums"]["session_status"] | null
           updated_at?: string | null
         }
         Update: {
@@ -1442,22 +1439,15 @@ export type Database = {
           notes?: string | null
           session_mode?: string | null
           session_plan_id?: string | null
-          session_status?: Database["public"]["Enums"]["session_status"]
+          session_status?: Database["public"]["Enums"]["session_status"] | null
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "fk_ets_group"
+            foreignKeyName: "workout_logs_athlete_group_id_fkey"
             columns: ["athlete_group_id"]
             isOneToOne: false
             referencedRelation: "athlete_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_workout_logs_session_plan"
-            columns: ["session_plan_id"]
-            isOneToOne: false
-            referencedRelation: "session_plans"
             referencedColumns: ["id"]
           },
           {
@@ -1465,6 +1455,13 @@ export type Database = {
             columns: ["athlete_id"]
             isOneToOne: false
             referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_logs_session_plan_id_fkey"
+            columns: ["session_plan_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -1487,6 +1484,7 @@ export type Database = {
       }
       can_access_session_plan: { Args: { sp_id: string }; Returns: boolean }
       can_view_workout_log: { Args: { wl_id: string }; Returns: boolean }
+      clerk_user_id: { Args: never; Returns: string }
       coaches_athlete: { Args: { athlete_id: number }; Returns: boolean }
       coaches_group: { Args: { group_id: number }; Returns: boolean }
       complete_onboarding: {
@@ -1517,7 +1515,6 @@ export type Database = {
           success: boolean
         }[]
       }
-      debug_auth_jwt: { Args: never; Returns: Json }
       get_user_role_data: {
         Args: { p_clerk_id: string }
         Returns: {
@@ -1560,7 +1557,17 @@ export type Database = {
         Args: { athlete_id_param: number }
         Returns: Json
       }
-      unuse: { Args: never; Returns: undefined }
+      save_generated_plan: {
+        Args: { p_athlete_id: number; p_payload: Json; p_user_id: number }
+        Returns: {
+          first_session_id: string
+          first_workout_log_id: string
+          mesocycle_id: number
+          message: string
+          success: boolean
+          warning: string
+        }[]
+      }
       update_user_from_webhook: {
         Args: {
           p_avatar_url: string
@@ -1726,9 +1733,6 @@ export const Constants = {
     },
   },
 } as const
-
-
-// ============================================================================
 // Custom Type Aliases
 // These convenience aliases use the Tables helper type to create simpler type names
 // ============================================================================
