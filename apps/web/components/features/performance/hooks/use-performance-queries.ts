@@ -26,7 +26,7 @@ import type { ActionState } from "@/types/api"
  * Hook for fetching sprint analytics data
  */
 export function useSprintAnalytics(
-  timeRange: SprintTimeRange = '30d',
+  timeRange: SprintTimeRange = 'all',
   options?: { enabled?: boolean }
 ) {
   const queryClient = useQueryClient()
