@@ -16,6 +16,7 @@ import { TailwindIndicator } from "@/components/utilities/tailwind-indicator"
 import { GlobalErrorBoundary } from "@/components/error-boundary"
 import { cn } from "@/lib/utils"
 import { ClerkProvider } from "@clerk/nextjs"
+import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import type { Metadata, Viewport } from "next"
 import localFont from "next/font/local"
@@ -258,6 +259,7 @@ export default function RootLayout({
               <TailwindIndicator />
 
               <Toaster />
+              <Analytics />
               <SpeedInsights />
             </Providers>
           </GlobalErrorBoundary>
