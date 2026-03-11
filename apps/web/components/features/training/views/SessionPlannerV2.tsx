@@ -2,13 +2,19 @@
 
 import { useState, useCallback, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Undo2, Redo2, Save, Edit2, Calendar, Check, X, Copy, FolderOpen, ClipboardPaste, Loader2, Search } from "lucide-react"
+import { ArrowLeft, Undo2, Redo2, Save, Edit2, Calendar, Check, X, Copy, FolderOpen, ClipboardPaste, Loader2, Search, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -776,54 +782,29 @@ export function SessionPlannerV2({
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
-            {/* T045: Paste Program button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setPasteProgramOpen(true)}
-                  className="px-2"
-                >
-                  <ClipboardPaste className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline text-xs">Paste</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="px-2">
+                  <MoreHorizontal className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline text-xs">More</span>
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>Paste Program</TooltipContent>
-            </Tooltip>
-
-            {/* T035: Insert from Template button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleOpenInsertTemplate}
-                  className="px-2"
-                >
-                  <FolderOpen className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline text-xs">Templates</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Insert from Template</TooltipContent>
-            </Tooltip>
-
-            {/* T034: Save as Template button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleOpenSaveTemplate}
-                  className="px-2"
-                >
-                  <Copy className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline text-xs">Save As</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Save as Template</TooltipContent>
-            </Tooltip>
-
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setPasteProgramOpen(true)}>
+                  <ClipboardPaste className="h-4 w-4 mr-2" />
+                  Paste Program
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleOpenInsertTemplate}>
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Insert from Template
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleOpenSaveTemplate}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Save as Template
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <div className="h-4 w-px bg-border hidden sm:block" />
 
             {hasUnsavedChanges && (

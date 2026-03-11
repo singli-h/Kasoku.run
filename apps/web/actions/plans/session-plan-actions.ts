@@ -1450,3 +1450,179 @@ export async function insertTemplateExercisesAction(
     }
   }
 }
+
+// ============================================================================
+// CREATE TEMPLATE FROM PARSED EXERCISES
+// ============================================================================
+
+export interface CreateTemplateInput {
+  name: string
+  description?: string
+  exercises: Array<{
+    exerciseName: string
+    sets: Array<{
+      reps: number | null
+      weight: number | null
+      distance: number | null
+      performing_time: number | null
+      rest_time: number | null
+      rpe: number | null
+    }>
+  }>
+}
+
+/**
+ * Create a template directly from parsed exercise data (e.g. from AI paste).
+ * Looks up exercises by name (case-insensitive). Skips exercises not found in the library.
+ */
+export async function createTemplateAction(
+  input: CreateTemplateInput
+): Promise<ActionState<SessionPlan>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return { isSuccess: false, message: "User not authenticated" }
+    }
+
+    if (!input.name.trim()) {
+      return { isSuccess: false, message: "Template name is required" }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Step 1: Create the session_plans row as a template
+    const { data: sessionPlan, error: planError } = await supabase
+      .from('session_plans')
+      .insert({
+        name: input.name.trim(),
+        description: input.description?.trim() || null,
+        date: new Date().toISOString().split('T')[0],
+        day: 1,
+        week: 1,
+        session_mode: 'template' as const,
+        microcycle_id: null,
+        user_id: dbUserId,
+        is_template: true,
+      })
+      .select()
+      .single()
+
+    if (planError || !sessionPlan) {
+      console.error('Error creating template session plan:', planError)
+      return {
+        isSuccess: false,
+        message: `Failed to create template: ${planError?.message}`,
+      }
+    }
+
+    // Step 2: Look up exercises by name and create session_plan_exercises + sets
+    if (input.exercises.length > 0) {
+      // Fetch all exercises and build a lookup map for case-insensitive name matching
+      const { data: foundExercises, error: lookupError } = await supabase
+        .from('exercises')
+        .select('id, name')
+
+      if (lookupError) {
+        console.error('Error looking up exercises:', lookupError)
+        // Template is created but empty — still a success
+        revalidatePath('/templates')
+        return {
+          isSuccess: true,
+          message: "Template created but could not look up exercises",
+          data: sessionPlan,
+        }
+      }
+
+      // Build a case-insensitive name → id map
+      const nameToId = new Map<string, number>()
+      for (const ex of foundExercises || []) {
+        if (ex.name) nameToId.set(ex.name.toLowerCase(), ex.id)
+      }
+
+      // Build exercise inserts (skip unmatched names)
+      const exerciseInserts: ExercisePresetInsert[] = []
+      const exerciseSetData: Array<Array<CreateTemplateInput['exercises'][0]['sets'][0]>> = []
+
+      for (let i = 0; i < input.exercises.length; i++) {
+        const exercise = input.exercises[i]
+        const exerciseId = nameToId.get(exercise.exerciseName.trim().toLowerCase())
+
+        if (!exerciseId) continue // Skip exercises not in the library
+
+        exerciseInserts.push({
+          session_plan_id: sessionPlan.id,
+          exercise_id: exerciseId,
+          exercise_order: i + 1,
+          notes: null,
+          superset_id: null,
+        })
+        exerciseSetData.push(exercise.sets)
+      }
+
+      if (exerciseInserts.length > 0) {
+        const { data: savedExercises, error: exerciseError } = await supabase
+          .from('session_plan_exercises')
+          .insert(exerciseInserts)
+          .select()
+
+        if (exerciseError || !savedExercises) {
+          console.error('Error saving template exercises:', exerciseError)
+        } else {
+          // Step 3: Batch insert sets
+          const setInserts: Array<{
+            session_plan_exercise_id: string
+            set_index: number
+            reps: number | null
+            weight: number | null
+            distance: number | null
+            performing_time: number | null
+            rest_time: number | null
+            rpe: number | null
+          }> = []
+
+          for (let i = 0; i < savedExercises.length; i++) {
+            const sets = exerciseSetData[i]
+            for (let j = 0; j < sets.length; j++) {
+              const s = sets[j]
+              setInserts.push({
+                session_plan_exercise_id: savedExercises[i].id,
+                set_index: j + 1,
+                reps: s.reps,
+                weight: s.weight,
+                distance: s.distance,
+                performing_time: s.performing_time,
+                rest_time: s.rest_time,
+                rpe: s.rpe,
+              })
+            }
+          }
+
+          if (setInserts.length > 0) {
+            const { error: setsError } = await supabase
+              .from('session_plan_sets')
+              .insert(setInserts)
+
+            if (setsError) {
+              console.error('Error saving template sets:', setsError)
+            }
+          }
+        }
+      }
+    }
+
+    revalidatePath('/templates')
+
+    return {
+      isSuccess: true,
+      message: "Template created successfully",
+      data: sessionPlan,
+    }
+  } catch (error) {
+    console.error('Error in createTemplateAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    }
+  }
+}
