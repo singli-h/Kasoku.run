@@ -119,7 +119,7 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
             <p className="text-muted-foreground">
               {searchTerm
                 ? "Try adjusting your search term"
-                : "Save a session as a template from the session planner to get started"}
+                : "Save exercises as a reusable block from the session planner to get started"}
             </p>
           </CardContent>
         </Card>

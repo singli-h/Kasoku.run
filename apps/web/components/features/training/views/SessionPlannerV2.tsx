@@ -985,7 +985,7 @@ export function SessionPlannerV2({
           <DialogHeader>
             <DialogTitle>Save as Template</DialogTitle>
             <DialogDescription>
-              Save this session as a reusable template.
+              Save these exercises as a reusable template block.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -1044,7 +1044,7 @@ export function SessionPlannerV2({
               </div>
             ) : filteredTemplates.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                {templateSearch ? "No templates match your search." : "No templates found. Save a session as a template first."}
+                {templateSearch ? "No templates match your search." : "No templates yet. Save exercises as a template from any session."}
               </p>
             ) : (
               <div className="space-y-2">
