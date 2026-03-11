@@ -46,15 +46,7 @@ export function GlobalErrorBoundary({
       onError(error, errorInfo)
     }
 
-    // TODO: Integrate with error tracking service (Sentry/PostHog)
-    // Example:
-    // if (window.posthog) {
-    //   window.posthog.capture('error', {
-    //     error: error.message,
-    //     stack: error.stack,
-    //     componentStack: errorInfo.componentStack
-    //   })
-    // }
+    // TODO: Integrate with error tracking service (e.g. Sentry)
   }
 
   return (

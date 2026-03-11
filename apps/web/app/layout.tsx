@@ -9,8 +9,6 @@ The root server layout for the app.
 //   getProfileByUserIdAction
 // } from "@/actions/db/profiles-actions"
 import { Toaster } from "@/components/ui/toaster"
-import { PostHogPageview } from "@/components/utilities/posthog/posthog-pageview"
-import { PostHogUserIdentify } from "@/components/utilities/posthog/posthog-user-identity"
 import { Providers } from "@/components/utilities/providers"
 import { TailwindIndicator } from "@/components/utilities/tailwind-indicator"
 import { GlobalErrorBoundary } from "@/components/error-boundary"
@@ -202,15 +200,6 @@ export default function RootLayout({
     >
       <html lang="en" suppressHydrationWarning>
         <head>
-          {/* PWA and Mobile Optimization */}
-          <meta name="mobile-web-app-capable" content="yes" />
-          <meta name="apple-mobile-web-app-capable" content="yes" />
-          <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-          <meta name="apple-mobile-web-app-title" content="Kasoku" />
-          <meta name="application-name" content="Kasoku" />
-          <meta name="msapplication-TileColor" content="#000000" />
-          <meta name="theme-color" content="#000000" />
-          
           {/* Apple Touch Icons */}
           <link rel="apple-touch-icon" sizes="57x57" href="/icons/apple-icon-57x57.png" />
           <link rel="apple-touch-icon" sizes="60x60" href="/icons/apple-icon-60x60.png" />
@@ -221,17 +210,14 @@ export default function RootLayout({
           <link rel="apple-touch-icon" sizes="144x144" href="/icons/apple-icon-144x144.png" />
           <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-icon-152x152.png" />
           <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-icon-180x180.png" />
-          
+
           {/* Favicon */}
           <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
           <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
           <link rel="shortcut icon" href="/favicon.ico" />
-          
-          {/* Microsoft Tiles */}
+
+          {/* Microsoft Tile Image (not covered by metadata.other) */}
           <meta name="msapplication-TileImage" content="/icons/ms-icon-144x144.png" />
-          <meta name="msapplication-config" content="/browserconfig.xml" />
-          
-          {/* Fonts are self-hosted via next/font/local - no external font requests needed */}
         </head>
         <body
           className={cn(
@@ -249,9 +235,6 @@ export default function RootLayout({
               enableSystem={true}
               disableTransitionOnChange
             >
-              <PostHogUserIdentify />
-              <PostHogPageview />
-
               {children}
 
               <TailwindIndicator />
