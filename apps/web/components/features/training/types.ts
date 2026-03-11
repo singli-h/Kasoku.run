@@ -90,6 +90,8 @@ export interface TrainingExercise {
   sets: TrainingSet[]
   /** Exercise type ID for field visibility logic */
   exerciseTypeId?: number
+  /** Target event groups for subgroup filtering (null = all athletes) */
+  targetEventGroups?: string[] | null
 
   // UI state
   /** Whether card is expanded */
@@ -328,56 +330,6 @@ export function getSectionOrder(section: string): number {
     Cooldown: 10,
   }
   return order[section] ?? 99
-}
-
-/**
- * Format exercise shorthand notation (e.g., "3x10 @ 80kg")
- */
-export function formatShorthand(exercise: TrainingExercise): string {
-  const sets = exercise.sets
-  if (sets.length === 0) return "No sets"
-
-  const firstSet = sets[0]
-  const isUniform = sets.every(
-    (s) =>
-      s.reps === firstSet.reps &&
-      s.weight === firstSet.weight &&
-      s.distance === firstSet.distance &&
-      s.performingTime === firstSet.performingTime &&
-      s.height === firstSet.height
-  )
-
-  if (isUniform) {
-    const parts: string[] = []
-    if (firstSet.reps) parts.push(`${sets.length}x${firstSet.reps}`)
-    if (firstSet.distance) parts.push(`${sets.length}x ${firstSet.distance}m`)
-    if (firstSet.weight) parts.push(`@ ${firstSet.weight}kg`)
-    if (firstSet.performingTime) parts.push(`${firstSet.performingTime}s`)
-    if (firstSet.height) parts.push(`@ ${firstSet.height}cm`)
-    return parts.join(" ") || `${sets.length} sets`
-  }
-
-  const repsStr = sets.map((s) => s.reps).filter(Boolean)
-  const weightsStr = sets.map((s) => s.weight).filter((w): w is number => w !== null && w !== undefined)
-  const distStr = sets.map((s) => s.distance).filter(Boolean)
-  const timeStr = sets.map((s) => s.performingTime).filter(Boolean)
-  const heightStr = sets.map((s) => s.height).filter(Boolean)
-
-  const parts: string[] = []
-  if (repsStr.length > 0) parts.push(repsStr.join("+"))
-  if (distStr.length > 0) parts.push(`${distStr[0]}m`)
-  if (weightsStr.length > 0) {
-    const min = Math.min(...weightsStr)
-    const max = Math.max(...weightsStr)
-    parts.push(min === max ? `@ ${min}kg` : `@ ${min}-${max}kg`)
-  }
-  if (timeStr.length > 0) {
-    const times = timeStr.map((t) => `${t}s`).join("/")
-    parts.push(times)
-  }
-  if (heightStr.length > 0) parts.push(`@ ${heightStr[0]}cm`)
-
-  return parts.join(" ") || `${sets.length} sets`
 }
 
 /**

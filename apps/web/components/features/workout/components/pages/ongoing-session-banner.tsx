@@ -20,7 +20,8 @@ interface OngoingSessionBannerProps {
 export function OngoingSessionBanner({ session, onResume }: OngoingSessionBannerProps) {
   const sessionPlan = session.session_plan
   const sessionName = sessionPlan?.name || "Workout Session"
-  const exerciseCount = sessionPlan?.session_plan_exercises?.length || 0
+  // Prefer workout_log_exercises count (filtered for athlete) over session_plan_exercises (unfiltered)
+  const exerciseCount = (session as any).workout_log_exercises?.length || sessionPlan?.session_plan_exercises?.length || 0
   const startTime = session.date_time ? new Date(session.date_time) : null
 
   return (

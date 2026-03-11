@@ -12,6 +12,8 @@ import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { FeatureErrorBoundary } from "@/components/error-boundary"
 import type { MesocycleWithDetails } from "@/types/training"
 import type { SessionPlanExerciseWithDetails } from "@/types/training"
+import { computeSessionMetrics, formatExerciseSummary, abbreviateEventGroup } from "@/lib/training-utils"
+import type { ExerciseWithSets } from "@/lib/training-utils"
 
 // Type definitions for the coach plan data (fed into TrainingPlanWorkspace)
 interface SessionPlan {
@@ -175,16 +177,42 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
       const enrichedMicrocycles = (meso.microcycles || []).map((micro: MicrocycleData) => {
         // Transform session_plans into sessions with proper structure
         const sessions = (micro.session_plans || []).map((group: SessionPlan) => {
-          // Extract only needed fields to avoid property conflicts
+          const rawExercises = group.session_plan_exercises ?? []
+
+          // Map to ExerciseWithSets for metrics computation
+          const exercisesForMetrics: ExerciseWithSets[] = rawExercises.map((ex: SessionPlanExerciseWithDetails) => ({
+            exercise_type_id: ex.exercise?.exercise_type_id ?? null,
+            sets: ex.session_plan_sets ?? [],
+          }))
+
+          const metrics = computeSessionMetrics(exercisesForMetrics)
+
+          // Extract exercise names for card display
+          const exerciseNames = rawExercises
+            .map((ex: SessionPlanExerciseWithDetails) => ex.exercise?.name)
+            .filter((name): name is string => !!name)
+
+          // Extract exercise summaries (e.g. "3x10 80kg")
+          const exerciseSummaries = exercisesForMetrics.map(ex => formatExerciseSummary(ex))
+
+          // Extract target event groups per exercise (target_event_groups from database Row type)
+          const targetEventGroups = rawExercises
+            .map((ex: SessionPlanExerciseWithDetails) => ex.target_event_groups ?? null)
+            .filter((g): g is string[] => g !== null)
+
           return {
             id: group.id,
             day: group.day ?? 0,
             name: group.name ?? 'Unnamed Session',
             type: (group.session_mode ?? 'endurance') as 'speed' | 'strength' | 'recovery' | 'endurance' | 'power',
-            duration: 60, // Default duration
-            volume: 0, // Default volume
-            intensity: 0, // Default intensity
-            exercises: group.session_plan_exercises ?? [],
+            duration: metrics.duration, // Computed from sets
+            volume: metrics.volume, // Computed from sets
+            volumeUnit: metrics.volumeUnit,
+            intensity: 0, // No intensity formula yet
+            exerciseNames,
+            exerciseSummaries,
+            targetEventGroups,
+            exercises: rawExercises,
           }
         })
 

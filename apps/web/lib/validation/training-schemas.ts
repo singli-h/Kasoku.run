@@ -121,11 +121,6 @@ export const SessionSchema = z.object({
     .positive("Microcycle ID must be positive")
     .optional()
     .nullable(),
-  athlete_group_id: z.number()
-    .int("Athlete group ID must be an integer")
-    .positive("Athlete group ID must be positive")
-    .optional()
-    .nullable(),
   day: z.number()
     .int("Day must be an integer")
     .min(1, "Day must be between 1 (Monday) and 7 (Sunday)")

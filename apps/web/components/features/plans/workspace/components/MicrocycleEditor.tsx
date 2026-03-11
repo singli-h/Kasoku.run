@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Edit, Trash2, Move } from "lucide-react"
 import { usePlanContext } from "../context/PlanContext"
 import { useTerminology } from "@/lib/terminology"
+import { abbreviateEventGroup } from "@/lib/training-utils"
 
 interface MicrocycleEditorProps {
   microcycleId: number
@@ -167,16 +168,37 @@ export function MicrocycleEditor({
                             )}
                           </div>
                           <div className="font-medium">{session.name}</div>
-                          <div className="text-xs opacity-80">
-                            {session.duration}min
-                          </div>
-                          <div className="flex items-center gap-1 mt-1">
-                            <Badge variant="secondary" className="text-xs bg-white/20 text-white">
-                              Vol: {session.volume}
-                            </Badge>
-                            <Badge variant="secondary" className="text-xs bg-white/20 text-white">
-                              Int: {session.intensity}
-                            </Badge>
+                          {/* Exercise preview (T012) */}
+                          {session.exerciseNames && session.exerciseNames.length > 0 ? (
+                            <div className="text-xs opacity-80 truncate">
+                              {session.exerciseNames.slice(0, 2).join(', ')}
+                              {session.exerciseNames.length > 2 ? '...' : ''}
+                            </div>
+                          ) : (
+                            <div className="text-xs opacity-60">No exercises</div>
+                          )}
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            {session.volume > 0 ? (
+                              <Badge variant="secondary" className="text-xs bg-white/20 text-white">
+                                {session.volume} {session.volumeUnit ?? 'kg'}
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs bg-white/20 text-white">
+                                {'Vol: \u2014'}
+                              </Badge>
+                            )}
+                            {/* Subgroup dots (T021) */}
+                            {session.targetEventGroups && session.targetEventGroups.length > 0 && (() => {
+                              const unique = [...new Set(session.targetEventGroups!.flat())]
+                              if (unique.length === 0) return null
+                              return (
+                                <div className="flex items-center gap-0.5">
+                                  {unique.slice(0, 3).map(g => (
+                                    <span key={g} className="w-2 h-2 rounded-full bg-white/50" title={abbreviateEventGroup(g)} />
+                                  ))}
+                                </div>
+                              )
+                            })()}
                           </div>
                         </div>
                       ))
@@ -204,13 +226,23 @@ export function MicrocycleEditor({
               >
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${getSessionTypeColor(session.type)}`} />
+                  {/* Subgroup dots alongside type dot (T021) */}
+                  {session.targetEventGroups && session.targetEventGroups.length > 0 && (() => {
+                    const unique = [...new Set(session.targetEventGroups!.flat())]
+                    return unique.slice(0, 3).map(g => (
+                      <div key={g} className="w-2 h-2 rounded-full bg-muted-foreground/40" title={abbreviateEventGroup(g)} />
+                    ))
+                  })()}
                   <span className="font-medium text-sm">{session.name}</span>
                   <span className="text-xs text-muted-foreground">Day {session.day}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>{session.duration}min</span>
-                  <span>Vol: {session.volume}</span>
-                  <span>Int: {session.intensity}</span>
+                  {session.duration > 0 && <span>{Math.round(session.duration / 60)}min</span>}
+                  {session.volume > 0 ? (
+                    <span>{session.volume} {session.volumeUnit ?? 'kg'}</span>
+                  ) : (
+                    <span>{'Vol: \u2014'}</span>
+                  )}
                 </div>
               </div>
             ))}

@@ -131,7 +131,6 @@ export async function saveSessionPlanAction(
       week: session.week,
       session_mode: planData.isTemplate ? 'template' : (planData.athleteGroupId ? 'group' : 'individual'),
       microcycle_id: planData.microcycleId || null,
-      athlete_group_id: planData.isTemplate ? null : (planData.athleteGroupId || null),
       user_id: planData.isTemplate ? null : dbUserId,
       is_template: planData.isTemplate || false
     }))
@@ -609,7 +608,7 @@ export async function deleteSessionPlanAction(
 }
 
 /**
- * Save a plan as a template (sets is_template = true, user_id = NULL, athlete_group_id = NULL)
+ * Save a plan as a template (sets is_template = true, user_id = NULL)
  */
 export async function saveAsTemplateAction(
   planData: CreateSessionPlanForm,
@@ -631,15 +630,18 @@ export async function saveAsTemplateAction(
     const dbUserId = await getDbUserId(userId)
 
     // Step 1: Batch insert all template sessions
-    const sessionInserts: SessionPlanInsert[] = planData.sessions.map(session => ({
-      name: session.name,
-      description: session.description,
+    // Use the coach-provided templateName for the first session (or all if only one).
+    // For multi-session templates, suffix subsequent sessions with their original name.
+    const sessionInserts: SessionPlanInsert[] = planData.sessions.map((session) => ({
+      name: planData.sessions.length === 1
+        ? templateName
+        : `${templateName} - ${session.name}`,
+      description: templateDescription ?? session.description,
       date: new Date().toISOString().split('T')[0],
       day: session.day,
       week: session.week,
       session_mode: 'template' as const,
       microcycle_id: null,
-      athlete_group_id: null,
       user_id: dbUserId, // Templates are owned by the creator
       is_template: true
     }))
@@ -755,6 +757,7 @@ export async function saveAsTemplateAction(
 
     revalidatePath('/plans', 'page')
     revalidatePath('/plans/[id]', 'page')
+    revalidatePath('/templates')
 
     return {
       isSuccess: true,
@@ -881,7 +884,6 @@ export async function createPlanFromTemplateAction(
       week: template.week,
       session_mode: newPlanData.athleteGroupId ? 'group' : 'individual',
       microcycle_id: newPlanData.microcycleId || null,
-      athlete_group_id: newPlanData.athleteGroupId || null,
       user_id: dbUserId,
       is_template: false // This is a real plan, not a template
     }
@@ -1090,7 +1092,6 @@ export async function copySessionAction(
       week: sourceSession.week,
       session_mode: sourceSession.session_mode,
       microcycle_id: targetMicrocycleId,
-      athlete_group_id: sourceSession.athlete_group_id,
       user_id: dbUserId,
       is_template: false
     }
@@ -1234,7 +1235,6 @@ export async function createSingleSessionAction(
       week: input.week || 1,
       session_mode: 'individual',
       microcycle_id: input.microcycleId,
-      athlete_group_id: null,
       user_id: dbUserId,
       is_template: false
     }
@@ -1268,4 +1268,185 @@ export async function createSingleSessionAction(
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
   }
-} 
+}
+
+// ============================================================================
+// INSERT TEMPLATE EXERCISES INTO EXISTING SESSION
+// ============================================================================
+
+/**
+ * Copy exercises (and their sets) from a template session into an existing target session.
+ * Exercises are appended after the current max exercise_order in the target.
+ * Returns the newly inserted exercises with their nested sets.
+ */
+export async function insertTemplateExercisesAction(
+  templateId: string,
+  targetSessionPlanId: string,
+  subgroupOverride?: { type: 'keep' | 'all' | 'specific'; value?: string }
+): Promise<ActionState<ExercisePreset[]>> {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return {
+        isSuccess: false,
+        message: "User not authenticated"
+      }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify user owns the target session plan
+    const { data: targetPlan } = await supabase
+      .from('session_plans')
+      .select('id, user_id')
+      .eq('id', targetSessionPlanId)
+      .single()
+
+    if (!targetPlan || targetPlan.user_id !== dbUserId) {
+      return { isSuccess: false, message: "Access denied: you don't own this session plan" }
+    }
+
+    // Verify user owns the source template
+    const { data: sourcePlan } = await supabase
+      .from('session_plans')
+      .select('id, user_id')
+      .eq('id', templateId)
+      .single()
+
+    if (!sourcePlan || sourcePlan.user_id !== dbUserId) {
+      return { isSuccess: false, message: "Access denied: template not found or not owned by you" }
+    }
+
+    // 1. Fetch template exercises with their sets
+    const { data: templateExercises, error: fetchError } = await supabase
+      .from('session_plan_exercises')
+      .select('*, session_plan_sets(*)')
+      .eq('session_plan_id', templateId)
+      .order('exercise_order', { ascending: true })
+
+    if (fetchError) {
+      console.error('Error fetching template exercises:', fetchError)
+      return {
+        isSuccess: false,
+        message: `Failed to fetch template exercises: ${fetchError.message}`
+      }
+    }
+
+    if (!templateExercises || templateExercises.length === 0) {
+      return {
+        isSuccess: false,
+        message: "Template has no exercises to insert"
+      }
+    }
+
+    // 2. Get current max exercise_order in the target session
+    const { data: existingExercises, error: orderError } = await supabase
+      .from('session_plan_exercises')
+      .select('exercise_order')
+      .eq('session_plan_id', targetSessionPlanId)
+      .order('exercise_order', { ascending: false })
+      .limit(1)
+
+    if (orderError) {
+      console.error('Error fetching existing exercise order:', orderError)
+      return {
+        isSuccess: false,
+        message: `Failed to check existing exercises: ${orderError.message}`
+      }
+    }
+
+    const maxOrder = existingExercises && existingExercises.length > 0
+      ? (existingExercises[0].exercise_order ?? 0)
+      : 0
+
+    // 3. Batch insert exercises into target session with offset order
+    // Apply subgroup override if provided
+    const resolveTargetGroups = (original: string[] | null): string[] | null => {
+      if (!subgroupOverride || subgroupOverride.type === 'keep') return original
+      if (subgroupOverride.type === 'all') return null
+      if (subgroupOverride.type === 'specific' && subgroupOverride.value) return [subgroupOverride.value]
+      return original
+    }
+
+    const exerciseInserts: ExercisePresetInsert[] = templateExercises.map((te, idx) => ({
+      session_plan_id: targetSessionPlanId,
+      exercise_id: te.exercise_id,
+      exercise_order: maxOrder + idx + 1,
+      notes: te.notes,
+      superset_id: te.superset_id,
+      target_event_groups: resolveTargetGroups(te.target_event_groups),
+    }))
+
+    const { data: insertedExercises, error: insertError } = await supabase
+      .from('session_plan_exercises')
+      .insert(exerciseInserts)
+      .select()
+
+    if (insertError || !insertedExercises) {
+      console.error('Error inserting template exercises:', insertError)
+      return {
+        isSuccess: false,
+        message: `Failed to insert exercises: ${insertError?.message}`
+      }
+    }
+
+    // 4. Copy sets for each inserted exercise
+    const setInserts: Array<Record<string, unknown>> = []
+
+    for (let i = 0; i < insertedExercises.length; i++) {
+      const newExercise = insertedExercises[i]
+      const templateExercise = templateExercises[i]
+      const templateSets = (templateExercise as any).session_plan_sets as SessionPlanSet[] | undefined
+
+      if (templateSets && templateSets.length > 0) {
+        for (const set of templateSets) {
+          setInserts.push({
+            session_plan_exercise_id: newExercise.id,
+            set_index: set.set_index,
+            reps: set.reps,
+            weight: set.weight,
+            distance: set.distance,
+            performing_time: set.performing_time,
+            power: set.power,
+            velocity: set.velocity,
+            resistance: set.resistance,
+            resistance_unit_id: set.resistance_unit_id,
+            tempo: set.tempo,
+            effort: set.effort,
+            rpe: set.rpe,
+            rest_time: set.rest_time,
+            height: set.height,
+            metadata: set.metadata,
+          })
+        }
+      }
+    }
+
+    if (setInserts.length > 0) {
+      const { error: setsError } = await supabase
+        .from('session_plan_sets')
+        .insert(setInserts)
+
+      if (setsError) {
+        console.error('Error copying template sets:', setsError)
+        // Exercises are already inserted; warn but don't fail
+      }
+    }
+
+    revalidatePath('/plans', 'page')
+    revalidatePath('/plans/[id]', 'page')
+
+    return {
+      isSuccess: true,
+      message: `Inserted ${insertedExercises.length} exercises from template`,
+      data: insertedExercises
+    }
+  } catch (error) {
+    console.error('Error in insertTemplateExercisesAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}

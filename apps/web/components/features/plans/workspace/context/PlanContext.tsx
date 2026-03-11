@@ -36,17 +36,15 @@ interface PlanData {
         id: string
         day: number
         name: string
-        type: 'speed' | 'strength' | 'recovery' | 'endurance'
+        type: 'speed' | 'strength' | 'recovery' | 'endurance' | 'power'
         duration: number
         volume: number
+        volumeUnit?: string
         intensity: number
-        exercises: Array<{
-          name: string
-          sets: number
-          reps: string
-          weight?: number
-          notes?: string
-        }>
+        exercises: unknown[]
+        exerciseNames?: string[]
+        exerciseSummaries?: string[]
+        targetEventGroups?: (string[])[]
       }>
     }>
   }>

@@ -481,6 +481,8 @@ export async function updateTrainingSessionStatusAction(
 
 /**
  * Start a training session (transition from assigned to ongoing)
+ * Copies session_plan_exercises into workout_log_exercises, filtering
+ * by the athlete's event_group vs each exercise's target_event_groups.
  */
 export async function startTrainingSessionAction(
   sessionId: string
@@ -521,6 +523,65 @@ export async function startTrainingSessionAction(
     if (error) {
       console.error('Error starting session:', error)
       return { isSuccess: false, message: "Failed to start session" }
+    }
+
+    // 5. Copy session_plan_exercises → workout_log_exercises (with event_group filtering)
+    // Only copy if workout_log_exercises don't already exist for this session
+    const { count: existingCount } = await supabase
+      .from('workout_log_exercises')
+      .select('id', { count: 'exact', head: true })
+      .eq('workout_log_id', session.id)
+
+    if ((existingCount ?? 0) === 0 && session.session_plan_id) {
+      // Fetch athlete's event_group and session_plan_exercises in parallel
+      const [athleteResult, exercisesResult] = await Promise.all([
+        supabase
+          .from('athletes')
+          .select('event_group')
+          .eq('user_id', dbUserId)
+          .single(),
+        supabase
+          .from('session_plan_exercises')
+          .select('id, exercise_id, exercise_order, superset_id, notes, target_event_groups')
+          .eq('session_plan_id', session.session_plan_id)
+          .order('exercise_order', { ascending: true })
+      ])
+
+      const athleteEventGroup = athleteResult.data?.event_group ?? null
+      const sessionPlanExercises = exercisesResult.data ?? []
+
+      // Filter exercises by target_event_groups:
+      // Include if: target_event_groups IS NULL (all athletes),
+      //             OR athlete's event_group IS NULL (no group = sees everything),
+      //             OR athlete's event_group is in target_event_groups
+      const filteredExercises = sessionPlanExercises.filter((spe) => {
+        if (!spe.target_event_groups || spe.target_event_groups.length === 0) return true
+        if (!athleteEventGroup) return true
+        return spe.target_event_groups.includes(athleteEventGroup)
+      })
+
+      // Create workout_log_exercises for filtered exercises
+      const workoutLogExercises = filteredExercises
+        .filter((spe) => spe.exercise_id !== null && spe.exercise_order !== null)
+        .map((spe) => ({
+          workout_log_id: session.id,
+          exercise_id: spe.exercise_id as number,
+          session_plan_exercise_id: spe.id,
+          exercise_order: spe.exercise_order as number,
+          superset_id: spe.superset_id,
+          notes: spe.notes
+        }))
+
+      if (workoutLogExercises.length > 0) {
+        const { error: insertError } = await supabase
+          .from('workout_log_exercises')
+          .insert(workoutLogExercises)
+
+        if (insertError) {
+          console.error('[startTrainingSessionAction] Error creating workout_log_exercises:', insertError)
+          // Non-fatal: session was started, exercises can be loaded from plan as fallback
+        }
+      }
     }
 
     revalidatePath('/workout', 'page')

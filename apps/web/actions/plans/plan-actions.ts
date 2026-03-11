@@ -290,12 +290,15 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
                 notes,
                 exercise_id,
                 superset_id,
+                target_event_groups,
                 exercise:exercises(
                   id,
                   name,
                   description,
-                  video_url
-                )
+                  video_url,
+                  exercise_type_id
+                ),
+                session_plan_sets(*)
               )
             )
           )
@@ -1516,7 +1519,6 @@ export async function copyMacrocycleAsTemplateAction(
                   week: presetGroup.week,
                   day: presetGroup.day,
                   microcycle_id: newMicrocycle.id,
-                  athlete_group_id: athleteGroupId || null,
                   user_id: dbUserId
                 }
 

@@ -98,6 +98,12 @@ export const createExerciseChangeRequestSchema = z.object({
     .transform(emptyToUndefined)
     .describe('Superset group ID if joining a superset'),
   notes: z.string().optional().transform(emptyToUndefined),
+  targetEventGroups: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Event groups this exercise targets. Omit or null for all athletes. E.g., ['SS'] or ['MS', 'LS']"
+    ),
   reasoning: z.string().describe('Why this exercise is being added'),
 })
 
@@ -133,6 +139,12 @@ export const updateExerciseChangeRequestSchema = z.object({
   exerciseOrder: z.number().int().optional().transform(emptyNumToUndefined),
   supersetId: z.string().optional().transform(emptyToUndefined),
   notes: z.string().optional().transform(emptyToUndefined),
+  targetEventGroups: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Event groups this exercise targets. Omit or null for all athletes. E.g., ['SS'] or ['MS', 'LS']"
+    ),
   reasoning: z.string().describe('Why this change is being made'),
 })
 

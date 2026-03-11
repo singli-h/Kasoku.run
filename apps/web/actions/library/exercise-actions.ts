@@ -849,7 +849,6 @@ export async function createSessionPlanAction(
       week: sessionData.week,
       day: sessionData.day,
       microcycle_id: microcycleId || null,
-      athlete_group_id: athleteGroupId || null,
       user_id: dbUserId
     }
 
@@ -908,8 +907,7 @@ export async function getSessionPlanByIdAction(
       .from('session_plans')
       .select(`
         *,
-        microcycle:microcycles(*),
-        athlete_group:athlete_groups(*)
+        microcycle:microcycles(*)
       `)
       .eq('id', id)
       .eq('deleted', false)
@@ -919,7 +917,7 @@ export async function getSessionPlanByIdAction(
       hasData: !!presetGroup, 
       error: sessionError ? { code: sessionError.code, message: sessionError.message } : null,
       sessionUserId: presetGroup?.user_id,
-      sessionGroupId: presetGroup?.athlete_group_id
+      sessionGroupId: presetGroup?.microcycle?.athlete_group_id
     })
 
     if (sessionError) {
@@ -962,13 +960,14 @@ export async function getSessionPlanByIdAction(
       // (athlete in the group or coach of the group)
       let hasGroupAccess = false
 
-      if (presetGroup.athlete_group_id) {
+      const groupId = presetGroup.microcycle?.athlete_group_id
+      if (groupId) {
         // Check if user is an athlete in this group
         const { data: athleteInGroup } = await supabase
           .from('athletes')
           .select('id')
           .eq('user_id', dbUserId)
-          .eq('athlete_group_id', presetGroup.athlete_group_id)
+          .eq('athlete_group_id', groupId)
           .maybeSingle()
 
         if (athleteInGroup) {
@@ -985,7 +984,7 @@ export async function getSessionPlanByIdAction(
             const { data: groupCoach } = await supabase
               .from('athlete_groups')
               .select('id')
-              .eq('id', presetGroup.athlete_group_id)
+              .eq('id', groupId)
               .eq('coach_id', coachOfGroup.id)
               .maybeSingle()
 
@@ -999,7 +998,7 @@ export async function getSessionPlanByIdAction(
           userId: dbUserId,
           sessionUserId: presetGroup.user_id,
           isTemplate,
-          athleteGroupId: presetGroup.athlete_group_id
+          athleteGroupId: presetGroup.microcycle?.athlete_group_id
         })
         return {
           isSuccess: false,
@@ -1476,7 +1475,6 @@ export async function copySessionWithAdaptationsAction(
       week: originalSession.week,
       day: originalSession.day,
       microcycle_id: originalSession.microcycle_id,
-      athlete_group_id: originalSession.athlete_group_id,
       user_id: dbUserId
     }
 

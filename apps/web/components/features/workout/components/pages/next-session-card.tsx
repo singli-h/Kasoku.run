@@ -36,7 +36,8 @@ export function NextSessionCard({ session, onStart, onSkip, isLoading = false, i
   const presetGroup = session.session_plan
   if (!presetGroup) return null
 
-  const exerciseCount = presetGroup.session_plan_exercises?.length || 0
+  // Prefer workout_log_exercises count (filtered for athlete) over session_plan_exercises (unfiltered)
+  const exerciseCount = (session as any).workout_log_exercises?.length || presetGroup.session_plan_exercises?.length || 0
   const sessionDate = session.date_time ? new Date(session.date_time) : presetGroup.date ? new Date(presetGroup.date) : null
 
   return (

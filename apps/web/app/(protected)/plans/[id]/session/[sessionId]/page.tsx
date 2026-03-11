@@ -49,6 +49,7 @@ function transformSessionData(backendData: any): {
     session_mode?: string | null
   }
   exercises: SessionPlannerExercise[]
+  groupId: number | null
 } {
   const session = {
     id: String(backendData.id),
@@ -69,6 +70,7 @@ function transformSessionData(backendData: any): {
     exercise_order: exerciseRecord.exercise_order,
     superset_id: exerciseRecord.superset_id,
     notes: exerciseRecord.notes,
+    target_event_groups: exerciseRecord.target_event_groups ?? null,
     exercise: exerciseRecord.exercise ? {
       id: exerciseRecord.exercise.id,
       name: exerciseRecord.exercise.name,
@@ -103,7 +105,9 @@ function transformSessionData(backendData: any): {
     isEditing: false,
   }))
 
-  return { session, exercises }
+  const groupId: number | null = backendData.microcycle?.athlete_group_id ?? null
+
+  return { session, exercises, groupId }
 }
 
 export default async function SessionPlannerRoute({ params }: PageProps) {
@@ -128,7 +132,7 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
   }
 
   // Transform session data to client format
-  const { session, exercises } = transformSessionData(sessionResult.data)
+  const { session, exercises, groupId } = transformSessionData(sessionResult.data)
 
   return (
     <SessionAssistantWrapper
@@ -148,6 +152,7 @@ export default async function SessionPlannerRoute({ params }: PageProps) {
           sessionId={sessionId}
           initialSession={session}
           exerciseLibrary={[]} // Empty - uses server-side search in picker
+          groupId={groupId}
         />
       </Suspense>
     </SessionAssistantWrapper>

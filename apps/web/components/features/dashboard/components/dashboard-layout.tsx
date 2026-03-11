@@ -8,11 +8,12 @@ Pre-fetches active workout data for instant navigation.
 
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import Link from "next/link"
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow, startOfWeek, format } from "date-fns"
 import { ChevronRight, Dumbbell, TrendingUp, Flame, BookOpen, Calendar, AlertTriangle } from "lucide-react"
 import type { DashboardData, RecentSession } from "../types/dashboard-types"
+import { WeekCalendarStrip } from "./week-calendar-strip"
 import { useWorkoutCache } from "@/components/features/workout/hooks/use-workout-queries"
 import { isOverdue } from "@/components/composed/workout-session-status-badge"
 
@@ -43,6 +44,12 @@ function AthleteDashboardView({ data }: { data: DashboardData }) {
   )
   const { stats } = data
 
+  // Compute initial weekStart (Monday of current week)
+  const initialWeekStart = useMemo(
+    () => format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+    []
+  )
+
   return (
     <div className="flex flex-col divide-y divide-border">
       {/* Primary Action: Today's Workout */}
@@ -57,6 +64,11 @@ function AthleteDashboardView({ data }: { data: DashboardData }) {
       {/* Inline Stats Row */}
       <section className="py-4">
         <InlineStats stats={stats} />
+      </section>
+
+      {/* Week Calendar */}
+      <section className="py-4">
+        <WeekCalendarStrip initialWeekStart={initialWeekStart} />
       </section>
 
       {/* Quick Actions */}
