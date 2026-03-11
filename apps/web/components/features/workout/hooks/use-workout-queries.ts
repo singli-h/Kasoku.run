@@ -297,9 +297,31 @@ export function useSessionMutations() {
 export function useWorkoutPrefetch() {
   const queryClient = useQueryClient()
 
+  // Prefetch today's sessions so the workout page loads instantly
+  const prefetchSessionsToday = useCallback(() => {
+    queryClient.prefetchQuery({
+      queryKey: WORKOUT_QUERY_KEYS.SESSIONS_TODAY,
+      queryFn: async () => {
+        const result = await getTodayAndOngoingSessionsAction()
+        if (!result.isSuccess) {
+          throw new Error(result.message)
+        }
+        return result.data
+      },
+      staleTime: STALE_TIMES.SESSIONS_TODAY,
+    })
+  }, [queryClient])
+
   const prefetchSessionDetails = useCallback((sessionId: string) => {
     queryClient.prefetchQuery({
       queryKey: WORKOUT_QUERY_KEYS.SESSION_DETAILS(sessionId),
+      queryFn: async () => {
+        const result = await getWorkoutSessionByIdAction(sessionId)
+        if (!result.isSuccess) {
+          throw new Error(result.message)
+        }
+        return result.data
+      },
       staleTime: STALE_TIMES.SESSION_DETAILS,
     })
   }, [queryClient])
@@ -307,6 +329,19 @@ export function useWorkoutPrefetch() {
   const prefetchNextHistoryPage = useCallback((currentPage: number, filters: SessionFilters) => {
     queryClient.prefetchQuery({
       queryKey: WORKOUT_QUERY_KEYS.SESSIONS_HISTORY(currentPage + 1, filters),
+      queryFn: async () => {
+        const result = await getPastSessionsAction(
+          undefined,
+          currentPage + 1,
+          filters.limit,
+          filters.startDate,
+          filters.endDate
+        )
+        if (!result.isSuccess) {
+          throw new Error(result.message)
+        }
+        return result.data
+      },
       staleTime: STALE_TIMES.SESSIONS_HISTORY,
     })
   }, [queryClient])
@@ -319,6 +354,7 @@ export function useWorkoutPrefetch() {
   }, [queryClient])
 
   return {
+    prefetchSessionsToday,
     prefetchSessionDetails,
     prefetchNextHistoryPage,
     prefetchExerciseDetails,

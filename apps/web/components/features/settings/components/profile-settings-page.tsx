@@ -719,25 +719,27 @@ export function ProfileSettingsPage() {
     }
   }
 
-  // Loading state
+  // Loading state — lightweight inline skeleton (route-level loading.tsx handles full page)
   if (!clerkLoaded || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-4"
-        >
-          <div className="relative">
-            <div className="w-16 h-16 rounded-full border-4 border-border" />
-            <motion.div
-              className="absolute inset-0 w-16 h-16 rounded-full border-4 border-primary border-t-transparent"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            />
+      <div className="max-w-5xl mx-auto space-y-8">
+        {/* Profile header skeleton */}
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-muted animate-pulse" />
+          <div className="space-y-2">
+            <div className="h-5 w-40 bg-muted animate-pulse rounded" />
+            <div className="h-4 w-56 bg-muted animate-pulse rounded" />
           </div>
-          <p className="text-sm text-muted-foreground">Loading your profile...</p>
-        </motion.div>
+        </div>
+        {/* Form fields skeleton */}
+        <div className="space-y-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+              <div className="h-10 w-full bg-muted animate-pulse rounded-md" />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }

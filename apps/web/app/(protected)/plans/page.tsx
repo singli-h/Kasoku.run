@@ -1,8 +1,22 @@
 import { Suspense } from "react"
 import { PlansHome, IndividualPlansHome } from "@/components/features/plans"
-import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
+import { PageLayout } from "@/components/layout"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { ActiveBlockBanner } from "@/components/features/plans/home/ActiveBlockBanner"
+
+/** Lightweight inline skeleton for streaming fallback (route-level loading.tsx handles full page) */
+function PlansContentSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default async function PlansPage({
   searchParams,
@@ -21,7 +35,7 @@ export default async function PlansPage({
     return (
       <>
         {showActiveBlockError && <ActiveBlockBanner />}
-        <Suspense fallback={<UnifiedPageSkeleton title="Training" variant="plans" />}>
+        <Suspense fallback={<PlansContentSkeleton />}>
           <IndividualPlansHome />
         </Suspense>
       </>
@@ -34,7 +48,7 @@ export default async function PlansPage({
       title="Training Plans"
       description="View and manage your macrocycles with race-anchored timelines"
     >
-      <Suspense fallback={<UnifiedPageSkeleton title="Training Plans" variant="plans" />}>
+      <Suspense fallback={<PlansContentSkeleton />}>
         <PlansHome />
       </Suspense>
     </PageLayout>

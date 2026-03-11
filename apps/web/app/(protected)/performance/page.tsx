@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
+import { PageLayout } from "@/components/layout"
 import { Timer, Dumbbell, Trophy } from "lucide-react"
 
 // Dynamically import each dashboard to code-split per tab.
@@ -19,7 +19,7 @@ const GymAnalyticsDashboard = dynamic(
     import("@/components/features/performance/components/gym/GymAnalyticsDashboard").then(
       (mod) => mod.GymAnalyticsDashboard
     ),
-  { loading: () => <UnifiedPageSkeleton title="Gym Analytics" variant="dashboard" /> }
+  { loading: () => <div className="space-y-6"><div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />)}</div><div className="h-80 rounded-lg bg-muted animate-pulse" /><div className="h-64 rounded-lg bg-muted animate-pulse" /></div> }
 )
 
 const RaceResultsDashboard = dynamic(
@@ -27,7 +27,7 @@ const RaceResultsDashboard = dynamic(
     import("@/components/features/performance/components/race/RaceResultsDashboard").then(
       (mod) => mod.RaceResultsDashboard
     ),
-  { loading: () => <UnifiedPageSkeleton title="Race Results" variant="dashboard" /> }
+  { loading: () => <div className="space-y-6"><div className="h-8 w-48 bg-muted animate-pulse rounded" /><div className="h-[400px] bg-muted animate-pulse rounded-lg" /></div> }
 )
 
 export default function PerformancePage() {

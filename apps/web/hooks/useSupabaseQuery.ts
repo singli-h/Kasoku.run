@@ -8,6 +8,29 @@ import { getCurrentUserAction } from '@/actions/auth/user-actions'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 
+// Module-level promise deduplication for getCurrentUserAction
+let cachedUserPromise: Promise<any> | null = null
+let cachedUserPromiseTimestamp = 0
+const USER_CACHE_TTL = 30 * 1000 // 30 seconds
+
+/** Clear the module-level user cache (call on sign-out to prevent stale data) */
+export function clearUserCache() {
+  cachedUserPromise = null
+  cachedUserPromiseTimestamp = 0
+}
+
+function getUser(userContextFn: () => Promise<any>): Promise<any> {
+  const now = Date.now()
+  if (!cachedUserPromise || now - cachedUserPromiseTimestamp > USER_CACHE_TTL) {
+    cachedUserPromiseTimestamp = now
+    cachedUserPromise = userContextFn().catch(err => {
+      cachedUserPromise = null // clear on error so next call retries
+      throw err
+    })
+  }
+  return cachedUserPromise
+}
+
 /**
  * Specific error types for better error handling and UX
  */
@@ -79,8 +102,8 @@ export function useSupabaseQuery<T>(
         // Create Supabase client for this request
         const supabase = createClientSupabaseClient(getToken)
         
-        // Get user context using configurable function
-        const userResult = await userContextFn()
+        // Get user context using configurable function (deduplicated)
+        const userResult = await getUser(userContextFn)
         
         if (!userResult.isSuccess || !userResult.data?.id) {
           throw new SupabaseQueryError(

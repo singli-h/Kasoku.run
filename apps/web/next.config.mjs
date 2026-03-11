@@ -27,6 +27,9 @@ const nextConfig = {
   compiler: {
     styledJsx: false,
   },
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion', '@radix-ui/react-icons', 'date-fns'],
+  },
   // Performance optimizations
   compress: true,
   poweredByHeader: false,

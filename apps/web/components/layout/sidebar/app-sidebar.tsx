@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/sidebar"
 import { NavSection } from "./nav-main"
 import { useUserRole, type UserRole } from "@/contexts/user-role-context"
+import { useWorkoutPrefetch } from "@/components/features/workout/hooks/use-workout-queries"
 
 // Base navigation item definition with role visibility
 interface NavItemDef {
@@ -181,6 +182,12 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const { role, isLoading } = useUserRole()
+  const { prefetchSessionsToday } = useWorkoutPrefetch()
+
+  // Prefetch today's workout sessions on mount so the workout page loads instantly
+  React.useEffect(() => {
+    prefetchSessionsToday()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build navigation sections based on user role
   const sections = React.useMemo(() => {

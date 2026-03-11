@@ -1459,7 +1459,8 @@ export interface CreateTemplateInput {
   name: string
   description?: string
   exercises: Array<{
-    exerciseName: string
+    exerciseId?: number    // Direct ID from picker — skip name matching when present
+    exerciseName: string   // Still required for display/fallback
     sets: Array<{
       reps: number | null
       weight: number | null
@@ -1518,26 +1519,28 @@ export async function createTemplateAction(
 
     // Step 2: Look up exercises by name and create session_plan_exercises + sets
     if (input.exercises.length > 0) {
-      // Fetch all exercises and build a lookup map for case-insensitive name matching
-      const { data: foundExercises, error: lookupError } = await supabase
-        .from('exercises')
-        .select('id, name')
+      // Only fetch exercise names if some entries need name-based matching
+      const needsNameLookup = input.exercises.some(e => !e.exerciseId)
+      let nameToId = new Map<string, number>()
 
-      if (lookupError) {
-        console.error('Error looking up exercises:', lookupError)
-        // Template is created but empty — still a success
-        revalidatePath('/templates')
-        return {
-          isSuccess: true,
-          message: "Template created but could not look up exercises",
-          data: sessionPlan,
+      if (needsNameLookup) {
+        const { data: foundExercises, error: lookupError } = await supabase
+          .from('exercises')
+          .select('id, name')
+
+        if (lookupError) {
+          console.error('Error looking up exercises:', lookupError)
+          revalidatePath('/templates')
+          return {
+            isSuccess: true,
+            message: "Template created but could not look up exercises",
+            data: sessionPlan,
+          }
         }
-      }
 
-      // Build a case-insensitive name → id map
-      const nameToId = new Map<string, number>()
-      for (const ex of foundExercises || []) {
-        if (ex.name) nameToId.set(ex.name.toLowerCase(), ex.id)
+        for (const ex of foundExercises || []) {
+          if (ex.name) nameToId.set(ex.name.toLowerCase(), ex.id)
+        }
       }
 
       // Build exercise inserts (skip unmatched names)
@@ -1546,14 +1549,15 @@ export async function createTemplateAction(
 
       for (let i = 0; i < input.exercises.length; i++) {
         const exercise = input.exercises[i]
-        const exerciseId = nameToId.get(exercise.exerciseName.trim().toLowerCase())
+        // Use direct ID if provided (from picker), otherwise fall back to name matching
+        const resolvedId = exercise.exerciseId ?? nameToId.get(exercise.exerciseName.trim().toLowerCase())
 
-        if (!exerciseId) continue // Skip exercises not in the library
+        if (!resolvedId) continue // Skip exercises not in the library
 
         exerciseInserts.push({
           session_plan_id: sessionPlan.id,
-          exercise_id: exerciseId,
-          exercise_order: i + 1,
+          exercise_id: resolvedId,
+          exercise_order: exerciseInserts.length + 1,
           notes: null,
           superset_id: null,
         })

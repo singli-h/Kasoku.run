@@ -9,7 +9,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { UnifiedPageSkeleton } from "@/components/layout"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
 // Server Actions
@@ -106,8 +105,18 @@ export function LeanAthleteManagementPage() {
     setSelectedAthletes([])
   }, [])
 
+  // Content-area-only loading (route-level loading.tsx handles the full page skeleton)
   if (loading) {
-    return <UnifiedPageSkeleton title="Athletes" variant="athletes" />
+    return (
+      <div className="space-y-6">
+        <div className="h-10 w-48 bg-muted animate-pulse rounded" />
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   // Get filtered count for mobile bulk action bar

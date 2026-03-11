@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import { TrainingPlanWorkspace } from "@/components/features/plans/workspace/TrainingPlanWorkspace"
 import { CoachPlanPageWithAI } from "@/components/features/plans/coach-workspace/CoachPlanPageWithAI"
 import { IndividualPlanPageWithAI } from "@/components/features/plans/individual"
-import { UnifiedPageSkeleton, PageLayout } from "@/components/layout"
+import { PageLayout } from "@/components/layout"
 import { getMacrocycleByIdAction, getMesocycleByIdAction, getUserMesocyclesAction } from "@/actions/plans/plan-actions"
 import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
 import { getExercisesAction } from "@/actions/library/exercise-actions"
@@ -121,7 +121,7 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
 
     return (
       <FeatureErrorBoundary featureName="Training Block" customMessage="Something went wrong while loading your training block. Please try again.">
-        <Suspense fallback={<UnifiedPageSkeleton title="Training Block" variant="grid" />}>
+        <Suspense fallback={<div className="space-y-6 p-6"><div className="h-8 w-48 bg-muted animate-pulse rounded" /><div className="h-[400px] bg-muted animate-pulse rounded-lg" /></div>}>
           <IndividualPlanPageWithAI
             trainingBlock={mesocycleResult.data as MesocycleWithDetails}
             otherBlocks={otherBlocks}
@@ -264,7 +264,7 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
 
   return (
     <FeatureErrorBoundary featureName="Training Plan" customMessage="Something went wrong while loading your training plan. Please try again.">
-      <Suspense fallback={<UnifiedPageSkeleton title="Training Plan" variant="grid" />}>
+      <Suspense fallback={<div className="space-y-6 p-6"><div className="h-8 w-48 bg-muted animate-pulse rounded" /><div className="h-[400px] bg-muted animate-pulse rounded-lg" /></div>}>
         <CoachPlanPageWithAI initialPlan={planData} coachGroups={coachGroups} />
       </Suspense>
     </FeatureErrorBoundary>

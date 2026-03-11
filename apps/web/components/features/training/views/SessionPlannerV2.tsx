@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Undo2, Redo2, Save, Edit2, Calendar, Check, X, Copy, FolderOpen, ClipboardPaste, Loader2, Search, MoreHorizontal } from "lucide-react"
+import { ArrowLeft, Undo2, Redo2, Save, Edit2, Calendar, Check, X, Copy, FolderOpen, Loader2, Search, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -79,10 +79,6 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
-
-// Import PasteProgramDialog
-import { PasteProgramDialog } from "../components/PasteProgramDialog"
-import type { ParsedExercise } from "@/actions/plans/ai-parse-session-action"
 
 // Import subgroup formatting utilities
 import { formatSubgroupChip } from "@/lib/training-utils"
@@ -181,9 +177,6 @@ export function SessionPlannerV2({
   const [isInsertingTemplate, setIsInsertingTemplate] = useState(false)
   // Per-template subgroup override selections: templateId -> override value
   const [templateSubgroupOverrides, setTemplateSubgroupOverrides] = useState<Record<string, string>>({})
-
-  // Paste Program state (T045)
-  const [pasteProgramOpen, setPasteProgramOpen] = useState(false)
 
   // Start editing session metadata
   const startEditingMeta = useCallback(() => {
@@ -694,62 +687,6 @@ export function SessionPlannerV2({
     )
   }, [templates, templateSearch])
 
-  // T045: Paste Program handler — converts ParsedExercise[] to SessionPlannerExercise[]
-  const handleParsedExercises = useCallback((parsed: ParsedExercise[]) => {
-    setExercises((prev) => {
-      const maxOrder = Math.max(0, ...prev.map((e) => e.exercise_order))
-      const timestamp = Date.now()
-
-      const newExercises: SessionPlannerExercise[] = parsed.map((ex, idx) => {
-        const counter = ++idCounterRef.current
-        const exerciseId = `new_${timestamp}_${counter}`
-
-        return {
-          id: exerciseId,
-          session_plan_id: sessionId,
-          // exercise_id 0 = placeholder for unmatched exercises (user should match after insert)
-          exercise_id: 0,
-          exercise_order: maxOrder + idx + 1,
-          notes: ex.notes ?? null,
-          target_event_groups: ex.targetEventGroups ?? null,
-          isCollapsed: false,
-          isEditing: false,
-          validationErrors: [],
-          exercise: {
-            id: 0,
-            name: ex.exerciseName,
-            description: undefined,
-            exercise_type: { type: 'Other' },
-          },
-          sets: ex.sets.map((s, setIdx) => {
-            const setCounter = ++idCounterRef.current
-            return {
-              id: `new_set_${timestamp}_${setCounter}`,
-              session_plan_exercise_id: '',
-              set_index: setIdx + 1,
-              reps: s.reps ?? null,
-              weight: s.weight ?? null,
-              distance: s.distance ?? null,
-              performing_time: s.performing_time ?? null,
-              rest_time: s.rest_time ?? null,
-              tempo: null,
-              rpe: s.rpe ?? null,
-              completed: false,
-              isEditing: false,
-            }
-          }),
-        }
-      })
-
-      return [...prev, ...newExercises]
-    })
-
-    toast({
-      title: "Exercises Inserted",
-      description: `${parsed.length} exercise${parsed.length !== 1 ? 's' : ''} added from pasted program.`,
-    })
-  }, [sessionId, setExercises, toast])
-
   return (
     <div className={cn("flex flex-col h-full", className)}>
       {/* Header with back, undo/redo, save */}
@@ -790,10 +727,6 @@ export function SessionPlannerV2({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setPasteProgramOpen(true)}>
-                  <ClipboardPaste className="h-4 w-4 mr-2" />
-                  Paste Program
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleOpenInsertTemplate}>
                   <FolderOpen className="h-4 w-4 mr-2" />
                   Insert from Template
@@ -1131,12 +1064,6 @@ export function SessionPlannerV2({
         </SheetContent>
       </Sheet>
 
-      {/* T045: Paste Program dialog */}
-      <PasteProgramDialog
-        open={pasteProgramOpen}
-        onOpenChange={setPasteProgramOpen}
-        onExercisesParsed={handleParsedExercises}
-      />
     </div>
   )
 }

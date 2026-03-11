@@ -6,7 +6,15 @@ import { ArrowLeft, Calendar, FileText, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArticleEditor } from "../editor/article-editor"
+import dynamic from "next/dynamic"
+
+const ArticleEditor = dynamic(
+  () => import("../editor/article-editor").then((mod) => mod.ArticleEditor),
+  {
+    ssr: false,
+    loading: () => <div className="animate-pulse h-[600px] bg-muted rounded-lg" />,
+  }
+)
 import { KeyboardShortcuts } from "../components/keyboard-shortcuts"
 import { TipTapContent } from '@/types/tiptap'
 import { Json } from '@/types/database'
