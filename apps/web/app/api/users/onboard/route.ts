@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const validatedData = validationResult.data
+    const validatedData = { ...validationResult.data, clerkId: userId }
 
     // Call the server action
     const result = await completeOnboardingAction(validatedData)

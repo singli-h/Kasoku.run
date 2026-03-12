@@ -51,9 +51,15 @@ Deno.serve(async (req: Request) => {
   try {
     // Verify request is from pg_cron or authorized source via service role key
     const authHeader = req.headers.get('Authorization')
-    const token = authHeader?.replace('Bearer ', '') ?? ''
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : ''
 
-    if (token !== supabaseServiceKey) {
+    // Use constant-time comparison to prevent timing attacks
+    const encoder = new TextEncoder()
+    const tokenBytes = encoder.encode(token)
+    const keyBytes = encoder.encode(supabaseServiceKey)
+
+    if (tokenBytes.byteLength !== keyBytes.byteLength ||
+        !crypto.subtle.timingSafeEqual(tokenBytes, keyBytes)) {
       console.log('[send-workout-reminders] Unauthorized request rejected')
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),

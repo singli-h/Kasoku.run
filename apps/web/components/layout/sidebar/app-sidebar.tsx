@@ -146,11 +146,11 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
     },
   ],
 
-  // Athlete: Training focus with program view (assigned by coach)
+  // Athlete: Training focus (dashboard + workout cover assigned sessions)
   athlete: [
     {
       label: "Training",
-      items: ["workout", "program", "performance"],
+      items: ["workout", /* "program", */ "performance"],
     },
     {
       label: "Resources",
