@@ -161,6 +161,7 @@ export function LeanAthleteManagementPage() {
       {!isMobile && (
         <GroupDirectorySection
           groups={groups}
+          athletes={athletes}
           selectedGroupFilter={selectedGroupFilter}
           onGroupFilterChange={setSelectedGroupFilter}
           onDataReload={loadData}

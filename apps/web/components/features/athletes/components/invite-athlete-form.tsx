@@ -74,48 +74,59 @@ export function InviteAthleteForm({ groups, onSuccess, className }: InviteAthlet
     }
   }
 
+  const noGroups = groups.length === 0
+
   return (
-    <div className={`flex flex-col sm:flex-row gap-2 min-w-0 sm:min-w-[400px] ${className}`}>
-      <div className="flex-1">
-        <Input
-          placeholder="Enter email to invite..."
-          value={inviteEmail}
-          onChange={(e) => setInviteEmail(e.target.value)}
-          type="email"
-        />
+    <div className={className}>
+      {noGroups && (
+        <p className="text-sm text-muted-foreground mb-2">
+          Create a group first to start inviting athletes.
+        </p>
+      )}
+      <div className="flex flex-col sm:flex-row gap-2 min-w-0 sm:min-w-[400px]">
+        <div className="flex-1">
+          <Input
+            placeholder="Enter email to invite..."
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            type="email"
+            disabled={noGroups}
+          />
+        </div>
+        <Select
+          value={inviteGroupId?.toString() || ""}
+          onValueChange={(value) => setInviteGroupId(value ? parseInt(value) : null)}
+          disabled={noGroups}
+        >
+          <SelectTrigger className="w-full sm:w-[160px]">
+            <SelectValue placeholder={noGroups ? "No groups — create one first" : "Select group"} />
+          </SelectTrigger>
+          <SelectContent>
+            {groups.map(group => (
+              <SelectItem key={group.id} value={group.id.toString()}>
+                {group.group_name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          onClick={handleInviteAthlete}
+          disabled={noGroups || isInviting || !inviteEmail || !inviteGroupId}
+          className="whitespace-nowrap"
+        >
+          {isInviting ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+              Inviting...
+            </>
+          ) : (
+            <>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite
+            </>
+          )}
+        </Button>
       </div>
-      <Select
-        value={inviteGroupId?.toString() || ""}
-        onValueChange={(value) => setInviteGroupId(value ? parseInt(value) : null)}
-      >
-        <SelectTrigger className="w-full sm:w-[160px]">
-          <SelectValue placeholder="Select group" />
-        </SelectTrigger>
-        <SelectContent>
-          {groups.map(group => (
-            <SelectItem key={group.id} value={group.id.toString()}>
-              {group.group_name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button 
-        onClick={handleInviteAthlete}
-        disabled={isInviting || !inviteEmail || !inviteGroupId}
-        className="whitespace-nowrap"
-      >
-        {isInviting ? (
-          <>
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-            Inviting...
-          </>
-        ) : (
-          <>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Invite
-          </>
-        )}
-      </Button>
     </div>
   )
 }

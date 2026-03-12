@@ -46,14 +46,30 @@ import type { GroupWithCount } from "../types"
 
 interface GroupDirectorySectionProps {
   groups: GroupWithCount[]
+  athletes?: Array<{ athlete_group_id: number | null; event_group?: string | null }>
   selectedGroupFilter: number | null
   onGroupFilterChange: (groupId: number | null) => void
   onDataReload: () => void
   className?: string
 }
 
+/** Compute event group breakdown for a given athlete group */
+function getEventGroupBreakdown(
+  groupId: number,
+  athletes: Array<{ athlete_group_id: number | null; event_group?: string | null }>
+): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const a of athletes) {
+    if (a.athlete_group_id === groupId && a.event_group) {
+      counts[a.event_group] = (counts[a.event_group] || 0) + 1
+    }
+  }
+  return counts
+}
+
 export function GroupDirectorySection({
   groups,
+  athletes,
   selectedGroupFilter,
   onGroupFilterChange,
   onDataReload,
@@ -259,6 +275,16 @@ export function GroupDirectorySection({
                           {group.athlete_count}
                         </Badge>
                       </div>
+                      {athletes && (() => {
+                        const breakdown = getEventGroupBreakdown(group.id, athletes)
+                        const entries = Object.entries(breakdown).sort((a, b) => b[1] - a[1])
+                        if (entries.length === 0) return null
+                        return (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {entries.map(([eg, count]) => `${eg}: ${count}`).join(", ")}
+                          </p>
+                        )
+                      })()}
                     </CardContent>
                   </Card>
                 </motion.div>

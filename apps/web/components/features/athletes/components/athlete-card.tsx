@@ -262,7 +262,7 @@ export function AthleteCard({
                         onChange={(e) => setCustomEventGroup(e.target.value)}
                         placeholder="Custom..."
                         className="h-7 text-xs"
-                        maxLength={50}
+                        maxLength={3}
                         disabled={savingEventGroup}
                       />
                       <Button type="submit" size="sm" className="h-7 px-2 text-xs" disabled={savingEventGroup || !customEventGroup.trim()}>
