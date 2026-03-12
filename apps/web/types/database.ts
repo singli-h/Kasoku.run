@@ -201,6 +201,38 @@ export type Database = {
           },
         ]
       }
+      event_groups: {
+        Row: {
+          id: number
+          coach_id: number
+          name: string
+          abbreviation: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: number
+          coach_id: number
+          name: string
+          abbreviation: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: number
+          coach_id?: number
+          name?: string
+          abbreviation?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_groups_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athlete_personal_bests: {
         Row: {
           achieved_date: string

@@ -21,7 +21,6 @@ import {
   BookOpen,
   PlayCircle,
   FileText,
-  ClipboardList,
   Copy,
   type LucideIcon
 } from "lucide-react"
@@ -92,12 +91,6 @@ const allNavItems: Record<string, NavItemDef> = {
     icon: PlayCircle,
     visibleTo: ['coach'],
   },
-  program: {
-    title: "My Program",
-    url: "/program",
-    icon: ClipboardList,
-    visibleTo: ['athlete'],
-  },
   templates: {
     title: "Templates",
     url: "/templates",
@@ -150,7 +143,7 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
   athlete: [
     {
       label: "Training",
-      items: ["workout", /* "program", */ "performance"],
+      items: ["workout", "performance"],
     },
     {
       label: "Resources",

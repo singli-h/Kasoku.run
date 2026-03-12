@@ -19,19 +19,21 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { inviteOrAttachAthleteAction } from "@/actions/athletes/athlete-actions"
-import type { GroupWithCount } from "../types"
+import type { GroupWithCount, EventGroup } from "../types"
 
 interface InviteAthleteFormProps {
   groups: GroupWithCount[]
+  eventGroups?: EventGroup[]
   onSuccess: () => void
   className?: string
 }
 
-export function InviteAthleteForm({ groups, onSuccess, className }: InviteAthleteFormProps) {
+export function InviteAthleteForm({ groups, eventGroups, onSuccess, className }: InviteAthleteFormProps) {
   const { toast } = useToast()
-  
+
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteGroupId, setInviteGroupId] = useState<number | null>(null)
+  const [inviteEventGroup, setInviteEventGroup] = useState<string>("")
   const [isInviting, setIsInviting] = useState(false)
 
   const handleInviteAthlete = async () => {
@@ -46,8 +48,12 @@ export function InviteAthleteForm({ groups, onSuccess, className }: InviteAthlet
 
     setIsInviting(true)
     try {
-      const result = await inviteOrAttachAthleteAction(inviteEmail, inviteGroupId)
-      
+      const result = await inviteOrAttachAthleteAction(
+        inviteEmail,
+        inviteGroupId,
+        inviteEventGroup && inviteEventGroup !== "none" ? inviteEventGroup : undefined
+      )
+
       if (result.isSuccess) {
         toast({
           title: "Success",
@@ -55,6 +61,7 @@ export function InviteAthleteForm({ groups, onSuccess, className }: InviteAthlet
         })
         setInviteEmail("")
         setInviteGroupId(null)
+        setInviteEventGroup("")
         onSuccess() // Reload data
       } else {
         toast({
@@ -109,6 +116,25 @@ export function InviteAthleteForm({ groups, onSuccess, className }: InviteAthlet
             ))}
           </SelectContent>
         </Select>
+        {eventGroups && eventGroups.length > 0 && (
+          <Select
+            value={inviteEventGroup}
+            onValueChange={setInviteEventGroup}
+            disabled={noGroups}
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Event group (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No event group</SelectItem>
+              {eventGroups.map(eg => (
+                <SelectItem key={eg.id} value={eg.abbreviation}>
+                  {eg.abbreviation} — {eg.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Button
           onClick={handleInviteAthlete}
           disabled={noGroups || isInviting || !inviteEmail || !inviteGroupId}

@@ -1473,7 +1473,8 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
  */
 export async function inviteOrAttachAthleteAction(
   email: string,
-  groupId: number
+  groupId: number,
+  eventGroup?: string
 ): Promise<ActionState<{ type: 'attached' | 'invited', athlete?: Athlete }>> {
   try {
     const { userId } = await auth()
@@ -1525,6 +1526,20 @@ export async function inviteOrAttachAthleteAction(
       return {
         isSuccess: false,
         message: "Group not found or you don't have permission"
+      }
+    }
+
+    // Validate eventGroup against coach's defined event groups
+    if (eventGroup) {
+      const { data: validEg } = await supabase
+        .from('event_groups')
+        .select('id')
+        .eq('coach_id', (user.coach as { id: number }).id)
+        .eq('abbreviation', eventGroup)
+        .single()
+
+      if (!validEg) {
+        return { isSuccess: false, message: 'Invalid event group' }
       }
     }
 
@@ -1591,7 +1606,8 @@ export async function inviteOrAttachAthleteAction(
           .from('athletes')
           .insert({
             user_id: user_id,
-            athlete_group_id: groupId
+            athlete_group_id: groupId,
+            ...(eventGroup ? { event_group: eventGroup } : {})
           })
           .select()
           .single()
@@ -1622,7 +1638,10 @@ export async function inviteOrAttachAthleteAction(
         // Uses service client to bypass RLS (coach already verified above)
         const { data: updatedAthlete, error: updateError } = await supabaseService
           .from('athletes')
-          .update({ athlete_group_id: groupId })
+          .update({
+            athlete_group_id: groupId,
+            ...(eventGroup ? { event_group: eventGroup } : {})
+          })
           .eq('id', athlete_id)
           .select()
           .single()
@@ -1702,6 +1721,7 @@ export async function inviteOrAttachAthleteAction(
             groupId,
             coachId: (user.coach as { id: number }).id,
             role: 'athlete',
+            ...(eventGroup ? { eventGroup } : {}),
           },
         })
 

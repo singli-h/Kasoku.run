@@ -50,3 +50,11 @@ export interface AthleteManagementData {
   athletes: AthleteWithDetails[]
   groups: GroupWithCount[]
 }
+
+export interface EventGroup {
+  id: number
+  coach_id: number
+  name: string
+  abbreviation: string
+  created_at: string | null
+}

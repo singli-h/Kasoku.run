@@ -48,36 +48,24 @@ import { updateAthleteProfileAction } from "@/actions/athletes/athlete-actions"
 
 import { AthleteCard } from "./athlete-card"
 import { GroupFilterChips } from "./group-filter-chips"
-import type { AthleteWithDetails, GroupWithCount, BulkOperationState } from "../types"
-
-const EVENT_GROUP_OPTIONS = [
-  { value: "SS", label: "SS (Short Sprints)" },
-  { value: "MS", label: "MS (Mid Sprints)" },
-  { value: "LS", label: "LS (Long Sprints)" },
-  { value: "Hurdles", label: "Hurdles" },
-  { value: "Jumps", label: "Jumps" },
-  { value: "Throws", label: "Throws" },
-  { value: "Distance", label: "Distance" },
-  { value: "Multi-events", label: "Multi-events" },
-] as const
+import type { AthleteWithDetails, GroupWithCount, BulkOperationState, EventGroup } from "../types"
 
 /**
  * Inline editor for athlete event_group field.
- * Shows preset options and allows custom text input.
+ * Shows coach-defined event group options in a popover.
  */
 function EventGroupEditor({
-  athleteId,
   userId,
   currentValue,
+  eventGroups,
   onSaved,
 }: {
-  athleteId: number
   userId: number | null
   currentValue: string | null | undefined
+  eventGroups: EventGroup[]
   onSaved: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const [customValue, setCustomValue] = useState("")
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
 
@@ -88,19 +76,15 @@ function EventGroupEditor({
     setSaving(false)
     if (result.isSuccess) {
       setOpen(false)
-      setCustomValue("")
       onSaved()
     } else {
       toast({ title: "Error", description: result.message, variant: "destructive" })
     }
   }
 
-  const handleCustomSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (customValue.trim()) {
-      handleSelect(customValue.trim())
-    }
-  }
+  // Find display name for current value
+  const currentEg = eventGroups.find(eg => eg.abbreviation === currentValue)
+  const displayLabel = currentEg ? currentEg.abbreviation : currentValue
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -112,49 +96,40 @@ function EventGroupEditor({
             currentValue ? "font-medium" : "text-muted-foreground"
           )}
         >
-          {currentValue || "Set"}
+          {displayLabel || "Set"}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-52 p-2" align="start">
         <div className="space-y-1">
           <p className="text-xs font-medium text-muted-foreground px-1 pb-1">Event Group</p>
-          {EVENT_GROUP_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              disabled={saving}
-              onClick={() => handleSelect(option.value)}
-              className={cn(
-                "w-full text-left px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors",
-                currentValue === option.value && "bg-muted font-medium"
+          {eventGroups.length > 0 ? (
+            <>
+              {eventGroups.map((eg) => (
+                <button
+                  key={eg.id}
+                  disabled={saving}
+                  onClick={() => handleSelect(eg.abbreviation)}
+                  className={cn(
+                    "w-full text-left px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors",
+                    currentValue === eg.abbreviation && "bg-muted font-medium"
+                  )}
+                >
+                  {eg.abbreviation} — {eg.name}
+                </button>
+              ))}
+              {currentValue && (
+                <button
+                  disabled={saving}
+                  onClick={() => handleSelect(null)}
+                  className="w-full text-left px-2 py-1.5 rounded text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  Clear
+                </button>
               )}
-            >
-              {option.label}
-            </button>
-          ))}
-          {currentValue && (
-            <button
-              disabled={saving}
-              onClick={() => handleSelect(null)}
-              className="w-full text-left px-2 py-1.5 rounded text-sm text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              Clear
-            </button>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground px-2 py-1.5">No event groups defined</p>
           )}
-          <div className="border-t pt-1.5 mt-1.5">
-            <form onSubmit={handleCustomSubmit} className="flex gap-1">
-              <Input
-                value={customValue}
-                onChange={(e) => setCustomValue(e.target.value)}
-                placeholder="Custom..."
-                className="h-7 text-xs"
-                maxLength={50}
-                disabled={saving}
-              />
-              <Button type="submit" size="sm" className="h-7 px-2 text-xs" disabled={saving || !customValue.trim()}>
-                Set
-              </Button>
-            </form>
-          </div>
         </div>
       </PopoverContent>
     </Popover>
@@ -164,6 +139,7 @@ function EventGroupEditor({
 interface AthleteRosterSectionProps {
   athletes: AthleteWithDetails[]
   groups: GroupWithCount[]
+  eventGroups: EventGroup[]
   selectedAthletes: number[]
   onSelectAthletes: (athletes: number[]) => void
   onBulkOperation: (operation: BulkOperationState) => void
@@ -176,6 +152,7 @@ interface AthleteRosterSectionProps {
 export function AthleteRosterSection({
   athletes,
   groups,
+  eventGroups,
   selectedAthletes,
   onSelectAthletes,
   onBulkOperation,
@@ -407,6 +384,7 @@ export function AthleteRosterSection({
                 athlete={athlete}
                 isSelected={selectedAthletes.includes(athlete.id)}
                 isSelectionMode={isSelectionMode}
+                eventGroups={eventGroups}
                 onSelect={handleSelectAthlete}
                 onLongPress={handleEnterSelectionMode}
                 onBulkOperation={onBulkOperation}
@@ -496,9 +474,9 @@ export function AthleteRosterSection({
                     </TableCell>
                     <TableCell>
                       <EventGroupEditor
-                        athleteId={athlete.id}
                         userId={athlete.user_id}
                         currentValue={athlete.event_group}
+                        eventGroups={eventGroups}
                         onSaved={() => onDataReload?.()}
                       />
                     </TableCell>

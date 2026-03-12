@@ -108,6 +108,63 @@ export async function assignPlanToAthletesAction(
       }
     }
 
+    // One-plan-per-group guard: check if any target group already has active
+    // workout_logs from a DIFFERENT macrocycle.
+    // Applies to BOTH group-based and individual-based assignment (derive groups from athletes).
+    const groupIdsToCheck: number[] = input.groupIds && input.groupIds.length > 0
+      ? input.groupIds
+      : [...new Set([...athleteGroupMap.values()])]
+
+    if (groupIdsToCheck.length > 0) {
+      const { data: conflictRows } = await supabase
+        .from('workout_logs')
+        .select(`
+          athlete_group_id,
+          session_plan_id,
+          session_plans!fk_workout_logs_session_plan (
+            microcycle_id,
+            microcycles!fk_session_plans_microcycle (
+              mesocycle_id,
+              mesocycles!fk_microcycles_mesocycle (
+                macrocycle_id
+              )
+            )
+          )
+        `)
+        .in('athlete_group_id', groupIdsToCheck)
+        .in('session_status', ['assigned', 'ongoing'])
+
+      if (conflictRows && conflictRows.length > 0) {
+        // Find groups with active logs from a different macrocycle
+        const conflictingGroupIds = new Set<number>()
+        for (const row of conflictRows) {
+          const sp = row.session_plans as any
+          const macroId = sp?.microcycles?.mesocycles?.macrocycle_id
+          if (!sp?.microcycles?.mesocycles) {
+            console.warn('[assignPlanToAthletesAction] Unexpected join shape for conflict check:', JSON.stringify(row))
+            continue
+          }
+          if (macroId && macroId !== input.macrocycleId && row.athlete_group_id) {
+            conflictingGroupIds.add(row.athlete_group_id)
+          }
+        }
+
+        if (conflictingGroupIds.size > 0) {
+          // Look up group names for the error message
+          const { data: conflictGroupNames } = await supabase
+            .from('athlete_groups')
+            .select('id, group_name')
+            .in('id', [...conflictingGroupIds])
+
+          const names = conflictGroupNames?.map(g => g.group_name || `Group ${g.id}`).join(', ') || 'Unknown'
+          return {
+            isSuccess: false,
+            message: `${names} already ${conflictingGroupIds.size === 1 ? 'has' : 'have'} an active plan assigned. Unassign it first.`,
+          }
+        }
+      }
+    }
+
     // If groups selected, verify ownership then get all athletes in those groups
     if (input.groupIds && input.groupIds.length > 0) {
       // Get the coach record for the current user
@@ -496,6 +553,239 @@ export async function unassignPlanFromAthletesAction(
     return {
       isSuccess: false,
       message: error instanceof Error ? error.message : 'Failed to unassign plan',
+    }
+  }
+}
+
+// ---
+
+interface GroupWithActivePlan {
+  groupId: number
+  groupName: string
+  macrocycleId: number
+  planName: string
+}
+
+/**
+ * Returns groups that have athletes with active workout_logs from ANY plan.
+ * Used to show warning badges in the assignment UI.
+ */
+export async function getGroupsWithActivePlansAction(): Promise<ActionState<GroupWithActivePlan[]>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return { isSuccess: false, message: 'Not authenticated' }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Get coach record
+    const { data: coach } = await supabase
+      .from('coaches')
+      .select('id')
+      .eq('user_id', dbUserId)
+      .single()
+
+    if (!coach) {
+      return { isSuccess: false, message: 'Coach profile not found' }
+    }
+
+    // Get all groups owned by this coach
+    const { data: ownedGroups } = await supabase
+      .from('athlete_groups')
+      .select('id, group_name')
+      .eq('coach_id', coach.id)
+
+    if (!ownedGroups || ownedGroups.length === 0) {
+      return { isSuccess: true, message: 'No groups', data: [] }
+    }
+
+    const groupIds = ownedGroups.map(g => g.id)
+
+    // Find active workout_logs for these groups, joining up to macrocycles
+    const { data: activeRows } = await supabase
+      .from('workout_logs')
+      .select(`
+        athlete_group_id,
+        session_plans!fk_workout_logs_session_plan (
+          microcycle_id,
+          microcycles!fk_session_plans_microcycle (
+            mesocycle_id,
+            mesocycles!fk_microcycles_mesocycle (
+              macrocycle_id,
+              macrocycles!fk_mesocycles_macrocycle (
+                id,
+                name
+              )
+            )
+          )
+        )
+      `)
+      .in('athlete_group_id', groupIds)
+      .in('session_status', ['assigned', 'ongoing'])
+
+    if (!activeRows || activeRows.length === 0) {
+      return { isSuccess: true, message: 'No active assignments', data: [] }
+    }
+
+    // Deduplicate: group → macrocycle
+    const groupMacroMap = new Map<number, { macrocycleId: number; planName: string }>()
+    for (const row of activeRows) {
+      if (!row.athlete_group_id) continue
+      const sp = row.session_plans as any
+      const macro = sp?.microcycles?.mesocycles?.macrocycles
+      if (macro?.id) {
+        // First found wins (a group should only have one active plan)
+        if (!groupMacroMap.has(row.athlete_group_id)) {
+          groupMacroMap.set(row.athlete_group_id, {
+            macrocycleId: macro.id,
+            planName: macro.name || 'Unnamed Plan',
+          })
+        }
+      }
+    }
+
+    const groupNameMap = new Map(ownedGroups.map(g => [g.id, g.group_name || `Group ${g.id}`]))
+
+    const result: GroupWithActivePlan[] = []
+    for (const [groupId, info] of groupMacroMap) {
+      result.push({
+        groupId,
+        groupName: groupNameMap.get(groupId) || `Group ${groupId}`,
+        macrocycleId: info.macrocycleId,
+        planName: info.planName,
+      })
+    }
+
+    return { isSuccess: true, message: 'OK', data: result }
+  } catch (error) {
+    console.error('[getGroupsWithActivePlansAction] Unexpected error:', error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch group plans',
+    }
+  }
+}
+
+// ---
+
+interface AssignedGroup {
+  groupId: number
+  groupName: string
+  athleteCount: number
+  sessionCount: number
+}
+
+/**
+ * Returns groups that have active assignments for a specific macrocycle.
+ * Used to display the "Currently Assigned" section in AssignmentView.
+ */
+export async function getAssignedGroupsForPlanAction(
+  macrocycleId: number
+): Promise<ActionState<AssignedGroup[]>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return { isSuccess: false, message: 'Not authenticated' }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify ownership
+    const { data: macrocycle } = await supabase
+      .from('macrocycles')
+      .select('id, user_id')
+      .eq('id', macrocycleId)
+      .single()
+
+    if (!macrocycle || macrocycle.user_id !== dbUserId) {
+      return { isSuccess: false, message: 'Plan not found or unauthorized' }
+    }
+
+    // Get session_plan IDs in this macrocycle
+    const { data: mesocycles } = await supabase
+      .from('mesocycles')
+      .select('id')
+      .eq('macrocycle_id', macrocycleId)
+
+    if (!mesocycles || mesocycles.length === 0) {
+      return { isSuccess: true, message: 'No phases', data: [] }
+    }
+
+    const { data: microcycles } = await supabase
+      .from('microcycles')
+      .select('id')
+      .in('mesocycle_id', mesocycles.map(m => m.id))
+
+    if (!microcycles || microcycles.length === 0) {
+      return { isSuccess: true, message: 'No weeks', data: [] }
+    }
+
+    const { data: sessionPlans } = await supabase
+      .from('session_plans')
+      .select('id')
+      .in('microcycle_id', microcycles.map(m => m.id))
+
+    if (!sessionPlans || sessionPlans.length === 0) {
+      return { isSuccess: true, message: 'No sessions', data: [] }
+    }
+
+    const sessionPlanIds = sessionPlans.map(s => s.id)
+
+    // Find active workout_logs grouped by athlete_group_id
+    const { data: activeLogs } = await supabase
+      .from('workout_logs')
+      .select('athlete_group_id, athlete_id')
+      .in('session_plan_id', sessionPlanIds)
+      .in('session_status', ['assigned', 'ongoing'])
+
+    if (!activeLogs || activeLogs.length === 0) {
+      return { isSuccess: true, message: 'No assignments', data: [] }
+    }
+
+    // Aggregate by group
+    const groupStats = new Map<number, { athleteIds: Set<number>; sessionCount: number }>()
+    for (const log of activeLogs) {
+      if (!log.athlete_group_id) continue
+      const existing = groupStats.get(log.athlete_group_id)
+      if (existing) {
+        if (log.athlete_id) existing.athleteIds.add(log.athlete_id)
+        existing.sessionCount++
+      } else {
+        const athleteIds = new Set<number>()
+        if (log.athlete_id) athleteIds.add(log.athlete_id)
+        groupStats.set(log.athlete_group_id, { athleteIds, sessionCount: 1 })
+      }
+    }
+
+    if (groupStats.size === 0) {
+      return { isSuccess: true, message: 'No group assignments', data: [] }
+    }
+
+    // Get group names
+    const { data: groups } = await supabase
+      .from('athlete_groups')
+      .select('id, group_name')
+      .in('id', [...groupStats.keys()])
+
+    const groupNameMap = new Map(groups?.map(g => [g.id, g.group_name || `Group ${g.id}`]) || [])
+
+    const result: AssignedGroup[] = []
+    for (const [groupId, stats] of groupStats) {
+      result.push({
+        groupId,
+        groupName: groupNameMap.get(groupId) || `Group ${groupId}`,
+        athleteCount: stats.athleteIds.size,
+        sessionCount: stats.sessionCount,
+      })
+    }
+
+    return { isSuccess: true, message: 'OK', data: result }
+  } catch (error) {
+    console.error('[getAssignedGroupsForPlanAction] Unexpected error:', error)
+    return {
+      isSuccess: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch assigned groups',
     }
   }
 }
