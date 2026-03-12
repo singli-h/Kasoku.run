@@ -92,8 +92,33 @@ export async function assignPlanToAthletesAction(
       targetAthleteIds = input.athleteIds
     }
 
-    // If groups selected, get all athletes in those groups
+    // If groups selected, verify ownership then get all athletes in those groups
     if (input.groupIds && input.groupIds.length > 0) {
+      // Get the coach record for the current user
+      const { data: coach } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('user_id', dbUserId)
+        .single()
+
+      if (!coach) {
+        return { isSuccess: false, message: 'Coach profile not found' }
+      }
+
+      // Verify coach owns all specified groups
+      const { data: ownedGroups } = await supabase
+        .from('athlete_groups')
+        .select('id')
+        .in('id', input.groupIds)
+        .eq('coach_id', coach.id)
+
+      const ownedGroupIds = ownedGroups?.map(g => g.id) || []
+      const unauthorizedGroups = input.groupIds.filter(id => !ownedGroupIds.includes(id))
+
+      if (unauthorizedGroups.length > 0) {
+        return { isSuccess: false, message: 'Unauthorized: you do not own all specified groups' }
+      }
+
       const { data: groupAthletes, error: groupError } = await supabase
         .from('athletes')
         .select('id')

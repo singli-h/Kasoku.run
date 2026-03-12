@@ -49,14 +49,16 @@ const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:support@kasoku.run
 
 Deno.serve(async (req: Request) => {
   try {
-    // Optional: Verify request is from pg_cron or authorized source
+    // Verify request is from pg_cron or authorized source via service role key
     const authHeader = req.headers.get('Authorization')
-    if (authHeader) {
-      const token = authHeader.replace('Bearer ', '')
-      if (token !== supabaseServiceKey) {
-        // Allow service role key as bearer token for pg_cron
-        console.log('[send-workout-reminders] Auth check - using provided token')
-      }
+    const token = authHeader?.replace('Bearer ', '') ?? ''
+
+    if (token !== supabaseServiceKey) {
+      console.log('[send-workout-reminders] Unauthorized request rejected')
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     // Get current UTC time

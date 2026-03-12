@@ -1,6 +1,5 @@
-"use server"
-
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@clerk/nextjs/server"
 import { z } from "zod"
 import { completeOnboardingAction } from "@/actions/onboarding/onboarding-actions"
 
@@ -45,6 +44,15 @@ const OnboardingSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Auth guard
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json(
+        { isSuccess: false, message: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     // Parse request body
     const body = await request.json()
     
