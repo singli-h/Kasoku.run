@@ -38,6 +38,7 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
   const [selectedMicrocycleName, setSelectedMicrocycleName] = useState<string | null>(null)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [insightsMicrocycleId, setInsightsMicrocycleId] = useState<number | null>(null)
+  const [insightsExisting, setInsightsExisting] = useState<Record<string, unknown> | null>(null)
   const [planningContext, setPlanningContext] = useState<string | null>(
     () => extractPlanningContextText(initialPlan.macrocycle.planning_context)
   )
@@ -105,8 +106,9 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
             setSelectedMicrocycleName(microcycleName)
             setGenerateSheetOpen(true)
           }}
-          onReviewWeek={(microcycleId) => {
+          onReviewWeek={(microcycleId, weeklyInsights) => {
             setInsightsMicrocycleId(microcycleId)
+            setInsightsExisting(weeklyInsights ?? null)
             setInsightsOpen(true)
           }}
         />
@@ -126,6 +128,7 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
           <WeeklyInsightsPanel
             key={`insights-${insightsMicrocycleId}`}
             microcycleId={insightsMicrocycleId}
+            existingInsights={insightsExisting}
             open={insightsOpen}
             onOpenChange={setInsightsOpen}
           />

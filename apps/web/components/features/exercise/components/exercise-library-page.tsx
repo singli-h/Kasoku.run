@@ -160,7 +160,7 @@ export function ExerciseLibraryPage() {
           comparison = (a.exercise_type?.type || '').localeCompare(b.exercise_type?.type || '')
           break
         case 'created_at':
-          comparison = new Date(a.id).getTime() - new Date(b.id).getTime() // Using ID as proxy for creation order
+          comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
           break
       }
       

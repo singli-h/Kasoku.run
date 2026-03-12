@@ -11,8 +11,9 @@ import { EditMicrocycleDialog, type MicrocycleFormData } from "./components/Edit
 import { EditRaceDialog } from "./components/EditRaceDialog"
 import { EditSessionDialog } from "./components/EditSessionDialog"
 import { CopySessionDialog } from "./components/CopySessionDialog"
+import { DuplicateWeekDialog } from "./components/DuplicateWeekDialog"
 import { PlanPageHeader } from "../components/PlanPageHeader"
-import { copySessionAction, updateSessionPlanAction, deleteSessionPlanAction } from "@/actions/plans/session-plan-actions"
+import { copySessionAction, duplicateMicrocycleSessionsAction, updateSessionPlanAction, deleteSessionPlanAction } from "@/actions/plans/session-plan-actions"
 import {
   createMesocycleAction,
   updateMesocycleAction,
@@ -56,6 +57,7 @@ interface Microcycle {
   start_date: string | null
   end_date: string | null
   sessions: Session[]
+  weekly_insights?: Record<string, unknown> | null
   // UI-only fields
   weekNumber?: number
   volume?: number
@@ -116,7 +118,7 @@ interface TrainingPlanWorkspaceProps {
   onPlanUpdate?: (plan: TrainingPlan) => void
   selectedGroupId?: number | null
   onGenerateWeek?: (microcycleId: number, microcycleName: string | null) => void
-  onReviewWeek?: (microcycleId: number) => void
+  onReviewWeek?: (microcycleId: number, weeklyInsights?: Record<string, unknown> | null) => void
 }
 
 /** Inline editor for mesocycle planning_context (phase focus) */
@@ -288,6 +290,8 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
   const [editingSession, setEditingSession] = useState<Session | null>(null)
   const [copyDialogOpen, setCopyDialogOpen] = useState(false)
   const [copyingSession, setCopyingSession] = useState<Session | null>(null)
+  const [duplicateWeekOpen, setDuplicateWeekOpen] = useState(false)
+  const [duplicatingMicro, setDuplicatingMicro] = useState<Microcycle | null>(null)
 
   const { toast } = useToast()
 
@@ -801,6 +805,24 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
     }
   }
 
+  const handleDuplicateWeek = async (sourceMicrocycleId: number, targetMicrocycleIds: number[]) => {
+    const result = await duplicateMicrocycleSessionsAction(sourceMicrocycleId, targetMicrocycleIds)
+
+    if (result.isSuccess) {
+      toast({
+        title: "Week duplicated",
+        description: result.message,
+      })
+      router.refresh()
+    } else {
+      toast({
+        title: "Error",
+        description: result.message,
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleMesoClick = (meso: Mesocycle) => {
     setSelectedMeso(meso)
     setSlideDirection("left")
@@ -1140,18 +1162,33 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                           </p>
                           <p className="mt-1 text-sm text-muted-foreground">{micro.description}</p>
                         </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingMicro(micro)
-                            setMicroDialogOpen(true)
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            title="Duplicate week"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDuplicatingMicro(micro)
+                              setDuplicateWeekOpen(true)
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingMicro(micro)
+                              setMicroDialogOpen(true)
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2 xl:gap-4">
                         <div className="flex items-center gap-1">
@@ -1202,7 +1239,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                         size="sm"
                         variant="ghost"
                         className="gap-1.5"
-                        onClick={() => onReviewWeek(selectedMicro.id)}
+                        onClick={() => onReviewWeek(selectedMicro.id, selectedMicro.weekly_insights)}
                       >
                         <BarChart3 className="h-3.5 w-3.5" />
                         Insights
@@ -1539,6 +1576,19 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                                 size="icon"
                                 variant="ghost"
                                 className="h-8 w-8"
+                                title="Duplicate week"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setDuplicatingMicro(micro)
+                                  setDuplicateWeekOpen(true)
+                                }}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   setEditingMicro(micro)
@@ -1577,7 +1627,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                             size="sm"
                             variant="ghost"
                             className="gap-1.5"
-                            onClick={() => onReviewWeek(selectedMicro.id)}
+                            onClick={() => onReviewWeek(selectedMicro.id, selectedMicro.weekly_insights)}
                           >
                             <BarChart3 className="h-3.5 w-3.5" />
                             Insights
@@ -1770,6 +1820,18 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         open={copyDialogOpen}
         onOpenChange={setCopyDialogOpen}
         onCopy={handleCopySession}
+      />
+
+      <DuplicateWeekDialog
+        sourceMicrocycle={duplicatingMicro ? {
+          id: duplicatingMicro.id,
+          name: duplicatingMicro.name,
+          sessionCount: duplicatingMicro.sessions.length,
+        } : null}
+        mesocycles={plan.mesocycles}
+        open={duplicateWeekOpen}
+        onOpenChange={setDuplicateWeekOpen}
+        onDuplicate={handleDuplicateWeek}
       />
     </div>
   )

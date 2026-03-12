@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Edit, Trash2, Move } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { usePlanContext } from "../context/PlanContext"
 import { useTerminology } from "@/lib/terminology"
 import { abbreviateEventGroup } from "@/lib/training-utils"
@@ -21,7 +20,6 @@ export function MicrocycleEditor({
   onViewModeChange
 }: MicrocycleEditorProps) {
   const { plan } = usePlanContext()
-  const [editingMode, setEditingMode] = useState<'view' | 'edit'>('view')
   const terms = useTerminology()
 
   // Find the microcycle
@@ -84,16 +82,7 @@ export function MicrocycleEditor({
             <p className="text-sm text-muted-foreground">{microcycle.description}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={editingMode === 'edit' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setEditingMode(editingMode === 'edit' ? 'view' : 'edit')}
-          >
-            <Edit className="h-4 w-4 mr-1" />
-            {editingMode === 'edit' ? 'Done' : 'Edit'}
-          </Button>
-        </div>
+        {/* Session actions are available on each card in the main workspace panel */}
       </div>
 
       {/* Metrics */}
@@ -156,16 +145,6 @@ export function MicrocycleEditor({
                         >
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-medium">{getSessionTypeIcon(session.type)}</span>
-                            {editingMode === 'edit' && (
-                              <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
-                                  <Move className="h-2 w-2" />
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
-                                  <Trash2 className="h-2 w-2" />
-                                </Button>
-                              </div>
-                            )}
                           </div>
                           <div className="font-medium">{session.name}</div>
                           {/* Exercise preview (T012) */}

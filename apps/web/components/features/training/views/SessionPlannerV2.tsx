@@ -61,6 +61,9 @@ import {
   getTemplatesAction,
   insertTemplateExercisesAction,
 } from "@/actions/plans/session-plan-actions"
+
+// Import session fetch for refreshing after template insert
+import { getSessionPlanByIdAction } from "@/actions/library/exercise-actions"
 import type { CreateSessionPlanForm } from "@/actions/plans/session-plan-actions"
 
 // Import Dialog and Sheet for template features
@@ -130,6 +133,7 @@ export function SessionPlannerV2({
     canRedo,
     undo,
     redo,
+    reset,
   } = useSessionExercises()
 
   // Local UI state
@@ -660,13 +664,56 @@ export function SessionPlannerV2({
     const result = await insertTemplateExercisesAction(templateId, sessionId, subgroupOverride)
 
     if (result.isSuccess) {
+      // Refetch session data and reset context (router.refresh doesn't sync useState)
+      const sessionResult = await getSessionPlanByIdAction(sessionId)
+      if (sessionResult.isSuccess && sessionResult.data) {
+        const freshExercises: SessionPlannerExercise[] = (sessionResult.data.session_plan_exercises || []).map((rec: any) => ({
+          id: String(rec.id),
+          session_plan_id: rec.session_plan_id,
+          exercise_id: rec.exercise_id,
+          exercise_order: rec.exercise_order,
+          superset_id: rec.superset_id,
+          notes: rec.notes,
+          target_event_groups: rec.target_event_groups ?? null,
+          exercise: rec.exercise ? {
+            id: rec.exercise.id,
+            name: rec.exercise.name,
+            description: rec.exercise.description,
+            exercise_type_id: rec.exercise.exercise_type_id,
+            video_url: rec.exercise.video_url,
+          } : null,
+          sets: (rec.session_plan_sets || []).map((s: any) => ({
+            id: s.id,
+            session_plan_exercise_id: s.session_plan_exercise_id,
+            set_index: s.set_index,
+            reps: s.reps,
+            weight: s.weight,
+            distance: s.distance,
+            performing_time: s.performing_time,
+            rest_time: s.rest_time,
+            tempo: s.tempo,
+            rpe: s.rpe,
+            resistance_unit_id: s.resistance_unit_id,
+            power: s.power,
+            velocity: s.velocity,
+            effort: s.effort != null ? s.effort * 100 : null,
+            height: s.height,
+            resistance: s.resistance,
+            completed: false,
+            isEditing: false,
+          })),
+          isCollapsed: false,
+          validationErrors: [],
+          isEditing: false,
+        }))
+        reset(freshExercises)
+      }
+
       toast({
         title: "Template Inserted",
         description: result.message,
       })
       setInsertTemplateOpen(false)
-      // Reload page to pick up the newly inserted exercises from the database
-      router.refresh()
     } else {
       toast({
         title: "Insert Failed",
@@ -676,7 +723,7 @@ export function SessionPlannerV2({
     }
 
     setIsInsertingTemplate(false)
-  }, [sessionId, toast, router, templateSubgroupOverrides])
+  }, [sessionId, toast, reset, templateSubgroupOverrides])
 
   const filteredTemplates = useMemo(() => {
     if (!templateSearch.trim()) return templates
