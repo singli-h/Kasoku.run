@@ -329,7 +329,8 @@ export async function saveSessionWithExercisesAction(
         exercise_id: exercise.exercise_id,
         exercise_order: exercise.exercise_order,
         superset_id: toSupersetIdNumber(exercise.superset_id),
-        notes: exercise.notes
+        notes: exercise.notes,
+        target_event_groups: exercise.target_event_groups ?? null,
       }))
 
       const { error: upsertExercisesError } = await supabase
@@ -393,7 +394,8 @@ export async function saveSessionWithExercisesAction(
         exercise_id: exercise.exercise_id,
         exercise_order: exercise.exercise_order,
         superset_id: toSupersetIdNumber(exercise.superset_id),
-        notes: exercise.notes
+        notes: exercise.notes,
+        target_event_groups: exercise.target_event_groups ?? null,
       }))
 
       const { data: insertedExercises, error: batchInsertExError } = await supabase
@@ -450,7 +452,7 @@ export async function saveSessionWithExercisesAction(
     // Step 7: Fetch and return the updated session
     const { data: updatedSession, error: finalFetchError } = await supabase
       .from('session_plans')
-      .select('id, athlete_group_id, user_id, microcycle_id, name, description, session_mode, week, day, date, updated_at, created_at, deleted, is_template')
+      .select('*')
       .eq('id', sessionId)
       .single()
 

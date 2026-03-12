@@ -21,6 +21,7 @@ export interface SessionPlannerExercise {
   exercise_order: number
   superset_id?: string | null
   notes?: string | null
+  target_event_groups?: string[] | null
   isCollapsed?: boolean
   isEditing?: boolean
   validationErrors?: string[]
@@ -139,6 +140,7 @@ export function sessionExerciseToTraining(
     // Default to expanded if isCollapsed is undefined, otherwise respect isCollapsed
     expanded: exercise.isCollapsed === undefined ? true : !exercise.isCollapsed,
     exerciseTypeId: exercise.exercise?.exercise_type_id ?? undefined,
+    targetEventGroups: exercise.target_event_groups ?? null,
   }
 }
 
@@ -168,6 +170,7 @@ export function trainingToSessionExercise(
     exercise_order: exercise.exerciseOrder,
     superset_id: exercise.supersetId,
     notes: exercise.notes,
+    target_event_groups: exercise.targetEventGroups ?? null,
     isCollapsed: !exercise.expanded,
     isEditing: false,
     validationErrors: [],
@@ -207,6 +210,7 @@ export function mergeTrainingUpdate(
     exercise_order: training.exerciseOrder,
     superset_id: training.supersetId,
     notes: training.notes,
+    target_event_groups: training.targetEventGroups ?? null,
     isCollapsed: !training.expanded,
     sets: training.sets.map((set, idx) => {
       const originalSet = original.sets[idx]

@@ -27,6 +27,7 @@ import { createRaceAction, updateRaceAction, deleteRaceAction } from "@/actions/
 import { Copy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { extractPlanningContextText } from "@/lib/utils"
+import { abbreviateEventGroup } from "@/lib/training-utils"
 
 // Training plan workspace component - interfaces for data structure
 export interface Session {
@@ -36,8 +37,15 @@ export interface Session {
   type: 'speed' | 'strength' | 'recovery' | 'endurance' | 'power'
   duration: number
   volume: number
+  volumeUnit?: string
   intensity: number
-  exercises: any[]
+  exercises: unknown[]
+  /** Exercise names extracted server-side for card display */
+  exerciseNames?: string[]
+  /** Formatted exercise summaries (e.g. "3x10 80kg") */
+  exerciseSummaries?: string[]
+  /** Per-exercise target event groups for subgroup indicators */
+  targetEventGroups?: (string[])[]
 }
 
 interface Microcycle {
@@ -1265,13 +1273,42 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                                 >
                                   {session.type}
                                 </Badge>
-                                <Badge variant="outline" className="text-xs">
-                                  {session.duration}min
-                                </Badge>
+                                {session.volume > 0 ? (
+                                  <Badge variant="outline" className="text-xs">
+                                    {session.volume} {session.volumeUnit ?? 'kg'}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs text-muted-foreground">
+                                    &mdash;
+                                  </Badge>
+                                )}
+                                {session.duration > 0 ? (
+                                  <Badge variant="outline" className="text-xs">
+                                    {Math.round(session.duration / 60)}min
+                                  </Badge>
+                                ) : null}
                                 <Badge variant="outline" className="text-xs">
                                   {session.exercises?.length || 0} exercises
                                 </Badge>
                               </div>
+                              {/* Exercise names preview */}
+                              {session.exerciseNames && session.exerciseNames.length > 0 ? (
+                                <p className="mt-1.5 text-xs text-muted-foreground truncate">
+                                  {session.exerciseNames.slice(0, 3).join(', ')}
+                                  {session.exerciseNames.length > 3 ? ` +${session.exerciseNames.length - 3} more` : ''}
+                                </p>
+                              ) : (
+                                <p className="mt-1.5 text-xs text-muted-foreground">No exercises</p>
+                              )}
+                              {/* Subgroup indicators (T020) */}
+                              {session.targetEventGroups && session.targetEventGroups.length > 0 && (() => {
+                                const uniqueGroups = [...new Set(session.targetEventGroups.flat())]
+                                return uniqueGroups.length > 0 ? (
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {uniqueGroups.map(g => abbreviateEventGroup(g)).join(' \u00B7 ')}
+                                  </p>
+                                ) : null
+                              })()}
                             </div>
                             <div className="flex gap-1 shrink-0">
                               <Button
@@ -1612,13 +1649,42 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                                     >
                                       {session.type}
                                     </Badge>
+                                    {session.volume > 0 ? (
+                                      <Badge variant="outline" className="text-xs">
+                                        {session.volume} {session.volumeUnit ?? 'kg'}
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                                        &mdash;
+                                      </Badge>
+                                    )}
+                                    {session.duration > 0 ? (
+                                      <Badge variant="outline" className="text-xs">
+                                        {Math.round(session.duration / 60)}min
+                                      </Badge>
+                                    ) : null}
                                     <Badge variant="outline" className="text-xs">
-                                      {session.duration}min
-                                    </Badge>
-                                    <Badge variant="outline" className="text-xs">
-                                      {session.exercises.length} exercises
+                                      {session.exercises?.length || 0} exercises
                                     </Badge>
                                   </div>
+                                  {/* Exercise names preview */}
+                                  {session.exerciseNames && session.exerciseNames.length > 0 ? (
+                                    <p className="mt-1.5 text-xs text-muted-foreground truncate">
+                                      {session.exerciseNames.slice(0, 3).join(', ')}
+                                      {session.exerciseNames.length > 3 ? ` +${session.exerciseNames.length - 3} more` : ''}
+                                    </p>
+                                  ) : (
+                                    <p className="mt-1.5 text-xs text-muted-foreground">No exercises</p>
+                                  )}
+                                  {/* Subgroup indicators */}
+                                  {session.targetEventGroups && session.targetEventGroups.length > 0 && (() => {
+                                    const uniqueGroups = [...new Set(session.targetEventGroups.flat())]
+                                    return uniqueGroups.length > 0 ? (
+                                      <p className="mt-1 text-xs text-muted-foreground">
+                                        {uniqueGroups.map(g => abbreviateEventGroup(g)).join(' \u00B7 ')}
+                                      </p>
+                                    ) : null
+                                  })()}
                                 </div>
                                 <div className="flex gap-1 shrink-0">
                                   <Button

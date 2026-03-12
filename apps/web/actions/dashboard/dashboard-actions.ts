@@ -11,6 +11,8 @@ import type {
   CoachDashboardData
 } from "@/components/features/dashboard/types/dashboard-types"
 import type { WorkoutLogWithDetails, SessionPlanWithDetails } from "@/types/training"
+import { formatExerciseSummary } from "@/lib/training-utils"
+import type { ExerciseWithSets } from "@/lib/training-utils"
 
 /**
  * Get all dashboard data for the current user using direct queries
@@ -555,4 +557,162 @@ export async function getCoachDashboardDataAction(): Promise<
       message: "Failed to load coach dashboard data"
     }
   }
-} 
+}
+
+// ============================================================================
+// WEEK CALENDAR ACTIONS
+// ============================================================================
+
+export interface WeekCalendarSession {
+  id: string
+  title: string
+  date: string // ISO date (YYYY-MM-DD)
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled'
+  exercises: Array<{
+    name: string
+    summary: string
+    target_event_groups: string[] | null
+  }>
+}
+
+/**
+ * Get sessions for a 7-day window starting from weekStart (Monday).
+ * Used by the dashboard mini calendar strip.
+ * Subgroup filtering is handled by RLS for athlete role.
+ */
+export async function getWeekSessionsAction(
+  weekStart: string
+): Promise<ActionState<WeekCalendarSession[]>> {
+  try {
+    const { userId: clerkUserId } = await auth()
+
+    if (!clerkUserId) {
+      return { isSuccess: false, message: "Authentication required" }
+    }
+
+    const dbUserId = await getDbUserId(clerkUserId)
+
+    // Get athlete profile
+    const { data: athlete } = await supabase
+      .from('athletes')
+      .select('id')
+      .eq('user_id', dbUserId)
+      .single()
+
+    if (!athlete) {
+      return {
+        isSuccess: true,
+        message: "No athlete profile",
+        data: []
+      }
+    }
+
+    // Calculate week end (weekStart + 6 days, end of day)
+    const startDate = new Date(weekStart)
+    const endDate = new Date(weekStart)
+    endDate.setDate(endDate.getDate() + 6)
+    endDate.setHours(23, 59, 59, 999)
+
+    // Fetch workout_logs for the week with session plan details
+    const { data: sessions, error } = await supabase
+      .from('workout_logs')
+      .select(`
+        id,
+        date_time,
+        session_status,
+        session_plan:session_plans(
+          id,
+          name,
+          session_plan_exercises(
+            id,
+            exercise_order,
+            target_event_groups,
+            exercise:exercises(
+              id,
+              name,
+              exercise_type:exercise_types(id)
+            ),
+            session_plan_sets(
+              reps,
+              weight,
+              distance,
+              performing_time,
+              rest_time
+            )
+          )
+        )
+      `)
+      .eq('athlete_id', athlete.id)
+      .gte('date_time', startDate.toISOString())
+      .lte('date_time', endDate.toISOString())
+      .order('date_time', { ascending: true })
+
+    if (error) {
+      console.error("[getWeekSessionsAction] Error:", error)
+      return { isSuccess: false, message: "Failed to fetch week sessions" }
+    }
+
+    // Transform to WeekCalendarSession[]
+    const weekSessions: WeekCalendarSession[] = (sessions || []).map((session: any) => {
+      // Map DB status to UI status
+      let status: WeekCalendarSession['status'] = 'pending'
+      switch (session.session_status) {
+        case 'assigned': status = 'pending'; break
+        case 'ongoing': status = 'in-progress'; break
+        case 'completed': status = 'completed'; break
+        case 'cancelled': status = 'cancelled'; break
+      }
+
+      // Extract date as YYYY-MM-DD
+      const dateStr = session.date_time
+        ? session.date_time.substring(0, 10)
+        : ''
+
+      // Build exercise summaries
+      const exercises = (session.session_plan?.session_plan_exercises || [])
+        .slice()
+        .sort((a: any, b: any) => (a.exercise_order || 0) - (b.exercise_order || 0))
+        .map((spe: any) => {
+          const exerciseTypeId = spe.exercise?.exercise_type?.id ?? null
+          const sets = (spe.session_plan_sets || []).map((s: any) => ({
+            reps: s.reps,
+            weight: s.weight,
+            distance: s.distance,
+            performing_time: s.performing_time,
+            rest_time: s.rest_time,
+          }))
+
+          const exerciseWithSets: ExerciseWithSets = {
+            exercise_type_id: exerciseTypeId,
+            sets,
+          }
+
+          return {
+            name: spe.exercise?.name || 'Unknown Exercise',
+            summary: formatExerciseSummary(exerciseWithSets),
+            target_event_groups: spe.target_event_groups,
+          }
+        })
+
+      return {
+        id: session.id,
+        title: session.session_plan?.name || 'Untitled Session',
+        date: dateStr,
+        status,
+        exercises,
+      }
+    })
+
+    return {
+      isSuccess: true,
+      message: "Week sessions retrieved successfully",
+      data: weekSessions
+    }
+  } catch (error) {
+    console.error("Error in getWeekSessionsAction:", error)
+    return {
+      isSuccess: false,
+      message: "Failed to load week sessions"
+    }
+  }
+}

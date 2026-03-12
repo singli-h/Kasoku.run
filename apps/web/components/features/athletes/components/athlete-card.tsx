@@ -23,7 +23,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,23 +38,13 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { updateAthleteProfileAction } from "@/actions/athletes/athlete-actions"
-import type { AthleteWithDetails, BulkOperationState } from "../types"
-
-const EVENT_GROUP_OPTIONS = [
-  { value: "SS", label: "SS (Short Sprints)" },
-  { value: "MS", label: "MS (Mid Sprints)" },
-  { value: "LS", label: "LS (Long Sprints)" },
-  { value: "Hurdles", label: "Hurdles" },
-  { value: "Jumps", label: "Jumps" },
-  { value: "Throws", label: "Throws" },
-  { value: "Distance", label: "Distance" },
-  { value: "Multi-events", label: "Multi-events" },
-] as const
+import type { AthleteWithDetails, BulkOperationState, EventGroup } from "../types"
 
 interface AthleteCardProps {
   athlete: AthleteWithDetails
   isSelected: boolean
   isSelectionMode: boolean
+  eventGroups: EventGroup[]
   onSelect: (athleteId: number) => void
   onLongPress: () => void
   onBulkOperation: (operation: BulkOperationState) => void
@@ -67,6 +56,7 @@ export function AthleteCard({
   athlete,
   isSelected,
   isSelectionMode,
+  eventGroups,
   onSelect,
   onLongPress,
   onBulkOperation,
@@ -75,7 +65,6 @@ export function AthleteCard({
 }: AthleteCardProps) {
   const [isSwipeRevealed, setIsSwipeRevealed] = useState(false)
   const [eventGroupOpen, setEventGroupOpen] = useState(false)
-  const [customEventGroup, setCustomEventGroup] = useState("")
   const [savingEventGroup, setSavingEventGroup] = useState(false)
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
   const { toast } = useToast()
@@ -122,17 +111,9 @@ export function AthleteCard({
     setSavingEventGroup(false)
     if (result.isSuccess) {
       setEventGroupOpen(false)
-      setCustomEventGroup("")
       onDataReload?.()
     } else {
       toast({ title: "Error", description: result.message, variant: "destructive" })
-    }
-  }
-
-  const handleCustomEventGroupSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (customEventGroup.trim()) {
-      handleEventGroupSelect(customEventGroup.trim())
     }
   }
 
@@ -233,43 +214,34 @@ export function AthleteCard({
               <PopoverContent className="w-52 p-2" align="start">
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground px-1 pb-1">Event Group</p>
-                  {EVENT_GROUP_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      disabled={savingEventGroup}
-                      onClick={() => handleEventGroupSelect(option.value)}
-                      className={cn(
-                        "w-full text-left px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors",
-                        athlete.event_group === option.value && "bg-muted font-medium"
+                  {eventGroups.length > 0 ? (
+                    <>
+                      {eventGroups.map((eg) => (
+                        <button
+                          key={eg.id}
+                          disabled={savingEventGroup}
+                          onClick={() => handleEventGroupSelect(eg.abbreviation)}
+                          className={cn(
+                            "w-full text-left px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors",
+                            athlete.event_group === eg.abbreviation && "bg-muted font-medium"
+                          )}
+                        >
+                          {eg.abbreviation} — {eg.name}
+                        </button>
+                      ))}
+                      {athlete.event_group && (
+                        <button
+                          disabled={savingEventGroup}
+                          onClick={() => handleEventGroupSelect(null)}
+                          className="w-full text-left px-2 py-1.5 rounded text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          Clear
+                        </button>
                       )}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                  {athlete.event_group && (
-                    <button
-                      disabled={savingEventGroup}
-                      onClick={() => handleEventGroupSelect(null)}
-                      className="w-full text-left px-2 py-1.5 rounded text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                    >
-                      Clear
-                    </button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground px-2 py-1.5">No event groups defined</p>
                   )}
-                  <div className="border-t pt-1.5 mt-1.5">
-                    <form onSubmit={handleCustomEventGroupSubmit} className="flex gap-1">
-                      <Input
-                        value={customEventGroup}
-                        onChange={(e) => setCustomEventGroup(e.target.value)}
-                        placeholder="Custom..."
-                        className="h-7 text-xs"
-                        maxLength={50}
-                        disabled={savingEventGroup}
-                      />
-                      <Button type="submit" size="sm" className="h-7 px-2 text-xs" disabled={savingEventGroup || !customEventGroup.trim()}>
-                        Set
-                      </Button>
-                    </form>
-                  </div>
                 </div>
               </PopoverContent>
             </Popover>

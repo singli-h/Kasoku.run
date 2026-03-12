@@ -12,8 +12,8 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
 }
 
 export default async function SessionsPage() {
-  // Protect this page - only coaches and individuals can access
-  const role = await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
+  // Protect this page - coach only
+  const role = await serverProtectRoute({ allowedRoles: ['coach'] })
 
   const description = ROLE_DESCRIPTIONS[role] || "Manage your sprint training sessions"
 

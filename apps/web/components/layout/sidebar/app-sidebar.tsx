@@ -21,7 +21,7 @@ import {
   BookOpen,
   PlayCircle,
   FileText,
-  ClipboardList,
+  Copy,
   type LucideIcon
 } from "lucide-react"
 import * as React from "react"
@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/sidebar"
 import { NavSection } from "./nav-main"
 import { useUserRole, type UserRole } from "@/contexts/user-role-context"
+import { useWorkoutPrefetch } from "@/components/features/workout/hooks/use-workout-queries"
 
 // Base navigation item definition with role visibility
 interface NavItemDef {
@@ -90,11 +91,11 @@ const allNavItems: Record<string, NavItemDef> = {
     icon: PlayCircle,
     visibleTo: ['coach'],
   },
-  program: {
-    title: "My Program",
-    url: "/program",
-    icon: ClipboardList,
-    visibleTo: ['athlete'],
+  templates: {
+    title: "Templates",
+    url: "/templates",
+    icon: Copy,
+    visibleTo: ['coach'],
   },
   exerciseLibrary: {
     title: "Exercise Library",
@@ -138,11 +139,11 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
     },
   ],
 
-  // Athlete: Training focus with program view (assigned by coach)
+  // Athlete: Training focus (dashboard + workout cover assigned sessions)
   athlete: [
     {
       label: "Training",
-      items: ["workout", "program", "performance"],
+      items: ["workout", "performance"],
     },
     {
       label: "Resources",
@@ -158,7 +159,7 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
     },
     {
       label: "Coaching",
-      items: ["athletes", "plans", "sessions"],
+      items: ["athletes", "plans", "templates"],
     },
     {
       label: "My Training",
@@ -174,6 +175,12 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const { role, isLoading } = useUserRole()
+  const { prefetchSessionsToday } = useWorkoutPrefetch()
+
+  // Prefetch today's workout sessions on mount so the workout page loads instantly
+  React.useEffect(() => {
+    prefetchSessionsToday()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build navigation sections based on user role
   const sections = React.useMemo(() => {

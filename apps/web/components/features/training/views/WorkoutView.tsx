@@ -82,6 +82,13 @@ export interface WorkoutViewProps {
    */
   showAdvancedFields?: boolean
 
+  /** Preview group for subgroup filtering — dims non-matching exercises */
+  previewGroup?: string | null
+  /** Available event groups for subgroup chip popover */
+  availableEventGroups?: string[]
+  /** Callback when exercise target_event_groups is updated */
+  onUpdateTargetEventGroups?: (exerciseId: number | string, groups: string[] | null) => void
+
   className?: string
 }
 
@@ -121,6 +128,9 @@ export function WorkoutView({
   onUnlinkSuperset,
   aiChangesByExercise,
   showAdvancedFields = true,
+  previewGroup,
+  availableEventGroups,
+  onUpdateTargetEventGroups,
   className,
 }: WorkoutViewProps) {
   // Format session date for display
@@ -543,6 +553,10 @@ export function WorkoutView({
                                   pendingSetCount={aiInfo?.pendingSetCount}
                                   aiProposedData={aiInfo?.proposedData}
                                   aiCurrentData={aiInfo?.currentData}
+                                  // Subgroup filtering props
+                                  previewGroup={previewGroup}
+                                  availableEventGroups={availableEventGroups}
+                                  onUpdateTargetEventGroups={(groups) => onUpdateTargetEventGroups?.(ex.id, groups)}
                                 />
                               )
                             })}
@@ -584,6 +598,10 @@ export function WorkoutView({
                           pendingSetCount={aiInfo?.pendingSetCount}
                           aiProposedData={aiInfo?.proposedData}
                           aiCurrentData={aiInfo?.currentData}
+                          // Subgroup filtering props
+                          previewGroup={previewGroup}
+                          availableEventGroups={availableEventGroups}
+                          onUpdateTargetEventGroups={(groups) => onUpdateTargetEventGroups?.(item.id, groups)}
                         />
                       )
                     })}

@@ -1,17 +1,32 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle, Users, User, Calendar, Loader2, CheckCircle2 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { AlertTriangle, Users, User, UserMinus, Loader2, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 // Server Actions
 import { getCoachAthleteGroupsAction, getRosterWithGroupCountsAction } from "@/actions/athletes/athlete-actions"
-import { assignPlanToAthletesAction } from "@/actions/plans/plan-assignment-actions"
+import {
+  assignPlanToAthletesAction,
+  unassignPlanFromAthletesAction,
+  getGroupsWithActivePlansAction,
+  getAssignedGroupsForPlanAction,
+} from "@/actions/plans/plan-assignment-actions"
 
 type AssignmentType = "individuals" | "groups"
 type StartAlignment = "anchor" | "monday" | "custom"
@@ -39,6 +54,20 @@ interface Group {
   created_at?: string | null
 }
 
+interface AssignedGroupInfo {
+  groupId: number
+  groupName: string
+  athleteCount: number
+  sessionCount: number
+}
+
+interface GroupActivePlan {
+  groupId: number
+  groupName: string
+  macrocycleId: number
+  planName: string
+}
+
 interface AssignmentViewProps {
   macrocycleId?: number
   onAssignmentComplete?: () => void
@@ -58,22 +87,46 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
   const [isLoading, setIsLoading] = useState(true)
   const [isAssigning, setIsAssigning] = useState(false)
 
-  // Load athletes and groups
+  // Currently assigned groups for this plan
+  const [assignedGroups, setAssignedGroups] = useState<AssignedGroupInfo[]>([])
+  // Groups with active plans (from any plan) - used for warning badges
+  const [groupsWithActivePlans, setGroupsWithActivePlans] = useState<GroupActivePlan[]>([])
+  // Unassign confirmation
+  const [unassignTarget, setUnassignTarget] = useState<AssignedGroupInfo | null>(null)
+  const [isUnassigning, setIsUnassigning] = useState(false)
+
+  const loadAssignmentData = useCallback(async () => {
+    if (!macrocycleId) return
+    const [assignedResult, activePlansResult] = await Promise.all([
+      getAssignedGroupsForPlanAction(macrocycleId),
+      getGroupsWithActivePlansAction(),
+    ])
+    if (assignedResult.isSuccess && assignedResult.data) {
+      setAssignedGroups(assignedResult.data)
+    }
+    if (activePlansResult.isSuccess && activePlansResult.data) {
+      setGroupsWithActivePlans(activePlansResult.data)
+    }
+  }, [macrocycleId])
+
+  // Load athletes, groups, and assignment data
   useEffect(() => {
     async function loadData() {
       setIsLoading(true)
       try {
-        // Load groups
-        const groupsResult = await getCoachAthleteGroupsAction()
+        const [groupsResult, athletesResult] = await Promise.all([
+          getCoachAthleteGroupsAction(),
+          getRosterWithGroupCountsAction(),
+        ])
+
         if (groupsResult.isSuccess && groupsResult.data) {
           setGroups(groupsResult.data)
         }
-
-        // Load athletes with roster data
-        const athletesResult = await getRosterWithGroupCountsAction()
         if (athletesResult.isSuccess && athletesResult.data) {
           setAthletes(athletesResult.data.athletes)
         }
+
+        await loadAssignmentData()
       } catch (error) {
         console.error('[AssignmentView] Failed to load data:', error)
         toast({
@@ -87,7 +140,8 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
     }
 
     loadData()
-  }, [toast])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadAssignmentData])
 
   const handleAthleteToggle = (athleteId: number) => {
     setSelectedAthletes(prev =>
@@ -130,6 +184,10 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
           title: "Success!",
           description: result.message,
         })
+        // Refresh assignment data
+        await loadAssignmentData()
+        setSelectedGroups([])
+        setSelectedAthletes([])
         onAssignmentComplete?.()
       } else {
         throw new Error(result.message)
@@ -145,6 +203,55 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
       setIsAssigning(false)
     }
   }
+
+  const handleUnassignGroup = async () => {
+    if (!macrocycleId || !unassignTarget) return
+
+    setIsUnassigning(true)
+    try {
+      const result = await unassignPlanFromAthletesAction({
+        macrocycleId,
+        groupIds: [unassignTarget.groupId],
+      })
+
+      if (result.isSuccess) {
+        toast({
+          title: "Unassigned",
+          description: result.message,
+        })
+        await loadAssignmentData()
+      } else {
+        throw new Error(result.message)
+      }
+    } catch (error) {
+      console.error('[AssignmentView] Unassign failed:', error)
+      toast({
+        title: "Unassign Failed",
+        description: error instanceof Error ? error.message : "Failed to unassign group",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUnassigning(false)
+      setUnassignTarget(null)
+    }
+  }
+
+  // Build a map of groupId → active plan info (from other macrocycles only)
+  const otherPlanByGroupId = useMemo(() => {
+    const map = new Map<number, GroupActivePlan>()
+    for (const gap of groupsWithActivePlans) {
+      if (macrocycleId && gap.macrocycleId !== macrocycleId) {
+        map.set(gap.groupId, gap)
+      }
+    }
+    return map
+  }, [groupsWithActivePlans, macrocycleId])
+
+  // Groups already assigned to THIS plan
+  const assignedGroupIds = useMemo(
+    () => new Set(assignedGroups.map(g => g.groupId)),
+    [assignedGroups]
+  )
 
   // Guardrail checks
   const hasEmptySelection = assignmentType === "individuals"
@@ -163,6 +270,46 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
 
   return (
     <div className="space-y-6">
+      {/* Currently Assigned Groups */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Currently Assigned</CardTitle>
+          <CardDescription>Groups with active assignments for this plan</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {assignedGroups.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No groups assigned yet</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {assignedGroups.map((ag) => (
+                <div
+                  key={ag.groupId}
+                  className="flex items-center gap-2 rounded-lg border px-3 py-2"
+                >
+                  <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{ag.groupName}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {ag.athleteCount} athlete{ag.athleteCount !== 1 ? 's' : ''} · {ag.sessionCount} session{ag.sessionCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 ml-1 text-muted-foreground hover:text-destructive"
+                    onClick={() => setUnassignTarget(ag)}
+                    aria-label={`Unassign ${ag.groupName}`}
+                  >
+                    <UserMinus className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Assignment Configuration */}
       <Card>
         <CardHeader>
           <CardTitle>Assignment Configuration</CardTitle>
@@ -255,25 +402,53 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
                 </Alert>
               ) : (
                 <div className="space-y-3 max-h-48 overflow-y-auto border rounded-lg p-3">
-                  {groups.map((group) => (
-                    <div key={group.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-accent">
-                      <input
-                        type="checkbox"
-                        id={`group-${group.id}`}
-                        checked={selectedGroups.includes(group.id)}
-                        onChange={() => handleGroupToggle(group.id)}
-                        className="w-4 h-4"
-                      />
-                      <div className="flex-1">
-                        <Label htmlFor={`group-${group.id}`} className="cursor-pointer font-medium">
-                          {group.group_name}
-                        </Label>
-                        <div className="text-xs text-muted-foreground">
-                          {group.athlete_count} athlete{group.athlete_count !== 1 ? 's' : ''}
+                  {groups.map((group) => {
+                    const otherPlan = otherPlanByGroupId.get(group.id)
+                    const isAssignedToThisPlan = assignedGroupIds.has(group.id)
+                    const isDisabled = !!otherPlan
+
+                    return (
+                      <div
+                        key={group.id}
+                        className={`flex items-center space-x-3 p-3 border rounded-lg ${
+                          isDisabled ? 'opacity-60 bg-muted' : 'hover:bg-accent'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          id={`group-${group.id}`}
+                          checked={selectedGroups.includes(group.id)}
+                          onChange={() => handleGroupToggle(group.id)}
+                          disabled={isDisabled}
+                          className="w-4 h-4"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Label
+                              htmlFor={`group-${group.id}`}
+                              className={`font-medium ${isDisabled ? '' : 'cursor-pointer'}`}
+                            >
+                              {group.group_name}
+                            </Label>
+                            {isAssignedToThisPlan && (
+                              <Badge variant="secondary" className="text-xs">
+                                Assigned
+                              </Badge>
+                            )}
+                            {otherPlan && (
+                              <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                On: {otherPlan.planName}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {group.athlete_count} athlete{group.athlete_count !== 1 ? 's' : ''}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -384,6 +559,42 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
           </div>
         </CardContent>
       </Card>
+
+      {/* Unassign Confirmation Dialog */}
+      <AlertDialog open={!!unassignTarget} onOpenChange={(open) => !open && setUnassignTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unassign {unassignTarget?.groupName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove all sessions that haven&apos;t been started yet for this group.
+              Ongoing and completed sessions will not be affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUnassigning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleUnassignGroup()
+              }}
+              disabled={isUnassigning}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isUnassigning ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Unassigning...
+                </>
+              ) : (
+                <>
+                  <UserMinus className="h-4 w-4 mr-2" />
+                  Unassign
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

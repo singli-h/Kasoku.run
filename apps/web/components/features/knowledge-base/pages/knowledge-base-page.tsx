@@ -77,14 +77,14 @@ export function KnowledgeBasePage() {
   }
 
 
-  // Error handling
-  if (articlesError || categoriesError) {
+  // Categories error blocks the whole page; articles error is shown inline
+  if (categoriesError) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <h3 className="text-lg font-semibold text-destructive mb-2">Error Loading Data</h3>
           <p className="text-muted-foreground mb-4">
-            {articlesError?.message || categoriesError?.message}
+            {categoriesError.message}
           </p>
           <Button onClick={() => router.refresh()}>
             Try Again
@@ -96,7 +96,7 @@ export function KnowledgeBasePage() {
 
   return (
     <div className="flex flex-1 min-h-0 bg-background -mx-4 -mb-4">
-      {/* Left Sidebar - Categories */}
+      {/* Left Sidebar - Categories render independently */}
       <KnowledgeBaseSidebar
         categories={categories}
         selectedCategory={selectedCategory}
@@ -118,12 +118,18 @@ export function KnowledgeBasePage() {
           onViewModeChange={setViewMode}
           onNewArticle={handleNewArticle}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
-          isLoading={isLoadingArticles || isLoadingCategories}
+          isLoading={isLoadingArticles}
         />
 
-        {/* Articles Content */}
+        {/* Articles Content - loads independently from categories */}
         <div className="flex-1 overflow-auto p-4 sm:p-6">
-          {isLoadingArticles ? (
+          {articlesError ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+              <h3 className="text-lg font-semibold text-destructive mb-2">Error Loading Articles</h3>
+              <p className="text-muted-foreground mb-4">{articlesError.message}</p>
+              <Button onClick={() => router.refresh()}>Try Again</Button>
+            </div>
+          ) : isLoadingArticles ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {Array.from({ length: 9 }).map((_, index) => (
                 <Card key={index} className="animate-pulse">

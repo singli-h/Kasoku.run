@@ -1,4 +1,3 @@
-import { Suspense } from "react"
 import {
   getCurrentUserAction,
   checkUserNeedsOnboardingAction
@@ -6,28 +5,25 @@ import {
 import { getDashboardDataAction, getCoachDashboardDataAction } from "@/actions/dashboard/dashboard-actions"
 import { redirect } from "next/navigation"
 import { DashboardLayout, CoachDashboardView } from "@/components/features/dashboard/components"
-import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
+import { PageLayout } from "@/components/layout"
 
 // Dashboard needs real-time data - disable caching for this page
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  return (
-    <Suspense fallback={<UnifiedPageSkeleton title="Dashboard" variant="dashboard" />}>
-      <DashboardContent />
-    </Suspense>
-  )
+  return <DashboardContent />
 }
 
 async function DashboardContent() {
-  // Check if user needs onboarding
-  const needsOnboarding = await checkUserNeedsOnboardingAction()
+  // Fetch onboarding status and user data in parallel (independent calls)
+  const [needsOnboarding, userResult] = await Promise.all([
+    checkUserNeedsOnboardingAction(),
+    getCurrentUserAction(),
+  ])
+
   if (needsOnboarding.isSuccess && needsOnboarding.data) {
     redirect("/onboarding")
   }
-
-  // Fetch user first to determine role
-  const userResult = await getCurrentUserAction()
 
   if (!userResult.isSuccess || !userResult.data) {
     redirect("/")

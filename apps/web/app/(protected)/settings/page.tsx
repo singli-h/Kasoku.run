@@ -1,8 +1,7 @@
 "use server"
 
-import { Suspense } from "react"
 import { ProfileSettingsPage } from "@/components/features/settings"
-import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
+import { PageLayout } from "@/components/layout"
 
 export default async function SettingsPage() {
   return (
@@ -10,9 +9,7 @@ export default async function SettingsPage() {
       title="Settings"
       description="Manage your profile, preferences, and account settings"
     >
-      <Suspense fallback={<UnifiedPageSkeleton title="Settings" variant="form" />}>
-        <ProfileSettingsPage />
-      </Suspense>
+      <ProfileSettingsPage />
     </PageLayout>
   )
 } 

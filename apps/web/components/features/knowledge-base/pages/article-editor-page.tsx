@@ -36,7 +36,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArticleEditor } from "../editor/article-editor"
+import dynamic from "next/dynamic"
+
+const ArticleEditor = dynamic(
+  () => import("../editor/article-editor").then((mod) => mod.ArticleEditor),
+  {
+    ssr: false,
+    loading: () => <div className="animate-pulse h-[600px] bg-muted rounded-lg" />,
+  }
+)
 import { useToast } from "@/hooks/use-toast"
 import { 
   useKnowledgeBaseArticle,

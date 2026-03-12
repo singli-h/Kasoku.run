@@ -162,11 +162,9 @@ export const viewport: Viewport = {
   ],
 }
 
-// ClerkProvider wraps the entire app, which requires NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-// at render time. No page can be statically prerendered without it, so all routes
-// must be dynamic. To enable SSG for marketing pages, they would need to be moved
-// outside the ClerkProvider boundary.
-export const dynamic = "force-dynamic"
+// ClerkProvider uses NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY which is available at build time.
+// force-dynamic is scoped to (protected) routes only, so public/marketing pages can
+// be statically prerendered.
 
 export default function RootLayout({
   children

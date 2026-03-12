@@ -15,12 +15,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Calendar, Users, Target, Plus, Search, MoreVertical, Trash2 } from "lucide-react"
+import { Calendar, Users, UserMinus, Target, Plus, Search, MoreVertical, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { MacrocycleTimeline, MacrocyclePhase, RaceAnchor } from "./MacrocycleTimeline"
 import { VolumeIntensityChart, ChartDataPoint } from "./VolumeIntensityChart"
 import { AssignmentView } from "../workspace/AssignmentView"
 import { DeletePlanDialog } from "./DeletePlanDialog"
+import { unassignPlanFromAthletesAction } from "@/actions/plans/plan-assignment-actions"
 
 type TransformedMacrocycle = {
   id: string
@@ -43,7 +44,6 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [stateFilter, setStateFilter] = useState<string>("all")
-  const [groupFilter, setGroupFilter] = useState<string>("all")
   // Track selected phase per plan id to avoid leaking selection across cards
   const [selectedPhaseByPlanId, setSelectedPhaseByPlanId] = useState<Record<string, string | undefined>>({})
   // Track which plan is selected for assignment
@@ -56,10 +56,9 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
     return initialMacrocycles.filter(mc => {
       const matchesSearch = mc.name.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesState = stateFilter === "all" || mc.state === stateFilter
-      const matchesGroup = groupFilter === "all" || mc.group === groupFilter
-      return matchesSearch && matchesState && matchesGroup
+      return matchesSearch && matchesState
     })
-  }, [initialMacrocycles, searchTerm, stateFilter, groupFilter])
+  }, [initialMacrocycles, searchTerm, stateFilter])
 
   const renderMacrocycleRow = (mc: TransformedMacrocycle) => {
     const selectedPhaseId = selectedPhaseByPlanId[mc.id]
@@ -124,6 +123,27 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
                     <Users className="mr-2 h-4 w-4" />
                     Assign to Groups...
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      const confirmed = window.confirm(
+                        `Unassign all athletes from "${mc.name}"? This will remove all sessions that haven't been started yet.`
+                      )
+                      if (!confirmed) return
+                      try {
+                        const result = await unassignPlanFromAthletesAction({ macrocycleId: Number(mc.id) })
+                        if (result.isSuccess) {
+                          router.refresh()
+                        } else {
+                          alert(result.message)
+                        }
+                      } catch {
+                        alert('Failed to unassign plan. Please try again.')
+                      }
+                    }}
+                  >
+                    <UserMinus className="mr-2 h-4 w-4" />
+                    Unassign All...
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
@@ -170,9 +190,6 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
     )
   }
 
-  // Get unique groups from actual data
-  const availableGroups = Array.from(new Set(initialMacrocycles.map(mc => mc.group).filter((g): g is string => Boolean(g))))
-
   return (
     <div className="space-y-6">
       {/* Action Header */}
@@ -186,8 +203,8 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
         </Button>
       </div>
 
-      {/* Filters - Compact single row on mobile: 50% search, 25% state, 25% group */}
-      <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-row sm:gap-4">
+      {/* Filters */}
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-row sm:gap-4">
         <div className="relative col-span-2 sm:flex-1">
           <Search className="absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -206,19 +223,6 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
             <SelectItem value="Draft">Draft</SelectItem>
             <SelectItem value="Active">Active</SelectItem>
             <SelectItem value="Archived">Archived</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={groupFilter} onValueChange={setGroupFilter}>
-          <SelectTrigger className="col-span-1 text-xs sm:text-sm sm:w-[180px]">
-            <SelectValue placeholder="Group" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Groups</SelectItem>
-            {availableGroups.map(group => (
-              <SelectItem key={group} value={group}>
-                {group}
-              </SelectItem>
-            ))}
           </SelectContent>
         </Select>
       </div>

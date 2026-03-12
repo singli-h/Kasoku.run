@@ -1,8 +1,7 @@
-import { Suspense } from "react"
 import Link from "next/link"
 import { History } from "lucide-react"
 import { WorkoutPageContent } from "@/components/features/workout/components/pages/workout-page-content"
-import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
+import { PageLayout } from "@/components/layout"
 import { Button } from "@/components/ui/button"
 
 export default async function WorkoutPage() {
@@ -19,9 +18,7 @@ export default async function WorkoutPage() {
         </Button>
       }
     >
-      <Suspense fallback={<UnifiedPageSkeleton title="My Workouts" variant="grid" />}>
-        <WorkoutPageContent />
-      </Suspense>
+      <WorkoutPageContent />
     </PageLayout>
   )
 }

@@ -2,6 +2,9 @@ import { redirect } from "next/navigation"
 import { getCurrentUserAction } from "@/actions/auth/user-actions"
 import ProtectedLayout from "@/components/layout/protected-layout"
 
+// Protected routes need dynamic rendering for auth checks and real-time data
+export const dynamic = "force-dynamic"
+
 interface ProtectedRoutesLayoutProps {
   children: React.ReactNode
 }

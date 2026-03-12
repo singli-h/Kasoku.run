@@ -50,7 +50,6 @@ const isProtectedRoute = createRouteMatcher([
   "/onboarding(.*)",
   "/sessions(.*)",
   "/templates(.*)",
-  "/program(.*)",
 ])
 
 // Routes that should skip onboarding check (public and auth routes)

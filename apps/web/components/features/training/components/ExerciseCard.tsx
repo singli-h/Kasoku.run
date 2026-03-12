@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from "react"
 import { ArrowRight, Bot, Check, ChevronDown, ChevronUp, GripVertical, Plus, Trash2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatSubgroupChip } from "@/lib/training-utils"
 import type { TrainingExercise, TrainingSet } from "../types"
 import { getCompletedCount } from "../types"
 import { SetRow, type VisibleFields } from "./SetRow"
@@ -11,6 +12,8 @@ import type { UIDisplayType } from "@/lib/changeset/types"
 import { AI_BG_COLORS } from "@/lib/changeset/ui-constants"
 import type { AISetChangeInfo } from "@/components/features/ai-assistant/hooks"
 import { isFreeelapMetadata, type FreeelapMetadata } from "@/types/freelap"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export interface ExerciseCardProps {
   exercise: TrainingExercise
@@ -65,6 +68,12 @@ export interface ExerciseCardProps {
    * @default true
    */
   showAdvancedFields?: boolean
+  /** Available event groups for subgroup filtering popover */
+  availableEventGroups?: string[]
+  /** Callback when target_event_groups is changed via the subgroup popover */
+  onUpdateTargetEventGroups?: (groups: string[] | null) => void
+  /** Preview group for dimming — when set, non-matching exercises get reduced opacity */
+  previewGroup?: string | null
 }
 
 /**
@@ -108,6 +117,9 @@ export function ExerciseCard({
   isGhostExercise = false,
   showAllFields = false,
   showAdvancedFields = true,
+  availableEventGroups,
+  onUpdateTargetEventGroups,
+  previewGroup,
 }: ExerciseCardProps) {
   // Derive AI change states
   // Enhanced swap detection: also check if proposedData has a different exercise_id
@@ -132,6 +144,18 @@ export function ExerciseCard({
     aiProposedData?.exercise_name ??    // Primary: snake_case from transformations
     aiProposedData?.exerciseName        // Fallback: camelCase
   ) as string | undefined : undefined
+  // Subgroup chip display
+  const subgroupChipText = formatSubgroupChip(exercise.targetEventGroups ?? null)
+
+  // Preview dimming: if previewGroup is active, dim exercises that don't target it
+  const isDimmedByPreview = useMemo(() => {
+    if (!previewGroup) return false // no preview active
+    if (!exercise.targetEventGroups || exercise.targetEventGroups.length === 0) return false // null = ALL
+    return !exercise.targetEventGroups.includes(previewGroup)
+  }, [previewGroup, exercise.targetEventGroups])
+
+  const [subgroupPopoverOpen, setSubgroupPopoverOpen] = useState(false)
+
   const [draggingSetId, setDraggingSetId] = useState<string | number | null>(null)
   const [dragOverSetId, setDragOverSetId] = useState<string | number | null>(null)
 
@@ -249,7 +273,8 @@ export function ExerciseCard({
     <div
       className={cn(
         "flex transition-opacity min-w-0",
-        isDragging && "opacity-50"
+        isDragging && "opacity-50",
+        isDimmedByPreview && "opacity-30"
       )}
       draggable={!isAthlete}
       onDragStart={(e) => !isAthlete && onDragStart?.(e, exercise.id)}
@@ -341,6 +366,101 @@ export function ExerciseCard({
                 ) : (
                   // Normal state
                   <h3 className="text-sm font-medium truncate">{exercise.name}</h3>
+                )}
+                {/* Subgroup chip (T016) — shows target event groups */}
+                {!isAthlete && subgroupChipText && (
+                  <Popover open={subgroupPopoverOpen} onOpenChange={setSubgroupPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSubgroupPopoverOpen(true)
+                        }}
+                        className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted/80 transition-colors shrink-0"
+                        title={`Target: ${(exercise.targetEventGroups ?? []).join(', ')}`}
+                      >
+                        {subgroupChipText}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-48 p-3"
+                      align="start"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Target Groups</p>
+                        {(availableEventGroups ?? []).map((group) => {
+                          const isChecked = (exercise.targetEventGroups ?? []).includes(group)
+                          return (
+                            <label
+                              key={group}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={(checked) => {
+                                  const current = exercise.targetEventGroups ?? []
+                                  const next = checked
+                                    ? [...current, group]
+                                    : current.filter(g => g !== group)
+                                  onUpdateTargetEventGroups?.(next.length > 0 ? next : null)
+                                }}
+                              />
+                              <span className="text-sm">{group}</span>
+                            </label>
+                          )
+                        })}
+                        {(exercise.targetEventGroups ?? []).length > 0 && (
+                          <button
+                            onClick={() => onUpdateTargetEventGroups?.(null)}
+                            className="text-xs text-muted-foreground hover:text-foreground mt-1"
+                          >
+                            Clear (all athletes)
+                          </button>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+                {/* Untagged subgroup — show empty chip on click for coach */}
+                {!isAthlete && !subgroupChipText && availableEventGroups && availableEventGroups.length > 0 && (
+                  <Popover open={subgroupPopoverOpen} onOpenChange={setSubgroupPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSubgroupPopoverOpen(true)
+                        }}
+                        className="inline-flex items-center rounded-md border border-dashed border-muted-foreground/30 px-1.5 py-0.5 text-[10px] text-muted-foreground/50 hover:border-muted-foreground/60 transition-colors shrink-0"
+                        title="Assign to subgroups"
+                      >
+                        ALL
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-48 p-3"
+                      align="start"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Target Groups</p>
+                        {(availableEventGroups ?? []).map((group) => (
+                          <label
+                            key={group}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <Checkbox
+                              checked={false}
+                              onCheckedChange={() => {
+                                onUpdateTargetEventGroups?.([group])
+                              }}
+                            />
+                            <span className="text-sm">{group}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 )}
                 {/* AI change indicator badge */}
                 {(isGhostExercise || hasPendingChange || pendingSetCount > 0) && (

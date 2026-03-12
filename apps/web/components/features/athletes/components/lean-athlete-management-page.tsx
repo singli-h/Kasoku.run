@@ -9,11 +9,11 @@
 import { useState, useEffect, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { UnifiedPageSkeleton } from "@/components/layout"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
 // Server Actions
 import { getRosterWithGroupCountsAction } from "@/actions/athletes/athlete-actions"
+import { getEventGroupsAction } from "@/actions/athletes/event-group-actions"
 
 // Components
 import { InviteAthleteForm } from "./invite-athlete-form"
@@ -22,11 +22,13 @@ import { GroupDirectorySection } from "./group-directory-section"
 import { BulkOperationsDialog } from "./bulk-operations-dialog"
 import { MobileInviteFAB } from "./mobile-invite-fab"
 import { MobileBulkActionBar } from "./mobile-bulk-action-bar"
+import { EventGroupManager } from "./event-group-manager"
 
 // Types
 import type {
   AthleteWithDetails,
   GroupWithCount,
+  EventGroup,
   BulkOperationState
 } from "../types"
 
@@ -37,6 +39,7 @@ export function LeanAthleteManagementPage() {
   // Data state
   const [athletes, setAthletes] = useState<AthleteWithDetails[]>([])
   const [groups, setGroups] = useState<GroupWithCount[]>([])
+  const [eventGroups, setEventGroups] = useState<EventGroup[]>([])
   const [loading, setLoading] = useState(true)
 
   // UI state
@@ -53,17 +56,24 @@ export function LeanAthleteManagementPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
-      const result = await getRosterWithGroupCountsAction()
+      const [rosterResult, eventGroupsResult] = await Promise.all([
+        getRosterWithGroupCountsAction(),
+        getEventGroupsAction()
+      ])
 
-      if (result.isSuccess && result.data) {
-        setAthletes(result.data.athletes)
-        setGroups(result.data.groups)
+      if (rosterResult.isSuccess && rosterResult.data) {
+        setAthletes(rosterResult.data.athletes)
+        setGroups(rosterResult.data.groups)
       } else {
         toast({
           title: "Error",
-          description: result.message,
+          description: rosterResult.message,
           variant: "destructive"
         })
+      }
+
+      if (eventGroupsResult.isSuccess && eventGroupsResult.data) {
+        setEventGroups(eventGroupsResult.data)
       }
     } catch (error) {
       console.error('Error loading data:', error)
@@ -106,8 +116,18 @@ export function LeanAthleteManagementPage() {
     setSelectedAthletes([])
   }, [])
 
+  // Content-area-only loading (route-level loading.tsx handles the full page skeleton)
   if (loading) {
-    return <UnifiedPageSkeleton title="Athletes" variant="athletes" />
+    return (
+      <div className="space-y-6">
+        <div className="h-10 w-48 bg-muted animate-pulse rounded" />
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   // Get filtered count for mobile bulk action bar
@@ -117,22 +137,29 @@ export function LeanAthleteManagementPage() {
 
   return (
     <div className={`space-y-6 ${isMobile && selectedAthletes.length > 0 ? 'pb-32' : ''}`}>
-      {/* Desktop: Coach-Only Badge and Invite Form */}
+      {/* Desktop: Coach-Only Badge, Event Groups, and Invite Form */}
       {!isMobile && (
-        <div className="flex flex-col md:flex-row md:items-start gap-4 p-6 bg-muted/30 rounded-lg">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="secondary" className="text-xs">
-                Coach Only
-              </Badge>
+        <div className="flex flex-col gap-4 p-6 bg-muted/30 rounded-lg">
+          <div className="flex flex-col md:flex-row md:items-start gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="secondary" className="text-xs">
+                  Coach Only
+                </Badge>
+              </div>
+              <EventGroupManager
+                eventGroups={eventGroups}
+                onDataReload={loadData}
+              />
             </div>
-          </div>
 
-          {/* Quick Invite Form */}
-          <InviteAthleteForm
-            groups={groups}
-            onSuccess={loadData}
-          />
+            {/* Quick Invite Form */}
+            <InviteAthleteForm
+              groups={groups}
+              eventGroups={eventGroups}
+              onSuccess={loadData}
+            />
+          </div>
         </div>
       )}
 
@@ -140,6 +167,7 @@ export function LeanAthleteManagementPage() {
       <AthleteRosterSection
         athletes={athletes}
         groups={groups}
+        eventGroups={eventGroups}
         selectedAthletes={selectedAthletes}
         onSelectAthletes={setSelectedAthletes}
         onBulkOperation={setBulkOperation}
@@ -152,6 +180,8 @@ export function LeanAthleteManagementPage() {
       {!isMobile && (
         <GroupDirectorySection
           groups={groups}
+          athletes={athletes}
+          eventGroups={eventGroups}
           selectedGroupFilter={selectedGroupFilter}
           onGroupFilterChange={setSelectedGroupFilter}
           onDataReload={loadData}
@@ -171,6 +201,7 @@ export function LeanAthleteManagementPage() {
       {isMobile && (
         <MobileInviteFAB
           groups={groups}
+          eventGroups={eventGroups}
           onSuccess={loadData}
           isHidden={selectedAthletes.length > 0}
         />

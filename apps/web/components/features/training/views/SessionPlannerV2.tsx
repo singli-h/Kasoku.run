@@ -2,12 +2,19 @@
 
 import { useState, useCallback, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Undo2, Redo2, Save, Edit2, Calendar, Check, X } from "lucide-react"
+import { ArrowLeft, Undo2, Redo2, Save, Edit2, Calendar, Check, X, Copy, FolderOpen, Loader2, Search, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +34,18 @@ import {
   type SessionPlannerExercise
 } from "../adapters/session-adapter"
 
+// Import subgroup filtering hook
+import { useEventGroupsForGroup } from "../hooks/use-session-planner-queries"
+
+// Import shadcn Select for preview dropdown
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
 // Import save action
 import { saveSessionWithExercisesAction } from "@/actions/plans/session-planner-actions"
 
@@ -35,6 +54,34 @@ import { useAIExerciseChanges } from "@/components/features/ai-assistant/hooks"
 
 // Import shared exercises context
 import { useSessionExercises } from "../context"
+
+// Import template actions
+import {
+  saveAsTemplateAction,
+  getTemplatesAction,
+  insertTemplateExercisesAction,
+} from "@/actions/plans/session-plan-actions"
+import type { CreateSessionPlanForm } from "@/actions/plans/session-plan-actions"
+
+// Import Dialog and Sheet for template features
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet"
+
+// Import subgroup formatting utilities
+import { formatSubgroupChip } from "@/lib/training-utils"
 
 interface SessionPlannerV2Props {
   planId: string
@@ -49,6 +96,8 @@ interface SessionPlannerV2Props {
     session_mode?: string | null
   }
   exerciseLibrary: ExerciseLibraryItem[]
+  /** Athlete group ID for subgroup filtering (from microcycle) */
+  groupId?: number | null
   /**
    * T054: Whether to show advanced fields (RPE, tempo, velocity, effort)
    * Passed down to WorkoutView -> ExerciseCard -> SetRow.
@@ -63,6 +112,7 @@ export function SessionPlannerV2({
   sessionId,
   initialSession,
   exerciseLibrary,
+  groupId,
   showAdvancedFields = true,
   className,
 }: SessionPlannerV2Props) {
@@ -89,6 +139,10 @@ export function SessionPlannerV2({
   // Counter for generating unique IDs (prevents race condition with Date.now())
   const idCounterRef = useRef(0)
 
+  // Subgroup preview state (T018)
+  const [previewGroup, setPreviewGroup] = useState<string | null>(null)
+  const { data: eventGroups } = useEventGroupsForGroup(groupId)
+
   // Session metadata editing state
   const [sessionName, setSessionName] = useState(initialSession.name)
   const [sessionDescription, setSessionDescription] = useState(initialSession.description || '')
@@ -97,6 +151,32 @@ export function SessionPlannerV2({
   const [editingName, setEditingName] = useState('')
   const [editingDescription, setEditingDescription] = useState('')
   const [editingDate, setEditingDate] = useState('')
+
+  // Save as Template state (T034)
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [templateDescription, setTemplateDescription] = useState('')
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false)
+
+  // Insert from Template state (T035)
+  const [insertTemplateOpen, setInsertTemplateOpen] = useState(false)
+  const [templates, setTemplates] = useState<Array<{
+    id: string
+    name: string
+    description?: string | null
+    session_plan_exercises?: Array<{
+      id?: string
+      exercise_id?: number
+      target_event_groups?: string[] | null
+      exercise?: { name?: string } | null
+      [key: string]: unknown
+    }>
+  }>>([])
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+  const [templateSearch, setTemplateSearch] = useState('')
+  const [isInsertingTemplate, setIsInsertingTemplate] = useState(false)
+  // Per-template subgroup override selections: templateId -> override value
+  const [templateSubgroupOverrides, setTemplateSubgroupOverrides] = useState<Record<string, string>>({})
 
   // Start editing session metadata
   const startEditingMeta = useCallback(() => {
@@ -288,6 +368,13 @@ export function SessionPlannerV2({
     })
   }, [sessionId, setExercises, toast])
 
+  // Handle update target event groups (subgroup filtering)
+  const handleUpdateTargetEventGroups = useCallback((exerciseId: number | string, groups: string[] | null) => {
+    setExercises(prev => prev.map(ex =>
+      ex.id === exerciseId ? { ...ex, target_event_groups: groups } : ex
+    ))
+  }, [setExercises])
+
   // Handle remove exercise
   const handleRemoveExercise = useCallback((exerciseId: number | string) => {
     setExercises(prev => {
@@ -463,6 +550,143 @@ export function SessionPlannerV2({
     }
   }, [hasUnsavedChanges, router, planId])
 
+  // T034: Save as Template handler
+  const handleOpenSaveTemplate = useCallback(() => {
+    setTemplateName(sessionName)
+    setTemplateDescription(sessionDescription)
+    setSaveTemplateOpen(true)
+  }, [sessionName, sessionDescription])
+
+  const handleSaveAsTemplate = useCallback(async () => {
+    if (!templateName.trim()) return
+
+    setIsSavingTemplate(true)
+    try {
+      const planData: CreateSessionPlanForm = {
+        name: templateName,
+        sessions: [{
+          id: sessionId,
+          name: templateName,
+          description: templateDescription || '',
+          day: initialSession.day ?? 1,
+          week: initialSession.week ?? 1,
+          exercises: exercises.map((ex) => ({
+            id: String(ex.id),
+            exerciseId: ex.exercise_id,
+            order: ex.exercise_order,
+            supersetId: ex.superset_id ?? undefined,
+            sets: ex.sets.map((s) => ({
+              setIndex: s.set_index,
+              reps: s.reps ?? undefined,
+              weight: s.weight ?? undefined,
+              distance: s.distance ?? undefined,
+              performing_time: s.performing_time ?? undefined,
+              rest_time: s.rest_time ?? undefined,
+              rpe: s.rpe ?? undefined,
+              tempo: s.tempo ?? undefined,
+              effort: s.effort ?? undefined,
+            })),
+            notes: ex.notes || '',
+            restTime: 0,
+          })),
+          estimatedDuration: 60,
+          focus: [],
+          notes: '',
+        }],
+      }
+
+      const result = await saveAsTemplateAction(planData, templateName, templateDescription || undefined)
+
+      if (result.isSuccess) {
+        toast({
+          title: "Template Saved",
+          description: `"${templateName}" saved as a template.`,
+        })
+        setSaveTemplateOpen(false)
+      } else {
+        toast({
+          title: "Save Failed",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('[SessionPlannerV2] Save template failed:', error)
+      toast({
+        title: "Save Failed",
+        description: error instanceof Error ? error.message : "Failed to save template",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSavingTemplate(false)
+    }
+  }, [templateName, templateDescription, sessionId, initialSession, exercises, toast])
+
+  // T035: Insert from Template handler
+  const handleOpenInsertTemplate = useCallback(async () => {
+    setInsertTemplateOpen(true)
+    setIsLoadingTemplates(true)
+    setTemplateSearch('')
+    setTemplateSubgroupOverrides({})
+
+    const result = await getTemplatesAction()
+
+    if (result.isSuccess) {
+      setTemplates(result.data as typeof templates)
+    } else {
+      toast({
+        title: "Error",
+        description: result.message,
+        variant: "destructive",
+      })
+    }
+
+    setIsLoadingTemplates(false)
+  }, [toast])
+
+  const handleInsertTemplate = useCallback(async (templateId: string) => {
+    setIsInsertingTemplate(true)
+
+    // Resolve subgroup override for this template
+    const overrideValue = templateSubgroupOverrides[templateId]
+    let subgroupOverride: { type: 'keep' | 'all' | 'specific'; value?: string } | undefined
+    if (overrideValue === '__all__') {
+      subgroupOverride = { type: 'all' }
+    } else if (overrideValue && overrideValue !== '__keep__') {
+      subgroupOverride = { type: 'specific', value: overrideValue }
+    }
+    // undefined or '__keep__' means keep original (no override param)
+
+    const result = await insertTemplateExercisesAction(templateId, sessionId, subgroupOverride)
+
+    if (result.isSuccess) {
+      toast({
+        title: "Template Inserted",
+        description: result.message,
+      })
+      setInsertTemplateOpen(false)
+      // Reload page to pick up the newly inserted exercises from the database
+      router.refresh()
+    } else {
+      toast({
+        title: "Insert Failed",
+        description: result.message,
+        variant: "destructive",
+      })
+    }
+
+    setIsInsertingTemplate(false)
+  }, [sessionId, toast, router, templateSubgroupOverrides])
+
+  const filteredTemplates = useMemo(() => {
+    if (!templateSearch.trim()) return templates
+    const search = templateSearch.toLowerCase()
+    return templates.filter((t) =>
+      t.name.toLowerCase().includes(search) ||
+      (t.description && t.description.toLowerCase().includes(search))
+    )
+  }, [templates, templateSearch])
+
   return (
     <div className={cn("flex flex-col h-full", className)}>
       {/* Header with back, undo/redo, save */}
@@ -494,7 +718,28 @@ export function SessionPlannerV2({
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="px-2">
+                  <MoreHorizontal className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline text-xs">More</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleOpenInsertTemplate}>
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Insert from Template
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleOpenSaveTemplate}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Save as Template
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="h-4 w-px bg-border hidden sm:block" />
+
             {hasUnsavedChanges && (
               <>
                 {/* Mobile: colored dot indicator */}
@@ -574,6 +819,26 @@ export function SessionPlannerV2({
             </div>
           )}
         </div>
+
+        {/* Subgroup preview dropdown (T018) */}
+        {eventGroups && eventGroups.length > 0 && (
+          <div className="px-4 pb-2">
+            <Select
+              value={previewGroup ?? '__all__'}
+              onValueChange={(val) => setPreviewGroup(val === '__all__' ? null : val)}
+            >
+              <SelectTrigger className="h-8 text-xs w-auto min-w-[140px]">
+                <SelectValue placeholder="Preview group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Athletes</SelectItem>
+                {eventGroups.map((group) => (
+                  <SelectItem key={group} value={group}>{group}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Main workout view (coach mode) - title/description handled above */}
@@ -587,6 +852,9 @@ export function SessionPlannerV2({
           sessionStatus="ongoing"
           exerciseLibrary={exerciseLibraryItems}
           showAdvancedFields={showAdvancedFields}
+          previewGroup={previewGroup}
+          availableEventGroups={eventGroups}
+          onUpdateTargetEventGroups={handleUpdateTargetEventGroups}
           onToggleExpand={handleToggleExpand}
           onCompleteSet={() => {}} // No completion in coach mode
           onUpdateSet={handleUpdateSet}
@@ -624,6 +892,178 @@ export function SessionPlannerV2({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* T034: Save as Template dialog */}
+      <Dialog open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save as Template</DialogTitle>
+            <DialogDescription>
+              Save these exercises as a reusable template block.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Template name"
+              autoFocus
+            />
+            <Textarea
+              value={templateDescription}
+              onChange={(e) => setTemplateDescription(e.target.value)}
+              placeholder="Brief description (optional)"
+              rows={2}
+              className="text-sm"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleSaveAsTemplate}
+              disabled={isSavingTemplate || !templateName.trim()}
+              size="sm"
+            >
+              {isSavingTemplate && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isSavingTemplate ? "Saving..." : "Save Template"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* T035: Insert from Template sheet */}
+      <Sheet open={insertTemplateOpen} onOpenChange={setInsertTemplateOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Insert from Template</SheetTitle>
+            <SheetDescription>
+              Select a template to insert its exercises into this session.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-3">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={templateSearch}
+                onChange={(e) => setTemplateSearch(e.target.value)}
+                placeholder="Search templates..."
+                className="pl-9"
+              />
+            </div>
+
+            {/* Template list */}
+            {isLoadingTemplates ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredTemplates.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {templateSearch ? "No templates match your search." : "No templates yet. Save exercises as a template from any session."}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {filteredTemplates.map((template) => {
+                  const exercises = template.session_plan_exercises ?? []
+                  const exerciseCount = exercises.length
+                  const previewExercises = exercises.slice(0, 4)
+                  const remainingCount = exerciseCount - previewExercises.length
+                  const overrideValue = templateSubgroupOverrides[template.id] ?? '__keep__'
+
+                  return (
+                    <div
+                      key={template.id}
+                      className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors space-y-2"
+                    >
+                      {/* Template header */}
+                      <div>
+                        <p className="text-sm font-medium truncate">{template.name}</p>
+                        {template.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                            {template.description}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {exerciseCount} exercise{exerciseCount !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+
+                      {/* Exercise preview list */}
+                      {previewExercises.length > 0 && (
+                        <div className="space-y-0.5 pl-1">
+                          {previewExercises.map((ex, idx) => {
+                            const exName = ex.exercise && typeof ex.exercise === 'object' && 'name' in ex.exercise
+                              ? (ex.exercise as { name?: string }).name
+                              : undefined
+                            const groups = ex.target_event_groups as string[] | null | undefined
+                            const chipLabel = formatSubgroupChip(groups ?? null)
+
+                            return (
+                              <div key={ex.id ?? idx} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <span className="truncate">{exName || `Exercise ${idx + 1}`}</span>
+                                {chipLabel ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground/70 shrink-0">
+                                    {chipLabel}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-muted/50 text-[10px] text-muted-foreground shrink-0">
+                                    ALL
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })}
+                          {remainingCount > 0 && (
+                            <p className="text-[10px] text-muted-foreground/60 pl-0.5">
+                              +{remainingCount} more
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Subgroup override + Insert button */}
+                      <div className="flex items-center gap-2">
+                        {eventGroups && eventGroups.length > 0 && (
+                          <Select
+                            value={overrideValue}
+                            onValueChange={(val) =>
+                              setTemplateSubgroupOverrides(prev => ({ ...prev, [template.id]: val }))
+                            }
+                          >
+                            <SelectTrigger className="h-7 text-xs flex-1 min-w-0">
+                              <SelectValue placeholder="Keep original" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__keep__">Keep original</SelectItem>
+                              <SelectItem value="__all__">All Athletes</SelectItem>
+                              {eventGroups.map((group) => (
+                                <SelectItem key={group} value={group}>{group}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleInsertTemplate(template.id)}
+                          disabled={isInsertingTemplate}
+                          className="shrink-0"
+                        >
+                          {isInsertingTemplate ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            "Insert"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
     </div>
   )
 }

@@ -24,6 +24,26 @@ interface UserRoleContextValue {
 
 const UserRoleContext = createContext<UserRoleContextValue | undefined>(undefined)
 
+const ROLE_CACHE_KEY = 'user-role-cache'
+const ROLE_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+function getCachedRole(userId: string): UserRole | null {
+  try {
+    const cached = sessionStorage.getItem(ROLE_CACHE_KEY)
+    if (cached) {
+      const { role, userId: cachedUserId, timestamp } = JSON.parse(cached)
+      if (cachedUserId === userId && Date.now() - timestamp < ROLE_CACHE_TTL) return role
+    }
+  } catch {}
+  return null
+}
+
+function setCachedRole(role: string, userId: string) {
+  try {
+    sessionStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ role, userId, timestamp: Date.now() }))
+  } catch {}
+}
+
 /**
  * UserRoleProvider - Provides user role information to client components
  *
@@ -73,10 +93,22 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const VALID_ROLES: UserRole[] = ['coach', 'athlete', 'individual']
+
+        // Check sessionStorage cache before fetching
+        const cachedRole = getCachedRole(user.id)
+        if (cachedRole && VALID_ROLES.includes(cachedRole)) {
+          setRole(cachedRole)
+          setError(null)
+          retryCount.current = 0
+          setIsLoading(false)
+          return
+        }
+
         const response = await fetch('/api/user/role')
         if (response.ok) {
           const data = await response.json()
           if (VALID_ROLES.includes(data.role)) {
+            setCachedRole(data.role, user.id)
             setRole(data.role as UserRole)
             setError(null)
             retryCount.current = 0
@@ -114,7 +146,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
-  }, [user, isLoaded])
+  }, [user?.id, isLoaded])
 
   // Memoize hasRole function to prevent recreation on every render
   const hasRole = useCallback((requiredRole: UserRole | UserRole[]) => {

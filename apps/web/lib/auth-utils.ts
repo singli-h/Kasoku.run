@@ -199,10 +199,10 @@ export async function verifySessionPlanAccess(
   dbUserId: number,
   sessionPlanId: string
 ): Promise<AthleteAccessResult> {
-  // Get the session plan with user_id and athlete_group_id
+  // Get the session plan with user_id and microcycle relationship for group access
   const { data: plan, error } = await supabase
     .from('session_plans')
-    .select('user_id, athlete_group_id')
+    .select('user_id, microcycle_id')
     .eq('id', sessionPlanId)
     .single()
 
@@ -216,23 +216,31 @@ export async function verifySessionPlanAccess(
     return { authorized: true, isOwner: true, isCoach: false }
   }
 
-  // Check coach access (user is coach of the plan's athlete group)
-  if (plan.athlete_group_id) {
-    const { data: group } = await supabase
-      .from('athlete_groups')
-      .select('coach_id')
-      .eq('id', plan.athlete_group_id)
+  // Check coach access via microcycle → athlete_group
+  if (plan.microcycle_id) {
+    const { data: microcycle } = await supabase
+      .from('microcycles')
+      .select('athlete_group_id')
+      .eq('id', plan.microcycle_id)
       .single()
 
-    if (group) {
-      const { data: coach } = await supabase
-        .from('coaches')
-        .select('id')
-        .eq('user_id', dbUserId)
+    if (microcycle?.athlete_group_id) {
+      const { data: group } = await supabase
+        .from('athlete_groups')
+        .select('coach_id')
+        .eq('id', microcycle.athlete_group_id)
         .single()
 
-      if (coach && group.coach_id === coach.id) {
-        return { authorized: true, isOwner: false, isCoach: true }
+      if (group) {
+        const { data: coach } = await supabase
+          .from('coaches')
+          .select('id')
+          .eq('user_id', dbUserId)
+          .single()
+
+        if (coach && group.coach_id === coach.id) {
+          return { authorized: true, isOwner: false, isCoach: true }
+        }
       }
     }
   }

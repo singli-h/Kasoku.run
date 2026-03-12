@@ -21,10 +21,11 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { inviteOrAttachAthleteAction } from "@/actions/athletes/athlete-actions"
 import { cn } from "@/lib/utils"
-import type { GroupWithCount } from "../types"
+import type { GroupWithCount, EventGroup } from "../types"
 
 interface MobileInviteFABProps {
   groups: GroupWithCount[]
+  eventGroups?: EventGroup[]
   onSuccess: () => void
   isHidden?: boolean
   className?: string
@@ -32,6 +33,7 @@ interface MobileInviteFABProps {
 
 export function MobileInviteFAB({
   groups,
+  eventGroups,
   onSuccess,
   isHidden = false,
   className
@@ -40,6 +42,7 @@ export function MobileInviteFAB({
   const [isOpen, setIsOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [groupId, setGroupId] = useState<string>("")
+  const [eventGroupAbbrev, setEventGroupAbbrev] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async () => {
@@ -54,7 +57,11 @@ export function MobileInviteFAB({
 
     setIsSubmitting(true)
     try {
-      const result = await inviteOrAttachAthleteAction(email, parseInt(groupId))
+      const result = await inviteOrAttachAthleteAction(
+        email,
+        parseInt(groupId),
+        eventGroupAbbrev && eventGroupAbbrev !== "none" ? eventGroupAbbrev : undefined
+      )
       if (result.isSuccess) {
         toast({
           title: "Success",
@@ -62,6 +69,7 @@ export function MobileInviteFAB({
         })
         setEmail("")
         setGroupId("")
+        setEventGroupAbbrev("")
         setIsOpen(false)
         onSuccess()
       } else {
@@ -203,6 +211,28 @@ export function MobileInviteFAB({
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Event group field (optional) */}
+                {eventGroups && eventGroups.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      Event Group (optional)
+                    </Label>
+                    <Select value={eventGroupAbbrev} onValueChange={setEventGroupAbbrev}>
+                      <SelectTrigger className="h-12 text-base">
+                        <SelectValue placeholder="No event group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No event group</SelectItem>
+                        {eventGroups.map(eg => (
+                          <SelectItem key={eg.id} value={eg.abbreviation}>
+                            {eg.abbreviation} — {eg.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Submit button */}
                 <Button

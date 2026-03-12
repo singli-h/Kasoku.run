@@ -5,7 +5,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
 import { 
   Users, 
@@ -42,23 +42,54 @@ import {
   updateAthleteGroupAction,
   deleteAthleteGroupAction
 } from "@/actions/athletes/athlete-actions"
-import type { GroupWithCount } from "../types"
+import type { GroupWithCount, EventGroup } from "../types"
 
 interface GroupDirectorySectionProps {
   groups: GroupWithCount[]
+  athletes?: Array<{ athlete_group_id: number | null; event_group?: string | null }>
+  eventGroups?: EventGroup[]
   selectedGroupFilter: number | null
   onGroupFilterChange: (groupId: number | null) => void
   onDataReload: () => void
   className?: string
 }
 
+/** Compute event group breakdown for a given athlete group */
+function getEventGroupBreakdown(
+  groupId: number,
+  athletes: Array<{ athlete_group_id: number | null; event_group?: string | null }>,
+  eventGroupMap: Map<string, string>
+): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const a of athletes) {
+    if (a.athlete_group_id === groupId && a.event_group) {
+      // Use full name if available, otherwise use abbreviation
+      const displayName = eventGroupMap.get(a.event_group) || a.event_group
+      counts[displayName] = (counts[displayName] || 0) + 1
+    }
+  }
+  return counts
+}
+
 export function GroupDirectorySection({
   groups,
+  athletes,
+  eventGroups,
   selectedGroupFilter,
   onGroupFilterChange,
   onDataReload,
   className
 }: GroupDirectorySectionProps) {
+  // Build abbreviation -> name lookup
+  const eventGroupMap = useMemo(() => {
+    const map = new Map<string, string>()
+    if (eventGroups) {
+      for (const eg of eventGroups) {
+        map.set(eg.abbreviation, eg.name)
+      }
+    }
+    return map
+  }, [eventGroups])
   const { toast } = useToast()
   
   const [newGroupName, setNewGroupName] = useState("")
@@ -259,6 +290,16 @@ export function GroupDirectorySection({
                           {group.athlete_count}
                         </Badge>
                       </div>
+                      {athletes && (() => {
+                        const breakdown = getEventGroupBreakdown(group.id, athletes, eventGroupMap)
+                        const entries = Object.entries(breakdown).sort((a, b) => b[1] - a[1])
+                        if (entries.length === 0) return null
+                        return (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {entries.map(([eg, count]) => `${eg}: ${count}`).join(", ")}
+                          </p>
+                        )
+                      })()}
                     </CardContent>
                   </Card>
                 </motion.div>

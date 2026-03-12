@@ -11,6 +11,7 @@
  */
 
 import type { SessionContext } from '../tool-implementations/read-impl'
+import { formatSubgroupChip } from '@/lib/training-utils'
 
 /**
  * AI context level for the plan assistant.
@@ -201,7 +202,13 @@ const RULES = `## Rules
 
 ### Exercise Grouping
 - Different stimulus → SEPARATE exercises. Training method → SAME exercise with multiple sets.
-- If the user specifies how to group, always follow their instructions.`
+- If the user specifies how to group, always follow their instructions.
+
+### Subgroup Targeting
+- When the coach mentions a specific event group (SS, MS, LS, Hurdles, Jumps, Throws, Distance, Multi-events), set targetEventGroups on the exercise accordingly.
+- If the coach does not specify a target group, leave targetEventGroups empty/undefined (all athletes will see the exercise).
+- When listing exercises, always show the current subgroup tag in brackets: [SS], [MS·LS], or [ALL].
+- Valid event group codes: SS (Short Sprints), MS (Mid Sprints), LS (Long Sprints), Hurdles, Jumps, Throws, Distance, Multi-events.`
 
 /**
  * Builds the context section with current state at the appropriate level.
@@ -252,13 +259,17 @@ ${sessionList || 'No sessions in this week.'}`)
         const supersetInfo = ex.supersetId ? ` [SS:${ex.supersetId}]` : ''
         const notesInfo = ex.notes ? ` Notes: ${ex.notes}` : ''
 
+        // Subgroup tag: [SS], [MS·LS], or [ALL]
+        const targetGroups = (ex as Record<string, unknown>).targetEventGroups as string[] | null | undefined
+        const subgroupTag = ` [${formatSubgroupChip(targetGroups ?? null) ?? 'ALL'}]`
+
         // Include compact set details so the AI knows current values
         let setDetails = 'no sets'
         if (setCount > 0) {
           setDetails = ex.sets.map(s => formatSetCompact(s)).join('; ')
         }
 
-        return `${idx + 1}. ${ex.exerciseName} (ID: ${ex.id})${supersetInfo}${notesInfo}
+        return `${idx + 1}. ${ex.exerciseName}${subgroupTag} (ID: ${ex.id})${supersetInfo}${notesInfo}
    Sets: ${setDetails}`
       })
       .join('\n')
