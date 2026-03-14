@@ -795,17 +795,10 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
           }}
         >
           <SheetHeader className="px-6 py-4 border-b">
-            <div className="flex items-center justify-between">
-              <SheetTitle className="flex items-center gap-2">
-                <Dumbbell className="h-4 w-4 text-primary" />
-                Edit Template
-              </SheetTitle>
-              <AdvancedFieldsToggle
-                checked={showAdvancedFields}
-                onCheckedChange={toggleAdvancedFields}
-                variant="inline"
-              />
-            </div>
+            <SheetTitle className="flex items-center gap-2">
+              <Dumbbell className="h-4 w-4 text-primary" />
+              Edit Template
+            </SheetTitle>
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -825,7 +818,14 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Exercises</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Exercises</Label>
+                  <AdvancedFieldsToggle
+                    checked={showAdvancedFields}
+                    onCheckedChange={toggleAdvancedFields}
+                    variant="inline"
+                  />
+                </div>
                 <ExerciseSearchCombobox
                   enabled={!!template}
                   selectedIds={editExercises.map(e => e.exerciseId)}
