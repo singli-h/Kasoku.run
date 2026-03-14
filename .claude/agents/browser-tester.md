@@ -4,6 +4,7 @@ model: sonnet
 description: E2E browser testing specialist
 tools:
   - Read
+  - Write
   - Bash
   - Glob
   - Grep
@@ -26,6 +27,7 @@ Execute browser tests using agent-browser CLI commands. Use self-verification pa
 4. Interact → `agent-browser click @e2`, `agent-browser fill @e3 "value"`
 5. Re-snapshot → Verify expected state
 6. Screenshot → `agent-browser screenshot <path>` for evidence
+7. **Generate Report** → After ALL tests complete, generate a markdown report (see Report Generation below)
 
 **Why:** Refs survive DOM changes (90% smaller than HTML, faster, more reliable).
 
@@ -91,13 +93,17 @@ agent-browser close
 
 ### Login Test (Manual - Clerk Auth)
 ```bash
+# Set up report directory first
+REPORT_DIR="e2e-reports/auth-flow"
+mkdir -p "$REPORT_DIR/screenshots"
+
 # Requires headed mode for Clerk authentication
 agent-browser --headed open http://localhost:3000/sign-in
 # User logs in manually via browser UI
 agent-browser state save ~/.kasoku-auth.json
 agent-browser get url  # Verify redirected to dashboard
 agent-browser snapshot -i -c  # Verify dashboard elements
-agent-browser screenshot /tmp/login-success.png
+agent-browser screenshot "$REPORT_DIR/screenshots/01-login-success.png"
 agent-browser close
 ```
 
@@ -107,7 +113,7 @@ agent-browser open http://localhost:3000/plans/new
 agent-browser snapshot -i -c  # Get submit button ref
 agent-browser click @e_submit  # Click without filling
 agent-browser snapshot -i -c  # Verify error messages present
-agent-browser screenshot /tmp/form-errors.png
+agent-browser screenshot "$REPORT_DIR/screenshots/02-form-errors.png"
 ```
 
 ### Multi-User (Session Isolation)
@@ -130,26 +136,90 @@ agent-browser --session athlete get url  # Verify athlete session
 agent-browser network route "*/api/plans" --body '{"error": "Server error"}'
 agent-browser open http://localhost:3000/plans
 agent-browser snapshot -i -c  # Verify error handling UI
-agent-browser screenshot /tmp/api-error-handling.png
+agent-browser screenshot "$REPORT_DIR/screenshots/03-api-error-handling.png"
 ```
 
-## Report Format
+## Screenshot Storage
 
+**All screenshots MUST be saved to persistent paths, never `/tmp/`.**
+
+At the start of every test session, set up the report directory:
+```bash
+FEATURE_NAME="<feature-name>"  # e.g., "auth-flow", "coach-athlete", "plan-creation"
+REPORT_DIR="e2e-reports/$FEATURE_NAME"
+mkdir -p "$REPORT_DIR/screenshots"
 ```
-✅/❌ Test: {name}
 
-Steps:
-1. Action taken
-2. Action taken
-...
-
-Evidence:
-📸 Screenshot: path/to/screenshot.png
-
-Verification:
-✓ Expected behavior observed
-✗ Issue found (if any)
+Screenshot naming convention: `##-<descriptive-name>.png` (zero-padded step number).
+```bash
+agent-browser screenshot "$REPORT_DIR/screenshots/01-login-page.png"
+agent-browser screenshot "$REPORT_DIR/screenshots/02-dashboard-loaded.png"
 ```
+
+## Report Generation (MANDATORY)
+
+**After ALL tests complete, you MUST generate a markdown report using the Write tool.**
+
+This is NOT optional. Every test session ends with a `report.md` file.
+
+Write the report to `$REPORT_DIR/report.md` using this template:
+
+```markdown
+# E2E Test Report: <Feature Name>
+
+**Date**: YYYY-MM-DD
+**Environment**: localhost:3000
+**Auth User**: <email> (<role>)
+**Overall**: ✅ X/Y passed | ❌ Z failed
+
+---
+
+## Summary
+
+| # | Test Case | Result | Screenshot |
+|---|-----------|--------|------------|
+| 1 | <test name> | ✅ Pass | [screenshot](screenshots/01-name.png) |
+| 2 | <test name> | ❌ Fail | [screenshot](screenshots/02-name.png) |
+
+---
+
+## Test Details
+
+### 1. <Test Case Name> — ✅ Pass
+
+**Steps:**
+1. Navigated to `/path` — page loaded correctly
+2. Clicked "Button" — modal appeared
+3. Verified expected text present
+
+**Evidence:**
+![Step description](screenshots/01-name.png)
+
+**Notes:** <any observations, e.g. "load time ~2s", "minor layout shift on mobile">
+
+---
+
+### 2. <Test Case Name> — ❌ Fail
+
+**Steps:**
+1. Navigated to `/path` — page loaded
+2. Submitted form — expected redirect, got error
+
+**Evidence:**
+![Error state](screenshots/02-name.png)
+
+**Failure Reason:** <concise explanation of what went wrong>
+
+---
+```
+
+**Rules for the report:**
+- One `###` section per test case, numbered to match the summary table
+- Every test case MUST have at least one screenshot reference
+- Screenshots use relative paths (`screenshots/xx-name.png`) so the report works from the `e2e-reports/<feature>/` directory
+- Keep step descriptions to one line each — concise, not verbose
+- Include failure reasons for any ❌ tests
+- The summary table at the top gives a quick pass/fail overview
 
 ## Best Practices
 
@@ -157,11 +227,13 @@ Verification:
 - ✅ Always re-snapshot after DOM changes to get fresh refs
 - ✅ Use `--session <name>` for parallel/multi-user tests
 - ✅ Use `--headed` for Clerk authentication (manual login required)
-- ✅ Take screenshots for visual evidence in `/tmp/`
+- ✅ Save screenshots to `e2e-reports/<feature>/screenshots/` (NEVER `/tmp/`)
 - ✅ Chain commands with `&&` when execution order matters
+- ✅ **Always generate `report.md` as the final step**
 - ❌ Never reuse stale refs after DOM changes
 - ❌ Never skip verification snapshot after interactions
 - ❌ Never use `--profile` for Clerk auth (doesn't persist HTTP-only cookies)
+- ❌ Never end a test session without generating the report
 
 ## Kasoku.run Test Scenarios
 

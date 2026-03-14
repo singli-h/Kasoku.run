@@ -11,7 +11,8 @@ import { RoleSelectionStep } from "./steps/role-selection-step"
 import { AthleteDetailsStep } from "./steps/athlete-details-step"
 import { CoachDetailsStep } from "./steps/coach-details-step"
 import { IndividualDetailsStep } from "./steps/individual-details-step"
-import { SubscriptionStep } from "./steps/subscription-step"
+// SubscriptionStep hidden during beta — all users get free tier
+// import { SubscriptionStep } from "./steps/subscription-step"
 import { DashboardTourStep } from "./steps/dashboard-tour-step"
 import { CompletionStep } from "./steps/completion-step"
 import { completeOnboardingAction } from "@/actions/onboarding/onboarding-actions"
@@ -129,9 +130,8 @@ export default function OnboardingWizard() {
 
       if (savedStep) {
         const step = parseInt(savedStep, 10)
-        // Use steps array length for validation instead of hard-coded value
-        const maxStep = 6 // Must match steps.length defined below
-        if (!isNaN(step) && step >= 0 && step < maxStep) {
+        // Validate against actual steps count (5 steps during beta, no subscription step)
+        if (!isNaN(step) && step >= 0 && step < 5) {
           setCurrentStep(step)
         }
       }
@@ -169,7 +169,7 @@ export default function OnboardingWizard() {
     { id: "welcome", label: "Welcome" },
     { id: "role", label: "Role Selection" },
     { id: "details", label: "Role Details" },
-    { id: "subscription", label: "Subscription" },
+    // { id: "subscription", label: "Subscription" }, // Hidden during beta — all users get free tier
     { id: "tour", label: "Dashboard Tour" },
     { id: "complete", label: "Complete" },
   ]
@@ -338,18 +338,10 @@ export default function OnboardingWizard() {
             />
           )
         }
+      // case 3 (subscription) hidden during beta — all users get free tier
       case 3:
-        return (
-          <SubscriptionStep
-            userData={userData}
-            updateUserData={updateUserData}
-            onNext={nextStep}
-            onPrev={prevStep}
-          />
-        )
-      case 4:
         return <DashboardTourStep role={userData.role} onNext={nextStep} onPrev={prevStep} />
-      case 5:
+      case 4:
         return (
           <CompletionStep
             onComplete={handleComplete}

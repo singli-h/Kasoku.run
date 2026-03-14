@@ -1118,7 +1118,8 @@ export async function copySessionAction(
           exercise_id: sourceExercise.exercise_id,
           exercise_order: sourceExercise.exercise_order,
           notes: sourceExercise.notes,
-          superset_id: sourceExercise.superset_id
+          superset_id: sourceExercise.superset_id,
+          target_event_groups: sourceExercise.target_event_groups,
         }
 
         const { data: newExercise, error: exerciseError } = await supabase
@@ -1180,6 +1181,187 @@ export async function copySessionAction(
     }
   }
 }
+
+/**
+ * Duplicate all sessions from a source microcycle into one or more target microcycles.
+ * Copies session_plans -> session_plan_exercises (including target_event_groups) -> session_plan_sets.
+ * Maintains original day assignments so the weekly structure is preserved.
+ */
+export async function duplicateMicrocycleSessionsAction(
+  sourceMicrocycleId: number,
+  targetMicrocycleIds: number[]
+): Promise<ActionState<{ copiedCount: number }>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return { isSuccess: false, message: "User not authenticated" }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    if (targetMicrocycleIds.length === 0) {
+      return { isSuccess: false, message: "No target weeks selected" }
+    }
+
+    // Verify all target microcycles belong to the authenticated user
+    const allMicrocycleIds = [sourceMicrocycleId, ...targetMicrocycleIds]
+    const { data: ownedMicrocycles, error: authError } = await supabase
+      .from('microcycles')
+      .select('id, mesocycle_id, mesocycles!inner(user_id)')
+      .in('id', allMicrocycleIds)
+      .eq('mesocycles.user_id', dbUserId)
+
+    if (authError || !ownedMicrocycles) {
+      return { isSuccess: false, message: "Failed to verify week ownership" }
+    }
+
+    const ownedIds = new Set(ownedMicrocycles.map(m => m.id))
+    const unauthorizedIds = allMicrocycleIds.filter(id => !ownedIds.has(id))
+    if (unauthorizedIds.length > 0) {
+      return { isSuccess: false, message: "Not authorized to modify one or more target weeks" }
+    }
+
+    // Fetch all sessions from the source microcycle with exercises and sets
+    const { data: sourceSessions, error: fetchError } = await supabase
+      .from('session_plans')
+      .select(`
+        *,
+        session_plan_exercises(
+          *,
+          session_plan_sets(*)
+        )
+      `)
+      .eq('microcycle_id', sourceMicrocycleId)
+      .eq('user_id', dbUserId)
+      .eq('deleted', false)
+
+    if (fetchError) {
+      console.error('Error fetching source sessions:', fetchError)
+      return { isSuccess: false, message: `Failed to fetch source sessions: ${fetchError.message}` }
+    }
+
+    if (!sourceSessions || sourceSessions.length === 0) {
+      return { isSuccess: false, message: "Source week has no sessions to copy" }
+    }
+
+    let copiedCount = 0
+
+    for (const targetMicrocycleId of targetMicrocycleIds) {
+      // 1. Batch insert all sessions for this target microcycle
+      const sessionInserts: SessionPlanInsert[] = sourceSessions.map(s => ({
+        name: s.name,
+        description: s.description,
+        date: null,
+        day: s.day,
+        week: s.week,
+        session_mode: s.session_mode,
+        microcycle_id: targetMicrocycleId,
+        user_id: dbUserId,
+        is_template: false,
+      }))
+
+      const { data: newSessions, error: sessionsError } = await supabase
+        .from('session_plans')
+        .insert(sessionInserts)
+        .select()
+
+      if (sessionsError || !newSessions) {
+        console.error('Error batch inserting sessions:', sessionsError)
+        continue
+      }
+
+      copiedCount += newSessions.length
+
+      // 2. Batch insert all exercises, mapping source session index -> new session ID
+      // Build a flat list of exercise inserts, tracking which source exercise each came from
+      const exerciseInserts: ExercisePresetInsert[] = []
+      // Parallel array: for each exercise insert, store the index into sourceSessions
+      const exerciseSourceIndices: { sessionIdx: number; exerciseIdx: number }[] = []
+
+      for (let si = 0; si < sourceSessions.length; si++) {
+        const sourceExercises = sourceSessions[si].session_plan_exercises ?? []
+        for (let ei = 0; ei < sourceExercises.length; ei++) {
+          const sourceExercise = sourceExercises[ei]
+          exerciseInserts.push({
+            session_plan_id: newSessions[si].id,
+            exercise_id: sourceExercise.exercise_id,
+            exercise_order: sourceExercise.exercise_order,
+            notes: sourceExercise.notes,
+            superset_id: sourceExercise.superset_id,
+            target_event_groups: sourceExercise.target_event_groups,
+          })
+          exerciseSourceIndices.push({ sessionIdx: si, exerciseIdx: ei })
+        }
+      }
+
+      if (exerciseInserts.length === 0) continue
+
+      const { data: newExercises, error: exercisesError } = await supabase
+        .from('session_plan_exercises')
+        .insert(exerciseInserts)
+        .select()
+
+      if (exercisesError || !newExercises) {
+        console.error('Error batch inserting exercises:', exercisesError)
+        continue
+      }
+
+      // 3. Batch insert all sets, mapping source exercise -> new exercise ID
+      const setInserts: Array<Record<string, unknown>> = []
+
+      for (let i = 0; i < newExercises.length; i++) {
+        const { sessionIdx, exerciseIdx } = exerciseSourceIndices[i]
+        const sourceSets = (sourceSessions[sessionIdx].session_plan_exercises ?? [])[exerciseIdx]?.session_plan_sets ?? []
+        for (const set of sourceSets as SessionPlanSet[]) {
+          setInserts.push({
+            session_plan_exercise_id: newExercises[i].id,
+            set_index: set.set_index,
+            reps: set.reps,
+            weight: set.weight,
+            distance: set.distance,
+            performing_time: set.performing_time,
+            power: set.power,
+            velocity: set.velocity,
+            resistance: set.resistance,
+            resistance_unit_id: set.resistance_unit_id,
+            tempo: set.tempo,
+            effort: set.effort,
+            height: set.height,
+            rpe: set.rpe,
+            rest_time: set.rest_time,
+            metadata: set.metadata,
+          })
+        }
+      }
+
+      if (setInserts.length > 0) {
+        const { error: setsError } = await supabase
+          .from('session_plan_sets')
+          .insert(setInserts)
+
+        if (setsError) {
+          console.error('Error batch inserting sets:', setsError)
+        }
+      }
+    }
+
+    revalidatePath('/plans', 'page')
+    revalidatePath('/plans/[id]', 'page')
+
+    return {
+      isSuccess: true,
+      message: `Duplicated ${copiedCount} sessions across ${targetMicrocycleIds.length} week(s)`,
+      data: { copiedCount },
+    }
+  } catch (error) {
+    console.error('Error in duplicateMicrocycleSessionsAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    }
+  }
+}
+
 
 // ============================================================================
 // CREATE SINGLE SESSION ACTION (for Individual Workspace)
@@ -1624,6 +1806,269 @@ export async function createTemplateAction(
     }
   } catch (error) {
     console.error('Error in createTemplateAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    }
+  }
+}
+
+// ============================================================================
+// UPDATE TEMPLATE
+// ============================================================================
+
+/**
+ * Update an existing template's name, description, and exercises.
+ * Replaces all exercises/sets (delete + re-insert) for simplicity.
+ */
+export async function updateTemplateAction(
+  templateId: string,
+  input: CreateTemplateInput
+): Promise<ActionState<{ id: string; name: string; description: string | null }>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) return { isSuccess: false, message: "User not authenticated" }
+    if (!input.name.trim()) return { isSuccess: false, message: "Template name is required" }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Verify ownership
+    const { data: plan } = await supabase
+      .from('session_plans')
+      .select('id, user_id, is_template')
+      .eq('id', templateId)
+      .single()
+
+    if (!plan || plan.user_id !== dbUserId || !plan.is_template) {
+      return { isSuccess: false, message: "Template not found or access denied" }
+    }
+
+    // Update name + description
+    const { error: updateError } = await supabase
+      .from('session_plans')
+      .update({
+        name: input.name.trim(),
+        description: input.description?.trim() || null,
+      })
+      .eq('id', templateId)
+
+    if (updateError) {
+      return { isSuccess: false, message: `Failed to update template: ${updateError.message}` }
+    }
+
+    // Delete existing exercises (sets cascade via FK)
+    const { error: deleteError } = await supabase
+      .from('session_plan_exercises')
+      .delete()
+      .eq('session_plan_id', templateId)
+
+    if (deleteError) {
+      console.error('Error deleting old template exercises:', deleteError)
+      return { isSuccess: false, message: `Failed to update exercises: ${deleteError.message}` }
+    }
+
+    // Re-insert exercises + sets
+    if (input.exercises.length > 0) {
+      const exerciseInserts: ExercisePresetInsert[] = input.exercises
+        .filter(e => e.exerciseId)
+        .map((e, i) => ({
+          session_plan_id: templateId,
+          exercise_id: e.exerciseId!,
+          exercise_order: i + 1,
+          notes: null,
+          superset_id: null,
+        }))
+
+      if (exerciseInserts.length > 0) {
+        const { data: savedExercises, error: exerciseError } = await supabase
+          .from('session_plan_exercises')
+          .insert(exerciseInserts)
+          .select()
+
+        if (!exerciseError && savedExercises) {
+          const setInserts: Array<{
+            session_plan_exercise_id: string
+            set_index: number
+            reps: number | null
+            weight: number | null
+            distance: number | null
+            performing_time: number | null
+            rest_time: number | null
+            rpe: number | null
+          }> = []
+
+          // Sort by exercise_order to ensure index correlation with input array
+          const sortedExercises = [...savedExercises].sort(
+            (a, b) => (a.exercise_order ?? 0) - (b.exercise_order ?? 0)
+          )
+          const validExercises = input.exercises.filter(e => e.exerciseId)
+          for (let i = 0; i < sortedExercises.length; i++) {
+            const sets = validExercises[i]?.sets ?? []
+            for (let j = 0; j < sets.length; j++) {
+              const s = sets[j]
+              setInserts.push({
+                session_plan_exercise_id: sortedExercises[i].id,
+                set_index: j + 1,
+                reps: s.reps,
+                weight: s.weight,
+                distance: s.distance,
+                performing_time: s.performing_time,
+                rest_time: s.rest_time,
+                rpe: s.rpe,
+              })
+            }
+          }
+
+          if (setInserts.length > 0) {
+            await supabase.from('session_plan_sets').insert(setInserts)
+          }
+        }
+      }
+    }
+
+    revalidatePath('/templates')
+
+    return {
+      isSuccess: true,
+      message: "Template updated successfully",
+      data: { id: templateId, name: input.name.trim(), description: input.description?.trim() || null },
+    }
+  } catch (error) {
+    console.error('Error in updateTemplateAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    }
+  }
+}
+
+// ============================================================================
+// DUPLICATE TEMPLATE
+// ============================================================================
+
+/**
+ * Duplicate/clone a template. Creates a new template with the same exercises
+ * and sets, appending "(Copy)" to the name.
+ */
+export async function duplicateTemplateAction(
+  templateId: string
+): Promise<ActionState<{ id: string; name: string }>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return { isSuccess: false, message: "User not authenticated" }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    // Fetch source template with exercises and sets
+    const { data: source, error: fetchError } = await supabase
+      .from('session_plans')
+      .select(`
+        *,
+        session_plan_exercises(
+          *,
+          session_plan_sets(*)
+        )
+      `)
+      .eq('id', templateId)
+      .eq('is_template', true)
+      .single()
+
+    if (fetchError || !source) {
+      console.error('Error fetching template for duplication:', fetchError)
+      return { isSuccess: false, message: "Template not found" }
+    }
+
+    // Ownership check
+    if (source.user_id !== dbUserId) {
+      return { isSuccess: false, message: "You don't have permission to duplicate this template" }
+    }
+
+    // Create the new template
+    const { data: newPlan, error: insertError } = await supabase
+      .from('session_plans')
+      .insert({
+        name: `${source.name} (Copy)`,
+        description: source.description,
+        date: source.date,
+        day: source.day,
+        week: source.week,
+        session_mode: source.session_mode,
+        microcycle_id: null,
+        user_id: dbUserId,
+        is_template: true,
+      })
+      .select()
+      .single()
+
+    if (insertError || !newPlan) {
+      console.error('Error creating template copy:', insertError)
+      return { isSuccess: false, message: `Failed to duplicate template: ${insertError?.message}` }
+    }
+
+    // Copy exercises and sets
+    if (source.session_plan_exercises && source.session_plan_exercises.length > 0) {
+      for (const sourceExercise of source.session_plan_exercises) {
+        const { data: newExercise, error: exerciseError } = await supabase
+          .from('session_plan_exercises')
+          .insert({
+            session_plan_id: newPlan.id,
+            exercise_id: sourceExercise.exercise_id,
+            exercise_order: sourceExercise.exercise_order,
+            notes: sourceExercise.notes,
+            superset_id: sourceExercise.superset_id,
+          } as ExercisePresetInsert)
+          .select()
+          .single()
+
+        if (exerciseError || !newExercise) {
+          console.error('Error copying exercise during duplication:', exerciseError)
+          continue
+        }
+
+        // Copy sets
+        const sourceSets = (sourceExercise as any).session_plan_sets as SessionPlanSet[] | undefined
+        if (sourceSets && sourceSets.length > 0) {
+          const setsData = sourceSets.map((set: SessionPlanSet) => ({
+            session_plan_exercise_id: newExercise.id,
+            set_index: set.set_index,
+            reps: set.reps,
+            weight: set.weight,
+            distance: set.distance,
+            performing_time: set.performing_time,
+            power: set.power,
+            velocity: set.velocity,
+            resistance: set.resistance,
+            resistance_unit_id: set.resistance_unit_id,
+            tempo: set.tempo,
+            effort: set.effort,
+            height: set.height,
+            rpe: set.rpe,
+            rest_time: set.rest_time,
+            metadata: set.metadata,
+          }))
+
+          const { error: setsError } = await supabase
+            .from('session_plan_sets')
+            .insert(setsData)
+
+          if (setsError) {
+            console.error('Error copying sets during duplication:', setsError)
+          }
+        }
+      }
+    }
+
+    revalidatePath('/templates')
+
+    return {
+      isSuccess: true,
+      message: "Template duplicated successfully",
+      data: { id: newPlan.id, name: newPlan.name ?? `${source.name} (Copy)` },
+    }
+  } catch (error) {
+    console.error('Error in duplicateTemplateAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,

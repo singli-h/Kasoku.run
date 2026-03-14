@@ -28,6 +28,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { SetRow, type VisibleFields } from "@/components/features/training/components/SetRow"
+import { getVisibleFields } from "@/components/features/training/utils/field-visibility"
+import type { TrainingSet } from "@/components/features/training/types"
 import {
   Dialog,
   DialogContent,
@@ -202,6 +205,7 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
 interface SelectedExercise {
   exerciseId: number
   exerciseName: string
+  exerciseTypeId?: number
   sets: Array<{
     reps: number | null
     weight: number | null
@@ -262,6 +266,7 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
         {
           exerciseId: exercise.id,
           exerciseName: exercise.name ?? "Unnamed",
+          exerciseTypeId: exercise.exercise_type?.id ?? undefined,
           sets: [{ reps: null, weight: null, distance: null, performing_time: null, rest_time: null, rpe: null }],
         },
       ]
@@ -303,16 +308,26 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
     )
   }, [])
 
-  const handleUpdateSet = useCallback(
-    (exerciseIndex: number, setIndex: number, field: string, value: string) => {
-      const numValue = value === "" ? null : Number(value)
+  // Map from TrainingSet field keys (camelCase) to SelectedExercise set keys (snake_case)
+  const handleUpdateSetField = useCallback(
+    (exerciseIndex: number, setIndex: number, field: keyof TrainingSet, value: number | string | null) => {
+      // Map TrainingSet camelCase keys to the SelectedExercise snake_case keys
+      const fieldMap: Record<string, string> = {
+        reps: 'reps',
+        weight: 'weight',
+        distance: 'distance',
+        performingTime: 'performing_time',
+        restTime: 'rest_time',
+        rpe: 'rpe',
+      }
+      const mappedField = fieldMap[field as string] ?? field
       setSelectedExercises((prev) =>
         prev.map((ex, i) => {
           if (i !== exerciseIndex) return ex
           return {
             ...ex,
             sets: ex.sets.map((s, j) =>
-              j === setIndex ? { ...s, [field]: isNaN(numValue as number) ? null : numValue } : s
+              j === setIndex ? { ...s, [mappedField]: value } : s
             ),
           }
         })
@@ -462,82 +477,15 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
           {selectedExercises.length > 0 && (
             <div className="space-y-2">
               {selectedExercises.map((ex, exIdx) => (
-                <div key={`${ex.exerciseId}-${exIdx}`} className="border rounded-lg p-3 space-y-2 bg-card">
-                  {/* Exercise header */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs text-muted-foreground tabular-nums">{exIdx + 1}.</span>
-                      <span className="text-sm font-medium truncate">{ex.exerciseName}</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 shrink-0"
-                      onClick={() => handleRemoveExercise(exIdx)}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-
-                  {/* Sets */}
-                  <div className="space-y-1.5">
-                    {ex.sets.map((set, setIdx) => (
-                      <div key={setIdx} className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-muted-foreground w-5 text-right shrink-0">
-                          S{setIdx + 1}
-                        </span>
-                        <Input
-                          type="number"
-                          placeholder="Reps"
-                          value={set.reps ?? ""}
-                          onChange={(e) => handleUpdateSet(exIdx, setIdx, "reps", e.target.value)}
-                          className="h-7 text-xs w-16"
-                        />
-                        <Input
-                          type="number"
-                          placeholder="kg"
-                          value={set.weight ?? ""}
-                          onChange={(e) => handleUpdateSet(exIdx, setIdx, "weight", e.target.value)}
-                          className="h-7 text-xs w-16"
-                        />
-                        <Input
-                          type="number"
-                          placeholder="m"
-                          value={set.distance ?? ""}
-                          onChange={(e) => handleUpdateSet(exIdx, setIdx, "distance", e.target.value)}
-                          className="h-7 text-xs w-14"
-                        />
-                        <Input
-                          type="number"
-                          placeholder="Rest(s)"
-                          value={set.rest_time ?? ""}
-                          onChange={(e) => handleUpdateSet(exIdx, setIdx, "rest_time", e.target.value)}
-                          className="h-7 text-xs w-16"
-                        />
-                        {ex.sets.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 shrink-0"
-                            onClick={() => handleRemoveSet(exIdx, setIdx)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs text-muted-foreground"
-                    onClick={() => handleAddSet(exIdx)}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Set
-                  </Button>
-                </div>
+                <TemplateExerciseBlock
+                  key={`${ex.exerciseId}-${exIdx}`}
+                  exercise={ex}
+                  exerciseIndex={exIdx}
+                  onRemoveExercise={() => handleRemoveExercise(exIdx)}
+                  onAddSet={() => handleAddSet(exIdx)}
+                  onRemoveSet={(setIdx) => handleRemoveSet(exIdx, setIdx)}
+                  onUpdateSetField={(setIdx, field, value) => handleUpdateSetField(exIdx, setIdx, field, value)}
+                />
               ))}
             </div>
           )}
@@ -565,6 +513,115 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ============================================================================
+// Template Exercise Block (uses shared SetRow + getVisibleFields)
+// ============================================================================
+
+interface TemplateExerciseBlockProps {
+  exercise: SelectedExercise
+  exerciseIndex: number
+  onRemoveExercise: () => void
+  onAddSet: () => void
+  onRemoveSet: (setIndex: number) => void
+  onUpdateSetField: (setIndex: number, field: keyof TrainingSet, value: number | string | null) => void
+}
+
+function TemplateExerciseBlock({
+  exercise,
+  exerciseIndex,
+  onRemoveExercise,
+  onAddSet,
+  onRemoveSet,
+  onUpdateSetField,
+}: TemplateExerciseBlockProps) {
+  // Compute visible fields based on exercise type (coach mode = show all configurable fields)
+  const visibleFields = useMemo((): VisibleFields => {
+    const planSets = exercise.sets.map(s => ({
+      reps: s.reps,
+      weight: s.weight,
+      distance: s.distance,
+      performing_time: s.performing_time,
+      rest_time: s.rest_time,
+      rpe: s.rpe,
+    }))
+    const visibleFieldKeys = getVisibleFields(exercise.exerciseTypeId, planSets, { forCoach: true })
+    return {
+      reps: visibleFieldKeys.includes('reps'),
+      weight: visibleFieldKeys.includes('weight'),
+      distance: visibleFieldKeys.includes('distance'),
+      performingTime: visibleFieldKeys.includes('performingTime'),
+      height: visibleFieldKeys.includes('height'),
+      power: visibleFieldKeys.includes('power'),
+      velocity: visibleFieldKeys.includes('velocity'),
+      rpe: visibleFieldKeys.includes('rpe'),
+      restTime: visibleFieldKeys.includes('restTime'),
+      tempo: visibleFieldKeys.includes('tempo'),
+      effort: visibleFieldKeys.includes('effort'),
+      resistance: visibleFieldKeys.includes('resistance'),
+    }
+  }, [exercise.sets, exercise.exerciseTypeId])
+
+  // Convert SelectedExercise sets to TrainingSet format for SetRow
+  const trainingSets: TrainingSet[] = useMemo(() =>
+    exercise.sets.map((s, idx) => ({
+      id: `template-${exercise.exerciseId}-${idx}`,
+      setIndex: idx + 1,
+      reps: s.reps,
+      weight: s.weight,
+      distance: s.distance,
+      performingTime: s.performing_time,
+      restTime: s.rest_time,
+      rpe: s.rpe,
+      completed: false,
+    })),
+    [exercise.sets, exercise.exerciseId]
+  )
+
+  return (
+    <div className="border rounded-lg p-3 space-y-2 bg-card">
+      {/* Exercise header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs text-muted-foreground tabular-nums">{exerciseIndex + 1}.</span>
+          <span className="text-sm font-medium truncate">{exercise.exerciseName}</span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 shrink-0"
+          onClick={onRemoveExercise}
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {/* Sets using shared SetRow */}
+      <div className="space-y-0">
+        {trainingSets.map((trainingSet, setIdx) => (
+          <SetRow
+            key={trainingSet.id}
+            set={trainingSet}
+            isAthlete={false}
+            visibleFields={visibleFields}
+            onUpdate={(field, value) => onUpdateSetField(setIdx, field, value)}
+            onRemove={exercise.sets.length > 1 ? () => onRemoveSet(setIdx) : undefined}
+          />
+        ))}
+      </div>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 text-xs text-muted-foreground"
+        onClick={onAddSet}
+      >
+        <Plus className="h-3 w-3 mr-1" />
+        Add Set
+      </Button>
+    </div>
   )
 }
 

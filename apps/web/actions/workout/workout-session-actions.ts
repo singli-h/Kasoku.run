@@ -730,6 +730,7 @@ export async function getWorkoutSessionByIdAction(
             notes,
             exercise_id,
             superset_id,
+            target_event_groups,
             exercise:exercises(
               id,
               name,
@@ -753,7 +754,8 @@ export async function getWorkoutSessionByIdAction(
         athlete:athletes(
           id,
           user_id,
-          athlete_group_id
+          athlete_group_id,
+          event_group
         ),
         workout_log_exercises(
           id,

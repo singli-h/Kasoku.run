@@ -36,27 +36,27 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
           <div className="bg-muted/50 rounded-lg p-4 text-center">
             <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-2">
-              <span className="text-sm font-bold text-primary">1</span>
+              <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <h3 className="font-semibold text-sm">Choose Your Path</h3>
             <p className="text-xs text-muted-foreground mt-1">
               Tell us how you train and we'll customize your experience
             </p>
           </div>
-          
+
           <div className="bg-muted/50 rounded-lg p-4 text-center">
             <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-2">
-              <span className="text-sm font-bold text-primary">2</span>
+              <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <h3 className="font-semibold text-sm">Share Your Details</h3>
             <p className="text-xs text-muted-foreground mt-1">
               Help us understand your goals and experience
             </p>
           </div>
-          
+
           <div className="bg-muted/50 rounded-lg p-4 text-center">
             <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-2">
-              <span className="text-sm font-bold text-primary">3</span>
+              <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <h3 className="font-semibold text-sm">Start Training</h3>
             <p className="text-xs text-muted-foreground mt-1">

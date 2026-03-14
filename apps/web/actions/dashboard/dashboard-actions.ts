@@ -208,6 +208,7 @@ export async function getDashboardDataAction(): Promise<
               notes,
               exercise_id,
               superset_id,
+              target_event_groups,
               exercise:exercises(
                 id,
                 name,
@@ -231,7 +232,8 @@ export async function getDashboardDataAction(): Promise<
           athlete:athletes(
             id,
             user_id,
-            athlete_group_id
+            athlete_group_id,
+            event_group
           ),
           workout_log_exercises(
             id,
@@ -592,10 +594,10 @@ export async function getWeekSessionsAction(
 
     const dbUserId = await getDbUserId(clerkUserId)
 
-    // Get athlete profile
+    // Get athlete profile (include event_group for exercise filtering)
     const { data: athlete } = await supabase
       .from('athletes')
-      .select('id')
+      .select('id, event_group')
       .eq('user_id', dbUserId)
       .single()
 
@@ -606,6 +608,8 @@ export async function getWeekSessionsAction(
         data: []
       }
     }
+
+    const athleteEventGroup = athlete.event_group ?? null
 
     // Calculate week end (weekStart + 6 days, end of day)
     const startDate = new Date(weekStart)
@@ -668,10 +672,19 @@ export async function getWeekSessionsAction(
         ? session.date_time.substring(0, 10)
         : ''
 
-      // Build exercise summaries
-      const exercises = (session.session_plan?.session_plan_exercises || [])
+      // Build exercise summaries (filtered by athlete's event_group)
+      const allExercises = (session.session_plan?.session_plan_exercises || [])
         .slice()
         .sort((a: any, b: any) => (a.exercise_order || 0) - (b.exercise_order || 0))
+      const exercises = allExercises
+        .filter((spe: any) => {
+          // Include if target_event_groups is null/empty (for all athletes)
+          if (!spe.target_event_groups || spe.target_event_groups.length === 0) return true
+          // Include if athlete has no event_group (safe default: show all)
+          if (!athleteEventGroup) return true
+          // Include only if athlete's event_group matches
+          return spe.target_event_groups.includes(athleteEventGroup)
+        })
         .map((spe: any) => {
           const exerciseTypeId = spe.exercise?.exercise_type?.id ?? null
           const sets = (spe.session_plan_sets || []).map((s: any) => ({

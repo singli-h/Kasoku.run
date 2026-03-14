@@ -74,6 +74,9 @@ node_modules/
 # tasks.json
 # tasks/
 
+# E2E test screenshots (reports are committed, screenshots stay local)
+e2e-reports/**/screenshots/
+
 # Spec-Kit
 .claude/settings.local.json
 .specify/memory/ 

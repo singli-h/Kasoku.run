@@ -138,40 +138,46 @@ export function GenerateMicrocycleSheet({
             </p>
           )}
 
-          {athleteGroupId && loadingContext && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading context...
-            </div>
-          )}
-
-          {context && (
+          {athleteGroupId && (
             <>
+              {/* AI context (collapsed by default, shows loading indicator while fetching) */}
               <div className="border rounded-lg">
                 <button
                   onClick={() => setContextExpanded(e => !e)}
                   className="w-full flex items-center justify-between px-3 py-2 text-sm text-left"
                 >
-                  <span className="font-medium text-muted-foreground">AI context</span>
+                  <span className="font-medium text-muted-foreground flex items-center gap-1.5">
+                    AI context
+                    {loadingContext && <Loader2 className="h-3 w-3 animate-spin" />}
+                  </span>
                   {contextExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
                 {contextExpanded && (
                   <div className="px-3 pb-3 space-y-1 text-xs text-muted-foreground">
-                    {context.macroContext && <p>Season: {context.macroContext.slice(0, 100)}...</p>}
-                    {context.mesoContext && <p>Phase: {context.mesoContext.slice(0, 80)}</p>}
-                    {context.athleteEventGroups.length > 0 && <p>Events: {context.athleteEventGroups.join(', ')}</p>}
-                    {context.upcomingRaces.length > 0 && <p>Races: {context.upcomingRaces.join(', ')}</p>}
-                    {context.recentInsights.length > 0 && <p>Last {context.recentInsights.length} weeks loaded</p>}
-                    {context.otherGroupSessions.length > 0 && (
-                      <p>Other groups: {context.otherGroupSessions.map(s => s.split(':')[0]).join(', ')}</p>
-                    )}
-                    {!context.macroContext && !context.mesoContext && (
-                      <p className="text-amber-600">No planning context yet — add it in Season Context panel for better results.</p>
+                    {loadingContext ? (
+                      <p>Loading planning context...</p>
+                    ) : context ? (
+                      <>
+                        {context.macroContext && <p>Season: {context.macroContext.slice(0, 100)}...</p>}
+                        {context.mesoContext && <p>Phase: {context.mesoContext.slice(0, 80)}</p>}
+                        {context.athleteEventGroups.length > 0 && <p>Events: {context.athleteEventGroups.join(', ')}</p>}
+                        {context.upcomingRaces.length > 0 && <p>Races: {context.upcomingRaces.join(', ')}</p>}
+                        {context.recentInsights.length > 0 && <p>Last {context.recentInsights.length} weeks loaded</p>}
+                        {context.otherGroupSessions.length > 0 && (
+                          <p>Other groups: {context.otherGroupSessions.map(s => s.split(':')[0]).join(', ')}</p>
+                        )}
+                        {!context.macroContext && !context.mesoContext && (
+                          <p className="text-amber-600">No planning context yet — add it in Season Context panel for better results.</p>
+                        )}
+                      </>
+                    ) : (
+                      <p>No context available</p>
                     )}
                   </div>
                 )}
               </div>
 
+              {/* Notes textarea — always visible so user can start typing while context loads */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Week-specific notes (optional)</label>
                 <Textarea
@@ -181,18 +187,21 @@ export function GenerateMicrocycleSheet({
                   rows={3}
                   className="text-sm resize-none"
                   maxLength={2000}
+                  autoFocus
                 />
               </div>
 
               {!aiResponse && (
                 <Button
                   onClick={handleGenerate}
-                  disabled={generating}
+                  disabled={generating || loadingContext || !context}
                   className="w-full gap-2"
                 >
                   {generating
                     ? <><Loader2 className="h-4 w-4 animate-spin" />Generating...</>
-                    : <><Sparkles className="h-4 w-4" />Generate week sessions</>
+                    : loadingContext
+                      ? <><Loader2 className="h-4 w-4 animate-spin" />Loading context...</>
+                      : <><Sparkles className="h-4 w-4" />Generate week sessions</>
                   }
                 </Button>
               )}

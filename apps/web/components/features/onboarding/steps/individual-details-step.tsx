@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, ArrowRight, Check } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { OnboardingData } from "../onboarding-wizard"
 
@@ -60,6 +60,8 @@ export function IndividualDetailsStep({
     return goalsString.split(",").map((g) => g.trim()).filter(Boolean)
   }
 
+  const [firstName, setFirstName] = useState(userData.firstName || "")
+  const [lastName, setLastName] = useState(userData.lastName || "")
   const [selectedGoals, setSelectedGoals] = useState<string[]>(
     parseGoals(userData.individualTrainingGoals)
   )
@@ -67,6 +69,7 @@ export function IndividualDetailsStep({
     userData.individualExperienceLevel || ""
   )
   const [birthdate, setBirthdate] = useState(userData.birthdate || "")
+  const [hasAttempted, setHasAttempted] = useState(false)
 
   const handleGoalToggle = (goalId: string) => {
     setSelectedGoals((prev) =>
@@ -77,7 +80,8 @@ export function IndividualDetailsStep({
   }
 
   const handleSubmit = () => {
-    if (selectedGoals.length === 0 || !selectedExperience) {
+    setHasAttempted(true)
+    if (!firstName || !lastName || selectedGoals.length === 0 || !selectedExperience) {
       return
     }
 
@@ -88,6 +92,8 @@ export function IndividualDetailsStep({
       .join(", ")
 
     updateUserData({
+      firstName,
+      lastName,
       birthdate,
       individualTrainingGoals: goalLabels,
       individualExperienceLevel: selectedExperience,
@@ -98,11 +104,14 @@ export function IndividualDetailsStep({
     onNext()
   }
 
-  const canProceed = selectedGoals.length > 0 && selectedExperience
+  const canProceed = firstName && lastName && selectedGoals.length > 0 && selectedExperience
 
   return (
     <div className="space-y-8">
       <div className="text-center space-y-4">
+        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+          <User className="w-8 h-8 text-primary" />
+        </div>
         <h2 className="text-2xl font-bold text-foreground">
           Tell us about your training
         </h2>
@@ -113,19 +122,45 @@ export function IndividualDetailsStep({
       </div>
 
       <div className="max-w-2xl mx-auto space-y-8">
-        {/* Date of Birth */}
-        <div className="space-y-2">
-          <Label htmlFor="birthdate">Date of Birth</Label>
-          <Input
-            id="birthdate"
-            type="date"
-            value={birthdate}
-            onChange={(e) => setBirthdate(e.target.value)}
-            className="max-w-xs"
-          />
-          <p className="text-sm text-muted-foreground">
-            Used to calculate age categories and personalize training
-          </p>
+        {/* Basic Information */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center">
+            <User className="w-5 h-5 mr-2" />
+            Basic Information
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName">First Name *</Label>
+              <Input
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Enter your first name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name *</Label>
+              <Input
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Enter your last name"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="birthdate">Date of Birth</Label>
+            <Input
+              id="birthdate"
+              type="date"
+              value={birthdate}
+              onChange={(e) => setBirthdate(e.target.value)}
+              className="max-w-xs"
+            />
+            <p className="text-sm text-muted-foreground">
+              Used to calculate age categories and personalize training
+            </p>
+          </div>
         </div>
 
         {/* Training Goals - Clickable Tags */}
@@ -158,7 +193,7 @@ export function IndividualDetailsStep({
               )
             })}
           </div>
-          {selectedGoals.length === 0 && (
+          {hasAttempted && selectedGoals.length === 0 && (
             <p className="text-sm text-destructive">
               Please select at least one training goal
             </p>
@@ -197,7 +232,7 @@ export function IndividualDetailsStep({
               )
             })}
           </div>
-          {!selectedExperience && (
+          {hasAttempted && !selectedExperience && (
             <p className="text-sm text-destructive">
               Please select your experience level
             </p>

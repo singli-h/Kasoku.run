@@ -22,11 +22,10 @@ interface VolumeIntensityChartProps {
 
 // Responsive chart margins hook
 const useResponsiveChartMargins = () => {
-  const [windowWidth, setWindowWidth] = useState(
-    typeof window !== 'undefined' ? window.innerWidth : 1024
-  );
+  const [windowWidth, setWindowWidth] = useState(1024);
 
   useEffect(() => {
+    setWindowWidth(window.innerWidth);
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -39,6 +38,32 @@ const useResponsiveChartMargins = () => {
     bottom: 5,
   };
 };
+
+// Extracted outside component to maintain stable reference across renders
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+        <div className="space-y-1">
+          <div className="font-medium text-sm">{data.weekLabel}</div>
+          {data.phaseName && (
+            <div className="text-xs text-gray-500">{data.phaseName}</div>
+          )}
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-2 bg-blue-500 rounded-sm"></div>
+            <span className="text-sm">Volume: {data.volume}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-0.5 bg-orange-500 rounded-full"></div>
+            <span className="text-sm">Intensity: {data.intensity}</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  return null
+}
 
 export function VolumeIntensityChart({
   data,
@@ -57,31 +82,6 @@ export function VolumeIntensityChart({
       weekLabel: `W${point.week}`
     }))
   }, [data, selectedPhaseId, mode])
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <div className="space-y-1">
-            <div className="font-medium text-sm">{data.weekLabel}</div>
-            {data.phaseName && (
-              <div className="text-xs text-gray-500">{data.phaseName}</div>
-            )}
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-2 bg-blue-500 rounded-sm"></div>
-              <span className="text-sm">Volume: {data.volume}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-0.5 bg-orange-500 rounded-full"></div>
-              <span className="text-sm">Intensity: {data.intensity}</span>
-            </div>
-          </div>
-        </div>
-      )
-    }
-    return null
-  }
 
   return (
     <div className={cn("space-y-4", className)}>

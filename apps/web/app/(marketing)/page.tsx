@@ -1,9 +1,11 @@
+import dynamic from "next/dynamic"
 import Hero from "@/components/features/landing/hero"
-import SocialProof from "@/components/features/landing/social-proof"
-import ProductShowcase from "@/components/features/landing/product-showcase"
-import Features from "@/components/features/landing/features"
-import FAQ from "@/components/features/landing/faq"
-import CTA from "@/components/features/landing/cta"
+
+const SocialProof = dynamic(() => import("@/components/features/landing/social-proof"))
+const ProductShowcase = dynamic(() => import("@/components/features/landing/product-showcase"))
+const Features = dynamic(() => import("@/components/features/landing/features"))
+const FAQ = dynamic(() => import("@/components/features/landing/faq"))
+const CTA = dynamic(() => import("@/components/features/landing/cta"))
 
 export const metadata = {
   title: "Kasoku - AI-Powered Training Platform",

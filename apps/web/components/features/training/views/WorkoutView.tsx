@@ -89,6 +89,14 @@ export interface WorkoutViewProps {
   /** Callback when exercise target_event_groups is updated */
   onUpdateTargetEventGroups?: (exerciseId: number | string, groups: string[] | null) => void
 
+  /**
+   * Athlete's own event_group (e.g. "SS", "MS", "LS").
+   * When isAthlete=true, exercises are filtered: only those with
+   * target_event_groups IS NULL or containing this value are shown.
+   * If null/undefined, all exercises are shown (safe default).
+   */
+  athleteEventGroup?: string | null
+
   className?: string
 }
 
@@ -131,8 +139,20 @@ export function WorkoutView({
   previewGroup,
   availableEventGroups,
   onUpdateTargetEventGroups,
+  athleteEventGroup,
   className,
 }: WorkoutViewProps) {
+  // Filter exercises by athlete's event_group when in athlete mode
+  // Exercises with null/empty target_event_groups are shown to everyone.
+  // If athlete has no event_group, show all exercises (safe default).
+  const filteredExercises = useMemo(() => {
+    if (!isAthlete || !athleteEventGroup) return exercises
+    return exercises.filter((ex) => {
+      if (!ex.targetEventGroups || ex.targetEventGroups.length === 0) return true
+      return ex.targetEventGroups.includes(athleteEventGroup)
+    })
+  }, [exercises, isAthlete, athleteEventGroup])
+
   // Format session date for display
   const formattedDate = useMemo(() => {
     if (!sessionDate) return null
@@ -198,30 +218,30 @@ export function WorkoutView({
     setIsSelectionMode(false)
   }, [])
 
-  // Calculate stats
+  // Calculate stats (uses filtered exercises so counts reflect what athlete sees)
   const stats = useMemo(() => {
-    const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0)
-    const completedSets = exercises.reduce((sum, ex) => sum + getCompletedCount(ex), 0)
-    const completedExercises = exercises.filter(
+    const totalSets = filteredExercises.reduce((sum, ex) => sum + ex.sets.length, 0)
+    const completedSets = filteredExercises.reduce((sum, ex) => sum + getCompletedCount(ex), 0)
+    const completedExercises = filteredExercises.filter(
       ex => ex.sets.length > 0 && ex.sets.every(s => s.completed)
     ).length
 
     return {
-      totalExercises: exercises.length,
+      totalExercises: filteredExercises.length,
       totalSets,
       completedExercises,
       completedSets,
       progress: totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0,
     }
-  }, [exercises])
+  }, [filteredExercises])
 
   // Group consecutive exercises by section (preserves order, detects section changes)
   // For superset exercises, use "Superset" as the section label instead of individual exercise types
   const exerciseGroups = useMemo(() => {
-    if (exercises.length === 0) return []
+    if (filteredExercises.length === 0) return []
 
     // Sort by exerciseOrder to ensure correct sequence
-    const sortedExercises = [...exercises].sort((a, b) => a.exerciseOrder - b.exerciseOrder)
+    const sortedExercises = [...filteredExercises].sort((a, b) => a.exerciseOrder - b.exerciseOrder)
 
     // Group consecutive exercises by section
     // Superset exercises use "Superset" as their effective section
@@ -255,7 +275,7 @@ export function WorkoutView({
     })
 
     return groups
-  }, [exercises])
+  }, [filteredExercises])
 
   // Extract pending add exercises from aiChangesByExercise (CREATE operations for new exercises)
   const pendingAddExercises = useMemo((): TrainingExercise[] => {
@@ -385,7 +405,7 @@ export function WorkoutView({
                 <>
                   <span>{stats.totalSets} sets · {stats.totalExercises} exercises</span>
                   {/* Superset creation button (coach mode only) */}
-                  {onCreateSuperset && !isSelectionMode && exercises.length >= 2 && (
+                  {onCreateSuperset && !isSelectionMode && filteredExercises.length >= 2 && (
                     <button
                       onClick={toggleSelectionMode}
                       className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
@@ -482,7 +502,7 @@ export function WorkoutView({
 
       {/* Content - edge-to-edge on mobile */}
       <div className="px-0 sm:px-2 py-2 space-y-0 pb-24">
-        {exercises.length === 0 ? (
+        {filteredExercises.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-muted-foreground mb-4">No exercises yet</p>
             {!isCompleted && (
@@ -636,7 +656,7 @@ export function WorkoutView({
       </div>
 
       {/* Floating Action Buttons - positioned above AI button */}
-      {exercises.length > 0 && !isSelectionMode && (
+      {filteredExercises.length > 0 && !isSelectionMode && (
         <div className="fixed bottom-24 right-6 z-40 flex flex-col-reverse items-end gap-3">
           {/* Add Exercise Button - hidden when completed */}
           {!isCompleted && (
