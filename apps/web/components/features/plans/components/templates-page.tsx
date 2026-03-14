@@ -11,7 +11,7 @@ Uses unified ExerciseCard component (same as plan/workout views).
 
 "use client"
 
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import {
   Search,
   Trash2,
@@ -22,7 +22,6 @@ import {
   Plus,
   Loader2,
   Pencil,
-  Eye,
   Save,
   Sparkles,
 } from "lucide-react"
@@ -448,7 +447,6 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
   const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null)
   const [showNewDialog, setShowNewDialog] = useState(false)
   const [detailTemplate, setDetailTemplate] = useState<SessionPlanWithDetails | null>(null)
-  const [detailMode, setDetailMode] = useState<"view" | "edit">("view")
 
   // AI Parser state
   const [pasteProgramOpen, setPasteProgramOpen] = useState(false)
@@ -503,12 +501,10 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
   const handleTemplateUpdated = useCallback((updated: SessionPlanWithDetails) => {
     setTemplates(prev => prev.map(t => t.id === updated.id ? updated : t))
     setDetailTemplate(updated)
-    setDetailMode("view")
   }, [])
 
-  const openDetail = useCallback((template: SessionPlanWithDetails, mode: "view" | "edit" = "view") => {
+  const openDetail = useCallback((template: SessionPlanWithDetails) => {
     setDetailTemplate(template)
-    setDetailMode(mode)
   }, [])
 
   // AI Parser: create a new template from parsed exercises
@@ -576,7 +572,6 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
               key={template.id}
               template={template}
               onClick={() => openDetail(template)}
-              onEdit={() => openDetail(template, "edit")}
               onDuplicate={() => handleDuplicateTemplate(template.id)}
               onDelete={() => setDeleteTemplateId(template.id)}
             />
@@ -598,8 +593,6 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
       {/* Template Detail Sheet */}
       <TemplateDetailSheet
         template={detailTemplate}
-        mode={detailMode}
-        onModeChange={setDetailMode}
         onClose={() => setDetailTemplate(null)}
         onUpdated={handleTemplateUpdated}
         onDelete={(id) => { setDetailTemplate(null); setDeleteTemplateId(id) }}
@@ -637,51 +630,64 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
 }
 
 // ============================================================================
-// Template Detail Sheet (View + Edit)
+// Template Detail Sheet (always edit mode, with unsaved changes warning)
 // ============================================================================
 
 interface TemplateDetailSheetProps {
   template: SessionPlanWithDetails | null
-  mode: "view" | "edit"
-  onModeChange: (mode: "view" | "edit") => void
   onClose: () => void
   onUpdated: (template: SessionPlanWithDetails) => void
   onDelete: (id: string) => void
 }
 
-function TemplateDetailSheet({ template, mode, onModeChange, onClose, onUpdated, onDelete }: TemplateDetailSheetProps) {
+function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: TemplateDetailSheetProps) {
   const { toast } = useToast()
   const [editName, setEditName] = useState("")
   const [editDescription, setEditDescription] = useState("")
   const [editExercises, setEditExercises] = useState<TrainingExercise[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
+  const [originalSnapshot, setOriginalSnapshot] = useState("")
 
   // Field toggle
   const { showAdvancedFields, toggleAdvancedFields } = useAdvancedFieldsToggle()
 
-  // View mode exercises (read-only)
-  const viewExercises = useMemo(() => {
-    if (!template) return []
-    return dbExercisesToTraining(template.session_plan_exercises)
+  // Ref to prevent onOpenChange from closing when we want to show the dialog instead
+  const blockCloseRef = useRef(false)
+
+  // Populate edit state when template opens
+  useEffect(() => {
+    if (template) {
+      const exercises = dbExercisesToTraining(template.session_plan_exercises)
+      setEditName(template.name || "")
+      setEditDescription(template.description || "")
+      setEditExercises(exercises)
+      setOriginalSnapshot(JSON.stringify({
+        name: template.name || "",
+        desc: template.description || "",
+        exercises: exercises.map(e => ({ id: e.exerciseId, sets: e.sets })),
+      }))
+    }
   }, [template])
 
-  const populateEditState = useCallback((t: SessionPlanWithDetails) => {
-    setEditName(t.name || "")
-    setEditDescription(t.description || "")
-    setEditExercises(dbExercisesToTraining(t.session_plan_exercises))
-  }, [])
+  // Dirty detection
+  const isDirty = useMemo(() => {
+    if (!template) return false
+    const current = JSON.stringify({
+      name: editName,
+      desc: editDescription,
+      exercises: editExercises.map(e => ({ id: e.exerciseId, sets: e.sets })),
+    })
+    return current !== originalSnapshot
+  }, [editName, editDescription, editExercises, originalSnapshot, template])
 
-  useEffect(() => {
-    if (template && mode === "edit") {
-      populateEditState(template)
+  const handleSheetClose = useCallback(() => {
+    if (isDirty) {
+      setShowUnsavedDialog(true)
+    } else {
+      onClose()
     }
-  }, [template, mode, populateEditState])
-
-  const startEditing = useCallback(() => {
-    if (!template) return
-    populateEditState(template)
-    onModeChange("edit")
-  }, [template, onModeChange, populateEditState])
+  }, [isDirty, onClose])
 
   const handleAddExercise = useCallback((exercise: ExerciseWithDetails) => {
     setEditExercises(prev => {
@@ -716,7 +722,7 @@ function TemplateDetailSheet({ template, mode, onModeChange, onClose, onUpdated,
             created_at: template.created_at,
             updated_at: new Date().toISOString(),
             target_event_groups: null,
-            exercise: { id: ex.exerciseId, name: ex.name } as any,
+            exercise: { id: ex.exerciseId, name: ex.name, exercise_type_id: ex.exerciseTypeId ?? null } as any,
             session_plan_sets: ex.sets.map((s, j) => ({
               id: j,
               set_index: j + 1,
@@ -735,6 +741,13 @@ function TemplateDetailSheet({ template, mode, onModeChange, onClose, onUpdated,
             })) as any,
           })),
         }
+        // Update the snapshot so the sheet is no longer dirty after save
+        const exercises = dbExercisesToTraining(updated.session_plan_exercises)
+        setOriginalSnapshot(JSON.stringify({
+          name: updated.name || "",
+          desc: updated.description || "",
+          exercises: exercises.map(e => ({ id: e.exerciseId, sets: e.sets })),
+        }))
         onUpdated(updated)
         toast({ title: "Template updated", description: `${editExercises.length} exercise${editExercises.length !== 1 ? "s" : ""} saved` })
       } else {
@@ -750,44 +763,52 @@ function TemplateDetailSheet({ template, mode, onModeChange, onClose, onUpdated,
   if (!template) return null
 
   return (
-    <Sheet open={!!template} onOpenChange={(open) => { if (!open) { onClose(); onModeChange("view") } }}>
-      <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col gap-0 p-0">
-        <SheetHeader className="px-6 py-4 border-b">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="flex items-center gap-2">
-              <Dumbbell className="h-4 w-4 text-primary" />
-              {mode === "edit" ? "Edit Template" : (template.name || "Untitled Template")}
-            </SheetTitle>
-            {mode === "edit" && (
+    <>
+      <Sheet
+        open={!!template}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (blockCloseRef.current) {
+              blockCloseRef.current = false
+              return
+            }
+            handleSheetClose()
+          }
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-lg flex flex-col gap-0 p-0"
+          onInteractOutside={(e) => {
+            if (isDirty) {
+              e.preventDefault()
+              blockCloseRef.current = true
+              setShowUnsavedDialog(true)
+            }
+          }}
+          onEscapeKeyDown={(e) => {
+            if (isDirty) {
+              e.preventDefault()
+              blockCloseRef.current = true
+              setShowUnsavedDialog(true)
+            }
+          }}
+        >
+          <SheetHeader className="px-6 py-4 border-b">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="flex items-center gap-2">
+                <Dumbbell className="h-4 w-4 text-primary" />
+                Edit Template
+              </SheetTitle>
               <AdvancedFieldsToggle
                 checked={showAdvancedFields}
                 onCheckedChange={toggleAdvancedFields}
                 variant="inline"
               />
-            )}
-          </div>
-          {mode === "view" && template.description && (
-            <SheetDescription className="text-xs">{template.description}</SheetDescription>
-          )}
-        </SheetHeader>
-
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {mode === "view" ? (
-            /* ---- VIEW MODE ---- */
-            <div className="space-y-1">
-              {viewExercises.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No exercises in this template</p>
-              ) : (
-                <ExerciseList
-                  exercises={viewExercises}
-                  setExercises={() => {}}
-                  readOnly={true}
-                  showAdvancedFields={showAdvancedFields}
-                />
-              )}
             </div>
-          ) : (
-            /* ---- EDIT MODE ---- */
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Name</Label>
@@ -806,7 +827,7 @@ function TemplateDetailSheet({ template, mode, onModeChange, onClose, onUpdated,
               <div className="space-y-1.5">
                 <Label>Exercises</Label>
                 <ExerciseSearchCombobox
-                  enabled={mode === "edit"}
+                  enabled={!!template}
                   selectedIds={editExercises.map(e => e.exerciseId)}
                   onSelect={handleAddExercise}
                 />
@@ -823,47 +844,48 @@ function TemplateDetailSheet({ template, mode, onModeChange, onClose, onUpdated,
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Footer */}
-        <div className="border-t px-6 py-3 flex items-center gap-2">
-          {mode === "view" ? (
-            <>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={startEditing}>
-                <Pencil className="h-3.5 w-3.5" />
-                Edit
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-destructive hover:text-destructive"
-                onClick={() => onDelete(template.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete
-              </Button>
-              <div className="flex-1" />
-              <span className="text-xs text-muted-foreground">
-                {viewExercises.length} exercise{viewExercises.length !== 1 ? "s" : ""}
-              </span>
-            </>
-          ) : (
-            <>
-              <Button size="sm" className="gap-1.5" onClick={handleSave} disabled={isSaving || !editName.trim() || editExercises.length === 0}>
-                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                {isSaving ? "Saving..." : "Save Changes"}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => onModeChange("view")}>Cancel</Button>
-              <div className="flex-1" />
-              <span className="text-xs text-muted-foreground">
-                {editExercises.length} exercise{editExercises.length !== 1 ? "s" : ""}
-              </span>
-            </>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
+          {/* Footer */}
+          <div className="border-t px-6 py-3 flex items-center gap-2">
+            <Button size="sm" className="gap-1.5" onClick={handleSave} disabled={isSaving || !editName.trim() || editExercises.length === 0}>
+              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-destructive hover:text-destructive"
+              onClick={() => onDelete(template.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </Button>
+            <div className="flex-1" />
+            <span className="text-xs text-muted-foreground">
+              {editExercises.length} exercise{editExercises.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Unsaved changes dialog */}
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Would you like to save before leaving?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button variant="outline" onClick={() => { setShowUnsavedDialog(false); onClose() }}>Discard</Button>
+            <Button onClick={async () => { await handleSave(); setShowUnsavedDialog(false); onClose() }}>Save</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -942,7 +964,7 @@ function NewTemplateDialog({ open, onOpenChange, onCreated, initialExercises }: 
             created_at: new Date().toISOString(),
             updated_at: null,
             target_event_groups: null,
-            exercise: { id: ex.exerciseId, name: ex.name } as any,
+            exercise: { id: ex.exerciseId, name: ex.name, exercise_type_id: ex.exerciseTypeId ?? null } as any,
             session_plan_sets: ex.sets.map((s, si) => ({
               id: `temp-set-${i}-${si}`,
               session_plan_exercise_id: `temp-${i}`,
@@ -1069,12 +1091,11 @@ function NewTemplateDialog({ open, onOpenChange, onCreated, initialExercises }: 
 interface TemplateCardProps {
   template: SessionPlanWithDetails
   onClick: () => void
-  onEdit: () => void
   onDuplicate: () => void
   onDelete: () => void
 }
 
-function TemplateCard({ template, onClick, onEdit, onDuplicate, onDelete }: TemplateCardProps) {
+function TemplateCard({ template, onClick, onDuplicate, onDelete }: TemplateCardProps) {
   const exerciseCount = template.session_plan_exercises?.length ?? 0
 
   const exerciseNames = (template.session_plan_exercises || [])
@@ -1125,10 +1146,6 @@ function TemplateCard({ template, onClick, onEdit, onDuplicate, onDelete }: Temp
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onClick() }}>
-                <Eye className="h-4 w-4 mr-2" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit() }}>
                 <Pencil className="h-4 w-4 mr-2" />
                 Edit
               </DropdownMenuItem>
