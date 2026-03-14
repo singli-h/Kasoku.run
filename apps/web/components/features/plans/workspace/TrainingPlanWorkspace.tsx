@@ -1329,11 +1329,11 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                                   {session.exercises?.length || 0} exercises
                                 </Badge>
                               </div>
-                              {/* Exercise names preview */}
-                              {session.exerciseNames && session.exerciseNames.length > 0 ? (
+                              {/* Exercise summaries preview (name + sets e.g. "Squat 3x10 80kg") */}
+                              {(session.exerciseSummaries ?? session.exerciseNames)?.length ? (
                                 <p className="mt-1.5 text-xs text-muted-foreground truncate">
-                                  {session.exerciseNames.slice(0, 3).join(', ')}
-                                  {session.exerciseNames.length > 3 ? ` +${session.exerciseNames.length - 3} more` : ''}
+                                  {(session.exerciseSummaries ?? session.exerciseNames)!.slice(0, 3).join(', ')}
+                                  {(session.exerciseSummaries ?? session.exerciseNames)!.length > 3 ? ` +${(session.exerciseSummaries ?? session.exerciseNames)!.length - 3} more` : ''}
                                 </p>
                               ) : (
                                 <p className="mt-1.5 text-xs text-muted-foreground">No exercises</p>
@@ -1719,11 +1719,11 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                                       {session.exercises?.length || 0} exercises
                                     </Badge>
                                   </div>
-                                  {/* Exercise names preview */}
-                                  {session.exerciseNames && session.exerciseNames.length > 0 ? (
+                                  {/* Exercise summaries preview (name + sets e.g. "Squat 3x10 80kg") */}
+                                  {(session.exerciseSummaries ?? session.exerciseNames)?.length ? (
                                     <p className="mt-1.5 text-xs text-muted-foreground truncate">
-                                      {session.exerciseNames.slice(0, 3).join(', ')}
-                                      {session.exerciseNames.length > 3 ? ` +${session.exerciseNames.length - 3} more` : ''}
+                                      {(session.exerciseSummaries ?? session.exerciseNames)!.slice(0, 3).join(', ')}
+                                      {(session.exerciseSummaries ?? session.exerciseNames)!.length > 3 ? ` +${(session.exerciseSummaries ?? session.exerciseNames)!.length - 3} more` : ''}
                                     </p>
                                   ) : (
                                     <p className="mt-1.5 text-xs text-muted-foreground">No exercises</p>
