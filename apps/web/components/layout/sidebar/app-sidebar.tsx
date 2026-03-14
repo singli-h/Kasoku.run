@@ -19,7 +19,6 @@ import {
   Settings,
   Zap,
   BookOpen,
-  PlayCircle,
   FileText,
   ClipboardList,
   Copy,
@@ -84,12 +83,6 @@ const allNavItems: Record<string, NavItemDef> = {
     title: "Athletes",
     url: "/athletes",
     icon: Users,
-    visibleTo: ['coach'],
-  },
-  sessions: {
-    title: "Sessions",
-    url: "/sessions",
-    icon: PlayCircle,
     visibleTo: ['coach'],
   },
   program: {

@@ -10,7 +10,7 @@ Template detail sheet for viewing/editing exercises and sets.
 
 "use client"
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import {
   Search,
   Trash2,
@@ -570,46 +570,50 @@ function TemplateDetailSheet({ template, mode, onModeChange, onClose, onUpdated,
     if (!template || !editName.trim() || editExercises.length === 0) return
     setIsSaving(true)
 
-    const result = await updateTemplateAction(template.id, {
-      name: editName.trim(),
-      description: editDescription.trim() || undefined,
-      exercises: editExercises.map(ex => ({
-        exerciseId: ex.exerciseId,
-        exerciseName: ex.exerciseName,
-        sets: ex.sets,
-      })),
-    })
-
-    if (result.isSuccess) {
-      const updated: SessionPlanWithDetails = {
-        ...template,
+    try {
+      const result = await updateTemplateAction(template.id, {
         name: editName.trim(),
-        description: editDescription.trim() || null,
-        session_plan_exercises: editExercises.map((ex, i) => ({
-          id: `updated-${i}`,
-          session_plan_id: template.id,
-          exercise_id: ex.exerciseId,
-          exercise_order: i + 1,
-          notes: null,
-          superset_id: null,
-          created_at: template.created_at,
-          updated_at: new Date().toISOString(),
-          target_event_groups: null,
-          exercise: { id: ex.exerciseId, name: ex.exerciseName } as any,
-          session_plan_sets: ex.sets.map((s, j) => ({
-            id: j,
-            set_index: j + 1,
-            ...s,
-          })) as any,
+        description: editDescription.trim() || undefined,
+        exercises: editExercises.map(ex => ({
+          exerciseId: ex.exerciseId,
+          exerciseName: ex.exerciseName,
+          sets: ex.sets,
         })),
-      }
-      onUpdated(updated)
-      toast({ title: "Template updated", description: `${editExercises.length} exercise${editExercises.length !== 1 ? "s" : ""} saved` })
-    } else {
-      toast({ title: "Error", description: result.message, variant: "destructive" })
-    }
+      })
 
-    setIsSaving(false)
+      if (result.isSuccess) {
+        const updated: SessionPlanWithDetails = {
+          ...template,
+          name: editName.trim(),
+          description: editDescription.trim() || null,
+          session_plan_exercises: editExercises.map((ex, i) => ({
+            id: `updated-${i}`,
+            session_plan_id: template.id,
+            exercise_id: ex.exerciseId,
+            exercise_order: i + 1,
+            notes: null,
+            superset_id: null,
+            created_at: template.created_at,
+            updated_at: new Date().toISOString(),
+            target_event_groups: null,
+            exercise: { id: ex.exerciseId, name: ex.exerciseName } as any,
+            session_plan_sets: ex.sets.map((s, j) => ({
+              id: j,
+              set_index: j + 1,
+              ...s,
+            })) as any,
+          })),
+        }
+        onUpdated(updated)
+        toast({ title: "Template updated", description: `${editExercises.length} exercise${editExercises.length !== 1 ? "s" : ""} saved` })
+      } else {
+        toast({ title: "Error", description: result.message, variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to update template", variant: "destructive" })
+    } finally {
+      setIsSaving(false)
+    }
   }, [template, editName, editDescription, editExercises, onUpdated, toast])
 
   if (!template) return null
@@ -783,27 +787,15 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
   const [description, setDescription] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([])
-  const [showSearchResults, setShowSearchResults] = useState(false)
-  const searchContainerRef = useRef<HTMLDivElement>(null)
 
   const { handleAddSet, handleRemoveSet, handleUpdateSetField } = useExerciseSetHandlers(setSelectedExercises)
-
-  const {
-    searchQuery,
-    setSearchQuery,
-    exercises: searchResults,
-    isLoading: isSearching,
-    resetSearch,
-  } = useExerciseSearch({ enabled: open && showSearchResults, pageSize: 15 })
 
   const resetState = useCallback(() => {
     setName("")
     setDescription("")
     setIsSaving(false)
     setSelectedExercises([])
-    setShowSearchResults(false)
-    resetSearch()
-  }, [resetSearch])
+  }, [])
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -826,9 +818,7 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
         },
       ]
     })
-    setSearchQuery("")
-    setShowSearchResults(false)
-  }, [setSearchQuery])
+  }, [])
 
   const handleRemoveExercise = useCallback((index: number) => {
     setSelectedExercises((prev) => prev.filter((_, i) => i !== index))
@@ -839,44 +829,48 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
 
     setIsSaving(true)
 
-    const result = await createTemplateAction({
-      name: name.trim(),
-      description: description.trim() || undefined,
-      exercises: selectedExercises.map((ex) => ({
-        exerciseId: ex.exerciseId,
-        exerciseName: ex.exerciseName,
-        sets: ex.sets,
-      })),
-    })
-
-    if (result.isSuccess && result.data) {
-      const newTemplate = {
-        ...result.data,
-        session_plan_exercises: selectedExercises.map((ex, i) => ({
-          id: `temp-${i}`,
-          session_plan_id: result.data.id,
-          exercise_id: ex.exerciseId,
-          exercise_order: i + 1,
-          notes: null,
-          superset_id: null,
-          created_at: new Date().toISOString(),
-          updated_at: null,
-          target_event_groups: null,
-          exercise: { id: ex.exerciseId, name: ex.exerciseName } as any,
-          session_plan_sets: [],
+    try {
+      const result = await createTemplateAction({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        exercises: selectedExercises.map((ex) => ({
+          exerciseId: ex.exerciseId,
+          exerciseName: ex.exerciseName,
+          sets: ex.sets,
         })),
-      } as SessionPlanWithDetails
-      onCreated(newTemplate)
-      toast({
-        title: "Template created",
-        description: `Template saved with ${selectedExercises.length} exercise${selectedExercises.length !== 1 ? "s" : ""}`,
       })
-      resetState()
-    } else {
-      toast({ title: "Error", description: result.message, variant: "destructive" })
-    }
 
-    setIsSaving(false)
+      if (result.isSuccess && result.data) {
+        const newTemplate = {
+          ...result.data,
+          session_plan_exercises: selectedExercises.map((ex, i) => ({
+            id: `temp-${i}`,
+            session_plan_id: result.data.id,
+            exercise_id: ex.exerciseId,
+            exercise_order: i + 1,
+            notes: null,
+            superset_id: null,
+            created_at: new Date().toISOString(),
+            updated_at: null,
+            target_event_groups: null,
+            exercise: { id: ex.exerciseId, name: ex.exerciseName } as any,
+            session_plan_sets: [],
+          })),
+        } as SessionPlanWithDetails
+        onCreated(newTemplate)
+        toast({
+          title: "Template created",
+          description: `Template saved with ${selectedExercises.length} exercise${selectedExercises.length !== 1 ? "s" : ""}`,
+        })
+        resetState()
+      } else {
+        toast({ title: "Error", description: result.message, variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to create template", variant: "destructive" })
+    } finally {
+      setIsSaving(false)
+    }
   }, [name, description, selectedExercises, onCreated, toast, resetState])
 
   return (
@@ -919,56 +913,11 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
           {/* Exercise Search */}
           <div className="space-y-1.5">
             <Label>Exercises</Label>
-            <div className="relative" ref={searchContainerRef}>
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search exercises to add..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setShowSearchResults(true)
-                }}
-                onFocus={() => setShowSearchResults(true)}
-                className="pl-9"
-              />
-              {isSearching && (
-                <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />
-              )}
-
-              {/* Search results dropdown */}
-              {showSearchResults && searchQuery.trim() && (
-                <div className="absolute z-50 top-full mt-1 w-full border rounded-lg bg-popover shadow-lg max-h-48 overflow-y-auto">
-                  {searchResults.length === 0 && !isSearching ? (
-                    <p className="p-3 text-sm text-muted-foreground text-center">No exercises found</p>
-                  ) : (
-                    searchResults.map((exercise) => {
-                      const isAlreadyAdded = selectedExercises.some((e) => e.exerciseId === exercise.id)
-                      return (
-                        <button
-                          key={exercise.id}
-                          onClick={() => !isAlreadyAdded && handleAddExercise(exercise)}
-                          disabled={isAlreadyAdded}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Dumbbell className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="truncate flex-1">{exercise.name}</span>
-                          {exercise.exercise_type && (
-                            <span className="text-[10px] text-muted-foreground shrink-0">
-                              {exercise.exercise_type.type}
-                            </span>
-                          )}
-                          {isAlreadyAdded ? (
-                            <span className="text-[10px] text-muted-foreground shrink-0">Added</span>
-                          ) : (
-                            <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          )}
-                        </button>
-                      )
-                    })
-                  )}
-                </div>
-              )}
-            </div>
+            <ExerciseSearchCombobox
+              enabled={open}
+              selectedIds={selectedExercises.map(e => e.exerciseId)}
+              onSelect={handleAddExercise}
+            />
           </div>
 
           {/* Selected exercises list */}
