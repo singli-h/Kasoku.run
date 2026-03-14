@@ -82,7 +82,6 @@ export function MicrocycleEditor({
             <p className="text-sm text-muted-foreground">{microcycle.description}</p>
           </div>
         </div>
-        {/* Session actions are available on each card in the main workspace panel */}
       </div>
 
       {/* Metrics */}
@@ -122,7 +121,7 @@ export function MicrocycleEditor({
         <div className="grid grid-cols-7 gap-2">
           {days.map((day, dayIndex) => {
             const daySessions = microcycle.sessions.filter(session => session.day === dayIndex + 1)
-            
+
             return (
               <Card key={day} className="min-h-[120px]">
                 <CardHeader className="pb-2">

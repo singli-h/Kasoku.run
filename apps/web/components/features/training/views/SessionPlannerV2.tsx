@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Undo2, Redo2, Save, Edit2, Calendar, Check, X, Copy, FolderOpen, Loader2, Search, MoreHorizontal } from "lucide-react"
+import { ArrowLeft, Undo2, Redo2, Save, Edit2, Calendar, Check, X, Copy, FolderOpen, Loader2, Search, MoreHorizontal, ClipboardPaste } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -85,6 +85,9 @@ import {
 
 // Import subgroup formatting utilities
 import { formatSubgroupChip } from "@/lib/training-utils"
+
+// Import Paste Program dialog and types
+import { PasteProgramDialog, type ResolvedExercise } from "../components/PasteProgramDialog"
 
 interface SessionPlannerV2Props {
   planId: string
@@ -181,6 +184,9 @@ export function SessionPlannerV2({
   const [isInsertingTemplate, setIsInsertingTemplate] = useState(false)
   // Per-template subgroup override selections: templateId -> override value
   const [templateSubgroupOverrides, setTemplateSubgroupOverrides] = useState<Record<string, string>>({})
+
+  // Paste Program state
+  const [pasteProgramOpen, setPasteProgramOpen] = useState(false)
 
   // Start editing session metadata
   const startEditingMeta = useCallback(() => {
@@ -725,6 +731,88 @@ export function SessionPlannerV2({
     setIsInsertingTemplate(false)
   }, [sessionId, toast, reset, templateSubgroupOverrides])
 
+  // Handle resolved exercises from Paste Program dialog
+  const handlePasteExercisesResolved = useCallback((resolved: ResolvedExercise[]) => {
+    setExercises(prev => {
+      const maxOrder = Math.max(0, ...prev.map(e => e.exercise_order))
+      const timestamp = Date.now()
+
+      const newExercises: SessionPlannerExercise[] = resolved.map((ex, idx) => {
+        const counter = ++idCounterRef.current
+        const newExerciseId = `new_${timestamp}_paste_${counter}`
+
+        const sets = ex.sets.map((s, sIdx) => ({
+          id: `new_set_${timestamp}_paste_${counter}_${sIdx}`,
+          session_plan_exercise_id: '',
+          set_index: sIdx + 1,
+          reps: s.reps ?? null,
+          weight: s.weight ?? null,
+          distance: s.distance ?? null,
+          performing_time: s.performing_time ?? null,
+          rest_time: s.rest_time ?? null,
+          tempo: null as string | null,
+          rpe: s.rpe ?? null,
+          completed: false,
+          isEditing: false,
+        }))
+
+        // Ensure at least one empty set if parsing produced none
+        if (sets.length === 0) {
+          sets.push({
+            id: `new_set_${timestamp}_paste_${counter}_0`,
+            session_plan_exercise_id: '',
+            set_index: 1,
+            reps: null,
+            weight: null,
+            distance: null,
+            performing_time: null,
+            rest_time: null,
+            tempo: null,
+            rpe: null,
+            completed: false,
+            isEditing: false,
+          })
+        }
+
+        return {
+          id: newExerciseId,
+          session_plan_id: sessionId,
+          exercise_id: ex.resolvedExerciseId,
+          exercise_order: maxOrder + idx + 1,
+          notes: ex.notes || null,
+          isCollapsed: false,
+          isEditing: false,
+          validationErrors: [],
+          exercise: {
+            id: ex.resolvedExerciseId,
+            name: ex.resolvedExerciseName,
+            description: undefined,
+            exercise_type_id: ex.resolvedExerciseTypeId ?? undefined,
+            exercise_type: {
+              type: ex.resolvedExerciseType || 'other'
+            }
+          },
+          target_event_groups: ex.targetEventGroups?.length ? ex.targetEventGroups : undefined,
+          sets,
+        } satisfies SessionPlannerExercise
+      })
+
+      return [...prev, ...newExercises]
+    })
+
+    const matchedCount = resolved.filter(e => e.resolutionType === "matched").length
+    const createdCount = resolved.filter(e => e.resolutionType === "created").length
+
+    const parts: string[] = [`${resolved.length} exercise${resolved.length !== 1 ? "s" : ""} added`]
+    if (matchedCount > 0) parts.push(`${matchedCount} from library`)
+    if (createdCount > 0) parts.push(`${createdCount} newly created`)
+
+    toast({
+      title: "Exercises Imported",
+      description: parts.join(", ") + ".",
+    })
+  }, [sessionId, setExercises, toast])
+
   const filteredTemplates = useMemo(() => {
     if (!templateSearch.trim()) return templates
     const search = templateSearch.toLowerCase()
@@ -774,6 +862,10 @@ export function SessionPlannerV2({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setPasteProgramOpen(true)}>
+                  <ClipboardPaste className="h-4 w-4 mr-2" />
+                  Paste Program
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleOpenInsertTemplate}>
                   <FolderOpen className="h-4 w-4 mr-2" />
                   Insert from Template
@@ -976,6 +1068,13 @@ export function SessionPlannerV2({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Paste Program dialog */}
+      <PasteProgramDialog
+        open={pasteProgramOpen}
+        onOpenChange={setPasteProgramOpen}
+        onExercisesResolved={handlePasteExercisesResolved}
+      />
 
       {/* T035: Insert from Template sheet */}
       <Sheet open={insertTemplateOpen} onOpenChange={setInsertTemplateOpen}>

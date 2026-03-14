@@ -1118,7 +1118,8 @@ export async function copySessionAction(
           exercise_id: sourceExercise.exercise_id,
           exercise_order: sourceExercise.exercise_order,
           notes: sourceExercise.notes,
-          superset_id: sourceExercise.superset_id
+          superset_id: sourceExercise.superset_id,
+          target_event_groups: sourceExercise.target_event_groups,
         }
 
         const { data: newExercise, error: exerciseError } = await supabase
@@ -1177,6 +1178,186 @@ export async function copySessionAction(
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Duplicate all sessions from a source microcycle into one or more target microcycles.
+ * Copies session_plans -> session_plan_exercises (including target_event_groups) -> session_plan_sets.
+ * Maintains original day assignments so the weekly structure is preserved.
+ */
+export async function duplicateMicrocycleSessionsAction(
+  sourceMicrocycleId: number,
+  targetMicrocycleIds: number[]
+): Promise<ActionState<{ copiedCount: number }>> {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return { isSuccess: false, message: "User not authenticated" }
+    }
+
+    const dbUserId = await getDbUserId(userId)
+
+    if (targetMicrocycleIds.length === 0) {
+      return { isSuccess: false, message: "No target weeks selected" }
+    }
+
+    // Verify all target microcycles belong to the authenticated user
+    const allMicrocycleIds = [sourceMicrocycleId, ...targetMicrocycleIds]
+    const { data: ownedMicrocycles, error: authError } = await supabase
+      .from('microcycles')
+      .select('id, mesocycle_id, mesocycles!inner(user_id)')
+      .in('id', allMicrocycleIds)
+      .eq('mesocycles.user_id', dbUserId)
+
+    if (authError || !ownedMicrocycles) {
+      return { isSuccess: false, message: "Failed to verify week ownership" }
+    }
+
+    const ownedIds = new Set(ownedMicrocycles.map(m => m.id))
+    const unauthorizedIds = allMicrocycleIds.filter(id => !ownedIds.has(id))
+    if (unauthorizedIds.length > 0) {
+      return { isSuccess: false, message: "Not authorized to modify one or more target weeks" }
+    }
+
+    // Fetch all sessions from the source microcycle with exercises and sets
+    const { data: sourceSessions, error: fetchError } = await supabase
+      .from('session_plans')
+      .select(`
+        *,
+        session_plan_exercises(
+          *,
+          session_plan_sets(*)
+        )
+      `)
+      .eq('microcycle_id', sourceMicrocycleId)
+      .eq('user_id', dbUserId)
+      .eq('deleted', false)
+
+    if (fetchError) {
+      console.error('Error fetching source sessions:', fetchError)
+      return { isSuccess: false, message: `Failed to fetch source sessions: ${fetchError.message}` }
+    }
+
+    if (!sourceSessions || sourceSessions.length === 0) {
+      return { isSuccess: false, message: "Source week has no sessions to copy" }
+    }
+
+    let copiedCount = 0
+
+    for (const targetMicrocycleId of targetMicrocycleIds) {
+      // 1. Batch insert all sessions for this target microcycle
+      const sessionInserts: SessionPlanInsert[] = sourceSessions.map(s => ({
+        name: s.name,
+        description: s.description,
+        date: null,
+        day: s.day,
+        week: s.week,
+        session_mode: s.session_mode,
+        microcycle_id: targetMicrocycleId,
+        user_id: dbUserId,
+        is_template: false,
+      }))
+
+      const { data: newSessions, error: sessionsError } = await supabase
+        .from('session_plans')
+        .insert(sessionInserts)
+        .select()
+
+      if (sessionsError || !newSessions) {
+        console.error('Error batch inserting sessions:', sessionsError)
+        continue
+      }
+
+      copiedCount += newSessions.length
+
+      // 2. Batch insert all exercises, mapping source session index -> new session ID
+      // Build a flat list of exercise inserts, tracking which source exercise each came from
+      const exerciseInserts: ExercisePresetInsert[] = []
+      // Parallel array: for each exercise insert, store the index into sourceSessions
+      const exerciseSourceIndices: { sessionIdx: number; exerciseIdx: number }[] = []
+
+      for (let si = 0; si < sourceSessions.length; si++) {
+        const sourceExercises = sourceSessions[si].session_plan_exercises ?? []
+        for (let ei = 0; ei < sourceExercises.length; ei++) {
+          const sourceExercise = sourceExercises[ei]
+          exerciseInserts.push({
+            session_plan_id: newSessions[si].id,
+            exercise_id: sourceExercise.exercise_id,
+            exercise_order: sourceExercise.exercise_order,
+            notes: sourceExercise.notes,
+            superset_id: sourceExercise.superset_id,
+            target_event_groups: sourceExercise.target_event_groups,
+          })
+          exerciseSourceIndices.push({ sessionIdx: si, exerciseIdx: ei })
+        }
+      }
+
+      if (exerciseInserts.length === 0) continue
+
+      const { data: newExercises, error: exercisesError } = await supabase
+        .from('session_plan_exercises')
+        .insert(exerciseInserts)
+        .select()
+
+      if (exercisesError || !newExercises) {
+        console.error('Error batch inserting exercises:', exercisesError)
+        continue
+      }
+
+      // 3. Batch insert all sets, mapping source exercise -> new exercise ID
+      const setInserts: Array<Record<string, unknown>> = []
+
+      for (let i = 0; i < newExercises.length; i++) {
+        const { sessionIdx, exerciseIdx } = exerciseSourceIndices[i]
+        const sourceSets = (sourceSessions[sessionIdx].session_plan_exercises ?? [])[exerciseIdx]?.session_plan_sets ?? []
+        for (const set of sourceSets as SessionPlanSet[]) {
+          setInserts.push({
+            session_plan_exercise_id: newExercises[i].id,
+            set_index: set.set_index,
+            reps: set.reps,
+            weight: set.weight,
+            distance: set.distance,
+            performing_time: set.performing_time,
+            power: set.power,
+            velocity: set.velocity,
+            resistance: set.resistance,
+            resistance_unit_id: set.resistance_unit_id,
+            tempo: set.tempo,
+            effort: set.effort,
+            height: set.height,
+            rpe: set.rpe,
+            rest_time: set.rest_time,
+            metadata: set.metadata,
+          })
+        }
+      }
+
+      if (setInserts.length > 0) {
+        const { error: setsError } = await supabase
+          .from('session_plan_sets')
+          .insert(setInserts)
+
+        if (setsError) {
+          console.error('Error batch inserting sets:', setsError)
+        }
+      }
+    }
+
+    revalidatePath('/plans', 'page')
+    revalidatePath('/plans/[id]', 'page')
+
+    return {
+      isSuccess: true,
+      message: `Duplicated ${copiedCount} sessions across ${targetMicrocycleIds.length} week(s)`,
+      data: { copiedCount },
+    }
+  } catch (error) {
+    console.error('Error in duplicateMicrocycleSessionsAction:', error)
+    return {
+      isSuccess: false,
+      message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
     }
   }
 }

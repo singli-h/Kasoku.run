@@ -10,20 +10,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { Copy, Loader2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Copy, AlertTriangle, Loader2 } from "lucide-react"
 
 interface Microcycle {
   id: number
   name: string | null
+  sessions: { id: string }[]
 }
 
 interface Mesocycle {
@@ -33,105 +28,71 @@ interface Mesocycle {
 }
 
 interface DuplicateWeekDialogProps {
-  sourceMicrocycle: { id: number; name: string | null; sessionCount: number } | null
-  mesocycles: Mesocycle[]
+  sourceMicrocycle: Microcycle | null
+  mesocycle: Mesocycle | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onDuplicate: (sourceMicrocycleId: number, targetMicrocycleIds: number[]) => void
+  onDuplicate: (sourceMicrocycleId: number, targetMicrocycleIds: number[]) => Promise<void>
 }
 
 export function DuplicateWeekDialog({
   sourceMicrocycle,
-  mesocycles,
+  mesocycle,
   open,
   onOpenChange,
   onDuplicate,
 }: DuplicateWeekDialogProps) {
-  const [selectedMesocycleId, setSelectedMesocycleId] = useState<string>("")
-  const [selectedTargetIds, setSelectedTargetIds] = useState<Set<number>>(new Set())
+  const [selectedTargets, setSelectedTargets] = useState<Set<number>>(new Set())
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Find the mesocycle that contains the source microcycle
-  const sourceMesocycle = useMemo(() => {
-    for (const meso of mesocycles) {
-      if (meso.microcycles.some(m => m.id === sourceMicrocycle?.id)) {
-        return meso
-      }
-    }
-    return mesocycles[0] || null
-  }, [mesocycles, sourceMicrocycle?.id])
+  // Other microcycles in the same mesocycle (exclude the source)
+  const otherMicrocycles = useMemo(() => {
+    if (!mesocycle || !sourceMicrocycle) return []
+    return mesocycle.microcycles.filter(m => m.id !== sourceMicrocycle.id)
+  }, [mesocycle, sourceMicrocycle])
 
-  // Get microcycles for the selected mesocycle, excluding the source
-  const availableMicrocycles = useMemo(() => {
-    const meso = mesocycles.find(m => m.id.toString() === selectedMesocycleId)
-    if (!meso) return []
-    return meso.microcycles.filter(m => m.id !== sourceMicrocycle?.id)
-  }, [mesocycles, selectedMesocycleId, sourceMicrocycle?.id])
+  const sessionCount = sourceMicrocycle?.sessions.length ?? 0
 
-  // Reset selections when dialog opens
   const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen && sourceMicrocycle) {
-      // Pre-select the mesocycle containing the source week
-      if (sourceMesocycle) {
-        setSelectedMesocycleId(sourceMesocycle.id.toString())
-      }
-      setSelectedTargetIds(new Set())
+    if (newOpen) {
+      setSelectedTargets(new Set())
     }
     onOpenChange(newOpen)
   }
 
-  const handleToggleTarget = (microcycleId: number) => {
-    setSelectedTargetIds(prev => {
+  const toggleTarget = (id: number) => {
+    setSelectedTargets(prev => {
       const next = new Set(prev)
-      if (next.has(microcycleId)) {
-        next.delete(microcycleId)
+      if (next.has(id)) {
+        next.delete(id)
       } else {
-        next.add(microcycleId)
+        next.add(id)
       }
       return next
     })
   }
 
-  const handleSelectAllInPhase = () => {
-    const allIds = availableMicrocycles.map(m => m.id)
-    const allSelected = allIds.every(id => selectedTargetIds.has(id))
-    if (allSelected) {
-      // Deselect all in this phase
-      setSelectedTargetIds(prev => {
-        const next = new Set(prev)
-        for (const id of allIds) {
-          next.delete(id)
-        }
-        return next
-      })
+  const selectAll = () => {
+    if (selectedTargets.size === otherMicrocycles.length) {
+      setSelectedTargets(new Set())
     } else {
-      // Select all in this phase
-      setSelectedTargetIds(prev => {
-        const next = new Set(prev)
-        for (const id of allIds) {
-          next.add(id)
-        }
-        return next
-      })
+      setSelectedTargets(new Set(otherMicrocycles.map(m => m.id)))
     }
   }
 
   const handleDuplicate = async () => {
-    if (!sourceMicrocycle || selectedTargetIds.size === 0) return
+    if (!sourceMicrocycle || selectedTargets.size === 0) return
 
     setIsSubmitting(true)
     try {
-      await onDuplicate(sourceMicrocycle.id, Array.from(selectedTargetIds))
+      await onDuplicate(sourceMicrocycle.id, Array.from(selectedTargets))
       onOpenChange(false)
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  if (!sourceMicrocycle) return null
-
-  const allInPhaseSelected = availableMicrocycles.length > 0 &&
-    availableMicrocycles.every(m => selectedTargetIds.has(m.id))
+  if (!sourceMicrocycle || !mesocycle) return null
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -142,75 +103,63 @@ export function DuplicateWeekDialog({
             Duplicate Week
           </DialogTitle>
           <DialogDescription>
-            Copy all {sourceMicrocycle.sessionCount} session{sourceMicrocycle.sessionCount !== 1 ? 's' : ''} from{' '}
-            &quot;{sourceMicrocycle.name || 'Unnamed Week'}&quot; to selected weeks.
+            Copy all {sessionCount} session{sessionCount !== 1 ? 's' : ''} from{' '}
+            <span className="font-medium text-foreground">{sourceMicrocycle.name || 'this week'}</span>{' '}
+            to other weeks. Day assignments will be preserved.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          {/* Target Phase */}
-          <div className="grid gap-2">
-            <Label htmlFor="dup-mesocycle">Target Phase</Label>
-            <Select
-              value={selectedMesocycleId}
-              onValueChange={(value) => {
-                setSelectedMesocycleId(value)
-                setSelectedTargetIds(new Set())
-              }}
-            >
-              <SelectTrigger id="dup-mesocycle">
-                <SelectValue placeholder="Select phase" />
-              </SelectTrigger>
-              <SelectContent>
-                {mesocycles.map((meso) => (
-                  <SelectItem key={meso.id} value={meso.id.toString()}>
-                    {meso.name || `Phase ${meso.id}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Target Weeks multi-select */}
-          {selectedMesocycleId && (
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between">
-                <Label>Target Weeks</Label>
-                {availableMicrocycles.length > 0 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs px-2"
-                    onClick={handleSelectAllInPhase}
-                  >
-                    {allInPhaseSelected ? 'Deselect All' : 'Select All in Phase'}
-                  </Button>
-                )}
+        <div className="py-4">
+          {otherMicrocycles.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No other weeks in this phase to copy to. Add more weeks first.
+            </p>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-sm font-medium">Copy to:</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={selectAll}
+                >
+                  {selectedTargets.size === otherMicrocycles.length ? 'Deselect All' : 'Select All'}
+                </Button>
               </div>
-              {availableMicrocycles.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2">
-                  No other weeks in this phase to copy to.
-                </p>
-              ) : (
-                <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
-                  {availableMicrocycles.map((micro) => (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {otherMicrocycles.map((micro) => {
+                  const hasExistingSessions = micro.sessions.length > 0
+                  return (
                     <label
                       key={micro.id}
-                      className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-accent cursor-pointer"
+                      className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent transition-colors"
                     >
                       <Checkbox
-                        checked={selectedTargetIds.has(micro.id)}
-                        onCheckedChange={() => handleToggleTarget(micro.id)}
+                        checked={selectedTargets.has(micro.id)}
+                        onCheckedChange={() => toggleTarget(micro.id)}
                       />
-                      <span className="text-sm">
-                        {micro.name || `Week ${micro.id}`}
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium">
+                          {micro.name || `Week ${micro.id}`}
+                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <Badge variant="outline" className="text-xs">
+                            {micro.sessions.length} session{micro.sessions.length !== 1 ? 's' : ''}
+                          </Badge>
+                          {hasExistingSessions && (
+                            <span className="flex items-center gap-1 text-xs text-amber-600">
+                              <AlertTriangle className="h-3 w-3" />
+                              Has sessions
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </label>
-                  ))}
-                </div>
-              )}
-            </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
 
@@ -220,15 +169,17 @@ export function DuplicateWeekDialog({
           </Button>
           <Button
             onClick={handleDuplicate}
-            disabled={selectedTargetIds.size === 0 || isSubmitting}
+            disabled={selectedTargets.size === 0 || isSubmitting || otherMicrocycles.length === 0}
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Copying...
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Duplicating...
               </>
             ) : (
-              `Copy to ${selectedTargetIds.size} week${selectedTargetIds.size !== 1 ? 's' : ''}`
+              <>
+                Duplicate to {selectedTargets.size} week{selectedTargets.size !== 1 ? 's' : ''}
+              </>
             )}
           </Button>
         </DialogFooter>

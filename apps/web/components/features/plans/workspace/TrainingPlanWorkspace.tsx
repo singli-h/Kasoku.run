@@ -13,7 +13,7 @@ import { EditSessionDialog } from "./components/EditSessionDialog"
 import { CopySessionDialog } from "./components/CopySessionDialog"
 import { DuplicateWeekDialog } from "./components/DuplicateWeekDialog"
 import { PlanPageHeader } from "../components/PlanPageHeader"
-import { copySessionAction, duplicateMicrocycleSessionsAction, updateSessionPlanAction, deleteSessionPlanAction } from "@/actions/plans/session-plan-actions"
+import { copySessionAction, updateSessionPlanAction, deleteSessionPlanAction, duplicateMicrocycleSessionsAction } from "@/actions/plans/session-plan-actions"
 import {
   createMesocycleAction,
   updateMesocycleAction,
@@ -57,7 +57,6 @@ interface Microcycle {
   start_date: string | null
   end_date: string | null
   sessions: Session[]
-  weekly_insights?: Record<string, unknown> | null
   // UI-only fields
   weekNumber?: number
   volume?: number
@@ -118,7 +117,7 @@ interface TrainingPlanWorkspaceProps {
   onPlanUpdate?: (plan: TrainingPlan) => void
   selectedGroupId?: number | null
   onGenerateWeek?: (microcycleId: number, microcycleName: string | null) => void
-  onReviewWeek?: (microcycleId: number, weeklyInsights?: Record<string, unknown> | null) => void
+  onReviewWeek?: (microcycleId: number) => void
 }
 
 /** Inline editor for mesocycle planning_context (phase focus) */
@@ -290,8 +289,9 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
   const [editingSession, setEditingSession] = useState<Session | null>(null)
   const [copyDialogOpen, setCopyDialogOpen] = useState(false)
   const [copyingSession, setCopyingSession] = useState<Session | null>(null)
-  const [duplicateWeekOpen, setDuplicateWeekOpen] = useState(false)
-  const [duplicatingMicro, setDuplicatingMicro] = useState<Microcycle | null>(null)
+  const [duplicateWeekDialogOpen, setDuplicateWeekDialogOpen] = useState(false)
+  const [duplicatingMicrocycle, setDuplicatingMicrocycle] = useState<Microcycle | null>(null)
+  const [duplicatingMesocycle, setDuplicatingMesocycle] = useState<Mesocycle | null>(null)
 
   const { toast } = useToast()
 
@@ -1162,7 +1162,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                           </p>
                           <p className="mt-1 text-sm text-muted-foreground">{micro.description}</p>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex gap-1 shrink-0">
                           <Button
                             size="icon"
                             variant="ghost"
@@ -1170,8 +1170,9 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                             title="Duplicate week"
                             onClick={(e) => {
                               e.stopPropagation()
-                              setDuplicatingMicro(micro)
-                              setDuplicateWeekOpen(true)
+                              setDuplicatingMicrocycle(micro)
+                              setDuplicatingMesocycle(selectedMeso)
+                              setDuplicateWeekDialogOpen(true)
                             }}
                           >
                             <Copy className="h-4 w-4" />
@@ -1239,7 +1240,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                         size="sm"
                         variant="ghost"
                         className="gap-1.5"
-                        onClick={() => onReviewWeek(selectedMicro.id, selectedMicro.weekly_insights)}
+                        onClick={() => onReviewWeek(selectedMicro.id)}
                       >
                         <BarChart3 className="h-3.5 w-3.5" />
                         Insights
@@ -1579,8 +1580,9 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                                 title="Duplicate week"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setDuplicatingMicro(micro)
-                                  setDuplicateWeekOpen(true)
+                                  setDuplicatingMicrocycle(micro)
+                                  setDuplicatingMesocycle(selectedMeso)
+                                  setDuplicateWeekDialogOpen(true)
                                 }}
                               >
                                 <Copy className="h-4 w-4" />
@@ -1627,7 +1629,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                             size="sm"
                             variant="ghost"
                             className="gap-1.5"
-                            onClick={() => onReviewWeek(selectedMicro.id, selectedMicro.weekly_insights)}
+                            onClick={() => onReviewWeek(selectedMicro.id)}
                           >
                             <BarChart3 className="h-3.5 w-3.5" />
                             Insights
@@ -1823,14 +1825,10 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
       />
 
       <DuplicateWeekDialog
-        sourceMicrocycle={duplicatingMicro ? {
-          id: duplicatingMicro.id,
-          name: duplicatingMicro.name,
-          sessionCount: duplicatingMicro.sessions.length,
-        } : null}
-        mesocycles={plan.mesocycles}
-        open={duplicateWeekOpen}
-        onOpenChange={setDuplicateWeekOpen}
+        sourceMicrocycle={duplicatingMicrocycle}
+        mesocycle={duplicatingMesocycle}
+        open={duplicateWeekDialogOpen}
+        onOpenChange={setDuplicateWeekDialogOpen}
         onDuplicate={handleDuplicateWeek}
       />
     </div>

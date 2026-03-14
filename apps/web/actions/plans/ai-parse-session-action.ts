@@ -27,13 +27,21 @@ export interface ParsedSet {
   rpe: number | null
 }
 
+export type ExerciseTypeName = 'isometric' | 'plyometric' | 'gym' | 'warmup' | 'circuit' | 'sprint' | 'drill' | 'mobility' | 'recovery' | 'other'
+
 export interface ParsedExercise {
   exerciseName: string
+  /** AI-generated concise description of the exercise (one sentence) */
+  description: string | null
+  /** AI-inferred exercise type based on exercise nature */
+  exerciseType: ExerciseTypeName
   sets: ParsedSet[]
   targetEventGroups: string[] | null
   notes: string | null
   unparseable: boolean
   originalText: string | null
+  /** Section/group header this exercise belongs to — AI infers from context even without explicit headers */
+  sectionName: string | null
 }
 
 // ============================================================================
@@ -51,6 +59,10 @@ const ParsedSetSchema = z.object({
 
 const ParsedExerciseSchema = z.object({
   exerciseName: z.string().describe("Name of the exercise"),
+  description: z.string().nullable()
+    .describe("Concise one-sentence description of the exercise for coaches who may not know it. Null for unparseable lines."),
+  exerciseType: z.enum(['isometric', 'plyometric', 'gym', 'warmup', 'circuit', 'sprint', 'drill', 'mobility', 'recovery', 'other'])
+    .describe("Exercise type classification: isometric (holds/planks), plyometric (jumps/bounds), gym (barbell/dumbbell strength), warmup (dynamic stretches/jogging), circuit (AMRAP/station-based), sprint (running speed work), drill (technique/A-skips/hurdle drills), mobility (ROM/flexibility), recovery (cool down/light cardio), other (unclassifiable)"),
   sets: z.array(ParsedSetSchema).describe("Array of set configurations"),
   targetEventGroups: z.array(z.string()).nullable()
     .describe("Subgroup tags like 'Sprints', 'Jumps' from TrainHeroic SS/MS headers. Null if none."),
@@ -59,6 +71,8 @@ const ParsedExerciseSchema = z.object({
     .describe("True if the line could not be parsed into a structured exercise, false otherwise"),
   originalText: z.string().nullable()
     .describe("The original text line, included for unparseable entries. Null for parsed exercises."),
+  sectionName: z.string().nullable()
+    .describe("Section/group this exercise belongs to. Inferred from explicit headers OR from exercise nature/context when no headers exist."),
 })
 
 const ParseResponseSchema = z.object({
@@ -93,7 +107,47 @@ PARSING RULES:
 7. If a line cannot be parsed into an exercise (e.g., headers, blank lines, notes), mark it with unparseable: true and include originalText.
 8. Preserve exercise names as-is (capitalize first letter of each word if not already).
 9. Convert time notations: "2min" = 120s, "90sec" = 90s, "1:30" = 90s.
-10. If rest time is specified after the set info, include it in rest_time.`
+10. If rest time is specified after the set info, include it in rest_time.
+
+SECTION INFERENCE (CRITICAL):
+11. ALWAYS assign sectionName to every exercise — even when no explicit headers exist.
+    - If explicit headers exist ("Warm Up:", "# Drills", "A) Main Set"), use them directly.
+    - If NO explicit headers exist, INFER sections from exercise nature, context, and order:
+      * Jogging, stretching, mobility work at the start → "Warm Up"
+      * Technical drills (A-skips, B-skips, minihurdles, form work) → "Drills"
+      * High-intensity sprint work (30m, 60m, flying sprints, block starts) → "Sprint Work"
+      * Heavy compound lifts (squat, bench, deadlift, clean) → "Strength"
+      * Accessory/isolation work (curls, lateral raises, leg curls) → "Accessories"
+      * Plyometric work (box jumps, bounds, depth jumps) → "Plyometrics"
+      * Circuit/conditioning work (AMRAP, timed stations) → "Conditioning"
+      * Light jogging, static stretching, foam rolling at the end → "Cool Down"
+    - Use common coaching terminology for inferred section names.
+    - A single exercise type cluster should share one sectionName.
+    - Section headers themselves should be marked unparseable with the originalText.
+
+EXERCISE TYPE CLASSIFICATION:
+12. Classify every exercise into one of these types based on its nature:
+    - isometric: Holds, planks, wall sits, static positions
+    - plyometric: Box jumps, bounds, depth jumps, hurdle hops
+    - gym: Barbell/dumbbell strength (squat, bench, deadlift, press, row, curl)
+    - warmup: Dynamic stretches, jogging, general warm-up movements
+    - circuit: AMRAP, station-based, timed rounds
+    - sprint: Running speed work (30m, 60m, 100m, flying sprints, block starts, tempo runs)
+    - drill: Technique work (A-skips, B-skips, minihurdle drills, wicket runs, form drills)
+    - mobility: Flexibility, ROM, yoga-based, stretch-specific
+    - recovery: Cool down jogs, foam rolling, light stretching
+    - other: Cannot classify
+
+EXERCISE DESCRIPTIONS:
+13. Generate a concise one-sentence description for each parsed exercise.
+    - Focus on what the exercise is and its training purpose.
+    - Keep it under 15 words. Be specific, not generic.
+    - Examples:
+      * "A-Skip Drills" → "Dynamic running drill emphasizing knee drive and ankle dorsiflexion"
+      * "Block Starts" → "Explosive acceleration practice from starting blocks"
+      * "Back Squat" → "Bilateral lower-body compound lift targeting quads and posterior chain"
+      * "Foam Rolling" → "Self-myofascial release for muscle recovery and tissue quality"
+    - Set to null for unparseable lines.`
 
 // ============================================================================
 // Server Action
@@ -131,6 +185,8 @@ export async function aiParseSessionAction(
 
     const exercises: ParsedExercise[] = object.exercises.map((ex) => ({
       exerciseName: ex.exerciseName,
+      description: ex.description ?? null,
+      exerciseType: ex.exerciseType ?? 'other',
       sets: ex.sets.map((s) => ({
         reps: s.reps ?? null,
         weight: s.weight ?? null,
@@ -143,6 +199,7 @@ export async function aiParseSessionAction(
       notes: ex.notes ?? null,
       unparseable: ex.unparseable ?? false,
       originalText: ex.originalText,
+      sectionName: ex.sectionName ?? null,
     }))
 
     return {
