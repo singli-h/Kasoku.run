@@ -10,7 +10,7 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Users, Calendar, ClipboardList, History } from "lucide-react"
+import { ArrowLeft, Users, ClipboardList } from "lucide-react"
 
 import { PageLayout, UnifiedPageSkeleton } from "@/components/layout"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
@@ -101,7 +101,6 @@ async function AthleteProfileContent({ athleteId }: { athleteId: number }) {
 
   // Fetch assigned plan via athlete's group
   let planName: string | null = null
-  let macrocycleId: number | null = null
   let currentWeek = 0
   let totalWeeks = 0
   let completionRate = 0
@@ -128,7 +127,6 @@ async function AthleteProfileContent({ athleteId }: { athleteId: number }) {
       .maybeSingle()
 
     if (macrocycle) {
-      macrocycleId = macrocycle.id
       planName = macrocycle.name || 'Training Plan'
 
       const allMicrocycles = (macrocycle.mesocycles ?? [])
@@ -258,11 +256,16 @@ async function AthleteProfileContent({ athleteId }: { athleteId: number }) {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {profile.events.map((event, index) => (
-                    <Badge key={index} variant="secondary" className="text-sm">
-                      {event}
-                    </Badge>
-                  ))}
+                  {profile.events.map((event, index) => {
+                    const e = event as unknown as { id?: number; name?: string } | string
+                    const label = typeof e === 'string' ? e : e.name ?? ''
+                    const key = typeof e === 'string' ? index : (e.id ?? index)
+                    return (
+                      <Badge key={key} variant="secondary" className="text-sm">
+                        {label}
+                      </Badge>
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -308,41 +311,7 @@ async function AthleteProfileContent({ athleteId }: { athleteId: number }) {
             </Card>
           )}
 
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-3">
-                {macrocycleId ? (
-                  <Link href={`/plans/${macrocycleId}`}>
-                    <Button variant="outline" size="sm">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      View Plan
-                    </Button>
-                  </Link>
-                ) : (
-                  <Button variant="outline" size="sm" disabled>
-                    <Calendar className="h-4 w-4 mr-2" />
-                    No Plan Assigned
-                  </Button>
-                )}
-                <Link href="/athletes">
-                  <Button variant="outline" size="sm">
-                    <Users className="h-4 w-4 mr-2" />
-                    View Group
-                  </Button>
-                </Link>
-                <Link href={`/workout/history?athleteId=${athleteId}`}>
-                  <Button variant="outline" size="sm">
-                    <History className="h-4 w-4 mr-2" />
-                    View Workout History
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Quick Actions - hidden for now */}
         </div>
       </div>
     </div>

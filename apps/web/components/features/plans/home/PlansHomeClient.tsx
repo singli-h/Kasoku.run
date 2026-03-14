@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Calendar, Users, UserMinus, Target, Plus, Search, MoreVertical, Trash2 } from "lucide-react"
+import { Calendar, Users, UserMinus, Plus, Search, MoreVertical, Trash2, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { MacrocycleTimeline, MacrocyclePhase, RaceAnchor } from "./MacrocycleTimeline"
 import { VolumeIntensityChart, ChartDataPoint } from "./VolumeIntensityChart"
@@ -82,38 +82,28 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
     return (
       <Card key={mc.id} className="overflow-hidden">
         <CardHeader className="pb-4">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 space-y-1.5">
               <CardTitle className="text-lg lg:text-xl">{mc.name}</CardTitle>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{mc.start} - {mc.end}</span>
-                </div>
-                {mc.group && (
-                  <div className="flex items-center gap-1.5">
-                    <Users className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{mc.group}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1.5">
-                  <Target className="h-4 w-4 shrink-0" />
-                  <span>{mc.phases.length} phases{mc.phases.length > 0 ? ` · ${Math.max(0, ...mc.phases.map(p => p.endWeek))} weeks` : ''}</span>
-                </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Badge variant={mc.state === "Active" ? "default" : mc.state === "Draft" ? "secondary" : "outline"} className="shrink-0">
+                  {mc.state}
+                </Badge>
+                <span className="text-muted-foreground/40">·</span>
+                <Calendar className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{mc.start} – {mc.end}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant={mc.state === "Active" ? "default" : mc.state === "Draft" ? "secondary" : "outline"}>
-                {mc.state}
-              </Badge>
-              <Link href={`/plans/${mc.id}`} className="flex-1 sm:flex-none">
-                <Button variant="default" size="sm" className="w-full sm:w-auto">
+            <div className="flex items-center gap-2 shrink-0">
+              <Button asChild size="default" className="px-4">
+                <Link href={`/plans/${mc.id}`}>
                   Open
-                </Button>
-              </Link>
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Link>
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
                     <MoreVertical className="h-4 w-4" />
                     <span className="sr-only">More options</span>
                   </Button>

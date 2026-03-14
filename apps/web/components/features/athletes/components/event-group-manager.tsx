@@ -10,6 +10,7 @@ import { Plus, X, Tag } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { EventGroupBadge } from "./event-group-badge"
 import { Input } from "@/components/ui/input"
 import {
   AlertDialog,
@@ -186,9 +187,7 @@ export function EventGroupManager({
                 className="flex items-center justify-between p-3 bg-muted/40 rounded-lg group hover:bg-muted/60 transition-colors"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="font-mono font-bold text-xs bg-primary/10 text-primary px-2 py-1 rounded shrink-0">
-                    {eg.abbreviation}
-                  </span>
+                  <EventGroupBadge value={eg.abbreviation} variant="definition" />
                   <span className="text-sm text-foreground truncate">{eg.name}</span>
                 </div>
                 <button

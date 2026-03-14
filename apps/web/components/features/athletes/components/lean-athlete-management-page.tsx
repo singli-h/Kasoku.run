@@ -6,7 +6,7 @@
 
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
@@ -51,10 +51,13 @@ export function LeanAthleteManagementPage() {
     type: null
   })
 
-  // Load data
+  // Track whether initial load is done to avoid skeleton flash on subsequent reloads
+  const initialLoadDone = useRef(false)
+
+  // Load data - only shows loading skeleton on initial load
   const loadData = useCallback(async () => {
     try {
-      setLoading(true)
+      if (!initialLoadDone.current) setLoading(true)
       const [rosterResult, eventGroupsResult] = await Promise.all([
         getRosterWithGroupCountsAction(),
         getEventGroupsAction()
@@ -83,6 +86,7 @@ export function LeanAthleteManagementPage() {
       })
     } finally {
       setLoading(false)
+      initialLoadDone.current = true
     }
   }, [toast])
 

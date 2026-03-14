@@ -48,6 +48,7 @@ import { updateAthleteProfileAction } from "@/actions/athletes/athlete-actions"
 
 import { AthleteCard } from "./athlete-card"
 import { GroupFilterChips } from "./group-filter-chips"
+import { EventGroupBadge } from "./event-group-badge"
 import type { AthleteWithDetails, GroupWithCount, BulkOperationState, EventGroup } from "../types"
 
 /**
@@ -89,15 +90,11 @@ function EventGroupEditor({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          className={cn(
-            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors",
-            "hover:bg-muted border border-transparent hover:border-border",
-            currentValue ? "font-medium" : "text-muted-foreground"
-          )}
-        >
-          {displayLabel || "Set"}
-        </button>
+        <EventGroupBadge
+          value={displayLabel}
+          emptyLabel="Set"
+          interactive
+        />
       </PopoverTrigger>
       <PopoverContent className="w-52 p-2" align="start">
         <div className="space-y-1">

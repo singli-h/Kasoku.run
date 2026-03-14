@@ -37,6 +37,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { updateAthleteProfileAction } from "@/actions/athletes/athlete-actions"
+import { EventGroupBadge } from "./event-group-badge"
 import type { AthleteWithDetails, BulkOperationState, EventGroup } from "../types"
 
 interface AthleteCardProps {
@@ -148,17 +149,11 @@ export function AthleteCard({
           <div className="flex items-center gap-1.5 mt-1">
             <Popover open={eventGroupOpen} onOpenChange={setEventGroupOpen}>
               <PopoverTrigger asChild>
-                <button
+                <EventGroupBadge
+                  value={athlete.event_group}
+                  interactive
                   onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    "px-1.5 py-0 rounded text-[10px] font-mono h-5 inline-flex items-center transition-colors",
-                    athlete.event_group
-                      ? "bg-muted hover:bg-muted/80"
-                      : "border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50"
-                  )}
-                >
-                  {athlete.event_group || "+group"}
-                </button>
+                />
               </PopoverTrigger>
               <PopoverContent className="w-52 p-2" align="start">
                 <div className="space-y-1">
