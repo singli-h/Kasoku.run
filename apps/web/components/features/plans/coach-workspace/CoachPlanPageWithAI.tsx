@@ -108,7 +108,7 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
           }}
           onReviewWeek={(microcycleId, weeklyInsights) => {
             setInsightsMicrocycleId(microcycleId)
-            setInsightsExisting(weeklyInsights ?? null)
+            setInsightsExisting((weeklyInsights as Record<string, unknown>) ?? null)
             setInsightsOpen(true)
           }}
         />

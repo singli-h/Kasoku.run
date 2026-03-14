@@ -117,7 +117,7 @@ interface TrainingPlanWorkspaceProps {
   onPlanUpdate?: (plan: TrainingPlan) => void
   selectedGroupId?: number | null
   onGenerateWeek?: (microcycleId: number, microcycleName: string | null) => void
-  onReviewWeek?: (microcycleId: number) => void
+  onReviewWeek?: (microcycleId: number, weeklyInsights?: unknown) => void
 }
 
 /** Inline editor for mesocycle planning_context (phase focus) */
