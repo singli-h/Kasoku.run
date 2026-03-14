@@ -166,7 +166,7 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
     },
     {
       label: "Coaching",
-      items: ["athletes", "plans", "sessions", "templates"],
+      items: ["athletes", "plans", "templates"],
     },
     {
       label: "My Training",
