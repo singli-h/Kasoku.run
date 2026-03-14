@@ -196,26 +196,24 @@ export function GroupDirectorySection({
     <>
       <Card className={className}>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle>Group Directory</CardTitle>
               <CardDescription>
                 {groups.length} group{groups.length !== 1 ? 's' : ''}
               </CardDescription>
             </div>
-            <div className="flex gap-2">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="New group name..."
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                  className="w-48"
-                />
-                <Button onClick={handleCreateGroup} disabled={!newGroupName.trim()}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create
-                </Button>
-              </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Input
+                placeholder="New group name..."
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                className="flex-1 sm:w-48"
+              />
+              <Button onClick={handleCreateGroup} disabled={!newGroupName.trim()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create
+              </Button>
             </div>
           </div>
         </CardHeader>

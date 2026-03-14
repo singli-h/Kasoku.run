@@ -6,6 +6,9 @@ import { format, isToday, isYesterday, isTomorrow } from "date-fns"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet, ExerciseLibraryItem } from "../types"
 import type { AIExerciseChangeInfo } from "@/components/features/ai-assistant/hooks"
+import type { Database } from "@/types/database"
+
+type PersonalBest = Database["public"]["Tables"]["athlete_personal_bests"]["Row"]
 import { UNGROUPED_SET_CHANGES_KEY } from "@/components/features/ai-assistant/hooks"
 
 // Save status type (matches ExerciseContext)
@@ -97,6 +100,11 @@ export interface WorkoutViewProps {
    */
   athleteEventGroup?: string | null
 
+  /** PR map keyed by exercise_id (FK to exercises table) */
+  prMap?: Record<number, PersonalBest[]>
+  /** Callback to save/update a PR */
+  onSavePR?: (exerciseId: number, value: number, unitId: number, distance?: number | null) => Promise<boolean>
+
   className?: string
 }
 
@@ -140,6 +148,8 @@ export function WorkoutView({
   availableEventGroups,
   onUpdateTargetEventGroups,
   athleteEventGroup,
+  prMap,
+  onSavePR,
   className,
 }: WorkoutViewProps) {
   // Filter exercises by athlete's event_group when in athlete mode
@@ -577,6 +587,9 @@ export function WorkoutView({
                                   previewGroup={previewGroup}
                                   availableEventGroups={availableEventGroups}
                                   onUpdateTargetEventGroups={(groups) => onUpdateTargetEventGroups?.(ex.id, groups)}
+                                  // PR props
+                                  prs={prMap?.[ex.exerciseId]}
+                                  onSavePR={onSavePR}
                                 />
                               )
                             })}
@@ -622,6 +635,9 @@ export function WorkoutView({
                           previewGroup={previewGroup}
                           availableEventGroups={availableEventGroups}
                           onUpdateTargetEventGroups={(groups) => onUpdateTargetEventGroups?.(item.id, groups)}
+                          // PR props
+                          prs={prMap?.[item.exerciseId]}
+                          onSavePR={onSavePR}
                         />
                       )
                     })}

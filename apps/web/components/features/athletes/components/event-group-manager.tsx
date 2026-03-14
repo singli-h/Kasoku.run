@@ -1,14 +1,14 @@
 /**
  * Event Group Manager Component
- * Compact UI for coaches to create and manage event group definitions
+ * Card section for coaches to create and manage event group definitions
  */
 
 "use client"
 
 import { useState } from "react"
-import { Plus, X } from "lucide-react"
+import { Plus, X, Tag } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -101,91 +101,108 @@ export function EventGroupManager({
   }
 
   return (
-    <div className={className}>
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-muted-foreground">Event Groups</h3>
-        {!showAddForm && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={() => setShowAddForm(true)}
-          >
-            <Plus className="h-3.5 w-3.5 mr-1" />
-            Add
-          </Button>
-        )}
-      </div>
-
-      {eventGroups.length === 0 && !showAddForm ? (
-        <p className="text-xs text-muted-foreground">
-          Define event groups to categorize athletes by specialization (e.g., SS = Short Sprints)
-        </p>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {eventGroups.map((eg) => (
-            <Badge
-              key={eg.id}
-              variant="secondary"
-              className="text-xs gap-1 pr-1 font-normal"
+    <Card className={className}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Tag className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-base">Event Groups</CardTitle>
+          </div>
+          {!showAddForm && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddForm(true)}
             >
-              <span className="font-mono font-medium">[{eg.abbreviation}]</span>
-              <span>{eg.name}</span>
-              <button
-                onClick={() => setDeleteTarget(eg)}
-                className="ml-0.5 p-0.5 rounded-full hover:bg-muted-foreground/20 transition-colors"
-                aria-label={`Delete ${eg.name}`}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
+              <Plus className="h-4 w-4 mr-1.5" />
+              Add
+            </Button>
+          )}
         </div>
-      )}
+      </CardHeader>
 
-      {/* Inline add form */}
-      {showAddForm && (
-        <div className="flex items-center gap-2 mt-2">
-          <Input
-            value={newAbbrev}
-            onChange={(e) => setNewAbbrev(e.target.value.toUpperCase())}
-            onKeyDown={handleKeyDown}
-            placeholder="SS"
-            className="h-8 w-16 text-xs font-mono text-center"
-            maxLength={3}
-            disabled={isCreating}
-            autoFocus
-          />
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Short Sprints"
-            className="h-8 text-xs flex-1"
-            disabled={isCreating}
-          />
-          <Button
-            size="sm"
-            className="h-8 px-3 text-xs"
-            onClick={handleCreate}
-            disabled={isCreating || !newName.trim() || !newAbbrev.trim()}
-          >
-            {isCreating ? "..." : "Save"}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => {
-              setShowAddForm(false)
-              setNewName("")
-              setNewAbbrev("")
-            }}
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      )}
+      <CardContent className="space-y-3">
+        {/* Inline add form */}
+        {showAddForm && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 bg-muted/50 rounded-lg border border-dashed">
+            <Input
+              value={newAbbrev}
+              onChange={(e) => setNewAbbrev(e.target.value.toUpperCase())}
+              onKeyDown={handleKeyDown}
+              placeholder="SS"
+              className="h-10 w-full sm:w-20 text-sm font-mono text-center"
+              maxLength={3}
+              disabled={isCreating}
+              autoFocus
+            />
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Short Sprints"
+              className="h-10 text-sm flex-1"
+              disabled={isCreating}
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="h-10 flex-1 sm:flex-none sm:px-4"
+                onClick={handleCreate}
+                disabled={isCreating || !newName.trim() || !newAbbrev.trim()}
+              >
+                {isCreating ? "..." : "Save"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-10 px-3"
+                onClick={() => {
+                  setShowAddForm(false)
+                  setNewName("")
+                  setNewAbbrev("")
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {eventGroups.length === 0 && !showAddForm ? (
+          <div className="text-center py-8">
+            <Tag className="h-8 w-8 mx-auto mb-3 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              Define event groups to categorize athletes by specialization
+            </p>
+            <p className="text-xs text-muted-foreground/60 mt-1">
+              e.g. SS = Short Sprints, LS = Long Sprints
+            </p>
+          </div>
+        ) : eventGroups.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {eventGroups.map((eg) => (
+              <div
+                key={eg.id}
+                className="flex items-center justify-between p-3 bg-muted/40 rounded-lg group hover:bg-muted/60 transition-colors"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="font-mono font-bold text-xs bg-primary/10 text-primary px-2 py-1 rounded shrink-0">
+                    {eg.abbreviation}
+                  </span>
+                  <span className="text-sm text-foreground truncate">{eg.name}</span>
+                </div>
+                <button
+                  onClick={() => setDeleteTarget(eg)}
+                  className="p-1.5 rounded-md text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-all shrink-0"
+                  aria-label={`Delete ${eg.name}`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -193,7 +210,7 @@ export function EventGroupManager({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete event group?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete the "{deleteTarget?.name}" ({deleteTarget?.abbreviation}) event group definition.
+              This will delete the &quot;{deleteTarget?.name}&quot; ({deleteTarget?.abbreviation}) event group definition.
               Athletes with this abbreviation assigned will keep their current value but it will no longer appear in dropdowns.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -209,6 +226,6 @@ export function EventGroupManager({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </Card>
   )
 }

@@ -14,6 +14,7 @@ import { motion } from "framer-motion"
 import { Check, Video, ExternalLink, Trophy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 import { useExerciseContext } from "../../index"
 import type { WorkoutExercise } from "../../index"
 import type { WorkoutLogSet } from "@/types/training"
@@ -22,8 +23,12 @@ import { getVisibleFields } from "@/components/features/training/utils/field-vis
 import type { TrainingSet } from "@/components/features/training/types"
 import { isFreeelapMetadata, type FreeelapMetadata } from "@/types/freelap"
 import type { SetMetadata } from "@/components/features/training/types/set-metadata"
-import { toast } from "sonner"
-import { PRInputSheet } from "./pr-input-sheet"
+import { findPR } from "../../hooks/use-exercise-prs"
+import {
+  PRInputSheet,
+  getSprintPRMode,
+  SPRINT_AUTO_PR_NAMES,
+} from "./pr-input-sheet"
 import { ExerciseTypeId } from "../../utils/exercise-grouping"
 import type { Database } from "@/types/database"
 
@@ -33,15 +38,14 @@ interface ExerciseCardProps {
   exercise: WorkoutExercise
   className?: string
   isSuperset?: boolean
-  /** PR for this exercise (from useExercisePRs hook) */
-  pr?: PersonalBest | null
-  /** Callback to save a PR */
-  onSavePR?: (exerciseId: number, value: number, unitId: number) => Promise<boolean>
+  /** All PRs for this exercise (multiple distances for sprints) */
+  prs?: PersonalBest[]
+  /** Callback to save a PR (supports distance for sprints) */
+  onSavePR?: (exerciseId: number, value: number, unitId: number, distance?: number | null) => Promise<boolean>
 }
 
 /**
  * Map from camelCase TrainingSet field names to snake_case WorkoutLogSet field names
- * Used to convert Training SetRow onChange callbacks back to the exercise-context format
  */
 const CAMEL_TO_SNAKE_FIELD_MAP: Record<string, keyof WorkoutLogSet> = {
   reps: 'reps',
@@ -62,7 +66,6 @@ const CAMEL_TO_SNAKE_FIELD_MAP: Record<string, keyof WorkoutLogSet> = {
 
 /**
  * Convert a WorkoutLogSet (snake_case DB row) to TrainingSet (camelCase unified type)
- * for use with the Training SetRow component.
  */
 function workoutLogSetToTrainingSet(logSet: WorkoutLogSet, index: number): TrainingSet {
   return {
@@ -79,124 +82,138 @@ function workoutLogSetToTrainingSet(logSet: WorkoutLogSet, index: number): Train
     velocity: logSet.velocity,
     height: logSet.height,
     resistance: logSet.resistance,
-    effort: logSet.effort,
+    // Convert effort from DB (0-1) to UI (0-100)
+    effort: logSet.effort != null ? logSet.effort * 100 : null,
     resistanceUnitId: logSet.resistance_unit_id,
     metadata: logSet.metadata as SetMetadata | null,
     completed: logSet.completed ?? false,
   }
 }
 
-export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSavePR }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, className, isSuperset = false, prs, onSavePR }: ExerciseCardProps) {
   const { showVideo, updateExercise, toggleSetComplete } = useExerciseContext()
+  const { toast } = useToast()
 
-  // Track which sets are expanded for Freelap details (keyed by set ID)
   const [expandedFreeelapIds, setExpandedFreeelapIds] = useState<Set<string | number>>(new Set())
-  // PR input sheet state
   const [prSheetOpen, setPrSheetOpen] = useState(false)
 
-  // Toggle Freelap expansion for a set
   const toggleFreeelapExpand = useCallback((setId: string | number) => {
     setExpandedFreeelapIds(prev => {
       const next = new Set(prev)
-      if (next.has(setId)) {
-        next.delete(setId)
-      } else {
-        next.add(setId)
-      }
+      if (next.has(setId)) next.delete(setId)
+      else next.add(setId)
       return next
     })
   }, [])
 
-  // Get exercise type ID for field visibility
   const exerciseTypeId = useMemo(() => {
     const ex = exercise.exercise
     if (!ex) return undefined
     return (ex as any).exercise_type?.id ?? (ex as any).exercise_type_id ?? undefined
   }, [exercise.exercise])
 
-  // Whether this exercise type supports PRs (Gym or Sprint only)
-  const supportsPR = exerciseTypeId === ExerciseTypeId.Gym || exerciseTypeId === ExerciseTypeId.Sprint
+  const exerciseName = exercise.exercise?.name || ""
+  const sprintMode = exerciseTypeId === ExerciseTypeId.Sprint ? getSprintPRMode(exerciseName) : null
 
-  // Get exercise ID (numeric, from exercises table)
+  // PR supported for Gym (always) and Sprint (only if has a sprint PR mode config)
+  const supportsPR = exerciseTypeId === ExerciseTypeId.Gym || (exerciseTypeId === ExerciseTypeId.Sprint && sprintMode != null)
+
   const numericExerciseId = useMemo(() => {
     const rawId = exercise.exercise?.id ?? (exercise as any).exercise_id
     return typeof rawId === 'string' ? parseInt(rawId, 10) : rawId
   }, [exercise.exercise, (exercise as any).exercise_id])
 
-  // Extract effort values from session_plan_sets for PR preview
-  const effortValues = useMemo(() => {
+  // Effort + distance from session plan sets for PR sheet preview
+  const setEfforts = useMemo(() => {
     const planSets = exercise.session_plan_sets || []
-    return planSets.map(s => s.effort ?? null)
+    return planSets.map((s, i) => ({
+      effort: s.effort ?? null,
+      distance: s.distance ?? null,
+      setIndex: i + 1,
+    }))
   }, [exercise.session_plan_sets])
 
-  // Compute effort-based placeholder for a set
+  // Distance-aware effort placeholder calculation
   const getSetPlaceholders = useCallback((setIndex: number): Partial<Record<keyof TrainingSet, string>> | undefined => {
-    if (!pr?.value || !supportsPR) return undefined
+    if (!supportsPR || !prs || prs.length === 0) return undefined
 
     const planSets = exercise.session_plan_sets || []
-    const effort = planSets[setIndex]?.effort ?? null
+    const planSet = planSets[setIndex]
+    const effort = planSet?.effort ?? null
     if (!effort || effort <= 0) return undefined
 
+    // session_plan_sets effort is in DB format (0-1), use directly for calculations
+    const normalizedEffort = effort
+
     if (exerciseTypeId === ExerciseTypeId.Gym) {
-      const target = pr.value * effort
+      const pr = findPR(prs)
+      if (!pr?.value) return undefined
+      const target = Number(pr.value) * normalizedEffort
       return { weight: target.toFixed(1) }
     }
-    if (exerciseTypeId === ExerciseTypeId.Sprint) {
-      const target = pr.value / effort
-      return { performingTime: target.toFixed(2) }
+
+    if (exerciseTypeId === ExerciseTypeId.Sprint && sprintMode) {
+      const setDistance = planSet?.distance ?? null
+
+      if (sprintMode.type === "reference") {
+        // Reference PB mode: targetTime = racePB × (setDistance / raceDistance) / effort
+        const referencePR = findPR(prs, sprintMode.raceDistance)
+        if (!referencePR?.value || !setDistance) return undefined
+        const target = Number(referencePR.value) * (setDistance / sprintMode.raceDistance) / normalizedEffort
+        return { performingTime: target.toFixed(2) }
+      }
+
+      // Direct mode: targetTime = PB_at_distance / effort
+      if (setDistance) {
+        const pr = findPR(prs, setDistance)
+        if (!pr?.value) return undefined
+        const target = Number(pr.value) / normalizedEffort
+        return { performingTime: target.toFixed(2) }
+      }
     }
+
     return undefined
-  }, [pr, supportsPR, exercise.session_plan_sets, exerciseTypeId])
+  }, [supportsPR, prs, exercise.session_plan_sets, exerciseTypeId, sprintMode])
 
-  // PR display text
-  const prDisplayText = pr?.value != null
-    ? exerciseTypeId === ExerciseTypeId.Gym
-      ? `PR: ${pr.value}kg`
-      : exerciseTypeId === ExerciseTypeId.Sprint
-        ? `PB: ${pr.value}s`
-        : null
-    : null
+  // PR display text — show primary PR
+  const prDisplayText = useMemo(() => {
+    if (!prs || prs.length === 0) return null
+    if (exerciseTypeId === ExerciseTypeId.Gym) {
+      const pr = findPR(prs)
+      return pr?.value != null ? `1RM: ${pr.value}kg` : null
+    }
+    if (exerciseTypeId === ExerciseTypeId.Sprint && sprintMode) {
+      if (sprintMode.type === "reference") {
+        const pr = findPR(prs, sprintMode.raceDistance)
+        return pr?.value != null ? `${sprintMode.raceDistance}m: ${pr.value}s` : null
+      }
+      // Direct: show count or first PR
+      if (prs.length === 1) {
+        return `${prs[0].distance ?? ""}m: ${prs[0].value}s`
+      }
+      return `${prs.length} PBs`
+    }
+    return null
+  }, [prs, exerciseTypeId, sprintMode])
 
-  // Compute visible fields using the unified field-visibility utility
-  // forCoach: false = athlete mode (only required + fields with data)
+  // Visible fields
   const visibleFields = useMemo((): VisibleFields => {
     const planSets = (exercise.workout_log_sets || []).map(set => ({
-      reps: set.reps,
-      weight: set.weight,
-      distance: set.distance,
-      performing_time: set.performing_time,
-      rest_time: set.rest_time,
-      tempo: set.tempo,
-      rpe: set.rpe,
-      power: set.power,
-      velocity: set.velocity,
-      height: set.height,
-      resistance: set.resistance,
+      reps: set.reps, weight: set.weight, distance: set.distance,
+      performing_time: set.performing_time, rest_time: set.rest_time,
+      tempo: set.tempo, rpe: set.rpe, power: set.power,
+      velocity: set.velocity, height: set.height, resistance: set.resistance,
       effort: set.effort,
     }))
-
-    // Also include session_plan_sets data if available (plan values should influence field visibility)
     const sessionPlanSets = (exercise.session_plan_sets || []).map(set => ({
-      reps: set.reps,
-      weight: set.weight,
-      distance: set.distance,
-      performing_time: set.performing_time,
-      rest_time: set.rest_time,
-      tempo: set.tempo,
-      rpe: set.rpe,
-      power: set.power,
-      velocity: set.velocity,
-      height: set.height,
-      resistance: set.resistance,
+      reps: set.reps, weight: set.weight, distance: set.distance,
+      performing_time: set.performing_time, rest_time: set.rest_time,
+      tempo: set.tempo, rpe: set.rpe, power: set.power,
+      velocity: set.velocity, height: set.height, resistance: set.resistance,
       effort: set.effort,
     }))
-
     const allSets = [...planSets, ...sessionPlanSets]
-
-    const visibleFieldKeys = getVisibleFields(exerciseTypeId, allSets, {
-      forCoach: false
-    })
-
+    const visibleFieldKeys = getVisibleFields(exerciseTypeId, allSets, { forCoach: false })
     return {
       reps: visibleFieldKeys.includes('reps'),
       weight: visibleFieldKeys.includes('weight'),
@@ -213,12 +230,10 @@ export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSa
     }
   }, [exercise.workout_log_sets, exercise.session_plan_sets, exerciseTypeId])
 
-  // Calculate completion status
   const completionStatus = useMemo(() => {
     const details = exercise.workout_log_sets || []
     const totalSets = (exercise as any).sets || details.length || 1
     const completedSets = details.filter(detail => detail.completed).length
-
     return {
       total: totalSets,
       completed: completedSets,
@@ -227,125 +242,90 @@ export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSa
     }
   }, [exercise.workout_log_sets, (exercise as any).sets])
 
-  // Handle set data updates (accepts snake_case DB field names)
   const updateSetData = useCallback((setIndex: number, field: keyof WorkoutLogSet, value: any) => {
     const updatedDetails = [...(exercise.workout_log_sets || [])]
-
-    // Ensure we have enough detail entries
     while (updatedDetails.length <= setIndex) {
       updatedDetails.push({
-        id: '', // Will be set by backend
-        workout_log_id: '', // Will be set by backend
-        workout_log_exercise_id: '', // Links to workout_log_exercises table
-        session_plan_exercise_id: '', // Links to original session plan exercise
-        set_index: updatedDetails.length + 1,
-        completed: false,
-        reps: null,
-        weight: null,
-        performing_time: null,
-        distance: null,
-        power: null,
-        velocity: null,
-        effort: null,
-        height: null,
-        resistance: null,
-        resistance_unit_id: null,
-        tempo: null,
-        metadata: null,
-        rpe: null,
-        rest_time: null,
-        created_at: null,
-        updated_at: null
+        id: '', workout_log_id: '', workout_log_exercise_id: '',
+        session_plan_exercise_id: '', set_index: updatedDetails.length + 1,
+        completed: false, reps: null, weight: null, performing_time: null,
+        distance: null, power: null, velocity: null, effort: null,
+        height: null, resistance: null, resistance_unit_id: null,
+        tempo: null, metadata: null, rpe: null, rest_time: null,
+        created_at: null, updated_at: null
       })
     }
-
-    // Update the specific field
-    updatedDetails[setIndex] = {
-      ...updatedDetails[setIndex],
-      [field]: value
-    }
-
-    // Update exercise with new details
-    updateExercise(exercise.id, {
-      workout_log_sets: updatedDetails
-    })
+    updatedDetails[setIndex] = { ...updatedDetails[setIndex], [field]: value }
+    updateExercise(exercise.id, { workout_log_sets: updatedDetails })
   }, [exercise.id, exercise.workout_log_sets, updateExercise])
 
-  // Bridge: Training SetRow onUpdate callback (camelCase) -> updateSetData (snake_case)
   const handleSetUpdate = useCallback((setIndex: number, field: keyof TrainingSet, value: number | string | null) => {
     const snakeField = CAMEL_TO_SNAKE_FIELD_MAP[field as string] || field
     updateSetData(setIndex, snakeField as keyof WorkoutLogSet, value)
   }, [updateSetData])
 
-  // Track which sets already triggered a PR auto-update to avoid duplicates
+  // Auto-PR tracking
   const autoUpdatedSetsRef = useRef<Set<string | number>>(new Set())
 
-  // Check if a completed set qualifies as a new PR and auto-update
   const checkAutoUpdatePR = useCallback((setIndex: number) => {
-    if (!supportsPR || !onSavePR) return
+    if (!supportsPR || !onSavePR || !numericExerciseId) return
     const detail = exercise.workout_log_sets?.[setIndex]
-    if (!detail || detail.completed) return // only check when completing (not un-completing)
+    if (!detail || detail.completed) return
 
     const setId = detail.id || `idx-${setIndex}`
     if (autoUpdatedSetsRef.current.has(setId)) return
 
-    const currentPRValue = pr?.value ?? null
-    const exerciseName = exercise.exercise?.name || "Exercise"
+    const name = exercise.exercise?.name || "Exercise"
 
     if (exerciseTypeId === ExerciseTypeId.Gym) {
       // Gym: reps === 1 and weight > current PR
       if (detail.reps === 1 && detail.weight != null && detail.weight > 0) {
-        if (currentPRValue === null || detail.weight > currentPRValue) {
+        const currentPR = findPR(prs)
+        if (!currentPR || detail.weight > Number(currentPR.value)) {
           autoUpdatedSetsRef.current.add(setId)
           onSavePR(numericExerciseId!, detail.weight, 3).then(ok => {
-            if (ok) toast.success(`New PR! ${exerciseName}: ${detail.weight}kg`)
+            if (ok) toast({ title: `New PR! ${name}: ${detail.weight}kg` })
           })
         }
       }
-    } else if (exerciseTypeId === ExerciseTypeId.Sprint) {
-      // Sprint: time < current PB (lower is better)
-      const time = detail.performing_time
-      if (time != null && time > 0) {
-        if (currentPRValue === null || time < currentPRValue) {
+    } else if (exerciseTypeId === ExerciseTypeId.Sprint && SPRINT_AUTO_PR_NAMES.has(name)) {
+      // Sprint (direct PR only): time < PB at that distance
+      // Check both set fields and Freelap metadata (Freelap stores time/distance in metadata)
+      const meta = detail.metadata as Record<string, unknown> | null
+      const time = detail.performing_time ?? (meta?.time as number | undefined)
+      const setDistance = detail.distance ?? (meta?.distance as number | undefined)
+      if (time != null && time > 0 && setDistance != null && setDistance > 0) {
+        const currentPR = findPR(prs, setDistance)
+        if (!currentPR || time < Number(currentPR.value)) {
           autoUpdatedSetsRef.current.add(setId)
-          onSavePR(numericExerciseId!, time, 5).then(ok => {
-            if (ok) toast.success(`New PB! ${exerciseName}: ${time}s`)
+          onSavePR(numericExerciseId!, time, 5, setDistance).then(ok => {
+            if (ok) toast({ title: `New PB! ${name} ${setDistance}m: ${time}s` })
           })
         }
       }
     }
-  }, [supportsPR, onSavePR, exercise.workout_log_sets, exercise.exercise?.name, pr?.value, exerciseTypeId, numericExerciseId])
+  }, [supportsPR, onSavePR, exercise.workout_log_sets, exercise.exercise?.name, prs, exerciseTypeId, numericExerciseId])
 
-  // Handle set completion toggle (by index, for the unified SetRow)
   const handleSetComplete = useCallback((setIndex: number) => {
     const detail = exercise.workout_log_sets?.[setIndex]
-
-    // Check for auto PR update before toggling (only when marking as complete)
     if (!detail?.completed) {
       checkAutoUpdatePR(setIndex)
     }
-
     if (!detail?.id) {
-      // New set without DB ID — toggle via local state update
       updateSetData(setIndex, 'completed', !detail?.completed)
       return
     }
-
     toggleSetComplete(exercise.id, detail.id)
   }, [exercise.id, exercise.workout_log_sets, toggleSetComplete, updateSetData, checkAutoUpdatePR])
 
-  // Handle Freelap metadata update for a specific set index
   const handleMetadataChange = useCallback((setIndex: number, metadata: FreeelapMetadata) => {
     updateSetData(setIndex, 'metadata', metadata)
   }, [updateSetData])
 
-  // Handle overall exercise completion
   const toggleExerciseCompletion = useCallback(() => {
     updateExercise(exercise.id, { completed: !exercise.completed })
   }, [exercise.id, exercise.completed, updateExercise])
 
-  // Convert workout_log_sets to TrainingSet[] for the unified SetRow component
-  // Sort by set_index to ensure correct ordering
   const trainingSets = useMemo((): TrainingSet[] => {
     const details = exercise.workout_log_sets || []
     const sortedDetails = [...details].sort((a, b) => (a.set_index || 0) - (b.set_index || 0))
@@ -359,22 +339,19 @@ export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSa
       isSuperset && "border-l-2 border-l-primary/60 pl-3",
       className
     )}>
-      {/* Thin top divider - lean design */}
       <div className="h-px bg-border/40" />
 
-      {/* Header - edge-to-edge lean design */}
+      {/* Header */}
       <div className="py-2 px-1">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            {/* Exercise Name */}
             <h4 className={cn(
               "font-semibold text-base truncate",
               exercise.completed ? "text-green-700 dark:text-green-400 line-through" : "text-high-contrast"
             )}>
-              {exercise.exercise?.name || "Unknown Exercise"}
+              {exerciseName || "Unknown Exercise"}
             </h4>
 
-            {/* PR Badge - subtle display next to exercise name */}
             {prDisplayText && (
               <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
                 <Trophy className="h-2.5 w-2.5" />
@@ -382,7 +359,6 @@ export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSa
               </span>
             )}
 
-            {/* Completion Badge - compact */}
             {exercise.completed && (
               <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-500 text-white">
                 <Check className="h-2.5 w-2.5" />
@@ -390,22 +366,19 @@ export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSa
             )}
           </div>
 
-          {/* Action Buttons - compact */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* PR Button - only for Gym and Sprint exercises */}
             {supportsPR && onSavePR && !exercise.completed && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0"
                 onClick={() => setPrSheetOpen(true)}
-                aria-label={`Set PR for ${exercise.exercise?.name}`}
+                aria-label={`Set PR for ${exerciseName}`}
               >
                 <Trophy className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </Button>
             )}
 
-            {/* Video Button - icon only on mobile */}
             {showVideo && ((exercise.exercise as any)?.demo_url || exercise.exercise?.video_url) && (
               <Button
                 variant="ghost"
@@ -420,7 +393,6 @@ export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSa
               </Button>
             )}
 
-            {/* Complete Toggle - compact circle */}
             <button
               onClick={toggleExerciseCompletion}
               className={cn(
@@ -435,7 +407,6 @@ export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSa
           </div>
         </div>
 
-        {/* Progress Bar - thinner */}
         <div className="flex items-center gap-2 mt-2">
           <div className="flex-1 bg-muted rounded-full h-1">
             <motion.div
@@ -454,13 +425,12 @@ export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSa
         </div>
       </div>
 
-      {/* Sets - rendered using the unified Training SetRow component */}
+      {/* Sets */}
       {trainingSets.length > 0 && (
         <div className="px-0 pb-2 space-y-0">
           {trainingSets.map((trainingSet, index) => {
             const hasFreeelapData = trainingSet.metadata && isFreeelapMetadata(trainingSet.metadata)
             const isFreeelapExpanded = expandedFreeelapIds.has(trainingSet.id)
-
             return (
               <SetRow
                 key={trainingSet.id}
@@ -469,12 +439,10 @@ export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSa
                 visibleFields={visibleFields}
                 onComplete={() => handleSetComplete(index)}
                 onUpdate={(field, value) => handleSetUpdate(index, field, value)}
-                // Freelap expansion
                 hasFreeelapData={!!hasFreeelapData}
                 isFreeelapExpanded={isFreeelapExpanded}
                 onToggleFreeelapExpand={hasFreeelapData ? () => toggleFreeelapExpand(trainingSet.id) : undefined}
                 onMetadataChange={hasFreeelapData ? (metadata) => handleMetadataChange(index, metadata) : undefined}
-                // PR effort-based placeholders
                 fieldPlaceholders={getSetPlaceholders(index)}
               />
             )
@@ -495,7 +463,7 @@ export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSa
         </button>
       )}
 
-      {/* Video Embed (if enabled and available) */}
+      {/* Video Embed */}
       {showVideo && exercise.exercise?.video_url && (
         <div className="px-2 pb-3">
           <Button
@@ -519,14 +487,14 @@ export function ExerciseCard({ exercise, className, isSuperset = false, pr, onSa
         <PRInputSheet
           open={prSheetOpen}
           onOpenChange={setPrSheetOpen}
-          exerciseName={exercise.exercise?.name || "Unknown Exercise"}
+          exerciseName={exerciseName || "Unknown Exercise"}
           exerciseTypeId={exerciseTypeId!}
           exerciseId={numericExerciseId}
-          currentPR={pr?.value ?? null}
-          effortValues={effortValues}
+          existingPRs={prs || []}
+          setEfforts={setEfforts}
           onSave={onSavePR}
         />
       )}
     </div>
   )
-} 
+}

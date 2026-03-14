@@ -283,7 +283,7 @@ export function calculateSprintTarget(
   note: string
 } {
   // Validate effort percentage
-  if (effort <= 0 || effort > 1.0) {
+  if (effort <= 0 || effort > 2.0) {
     return {
       targetSeconds: null,
       pbSeconds: null,

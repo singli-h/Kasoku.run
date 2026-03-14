@@ -215,7 +215,7 @@ export const createSetChangeRequestSchema = z.object({
   restTime: z.number().int().optional().transform(emptyNumToUndefined).describe('Rest between sets in seconds'),
   rpe: z.number().int().min(1).max(10).optional().transform(emptyNumToUndefined).describe('Rate of Perceived Exertion (1-10)'),
   tempo: z.string().optional().transform(emptyToUndefined).describe("Tempo string format: 'eccentric-pause-concentric-pause' (e.g., '3-0-2-0')"),
-  effort: z.number().min(0).max(100).optional().transform(emptyNumToUndefined).describe('Effort percentage (0-100)'),
+  effort: z.number().min(0).max(200).optional().transform(emptyNumToUndefined).describe('Effort percentage (0-200)'),
   reasoning: z.string().describe('Why these sets are being added'),
 }).refine(
   (data) => data.reps !== undefined || data.weight !== undefined ||
@@ -276,7 +276,7 @@ export const updateSetChangeRequestSchema = z.object({
   restTime: z.number().int().optional().transform(emptyNumToUndefined).describe('New rest time in seconds'),
   rpe: z.number().int().min(1).max(10).optional().transform(emptyNumToUndefined).describe('New RPE (1-10)'),
   tempo: z.string().optional().transform(emptyToUndefined).describe('New tempo string'),
-  effort: z.number().min(0).max(100).optional().transform(emptyNumToUndefined).describe('New effort percentage (0-100)'),
+  effort: z.number().min(0).max(200).optional().transform(emptyNumToUndefined).describe('New effort percentage (0-200)'),
   reasoning: z.string().describe('Why this change is being made'),
 })
 

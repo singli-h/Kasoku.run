@@ -1,13 +1,12 @@
 /**
  * AthleteCard Component - Mobile-optimized athlete display
- * Touch-friendly card with swipe actions and long-press multi-select
+ * Touch-friendly card with long-press multi-select
  */
 
 "use client"
 
 import { useState, useRef } from "react"
 import Link from "next/link"
-import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion"
 import {
   User,
   Users,
@@ -63,28 +62,15 @@ export function AthleteCard({
   onGroupFilter,
   onDataReload
 }: AthleteCardProps) {
-  const [isSwipeRevealed, setIsSwipeRevealed] = useState(false)
   const [eventGroupOpen, setEventGroupOpen] = useState(false)
   const [savingEventGroup, setSavingEventGroup] = useState(false)
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
   const { toast } = useToast()
-  const x = useMotionValue(0)
-
-  const actionOpacity = useTransform(x, [-120, -60], [1, 0])
-  const actionScale = useTransform(x, [-120, -60], [1, 0.8])
 
   const fullName = `${athlete.user?.first_name || ''} ${athlete.user?.last_name || ''}`.trim() || 'Unknown'
   const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase()
   const events = parseEvents(athlete.events)
   const age = calculateAge(athlete.user?.birthdate)
-
-  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (info.offset.x < -80) {
-      setIsSwipeRevealed(true)
-    } else {
-      setIsSwipeRevealed(false)
-    }
-  }
 
   const handleTouchStart = () => {
     longPressTimer.current = setTimeout(() => {
@@ -119,50 +105,13 @@ export function AthleteCard({
 
   return (
     <div className="relative overflow-hidden rounded-lg">
-      {/* Swipe action background */}
-      <motion.div
-        className="absolute inset-y-0 right-0 flex items-center gap-1 px-3 bg-gradient-to-l from-muted/80 to-transparent"
-        style={{ opacity: actionOpacity, scale: actionScale }}
-      >
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-10 w-10 rounded-full bg-primary/10 hover:bg-primary/20"
-          onClick={() => onBulkOperation({ isOpen: true, type: 'assign', athleteIds: [athlete.id] })}
-        >
-          <UserPlus className="h-4 w-4 text-primary" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-10 w-10 rounded-full bg-amber-500/10 hover:bg-amber-500/20"
-          onClick={() => onBulkOperation({ isOpen: true, type: 'move', athleteIds: [athlete.id] })}
-        >
-          <ArrowRightLeft className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-10 w-10 rounded-full bg-destructive/10 hover:bg-destructive/20"
-          onClick={() => onBulkOperation({ isOpen: true, type: 'remove', athleteIds: [athlete.id] })}
-        >
-          <UserMinus className="h-4 w-4 text-destructive" />
-        </Button>
-      </motion.div>
-
       {/* Main card */}
-      <motion.div
+      <div
         className={cn(
-          "relative flex items-center gap-3 p-4 bg-card border rounded-lg touch-pan-y",
+          "relative flex items-center gap-3 p-4 bg-card border rounded-lg",
           "transition-colors duration-150",
-          isSelected && "bg-primary/5 border-primary/30",
-          isSwipeRevealed && "shadow-lg"
+          isSelected && "bg-primary/5 border-primary/30"
         )}
-        drag="x"
-        dragConstraints={{ left: -120, right: 0 }}
-        dragElastic={0.1}
-        onDragEnd={handleDragEnd}
-        style={{ x }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onClick={handleCardClick}
@@ -313,7 +262,7 @@ export function AthleteCard({
             </>
           )}
         </div>
-      </motion.div>
+      </div>
 
     </div>
   )

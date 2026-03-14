@@ -21,6 +21,7 @@ import {
 import type { TrainingExercise, TrainingSet } from "../types"
 import { WorkoutView } from "./WorkoutView"
 import { legacyToTrainingExercises, type LegacyWorkoutExercise } from "../adapters/workout-adapter"
+import { useExercisePRs } from "../../workout/hooks/use-exercise-prs"
 
 // Import AI change detection hook for ghost row display
 import { useAIExerciseChanges } from "@/components/features/ai-assistant/hooks"
@@ -216,6 +217,13 @@ function WorkoutSessionContentV2({
   const trainingExercises = useMemo(() => {
     return legacyToTrainingExercises(exercises as unknown as LegacyWorkoutExercise[], expandedIds)
   }, [exercises, expandedIds])
+
+  // Fetch PRs for all exercises in this workout
+  const exerciseIdsForPR = useMemo(
+    () => trainingExercises.map(ex => ex.exerciseId).filter(id => id > 0),
+    [trainingExercises]
+  )
+  const { prMap, savePR } = useExercisePRs(exerciseIdsForPR)
 
   // Handle toggle expand
   const handleToggleExpand = useCallback((exerciseId: number | string) => {
@@ -478,6 +486,8 @@ function WorkoutSessionContentV2({
         onAbandonSession={handleAbandonSession}
         onAddSet={handleAddSet}
         aiChangesByExercise={aiChangesByExercise}
+        prMap={prMap}
+        onSavePR={savePR}
       />
 
       {/* Session Notes */}

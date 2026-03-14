@@ -7,7 +7,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
@@ -137,33 +136,24 @@ export function LeanAthleteManagementPage() {
 
   return (
     <div className={`space-y-6 ${isMobile && selectedAthletes.length > 0 ? 'pb-32' : ''}`}>
-      {/* Desktop: Coach-Only Badge, Event Groups, and Invite Form */}
+      {/* Desktop: Inline Invite Form */}
       {!isMobile && (
-        <div className="flex flex-col gap-4 p-6 bg-muted/30 rounded-lg">
-          <div className="flex flex-col md:flex-row md:items-start gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge variant="secondary" className="text-xs">
-                  Coach Only
-                </Badge>
-              </div>
-              <EventGroupManager
-                eventGroups={eventGroups}
-                onDataReload={loadData}
-              />
-            </div>
-
-            {/* Quick Invite Form */}
-            <InviteAthleteForm
-              groups={groups}
-              eventGroups={eventGroups}
-              onSuccess={loadData}
-            />
-          </div>
+        <div className="p-4 bg-muted/30 rounded-lg">
+          <InviteAthleteForm
+            groups={groups}
+            eventGroups={eventGroups}
+            onSuccess={loadData}
+          />
         </div>
       )}
 
-      {/* Section 1: Roster & Bulk Actions */}
+      {/* Event Groups */}
+      <EventGroupManager
+        eventGroups={eventGroups}
+        onDataReload={loadData}
+      />
+
+      {/* Roster & Bulk Actions */}
       <AthleteRosterSection
         athletes={athletes}
         groups={groups}
@@ -176,17 +166,15 @@ export function LeanAthleteManagementPage() {
         onDataReload={loadData}
       />
 
-      {/* Desktop: Section 2: Group Directory */}
-      {!isMobile && (
-        <GroupDirectorySection
-          groups={groups}
-          athletes={athletes}
-          eventGroups={eventGroups}
-          selectedGroupFilter={selectedGroupFilter}
-          onGroupFilterChange={setSelectedGroupFilter}
-          onDataReload={loadData}
-        />
-      )}
+      {/* Group Directory */}
+      <GroupDirectorySection
+        groups={groups}
+        athletes={athletes}
+        eventGroups={eventGroups}
+        selectedGroupFilter={selectedGroupFilter}
+        onGroupFilterChange={setSelectedGroupFilter}
+        onDataReload={loadData}
+      />
 
       {/* Bulk Operations Dialog */}
       <BulkOperationsDialog

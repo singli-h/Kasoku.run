@@ -1,8 +1,8 @@
 /*
 <ai_context>
 Hook for fetching and managing exercise PRs during a workout session.
-Provides PR data keyed by exercise_id for quick lookup in exercise cards.
-Supports optimistic updates when athlete enters a new PR mid-workout.
+Stores all PRs per exercise (multiple distances for sprints).
+Provides findPR helper for distance-specific lookups.
 </ai_context>
 */
 
@@ -14,13 +14,26 @@ import type { Database } from "@/types/database"
 
 type PersonalBest = Database["public"]["Tables"]["athlete_personal_bests"]["Row"]
 
-/** PR keyed by exercise_id. For exercises with multiple PRs (e.g. sprint distances), keeps the one without distance (gym) or latest. */
+/** PRs keyed by exercise_id. Each exercise may have multiple PRs (different distances for sprints). */
 export interface ExercisePRMap {
-  [exerciseId: number]: PersonalBest
+  [exerciseId: number]: PersonalBest[]
+}
+
+/**
+ * Find the best-matching PR for a given distance.
+ * - If distance provided: exact match only (no fallback — different distances are different PRs)
+ * - If no distance: null-distance PR first, then first available
+ */
+export function findPR(prs: PersonalBest[] | undefined, distance?: number | null): PersonalBest | undefined {
+  if (!prs || prs.length === 0) return undefined
+  if (distance != null) {
+    return prs.find(pr => pr.distance === distance)
+  }
+  return prs.find(pr => pr.distance === null) ?? prs[0]
 }
 
 interface UseExercisePRsReturn {
-  /** Map of exercise_id -> PersonalBest */
+  /** Map of exercise_id -> PersonalBest[] */
   prMap: ExercisePRMap
   /** Whether PRs are loading */
   isLoading: boolean
@@ -35,15 +48,12 @@ interface UseExercisePRsReturn {
 export function useExercisePRs(exerciseIds: number[]): UseExercisePRsReturn {
   const [prMap, setPrMap] = useState<ExercisePRMap>({})
   const [isLoading, setIsLoading] = useState(false)
-  // Track which IDs we've already fetched to avoid re-fetching
   const fetchedIdsRef = useRef<string>("")
 
   useEffect(() => {
-    // Deduplicate and filter valid IDs
     const uniqueIds = [...new Set(exerciseIds.filter(id => id > 0))]
     if (uniqueIds.length === 0) return
 
-    // Skip if we already fetched for these exact IDs
     const idsKey = uniqueIds.sort().join(",")
     if (idsKey === fetchedIdsRef.current) return
     fetchedIdsRef.current = idsKey
@@ -55,18 +65,10 @@ export function useExercisePRs(exerciseIds: number[]): UseExercisePRsReturn {
         const map: ExercisePRMap = {}
         for (const pb of result.data) {
           if (pb.exercise_id == null) continue
-          const existing = map[pb.exercise_id]
-          // For gym PRs (unit_id=3, no distance): keep the one with highest value
-          // For sprint PRs (unit_id=5): keep the one without distance or latest
-          if (!existing) {
-            map[pb.exercise_id] = pb
-          } else if (pb.distance == null && existing.distance != null) {
-            // Prefer the one without distance (base PR)
-            map[pb.exercise_id] = pb
-          } else if (pb.distance == null && existing.distance == null && pb.value > existing.value) {
-            // Same type, keep higher value (gym)
-            map[pb.exercise_id] = pb
+          if (!map[pb.exercise_id]) {
+            map[pb.exercise_id] = []
           }
+          map[pb.exercise_id].push(pb)
         }
         setPrMap(map)
       }
@@ -83,11 +85,15 @@ export function useExercisePRs(exerciseIds: number[]): UseExercisePRsReturn {
   ): Promise<boolean> => {
     const result = await upsertExercisePRAction(exerciseId, value, unitId, distance)
     if (result.isSuccess && result.data) {
-      // Optimistic update: immediately reflect in the map
-      setPrMap(prev => ({
-        ...prev,
-        [exerciseId]: result.data,
-      }))
+      // Optimistic update: add or replace in the array
+      setPrMap(prev => {
+        const existing = prev[exerciseId] || []
+        const updated = existing.filter(pr =>
+          distance != null ? pr.distance !== distance : pr.distance !== null
+        )
+        updated.push(result.data)
+        return { ...prev, [exerciseId]: updated }
+      })
       return true
     }
     return false

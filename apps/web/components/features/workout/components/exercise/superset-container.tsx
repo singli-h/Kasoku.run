@@ -34,7 +34,7 @@ interface SupersetContainerProps {
   /** PR data map for exercises */
   prMap?: ExercisePRMap
   /** Callback to save a PR */
-  onSavePR?: (exerciseId: number, value: number, unitId: number) => Promise<boolean>
+  onSavePR?: (exerciseId: number, value: number, unitId: number, distance?: number | null) => Promise<boolean>
 }
 
 // Animation variants for smooth entrance
@@ -246,7 +246,7 @@ export function SupersetContainer({
                         exercise={exercise}
                         isSuperset={true}
                         className="border-blue-200 bg-background/70 hover:bg-background/90 transition-colors"
-                        pr={prMap?.[exercise.exercise?.id as number] ?? null}
+                        prs={prMap?.[exercise.exercise?.id as number]}
                         onSavePR={onSavePR}
                       />
                     </div>

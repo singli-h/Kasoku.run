@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
-import { ArrowRight, Bot, Check, ChevronDown, ChevronUp, GripVertical, Plus, Trash2, X } from "lucide-react"
+import { useState, useCallback, useMemo, useEffect, useRef } from "react"
+import { ArrowRight, Bot, Check, ChevronDown, ChevronUp, GripVertical, Plus, Trash2, Trophy, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatSubgroupChip } from "@/lib/training-utils"
 import type { TrainingExercise, TrainingSet } from "../types"
@@ -14,6 +14,13 @@ import type { AISetChangeInfo } from "@/components/features/ai-assistant/hooks"
 import { isFreeelapMetadata, type FreeelapMetadata } from "@/types/freelap"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useToast } from "@/hooks/use-toast"
+import { findPR } from "../../workout/hooks/use-exercise-prs"
+import { PRInputSheet, getSprintPRMode, SPRINT_AUTO_PR_NAMES } from "../../workout/components/exercise/pr-input-sheet"
+import { ExerciseTypeId } from "../../workout/utils/exercise-grouping"
+import type { Database } from "@/types/database"
+
+type PersonalBest = Database["public"]["Tables"]["athlete_personal_bests"]["Row"]
 
 export interface ExerciseCardProps {
   exercise: TrainingExercise
@@ -74,6 +81,10 @@ export interface ExerciseCardProps {
   onUpdateTargetEventGroups?: (groups: string[] | null) => void
   /** Preview group for dimming — when set, non-matching exercises get reduced opacity */
   previewGroup?: string | null
+  /** Personal records for this exercise (multiple for sprint distances) */
+  prs?: PersonalBest[]
+  /** Callback to save/update a PR */
+  onSavePR?: (exerciseId: number, value: number, unitId: number, distance?: number | null) => Promise<boolean>
 }
 
 /**
@@ -120,7 +131,11 @@ export function ExerciseCard({
   availableEventGroups,
   onUpdateTargetEventGroups,
   previewGroup,
+  prs,
+  onSavePR,
 }: ExerciseCardProps) {
+  const { toast } = useToast()
+
   // Derive AI change states
   // Enhanced swap detection: also check if proposedData has a different exercise_id
   // This handles cases where currentData is null but we can compare with exercise.exerciseId
@@ -175,6 +190,132 @@ export function ExerciseCard({
     })
   }, [])
 
+  // --- PR Support ---
+  const [showPRSheet, setShowPRSheet] = useState(false)
+
+  const supportsPR = useMemo(() => {
+    if (!isAthlete || !onSavePR) return false
+    const typeId = exercise.exerciseTypeId
+    if (typeId === ExerciseTypeId.Gym) return true
+    if (typeId === ExerciseTypeId.Sprint) return getSprintPRMode(exercise.name) !== null
+    return false
+  }, [isAthlete, onSavePR, exercise.exerciseTypeId, exercise.name])
+
+  // Compute effort-based placeholders per set from PR data
+  const setPlaceholders = useMemo(() => {
+    const map = new Map<string | number, Partial<Record<keyof TrainingSet, string>>>()
+    if (!prs || prs.length === 0) return map
+    const typeId = exercise.exerciseTypeId
+    const sprintMode = typeId === ExerciseTypeId.Sprint ? getSprintPRMode(exercise.name) : null
+
+    for (const set of exercise.sets) {
+      // set.effort is in UI format (0-200), convert to 0-1 for calculations
+      const effort = set.effort != null && set.effort > 0
+        ? set.effort / 100
+        : null
+      if (!effort) continue
+
+      if (typeId === ExerciseTypeId.Gym) {
+        const pr = findPR(prs)
+        if (pr?.value) map.set(set.id, { weight: (pr.value * effort).toFixed(1) })
+      } else if (sprintMode?.type === 'direct' || sprintMode?.type === 'dynamic') {
+        if (set.distance) {
+          const pr = findPR(prs, set.distance)
+          if (pr?.value) map.set(set.id, { performingTime: (pr.value / effort).toFixed(2) })
+        }
+      } else if (sprintMode?.type === 'reference') {
+        const pr = findPR(prs, sprintMode.raceDistance)
+        if (pr?.value && set.distance) {
+          const target = pr.value * (set.distance / sprintMode.raceDistance) / effort
+          map.set(set.id, { performingTime: target.toFixed(2) })
+        }
+      }
+    }
+    return map
+  }, [prs, exercise.sets, exercise.exerciseTypeId, exercise.name])
+
+  // Set efforts for PRInputSheet preview
+  const setEfforts = useMemo(() => {
+    if (!supportsPR) return []
+    return exercise.sets.map((set, idx) => ({
+      effort: set.effort ?? null,
+      distance: set.distance ?? null,
+      setIndex: idx + 1,
+    }))
+  }, [supportsPR, exercise.sets])
+
+  // Compute effective PR per set for effort badge recalculation
+  const setEffectivePRs = useMemo(() => {
+    const map = new Map<string | number, number>()
+    if (!prs || prs.length === 0) return map
+    const typeId = exercise.exerciseTypeId
+    const sprintMode = typeId === ExerciseTypeId.Sprint ? getSprintPRMode(exercise.name) : null
+    for (const set of exercise.sets) {
+      if (typeId === ExerciseTypeId.Gym) {
+        const pr = findPR(prs)
+        if (pr?.value) map.set(set.id, pr.value)
+      } else if (sprintMode?.type === 'direct' || sprintMode?.type === 'dynamic') {
+        if (set.distance) {
+          const pr = findPR(prs, set.distance)
+          if (pr?.value) map.set(set.id, pr.value)
+        }
+      } else if (sprintMode?.type === 'reference') {
+        const pr = findPR(prs, sprintMode.raceDistance)
+        if (pr?.value && set.distance) {
+          map.set(set.id, pr.value * (set.distance / sprintMode.raceDistance))
+        }
+      }
+    }
+    return map
+  }, [prs, exercise.sets, exercise.exerciseTypeId, exercise.name])
+
+  // Auto-PR: check completed sets against current PRs
+  const processedAutoPRRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!isAthlete || !onSavePR || !prs) return
+    const typeId = exercise.exerciseTypeId
+
+    for (const set of exercise.sets) {
+      if (!set.completed) continue
+      const key = `${set.id}:${set.weight}:${set.performingTime}`
+      if (processedAutoPRRef.current.has(key)) continue
+      processedAutoPRRef.current.add(key)
+
+      if (typeId === ExerciseTypeId.Gym) {
+        if (set.reps === 1 && set.weight != null && set.weight > 0) {
+          const currentPR = findPR(prs)
+          if (!currentPR?.value || set.weight > currentPR.value) {
+            onSavePR(exercise.exerciseId, set.weight, 3).then(ok => {
+              if (ok) toast({ title: `New PR! ${exercise.name}: ${set.weight}kg` })
+            })
+          }
+        }
+      } else if (typeId === ExerciseTypeId.Sprint && SPRINT_AUTO_PR_NAMES.has(exercise.name)) {
+        const time = set.performingTime
+        const dist = set.distance
+        if (time != null && time > 0 && dist != null && dist > 0) {
+          const currentPR = findPR(prs, dist)
+          if (!currentPR?.value || time < currentPR.value) {
+            onSavePR(exercise.exerciseId, time, 5, dist).then(ok => {
+              if (ok) toast({ title: `New PB! ${exercise.name} ${dist}m: ${time}s` })
+            })
+          }
+        }
+        // Also check Freelap metadata
+        if (set.metadata && isFreeelapMetadata(set.metadata)) {
+          const fm = set.metadata
+          if (fm.time != null && fm.time > 0 && fm.distance != null && fm.distance > 0) {
+            const currentPR = findPR(prs, fm.distance)
+            if (!currentPR?.value || fm.time < currentPR.value) {
+              onSavePR(exercise.exerciseId, fm.time, 5, fm.distance).then(ok => {
+                if (ok) toast({ title: `New PB! ${exercise.name} ${fm.distance}m: ${fm.time}s` })
+              })
+            }
+          }
+        }
+      }
+    }
+  }, [exercise.sets, isAthlete, onSavePR, prs, exercise.exerciseId, exercise.exerciseTypeId, exercise.name])
 
   const completedCount = getCompletedCount(exercise)
   const totalSets = exercise.sets.length
@@ -206,7 +347,8 @@ export function ExerciseCard({
     // When showAllFields is true or coach mode, show all configurable fields
     // When showAllFields is false (athlete mode), show only required + filled fields
     const visibleFieldKeys = getVisibleFields(exercise.exerciseTypeId, planSets, {
-      forCoach: !isAthlete || showAllFields
+      forCoach: !isAthlete || showAllFields,
+      exerciseName: exercise.name,
     })
 
     // Convert to VisibleFields object
@@ -366,6 +508,26 @@ export function ExerciseCard({
                 ) : (
                   // Normal state
                   <h3 className="text-sm font-medium truncate">{exercise.name}</h3>
+                )}
+                {/* PR badge — athlete mode only */}
+                {supportsPR && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowPRSheet(true)
+                    }}
+                    className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors shrink-0"
+                    title="View/Edit PR"
+                  >
+                    <Trophy className="h-2.5 w-2.5" />
+                    {(() => {
+                      const pr = findPR(prs)
+                      if (!pr?.value) return "Set PR"
+                      return exercise.exerciseTypeId === ExerciseTypeId.Gym
+                        ? `${pr.value}kg`
+                        : `${pr.value}s`
+                    })()}
+                  </button>
                 )}
                 {/* Subgroup chip (T016) — shows target event groups */}
                 {!isAthlete && subgroupChipText && (
@@ -589,6 +751,11 @@ export function ExerciseCard({
                     aiChangeType={setChange?.changeType}
                     aiCurrentData={setChange?.currentData}
                     aiProposedData={setChange?.proposedData}
+                    // PR-based placeholders
+                    fieldPlaceholders={setPlaceholders.get(set.id)}
+                    mergeEffort={isAthlete && set.effort != null}
+                    effectivePR={setEffectivePRs.get(set.id) ?? null}
+                    exerciseTypeId={exercise.exerciseTypeId}
                     // Freelap expansion props
                     hasFreeelapData={!!hasFreeelapData}
                     isFreeelapExpanded={isFreeelapExpanded}
@@ -646,6 +813,20 @@ export function ExerciseCard({
           </div>
         )}
       </div>
+
+      {/* PR Input Sheet */}
+      {supportsPR && (
+        <PRInputSheet
+          open={showPRSheet}
+          onOpenChange={setShowPRSheet}
+          exerciseName={exercise.name}
+          exerciseTypeId={exercise.exerciseTypeId!}
+          exerciseId={exercise.exerciseId}
+          existingPRs={prs || []}
+          setEfforts={setEfforts}
+          onSave={onSavePR!}
+        />
+      )}
     </div>
   )
 }

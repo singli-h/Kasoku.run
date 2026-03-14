@@ -9,7 +9,7 @@ Handles errors gracefully and retries failed updates.
 "use client"
 
 import { useRef, useCallback, useEffect, useState } from "react"
-import { toast } from "sonner"
+import { useToast } from "@/hooks/use-toast"
 import { updateSessionDetailAction } from "@/actions/sessions"
 
 interface PendingUpdate {
@@ -33,6 +33,7 @@ export function useAutoSave(options: UseAutoSaveOptions = {}) {
     onSaveSuccess,
     onSaveError
   } = options
+  const { toast } = useToast()
 
   // Queue of pending updates
   const pendingUpdatesRef = useRef<Map<string, PendingUpdate>>(new Map())
@@ -88,7 +89,7 @@ export function useAutoSave(options: UseAutoSaveOptions = {}) {
         const errorMsg = `Failed to save ${failedUpdates.length} update(s)`
         console.error('[useAutoSave]', errorMsg, failedUpdates)
         onSaveError?.(errorMsg)
-        toast.error(errorMsg)
+        toast({ title: errorMsg, variant: "destructive" })
 
         // Re-add failed updates to queue for retry
         failedUpdates.forEach(update => {
@@ -100,7 +101,7 @@ export function useAutoSave(options: UseAutoSaveOptions = {}) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
       console.error('[useAutoSave]', error)
       onSaveError?.(errorMsg)
-      toast.error(`Auto-save failed: ${errorMsg}`)
+      toast({ title: `Auto-save failed: ${errorMsg}`, variant: "destructive" })
 
       // Re-add all updates to queue for retry
       updates.forEach(update => {

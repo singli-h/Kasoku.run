@@ -136,6 +136,16 @@ export interface SetRowProps {
   onMetadataChange?: (metadata: FreeelapMetadata) => void
   /** Optional per-field placeholders (e.g., effort-based targets from PR). Falls back to defaults. */
   fieldPlaceholders?: Partial<Record<keyof TrainingSet, string>>
+  /**
+   * When true, effort is NOT shown as a standalone column.
+   * Instead, a non-editable effort% badge is merged into the weight (gym) or time (sprint) cell.
+   * Athlete workout page uses this to show e.g. [80% 66kg].
+   */
+  mergeEffort?: boolean
+  /** Effective PR value for this set (1RM for gym, PB-at-distance for sprint). Used for effort recalculation. */
+  effectivePR?: number | null
+  /** Exercise type ID (3=Gym, 6=Sprint) for effort merge direction (weight vs time). */
+  exerciseTypeId?: number
 }
 
 /**
@@ -175,6 +185,10 @@ export function SetRow({
   onMetadataChange,
   // PR-based placeholder overrides
   fieldPlaceholders,
+  // Effort merge props
+  mergeEffort = false,
+  effectivePR,
+  exerciseTypeId,
 }: SetRowProps) {
   // Task 10.1: Use pre-computed visible fields from ExerciseCard
   // Fall back to showing reps if no visibleFields provided
@@ -189,8 +203,20 @@ export function SetRow({
   const showRPE = (visibleFields?.rpe ?? false) && showAdvancedFields
   const showRestTime = visibleFields?.restTime ?? false
   const showTempo = (visibleFields?.tempo ?? false) && showAdvancedFields
-  const showEffort = (visibleFields?.effort ?? false) && showAdvancedFields
+  const showEffort = (visibleFields?.effort ?? false) && showAdvancedFields && !mergeEffort
   const showResistance = visibleFields?.resistance ?? false
+
+  // Effort badge for merged display: compute dynamic effort% from entered value + PR
+  const effortBadge = mergeEffort && set.effort != null ? (() => {
+    const planEffort = set.effort > 1 ? set.effort : Math.round(set.effort * 100)
+    if (!effectivePR || effectivePR <= 0) return `${planEffort}%`
+    if (exerciseTypeId === 3) { // Gym: effort = weight / PR * 100
+      if (set.weight != null && set.weight > 0) return `${Math.round(set.weight / effectivePR * 100)}%`
+    } else if (exerciseTypeId === 6) { // Sprint: effort = PR / time * 100
+      if (set.performingTime != null && set.performingTime > 0) return `${Math.round(effectivePR / set.performingTime * 100)}%`
+    }
+    return `${planEffort}%`
+  })() : null
 
   // T055: Calculate if we have many fields visible (for enhanced scroll indicators on mobile)
   const hasAdvancedFieldsVisible = showVelocity || showRPE || showTempo || showEffort
@@ -265,8 +291,8 @@ export function SetRow({
         // Real, non-negative (m/s)
         return value <= 99 ? Math.round(value * 100) / 100 : null
       case "effort":
-        // Percentage (0-100), stored as 0-100 in UI, converted to 0-1 for database
-        return value >= 0 && value <= 100 ? Math.round(value * 100) / 100 : null
+        // Percentage (0-200), stored as 0-200 in UI, converted to 0-2 for database
+        return value >= 0 && value <= 200 ? Math.round(value * 100) / 100 : null
       default:
         return value
     }
@@ -494,6 +520,9 @@ export function SetRow({
           )}
           {showWeight && (
             <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
+              {effortBadge && exerciseTypeId === 3 && (
+                <span className="text-[10px] text-muted-foreground/70 shrink-0">{effortBadge}</span>
+              )}
               <input
                 type="number"
                 min={0}
@@ -525,6 +554,9 @@ export function SetRow({
           )}
           {showTime && (
             <div className={cn("px-1.5 py-0.5 rounded text-xs font-mono flex items-center gap-0.5 shrink-0", set.completed ? "bg-green-500/20" : "bg-muted")}>
+              {effortBadge && exerciseTypeId === 6 && (
+                <span className="text-[10px] text-muted-foreground/70 shrink-0">{effortBadge}</span>
+              )}
               <input
                 type="number"
                 min={0}

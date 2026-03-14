@@ -134,7 +134,8 @@ function toSaveableSetData(set: Partial<WorkoutLogSet>): SaveableSetData {
     resistance: set.resistance,
     velocity: set.velocity,
     height: set.height,
-    effort: set.effort,
+    // Convert effort from UI (0-100) to DB (0-1)
+    effort: set.effort != null ? set.effort / 100 : set.effort,
     tempo: set.tempo,
     rpe: set.rpe,
     // Convert null to undefined for completed (API expects boolean | undefined, not boolean | null)

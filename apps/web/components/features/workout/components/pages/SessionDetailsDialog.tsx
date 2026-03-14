@@ -253,7 +253,7 @@ export function SessionDetailsDialog({ session, open, onOpenChange }: SessionDet
                                       <td className="py-2 px-2 font-medium">{setIndex + 1}</td>
                                       {activeColumns.map(col => {
                                         let displayValue = detail[col.key]
-                                        // Convert effort from DB format (0-1) to UI percentage (0-100)
+                                        // Convert effort from DB (0-1) to UI percentage (0-100)
                                         if (col.key === 'effort' && typeof displayValue === 'number') {
                                           displayValue = displayValue * 100
                                         }

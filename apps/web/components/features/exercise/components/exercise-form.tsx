@@ -262,7 +262,9 @@ export function ExerciseForm({ isOpen, onClose, exercise, onSave }: ExerciseForm
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {exerciseTypes.map((type) => (
+                          {exerciseTypes
+                            .filter((type) => type.id !== 6) // Hide Sprint — managed by coaches only
+                            .map((type) => (
                             <SelectItem key={type.id} value={type.id.toString()}>
                               {type.type}
                             </SelectItem>

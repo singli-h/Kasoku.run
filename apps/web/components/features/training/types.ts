@@ -164,7 +164,7 @@ export const DEFAULT_FIELD_CONFIG: FieldConfig[] = [
   { key: 'height', label: 'Height', unit: 'cm', type: 'number', min: 0, placeholder: '0' },
   { key: 'tempo', label: 'Tempo', type: 'text', placeholder: '3-1-2-0' },
   { key: 'rpe', label: 'RPE', type: 'number', min: 1, max: 10, placeholder: '8' },
-  { key: 'effort', label: 'Effort', unit: '%', type: 'number', min: 0, max: 100, placeholder: '80' },
+  { key: 'effort', label: 'Effort', unit: '%', type: 'number', min: 0, max: 200, placeholder: '80' },
 ]
 
 // =============================================================================

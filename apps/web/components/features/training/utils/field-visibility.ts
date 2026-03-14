@@ -28,7 +28,7 @@ const REQUIRED_FIELDS_BY_TYPE: Record<number, string[]> = {
   3: ['reps', 'weight', 'rest_time'], // Gym: reps + weight + rest
   4: ['reps', 'rest_time'], // Warmup: reps + rest
   5: ['performing_time', 'rest_time'], // Circuit: duration + rest
-  6: ['distance', 'performing_time', 'velocity', 'rest_time'], // Sprint: distance + time + velocity + rest
+  6: ['distance', 'performing_time', 'rest_time'], // Sprint: distance + time + rest (velocity only for Flying Sprint)
   7: ['reps', 'rest_time'], // Drill: reps + rest
   8: ['reps', 'rest_time'], // Mobility: reps + rest
   9: ['performing_time', 'rest_time'], // Recovery: duration + rest
@@ -44,7 +44,7 @@ const OPTIONAL_FIELDS_BY_TYPE: Record<number, string[]> = {
   3: ['rpe', 'tempo', 'resistance', 'effort', 'power', 'velocity'], // Gym: RPE, tempo, VBT, Keiser
   4: ['distance', 'performing_time'], // Warmup: jogging distance, timed warmups
   5: ['reps', 'effort', 'distance'], // Circuit: rep-based stations, effort
-  6: ['effort', 'resistance'], // Sprint: effort %, resistance (1080 Sprint) - velocity now required
+  6: ['effort', 'resistance', 'velocity'], // Sprint: effort %, resistance (1080 Sprint), velocity (Flying Sprint)
   7: ['distance', 'performing_time', 'effort'], // Drill: running drills, timed drills
   8: ['performing_time'], // Mobility: timed holds or flows
   9: ['distance', 'effort'], // Recovery: distance + effort
@@ -109,14 +109,15 @@ const UI_TO_DB_MAP: Record<string, string> = {
  * @param exerciseTypeId - Exercise type ID from database (1-9)
  * @param planSets - Array of plan sets with field values
  * @param options.forCoach - If true, shows all configurable fields (required + optional)
+ * @param options.exerciseName - Exercise name for name-specific overrides (e.g. "Flying Sprint" → velocity)
  * @returns Array of field keys that should be visible
  */
 export function getVisibleFields(
   exerciseTypeId: number | undefined,
   planSets: Array<{ [key: string]: unknown }> = [],
-  options: { forCoach?: boolean } = {}
+  options: { forCoach?: boolean; exerciseName?: string } = {}
 ): string[] {
-  const { forCoach = false } = options
+  const { forCoach = false, exerciseName } = options
 
   // Default to reps + rest_time if exercise type unknown
   if (!exerciseTypeId) {
@@ -130,6 +131,11 @@ export function getVisibleFields(
 
   // Map required fields to UI field names
   const requiredMapped = required.map(field => FIELD_NAME_MAP[field] || field)
+
+  // Name-specific overrides: Flying Sprint always shows velocity
+  if (exerciseTypeId === 6 && exerciseName === 'Flying Sprint' && !requiredMapped.includes('velocity')) {
+    requiredMapped.push('velocity')
+  }
 
   // Map allowed optional fields to UI field names
   const allowedOptionalMapped = allowedOptional.map(field => FIELD_NAME_MAP[field] || field)

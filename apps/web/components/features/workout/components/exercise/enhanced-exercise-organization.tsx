@@ -354,10 +354,16 @@ export function EnhancedExerciseOrganization({
                             onSavePR={savePR}
                           />
                         ) : (
-                          <ExerciseTypeSection 
-                            group={group} 
-                            defaultCollapsed={false}
-                          />
+                          <div className="space-y-0">
+                            {group.exercises.map((exercise) => (
+                              <ExerciseCard
+                                key={exercise.id}
+                                exercise={exercise}
+                                prs={prMap[exercise.exercise?.id as number]}
+                                onSavePR={savePR}
+                              />
+                            ))}
+                          </div>
                         )}
                       </div>
                     </motion.div>
@@ -382,7 +388,7 @@ export function EnhancedExerciseOrganization({
         >
           <ExerciseCard
             exercise={exercise}
-            pr={prMap[exercise.exercise?.id as number] ?? null}
+            prs={prMap[exercise.exercise?.id as number]}
             onSavePR={savePR}
           />
         </motion.div>

@@ -559,8 +559,8 @@ export function ExerciseLibraryPage() {
                 viewMode={viewMode}
                 currentUserId={currentUserId}
                 onView={() => setSelectedExercise(exercise)}
-                onEdit={() => handleEditExercise(exercise)}
-                onDelete={() => handleDeleteExercise(exercise.id)}
+                onEdit={exercise.exercise_type_id === 6 ? undefined : () => handleEditExercise(exercise)}
+                onDelete={exercise.exercise_type_id === 6 ? undefined : () => handleDeleteExercise(exercise.id)}
               />
             ))}
           </div>
@@ -625,8 +625,8 @@ interface ExerciseCardProps {
   viewMode: ViewMode
   currentUserId: number | null
   onView: () => void
-  onEdit: () => void
-  onDelete: () => void
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
 function ExerciseCard({ exercise, viewMode, currentUserId, onView, onEdit, onDelete }: ExerciseCardProps) {
@@ -665,7 +665,7 @@ function ExerciseCard({ exercise, viewMode, currentUserId, onView, onEdit, onDel
               <Button variant="ghost" size="sm" onClick={onView}>
                 <Eye className="h-4 w-4" />
               </Button>
-              {!isGlobal && (
+              {!isGlobal && onEdit && onDelete && (
                 <>
                   <Button variant="ghost" size="sm" onClick={onEdit}>
                     <Edit className="h-4 w-4" />
@@ -706,14 +706,14 @@ function ExerciseCard({ exercise, viewMode, currentUserId, onView, onEdit, onDel
                 <Eye className="h-4 w-4 mr-2" />
                 View Details
               </DropdownMenuItem>
-              {!isGlobal && (
+              {!isGlobal && onEdit && onDelete && (
                 <>
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={(e) => { e.stopPropagation(); onDelete(); }}
                     className="text-destructive"
                   >

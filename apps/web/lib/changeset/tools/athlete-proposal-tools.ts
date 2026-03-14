@@ -195,10 +195,10 @@ export const updateWorkoutLogSetChangeRequestSchema = z.object({
   effort: z
     .number()
     .min(0)
-    .max(100)
+    .max(200)
     .optional()
     .transform(emptyNumToUndefined)
-    .describe('Corrected effort percentage (0-100)'),
+    .describe('Corrected effort percentage (0-200)'),
   reasoning: z.string().describe('Why this correction is being made'),
 })
 

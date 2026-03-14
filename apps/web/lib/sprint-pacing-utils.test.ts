@@ -392,8 +392,8 @@ describe('calculateSprintTarget', () => {
     expect(result.note).toBe('Invalid effort percentage')
   })
 
-  it('returns error for invalid effort (>1.0)', () => {
-    const result = calculateSprintTarget([basePB], 5, 1.1)
+  it('returns error for invalid effort (>2.0)', () => {
+    const result = calculateSprintTarget([basePB], 5, 2.1)
     expect(result.targetSeconds).toBeNull()
     expect(result.note).toBe('Invalid effort percentage')
   })
