@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { useExerciseContext } from "../../index"
 import { ExerciseCard } from "./exercise-card"
 import type { WorkoutExercise } from "../../index"
+import type { ExercisePRMap } from "../../hooks/use-exercise-prs"
 
 interface SupersetContainerProps {
   /** Array of exercises that form this superset */
@@ -30,6 +31,10 @@ interface SupersetContainerProps {
   className?: string
   /** Whether this is a collapsed view */
   defaultCollapsed?: boolean
+  /** PR data map for exercises */
+  prMap?: ExercisePRMap
+  /** Callback to save a PR */
+  onSavePR?: (exerciseId: number, value: number, unitId: number) => Promise<boolean>
 }
 
 // Animation variants for smooth entrance
@@ -67,7 +72,9 @@ export function SupersetContainer({
   supersetId,
   title,
   className,
-  defaultCollapsed = false
+  defaultCollapsed = false,
+  prMap,
+  onSavePR
 }: SupersetContainerProps) {
   const { updateExercise } = useExerciseContext()
 
@@ -239,6 +246,8 @@ export function SupersetContainer({
                         exercise={exercise}
                         isSuperset={true}
                         className="border-blue-200 bg-background/70 hover:bg-background/90 transition-colors"
+                        pr={prMap?.[exercise.exercise?.id as number] ?? null}
+                        onSavePR={onSavePR}
                       />
                     </div>
                   </motion.div>

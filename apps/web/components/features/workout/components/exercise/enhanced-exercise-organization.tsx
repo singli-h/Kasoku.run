@@ -60,6 +60,7 @@ import {
 import { ExerciseTypeSection } from "./exercise-type-section"
 import { SupersetContainer } from "./superset-container"
 import { ExerciseCard } from "./exercise-card"
+import { useExercisePRs } from "../../hooks/use-exercise-prs"
 
 interface EnhancedExerciseOrganizationProps {
   exercises: WorkoutExercise[]
@@ -144,7 +145,19 @@ export function EnhancedExerciseOrganization({
   className 
 }: EnhancedExerciseOrganizationProps) {
   const { showVideo, toggleVideo } = useExerciseContext()
-  
+
+  // Fetch PRs for all exercises in this workout
+  const exerciseIds = useMemo(
+    () => exercises
+      .map(ex => {
+        const rawId = ex.exercise?.id ?? (ex as any).exercise_id
+        return typeof rawId === 'string' ? parseInt(rawId, 10) : rawId
+      })
+      .filter((id): id is number => id > 0),
+    [exercises]
+  )
+  const { prMap, savePR } = useExercisePRs(exerciseIds)
+
   // Simplified state management
   const [viewMode, setViewMode] = useState<ViewMode>('grouped')
   const [showCompleted, setShowCompleted] = useState(true)
@@ -334,9 +347,11 @@ export function EnhancedExerciseOrganization({
                     >
                       <div className="px-4 pb-4">
                         {group.type === 'superset' ? (
-                          <SupersetContainer 
-                            exercises={group.exercises} 
+                          <SupersetContainer
+                            exercises={group.exercises}
                             supersetId={group.id}
+                            prMap={prMap}
+                            onSavePR={savePR}
                           />
                         ) : (
                           <ExerciseTypeSection 
@@ -365,7 +380,11 @@ export function EnhancedExerciseOrganization({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: index * 0.02 }}
         >
-          <ExerciseCard exercise={exercise} />
+          <ExerciseCard
+            exercise={exercise}
+            pr={prMap[exercise.exercise?.id as number] ?? null}
+            onSavePR={savePR}
+          />
         </motion.div>
       ))}
     </div>

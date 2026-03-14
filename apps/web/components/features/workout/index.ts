@@ -30,6 +30,7 @@ export * from './components/ui'
 export * from './components/error-loading'
 
 // Export hooks
+export { useExercisePRs } from './hooks/use-exercise-prs'
 export { useWorkoutApi } from './hooks/use-workout-api'
 export {
   useSessionsToday,

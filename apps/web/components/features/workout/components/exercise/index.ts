@@ -9,4 +9,5 @@ export { ExerciseTypeSection } from './exercise-type-section'
 export { EnhancedExerciseOrganization } from './enhanced-exercise-organization'
 export { SupersetContainer } from './superset-container'
 export { EnhancedSupersetIndicator } from './enhanced-superset-indicator'
-export { SetRow, SetTable, SetTableHeader, getDisplayColumns, DEFAULT_FIELD_CONFIG } from './set-row'
+export { PRInputSheet } from './pr-input-sheet'
+// Dead code removed: set-row.tsx was unused — workout now uses the unified Training SetRow component

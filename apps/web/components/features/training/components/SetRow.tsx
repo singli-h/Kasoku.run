@@ -134,6 +134,8 @@ export interface SetRowProps {
   onToggleFreeelapExpand?: () => void
   /** Callback when Freelap metadata changes */
   onMetadataChange?: (metadata: FreeelapMetadata) => void
+  /** Optional per-field placeholders (e.g., effort-based targets from PR). Falls back to defaults. */
+  fieldPlaceholders?: Partial<Record<keyof TrainingSet, string>>
 }
 
 /**
@@ -171,6 +173,8 @@ export function SetRow({
   isFreeelapExpanded = false,
   onToggleFreeelapExpand,
   onMetadataChange,
+  // PR-based placeholder overrides
+  fieldPlaceholders,
 }: SetRowProps) {
   // Task 10.1: Use pre-computed visible fields from ExerciseCard
   // Fall back to showing reps if no visibleFields provided
@@ -499,7 +503,7 @@ export function SetRow({
                 onChange={(e) => handleChange("weight", e.target.value)}
                 aria-label={`Set ${set.setIndex} weight in kilograms`}
                 className={cn(inputClass, "w-10")}
-                placeholder="-"
+                placeholder={fieldPlaceholders?.weight ?? "-"}
               />
               <span className="text-muted-foreground text-xs">kg</span>
             </div>
@@ -530,7 +534,7 @@ export function SetRow({
                 onChange={(e) => handleChange("performingTime", e.target.value)}
                 aria-label={`Set ${set.setIndex} time in seconds`}
                 className={cn(inputClass, "w-12")}
-                placeholder="-"
+                placeholder={fieldPlaceholders?.performingTime ?? "-"}
               />
               <span className="text-muted-foreground text-xs">s</span>
             </div>
