@@ -187,7 +187,7 @@ export function EventGroupManager({
                 className="flex items-center justify-between p-3 bg-muted/40 rounded-lg group hover:bg-muted/60 transition-colors"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <EventGroupBadge value={eg.abbreviation} variant="definition" />
+                  <EventGroupBadge value={eg.abbreviation} />
                   <span className="text-sm text-foreground truncate">{eg.name}</span>
                 </div>
                 <button

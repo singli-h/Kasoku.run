@@ -92,7 +92,6 @@ function EventGroupEditor({
       <PopoverTrigger asChild>
         <EventGroupBadge
           value={displayLabel}
-          emptyLabel="Set"
           interactive
         />
       </PopoverTrigger>
