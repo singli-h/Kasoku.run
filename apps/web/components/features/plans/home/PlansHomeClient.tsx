@@ -22,6 +22,7 @@ import { VolumeIntensityChart, ChartDataPoint } from "./VolumeIntensityChart"
 import { AssignmentView } from "../workspace/AssignmentView"
 import { DeletePlanDialog } from "./DeletePlanDialog"
 import { unassignPlanFromAthletesAction } from "@/actions/plans/plan-assignment-actions"
+import { useToast } from "@/hooks/use-toast"
 
 type TransformedMacrocycle = {
   id: string
@@ -42,6 +43,7 @@ interface PlansHomeClientProps {
 
 export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [stateFilter, setStateFilter] = useState<string>("all")
   // Track selected phase per plan id to avoid leaking selection across cards
@@ -83,8 +85,11 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
       <Card key={mc.id} className="overflow-hidden">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0 space-y-1.5">
-              <CardTitle className="text-lg lg:text-xl">{mc.name}</CardTitle>
+            <Link href={`/plans/${mc.id}`} className="group min-w-0 flex-1 space-y-1.5 rounded-md -m-1.5 p-1.5 transition-colors hover:bg-muted/50">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-lg lg:text-xl group-hover:text-primary transition-colors">{mc.name}</CardTitle>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all lg:hidden" />
+              </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Badge variant={mc.state === "Active" ? "default" : mc.state === "Draft" ? "secondary" : "outline"} className="shrink-0">
                   {mc.state}
@@ -93,9 +98,9 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
                 <Calendar className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{mc.start} – {mc.end}</span>
               </div>
-            </div>
+            </Link>
             <div className="flex items-center gap-2 shrink-0">
-              <Button asChild size="default" className="px-4">
+              <Button asChild size="default" className="hidden lg:inline-flex px-4">
                 <Link href={`/plans/${mc.id}`}>
                   Open
                   <ChevronRight className="h-4 w-4 ml-1" />
@@ -123,11 +128,12 @@ export function PlansHomeClient({ initialMacrocycles }: PlansHomeClientProps) {
                         const result = await unassignPlanFromAthletesAction({ macrocycleId: Number(mc.id) })
                         if (result.isSuccess) {
                           router.refresh()
+                          toast({ title: "Athletes unassigned", description: "All unstarted sessions have been removed" })
                         } else {
-                          alert(result.message)
+                          toast({ title: "Unassign failed", description: result.message, variant: "destructive" })
                         }
                       } catch {
-                        alert('Failed to unassign plan. Please try again.')
+                        toast({ title: "Unassign failed", description: "Please try again.", variant: "destructive" })
                       }
                     }}
                   >

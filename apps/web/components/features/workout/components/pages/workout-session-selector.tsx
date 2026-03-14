@@ -81,7 +81,7 @@ export function WorkoutSessionSelector({
         // Continue existing session
         onSessionSelected(presetGroup, session)
         toast({
-          title: "Session Continued",
+          title: "Session continued",
           description: `Continuing ${presetGroup.name} workout session`
         })
       } else {
@@ -92,7 +92,7 @@ export function WorkoutSessionSelector({
         onSessionSelected(presetGroup, session)
         
         toast({
-          title: "Session Started",
+          title: "Session started",
           description: `Started ${presetGroup.name} workout session`
         })
       }

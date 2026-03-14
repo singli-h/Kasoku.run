@@ -195,7 +195,7 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
     } catch (error) {
       console.error('[AssignmentView] Assignment failed:', error)
       toast({
-        title: "Assignment Failed",
+        title: "Assignment failed",
         description: error instanceof Error ? error.message : "Failed to assign plan",
         variant: "destructive",
       })
@@ -226,7 +226,7 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
     } catch (error) {
       console.error('[AssignmentView] Unassign failed:', error)
       toast({
-        title: "Unassign Failed",
+        title: "Unassign failed",
         description: error instanceof Error ? error.message : "Failed to unassign group",
         variant: "destructive",
       })

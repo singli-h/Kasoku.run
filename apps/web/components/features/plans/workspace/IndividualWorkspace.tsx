@@ -80,7 +80,7 @@ export function IndividualWorkspace({ trainingBlock }: IndividualWorkspaceProps)
 
     if (result.isSuccess) {
       toast({
-        title: "Block Updated",
+        title: "Block updated",
         description: "Your training block has been updated.",
       })
       router.refresh()

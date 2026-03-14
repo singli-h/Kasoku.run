@@ -65,7 +65,7 @@ export function WorkoutPageContent() {
 
       // Success - navigate to the session
       toast({
-        title: "Workout Started",
+        title: "Workout started",
         description: "Your workout session has begun",
       })
     }
@@ -92,7 +92,7 @@ export function WorkoutPageContent() {
       }
 
       toast({
-        title: "Workout Skipped",
+        title: "Workout skipped",
         description: "The session has been marked as skipped",
       })
 

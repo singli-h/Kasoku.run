@@ -373,7 +373,7 @@ export function SessionPlannerV2({
     })
 
     toast({
-      title: "Exercise Added",
+      title: "Exercise added",
       description: `${exercise.name} has been added to the session.`
     })
   }, [sessionId, setExercises, toast])
@@ -464,7 +464,7 @@ export function SessionPlannerV2({
     })
 
     toast({
-      title: "Superset Created",
+      title: "Superset created",
       description: `${exerciseIds.length} exercises linked as a superset.`
     })
   }, [setExercises, toast])
@@ -501,7 +501,7 @@ export function SessionPlannerV2({
     })
 
     toast({
-      title: "Superset Unlinked",
+      title: "Superset unlinked",
       description: "Exercises are now separate."
     })
   }, [setExercises, reindexSupersets, toast])
@@ -536,13 +536,13 @@ export function SessionPlannerV2({
 
       markAsSaved()
       toast({
-        title: "Session Saved",
+        title: "Session saved",
         description: "Your session plan has been saved successfully."
       })
     } catch (error) {
       console.error('[SessionPlannerV2] Save failed:', error)
       toast({
-        title: "Save Failed",
+        title: "Save failed",
         description: error instanceof Error ? error.message : "Failed to save session",
         variant: "destructive"
       })
@@ -609,13 +609,13 @@ export function SessionPlannerV2({
 
       if (result.isSuccess) {
         toast({
-          title: "Template Saved",
+          title: "Template saved",
           description: `"${templateName}" saved as a template.`,
         })
         setSaveTemplateOpen(false)
       } else {
         toast({
-          title: "Save Failed",
+          title: "Save failed",
           description: result.message,
           variant: "destructive",
         })
@@ -623,7 +623,7 @@ export function SessionPlannerV2({
     } catch (error) {
       console.error('[SessionPlannerV2] Save template failed:', error)
       toast({
-        title: "Save Failed",
+        title: "Save failed",
         description: error instanceof Error ? error.message : "Failed to save template",
         variant: "destructive",
       })
@@ -716,13 +716,13 @@ export function SessionPlannerV2({
       }
 
       toast({
-        title: "Template Inserted",
+        title: "Template inserted",
         description: result.message,
       })
       setInsertTemplateOpen(false)
     } else {
       toast({
-        title: "Insert Failed",
+        title: "Insert failed",
         description: result.message,
         variant: "destructive",
       })
@@ -808,7 +808,7 @@ export function SessionPlannerV2({
     if (createdCount > 0) parts.push(`${createdCount} newly created`)
 
     toast({
-      title: "Exercises Imported",
+      title: "Exercises imported",
       description: parts.join(", ") + ".",
     })
   }, [sessionId, setExercises, toast])

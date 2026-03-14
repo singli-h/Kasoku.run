@@ -13,7 +13,7 @@ import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { revalidatePath } from "next/cache"
 import { ActionState } from "@/types"
-import type { Database } from "@/types/database"
+import type { Database, Json } from "@/types/database"
 import type { SessionPlanWithDetails } from "@/types/training"
 import { addDays, startOfWeek, parseISO } from "date-fns"
 
@@ -1651,6 +1651,14 @@ export interface CreateTemplateInput {
       performing_time: number | null
       rest_time: number | null
       rpe: number | null
+      tempo?: string | null
+      effort?: number | null
+      power?: number | null
+      velocity?: number | null
+      height?: number | null
+      resistance?: number | null
+      resistance_unit_id?: number | null
+      metadata?: Record<string, unknown> | null
     }>
   }>
 }
@@ -1766,6 +1774,14 @@ export async function createTemplateAction(
             performing_time: number | null
             rest_time: number | null
             rpe: number | null
+            tempo: string | null
+            effort: number | null
+            power: number | null
+            velocity: number | null
+            height: number | null
+            resistance: number | null
+            resistance_unit_id: number | null
+            metadata: Json | null
           }> = []
 
           for (let i = 0; i < savedExercises.length; i++) {
@@ -1781,6 +1797,14 @@ export async function createTemplateAction(
                 performing_time: s.performing_time,
                 rest_time: s.rest_time,
                 rpe: s.rpe,
+                tempo: s.tempo ?? null,
+                effort: s.effort ?? null,
+                power: s.power ?? null,
+                velocity: s.velocity ?? null,
+                height: s.height ?? null,
+                resistance: s.resistance ?? null,
+                resistance_unit_id: s.resistance_unit_id ?? null,
+                metadata: (s.metadata as Json) ?? null,
               })
             }
           }
@@ -1896,6 +1920,14 @@ export async function updateTemplateAction(
             performing_time: number | null
             rest_time: number | null
             rpe: number | null
+            tempo: string | null
+            effort: number | null
+            power: number | null
+            velocity: number | null
+            height: number | null
+            resistance: number | null
+            resistance_unit_id: number | null
+            metadata: Json | null
           }> = []
 
           // Sort by exercise_order to ensure index correlation with input array
@@ -1916,6 +1948,14 @@ export async function updateTemplateAction(
                 performing_time: s.performing_time,
                 rest_time: s.rest_time,
                 rpe: s.rpe,
+                tempo: s.tempo ?? null,
+                effort: s.effort ?? null,
+                power: s.power ?? null,
+                velocity: s.velocity ?? null,
+                height: s.height ?? null,
+                resistance: s.resistance ?? null,
+                resistance_unit_id: s.resistance_unit_id ?? null,
+                metadata: (s.metadata as Json) ?? null,
               })
             }
           }
