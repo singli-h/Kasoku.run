@@ -19,9 +19,10 @@ import {
   Settings,
   Zap,
   BookOpen,
-  PlayCircle,
   FileText,
   Copy,
+  PlayCircle,
+  // ClipboardList, // TODO: uncomment when /program page is built
   type LucideIcon
 } from "lucide-react"
 import * as React from "react"
@@ -91,6 +92,12 @@ const allNavItems: Record<string, NavItemDef> = {
     icon: PlayCircle,
     visibleTo: ['coach'],
   },
+  // program: {  // TODO: uncomment when /program page is built
+  //   title: "My Program",
+  //   url: "/program",
+  //   icon: ClipboardList,
+  //   visibleTo: ['athlete'],
+  // },
   templates: {
     title: "Templates",
     url: "/templates",
@@ -159,7 +166,7 @@ const sidebarConfigs: Record<UserRole, SectionConfig[]> = {
     },
     {
       label: "Coaching",
-      items: ["athletes", "plans", "sessions", "templates"],
+      items: ["athletes", "plans", "templates"],
     },
     {
       label: "My Training",

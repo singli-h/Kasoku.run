@@ -14,6 +14,7 @@ import { getDbUserId } from "@/lib/user-cache"
 import { revalidatePath } from "next/cache"
 import { ActionState } from "@/types"
 import type { Database } from "@/types/database"
+import type { SessionPlanWithDetails } from "@/types/training"
 import { addDays, startOfWeek, parseISO } from "date-fns"
 
 // Define types from database
@@ -778,7 +779,7 @@ export async function saveAsTemplateAction(
 /**
  * Get all templates (plans with is_template = true)
  */
-export async function getTemplatesAction(): Promise<ActionState<SessionPlan[]>> {
+export async function getTemplatesAction(): Promise<ActionState<SessionPlanWithDetails[]>> {
   try {
     const { userId } = await auth()
 
