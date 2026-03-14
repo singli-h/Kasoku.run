@@ -545,17 +545,14 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
             <Plus className="h-4 w-4 mr-1.5" />
             New Template
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
+          <button
             onClick={() => setPasteProgramOpen(true)}
-            className="relative overflow-hidden"
           >
-            <AnimatedGradientText className="flex items-center gap-1.5">
+            <AnimatedGradientText className="flex items-center gap-1.5 text-sm cursor-pointer">
               <Sparkles className="h-4 w-4" />
               AI Parse
             </AnimatedGradientText>
-          </Button>
+          </button>
         </div>
       </div>
 
