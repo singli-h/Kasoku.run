@@ -21,8 +21,6 @@ import {
   BookOpen,
   FileText,
   Copy,
-  PlayCircle,
-  // ClipboardList, // TODO: uncomment when /program page is built
   type LucideIcon
 } from "lucide-react"
 import * as React from "react"
@@ -86,18 +84,6 @@ const allNavItems: Record<string, NavItemDef> = {
     icon: Users,
     visibleTo: ['coach'],
   },
-  sessions: {
-    title: "Sessions",
-    url: "/sessions",
-    icon: PlayCircle,
-    visibleTo: ['coach'],
-  },
-  // program: {  // TODO: uncomment when /program page is built
-  //   title: "My Program",
-  //   url: "/program",
-  //   icon: ClipboardList,
-  //   visibleTo: ['athlete'],
-  // },
   templates: {
     title: "Templates",
     url: "/templates",
