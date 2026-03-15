@@ -1,6 +1,6 @@
 # Design Tokens Reference
 
-> **Last Updated**: 2025-12-12
+> **Last Updated**: 2026-03-15
 > **Status**: Active
 > **Tailwind Version**: v4.x (CSS-first configuration)
 
@@ -44,8 +44,8 @@ tokens/
 
 | Token | Light Mode | Dark Mode | Purpose |
 |-------|------------|-----------|---------|
-| `--primary` | `hsl(0 0% 9%)` | `hsl(217 91% 60%)` | Primary actions (buttons, links) |
-| `--primary-foreground` | `hsl(0 0% 98%)` | `hsl(0 0% 100%)` | Text on primary |
+| `--primary` | `hsl(239 84% 67%)` | `hsl(239 84% 67%)` | Primary actions — Electric Indigo |
+| `--primary-foreground` | `hsl(0 0% 100%)` | `hsl(0 0% 100%)` | Text on primary (white) |
 | `--secondary` | `hsl(0 0% 96.1%)` | `hsl(0 0% 12%)` | Secondary actions |
 | `--secondary-foreground` | `hsl(0 0% 9%)` | `hsl(0 0% 95%)` | Text on secondary |
 | `--destructive` | `hsl(0 84.2% 60.2%)` | `hsl(0 75% 55%)` | Destructive actions |
@@ -57,7 +57,7 @@ tokens/
 |-------|------------|-----------|---------|
 | `--border` | `hsl(0 0% 89.8%)` | `hsl(0 0% 15%)` | Borders and dividers |
 | `--input` | `hsl(0 0% 89.8%)` | `hsl(0 0% 10%)` | Input backgrounds |
-| `--ring` | `hsl(0 0% 3.9%)` | `hsl(217 91% 60%)` | Focus rings |
+| `--ring` | `hsl(239 84% 67%)` | `hsl(239 84% 67%)` | Focus rings |
 
 ### Chart Colors
 
@@ -307,6 +307,48 @@ focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
 // Avoid - desktop-first
 <div className="p-8 max-lg:p-6 max-sm:p-4">
 ```
+
+---
+
+---
+
+## Domain Components
+
+### Event Group Tags
+
+Event group tags (SS, MS, LS, etc.) appear across many surfaces. Use the shared `EventGroupBadge` component for ALL event group rendering — never create ad-hoc badges.
+
+**Component**: `@/components/features/athletes/components/event-group-badge.tsx`
+
+| Prop | Options | Purpose |
+|------|---------|---------|
+| `size` | `xs`, `sm`, `md` | `xs` = inline on cards, `sm` = default display, `md` = filter pills |
+| `variant` | `default`, `filter`, `muted` | `default` = solid primary bg, `filter` = toggle pill, `muted` = subtle |
+| `active` | boolean | Selected state (filter variant only) |
+| `interactive` | boolean | Renders as `<button>` vs `<span>` |
+
+**Visual spec**:
+- Font: inherits app font (Inter), `font-medium` weight — NOT mono, NOT bold
+- Default variant: `bg-primary/80 text-primary-foreground` (light purple bg, white text)
+- Filter active: `bg-primary text-primary-foreground shadow-sm` (solid primary)
+- Filter inactive: `text-muted-foreground hover:text-foreground hover:bg-muted`
+- Empty state: dashed border, muted text, shows `emptyLabel` (default "+group")
+- Border radius: `rounded` (base)
+- Min heights: xs=20px, sm=22px, md=30px
+
+**Where used**:
+- Session cards (weekday panel + inline badges)
+- Exercise cards (subgroup chip with popover)
+- Plan filter bar (toggle pills)
+- Athlete roster table and cards
+- Coach dashboard compliance bars
+- MicrocycleEditor week grid
+
+**Rules**:
+1. Always use `EventGroupBadge` — never style event groups inline
+2. Use `abbreviateEventGroup()` from `@/lib/training-utils` to normalize display values
+3. Tags should be visually consistent across light and dark mode
+4. Minimum touch target: match `size` prop (xs for read-only, md for interactive)
 
 ---
 

@@ -6,12 +6,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link"
 import { useSessionsToday, useSessionMutations } from '../../hooks/use-workout-queries'
 import { motion } from "framer-motion"
 import { 
   Play, 
-  Calendar, 
+ 
   Clock, 
   Target,
   Plus,
@@ -19,7 +18,7 @@ import {
   CheckCircle,
   AlertCircle
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -81,7 +80,7 @@ export function WorkoutSessionSelector({
         // Continue existing session
         onSessionSelected(presetGroup, session)
         toast({
-          title: "Session Continued",
+          title: "Session continued",
           description: `Continuing ${presetGroup.name} workout session`
         })
       } else {
@@ -92,7 +91,7 @@ export function WorkoutSessionSelector({
         onSessionSelected(presetGroup, session)
         
         toast({
-          title: "Session Started",
+          title: "Session started",
           description: `Started ${presetGroup.name} workout session`
         })
       }
@@ -181,31 +180,21 @@ export function WorkoutSessionSelector({
 
       {/* Empty State */}
       {filteredSessions?.length === 0 && (
-        <Card className="text-center py-12">
-          <CardContent>
-            <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Workouts Available</h3>
-            <p className="text-muted-foreground mb-4">
-              You don't have any workout sessions assigned for today.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
-              <Button 
-                variant="outline" 
-                onClick={() => refetchSessions()}
-                className="w-auto min-w-[140px] h-10"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-              <Button variant="outline" asChild className="w-auto min-w-[140px] h-10">
-                <Link href="/workout/history">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  View History
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="text-center py-12">
+          <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No Workouts Available</h3>
+          <p className="text-muted-foreground mb-4">
+            You don't have any workout sessions assigned for today.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => refetchSessions()}
+            className="w-auto min-w-[140px] h-10"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       )}
     </div>
   )

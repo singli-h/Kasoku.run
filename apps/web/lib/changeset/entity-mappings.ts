@@ -176,7 +176,7 @@ export const CAMEL_TO_SNAKE_MAP: Record<string, string> = {
   exerciseName: 'exercise_name', // For UI display (not a DB column, but kept for ghost cards/swap)
   exerciseOrder: 'exercise_order',
   supersetId: 'superset_id',
-  targetEventGroups: 'target_event_groups',
+  targetSubgroups: 'target_subgroups',
 
   // Set (session_plan_sets) fields
   sessionPlanSetId: 'id',

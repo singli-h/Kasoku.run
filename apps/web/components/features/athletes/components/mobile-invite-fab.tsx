@@ -21,11 +21,11 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { inviteOrAttachAthleteAction } from "@/actions/athletes/athlete-actions"
 import { cn } from "@/lib/utils"
-import type { GroupWithCount, EventGroup } from "../types"
+import type { GroupWithCount, Subgroup } from "../types"
 
 interface MobileInviteFABProps {
   groups: GroupWithCount[]
-  eventGroups?: EventGroup[]
+  subgroups?: Subgroup[]
   onSuccess: () => void
   isHidden?: boolean
   className?: string
@@ -33,7 +33,7 @@ interface MobileInviteFABProps {
 
 export function MobileInviteFAB({
   groups,
-  eventGroups,
+  subgroups,
   onSuccess,
   isHidden = false,
   className
@@ -42,7 +42,7 @@ export function MobileInviteFAB({
   const [isOpen, setIsOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [groupId, setGroupId] = useState<string>("")
-  const [eventGroupAbbrev, setEventGroupAbbrev] = useState<string>("")
+  const [subgroupAbbrev, setSubgroupAbbrev] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async () => {
@@ -60,7 +60,7 @@ export function MobileInviteFAB({
       const result = await inviteOrAttachAthleteAction(
         email,
         parseInt(groupId),
-        eventGroupAbbrev && eventGroupAbbrev !== "none" ? eventGroupAbbrev : undefined
+        subgroupAbbrev && subgroupAbbrev !== "none" ? [subgroupAbbrev] : undefined
       )
       if (result.isSuccess) {
         toast({
@@ -69,7 +69,7 @@ export function MobileInviteFAB({
         })
         setEmail("")
         setGroupId("")
-        setEventGroupAbbrev("")
+        setSubgroupAbbrev("")
         setIsOpen(false)
         onSuccess()
       } else {
@@ -212,21 +212,21 @@ export function MobileInviteFAB({
                   </Select>
                 </div>
 
-                {/* Event group field (optional) */}
-                {eventGroups && eventGroups.length > 0 && (
+                {/* Subgroup field (optional) */}
+                {subgroups && subgroups.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-2">
-                      Event Group (optional)
+                      Subgroup (optional)
                     </Label>
-                    <Select value={eventGroupAbbrev} onValueChange={setEventGroupAbbrev}>
+                    <Select value={subgroupAbbrev} onValueChange={setSubgroupAbbrev}>
                       <SelectTrigger className="h-12 text-base">
-                        <SelectValue placeholder="No event group" />
+                        <SelectValue placeholder="No subgroup" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">No event group</SelectItem>
-                        {eventGroups.map(eg => (
-                          <SelectItem key={eg.id} value={eg.abbreviation}>
-                            {eg.abbreviation} — {eg.name}
+                        <SelectItem value="none">No subgroup</SelectItem>
+                        {subgroups.map(sg => (
+                          <SelectItem key={sg.id} value={sg.abbreviation}>
+                            {sg.abbreviation} — {sg.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

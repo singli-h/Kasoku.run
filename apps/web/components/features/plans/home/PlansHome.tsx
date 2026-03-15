@@ -73,7 +73,7 @@ export async function PlansHome() {
         endWeek: Math.min(totalWeeks, endWeek),
         volume: volume.length > 0 ? volume : [],
         intensity: intensity.length > 0 ? intensity : [],
-        color: (meso.metadata as any)?.color || `hsl(${(index * 60) % 360}, 70%, 50%)`
+        color: (meso.metadata as any)?.color || ["#6478b4", "#548a7c", "#b8864e", "#b45e72", "#7f6daa", "#5090a0", "#7e9a56", "#a87558"][index % 8]
       }
     }) || []
 

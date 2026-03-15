@@ -36,15 +36,15 @@ import type {
 interface WorkoutSessionDashboardV2Props {
   presetGroup: SessionPlanWithDetails
   existingSession?: WorkoutLogWithDetails
-  /** Athlete's event_group for subgroup exercise filtering */
-  athleteEventGroup?: string | null
+  /** Athlete's subgroups for subgroup exercise filtering */
+  athleteSubgroups?: string[]
   className?: string
 }
 
 export function WorkoutSessionDashboardV2({
   presetGroup,
   existingSession,
-  athleteEventGroup,
+  athleteSubgroups,
   className
 }: WorkoutSessionDashboardV2Props) {
   return (
@@ -52,7 +52,7 @@ export function WorkoutSessionDashboardV2({
       <WorkoutSessionContentV2
         presetGroup={presetGroup}
         existingSession={existingSession}
-        athleteEventGroup={athleteEventGroup}
+        athleteSubgroups={athleteSubgroups}
         className={className}
       />
     </ExerciseProvider>
@@ -62,7 +62,7 @@ export function WorkoutSessionDashboardV2({
 function WorkoutSessionContentV2({
   presetGroup,
   existingSession,
-  athleteEventGroup,
+  athleteSubgroups,
   className
 }: WorkoutSessionDashboardV2Props) {
   const router = useRouter()
@@ -342,7 +342,7 @@ function WorkoutSessionContentV2({
       if (result.success) {
         setIsTimerRunning(true)
         toast({
-          title: "Session Started",
+          title: "Session started",
           description: "Your workout session has begun!"
         })
       } else {
@@ -363,7 +363,7 @@ function WorkoutSessionContentV2({
       const saveSuccess = await forceSave()
       if (!saveSuccess) {
         toast({
-          title: "Save Failed",
+          title: "Save failed",
           description: "Failed to save exercise data before completing. Please try again.",
           variant: "destructive"
         })
@@ -374,7 +374,7 @@ function WorkoutSessionContentV2({
       if (result.success) {
         setIsTimerRunning(false)
         toast({
-          title: "Session Completed!",
+          title: "Session completed!",
           description: "Great work! Your session has been saved."
         })
       } else {
@@ -399,7 +399,7 @@ function WorkoutSessionContentV2({
       if (result.success) {
         setIsTimerRunning(false)
         toast({
-          title: "Session Abandoned",
+          title: "Session abandoned",
           description: "Your logged sets have been saved."
         })
         router.push('/workout')
@@ -421,7 +421,7 @@ function WorkoutSessionContentV2({
       const saveSuccess = await forceSave()
       if (!saveSuccess) {
         toast({
-          title: "Save Failed",
+          title: "Save failed",
           description: "Failed to save exercise data. Please try again.",
           variant: "destructive"
         })
@@ -431,7 +431,7 @@ function WorkoutSessionContentV2({
       const result = await saveSession()
       if (result.success) {
         toast({
-          title: "Session Saved",
+          title: "Session saved",
           description: "Your progress has been saved"
         })
       } else {
@@ -471,7 +471,7 @@ function WorkoutSessionContentV2({
         sessionDate={existingSession?.date_time || (presetGroup as any)?.date}
         exercises={trainingExercises}
         isAthlete={true}
-        athleteEventGroup={athleteEventGroup}
+        athleteSubgroups={athleteSubgroups}
         elapsedSeconds={elapsedSeconds}
         isTimerRunning={isTimerRunning}
         sessionStatus={sessionStatus === 'cancelled' ? 'completed' : sessionStatus}

@@ -12,22 +12,21 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 
 // Server Actions
 import { getRosterWithGroupCountsAction } from "@/actions/athletes/athlete-actions"
-import { getEventGroupsAction } from "@/actions/athletes/event-group-actions"
+import { getSubgroupsAction } from "@/actions/athletes/subgroup-actions"
 
 // Components
 import { InviteAthleteForm } from "./invite-athlete-form"
 import { AthleteRosterSection } from "./athlete-roster-section"
 import { GroupDirectorySection } from "./group-directory-section"
 import { BulkOperationsDialog } from "./bulk-operations-dialog"
-import { MobileInviteFAB } from "./mobile-invite-fab"
 import { MobileBulkActionBar } from "./mobile-bulk-action-bar"
-import { EventGroupManager } from "./event-group-manager"
+import { SubgroupManager } from "./subgroup-manager"
 
 // Types
 import type {
   AthleteWithDetails,
   GroupWithCount,
-  EventGroup,
+  Subgroup,
   BulkOperationState
 } from "../types"
 
@@ -38,7 +37,7 @@ export function LeanAthleteManagementPage() {
   // Data state
   const [athletes, setAthletes] = useState<AthleteWithDetails[]>([])
   const [groups, setGroups] = useState<GroupWithCount[]>([])
-  const [eventGroups, setEventGroups] = useState<EventGroup[]>([])
+  const [subgroups, setSubgroups] = useState<Subgroup[]>([])
   const [loading, setLoading] = useState(true)
 
   // UI state
@@ -58,9 +57,9 @@ export function LeanAthleteManagementPage() {
   const loadData = useCallback(async () => {
     try {
       if (!initialLoadDone.current) setLoading(true)
-      const [rosterResult, eventGroupsResult] = await Promise.all([
+      const [rosterResult, subgroupsResult] = await Promise.all([
         getRosterWithGroupCountsAction(),
-        getEventGroupsAction()
+        getSubgroupsAction()
       ])
 
       if (rosterResult.isSuccess && rosterResult.data) {
@@ -74,8 +73,8 @@ export function LeanAthleteManagementPage() {
         })
       }
 
-      if (eventGroupsResult.isSuccess && eventGroupsResult.data) {
-        setEventGroups(eventGroupsResult.data)
+      if (subgroupsResult.isSuccess && subgroupsResult.data) {
+        setSubgroups(subgroupsResult.data)
       }
     } catch (error) {
       console.error('Error loading data:', error)
@@ -94,10 +93,33 @@ export function LeanAthleteManagementPage() {
     loadData()
   }, [loadData])
 
+  // Optimistic update: athlete subgroups
+  const handleAthleteSubgroupUpdate = useCallback((userId: number, newGroups: string[] | null) => {
+    setAthletes(prev => prev.map(a =>
+      a.user_id === userId ? { ...a, event_groups: newGroups } : a
+    ))
+  }, [])
+
+  // Optimistic update: subgroup deleted
+  const handleSubgroupDeleted = useCallback((sgId: number) => {
+    setSubgroups(prev => prev.filter(sg => sg.id !== sgId))
+  }, [])
+
+  // Optimistic update: group renamed
+  const handleGroupUpdated = useCallback((groupId: number, newName: string) => {
+    setGroups(prev => prev.map(g =>
+      g.id === groupId ? { ...g, group_name: newName } : g
+    ))
+  }, [])
+
+  // Optimistic update: group deleted
+  const handleGroupDeleted = useCallback((groupId: number) => {
+    setGroups(prev => prev.filter(g => g.id !== groupId))
+  }, [])
+
   // Handle bulk operation success
   const handleBulkOperationSuccess = useCallback(() => {
     setSelectedAthletes([])
-    setBulkOperation({ isOpen: false, type: null })
     loadData()
   }, [loadData])
 
@@ -140,20 +162,19 @@ export function LeanAthleteManagementPage() {
 
   return (
     <div className={`space-y-6 ${isMobile && selectedAthletes.length > 0 ? 'pb-32' : ''}`}>
-      {/* Desktop: Inline Invite Form */}
-      {!isMobile && (
-        <div className="p-4 bg-muted/30 rounded-lg">
-          <InviteAthleteForm
-            groups={groups}
-            eventGroups={eventGroups}
-            onSuccess={loadData}
-          />
-        </div>
-      )}
+      {/* Inline Invite Form */}
+      <div className="p-4 bg-muted/30 rounded-lg">
+        <InviteAthleteForm
+          groups={groups}
+          subgroups={subgroups}
+          onSuccess={loadData}
+        />
+      </div>
 
-      {/* Event Groups */}
-      <EventGroupManager
-        eventGroups={eventGroups}
+      {/* Subgroups */}
+      <SubgroupManager
+        subgroups={subgroups}
+        onSubgroupDeleted={handleSubgroupDeleted}
         onDataReload={loadData}
       />
 
@@ -161,12 +182,13 @@ export function LeanAthleteManagementPage() {
       <AthleteRosterSection
         athletes={athletes}
         groups={groups}
-        eventGroups={eventGroups}
+        subgroups={subgroups}
         selectedAthletes={selectedAthletes}
         onSelectAthletes={setSelectedAthletes}
         onBulkOperation={setBulkOperation}
         selectedGroupFilter={selectedGroupFilter}
         onGroupFilterChange={setSelectedGroupFilter}
+        onAthleteSubgroupUpdate={handleAthleteSubgroupUpdate}
         onDataReload={loadData}
       />
 
@@ -174,9 +196,11 @@ export function LeanAthleteManagementPage() {
       <GroupDirectorySection
         groups={groups}
         athletes={athletes}
-        eventGroups={eventGroups}
+        subgroups={subgroups}
         selectedGroupFilter={selectedGroupFilter}
         onGroupFilterChange={setSelectedGroupFilter}
+        onGroupUpdated={handleGroupUpdated}
+        onGroupDeleted={handleGroupDeleted}
         onDataReload={loadData}
       />
 
@@ -188,16 +212,6 @@ export function LeanAthleteManagementPage() {
         groups={groups}
         onSuccess={handleBulkOperationSuccess}
       />
-
-      {/* Mobile: Floating Action Button for Invite */}
-      {isMobile && (
-        <MobileInviteFAB
-          groups={groups}
-          eventGroups={eventGroups}
-          onSuccess={loadData}
-          isHidden={selectedAthletes.length > 0}
-        />
-      )}
 
       {/* Mobile: Bulk Action Bar */}
       {isMobile && (

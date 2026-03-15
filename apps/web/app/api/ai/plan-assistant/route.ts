@@ -147,7 +147,7 @@ const PlanAssistantRequestSchema = z.object({
   planningContext: z.string().max(5000).optional(),
   phaseContext: z.string().max(10000).optional(),
   recentInsights: z.array(z.string().max(1000)).max(3).optional(),
-  athleteEventGroups: z.array(z.string().max(50)).max(10).optional(),
+  athleteSubgroups: z.array(z.string().max(50)).max(10).optional(),
 })
 
 export async function POST(req: Request) {
@@ -196,7 +196,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const { messages, planId, sessionId, weekId, exerciseId, aiContextLevel = 'session', planningContext: reqPlanningContext, phaseContext: reqPhaseContext, recentInsights: reqRecentInsights, athleteEventGroups: reqAthleteEventGroups } = body
+    const { messages, planId, sessionId, weekId, exerciseId, aiContextLevel = 'session', planningContext: reqPlanningContext, phaseContext: reqPhaseContext, recentInsights: reqRecentInsights, athleteSubgroups: reqAthleteSubgroups } = body
 
     // Resolve DB user ID + fetch plan in parallel (saves ~30-100ms)
     let dbUserId: number
@@ -380,7 +380,7 @@ export async function POST(req: Request) {
       planningContext: reqPlanningContext,
       phaseContext: reqPhaseContext,
       recentInsights: reqRecentInsights,
-      athleteEventGroups: reqAthleteEventGroups,
+      athleteSubgroups: reqAthleteSubgroups,
     })
 
     // Convert UI messages to model messages format

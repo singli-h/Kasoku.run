@@ -290,7 +290,7 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
                 notes,
                 exercise_id,
                 superset_id,
-                target_event_groups,
+                target_subgroups,
                 exercise:exercises(
                   id,
                   name,
@@ -308,6 +308,8 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
       .eq('user_id', dbUserId)
       .order('start_date', { referencedTable: 'mesocycles', ascending: true })
       .order('start_date', { referencedTable: 'mesocycles.microcycles', ascending: true })
+      .order('date', { referencedTable: 'mesocycles.microcycles.session_plans', ascending: true })
+      .order('created_at', { referencedTable: 'mesocycles.microcycles.session_plans', ascending: true })
       .single()
 
     if (error) {
@@ -724,9 +726,17 @@ export async function updateMesocycleAction(
       }
     }
 
+    // Auto-sync description into planning_context for AI consumption
+    const finalUpdates = { ...updates } as Record<string, unknown>
+    if (updates.description !== undefined) {
+      finalUpdates.planning_context = updates.description
+        ? { text: updates.description }
+        : null
+    }
+
     const { data: mesocycle, error } = await supabase
       .from('mesocycles')
-      .update(updates)
+      .update(finalUpdates)
       .eq('id', id)
       .eq('user_id', dbUserId)
       .select()

@@ -40,9 +40,9 @@ async function WorkoutSessionContent({ sessionId }: { sessionId: string }) {
     notFound()
   }
 
-  // Extract athlete's event_group for subgroup exercise filtering
-  const athlete = session.athlete as { event_group?: string | null } | null
-  const athleteEventGroup = athlete?.event_group ?? null
+  // Extract athlete's subgroups for subgroup exercise filtering
+  const athlete = session.athlete as { subgroups?: string[] | null } | null
+  const athleteSubgroups = athlete?.subgroups ?? []
 
   // Pass to client component for React Query hydration
   // This enables seamless background refresh without loading states
@@ -51,7 +51,7 @@ async function WorkoutSessionContent({ sessionId }: { sessionId: string }) {
       initialSession={session}
       sessionId={sessionId}
       dbUserId={dbUserId ? String(dbUserId) : undefined}
-      athleteEventGroup={athleteEventGroup}
+      athleteSubgroups={athleteSubgroups}
     />
   )
 }

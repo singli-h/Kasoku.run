@@ -11,7 +11,7 @@
  *   macroContext?:     macrocycle.planning_context.text (dedicated JSONB column)
  *   mesoContext?:      mesocycle.planning_context.text (dedicated JSONB column, NOT metadata)
  *   recentInsights?:   last 3 weekly_insights summaries
- *   athleteEventGroups?: event_group tags (SS/MS/LS)
+ *   athleteSubgroups?: subgroup tags (SS/MS/LS)
  *   upcomingRaces?:    races in date range
  *   scheduleNotes?:    training days config
  *   importText?:       CSV or free text from wizard import step
@@ -37,7 +37,7 @@ const RequestSchema = z.object({
   macroContext: z.string().max(10000).optional(),
   mesoContext: z.string().max(10000).optional(),
   recentInsights: z.array(z.string().max(1000)).max(3).optional(),
-  athleteEventGroups: z.array(z.string().max(50)).max(10).optional(),
+  athleteSubgroups: z.array(z.string().max(50)).max(10).optional(),
   upcomingRaces: z.array(z.string().max(200)).max(10).optional(),
   scheduleNotes: z.string().max(1000).optional(),
   otherGroupSessions: z.array(z.string().max(500)).max(10).optional(),
@@ -105,8 +105,8 @@ export async function POST(req: Request) {
     if (validated.recentInsights?.length) {
       systemParts.push(`\n## Recent Weeks (what actually happened)\n${validated.recentInsights.join('\n')}`)
     }
-    if (validated.athleteEventGroups?.length) {
-      systemParts.push(`\n## Athletes in Group\n${validated.athleteEventGroups.join(', ')} specialists`)
+    if (validated.athleteSubgroups?.length) {
+      systemParts.push(`\n## Athletes in Group\n${validated.athleteSubgroups.join(', ')} specialists`)
     }
     if (validated.upcomingRaces?.length) {
       systemParts.push(`\n## Upcoming Races\n${validated.upcomingRaces.join('\n')}`)

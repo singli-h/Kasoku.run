@@ -36,112 +36,25 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { updateAthleteProfileAction } from "@/actions/athletes/athlete-actions"
 
 import { AthleteCard } from "./athlete-card"
 import { GroupFilterChips } from "./group-filter-chips"
-import { EventGroupBadge } from "./event-group-badge"
-import type { AthleteWithDetails, GroupWithCount, BulkOperationState, EventGroup } from "../types"
-
-/**
- * Inline editor for athlete event_group field.
- * Shows coach-defined event group options in a popover.
- */
-function EventGroupEditor({
-  userId,
-  currentValue,
-  eventGroups,
-  onSaved,
-}: {
-  userId: number | null
-  currentValue: string | null | undefined
-  eventGroups: EventGroup[]
-  onSaved: () => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const { toast } = useToast()
-
-  const handleSelect = async (value: string | null) => {
-    if (!userId) return
-    setSaving(true)
-    const result = await updateAthleteProfileAction(userId, { event_group: value })
-    setSaving(false)
-    if (result.isSuccess) {
-      setOpen(false)
-      onSaved()
-    } else {
-      toast({ title: "Error", description: result.message, variant: "destructive" })
-    }
-  }
-
-  // Find display name for current value
-  const currentEg = eventGroups.find(eg => eg.abbreviation === currentValue)
-  const displayLabel = currentEg ? currentEg.abbreviation : currentValue
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <EventGroupBadge
-          value={displayLabel}
-          emptyLabel="Set"
-          interactive
-        />
-      </PopoverTrigger>
-      <PopoverContent className="w-52 p-2" align="start">
-        <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground px-1 pb-1">Event Group</p>
-          {eventGroups.length > 0 ? (
-            <>
-              {eventGroups.map((eg) => (
-                <button
-                  key={eg.id}
-                  disabled={saving}
-                  onClick={() => handleSelect(eg.abbreviation)}
-                  className={cn(
-                    "w-full text-left px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors",
-                    currentValue === eg.abbreviation && "bg-muted font-medium"
-                  )}
-                >
-                  {eg.abbreviation} — {eg.name}
-                </button>
-              ))}
-              {currentValue && (
-                <button
-                  disabled={saving}
-                  onClick={() => handleSelect(null)}
-                  className="w-full text-left px-2 py-1.5 rounded text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                >
-                  Clear
-                </button>
-              )}
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground px-2 py-1.5">No event groups defined</p>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-}
+import { SubgroupBadge } from "./subgroup-badge"
+import { SubgroupDialog } from "./subgroup-dialog"
+import type { AthleteWithDetails, GroupWithCount, BulkOperationState, Subgroup } from "../types"
 
 interface AthleteRosterSectionProps {
   athletes: AthleteWithDetails[]
   groups: GroupWithCount[]
-  eventGroups: EventGroup[]
+  subgroups: Subgroup[]
   selectedAthletes: number[]
   onSelectAthletes: (athletes: number[]) => void
   onBulkOperation: (operation: BulkOperationState) => void
   selectedGroupFilter: number | null
   onGroupFilterChange: (groupId: number | null) => void
+  onAthleteSubgroupUpdate?: (userId: number, newGroups: string[] | null) => void
   onDataReload?: () => void
   className?: string
 }
@@ -149,12 +62,13 @@ interface AthleteRosterSectionProps {
 export function AthleteRosterSection({
   athletes,
   groups,
-  eventGroups,
+  subgroups,
   selectedAthletes,
   onSelectAthletes,
   onBulkOperation,
   selectedGroupFilter,
   onGroupFilterChange,
+  onAthleteSubgroupUpdate,
   onDataReload,
   className
 }: AthleteRosterSectionProps) {
@@ -162,6 +76,7 @@ export function AthleteRosterSection({
   const isMobile = useMediaQuery("(max-width: 768px)")
   const [searchTerm, setSearchTerm] = useState("")
   const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [subgroupDialogFor, setSubgroupDialogFor] = useState<AthleteWithDetails | null>(null)
 
   // Filter athletes
   const filteredAthletes = useMemo(() => {
@@ -381,11 +296,12 @@ export function AthleteRosterSection({
                 athlete={athlete}
                 isSelected={selectedAthletes.includes(athlete.id)}
                 isSelectionMode={isSelectionMode}
-                eventGroups={eventGroups}
+                subgroups={subgroups}
                 onSelect={handleSelectAthlete}
                 onLongPress={handleEnterSelectionMode}
                 onBulkOperation={onBulkOperation}
                 onGroupFilter={onGroupFilterChange}
+                onAthleteSubgroupUpdate={onAthleteSubgroupUpdate}
                 onDataReload={onDataReload}
               />
             ))}
@@ -413,7 +329,7 @@ export function AthleteRosterSection({
                 <TableHead>Group</TableHead>
                 <TableHead>Age</TableHead>
                 <TableHead>Sex</TableHead>
-                <TableHead>Event Group</TableHead>
+                <TableHead>Subgroup</TableHead>
                 <TableHead>Events</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -470,12 +386,15 @@ export function AthleteRosterSection({
                       {athlete.user?.sex || '—'}
                     </TableCell>
                     <TableCell>
-                      <EventGroupEditor
-                        userId={athlete.user_id}
-                        currentValue={athlete.event_group}
-                        eventGroups={eventGroups}
-                        onSaved={() => onDataReload?.()}
-                      />
+                      <div className="flex items-center gap-0.5">
+                        {(athlete.event_groups ?? []).length > 0 ? (
+                          (athlete.event_groups ?? []).map(g => (
+                            <SubgroupBadge key={g} value={g} />
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {events.length > 0 ? (
@@ -505,6 +424,9 @@ export function AthleteRosterSection({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => router.push(`/athletes/${athlete.id}`)}>
                             View Profile
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setSubgroupDialogFor(athlete)}>
+                            Edit Subgroup
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => onBulkOperation({
@@ -538,6 +460,22 @@ export function AthleteRosterSection({
           </Table>
         )}
       </CardContent>
+
+      {subgroupDialogFor && (
+        <SubgroupDialog
+          open={!!subgroupDialogFor}
+          onOpenChange={(open) => { if (!open) setSubgroupDialogFor(null) }}
+          athleteName={`${subgroupDialogFor.user?.first_name || ''} ${subgroupDialogFor.user?.last_name || ''}`.trim() || 'Unknown'}
+          userId={subgroupDialogFor.user_id}
+          currentValues={subgroupDialogFor.event_groups ?? []}
+          subgroups={subgroups}
+          onSaved={(userId, newGroups) => {
+            setSubgroupDialogFor(null)
+            onAthleteSubgroupUpdate?.(userId, newGroups)
+          }}
+          onError={() => onDataReload?.()}
+        />
+      )}
     </Card>
   )
 }

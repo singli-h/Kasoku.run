@@ -5,7 +5,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, ChevronRight, ChevronDown, ChevronUp, Plus, Edit, Trash2, Sparkles, BarChart3, Check, Loader2 } from "lucide-react"
+import { Calendar, ChevronRight, Plus, Edit, Trash2, Sparkles, BarChart3 } from "lucide-react"
 import { EditMesocycleDialog, type MesocycleFormData } from "./components/EditMesocycleDialog"
 import { EditMicrocycleDialog, type MicrocycleFormData } from "./components/EditMicrocycleDialog"
 import { EditRaceDialog } from "./components/EditRaceDialog"
@@ -22,13 +22,12 @@ import {
   updateMicrocycleAction,
   deleteMicrocycleAction,
   updateMacrocycleAction,
-  saveMesoPlanningContextAction,
 } from "@/actions/plans/plan-actions"
 import { createRaceAction, updateRaceAction, deleteRaceAction } from "@/actions/plans/race-actions"
 import { Copy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { extractPlanningContextText } from "@/lib/utils"
-import { abbreviateEventGroup } from "@/lib/training-utils"
+import { abbreviateSubgroup } from "@/lib/training-utils"
+import { SubgroupBadge } from "@/components/features/athletes/components/subgroup-badge"
 
 // Training plan workspace component - interfaces for data structure
 export interface Session {
@@ -46,7 +45,9 @@ export interface Session {
   /** Formatted exercise summaries (e.g. "3x10 80kg") */
   exerciseSummaries?: string[]
   /** Per-exercise target event groups for subgroup indicators */
-  targetEventGroups?: (string[])[]
+  targetSubgroups?: (string[])[]
+  /** Session-level target event groups for schedule filtering */
+  sessionTargetSubgroups?: string[] | null
 }
 
 interface Microcycle {
@@ -74,7 +75,7 @@ interface Mesocycle {
   end_date: string | null
   planning_context?: unknown | null
   metadata: {
-    phase?: "GPP" | "SPP" | "Taper" | "Competition"
+    phase?: string
     color?: string
     deload?: boolean
   } | null
@@ -115,86 +116,21 @@ type HistoryState = {
 interface TrainingPlanWorkspaceProps {
   initialPlan: TrainingPlan
   onPlanUpdate?: (plan: TrainingPlan) => void
+  /** @deprecated Group filter removed — plans have 1 group. Kept for microcycle creation fallback. */
   selectedGroupId?: number | null
   onGenerateWeek?: (microcycleId: number, microcycleName: string | null) => void
   onReviewWeek?: (microcycleId: number, weeklyInsights?: unknown) => void
+  /** Slot for filter bar rendered below PlanPageHeader */
+  filterBar?: React.ReactNode
+  /** Selected event groups for session filtering (multi-select) */
+  selectedSubgroups?: string[]
 }
 
-/** Inline editor for mesocycle planning_context (phase focus) */
-function MesoPlanningContextEditor({ mesocycleId, planningContext, onSaved }: {
-  mesocycleId: number
-  planningContext: unknown | null
-  onSaved?: (text: string) => void
-}) {
-  const extracted = extractPlanningContextText(planningContext) ?? ''
-  const [expanded, setExpanded] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(extracted)
-  const [saving, setSaving] = useState(false)
-
-  // Sync value when prop changes externally (e.g. parent refetch)
-  useEffect(() => {
-    if (!editing) setValue(extracted)
-  }, [extracted, editing])
-
-  const preview = value
-    ? value.slice(0, 80) + (value.length > 80 ? '...' : '')
-    : 'Add phase focus...'
-
-  async function handleSave() {
-    setSaving(true)
-    const result = await saveMesoPlanningContextAction(mesocycleId, value)
-    setSaving(false)
-    if (result.isSuccess) {
-      setEditing(false)
-      onSaved?.(value)
-    }
-  }
-
-  return (
-    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-      <button
-        onClick={() => setExpanded(e => !e)}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        <span className="truncate">{expanded ? 'Phase focus' : preview}</span>
-      </button>
-      {expanded && (
-        <div className="mt-2 space-y-2">
-          {editing ? (
-            <>
-              <textarea
-                value={value}
-                onChange={e => setValue(e.target.value)}
-                className="w-full min-h-[60px] rounded-md border bg-background px-3 py-2 text-xs font-mono resize-y focus:outline-none focus:ring-1 focus:ring-ring"
-                placeholder="e.g. SPP: speed development, reduce volume, increase intensity"
-                maxLength={2000}
-              />
-              <div className="flex items-center gap-2">
-                <Button size="sm" className="h-6 text-xs px-2 gap-1" onClick={handleSave} disabled={saving}>
-                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                  {saving ? 'Saving' : 'Save'}
-                </Button>
-                <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => { setValue(extracted); setEditing(false) }}>
-                  Cancel
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="flex items-start gap-2">
-              <p className="text-xs text-muted-foreground whitespace-pre-wrap flex-1">
-                {value || 'No phase focus set.'}
-              </p>
-              <Button size="sm" variant="ghost" className="h-6 text-xs px-2 shrink-0" onClick={() => setEditing(true)}>
-                Edit
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
+/** Format a date string as "12 Feb" (short day + month) */
+function formatShortDate(dateStr: string | null): string {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
 }
 
 /**
@@ -240,10 +176,11 @@ function findCurrentPeriod(plan: TrainingPlan): { meso: Mesocycle | null; micro:
     }
   }
 
-  // Final fallback: first mesocycle, no microcycle selected
+  // Final fallback: first mesocycle, first microcycle
+  const fallbackMeso = plan.mesocycles.length > 0 ? plan.mesocycles[0] : null
   return {
-    meso: plan.mesocycles.length > 0 ? plan.mesocycles[0] : null,
-    micro: null
+    meso: fallbackMeso,
+    micro: fallbackMeso?.microcycles?.[0] ?? null
   }
 }
 
@@ -263,7 +200,7 @@ function isCurrentWeek(micro: Microcycle): boolean {
   return today >= startDate && today <= endDate
 }
 
-export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroupId, onGenerateWeek, onReviewWeek }: TrainingPlanWorkspaceProps) {
+export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroupId, onGenerateWeek, onReviewWeek, filterBar, selectedSubgroups }: TrainingPlanWorkspaceProps) {
   const router = useRouter()
   const [plan, setPlan] = useState(initialPlan)
 
@@ -272,11 +209,21 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
   const [selectedMeso, setSelectedMeso] = useState<Mesocycle | null>(initialPeriod.meso)
   const [selectedMicro, setSelectedMicro] = useState<Microcycle | null>(initialPeriod.micro)
 
-  const [mobileView, setMobileView] = useState<"meso" | "micro" | "session">("meso")
+  const [mobileView, setMobileView] = useState<"meso" | "micro" | "session">(initialPeriod.micro ? "micro" : "meso")
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("left")
+  const [mobileTransitionEnabled, setMobileTransitionEnabled] = useState(false)
 
   const [history, setHistory] = useState<HistoryState[]>([{ plan: initialPlan, timestamp: Date.now() }])
   const [historyIndex, setHistoryIndex] = useState(0)
+
+  // After hydration: fix mobileView if needed, then enable slide transitions
+  useEffect(() => {
+    if (selectedMicro && mobileView === "meso") {
+      setMobileView("micro")
+    }
+    // Enable transitions one frame after mount so initial position is instant
+    requestAnimationFrame(() => setMobileTransitionEnabled(true))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dialog states
   const [mesoDialogOpen, setMesoDialogOpen] = useState(false)
@@ -413,7 +360,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
           : [...plan.mesocycles, { ...mesocycle, microcycles: [] } as Mesocycle],
       }
       addToHistory(newPlan)
-      router.refresh()
     } catch (error) {
       console.error("Error saving mesocycle:", error)
       toast({
@@ -422,7 +368,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         variant: "destructive",
       })
     }
-  }, [plan, addToHistory, toast, router])
+  }, [plan, addToHistory, toast])
 
   const handleDeleteMesocycle = useCallback(async (id: number) => {
     try {
@@ -450,7 +396,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
       if (selectedMeso?.id === id) {
         setSelectedMeso(null)
       }
-      router.refresh()
     } catch (error) {
       console.error("Error deleting mesocycle:", error)
       toast({
@@ -459,7 +404,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         variant: "destructive",
       })
     }
-  }, [plan, addToHistory, selectedMeso, toast, router])
+  }, [plan, addToHistory, selectedMeso, toast])
 
   const handleSaveMicrocycle = async (microcycle: MicrocycleFormData) => {
     if (!selectedMeso) return
@@ -529,7 +474,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
       }
       addToHistory(newPlan)
       setSelectedMeso(updatedMeso)
-      router.refresh()
     } catch (error) {
       console.error("Error saving microcycle:", error)
       toast({
@@ -573,7 +517,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
       if (selectedMicro?.id === id) {
         setSelectedMicro(null)
       }
-      router.refresh()
     } catch (error) {
       console.error("Error deleting microcycle:", error)
       toast({
@@ -644,7 +587,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         addToHistory(newPlan)
         toast({ title: "Race updated", description: "Race has been updated." })
       }
-      router.refresh()
     } catch (error) {
       console.error("Error saving event:", error)
       toast({
@@ -674,7 +616,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
       }
       addToHistory(newPlan)
       toast({ title: "Race deleted", description: "Race has been removed." })
-      router.refresh()
     } catch (error) {
       console.error("Error deleting event:", error)
       toast({
@@ -727,7 +668,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         title: "Session saved",
         description: "Your changes have been saved.",
       })
-      router.refresh()
     } catch (error) {
       console.error("Error saving session:", error)
       toast({
@@ -775,7 +715,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         title: "Session deleted",
         description: result.message,
       })
-      router.refresh()
     } catch (error) {
       console.error("Error deleting session:", error)
       toast({
@@ -914,12 +853,25 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
     }
   }
 
+  // Filter sessions by selected event groups (checks both session-level and exercise-level tags)
+  const filterSessions = useCallback((sessions: Session[]) => {
+    if (!selectedSubgroups || selectedSubgroups.length === 0) return sessions
+    return sessions.filter(session => {
+      // Union of session-level tags and exercise-level tags
+      const sessionTags = session.sessionTargetSubgroups ?? []
+      const exerciseTags = (session.targetSubgroups ?? []).flat()
+      // No tags at all — shared session, always visible
+      if (sessionTags.length === 0 && exerciseTags.length === 0) return true
+      return sessionTags.some(g => selectedSubgroups.includes(g))
+        || exerciseTags.some(g => selectedSubgroups.includes(g))
+    })
+  }, [selectedSubgroups])
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <PlanPageHeader
         title={plan.macrocycle.name || "Training Plan"}
-        subtitle={`${plan.macrocycle.start_date} - ${plan.macrocycle.end_date}`}
         backPath="/plans"
         backLabel="Back to Plans"
         status={plan.status}
@@ -949,7 +901,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                   title: "Plan renamed",
                   description: "Plan title has been saved.",
                 })
-                router.refresh()
               }
             } catch (error) {
               console.error("Error renaming plan:", error)
@@ -973,10 +924,13 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         navLabel={getNavLabel()}
       />
 
+      {/* Filter Bar (group + event group) */}
+      {filterBar}
+
       {/* Main Content */}
-      <main className="p-2 sm:p-4 lg:p-6">
-        {/* Desktop View - 3 Column Grid */}
-        <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6">
+      <main className="px-4 py-3 sm:p-4 lg:p-6">
+        {/* Desktop View - 3 Column Grid (left narrower, right wider for session cards) */}
+        <div className="hidden lg:grid lg:gap-6" style={{ gridTemplateColumns: '1fr 1.1fr 1.3fr' }}>
           {/* Left Panel - Mesocycle Timeline */}
           <div>
             <div className="mb-4 flex items-center justify-between">
@@ -1000,7 +954,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                   className={`w-full rounded-lg border-l-4 p-4 text-left transition-all hover:bg-accent cursor-pointer ${
                     selectedMeso?.id === meso.id ? "bg-accent" : "bg-card"
                   }`}
-                  style={{ borderLeftColor: meso.metadata?.color || "#10b981" }}
+                  style={{ borderLeftColor: meso.metadata?.color || ["#6478b4", "#548a7c", "#b8864e", "#b45e72", "#7f6daa", "#5090a0", "#7e9a56", "#a87558"][plan.mesocycles.indexOf(meso) % 8] }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -1028,22 +982,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                       <Edit className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
-                    <span>Vol: {meso.avgVolume || 0}/10</span>
-                    <span>Int: {meso.avgIntensity || 0}/10</span>
-                  </div>
-                  <MesoPlanningContextEditor
-                    mesocycleId={meso.id}
-                    planningContext={meso.planning_context}
-                    onSaved={(text) => {
-                      setPlan(prev => ({
-                        ...prev,
-                        mesocycles: prev.mesocycles.map(m =>
-                          m.id === meso.id ? { ...m, planning_context: { text } } : m
-                        ),
-                      }))
-                    }}
-                  />
                 </div>
               ))}
             </div>
@@ -1158,7 +1096,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                             )}
                           </div>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {micro.start_date} - {micro.end_date}
+                            {formatShortDate(micro.start_date)} – {formatShortDate(micro.end_date)}
                           </p>
                           <p className="mt-1 text-sm text-muted-foreground">{micro.description}</p>
                         </div>
@@ -1271,10 +1209,13 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                   </div>
                 </div>
                 <div className="space-y-3">
-                  {selectedMicro.sessions.map((session) => {
-                    const dayMap = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                  {filterSessions(selectedMicro.sessions).map((session) => {
                     const dayShortMap = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
                     const idx = Math.max(1, Math.min(7, session.day || 1)) - 1
+                    // Compute actual date from microcycle start_date + day offset
+                    const sessionDate = selectedMicro.start_date
+                      ? (() => { const d = new Date(selectedMicro.start_date!); d.setDate(d.getDate() + idx); return d.getDate() })()
+                      : null
                     return (
                     <div
                       key={session.id}
@@ -1285,9 +1226,12 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                     >
                       <div className="flex">
                         {/* Weekday sidebar */}
-                        <div className="w-16 bg-primary/10 border-r border-primary/20 flex items-center justify-center shrink-0">
+                        <div className="w-16 bg-primary/80 border-r border-primary flex items-center justify-center shrink-0">
                           <div className="text-center">
-                            <div className="text-xs font-medium text-primary">{dayShortMap[idx]}</div>
+                            <div className="text-sm font-medium text-primary-foreground">{dayShortMap[idx]}</div>
+                            {sessionDate !== null && (
+                              <div className="text-xs text-primary-foreground/80">{sessionDate}</div>
+                            )}
                           </div>
                         </div>
 
@@ -1296,55 +1240,16 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <h3 className="font-semibold">{session.name}</h3>
-                              <div className="mt-2 flex gap-2 flex-wrap">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${
-                                    session.type === "speed"
-                                      ? "border-red-500 text-red-500"
-                                      : session.type === "strength"
-                                        ? "border-blue-500 text-blue-500"
-                                        : session.type === "endurance"
-                                          ? "border-green-500 text-green-500"
-                                          : "border-gray-500 text-gray-500"
-                                  }`}
-                                >
-                                  {session.type}
-                                </Badge>
-                                {session.volume > 0 ? (
-                                  <Badge variant="outline" className="text-xs">
-                                    {session.volume} {session.volumeUnit ?? 'kg'}
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-xs text-muted-foreground">
-                                    &mdash;
-                                  </Badge>
-                                )}
-                                {session.duration > 0 ? (
-                                  <Badge variant="outline" className="text-xs">
-                                    {Math.round(session.duration / 60)}min
-                                  </Badge>
-                                ) : null}
-                                <Badge variant="outline" className="text-xs">
-                                  {session.exercises?.length || 0} exercises
-                                </Badge>
-                              </div>
-                              {/* Exercise summaries preview (name + sets e.g. "Squat 3x10 80kg") */}
-                              {(session.exerciseSummaries ?? session.exerciseNames)?.length ? (
-                                <p className="mt-1.5 text-xs text-muted-foreground truncate">
-                                  {(session.exerciseSummaries ?? session.exerciseNames)!.slice(0, 3).join(', ')}
-                                  {(session.exerciseSummaries ?? session.exerciseNames)!.length > 3 ? ` +${(session.exerciseSummaries ?? session.exerciseNames)!.length - 3} more` : ''}
-                                </p>
-                              ) : (
-                                <p className="mt-1.5 text-xs text-muted-foreground">No exercises</p>
-                              )}
-                              {/* Subgroup indicators (T020) */}
-                              {session.targetEventGroups && session.targetEventGroups.length > 0 && (() => {
-                                const uniqueGroups = [...new Set(session.targetEventGroups.flat())]
-                                return uniqueGroups.length > 0 ? (
-                                  <p className="mt-1 text-xs text-muted-foreground">
-                                    {uniqueGroups.map(g => abbreviateEventGroup(g)).join(' \u00B7 ')}
-                                  </p>
+                              {/* Event group badges */}
+                              {(() => {
+                                const groups = session.sessionTargetSubgroups
+                                  ?? (session.targetSubgroups?.length ? [...new Set(session.targetSubgroups.flat())] : null)
+                                return groups && groups.length > 0 ? (
+                                  <div className="mt-2 flex gap-1 flex-wrap">
+                                    {groups.map(g => (
+                                      <SubgroupBadge key={g} value={abbreviateSubgroup(g)} size="md" />
+                                    ))}
+                                  </div>
                                 ) : null
                               })()}
                             </div>
@@ -1391,9 +1296,9 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
 
         {/* Mobile View - Sliding Panels */}
         <div className="lg:hidden overflow-hidden w-full max-w-full relative" ref={containerRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-          <div className="flex transition-transform duration-300 ease-out w-[300%]" style={{ transform: getTransformValue() }}>
+          <div className={`flex w-[300%] ${mobileTransitionEnabled ? 'transition-transform duration-300 ease-out' : ''}`} style={{ transform: getTransformValue() }}>
             {/* Mesocycle View - Always rendered */}
-            <div className="w-1/3 shrink-0 px-1">
+            <div className="w-1/3 shrink-0 px-0.5">
               <div>
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-semibold">Training Phases</h2>
@@ -1415,7 +1320,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                       key={meso.id}
                       onClick={() => handleMesoClick(meso)}
                       className="rounded-lg border-l-4 p-4 text-left transition-all hover:bg-accent cursor-pointer"
-                      style={{ borderLeftColor: meso.metadata?.color || "#10b981" }}
+                      style={{ borderLeftColor: meso.metadata?.color || ["#6478b4", "#548a7c", "#b8864e", "#b45e72", "#7f6daa", "#5090a0", "#7e9a56", "#a87558"][plan.mesocycles.indexOf(meso) % 8] }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
@@ -1446,18 +1351,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                           <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         </div>
                       </div>
-                      <MesoPlanningContextEditor
-                        mesocycleId={meso.id}
-                        planningContext={meso.planning_context}
-                        onSaved={(text) => {
-                          setPlan(prev => ({
-                            ...prev,
-                            mesocycles: prev.mesocycles.map(m =>
-                              m.id === meso.id ? { ...m, planning_context: { text } } : m
-                            ),
-                          }))
-                        }}
-                      />
                     </div>
                   ))}
                 </div>
@@ -1501,7 +1394,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
             </div>
 
             {/* Microcycle View - Always rendered */}
-            <div className="w-1/3 shrink-0 px-1">
+            <div className="w-1/3 shrink-0 px-0.5">
               <div>
                 {selectedMeso ? (
                   <>
@@ -1544,7 +1437,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                                 )}
                               </div>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {micro.start_date} - {micro.end_date}
+                                {formatShortDate(micro.start_date)} – {formatShortDate(micro.end_date)}
                               </p>
                               <p className="mt-1 text-sm text-muted-foreground">{micro.description}</p>
                               <div className="mt-3 flex flex-wrap gap-2 sm:gap-4">
@@ -1615,7 +1508,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
             </div>
 
             {/* Session View - Always rendered */}
-            <div className="w-1/3 shrink-0 px-1">
+            <div className="w-1/3 shrink-0 px-0.5">
               <div>
                 {selectedMicro ? (
                   <>
@@ -1660,9 +1553,12 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                       </div>
                     </div>
                     <div className="space-y-3">
-                      {selectedMicro.sessions.map((session) => {
+                      {filterSessions(selectedMicro.sessions).map((session) => {
                         const dayShortMap = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
                         const idx = Math.max(1, Math.min(7, session.day || 1)) - 1
+                        const sessionDate = selectedMicro.start_date
+                          ? (() => { const d = new Date(selectedMicro.start_date!); d.setDate(d.getDate() + idx); return d.getDate() })()
+                          : null
                         return (
                         <div
                           key={session.id}
@@ -1673,9 +1569,12 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                         >
                           <div className="flex">
                             {/* Weekday sidebar */}
-                            <div className="w-16 bg-primary/10 border-r border-primary/20 flex items-center justify-center shrink-0">
+                            <div className="w-16 bg-primary/80 border-r border-primary flex items-center justify-center shrink-0">
                               <div className="text-center">
-                                <div className="text-xs font-medium text-primary">{dayShortMap[idx]}</div>
+                                <div className="text-sm font-medium text-primary-foreground">{dayShortMap[idx]}</div>
+                                {sessionDate !== null && (
+                                  <div className="text-xs text-primary-foreground/80">{sessionDate}</div>
+                                )}
                               </div>
                             </div>
 
@@ -1684,57 +1583,16 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
                                   <h3 className="font-semibold">{session.name}</h3>
-                                  <div className="mt-2 flex gap-2 flex-wrap">
-                                    <Badge
-                                      variant="outline"
-                                      className={`text-xs ${
-                                        session.type === "speed"
-                                          ? "border-red-500 text-red-500"
-                                          : session.type === "strength"
-                                            ? "border-blue-500 text-blue-500"
-                                            : session.type === "endurance"
-                                              ? "border-green-500 text-green-500"
-                                              : session.type === "recovery"
-                                                ? "border-gray-500 text-gray-500"
-                                                : "border-purple-500 text-purple-500"
-                                      }`}
-                                    >
-                                      {session.type}
-                                    </Badge>
-                                    {session.volume > 0 ? (
-                                      <Badge variant="outline" className="text-xs">
-                                        {session.volume} {session.volumeUnit ?? 'kg'}
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="outline" className="text-xs text-muted-foreground">
-                                        &mdash;
-                                      </Badge>
-                                    )}
-                                    {session.duration > 0 ? (
-                                      <Badge variant="outline" className="text-xs">
-                                        {Math.round(session.duration / 60)}min
-                                      </Badge>
-                                    ) : null}
-                                    <Badge variant="outline" className="text-xs">
-                                      {session.exercises?.length || 0} exercises
-                                    </Badge>
-                                  </div>
-                                  {/* Exercise summaries preview (name + sets e.g. "Squat 3x10 80kg") */}
-                                  {(session.exerciseSummaries ?? session.exerciseNames)?.length ? (
-                                    <p className="mt-1.5 text-xs text-muted-foreground truncate">
-                                      {(session.exerciseSummaries ?? session.exerciseNames)!.slice(0, 3).join(', ')}
-                                      {(session.exerciseSummaries ?? session.exerciseNames)!.length > 3 ? ` +${(session.exerciseSummaries ?? session.exerciseNames)!.length - 3} more` : ''}
-                                    </p>
-                                  ) : (
-                                    <p className="mt-1.5 text-xs text-muted-foreground">No exercises</p>
-                                  )}
-                                  {/* Subgroup indicators */}
-                                  {session.targetEventGroups && session.targetEventGroups.length > 0 && (() => {
-                                    const uniqueGroups = [...new Set(session.targetEventGroups.flat())]
-                                    return uniqueGroups.length > 0 ? (
-                                      <p className="mt-1 text-xs text-muted-foreground">
-                                        {uniqueGroups.map(g => abbreviateEventGroup(g)).join(' \u00B7 ')}
-                                      </p>
+                                  {/* Event group badges */}
+                                  {(() => {
+                                    const groups = session.sessionTargetSubgroups
+                                      ?? (session.targetSubgroups?.length ? [...new Set(session.targetSubgroups.flat())] : null)
+                                    return groups && groups.length > 0 ? (
+                                      <div className="mt-2 flex gap-1 flex-wrap">
+                                        {groups.map(g => (
+                                          <SubgroupBadge key={g} value={abbreviateSubgroup(g)} size="md" />
+                                        ))}
+                                      </div>
                                     ) : null
                                   })()}
                                 </div>

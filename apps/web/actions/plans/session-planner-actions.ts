@@ -38,6 +38,7 @@ interface SessionUpdate {
   week?: number | null
   day?: number | null
   session_mode?: string | null
+  target_subgroups?: string[] | null
 }
 
 /**
@@ -214,6 +215,7 @@ export async function saveSessionWithExercisesAction(
     if (sessionUpdates.week !== undefined) sessionUpdateData.week = sessionUpdates.week
     if (sessionUpdates.day !== undefined) sessionUpdateData.day = sessionUpdates.day
     if (sessionUpdates.session_mode !== undefined) sessionUpdateData.session_mode = sessionUpdates.session_mode
+    if (sessionUpdates.target_subgroups !== undefined) sessionUpdateData.target_subgroups = sessionUpdates.target_subgroups
 
     if (Object.keys(sessionUpdateData).length > 0) {
       const { error: updateError } = await supabase
@@ -330,7 +332,7 @@ export async function saveSessionWithExercisesAction(
         exercise_order: exercise.exercise_order,
         superset_id: toSupersetIdNumber(exercise.superset_id),
         notes: exercise.notes,
-        target_event_groups: exercise.target_event_groups ?? null,
+        target_subgroups: exercise.target_subgroups ?? null,
       }))
 
       const { error: upsertExercisesError } = await supabase
@@ -395,7 +397,7 @@ export async function saveSessionWithExercisesAction(
         exercise_order: exercise.exercise_order,
         superset_id: toSupersetIdNumber(exercise.superset_id),
         notes: exercise.notes,
-        target_event_groups: exercise.target_event_groups ?? null,
+        target_subgroups: exercise.target_subgroups ?? null,
       }))
 
       const { data: insertedExercises, error: batchInsertExError } = await supabase

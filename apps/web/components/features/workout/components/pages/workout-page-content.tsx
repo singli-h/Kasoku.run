@@ -65,7 +65,7 @@ export function WorkoutPageContent() {
 
       // Success - navigate to the session
       toast({
-        title: "Workout Started",
+        title: "Workout started",
         description: "Your workout session has begun",
       })
     }
@@ -92,7 +92,7 @@ export function WorkoutPageContent() {
       }
 
       toast({
-        title: "Workout Skipped",
+        title: "Workout skipped",
         description: "The session has been marked as skipped",
       })
 
@@ -179,17 +179,12 @@ export function WorkoutPageContent() {
             )}
 
             {/* All Available Sessions */}
-            <div>
-              <h2 className="text-lg font-semibold mb-3">
-                {ongoingSession ? "Other Sessions" : "Available Sessions"}
-              </h2>
-              <WorkoutSessionSelector
-                onSessionSelected={(_presetGroup, session) => {
-                  if (session) handleSessionSelected(session)
-                }}
-                hideOngoing={!!ongoingSession}
-              />
-            </div>
+            <WorkoutSessionSelector
+              onSessionSelected={(_presetGroup, session) => {
+                if (session) handleSessionSelected(session)
+              }}
+              hideOngoing={!!ongoingSession}
+            />
           </div>
         )}
       </div>

@@ -1474,7 +1474,7 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
 export async function inviteOrAttachAthleteAction(
   email: string,
   groupId: number,
-  eventGroup?: string
+  subgroups?: string[]
 ): Promise<ActionState<{ type: 'attached' | 'invited', athlete?: Athlete }>> {
   try {
     const { userId } = await auth()
@@ -1529,24 +1529,25 @@ export async function inviteOrAttachAthleteAction(
       }
     }
 
-    // Validate eventGroup against coach's defined event groups
-    if (eventGroup) {
-      const { data: validEg } = await supabase
-        .from('event_groups')
-        .select('id')
+    // Validate subgroups against coach's defined subgroups
+    if (subgroups && subgroups.length > 0) {
+      const { data: validEgs } = await supabase
+        .from('subgroups')
+        .select('abbreviation')
         .eq('coach_id', (user.coach as { id: number }).id)
-        .eq('abbreviation', eventGroup)
-        .single()
+        .in('abbreviation', subgroups)
 
-      if (!validEg) {
-        return { isSuccess: false, message: 'Invalid event group' }
+      const validAbbrevs = new Set((validEgs ?? []).map(e => e.abbreviation))
+      const invalid = subgroups.filter(g => !validAbbrevs.has(g))
+      if (invalid.length > 0) {
+        return { isSuccess: false, message: `Invalid subgroup(s): ${invalid.join(', ')}` }
       }
     }
 
     // Use secure function for email lookup (prevents user enumeration)
-    // This function only returns user_id, athlete_id, current_group_id - no email data
+    // Returns user_id, email, first_name, last_name, role
     const { data: lookupResult, error: lookupError } = await supabase
-      .rpc('lookup_user_for_invite', { email_input: email })
+      .rpc('lookup_user_for_invite', { p_email: email })
       .maybeSingle()
 
     if (lookupError) {
@@ -1559,21 +1560,25 @@ export async function inviteOrAttachAthleteAction(
 
     if (lookupResult) {
       // User exists - ensure they have an athlete profile and assign to group
-      const { user_id, athlete_id, current_group_id } = lookupResult
+      const { user_id, role: targetRole } = lookupResult
 
       // Check if user is a coach — coaches cannot be invited as athletes
-      const { data: targetUser } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user_id)
-        .single()
-
-      if (targetUser?.role === 'coach') {
+      if (targetRole === 'coach') {
         return {
           isSuccess: false,
           message: "Cannot invite a coach as an athlete"
         }
       }
+
+      // Look up existing athlete profile to get athlete_id and current_group_id
+      const { data: existingAthlete } = await supabase
+        .from('athletes')
+        .select('id, athlete_group_id')
+        .eq('user_id', user_id)
+        .maybeSingle()
+
+      const athlete_id = existingAthlete?.id ?? null
+      const current_group_id = existingAthlete?.athlete_group_id ?? null
 
       // If the athlete is already in another coach's group, deny the reassignment
       // Prevents cross-coach athlete theft via email invite
@@ -1607,7 +1612,7 @@ export async function inviteOrAttachAthleteAction(
           .insert({
             user_id: user_id,
             athlete_group_id: groupId,
-            ...(eventGroup ? { event_group: eventGroup } : {})
+            ...(subgroups && subgroups.length > 0 ? { subgroups: subgroups } : {})
           })
           .select()
           .single()
@@ -1640,7 +1645,7 @@ export async function inviteOrAttachAthleteAction(
           .from('athletes')
           .update({
             athlete_group_id: groupId,
-            ...(eventGroup ? { event_group: eventGroup } : {})
+            ...(subgroups && subgroups.length > 0 ? { subgroups: subgroups } : {})
           })
           .eq('id', athlete_id)
           .select()
@@ -1721,7 +1726,7 @@ export async function inviteOrAttachAthleteAction(
             groupId,
             coachId: (user.coach as { id: number }).id,
             role: 'athlete',
-            ...(eventGroup ? { eventGroup } : {}),
+            ...(subgroups && subgroups.length > 0 ? { subgroups } : {}),
           },
         })
 
@@ -2697,14 +2702,14 @@ export async function getGroupHistoryAction(
 }
 
 // ============================================================================
-// EVENT GROUP ACTIONS
+// SUBGROUP ACTIONS
 // ============================================================================
 
 /**
- * Get distinct event_group values for athletes in a specific group.
+ * Get distinct subgroups values for athletes in a specific group.
  * Used for subgroup filtering in the session planner.
  */
-export async function getEventGroupsForGroupAction(
+export async function getSubgroupsForGroupAction(
   groupId: number
 ): Promise<ActionState<string[]>> {
   try {
@@ -2756,32 +2761,32 @@ export async function getEventGroupsForGroupAction(
 
     const { data, error } = await supabase
       .from('athletes')
-      .select('event_group')
+      .select('subgroups')
       .eq('athlete_group_id', groupId)
-      .not('event_group', 'is', null)
+      .not('subgroups', 'is', null)
 
     if (error) {
-      console.error('Error fetching event groups for group:', error)
+      console.error('Error fetching subgroups for group:', error)
       return {
         isSuccess: false,
-        message: `Failed to fetch event groups: ${error.message}`
+        message: `Failed to fetch subgroups: ${error.message}`
       }
     }
 
-    // Extract distinct event_group values and sort
+    // Extract distinct subgroups values and sort
     const distinctGroups = [...new Set(
       (data || [])
-        .map(row => row.event_group)
+        .flatMap(row => row.subgroups ?? [])
         .filter((v): v is string => v != null)
     )].sort()
 
     return {
       isSuccess: true,
-      message: "Event groups retrieved successfully",
+      message: "Subgroups retrieved successfully",
       data: distinctGroups
     }
   } catch (error) {
-    console.error('Error in getEventGroupsForGroupAction:', error)
+    console.error('Error in getSubgroupsForGroupAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`

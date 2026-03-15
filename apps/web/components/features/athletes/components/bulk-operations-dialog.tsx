@@ -53,7 +53,6 @@ export function BulkOperationsDialog({
   const { toast } = useToast()
   const [targetGroupId, setTargetGroupId] = useState<number | undefined>(bulkOperation.targetGroupId)
   const [removeConfirmed, setRemoveConfirmed] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
 
   // Use athleteIds from bulk operation state if provided (single athlete from dropdown),
   // otherwise use the selectedAthletes prop (bulk selection via checkboxes)
@@ -79,34 +78,36 @@ export function BulkOperationsDialog({
       return
     }
 
-    setIsProcessing(true)
+    // Capture values before closing (state resets on close)
+    const ids = [...effectiveAthleteIds]
+    const groupId = targetGroupId
+    const opType = bulkOperation.type
+
+    // Close dialog immediately
+    handleClose()
 
     try {
       let result
 
-      switch (bulkOperation.type) {
+      switch (opType) {
         case 'assign':
-          if (!targetGroupId) return
-          result = await bulkAssignAthletesAction(effectiveAthleteIds, targetGroupId)
+          if (!groupId) return
+          result = await bulkAssignAthletesAction(ids, groupId)
           break
         case 'move':
-          if (!targetGroupId) return
-          result = await bulkMoveAthletesAction(effectiveAthleteIds, targetGroupId)
+          if (!groupId) return
+          result = await bulkMoveAthletesAction(ids, groupId)
           break
         case 'remove':
-          result = await bulkRemoveAthletesAction(effectiveAthleteIds)
+          result = await bulkRemoveAthletesAction(ids)
           break
         default:
           return
       }
 
       if (result?.isSuccess) {
-        toast({
-          title: "Success",
-          description: result.message
-        })
+        toast({ title: "Success", description: result.message })
         onSuccess()
-        onClose()
       } else {
         toast({
           title: "Error",
@@ -115,13 +116,7 @@ export function BulkOperationsDialog({
         })
       }
     } catch {
-      toast({
-        title: "Error",
-        description: "Bulk operation failed",
-        variant: "destructive"
-      })
-    } finally {
-      setIsProcessing(false)
+      toast({ title: "Error", description: "Bulk operation failed", variant: "destructive" })
     }
   }
 
@@ -222,20 +217,19 @@ export function BulkOperationsDialog({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isProcessing}>
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           <Button
             onClick={handleBulkOperation}
             disabled={
-              isProcessing ||
               effectiveAthleteIds.length === 0 ||
               (bulkOperation.type !== 'remove' && !targetGroupId) ||
               (bulkOperation.type === 'remove' && !removeConfirmed)
             }
             variant={bulkOperation.type === 'remove' ? 'destructive' : 'default'}
           >
-            {isProcessing ? 'Processing...' : getButtonText()}
+            {getButtonText()}
           </Button>
         </DialogFooter>
       </DialogContent>

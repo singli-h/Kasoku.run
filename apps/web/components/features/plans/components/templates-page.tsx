@@ -5,12 +5,13 @@ Displays saved session templates in a searchable grid with name, description,
 exercise count, creation date, and actions (view, edit, delete, duplicate).
 Includes a "New Template" flow with exercise picker from the library.
 Template detail sheet for viewing/editing exercises and sets.
+Uses unified ExerciseCard component (same as plan/workout views).
 </ai_context>
 */
 
 "use client"
 
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import {
   Search,
   Trash2,
@@ -20,10 +21,10 @@ import {
   Copy,
   Plus,
   Loader2,
-  X,
   Pencil,
-  Eye,
   Save,
+  Sparkles,
+  SlidersHorizontal,
 } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,9 +33,12 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { SetRow, type VisibleFields } from "@/components/features/training/components/SetRow"
-import { getVisibleFields } from "@/components/features/training/utils/field-visibility"
-import type { TrainingSet } from "@/components/features/training/types"
+import { ExerciseCard } from "@/components/features/training/components/ExerciseCard"
+import type { TrainingExercise, TrainingSet } from "@/components/features/training/types"
+import { dbPlanSetToTrainingSet } from "@/components/features/training/types"
+import { PasteProgramDialog, type ResolvedExercise } from "@/components/features/training/components/PasteProgramDialog"
+import AnimatedGradientText from "@/components/composed/animated-gradient-text"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -66,28 +70,439 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 
 import { deleteTemplateAction, createTemplateAction, updateTemplateAction, duplicateTemplateAction, getTemplatesAction } from "@/actions/plans/session-plan-actions"
 import { useExerciseSearch } from "@/components/features/training/hooks/useExerciseSearch"
 import type { ExerciseWithDetails, SessionPlanWithDetails } from "@/types/training"
 
 // ============================================================================
-// Shared Types
+// Helpers
 // ============================================================================
 
-interface SelectedExercise {
-  exerciseId: number
-  exerciseName: string
-  exerciseTypeId?: number
-  sets: Array<{
-    reps: number | null
-    weight: number | null
-    distance: number | null
-    performing_time: number | null
-    rest_time: number | null
-    rpe: number | null
-  }>
+const EXERCISE_TYPE_SECTION: Record<number, string> = {
+  1: 'Isometric',
+  2: 'Plyometric',
+  3: 'Gym',
+  4: 'Warmup',
+  5: 'Circuit',
+  6: 'Sprint',
+  7: 'Drill',
+  8: 'Mobility',
+  9: 'Recovery',
+}
+
+function sectionFromTypeId(typeId?: number): string {
+  return typeId ? (EXERCISE_TYPE_SECTION[typeId] ?? 'Gym') : 'Gym'
+}
+
+/** Convert DB session_plan_exercises to TrainingExercise[] */
+function dbExercisesToTraining(exercises: SessionPlanWithDetails['session_plan_exercises']): TrainingExercise[] {
+  return (exercises || [])
+    .filter(e => e.exercise_id != null)
+    .sort((a, b) => (a.exercise_order || 0) - (b.exercise_order || 0))
+    .map((e, idx) => {
+      const typeId = (e.exercise as any)?.exercise_type?.id ?? (e.exercise as any)?.exercise_type_id ?? undefined
+      const sets = (e.session_plan_sets || []).map(s => dbPlanSetToTrainingSet(s as any))
+      return {
+        id: `template-${e.exercise_id}-${e.id ?? idx}`,
+        exerciseId: e.exercise_id!,
+        name: e.exercise?.name || 'Unnamed',
+        section: sectionFromTypeId(typeId),
+        exerciseOrder: e.exercise_order ?? idx,
+        exerciseTypeId: typeId,
+        expanded: true,
+        sets: sets.length > 0 ? sets : [{
+          id: crypto.randomUUID(),
+          setIndex: 1,
+          completed: false,
+        }],
+      }
+    })
+}
+
+/** Convert an ExerciseWithDetails (from search) to a TrainingExercise */
+function libraryExerciseToTraining(exercise: ExerciseWithDetails, order: number): TrainingExercise {
+  return {
+    id: crypto.randomUUID(),
+    exerciseId: exercise.id,
+    name: exercise.name ?? 'Unnamed',
+    section: sectionFromTypeId(exercise.exercise_type?.id ?? undefined),
+    exerciseOrder: order,
+    exerciseTypeId: exercise.exercise_type?.id ?? undefined,
+    expanded: true,
+    sets: [{
+      id: crypto.randomUUID(),
+      setIndex: 1,
+      completed: false,
+    }],
+  }
+}
+
+/** Convert ResolvedExercise (from AI parser) to TrainingExercise */
+function resolvedToTrainingExercise(resolved: ResolvedExercise, order: number): TrainingExercise {
+  return {
+    id: crypto.randomUUID(),
+    exerciseId: resolved.resolvedExerciseId,
+    name: resolved.resolvedExerciseName,
+    section: resolved.resolvedExerciseType || 'Gym',
+    exerciseOrder: order,
+    exerciseTypeId: resolved.resolvedExerciseTypeId ?? undefined,
+    expanded: true,
+    sets: resolved.sets.map((s, idx) => ({
+      id: crypto.randomUUID(),
+      setIndex: idx + 1,
+      reps: s.reps ?? null,
+      weight: s.weight ?? null,
+      distance: s.distance ?? null,
+      performingTime: s.performing_time ?? null,
+      restTime: s.rest_time ?? null,
+      rpe: s.rpe ?? null,
+      completed: false,
+    })),
+  }
+}
+
+/** Convert TrainingExercise[] to the payload format for create/update actions */
+function trainingExercisesToPayload(exercises: TrainingExercise[]) {
+  return exercises.map(ex => ({
+    exerciseId: ex.exerciseId,
+    exerciseName: ex.name,
+    sets: ex.sets.map(s => ({
+      reps: s.reps ?? null,
+      weight: s.weight ?? null,
+      distance: s.distance ?? null,
+      performing_time: s.performingTime ?? null,
+      rest_time: s.restTime ?? null,
+      rpe: s.rpe ?? null,
+      tempo: s.tempo ?? null,
+      effort: s.effort != null ? s.effort / 100 : null, // UI (0-100) → DB (0-1)
+      power: s.power ?? null,
+      velocity: s.velocity ?? null,
+      height: s.height ?? null,
+      resistance: s.resistance ?? null,
+      resistance_unit_id: s.resistanceUnitId ?? null,
+      metadata: (s.metadata as Record<string, unknown> | null) ?? null,
+    })),
+  }))
+}
+
+// ============================================================================
+// Shared exercise CRUD hooks (operates on TrainingExercise[])
+// ============================================================================
+
+function useTemplateExerciseHandlers(
+  setExercises: React.Dispatch<React.SetStateAction<TrainingExercise[]>>
+) {
+  const handleAddSet = useCallback((exerciseId: string | number) => {
+    setExercises(prev => prev.map(ex => {
+      if (ex.id !== exerciseId) return ex
+      const lastSet = ex.sets[ex.sets.length - 1]
+      const newSet: TrainingSet = {
+        id: crypto.randomUUID(),
+        setIndex: ex.sets.length + 1,
+        reps: lastSet?.reps ?? null,
+        weight: lastSet?.weight ?? null,
+        distance: lastSet?.distance ?? null,
+        performingTime: lastSet?.performingTime ?? null,
+        restTime: lastSet?.restTime ?? null,
+        rpe: lastSet?.rpe ?? null,
+        tempo: lastSet?.tempo ?? null,
+        effort: lastSet?.effort ?? null,
+        power: lastSet?.power ?? null,
+        velocity: lastSet?.velocity ?? null,
+        height: lastSet?.height ?? null,
+        resistance: lastSet?.resistance ?? null,
+        resistanceUnitId: lastSet?.resistanceUnitId ?? null,
+        completed: false,
+      }
+      return { ...ex, sets: [...ex.sets, newSet] }
+    }))
+  }, [setExercises])
+
+  const handleRemoveSet = useCallback((exerciseId: string | number, setId: string | number) => {
+    setExercises(prev => prev.map(ex => {
+      if (ex.id !== exerciseId || ex.sets.length <= 1) return ex
+      return { ...ex, sets: ex.sets.filter(s => s.id !== setId) }
+    }))
+  }, [setExercises])
+
+  const handleUpdateSet = useCallback(
+    (exerciseId: string | number, setId: string | number, field: keyof TrainingSet, value: number | string | null) => {
+      setExercises(prev => prev.map(ex => {
+        if (ex.id !== exerciseId) return ex
+        return {
+          ...ex,
+          sets: ex.sets.map(s => s.id === setId ? { ...s, [field]: value } : s),
+        }
+      }))
+    },
+    [setExercises]
+  )
+
+  const handleRemoveExercise = useCallback((exerciseId: string | number) => {
+    setExercises(prev => prev.filter(ex => ex.id !== exerciseId))
+  }, [setExercises])
+
+  const handleReorderSets = useCallback((exerciseId: string | number, fromIndex: number, toIndex: number) => {
+    setExercises(prev => prev.map(ex => {
+      if (ex.id !== exerciseId) return ex
+      const newSets = [...ex.sets]
+      const [moved] = newSets.splice(fromIndex, 1)
+      newSets.splice(toIndex, 0, moved)
+      return { ...ex, sets: newSets.map((s, i) => ({ ...s, setIndex: i + 1 })) }
+    }))
+  }, [setExercises])
+
+  const handleToggleExpand = useCallback((exerciseId: string | number) => {
+    setExercises(prev => prev.map(ex =>
+      ex.id === exerciseId ? { ...ex, expanded: !ex.expanded } : ex
+    ))
+  }, [setExercises])
+
+  return {
+    handleAddSet,
+    handleRemoveSet,
+    handleUpdateSet,
+    handleRemoveExercise,
+    handleReorderSets,
+    handleToggleExpand,
+  }
+}
+
+/** Exercise DnD reorder hook */
+function useExerciseDnD(
+  setExercises: React.Dispatch<React.SetStateAction<TrainingExercise[]>>
+) {
+  const [draggingExerciseId, setDraggingExerciseId] = useState<string | number | null>(null)
+
+  const handleExerciseDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }, [])
+
+  const handleExerciseDrop = useCallback((targetId: string | number) => {
+    if (!draggingExerciseId || draggingExerciseId === targetId) return
+    setExercises(prev => {
+      const fromIdx = prev.findIndex(ex => ex.id === draggingExerciseId)
+      const toIdx = prev.findIndex(ex => ex.id === targetId)
+      if (fromIdx === -1 || toIdx === -1) return prev
+      const next = [...prev]
+      const [moved] = next.splice(fromIdx, 1)
+      next.splice(toIdx, 0, moved)
+      return next.map((ex, i) => ({ ...ex, exerciseOrder: i }))
+    })
+    setDraggingExerciseId(null)
+  }, [draggingExerciseId, setExercises])
+
+  return {
+    draggingExerciseId,
+    setDraggingExerciseId,
+    handleExerciseDragOver,
+    handleExerciseDrop,
+  }
+}
+
+// ============================================================================
+// Exercise Search Combobox (used by TemplateDetailSheet edit mode)
+// ============================================================================
+
+interface ExerciseSearchComboboxProps {
+  enabled: boolean
+  selectedIds: number[]
+  onSelect: (exercise: ExerciseWithDetails) => void
+}
+
+function ExerciseSearchCombobox({ enabled, selectedIds, onSelect }: ExerciseSearchComboboxProps) {
+  const [showResults, setShowResults] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const {
+    searchQuery,
+    setSearchQuery,
+    exercises: searchResults,
+    isLoading: isSearching,
+  } = useExerciseSearch({ enabled: enabled && showResults, pageSize: 15 })
+
+  // Reset active index when results change
+  useEffect(() => { setActiveIndex(-1) }, [searchResults])
+
+  // Click-outside dismiss
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowResults(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleSelect = useCallback((exercise: ExerciseWithDetails) => {
+    onSelect(exercise)
+    setSearchQuery("")
+    setShowResults(false)
+    setActiveIndex(-1)
+  }, [onSelect, setSearchQuery])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setShowResults(false)
+      setActiveIndex(-1)
+      return
+    }
+
+    if (!showResults || !searchQuery.trim()) return
+    const results = searchResults
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIndex(prev => prev < results.length - 1 ? prev + 1 : 0)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex(prev => prev > 0 ? prev - 1 : results.length - 1)
+    } else if (e.key === 'Enter' && activeIndex >= 0 && activeIndex < results.length) {
+      e.preventDefault()
+      const exercise = results[activeIndex]
+      if (!selectedIds.includes(exercise.id)) {
+        handleSelect(exercise)
+      }
+    }
+  }, [showResults, searchQuery, searchResults, activeIndex, selectedIds, handleSelect])
+
+  // Scroll active item into view
+  useEffect(() => {
+    if (activeIndex >= 0 && listRef.current) {
+      const items = listRef.current.querySelectorAll('[role="option"]')
+      items[activeIndex]?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [activeIndex])
+
+  const isOpen = showResults && !!searchQuery.trim()
+  const listboxId = "exercise-search-listbox"
+  const activeOptionId = activeIndex >= 0 ? `exercise-option-${activeIndex}` : undefined
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder="Search exercises to add..."
+        value={searchQuery}
+        onChange={(e) => { setSearchQuery(e.target.value); setShowResults(true) }}
+        onFocus={() => setShowResults(true)}
+        onKeyDown={handleKeyDown}
+        className="pl-9"
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-controls={isOpen ? listboxId : undefined}
+        aria-activedescendant={activeOptionId}
+        autoComplete="off"
+      />
+      {isSearching && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />}
+
+      {isOpen && (
+        <div
+          ref={listRef}
+          id={listboxId}
+          role="listbox"
+          className="absolute z-50 top-full mt-1 w-full border rounded-lg bg-popover shadow-lg max-h-48 overflow-y-auto"
+        >
+          {searchResults.length === 0 && !isSearching ? (
+            <p className="p-3 text-sm text-muted-foreground text-center">No exercises found</p>
+          ) : (
+            searchResults.map((exercise, index) => {
+              const isAdded = selectedIds.includes(exercise.id)
+              return (
+                <button
+                  key={exercise.id}
+                  id={`exercise-option-${index}`}
+                  role="option"
+                  aria-selected={index === activeIndex}
+                  onClick={() => !isAdded && handleSelect(exercise)}
+                  disabled={isAdded}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                    index === activeIndex ? "bg-accent" : "hover:bg-accent"
+                  )}
+                >
+                  <Dumbbell className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="truncate flex-1">{exercise.name}</span>
+                  {exercise.exercise_type && (
+                    <span className="text-[10px] text-muted-foreground shrink-0">{exercise.exercise_type.type}</span>
+                  )}
+                  {isAdded ? (
+                    <span className="text-[10px] text-muted-foreground shrink-0">Added</span>
+                  ) : (
+                    <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </button>
+              )
+            })
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
+// Exercise List (renders ExerciseCards with DnD)
+// ============================================================================
+
+interface ExerciseListProps {
+  exercises: TrainingExercise[]
+  setExercises: React.Dispatch<React.SetStateAction<TrainingExercise[]>>
+  readOnly?: boolean
+  showAdvancedFields?: boolean
+}
+
+function ExerciseList({ exercises, setExercises, readOnly = false, showAdvancedFields = true }: ExerciseListProps) {
+  const {
+    handleAddSet,
+    handleRemoveSet,
+    handleUpdateSet,
+    handleRemoveExercise,
+    handleReorderSets,
+    handleToggleExpand,
+  } = useTemplateExerciseHandlers(setExercises)
+
+  const {
+    draggingExerciseId,
+    setDraggingExerciseId,
+    handleExerciseDragOver,
+    handleExerciseDrop,
+  } = useExerciseDnD(setExercises)
+
+  return (
+    <div className="space-y-1">
+      {exercises.map((ex) => (
+        <ExerciseCard
+          key={ex.id}
+          exercise={ex}
+          isAthlete={false}
+          showAllFields={showAdvancedFields}
+          showAdvancedFields={showAdvancedFields}
+          onToggleExpand={() => handleToggleExpand(ex.id)}
+          onCompleteSet={() => {}}
+          onUpdateSet={readOnly ? undefined : (setId, field, value) => handleUpdateSet(ex.id, setId, field, value)}
+          onAddSet={readOnly ? undefined : () => handleAddSet(ex.id)}
+          onRemoveSet={readOnly ? undefined : (setId) => handleRemoveSet(ex.id, setId)}
+          onRemoveExercise={readOnly ? undefined : () => handleRemoveExercise(ex.id)}
+          onReorderSets={readOnly ? undefined : (from, to) => handleReorderSets(ex.id, from, to)}
+          isDragging={draggingExerciseId === ex.id}
+          onDragStart={readOnly ? undefined : (e) => {
+            setDraggingExerciseId(ex.id)
+            e.dataTransfer.effectAllowed = 'move'
+          }}
+          onDragOver={readOnly ? undefined : handleExerciseDragOver}
+          onDragEnd={readOnly ? undefined : () => setDraggingExerciseId(null)}
+          onDrop={readOnly ? undefined : () => handleExerciseDrop(ex.id)}
+        />
+      ))}
+    </div>
+  )
 }
 
 // ============================================================================
@@ -105,7 +520,10 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
   const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null)
   const [showNewDialog, setShowNewDialog] = useState(false)
   const [detailTemplate, setDetailTemplate] = useState<SessionPlanWithDetails | null>(null)
-  const [detailMode, setDetailMode] = useState<"view" | "edit">("view")
+  const [isDuplicating, setIsDuplicating] = useState<string | null>(null)
+
+  // AI Parser state
+  const [pasteProgramOpen, setPasteProgramOpen] = useState(false)
 
   const filteredTemplates = useMemo(() => {
     if (!searchTerm.trim()) return templates
@@ -133,19 +551,24 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
   }
 
   const handleDuplicateTemplate = async (templateId: string) => {
+    setIsDuplicating(templateId)
     try {
       const result = await duplicateTemplateAction(templateId)
       if (result.isSuccess) {
+        toast({ title: "Template duplicated", description: result.message })
+        setIsDuplicating(null)
+        // Background sync to show the new template
         const refreshed = await getTemplatesAction()
         if (refreshed.isSuccess) {
           setTemplates(refreshed.data)
         }
-        toast({ title: "Template duplicated", description: result.message })
       } else {
         toast({ title: "Error", description: result.message, variant: "destructive" })
+        setIsDuplicating(null)
       }
     } catch {
       toast({ title: "Error", description: "Failed to duplicate template", variant: "destructive" })
+      setIsDuplicating(null)
     }
   }
 
@@ -157,17 +580,29 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
   const handleTemplateUpdated = useCallback((updated: SessionPlanWithDetails) => {
     setTemplates(prev => prev.map(t => t.id === updated.id ? updated : t))
     setDetailTemplate(updated)
-    setDetailMode("view")
   }, [])
 
-  const openDetail = useCallback((template: SessionPlanWithDetails, mode: "view" | "edit" = "view") => {
+  const openDetail = useCallback((template: SessionPlanWithDetails) => {
     setDetailTemplate(template)
-    setDetailMode(mode)
   }, [])
+
+  // AI Parser: create a new template from parsed exercises
+  const handleAIParsedExercises = useCallback((resolved: ResolvedExercise[]) => {
+    if (resolved.length === 0) return
+    // Convert to TrainingExercise[] and open new template dialog pre-populated
+    const trainingExercises = resolved.map((r, i) => resolvedToTrainingExercise(r, i))
+    // Open the new template dialog with pre-populated exercises
+    setAIParsedForNew(trainingExercises)
+    setPasteProgramOpen(false)
+    setShowNewDialog(true)
+  }, [])
+
+  // State to pass AI-parsed exercises to NewTemplateDialog
+  const [aiParsedForNew, setAIParsedForNew] = useState<TrainingExercise[] | null>(null)
 
   return (
     <div className="flex-1 space-y-6 p-6">
-      {/* Search + New Template */}
+      {/* Search + New Template + AI Parse */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <div className="relative">
@@ -180,10 +615,21 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
             />
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setShowNewDialog(true)} className="shrink-0">
-          <Plus className="h-4 w-4 mr-1.5" />
-          New Template
-        </Button>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setShowNewDialog(true)}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            New Template
+          </Button>
+          <button
+            onClick={() => setPasteProgramOpen(true)}
+            className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <AnimatedGradientText className="flex items-center gap-1.5 text-sm cursor-pointer">
+              <Sparkles className="h-4 w-4" />
+              AI Parse
+            </AnimatedGradientText>
+          </button>
+        </div>
       </div>
 
       {/* Templates Grid */}
@@ -206,9 +652,9 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
               key={template.id}
               template={template}
               onClick={() => openDetail(template)}
-              onEdit={() => openDetail(template, "edit")}
               onDuplicate={() => handleDuplicateTemplate(template.id)}
               onDelete={() => setDeleteTemplateId(template.id)}
+              disabled={isDuplicating === template.id}
             />
           ))}
         </div>
@@ -217,18 +663,27 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
       {/* New Template Dialog */}
       <NewTemplateDialog
         open={showNewDialog}
-        onOpenChange={setShowNewDialog}
+        onOpenChange={(open) => {
+          setShowNewDialog(open)
+          if (!open) setAIParsedForNew(null)
+        }}
         onCreated={handleTemplateCreated}
+        initialExercises={aiParsedForNew}
       />
 
       {/* Template Detail Sheet */}
       <TemplateDetailSheet
         template={detailTemplate}
-        mode={detailMode}
-        onModeChange={setDetailMode}
         onClose={() => setDetailTemplate(null)}
         onUpdated={handleTemplateUpdated}
         onDelete={(id) => { setDetailTemplate(null); setDeleteTemplateId(id) }}
+      />
+
+      {/* AI Parse Dialog */}
+      <PasteProgramDialog
+        open={pasteProgramOpen}
+        onOpenChange={setPasteProgramOpen}
+        onExercisesResolved={handleAIParsedExercises}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -256,361 +711,116 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
 }
 
 // ============================================================================
-// Exercise Search Combobox (used by TemplateDetailSheet edit mode)
-// ============================================================================
-
-interface ExerciseSearchComboboxProps {
-  enabled: boolean
-  selectedIds: number[]
-  onSelect: (exercise: ExerciseWithDetails) => void
-}
-
-function ExerciseSearchCombobox({ enabled, selectedIds, onSelect }: ExerciseSearchComboboxProps) {
-  const [showResults, setShowResults] = useState(false)
-  const {
-    searchQuery,
-    setSearchQuery,
-    exercises: searchResults,
-    isLoading: isSearching,
-  } = useExerciseSearch({ enabled: enabled && showResults, pageSize: 15 })
-
-  const handleSelect = useCallback((exercise: ExerciseWithDetails) => {
-    onSelect(exercise)
-    setSearchQuery("")
-    setShowResults(false)
-  }, [onSelect, setSearchQuery])
-
-  return (
-    <div className="relative">
-      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-      <Input
-        placeholder="Search exercises to add..."
-        value={searchQuery}
-        onChange={(e) => { setSearchQuery(e.target.value); setShowResults(true) }}
-        onFocus={() => setShowResults(true)}
-        className="pl-9"
-      />
-      {isSearching && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />}
-
-      {showResults && searchQuery.trim() && (
-        <div className="absolute z-50 top-full mt-1 w-full border rounded-lg bg-popover shadow-lg max-h-48 overflow-y-auto">
-          {searchResults.length === 0 && !isSearching ? (
-            <p className="p-3 text-sm text-muted-foreground text-center">No exercises found</p>
-          ) : (
-            searchResults.map((exercise) => {
-              const isAdded = selectedIds.includes(exercise.id)
-              return (
-                <button
-                  key={exercise.id}
-                  onClick={() => !isAdded && handleSelect(exercise)}
-                  disabled={isAdded}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Dumbbell className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="truncate flex-1">{exercise.name}</span>
-                  {exercise.exercise_type && (
-                    <span className="text-[10px] text-muted-foreground shrink-0">{exercise.exercise_type.type}</span>
-                  )}
-                  {isAdded ? (
-                    <span className="text-[10px] text-muted-foreground shrink-0">Added</span>
-                  ) : (
-                    <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                </button>
-              )
-            })
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ============================================================================
-// Template Exercise Block (uses shared SetRow + getVisibleFields)
-// ============================================================================
-
-interface TemplateExerciseBlockProps {
-  exercise: SelectedExercise
-  exerciseIndex: number
-  onRemoveExercise: () => void
-  onAddSet: () => void
-  onRemoveSet: (setIndex: number) => void
-  onUpdateSetField: (setIndex: number, field: keyof TrainingSet, value: number | string | null) => void
-}
-
-function TemplateExerciseBlock({
-  exercise,
-  exerciseIndex,
-  onRemoveExercise,
-  onAddSet,
-  onRemoveSet,
-  onUpdateSetField,
-}: TemplateExerciseBlockProps) {
-  const visibleFields = useMemo((): VisibleFields => {
-    const planSets = exercise.sets.map(s => ({
-      reps: s.reps,
-      weight: s.weight,
-      distance: s.distance,
-      performing_time: s.performing_time,
-      rest_time: s.rest_time,
-      rpe: s.rpe,
-    }))
-    const visibleFieldKeys = getVisibleFields(exercise.exerciseTypeId, planSets, { forCoach: true })
-    return {
-      reps: visibleFieldKeys.includes('reps'),
-      weight: visibleFieldKeys.includes('weight'),
-      distance: visibleFieldKeys.includes('distance'),
-      performingTime: visibleFieldKeys.includes('performingTime'),
-      height: visibleFieldKeys.includes('height'),
-      power: visibleFieldKeys.includes('power'),
-      velocity: visibleFieldKeys.includes('velocity'),
-      rpe: visibleFieldKeys.includes('rpe'),
-      restTime: visibleFieldKeys.includes('restTime'),
-      tempo: visibleFieldKeys.includes('tempo'),
-      effort: visibleFieldKeys.includes('effort'),
-      resistance: visibleFieldKeys.includes('resistance'),
-    }
-  }, [exercise.sets, exercise.exerciseTypeId])
-
-  const trainingSets: TrainingSet[] = useMemo(() =>
-    exercise.sets.map((s, idx) => ({
-      id: `template-${exercise.exerciseId}-${idx}`,
-      setIndex: idx + 1,
-      reps: s.reps,
-      weight: s.weight,
-      distance: s.distance,
-      performingTime: s.performing_time,
-      restTime: s.rest_time,
-      rpe: s.rpe,
-      completed: false,
-    })),
-    [exercise.sets, exercise.exerciseId]
-  )
-
-  return (
-    <div className="border rounded-lg p-3 space-y-2 bg-card">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs text-muted-foreground tabular-nums">{exerciseIndex + 1}.</span>
-          <span className="text-sm font-medium truncate">{exercise.exerciseName}</span>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 shrink-0"
-          onClick={onRemoveExercise}
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      <div className="space-y-0">
-        {trainingSets.map((trainingSet, setIdx) => (
-          <SetRow
-            key={trainingSet.id}
-            set={trainingSet}
-            isAthlete={false}
-            visibleFields={visibleFields}
-            onUpdate={(field, value) => onUpdateSetField(setIdx, field, value)}
-            onRemove={exercise.sets.length > 1 ? () => onRemoveSet(setIdx) : undefined}
-          />
-        ))}
-      </div>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 text-xs text-muted-foreground"
-        onClick={onAddSet}
-      >
-        <Plus className="h-3 w-3 mr-1" />
-        Add Set
-      </Button>
-    </div>
-  )
-}
-
-// ============================================================================
-// Shared exercise set handlers
-// ============================================================================
-
-function useExerciseSetHandlers(setExercises: React.Dispatch<React.SetStateAction<SelectedExercise[]>>) {
-  const handleAddSet = useCallback((exerciseIndex: number) => {
-    setExercises(prev =>
-      prev.map((ex, i) => {
-        if (i !== exerciseIndex) return ex
-        const lastSet = ex.sets[ex.sets.length - 1]
-        return {
-          ...ex,
-          sets: [
-            ...ex.sets,
-            lastSet ? { ...lastSet } : { reps: null, weight: null, distance: null, performing_time: null, rest_time: null, rpe: null },
-          ],
-        }
-      })
-    )
-  }, [setExercises])
-
-  const handleRemoveSet = useCallback((exerciseIndex: number, setIndex: number) => {
-    setExercises(prev =>
-      prev.map((ex, i) => {
-        if (i !== exerciseIndex || ex.sets.length <= 1) return ex
-        return { ...ex, sets: ex.sets.filter((_, j) => j !== setIndex) }
-      })
-    )
-  }, [setExercises])
-
-  const handleUpdateSetField = useCallback(
-    (exerciseIndex: number, setIndex: number, field: keyof TrainingSet, value: number | string | null) => {
-      const fieldMap: Record<string, string> = {
-        reps: 'reps',
-        weight: 'weight',
-        distance: 'distance',
-        performingTime: 'performing_time',
-        restTime: 'rest_time',
-        rpe: 'rpe',
-      }
-      const mappedField = fieldMap[field as string] ?? field
-      setExercises(prev =>
-        prev.map((ex, i) => {
-          if (i !== exerciseIndex) return ex
-          return {
-            ...ex,
-            sets: ex.sets.map((s, j) =>
-              j === setIndex ? { ...s, [mappedField]: value } : s
-            ),
-          }
-        })
-      )
-    },
-    [setExercises]
-  )
-
-  return { handleAddSet, handleRemoveSet, handleUpdateSetField }
-}
-
-// ============================================================================
-// Template Detail Sheet (View + Edit)
+// Template Detail Sheet (always edit mode, with unsaved changes warning)
 // ============================================================================
 
 interface TemplateDetailSheetProps {
   template: SessionPlanWithDetails | null
-  mode: "view" | "edit"
-  onModeChange: (mode: "view" | "edit") => void
   onClose: () => void
   onUpdated: (template: SessionPlanWithDetails) => void
   onDelete: (id: string) => void
 }
 
-function TemplateDetailSheet({ template, mode, onModeChange, onClose, onUpdated, onDelete }: TemplateDetailSheetProps) {
+function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: TemplateDetailSheetProps) {
   const { toast } = useToast()
   const [editName, setEditName] = useState("")
   const [editDescription, setEditDescription] = useState("")
-  const [editExercises, setEditExercises] = useState<SelectedExercise[]>([])
+  const [editExercises, setEditExercises] = useState<TrainingExercise[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
+  const [originalSnapshot, setOriginalSnapshot] = useState("")
 
-  const { handleAddSet, handleRemoveSet, handleUpdateSetField } = useExerciseSetHandlers(setEditExercises)
+  // Field toggle — show all fields by default in coach/template mode
+  const [showAllFields, setShowAllFields] = useState(true)
 
-  const populateEditState = useCallback((t: SessionPlanWithDetails) => {
-    setEditName(t.name || "")
-    setEditDescription(t.description || "")
-    setEditExercises(
-      (t.session_plan_exercises || [])
-        .filter(e => e.exercise_id != null)
-        .map(e => ({
-          exerciseId: e.exercise_id!,
-          exerciseName: e.exercise?.name || "Unnamed",
-          exerciseTypeId: (e.exercise as any)?.exercise_type?.id ?? undefined,
-          sets: (e.session_plan_sets || []).map(s => ({
-            reps: s.reps ?? null,
-            weight: s.weight ?? null,
-            distance: s.distance ?? null,
-            performing_time: s.performing_time ?? null,
-            rest_time: s.rest_time ?? null,
-            rpe: s.rpe ?? null,
-          })),
-        })).map(ex => ex.sets.length === 0
-          ? { ...ex, sets: [{ reps: null, weight: null, distance: null, performing_time: null, rest_time: null, rpe: null }] }
-          : ex
-        )
-    )
-  }, [])
+  // Ref to prevent onOpenChange from closing when we want to show the dialog instead
+  const blockCloseRef = useRef(false)
 
-  // Auto-populate edit state when opening directly in edit mode
+  // Populate edit state when template opens
   useEffect(() => {
-    if (template && mode === "edit") {
-      populateEditState(template)
+    if (template) {
+      const exercises = dbExercisesToTraining(template.session_plan_exercises)
+      setEditName(template.name || "")
+      setEditDescription(template.description || "")
+      setEditExercises(exercises)
+      setOriginalSnapshot(JSON.stringify({
+        name: template.name || "",
+        desc: template.description || "",
+        exercises: exercises.map((e, i) => ({ id: e.exerciseId, order: i, sets: e.sets })),
+      }))
     }
-  }, [template, mode, populateEditState])
+  }, [template])
 
-  const startEditing = useCallback(() => {
-    if (!template) return
-    populateEditState(template)
-    onModeChange("edit")
-  }, [template, onModeChange, populateEditState])
+  // Dirty detection
+  const isDirty = useMemo(() => {
+    if (!template) return false
+    const current = JSON.stringify({
+      name: editName,
+      desc: editDescription,
+      exercises: editExercises.map((e, i) => ({ id: e.exerciseId, order: i, sets: e.sets })),
+    })
+    return current !== originalSnapshot
+  }, [editName, editDescription, editExercises, originalSnapshot, template])
+
+  const handleSheetClose = useCallback(() => {
+    if (isDirty) {
+      setShowUnsavedDialog(true)
+    } else {
+      onClose()
+    }
+  }, [isDirty, onClose])
 
   const handleAddExercise = useCallback((exercise: ExerciseWithDetails) => {
     setEditExercises(prev => {
       if (prev.some(e => e.exerciseId === exercise.id)) return prev
-      return [...prev, {
-        exerciseId: exercise.id,
-        exerciseName: exercise.name ?? "Unnamed",
-        exerciseTypeId: exercise.exercise_type?.id ?? undefined,
-        sets: [{ reps: null, weight: null, distance: null, performing_time: null, rest_time: null, rpe: null }],
-      }]
+      return [...prev, libraryExerciseToTraining(exercise, prev.length)]
     })
   }, [])
 
-  const handleRemoveExercise = useCallback((index: number) => {
-    setEditExercises(prev => prev.filter((_, i) => i !== index))
-  }, [])
-
-  const handleSave = useCallback(async () => {
-    if (!template || !editName.trim() || editExercises.length === 0) return
+  const handleSave = useCallback(async (): Promise<boolean> => {
+    if (!template || !editName.trim() || editExercises.length === 0) return false
     setIsSaving(true)
 
     try {
       const result = await updateTemplateAction(template.id, {
         name: editName.trim(),
         description: editDescription.trim() || undefined,
-        exercises: editExercises.map(ex => ({
-          exerciseId: ex.exerciseId,
-          exerciseName: ex.exerciseName,
-          sets: ex.sets,
-        })),
+        exercises: trainingExercisesToPayload(editExercises),
       })
 
       if (result.isSuccess) {
-        const updated: SessionPlanWithDetails = {
-          ...template,
-          name: editName.trim(),
-          description: editDescription.trim() || null,
-          session_plan_exercises: editExercises.map((ex, i) => ({
-            id: `updated-${i}`,
-            session_plan_id: template.id,
-            exercise_id: ex.exerciseId,
-            exercise_order: i + 1,
-            notes: null,
-            superset_id: null,
-            created_at: template.created_at,
-            updated_at: new Date().toISOString(),
-            target_event_groups: null,
-            exercise: { id: ex.exerciseId, name: ex.exerciseName } as any,
-            session_plan_sets: ex.sets.map((s, j) => ({
-              id: j,
-              set_index: j + 1,
-              ...s,
-            })) as any,
-          })),
+        // Always update snapshot to match what was just saved (fallback if re-fetch fails)
+        const savedSnapshot = JSON.stringify({
+          name: editName,
+          desc: editDescription,
+          exercises: editExercises.map((e, i) => ({ id: e.exerciseId, order: i, sets: e.sets })),
+        })
+        setOriginalSnapshot(savedSnapshot)
+
+        // Try to re-fetch accurate server state
+        const refreshed = await getTemplatesAction()
+        if (refreshed.isSuccess) {
+          const updated = refreshed.data.find(t => t.id === template.id)
+          if (updated) {
+            const exercises = dbExercisesToTraining(updated.session_plan_exercises)
+            setEditExercises(exercises)
+            setOriginalSnapshot(JSON.stringify({
+              name: updated.name || "",
+              desc: updated.description || "",
+              exercises: exercises.map((e, i) => ({ id: e.exerciseId, order: i, sets: e.sets })),
+            }))
+            onUpdated(updated)
+          }
         }
-        onUpdated(updated)
         toast({ title: "Template updated", description: `${editExercises.length} exercise${editExercises.length !== 1 ? "s" : ""} saved` })
+        return true
       } else {
         toast({ title: "Error", description: result.message, variant: "destructive" })
+        return false
       }
     } catch {
       toast({ title: "Error", description: "Failed to update template", variant: "destructive" })
+      return false
     } finally {
       setIsSaving(false)
     }
@@ -618,80 +828,56 @@ function TemplateDetailSheet({ template, mode, onModeChange, onClose, onUpdated,
 
   if (!template) return null
 
-  const exercises = template.session_plan_exercises || []
-
   return (
-    <Sheet open={!!template} onOpenChange={(open) => { if (!open) { onClose(); onModeChange("view") } }}>
-      <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col gap-0 p-0">
-        <SheetHeader className="px-6 py-4 border-b">
-          <SheetTitle className="flex items-center gap-2">
-            <Dumbbell className="h-4 w-4 text-primary" />
-            {mode === "edit" ? "Edit Template" : (template.name || "Untitled Template")}
-          </SheetTitle>
-          {mode === "view" && template.description && (
-            <SheetDescription className="text-xs">{template.description}</SheetDescription>
-          )}
-        </SheetHeader>
+    <>
+      <Sheet
+        open={!!template}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (blockCloseRef.current) {
+              blockCloseRef.current = false
+              return
+            }
+            handleSheetClose()
+          }
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-lg flex flex-col gap-0 p-0"
+          onInteractOutside={(e) => {
+            if (isDirty) {
+              e.preventDefault()
+              blockCloseRef.current = true
+              setShowUnsavedDialog(true)
+            }
+          }}
+          onEscapeKeyDown={(e) => {
+            if (isDirty) {
+              e.preventDefault()
+              blockCloseRef.current = true
+              setShowUnsavedDialog(true)
+            }
+          }}
+        >
+          <SheetHeader className="px-6 py-4 border-b">
+            <SheetTitle className="flex items-center gap-2">
+              <Dumbbell className="h-4 w-4 text-primary" />
+              Edit Template
+            </SheetTitle>
+            <SheetDescription>Edit template name, description, and exercises</SheetDescription>
+          </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {mode === "view" ? (
-            /* ---- VIEW MODE ---- */
-            <div className="space-y-3">
-              {exercises.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No exercises in this template</p>
-              ) : (
-                exercises.map((ex, idx) => {
-                  const sets = ex.session_plan_sets || []
-                  return (
-                    <div key={ex.id ?? idx} className="border rounded-lg p-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground tabular-nums w-5 text-right">{idx + 1}.</span>
-                        <span className="text-sm font-medium truncate">{ex.exercise?.name || "Unnamed"}</span>
-                        <Badge variant="secondary" className="text-[10px] shrink-0">
-                          {sets.length} set{sets.length !== 1 ? "s" : ""}
-                        </Badge>
-                      </div>
-                      {sets.length > 0 && (
-                        <div className="ml-7">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="text-muted-foreground">
-                                <th className="text-left font-normal w-8">#</th>
-                                <th className="text-left font-normal">Reps</th>
-                                <th className="text-left font-normal">Weight</th>
-                                <th className="text-left font-normal">Dist</th>
-                                <th className="text-left font-normal">Rest</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {sets.map((s, sIdx) => (
-                                <tr key={sIdx} className="text-muted-foreground">
-                                  <td className="py-0.5">{sIdx + 1}</td>
-                                  <td className="py-0.5">{s.reps ?? "—"}</td>
-                                  <td className="py-0.5">{s.weight != null ? `${s.weight}kg` : "—"}</td>
-                                  <td className="py-0.5">{s.distance != null ? `${s.distance}m` : "—"}</td>
-                                  <td className="py-0.5">{s.rest_time != null ? `${s.rest_time}s` : "—"}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          ) : (
-            /* ---- EDIT MODE ---- */
+          <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Name</Label>
-                <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Template name" />
+                <Label htmlFor="edit-template-name">Name</Label>
+                <Input id="edit-template-name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Template name" />
               </div>
               <div className="space-y-1.5">
-                <Label>Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Label htmlFor="edit-template-description">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
                 <Textarea
+                  id="edit-template-description"
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   placeholder="Brief description..."
@@ -700,74 +886,82 @@ function TemplateDetailSheet({ template, mode, onModeChange, onClose, onUpdated,
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Exercises</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Exercises</Label>
+                  <button
+                    onClick={() => setShowAllFields(prev => !prev)}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-0.5 rounded font-medium transition-colors",
+                      showAllFields
+                        ? "bg-primary/80 text-primary-foreground hover:bg-primary/90"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    )}
+                    title={showAllFields ? "Hide optional fields" : "Show all fields"}
+                  >
+                    <SlidersHorizontal className="w-3 h-3" />
+                    <span className="text-[11px]">{showAllFields ? "All" : "Min"}</span>
+                  </button>
+                </div>
                 <ExerciseSearchCombobox
-                  enabled={mode === "edit"}
+                  enabled={!!template}
                   selectedIds={editExercises.map(e => e.exerciseId)}
                   onSelect={handleAddExercise}
                 />
               </div>
               {editExercises.length > 0 ? (
-                <div className="space-y-2">
-                  {editExercises.map((ex, exIdx) => (
-                    <TemplateExerciseBlock
-                      key={`${ex.exerciseId}-${exIdx}`}
-                      exercise={ex}
-                      exerciseIndex={exIdx}
-                      onRemoveExercise={() => handleRemoveExercise(exIdx)}
-                      onAddSet={() => handleAddSet(exIdx)}
-                      onRemoveSet={(setIdx) => handleRemoveSet(exIdx, setIdx)}
-                      onUpdateSetField={(setIdx, field, value) => handleUpdateSetField(exIdx, setIdx, field, value)}
-                    />
-                  ))}
-                </div>
+                <ExerciseList
+                  exercises={editExercises}
+                  setExercises={setEditExercises}
+                  showAdvancedFields={showAllFields}
+                />
               ) : (
                 <div className="py-6 text-center text-sm text-muted-foreground">
                   Search and add exercises above
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Footer */}
-        <div className="border-t px-6 py-3 flex items-center gap-2">
-          {mode === "view" ? (
-            <>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={startEditing}>
-                <Pencil className="h-3.5 w-3.5" />
-                Edit
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-destructive hover:text-destructive"
-                onClick={() => onDelete(template.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete
-              </Button>
-              <div className="flex-1" />
-              <span className="text-xs text-muted-foreground">
-                {exercises.length} exercise{exercises.length !== 1 ? "s" : ""}
-              </span>
-            </>
-          ) : (
-            <>
-              <Button size="sm" className="gap-1.5" onClick={handleSave} disabled={isSaving || !editName.trim() || editExercises.length === 0}>
-                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                {isSaving ? "Saving..." : "Save Changes"}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => onModeChange("view")}>Cancel</Button>
-              <div className="flex-1" />
-              <span className="text-xs text-muted-foreground">
-                {editExercises.length} exercise{editExercises.length !== 1 ? "s" : ""}
-              </span>
-            </>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
+          {/* Footer */}
+          <div className="border-t px-6 py-3 flex items-center gap-2">
+            <Button size="sm" className="gap-1.5" onClick={handleSave} disabled={isSaving || !editName.trim() || editExercises.length === 0}>
+              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-destructive hover:text-destructive"
+              onClick={() => onDelete(template.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </Button>
+            <div className="flex-1" />
+            <span className="text-xs text-muted-foreground">
+              {editExercises.length} exercise{editExercises.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Unsaved changes dialog */}
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Would you like to save before leaving?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button variant="outline" onClick={() => { setShowUnsavedDialog(false); onClose() }}>Discard</Button>
+            <Button onClick={async () => { const ok = await handleSave(); if (ok) { setShowUnsavedDialog(false); onClose() } else { setShowUnsavedDialog(false) } }}>Save</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -779,16 +973,18 @@ interface NewTemplateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated: (template: SessionPlanWithDetails) => void
+  initialExercises?: TrainingExercise[] | null
 }
 
-function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogProps) {
+function NewTemplateDialog({ open, onOpenChange, onCreated, initialExercises }: NewTemplateDialogProps) {
   const { toast } = useToast()
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [isSaving, setIsSaving] = useState(false)
-  const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([])
+  const [selectedExercises, setSelectedExercises] = useState<TrainingExercise[]>([])
 
-  const { handleAddSet, handleRemoveSet, handleUpdateSetField } = useExerciseSetHandlers(setSelectedExercises)
+  // Field toggle — show all fields by default in template mode
+  const [showAllFields, setShowAllFields] = useState(true)
 
   const resetState = useCallback(() => {
     setName("")
@@ -796,6 +992,13 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
     setIsSaving(false)
     setSelectedExercises([])
   }, [])
+
+  // Populate from AI-parsed exercises when provided
+  useEffect(() => {
+    if (initialExercises && initialExercises.length > 0) {
+      setSelectedExercises(initialExercises)
+    }
+  }, [initialExercises])
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -806,22 +1009,10 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
   )
 
   const handleAddExercise = useCallback((exercise: ExerciseWithDetails) => {
-    setSelectedExercises((prev) => {
-      if (prev.some((e) => e.exerciseId === exercise.id)) return prev
-      return [
-        ...prev,
-        {
-          exerciseId: exercise.id,
-          exerciseName: exercise.name ?? "Unnamed",
-          exerciseTypeId: exercise.exercise_type?.id ?? undefined,
-          sets: [{ reps: null, weight: null, distance: null, performing_time: null, rest_time: null, rpe: null }],
-        },
-      ]
+    setSelectedExercises(prev => {
+      if (prev.some(e => e.exerciseId === exercise.id)) return prev
+      return [...prev, libraryExerciseToTraining(exercise, prev.length)]
     })
-  }, [])
-
-  const handleRemoveExercise = useCallback((index: number) => {
-    setSelectedExercises((prev) => prev.filter((_, i) => i !== index))
   }, [])
 
   const handleSave = useCallback(async () => {
@@ -833,31 +1024,24 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
       const result = await createTemplateAction({
         name: name.trim(),
         description: description.trim() || undefined,
-        exercises: selectedExercises.map((ex) => ({
-          exerciseId: ex.exerciseId,
-          exerciseName: ex.exerciseName,
-          sets: ex.sets,
-        })),
+        exercises: trainingExercisesToPayload(selectedExercises),
       })
 
       if (result.isSuccess && result.data) {
-        const newTemplate = {
-          ...result.data,
-          session_plan_exercises: selectedExercises.map((ex, i) => ({
-            id: `temp-${i}`,
-            session_plan_id: result.data.id,
-            exercise_id: ex.exerciseId,
-            exercise_order: i + 1,
-            notes: null,
-            superset_id: null,
-            created_at: new Date().toISOString(),
-            updated_at: null,
-            target_event_groups: null,
-            exercise: { id: ex.exerciseId, name: ex.exerciseName } as any,
-            session_plan_sets: [],
-          })),
-        } as SessionPlanWithDetails
-        onCreated(newTemplate)
+        // Re-fetch to get accurate server state with nested data
+        let created = false
+        const refreshed = await getTemplatesAction()
+        if (refreshed.isSuccess) {
+          const newTemplate = refreshed.data.find(t => t.id === result.data.id)
+          if (newTemplate) {
+            onCreated(newTemplate)
+            created = true
+          }
+        }
+        if (!created) {
+          // Fallback: use minimal data from create response so the grid still updates
+          onCreated({ ...result.data, session_plan_exercises: [] } as SessionPlanWithDetails)
+        }
         toast({
           title: "Template created",
           description: `Template saved with ${selectedExercises.length} exercise${selectedExercises.length !== 1 ? "s" : ""}`,
@@ -912,7 +1096,22 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
 
           {/* Exercise Search */}
           <div className="space-y-1.5">
-            <Label>Exercises</Label>
+            <div className="flex items-center justify-between">
+              <Label>Exercises</Label>
+              <button
+                onClick={() => setShowAllFields(prev => !prev)}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-0.5 rounded font-medium transition-colors",
+                  showAllFields
+                    ? "bg-primary/80 text-primary-foreground hover:bg-primary/90"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+                title={showAllFields ? "Hide optional fields" : "Show all fields"}
+              >
+                <SlidersHorizontal className="w-3 h-3" />
+                <span className="text-[11px]">{showAllFields ? "All" : "Min"}</span>
+              </button>
+            </div>
             <ExerciseSearchCombobox
               enabled={open}
               selectedIds={selectedExercises.map(e => e.exerciseId)}
@@ -921,23 +1120,13 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
           </div>
 
           {/* Selected exercises list */}
-          {selectedExercises.length > 0 && (
-            <div className="space-y-2">
-              {selectedExercises.map((ex, exIdx) => (
-                <TemplateExerciseBlock
-                  key={`${ex.exerciseId}-${exIdx}`}
-                  exercise={ex}
-                  exerciseIndex={exIdx}
-                  onRemoveExercise={() => handleRemoveExercise(exIdx)}
-                  onAddSet={() => handleAddSet(exIdx)}
-                  onRemoveSet={(setIdx) => handleRemoveSet(exIdx, setIdx)}
-                  onUpdateSetField={(setIdx, field, value) => handleUpdateSetField(exIdx, setIdx, field, value)}
-                />
-              ))}
-            </div>
-          )}
-
-          {selectedExercises.length === 0 && (
+          {selectedExercises.length > 0 ? (
+            <ExerciseList
+              exercises={selectedExercises}
+              setExercises={setSelectedExercises}
+              showAdvancedFields={showAllFields}
+            />
+          ) : (
             <div className="py-6 text-center text-sm text-muted-foreground">
               Search and add exercises from your library above
             </div>
@@ -970,12 +1159,12 @@ function NewTemplateDialog({ open, onOpenChange, onCreated }: NewTemplateDialogP
 interface TemplateCardProps {
   template: SessionPlanWithDetails
   onClick: () => void
-  onEdit: () => void
   onDuplicate: () => void
   onDelete: () => void
+  disabled?: boolean
 }
 
-function TemplateCard({ template, onClick, onEdit, onDuplicate, onDelete }: TemplateCardProps) {
+function TemplateCard({ template, onClick, onDuplicate, onDelete, disabled }: TemplateCardProps) {
   const exerciseCount = template.session_plan_exercises?.length ?? 0
 
   const exerciseNames = (template.session_plan_exercises || [])
@@ -999,7 +1188,7 @@ function TemplateCard({ template, onClick, onEdit, onDuplicate, onDelete }: Temp
     : null
 
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
+    <Card className={cn("hover:shadow-md transition-shadow cursor-pointer", disabled && "opacity-60 pointer-events-none")} onClick={onClick}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -1026,10 +1215,6 @@ function TemplateCard({ template, onClick, onEdit, onDuplicate, onDelete }: Temp
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onClick() }}>
-                <Eye className="h-4 w-4 mr-2" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit() }}>
                 <Pencil className="h-4 w-4 mr-2" />
                 Edit
               </DropdownMenuItem>

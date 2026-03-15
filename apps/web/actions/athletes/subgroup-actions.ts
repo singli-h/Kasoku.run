@@ -1,7 +1,7 @@
 /*
 <ai_context>
-Server actions for coach-configurable event groups.
-Handles CRUD for event group definitions that coaches create to categorize athletes.
+Server actions for coach-configurable subgroups.
+Handles CRUD for subgroup definitions that coaches create to categorize athletes.
 </ai_context>
 */
 
@@ -11,16 +11,16 @@ import { auth } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { ActionState } from "@/types"
-import type { EventGroup } from "@/components/features/athletes/types"
+import type { Subgroup } from "@/components/features/athletes/types"
 
 // ============================================================================
-// EVENT GROUP ACTIONS (Coach)
+// SUBGROUP ACTIONS (Coach)
 // ============================================================================
 
 /**
- * Get all event groups for the current coach
+ * Get all subgroups for the current coach
  */
-export async function getEventGroupsAction(): Promise<ActionState<EventGroup[]>> {
+export async function getSubgroupsAction(): Promise<ActionState<Subgroup[]>> {
   try {
     const { userId } = await auth()
 
@@ -41,24 +41,24 @@ export async function getEventGroupsAction(): Promise<ActionState<EventGroup[]>>
       return { isSuccess: false, message: "User is not a coach" }
     }
 
-    const { data: eventGroups, error } = await supabase
-      .from('event_groups')
+    const { data: subgroups, error } = await supabase
+      .from('subgroups')
       .select('*')
       .eq('coach_id', coach.id)
       .order('abbreviation', { ascending: true })
 
     if (error) {
-      console.error('Error fetching event groups:', error)
-      return { isSuccess: false, message: `Failed to fetch event groups: ${error.message}` }
+      console.error('Error fetching subgroups:', error)
+      return { isSuccess: false, message: `Failed to fetch subgroups: ${error.message}` }
     }
 
     return {
       isSuccess: true,
-      message: "Event groups retrieved successfully",
-      data: eventGroups || []
+      message: "Subgroups retrieved successfully",
+      data: subgroups || []
     }
   } catch (error) {
-    console.error('Error in getEventGroupsAction:', error)
+    console.error('Error in getSubgroupsAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -67,12 +67,12 @@ export async function getEventGroupsAction(): Promise<ActionState<EventGroup[]>>
 }
 
 /**
- * Create a new event group for the current coach
+ * Create a new subgroup for the current coach
  */
-export async function createEventGroupAction(
+export async function createSubgroupAction(
   name: string,
   abbreviation: string
-): Promise<ActionState<EventGroup>> {
+): Promise<ActionState<Subgroup>> {
   try {
     const { userId } = await auth()
 
@@ -105,8 +105,8 @@ export async function createEventGroupAction(
       return { isSuccess: false, message: "User is not a coach" }
     }
 
-    const { data: eventGroup, error } = await supabase
-      .from('event_groups')
+    const { data: subgroup, error } = await supabase
+      .from('subgroups')
       .insert({
         coach_id: coach.id,
         name: trimmedName,
@@ -119,17 +119,17 @@ export async function createEventGroupAction(
       if (error.code === '23505') {
         return { isSuccess: false, message: `Abbreviation "${trimmedAbbrev}" already exists` }
       }
-      console.error('Error creating event group:', error)
-      return { isSuccess: false, message: `Failed to create event group: ${error.message}` }
+      console.error('Error creating subgroup:', error)
+      return { isSuccess: false, message: `Failed to create subgroup: ${error.message}` }
     }
 
     return {
       isSuccess: true,
-      message: "Event group created successfully",
-      data: eventGroup
+      message: "Subgroup created successfully",
+      data: subgroup
     }
   } catch (error) {
-    console.error('Error in createEventGroupAction:', error)
+    console.error('Error in createSubgroupAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -138,9 +138,9 @@ export async function createEventGroupAction(
 }
 
 /**
- * Delete an event group. Returns a warning if athletes are using it.
+ * Delete a subgroup. Returns a warning if athletes are using it.
  */
-export async function deleteEventGroupAction(
+export async function deleteSubgroupAction(
   id: number
 ): Promise<ActionState<{ deletedId: number; orphanedAthleteCount: number }>> {
   try {
@@ -163,16 +163,16 @@ export async function deleteEventGroupAction(
       return { isSuccess: false, message: "User is not a coach" }
     }
 
-    // Fetch the event group to get abbreviation (and verify ownership via RLS)
-    const { data: eventGroup, error: fetchError } = await supabase
-      .from('event_groups')
+    // Fetch the subgroup to get abbreviation (and verify ownership via RLS)
+    const { data: subgroup, error: fetchError } = await supabase
+      .from('subgroups')
       .select('abbreviation')
       .eq('id', id)
       .eq('coach_id', coach.id)
       .single()
 
-    if (fetchError || !eventGroup) {
-      return { isSuccess: false, message: "Event group not found or access denied" }
+    if (fetchError || !subgroup) {
+      return { isSuccess: false, message: "Subgroup not found or access denied" }
     }
 
     // Check how many athletes use this abbreviation
@@ -187,26 +187,26 @@ export async function deleteEventGroupAction(
         .from('athletes')
         .select('id', { count: 'exact', head: true })
         .in('athlete_group_id', groupIds.map(g => g.id))
-        .eq('event_group', eventGroup.abbreviation)
+        .contains('subgroups', [subgroup.abbreviation])
 
       orphanedCount = count || 0
     }
 
-    // Delete the event group
+    // Delete the subgroup
     const { error: deleteError } = await supabase
-      .from('event_groups')
+      .from('subgroups')
       .delete()
       .eq('id', id)
       .eq('coach_id', coach.id)
 
     if (deleteError) {
-      console.error('Error deleting event group:', deleteError)
-      return { isSuccess: false, message: `Failed to delete event group: ${deleteError.message}` }
+      console.error('Error deleting subgroup:', deleteError)
+      return { isSuccess: false, message: `Failed to delete subgroup: ${deleteError.message}` }
     }
 
     const message = orphanedCount > 0
-      ? `Event group deleted. ${orphanedCount} athlete${orphanedCount !== 1 ? 's' : ''} still have this abbreviation assigned.`
-      : "Event group deleted successfully"
+      ? `Subgroup deleted. ${orphanedCount} athlete${orphanedCount !== 1 ? 's' : ''} still have this abbreviation assigned.`
+      : "Subgroup deleted successfully"
 
     return {
       isSuccess: true,
@@ -214,7 +214,7 @@ export async function deleteEventGroupAction(
       data: { deletedId: id, orphanedAthleteCount: orphanedCount }
     }
   } catch (error) {
-    console.error('Error in deleteEventGroupAction:', error)
+    console.error('Error in deleteSubgroupAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -223,14 +223,14 @@ export async function deleteEventGroupAction(
 }
 
 // ============================================================================
-// EVENT GROUP ACTIONS (Athlete)
+// SUBGROUP ACTIONS (Athlete)
 // ============================================================================
 
 /**
- * Get event groups defined by the coach of the athlete's group.
- * Used by athlete-role users to see event group names in their UI.
+ * Get subgroups defined by the coach of the athlete's group.
+ * Used by athlete-role users to see subgroup names in their UI.
  */
-export async function getEventGroupsForCoachOfAthleteAction(): Promise<ActionState<EventGroup[]>> {
+export async function getSubgroupsForCoachOfAthleteAction(): Promise<ActionState<Subgroup[]>> {
   try {
     const { userId } = await auth()
 
@@ -270,24 +270,24 @@ export async function getEventGroupsForCoachOfAthleteAction(): Promise<ActionSta
     }
 
     // RLS eg_athlete_read policy allows this query
-    const { data: eventGroups, error } = await supabase
-      .from('event_groups')
+    const { data: subgroups, error } = await supabase
+      .from('subgroups')
       .select('*')
       .eq('coach_id', group.coach_id)
       .order('abbreviation', { ascending: true })
 
     if (error) {
-      console.error('Error fetching event groups for athlete:', error)
-      return { isSuccess: false, message: `Failed to fetch event groups: ${error.message}` }
+      console.error('Error fetching subgroups for athlete:', error)
+      return { isSuccess: false, message: `Failed to fetch subgroups: ${error.message}` }
     }
 
     return {
       isSuccess: true,
-      message: "Event groups retrieved successfully",
-      data: eventGroups || []
+      message: "Subgroups retrieved successfully",
+      data: subgroups || []
     }
   } catch (error) {
-    console.error('Error in getEventGroupsForCoachOfAthleteAction:', error)
+    console.error('Error in getSubgroupsForCoachOfAthleteAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`

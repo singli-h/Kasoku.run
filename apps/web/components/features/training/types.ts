@@ -90,8 +90,8 @@ export interface TrainingExercise {
   sets: TrainingSet[]
   /** Exercise type ID for field visibility logic */
   exerciseTypeId?: number
-  /** Target event groups for subgroup filtering (null = all athletes) */
-  targetEventGroups?: string[] | null
+  /** Target subgroups for subgroup filtering (null = all athletes) */
+  targetSubgroups?: string[] | null
 
   // UI state
   /** Whether card is expanded */

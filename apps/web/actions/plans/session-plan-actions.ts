@@ -13,7 +13,7 @@ import supabase from "@/lib/supabase-server"
 import { getDbUserId } from "@/lib/user-cache"
 import { revalidatePath } from "next/cache"
 import { ActionState } from "@/types"
-import type { Database } from "@/types/database"
+import type { Database, Json } from "@/types/database"
 import type { SessionPlanWithDetails } from "@/types/training"
 import { addDays, startOfWeek, parseISO } from "date-fns"
 
@@ -1092,6 +1092,7 @@ export async function copySessionAction(
       day: targetDay,
       week: sourceSession.week,
       session_mode: sourceSession.session_mode,
+      target_subgroups: sourceSession.target_subgroups,
       microcycle_id: targetMicrocycleId,
       user_id: dbUserId,
       is_template: false
@@ -1120,7 +1121,7 @@ export async function copySessionAction(
           exercise_order: sourceExercise.exercise_order,
           notes: sourceExercise.notes,
           superset_id: sourceExercise.superset_id,
-          target_event_groups: sourceExercise.target_event_groups,
+          target_subgroups: sourceExercise.target_subgroups,
         }
 
         const { data: newExercise, error: exerciseError } = await supabase
@@ -1185,7 +1186,7 @@ export async function copySessionAction(
 
 /**
  * Duplicate all sessions from a source microcycle into one or more target microcycles.
- * Copies session_plans -> session_plan_exercises (including target_event_groups) -> session_plan_sets.
+ * Copies session_plans -> session_plan_exercises (including target_subgroups) -> session_plan_sets.
  * Maintains original day assignments so the weekly structure is preserved.
  */
 export async function duplicateMicrocycleSessionsAction(
@@ -1256,6 +1257,7 @@ export async function duplicateMicrocycleSessionsAction(
         day: s.day,
         week: s.week,
         session_mode: s.session_mode,
+        target_subgroups: s.target_subgroups,
         microcycle_id: targetMicrocycleId,
         user_id: dbUserId,
         is_template: false,
@@ -1289,7 +1291,7 @@ export async function duplicateMicrocycleSessionsAction(
             exercise_order: sourceExercise.exercise_order,
             notes: sourceExercise.notes,
             superset_id: sourceExercise.superset_id,
-            target_event_groups: sourceExercise.target_event_groups,
+            target_subgroups: sourceExercise.target_subgroups,
           })
           exerciseSourceIndices.push({ sessionIdx: si, exerciseIdx: ei })
         }
@@ -1558,7 +1560,7 @@ export async function insertTemplateExercisesAction(
       exercise_order: maxOrder + idx + 1,
       notes: te.notes,
       superset_id: te.superset_id,
-      target_event_groups: resolveTargetGroups(te.target_event_groups),
+      target_subgroups: resolveTargetGroups(te.target_subgroups),
     }))
 
     const { data: insertedExercises, error: insertError } = await supabase
@@ -1651,6 +1653,14 @@ export interface CreateTemplateInput {
       performing_time: number | null
       rest_time: number | null
       rpe: number | null
+      tempo?: string | null
+      effort?: number | null
+      power?: number | null
+      velocity?: number | null
+      height?: number | null
+      resistance?: number | null
+      resistance_unit_id?: number | null
+      metadata?: Record<string, unknown> | null
     }>
   }>
 }
@@ -1766,6 +1776,14 @@ export async function createTemplateAction(
             performing_time: number | null
             rest_time: number | null
             rpe: number | null
+            tempo: string | null
+            effort: number | null
+            power: number | null
+            velocity: number | null
+            height: number | null
+            resistance: number | null
+            resistance_unit_id: number | null
+            metadata: Json | null
           }> = []
 
           for (let i = 0; i < savedExercises.length; i++) {
@@ -1781,6 +1799,14 @@ export async function createTemplateAction(
                 performing_time: s.performing_time,
                 rest_time: s.rest_time,
                 rpe: s.rpe,
+                tempo: s.tempo ?? null,
+                effort: s.effort ?? null,
+                power: s.power ?? null,
+                velocity: s.velocity ?? null,
+                height: s.height ?? null,
+                resistance: s.resistance ?? null,
+                resistance_unit_id: s.resistance_unit_id ?? null,
+                metadata: (s.metadata as Json) ?? null,
               })
             }
           }
@@ -1896,6 +1922,14 @@ export async function updateTemplateAction(
             performing_time: number | null
             rest_time: number | null
             rpe: number | null
+            tempo: string | null
+            effort: number | null
+            power: number | null
+            velocity: number | null
+            height: number | null
+            resistance: number | null
+            resistance_unit_id: number | null
+            metadata: Json | null
           }> = []
 
           // Sort by exercise_order to ensure index correlation with input array
@@ -1916,6 +1950,14 @@ export async function updateTemplateAction(
                 performing_time: s.performing_time,
                 rest_time: s.rest_time,
                 rpe: s.rpe,
+                tempo: s.tempo ?? null,
+                effort: s.effort ?? null,
+                power: s.power ?? null,
+                velocity: s.velocity ?? null,
+                height: s.height ?? null,
+                resistance: s.resistance ?? null,
+                resistance_unit_id: s.resistance_unit_id ?? null,
+                metadata: (s.metadata as Json) ?? null,
               })
             }
           }

@@ -34,7 +34,7 @@ const PlanGeneratorRequestSchema = z.object({
   planningContext: z.string().max(5000).optional(),
   phaseContext: z.string().max(10000).optional(),
   recentInsights: z.array(z.string().max(1000)).max(3).optional(),
-  athleteEventGroups: z.array(z.string().max(50)).max(10).optional(),
+  athleteSubgroups: z.array(z.string().max(50)).max(10).optional(),
 })
 
 export async function POST(req: Request) {
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const { messages, mesocycleId, mesocycleName, planningContext, phaseContext, recentInsights, athleteEventGroups } = validatedBody
+    const { messages, mesocycleId, mesocycleName, planningContext, phaseContext, recentInsights, athleteSubgroups } = validatedBody
 
     // Verify mesocycle ownership
     const { data: mesocycle, error: mesocycleError } = await supabase
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
       planningContext,
       phaseContext,
       recentInsights,
-      athleteEventGroups,
+      athleteSubgroups,
     })
 
     // Convert UI messages to model messages format

@@ -42,30 +42,33 @@ import {
   updateAthleteGroupAction,
   deleteAthleteGroupAction
 } from "@/actions/athletes/athlete-actions"
-import type { GroupWithCount, EventGroup } from "../types"
+import type { GroupWithCount, Subgroup } from "../types"
 
 interface GroupDirectorySectionProps {
   groups: GroupWithCount[]
-  athletes?: Array<{ athlete_group_id: number | null; event_group?: string | null }>
-  eventGroups?: EventGroup[]
+  athletes?: Array<{ athlete_group_id: number | null; event_groups?: string[] | null }>
+  subgroups?: Subgroup[]
   selectedGroupFilter: number | null
   onGroupFilterChange: (groupId: number | null) => void
+  onGroupUpdated?: (groupId: number, newName: string) => void
+  onGroupDeleted?: (groupId: number) => void
   onDataReload: () => void
   className?: string
 }
 
-/** Compute event group breakdown for a given athlete group */
-function getEventGroupBreakdown(
+/** Compute subgroup breakdown for a given athlete group */
+function getSubgroupBreakdown(
   groupId: number,
-  athletes: Array<{ athlete_group_id: number | null; event_group?: string | null }>,
-  eventGroupMap: Map<string, string>
+  athletes: Array<{ athlete_group_id: number | null; event_groups?: string[] | null }>,
+  subgroupMap: Map<string, string>
 ): Record<string, number> {
   const counts: Record<string, number> = {}
   for (const a of athletes) {
-    if (a.athlete_group_id === groupId && a.event_group) {
-      // Use full name if available, otherwise use abbreviation
-      const displayName = eventGroupMap.get(a.event_group) || a.event_group
-      counts[displayName] = (counts[displayName] || 0) + 1
+    if (a.athlete_group_id === groupId) {
+      (a.event_groups ?? []).forEach(eg => {
+        const displayName = subgroupMap.get(eg) || eg
+        counts[displayName] = (counts[displayName] || 0) + 1
+      })
     }
   }
   return counts
@@ -74,28 +77,30 @@ function getEventGroupBreakdown(
 export function GroupDirectorySection({
   groups,
   athletes,
-  eventGroups,
+  subgroups,
   selectedGroupFilter,
   onGroupFilterChange,
+  onGroupUpdated,
+  onGroupDeleted,
   onDataReload,
   className
 }: GroupDirectorySectionProps) {
   // Build abbreviation -> name lookup
-  const eventGroupMap = useMemo(() => {
+  const subgroupMap = useMemo(() => {
     const map = new Map<string, string>()
-    if (eventGroups) {
-      for (const eg of eventGroups) {
-        map.set(eg.abbreviation, eg.name)
+    if (subgroups) {
+      for (const sg of subgroups) {
+        map.set(sg.abbreviation, sg.name)
       }
     }
     return map
-  }, [eventGroups])
+  }, [subgroups])
   const { toast } = useToast()
   
   const [newGroupName, setNewGroupName] = useState("")
   const [editingGroup, setEditingGroup] = useState<GroupWithCount | null>(null)
 
-  // Handle group creation
+  // Handle group creation — clear input immediately, sync on server response
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) {
       toast({
@@ -106,89 +111,68 @@ export function GroupDirectorySection({
       return
     }
 
+    const savedName = newGroupName.trim()
+    setNewGroupName("")
+
     try {
-      const result = await createAthleteGroupAction(newGroupName.trim())
-      
+      const result = await createAthleteGroupAction(savedName)
+
       if (result.isSuccess) {
-        toast({
-          title: "Success",
-          description: "Group created successfully"
-        })
-        setNewGroupName("")
+        toast({ title: "Success", description: "Group created successfully" })
         onDataReload()
       } else {
-        toast({
-          title: "Error",
-          description: result.message,
-          variant: "destructive"
-        })
+        toast({ title: "Error", description: result.message, variant: "destructive" })
+        setNewGroupName(savedName)
       }
     } catch {
-      toast({
-        title: "Error",
-        description: "Failed to create group",
-        variant: "destructive"
-      })
+      toast({ title: "Error", description: "Failed to create group", variant: "destructive" })
+      setNewGroupName(savedName)
     }
   }
 
-  // Handle group update
+  // Handle group update — optimistic rename, revert on failure
   const handleUpdateGroup = async (group: GroupWithCount, newName: string) => {
     if (!newName.trim()) return
 
+    // Optimistic: close dialog and update state immediately
+    setEditingGroup(null)
+    onGroupUpdated?.(group.id, newName.trim())
+
     try {
       const result = await updateAthleteGroupAction(group.id, { group_name: newName.trim() })
-      
+
       if (result.isSuccess) {
-        toast({
-          title: "Success",
-          description: "Group updated successfully"
-        })
-        setEditingGroup(null)
-        onDataReload()
+        toast({ title: "Success", description: "Group updated successfully" })
       } else {
-        toast({
-          title: "Error",
-          description: result.message,
-          variant: "destructive"
-        })
+        toast({ title: "Error", description: result.message, variant: "destructive" })
+        onDataReload()
       }
     } catch {
-      toast({
-        title: "Error",
-        description: "Failed to update group",
-        variant: "destructive"
-      })
+      toast({ title: "Error", description: "Failed to update group", variant: "destructive" })
+      onDataReload()
     }
   }
 
-  // Handle group deletion
+  // Handle group deletion — optimistic remove, revert on failure
   const handleDeleteGroup = async (groupId: number) => {
+    // Optimistic: remove from state immediately
+    if (selectedGroupFilter === groupId) {
+      onGroupFilterChange(null)
+    }
+    onGroupDeleted?.(groupId)
+
     try {
       const result = await deleteAthleteGroupAction(groupId)
-      
+
       if (result.isSuccess) {
-        toast({
-          title: "Success",
-          description: "Group deleted successfully"
-        })
-        if (selectedGroupFilter === groupId) {
-          onGroupFilterChange(null)
-        }
-        onDataReload()
+        toast({ title: "Success", description: "Group deleted successfully" })
       } else {
-        toast({
-          title: "Error",
-          description: result.message,
-          variant: "destructive"
-        })
+        toast({ title: "Error", description: result.message, variant: "destructive" })
+        onDataReload()
       }
     } catch {
-      toast({
-        title: "Error",
-        description: "Failed to delete group",
-        variant: "destructive"
-      })
+      toast({ title: "Error", description: "Failed to delete group", variant: "destructive" })
+      onDataReload()
     }
   }
 
@@ -289,7 +273,7 @@ export function GroupDirectorySection({
                         </Badge>
                       </div>
                       {athletes && (() => {
-                        const breakdown = getEventGroupBreakdown(group.id, athletes, eventGroupMap)
+                        const breakdown = getSubgroupBreakdown(group.id, athletes, subgroupMap)
                         const entries = Object.entries(breakdown).sort((a, b) => b[1] - a[1])
                         if (entries.length === 0) return null
                         return (

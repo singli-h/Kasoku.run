@@ -207,7 +207,7 @@ export function ExerciseLibraryPage() {
       await loadLibraryData()
 
       toast({
-        title: "Exercise Deleted",
+        title: "Exercise deleted",
         description: "Exercise was successfully deleted"
       })
     } catch (error) {

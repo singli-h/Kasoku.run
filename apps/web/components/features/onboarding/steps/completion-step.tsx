@@ -34,10 +34,10 @@ const ROLE_NEXT_STEPS: Record<UserRole, { items: string[]; buttonText: string }>
   },
   coach: {
     items: [
-      "Set up your first athlete or training group",
-      "Create training programs and assign to athletes",
-      "Track athlete progress from your dashboard",
-      "Use the exercise library to build custom workouts",
+      "Head to Athletes to create your first training group",
+      "Add subgroups for event specializations (e.g. Short Sprints, Hurdles)",
+      "Go to Templates and paste a program — AI will parse it for you",
+      "Visit Plans to set up your season and assign sessions",
     ],
     buttonText: "Go to Dashboard",
   },

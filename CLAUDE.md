@@ -174,7 +174,7 @@ Coordination: discuss findings, produce unified report
 - **File ownership**: Assign clear file boundaries per teammate to avoid merge conflicts
 - **Use Opus for all teammates**: Consistency and quality across the team
 - **Plan approval**: Require teammates to submit plans before implementing risky changes
-- **Quality gates**: Run `.claude/scripts/task-quality-gate.sh` as verification before marking tasks complete
+- **Quality gates**: Run `npx tsc --noEmit && npx next lint --quiet` manually before marking tasks complete (no automated hooks — they conflict with parallel sessions)
 - **Contract-first**: For cross-layer features, use `/build-with-team` which enforces contract verification before parallel implementation
 
 ---

@@ -8,11 +8,12 @@ import { getMacrocycleByIdAction, getMesocycleByIdAction, getUserMesocyclesActio
 import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
 import { getExercisesAction } from "@/actions/library/exercise-actions"
 import { getCoachAthleteGroupsAction } from "@/actions/athletes/athlete-actions"
+import { getSubgroupsAction } from "@/actions/athletes/subgroup-actions"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { FeatureErrorBoundary } from "@/components/error-boundary"
 import type { MesocycleWithDetails } from "@/types/training"
 import type { SessionPlanExerciseWithDetails } from "@/types/training"
-import { computeSessionMetrics, formatExerciseSummary, abbreviateEventGroup } from "@/lib/training-utils"
+import { computeSessionMetrics, formatExerciseSummary, abbreviateSubgroup } from "@/lib/training-utils"
 import type { ExerciseWithSets } from "@/lib/training-utils"
 
 // Type definitions for the coach plan data (fed into TrainingPlanWorkspace)
@@ -21,6 +22,7 @@ interface SessionPlan {
   day: number | null
   name: string | null
   session_mode: string | null
+  target_subgroups?: string[] | null
   session_plan_exercises?: SessionPlanExerciseWithDetails[]
 }
 
@@ -37,7 +39,7 @@ interface MicrocycleData {
 
 /** Metadata shape expected by TrainingPlanWorkspace */
 interface WorkspaceMetadata {
-  phase?: "GPP" | "SPP" | "Taper" | "Competition"
+  phase?: string
   color?: string
   deload?: boolean
 }
@@ -132,15 +134,15 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
     )
   }
 
-  // For coaches, fetch macrocycle with full hierarchy + coach groups
-  const [macrocycleResult, racesResult, groupsResult] = await Promise.all([
+  // For coaches, fetch macrocycle with full hierarchy + coach subgroups
+  const [macrocycleResult, racesResult, subgroupsResult] = await Promise.all([
     getMacrocycleByIdAction(planId),
     getRacesByMacrocycleAction(planId),
-    getCoachAthleteGroupsAction()
+    getSubgroupsAction()
   ])
 
-  const coachGroups = (groupsResult.isSuccess ? groupsResult.data ?? [] : [])
-    .map(g => ({ id: g.id, name: g.group_name ?? `Group ${g.id}` }))
+  const coachSubgroups = (subgroupsResult.isSuccess ? subgroupsResult.data ?? [] : [])
+    .map(sg => sg.abbreviation)
 
   // Handle errors
   if (!macrocycleResult.isSuccess || !macrocycleResult.data) {
@@ -195,9 +197,9 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
           // Extract exercise summaries (e.g. "3x10 80kg")
           const exerciseSummaries = exercisesForMetrics.map(ex => formatExerciseSummary(ex))
 
-          // Extract target event groups per exercise (target_event_groups from database Row type)
-          const targetEventGroups = rawExercises
-            .map((ex: SessionPlanExerciseWithDetails) => ex.target_event_groups ?? null)
+          // Extract target subgroups per exercise (target_subgroups from database Row type)
+          const targetSubgroups = rawExercises
+            .map((ex: SessionPlanExerciseWithDetails) => ex.target_subgroups ?? null)
             .filter((g): g is string[] => g !== null)
 
           return {
@@ -211,7 +213,8 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
             intensity: 0, // No intensity formula yet
             exerciseNames,
             exerciseSummaries,
-            targetEventGroups,
+            targetSubgroups,
+            sessionTargetSubgroups: group.target_subgroups ?? null,
             exercises: rawExercises,
           }
         })
@@ -265,7 +268,7 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
   return (
     <FeatureErrorBoundary featureName="Training Plan" customMessage="Something went wrong while loading your training plan. Please try again.">
       <Suspense fallback={<div className="space-y-6 p-6"><div className="h-8 w-48 bg-muted animate-pulse rounded" /><div className="h-[400px] bg-muted animate-pulse rounded-lg" /></div>}>
-        <CoachPlanPageWithAI initialPlan={planData} coachGroups={coachGroups} />
+        <CoachPlanPageWithAI initialPlan={planData} coachSubgroups={coachSubgroups} />
       </Suspense>
     </FeatureErrorBoundary>
   )

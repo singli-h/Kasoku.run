@@ -1163,10 +1163,17 @@ function ExerciseRow({
   supersetId?: number | null
   allExercises?: SessionPlanExerciseWithDetails[]
 }) {
-  const router = useRouter()
   const { toast } = useToast()
   const name = exercise.exercise?.name || "Exercise"
-  const sets = exercise.session_plan_sets ?? []
+
+  // Local state for optimistic set CRUD (avoids full page refresh on every edit)
+  const [localSets, setLocalSets] = useState(exercise.session_plan_sets ?? [])
+  // Sync with server data when RSC re-renders with fresh props
+  useEffect(() => {
+    setLocalSets(exercise.session_plan_sets ?? [])
+  }, [exercise.session_plan_sets])
+
+  const sets = localSets
   const exerciseTypeId = exercise.exercise?.exercise_type_id
 
   // Determine superset display
@@ -1346,19 +1353,34 @@ function ExerciseRow({
                   visibleFields={visibleFields}
                   showAdvancedFields={showAdvancedFields}
                   onUpdate={async (field, value) => {
+                    // Map camelCase UI field names to snake_case DB column names
+                    const CAMEL_TO_SNAKE: Record<string, string> = {
+                      performingTime: 'performing_time',
+                      restTime: 'rest_time',
+                      setIndex: 'set_index',
+                    }
+                    const dbField = CAMEL_TO_SNAKE[field] ?? field
+                    // effort: UI sends 0-100, DB stores 0-1
+                    const dbValue = field === 'effort' && value != null ? (value as number) / 100 : value
+                    // Optimistic: update local state immediately (using DB column name)
+                    const prevSets = [...localSets]
+                    setLocalSets(prev => prev.map(s =>
+                      s.id === set.id ? { ...s, [dbField]: dbValue } : s
+                    ))
                     const result = await updateSessionPlanSetAction(String(set.id), { [field]: value })
                     if (!result.isSuccess) {
                       toast({ title: "Error", description: result.message, variant: "destructive" })
-                    } else {
-                      router.refresh()
+                      setLocalSets(prevSets)
                     }
                   }}
                   onRemove={async () => {
+                    // Optimistic: remove from local state immediately
+                    const prevSets = [...localSets]
+                    setLocalSets(prev => prev.filter(s => s.id !== set.id))
                     const result = await deleteSessionPlanSetAction(String(set.id))
                     if (!result.isSuccess) {
                       toast({ title: "Error", description: result.message, variant: "destructive" })
-                    } else {
-                      router.refresh()
+                      setLocalSets(prevSets)
                     }
                   }}
                 />
@@ -1373,10 +1395,10 @@ function ExerciseRow({
                   onClick={async (e) => {
                     e.stopPropagation()
                     const result = await addSessionPlanSetAction(String(exercise.id))
-                    if (!result.isSuccess) {
+                    if (result.isSuccess && result.data) {
+                      setLocalSets(prev => [...prev, result.data])
+                    } else if (!result.isSuccess) {
                       toast({ title: "Error", description: result.message, variant: "destructive" })
-                    } else {
-                      router.refresh()
                     }
                   }}
                 >
@@ -1393,10 +1415,10 @@ function ExerciseRow({
                 onClick={async (e) => {
                   e.stopPropagation()
                   const result = await addSessionPlanSetAction(String(exercise.id))
-                  if (!result.isSuccess) {
+                  if (result.isSuccess && result.data) {
+                    setLocalSets(prev => [...prev, result.data])
+                  } else if (!result.isSuccess) {
                     toast({ title: "Error", description: result.message, variant: "destructive" })
-                  } else {
-                    router.refresh()
                   }
                 }}
               >

@@ -35,7 +35,7 @@ import {
 } from "../adapters/session-adapter"
 
 // Import subgroup filtering hook
-import { useEventGroupsForGroup } from "../hooks/use-session-planner-queries"
+import { useSubgroupsForGroup } from "../hooks/use-session-planner-queries"
 
 // Import shadcn Select for preview dropdown
 import {
@@ -85,6 +85,7 @@ import {
 
 // Import subgroup formatting utilities
 import { formatSubgroupChip } from "@/lib/training-utils"
+import { SubgroupBadge } from "@/components/features/athletes/components/subgroup-badge"
 
 // Import Paste Program dialog and types
 import { PasteProgramDialog, type ResolvedExercise } from "../components/PasteProgramDialog"
@@ -100,6 +101,7 @@ interface SessionPlannerV2Props {
     week?: number | null
     day?: number | null
     session_mode?: string | null
+    target_subgroups?: string[] | null
   }
   exerciseLibrary: ExerciseLibraryItem[]
   /** Athlete group ID for subgroup filtering (from microcycle) */
@@ -148,7 +150,12 @@ export function SessionPlannerV2({
 
   // Subgroup preview state (T018)
   const [previewGroup, setPreviewGroup] = useState<string | null>(null)
-  const { data: eventGroups } = useEventGroupsForGroup(groupId)
+  const { data: subgroups } = useSubgroupsForGroup(groupId)
+
+  // Session-level subgroup tags (coach-set, independent from exercise tags)
+  const [sessionSubgroups, setSessionSubgroups] = useState<string[] | null>(
+    initialSession.target_subgroups ?? null
+  )
 
   // Session metadata editing state
   const [sessionName, setSessionName] = useState(initialSession.name)
@@ -174,7 +181,7 @@ export function SessionPlannerV2({
     session_plan_exercises?: Array<{
       id?: string
       exercise_id?: number
-      target_event_groups?: string[] | null
+      target_subgroups?: string[] | null
       exercise?: { name?: string } | null
       [key: string]: unknown
     }>
@@ -373,15 +380,22 @@ export function SessionPlannerV2({
     })
 
     toast({
-      title: "Exercise Added",
+      title: "Exercise added",
       description: `${exercise.name} has been added to the session.`
     })
   }, [sessionId, setExercises, toast])
 
-  // Handle update target event groups (subgroup filtering)
-  const handleUpdateTargetEventGroups = useCallback((exerciseId: number | string, groups: string[] | null) => {
+  // Handle update target subgroups (subgroup filtering)
+  const handleUpdateTargetSubgroups = useCallback((exerciseId: number | string, groups: string[] | null) => {
     setExercises(prev => prev.map(ex =>
-      ex.id === exerciseId ? { ...ex, target_event_groups: groups } : ex
+      ex.id === exerciseId ? { ...ex, target_subgroups: groups } : ex
+    ))
+  }, [setExercises])
+
+  // Handle update notes
+  const handleUpdateNotes = useCallback((exerciseId: number | string, notes: string | null) => {
+    setExercises(prev => prev.map(ex =>
+      ex.id === exerciseId ? { ...ex, notes } : ex
     ))
   }, [setExercises])
 
@@ -464,7 +478,7 @@ export function SessionPlannerV2({
     })
 
     toast({
-      title: "Superset Created",
+      title: "Superset created",
       description: `${exerciseIds.length} exercises linked as a superset.`
     })
   }, [setExercises, toast])
@@ -501,7 +515,7 @@ export function SessionPlannerV2({
     })
 
     toast({
-      title: "Superset Unlinked",
+      title: "Superset unlinked",
       description: "Exercises are now separate."
     })
   }, [setExercises, reindexSupersets, toast])
@@ -517,6 +531,15 @@ export function SessionPlannerV2({
         id: String(ex.id), // Ensure id is string for save action
       }))
 
+      // Merge coach-set session tags with exercise-level tags for RLS
+      const exerciseDerivedGroups = exercisesToSave
+        .flatMap(ex => (ex as any).target_subgroups ?? [])
+        .filter((g: string) => !!g)
+      const mergedSessionTags = [...new Set([
+        ...(sessionSubgroups ?? []),
+        ...exerciseDerivedGroups,
+      ])] as string[]
+
       const result = await saveSessionWithExercisesAction(
         sessionId,
         {
@@ -526,6 +549,7 @@ export function SessionPlannerV2({
           week: initialSession.week,
           day: initialSession.day,
           session_mode: initialSession.session_mode,
+          target_subgroups: mergedSessionTags.length > 0 ? mergedSessionTags : null,
         },
         exercisesToSave as any // Cast to satisfy type - runtime compatible
       )
@@ -536,20 +560,20 @@ export function SessionPlannerV2({
 
       markAsSaved()
       toast({
-        title: "Session Saved",
+        title: "Session saved",
         description: "Your session plan has been saved successfully."
       })
     } catch (error) {
       console.error('[SessionPlannerV2] Save failed:', error)
       toast({
-        title: "Save Failed",
+        title: "Save failed",
         description: error instanceof Error ? error.message : "Failed to save session",
         variant: "destructive"
       })
     } finally {
       setIsSaving(false)
     }
-  }, [sessionId, initialSession, exercises, markAsSaved, toast])
+  }, [sessionId, initialSession, exercises, sessionSubgroups, markAsSaved, toast])
 
   // Handle back navigation
   const handleBack = useCallback(() => {
@@ -609,13 +633,13 @@ export function SessionPlannerV2({
 
       if (result.isSuccess) {
         toast({
-          title: "Template Saved",
+          title: "Template saved",
           description: `"${templateName}" saved as a template.`,
         })
         setSaveTemplateOpen(false)
       } else {
         toast({
-          title: "Save Failed",
+          title: "Save failed",
           description: result.message,
           variant: "destructive",
         })
@@ -623,7 +647,7 @@ export function SessionPlannerV2({
     } catch (error) {
       console.error('[SessionPlannerV2] Save template failed:', error)
       toast({
-        title: "Save Failed",
+        title: "Save failed",
         description: error instanceof Error ? error.message : "Failed to save template",
         variant: "destructive",
       })
@@ -655,6 +679,8 @@ export function SessionPlannerV2({
   }, [toast])
 
   const handleInsertTemplate = useCallback(async (templateId: string) => {
+    // Close dialog immediately for instant feedback
+    setInsertTemplateOpen(false)
     setIsInsertingTemplate(true)
 
     // Resolve subgroup override for this template
@@ -680,7 +706,7 @@ export function SessionPlannerV2({
           exercise_order: rec.exercise_order,
           superset_id: rec.superset_id,
           notes: rec.notes,
-          target_event_groups: rec.target_event_groups ?? null,
+          target_subgroups: rec.target_subgroups ?? null,
           exercise: rec.exercise ? {
             id: rec.exercise.id,
             name: rec.exercise.name,
@@ -716,13 +742,12 @@ export function SessionPlannerV2({
       }
 
       toast({
-        title: "Template Inserted",
+        title: "Template inserted",
         description: result.message,
       })
-      setInsertTemplateOpen(false)
     } else {
       toast({
-        title: "Insert Failed",
+        title: "Insert failed",
         description: result.message,
         variant: "destructive",
       })
@@ -792,7 +817,7 @@ export function SessionPlannerV2({
               type: ex.resolvedExerciseType || 'other'
             }
           },
-          target_event_groups: ex.targetEventGroups?.length ? ex.targetEventGroups : undefined,
+          target_subgroups: ex.targetSubgroups?.length ? ex.targetSubgroups : undefined,
           sets,
         } satisfies SessionPlannerExercise
       })
@@ -808,7 +833,7 @@ export function SessionPlannerV2({
     if (createdCount > 0) parts.push(`${createdCount} newly created`)
 
     toast({
-      title: "Exercises Imported",
+      title: "Exercises imported",
       description: parts.join(", ") + ".",
     })
   }, [sessionId, setExercises, toast])
@@ -959,20 +984,54 @@ export function SessionPlannerV2({
           )}
         </div>
 
-        {/* Subgroup preview dropdown (T018) */}
-        {eventGroups && eventGroups.length > 0 && (
-          <div className="px-4 pb-2">
+        {/* Session-level subgroup tags + preview dropdown */}
+        {subgroups && subgroups.length > 0 && (
+          <div className="px-4 pb-2 flex items-center gap-3 flex-wrap">
+            {/* Session-level tags: which groups see this session */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Session</span>
+              <SubgroupBadge
+                value="All"
+                interactive
+                size="sm"
+                variant="filter"
+                active={!sessionSubgroups || sessionSubgroups.length === 0}
+                onClick={() => { setSessionSubgroups(null); markAsUnsaved() }}
+              />
+              {subgroups.map(sg => (
+                <SubgroupBadge
+                  key={sg}
+                  value={sg}
+                  interactive
+                  size="sm"
+                  variant="filter"
+                  active={sessionSubgroups?.includes(sg) ?? false}
+                  onClick={() => {
+                    setSessionSubgroups(prev => {
+                      const current = prev ?? []
+                      const next = current.includes(sg)
+                        ? current.filter(g => g !== sg)
+                        : [...current, sg]
+                      return next.length === 0 ? null : next
+                    })
+                    markAsUnsaved()
+                  }}
+                />
+              ))}
+            </div>
+            <div className="h-4 w-px bg-border" />
+            {/* Preview dropdown: dim exercises not matching selected group */}
             <Select
               value={previewGroup ?? '__all__'}
               onValueChange={(val) => setPreviewGroup(val === '__all__' ? null : val)}
             >
-              <SelectTrigger className="h-8 text-xs w-auto min-w-[140px]">
-                <SelectValue placeholder="Preview group" />
+              <SelectTrigger className="h-7 text-xs w-auto min-w-[120px]">
+                <SelectValue placeholder="Preview" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All Athletes</SelectItem>
-                {eventGroups.map((group) => (
-                  <SelectItem key={group} value={group}>{group}</SelectItem>
+                <SelectItem value="__all__">Preview: All</SelectItem>
+                {subgroups.map((group) => (
+                  <SelectItem key={group} value={group}>Preview: {group}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -992,8 +1051,8 @@ export function SessionPlannerV2({
           exerciseLibrary={exerciseLibraryItems}
           showAdvancedFields={showAdvancedFields}
           previewGroup={previewGroup}
-          availableEventGroups={eventGroups}
-          onUpdateTargetEventGroups={handleUpdateTargetEventGroups}
+          availableSubgroups={subgroups}
+          onUpdateTargetSubgroups={handleUpdateTargetSubgroups}
           onToggleExpand={handleToggleExpand}
           onCompleteSet={() => {}} // No completion in coach mode
           onUpdateSet={handleUpdateSet}
@@ -1001,6 +1060,7 @@ export function SessionPlannerV2({
           onRemoveSet={handleRemoveSet}
           onAddExercise={handleAddExercise}
           onRemoveExercise={handleRemoveExercise}
+          onUpdateNotes={handleUpdateNotes}
           onReorderSets={handleReorderSets}
           onReorderExercises={handleReorderExercises}
           onFinishSession={handleSave}
@@ -1140,7 +1200,7 @@ export function SessionPlannerV2({
                             const exName = ex.exercise && typeof ex.exercise === 'object' && 'name' in ex.exercise
                               ? (ex.exercise as { name?: string }).name
                               : undefined
-                            const groups = ex.target_event_groups as string[] | null | undefined
+                            const groups = ex.target_subgroups as string[] | null | undefined
                             const chipLabel = formatSubgroupChip(groups ?? null)
 
                             return (
@@ -1168,7 +1228,7 @@ export function SessionPlannerV2({
 
                       {/* Subgroup override + Insert button */}
                       <div className="flex items-center gap-2">
-                        {eventGroups && eventGroups.length > 0 && (
+                        {subgroups && subgroups.length > 0 && (
                           <Select
                             value={overrideValue}
                             onValueChange={(val) =>
@@ -1181,7 +1241,7 @@ export function SessionPlannerV2({
                             <SelectContent>
                               <SelectItem value="__keep__">Keep original</SelectItem>
                               <SelectItem value="__all__">All Athletes</SelectItem>
-                              {eventGroups.map((group) => (
+                              {subgroups.map((group) => (
                                 <SelectItem key={group} value={group}>{group}</SelectItem>
                               ))}
                             </SelectContent>

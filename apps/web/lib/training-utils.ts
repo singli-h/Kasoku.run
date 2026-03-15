@@ -135,9 +135,9 @@ export function formatExerciseSummary(exercise: ExerciseWithSets): string {
   return `${count} sets`
 }
 
-// --- Event Group Abbreviations ---
+// --- Subgroup Abbreviations ---
 
-const EVENT_GROUP_ABBREVIATIONS: Record<string, string> = {
+const SUBGROUP_ABBREVIATIONS: Record<string, string> = {
   SS: 'SS',
   MS: 'MS',
   LS: 'LS',
@@ -149,19 +149,22 @@ const EVENT_GROUP_ABBREVIATIONS: Record<string, string> = {
 }
 
 /**
- * Map a full event_group string to a 3-char display code.
+ * Map a full subgroup string to a 3-char display code.
  * Returns the input unchanged if no abbreviation exists.
  */
-export function abbreviateEventGroup(eventGroup: string): string {
-  return EVENT_GROUP_ABBREVIATIONS[eventGroup] ?? eventGroup.slice(0, 3).toUpperCase()
+export function abbreviateSubgroup(subgroup: string): string {
+  return SUBGROUP_ABBREVIATIONS[subgroup] ?? subgroup.slice(0, 3).toUpperCase()
 }
 
+/** @deprecated Use abbreviateSubgroup instead */
+export const abbreviateEventGroup = abbreviateSubgroup
+
 /**
- * Format target_event_groups for chip display.
+ * Format target_subgroups for chip display.
  * Returns null if groups is null/empty (= ALL athletes).
  * Returns "SS" for single, "SS·MS" for multiple.
  */
 export function formatSubgroupChip(groups: string[] | null): string | null {
   if (!groups || groups.length === 0) return null
-  return groups.map(abbreviateEventGroup).join('·')
+  return groups.map(abbreviateSubgroup).join('·')
 }

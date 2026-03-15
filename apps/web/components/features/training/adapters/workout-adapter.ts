@@ -21,7 +21,7 @@ export interface LegacyWorkoutExercise {
   superset_id?: string | null
   notes?: string | null
   completed?: boolean
-  target_event_groups?: string[] | null
+  target_subgroups?: string[] | null
   exercise?: {
     id: number
     name: string
@@ -196,7 +196,7 @@ export function legacyToTrainingExercise(
     sets,
     expanded: expandedIds.has(exercise.id),
     exerciseTypeId: exerciseTypeId ?? undefined,
-    targetEventGroups: exercise.target_event_groups ?? undefined,
+    targetSubgroups: exercise.target_subgroups ?? undefined,
   }
 }
 

@@ -289,7 +289,7 @@ export function useCompleteSession() {
 
     onSuccess: () => {
       toast({
-        title: "Workout Complete!",
+        title: "Workout complete!",
         description: "Your session has been saved successfully"
       })
     },

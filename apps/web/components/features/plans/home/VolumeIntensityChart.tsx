@@ -93,11 +93,11 @@ export function VolumeIntensityChart({
         <div className="flex items-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-2 bg-blue-500 rounded-sm"></div>
-            <span className="text-muted-foreground">Volume</span>
+            <span className="text-muted-foreground">Volume (load)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-0.5 bg-orange-500 rounded-full"></div>
-            <span className="text-muted-foreground">Intensity</span>
+            <span className="text-muted-foreground">Intensity (effort)</span>
           </div>
         </div>
       </div>

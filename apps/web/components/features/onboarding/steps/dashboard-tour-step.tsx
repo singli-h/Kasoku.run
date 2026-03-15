@@ -32,18 +32,18 @@ const ATHLETE_FEATURES = [
 const COACH_FEATURES = [
   {
     icon: Users,
-    title: "Manage Athletes",
-    description: "Organize your team and track their progress",
+    title: "Set Up Your Team",
+    description: "Head to Athletes to create groups and invite your team",
   },
   {
-    icon: ClipboardList,
-    title: "Create Workouts",
-    description: "Design and assign training plans",
+    icon: Dumbbell,
+    title: "Build Your Playbook",
+    description: "Paste a training program — AI parses it into reusable templates",
   },
   {
-    icon: BarChart3,
-    title: "Team Analytics",
-    description: "Monitor performance across your roster",
+    icon: Calendar,
+    title: "Plan Your Season",
+    description: "Create phases, assign sessions, and track progress",
   },
 ]
 

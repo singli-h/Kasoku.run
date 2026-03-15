@@ -2,6 +2,7 @@
 
 import { currentUser } from "@clerk/nextjs/server"
 import supabase from "@/lib/supabase-server"
+import supabaseService from "@/lib/supabase-service"
 import { ActionState } from "@/types"
 import { Database } from "@/types/database"
 
@@ -143,9 +144,9 @@ export async function completeOnboardingAction(
         message: "Not authenticated"
       }
     }
-    const meta = clerkUser.publicMetadata as { groupId?: number; coachId?: number; role?: string; eventGroup?: string } | undefined
+    const meta = clerkUser.publicMetadata as { groupId?: number; coachId?: number; role?: string; subgroups?: string[] } | undefined
     let invitedGroupId: number | null = meta?.groupId ?? null
-    const invitedEventGroup: string | null = meta?.eventGroup ?? null
+    const invitedSubgroups: string[] | null = meta?.subgroups ?? null
 
     // Validate the group actually exists before passing to RPC
     if (invitedGroupId !== null) {
@@ -211,7 +212,9 @@ export async function completeOnboardingAction(
     }
 
     // Call the atomic onboarding RPC function
-    const { data: result, error: rpcError } = await supabase
+    // Uses service_role client because complete_onboarding is restricted to service_role only
+    // (migration 20260312100000). Server-side Clerk validation above ensures this is safe.
+    const { data: result, error: rpcError } = await supabaseService
       .rpc('complete_onboarding', rpcParams)
       .single()
 
@@ -244,17 +247,17 @@ export async function completeOnboardingAction(
 
     console.log('Onboarding completed successfully for user:', created_user_id)
 
-    // Set event_group on athlete record if provided via invitation metadata
-    // This is done post-RPC because the onboarding RPC doesn't support event_group natively
-    if (invitedEventGroup && effectiveRole === 'athlete') {
+    // Set subgroups on athlete record if provided via invitation metadata
+    // This is done post-RPC because the onboarding RPC doesn't support subgroups natively
+    if (invitedSubgroups && invitedSubgroups.length > 0 && effectiveRole === 'athlete') {
       const { error: egError } = await supabase
         .from('athletes')
-        .update({ event_group: invitedEventGroup })
+        .update({ subgroups: invitedSubgroups })
         .eq('user_id', created_user_id)
 
       if (egError) {
-        console.warn('Failed to set event_group during onboarding:', egError.message)
-        // Non-fatal: athlete is onboarded, event_group can be set later by coach
+        console.warn('Failed to set subgroups during onboarding:', egError.message)
+        // Non-fatal: athlete is onboarded, subgroups can be set later by coach
       }
     }
 

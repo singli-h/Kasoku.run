@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft } from "lucide-react"
 import { usePlanContext } from "../context/PlanContext"
 import { useTerminology } from "@/lib/terminology"
-import { abbreviateEventGroup } from "@/lib/training-utils"
+import { abbreviateSubgroup } from "@/lib/training-utils"
+import { SubgroupBadge } from "@/components/features/athletes/components/subgroup-badge"
 
 interface MicrocycleEditorProps {
   microcycleId: number
@@ -120,7 +121,9 @@ export function MicrocycleEditor({
 
         <div className="grid grid-cols-7 gap-2">
           {days.map((day, dayIndex) => {
-            const daySessions = microcycle.sessions.filter(session => session.day === dayIndex + 1)
+            const daySessions = microcycle.sessions.filter(session =>
+              session.day === dayIndex + 1
+            )
 
             return (
               <Card key={day} className="min-h-[120px]">
@@ -165,14 +168,14 @@ export function MicrocycleEditor({
                                 {'Vol: \u2014'}
                               </Badge>
                             )}
-                            {/* Subgroup dots (T021) */}
-                            {session.targetEventGroups && session.targetEventGroups.length > 0 && (() => {
-                              const unique = [...new Set(session.targetEventGroups!.flat())]
+                            {/* Subgroup badges */}
+                            {session.targetSubgroups && session.targetSubgroups.length > 0 && (() => {
+                              const unique = [...new Set(session.targetSubgroups!.flat())]
                               if (unique.length === 0) return null
                               return (
-                                <div className="flex items-center gap-0.5">
+                                <div className="flex items-center gap-0.5 flex-wrap">
                                   {unique.slice(0, 3).map(g => (
-                                    <span key={g} className="w-2 h-2 rounded-full bg-white/50" title={abbreviateEventGroup(g)} />
+                                    <SubgroupBadge key={g} value={abbreviateSubgroup(g)} size="xs" className="bg-white/20 text-white text-[10px]" />
                                   ))}
                                 </div>
                               )
@@ -204,11 +207,11 @@ export function MicrocycleEditor({
               >
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${getSessionTypeColor(session.type)}`} />
-                  {/* Subgroup dots alongside type dot (T021) */}
-                  {session.targetEventGroups && session.targetEventGroups.length > 0 && (() => {
-                    const unique = [...new Set(session.targetEventGroups!.flat())]
+                  {/* Subgroup badges */}
+                  {session.targetSubgroups && session.targetSubgroups.length > 0 && (() => {
+                    const unique = [...new Set(session.targetSubgroups!.flat())]
                     return unique.slice(0, 3).map(g => (
-                      <div key={g} className="w-2 h-2 rounded-full bg-muted-foreground/40" title={abbreviateEventGroup(g)} />
+                      <SubgroupBadge key={g} value={abbreviateSubgroup(g)} size="xs" />
                     ))
                   })()}
                   <span className="font-medium text-sm">{session.name}</span>
