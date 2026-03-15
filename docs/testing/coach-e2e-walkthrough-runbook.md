@@ -168,11 +168,21 @@ Naming: `<NN>-<stage>-<description>.png` (e.g., `01-onboarding-welcome.png`)
 - [ ] **Overall**: Does the 5-step flow feel too long, too short, or just right?
 
 **Screenshots** (critical):
-- `01-onboarding-welcome.png` — Welcome splash
-- `02-onboarding-role.png` — Role selection with "Coach Athletes" highlighted
-- `03-onboarding-coach-details.png` — Filled coach details form
-- `04-onboarding-tour.png` — Dashboard tour (coach variant)
-- `05-onboarding-complete.png` — Completion "what happens next"
+
+![Welcome splash](../../apps/web/public/demo/coach/01-onboarding-welcome.png)
+*01 — Welcome splash*
+
+![Role selection with "Coach Athletes" highlighted](../../apps/web/public/demo/coach/02-onboarding-role.png)
+*02 — Role selection with "Coach Athletes" highlighted*
+
+![Filled coach details form](../../apps/web/public/demo/coach/03-onboarding-coach-details.png)
+*03 — Filled coach details form*
+
+![Dashboard tour (coach variant)](../../apps/web/public/demo/coach/04-onboarding-tour.png)
+*04 — Dashboard tour (coach variant)*
+
+![Completion "what happens next"](../../apps/web/public/demo/coach/05-onboarding-complete.png)
+*05 — Completion "what happens next"*
 
 ---
 
@@ -197,8 +207,9 @@ Naming: `<NN>-<stage>-<description>.png` (e.g., `01-onboarding-welcome.png`)
 - [ ] **Mobile**: Does the empty dashboard work on mobile? Sidebar collapse?
 
 **Screenshots** (critical):
-- `06-dashboard-empty.png` — First-time empty coach dashboard
-- `07-dashboard-sidebar.png` — Sidebar with all coach nav links visible
+
+![First-time empty coach dashboard](../../apps/web/public/demo/coach/06-dashboard-empty.png)
+*06 — First-time empty coach dashboard*
 
 ---
 
@@ -226,9 +237,12 @@ Naming: `<NN>-<stage>-<description>.png` (e.g., `01-onboarding-welcome.png`)
 - [ ] **Discoverability**: Would Coach Tanaka understand the difference between "groups" and "subgroups" without explanation?
 
 **Screenshots** (critical):
-- `08-athletes-empty.png` — Empty athletes page
-- `09-group-created.png` — After creating "Sprint Squad" group
-- `10-groups-directory.png` — Group directory with multiple groups
+
+![Empty athletes page](../../apps/web/public/demo/coach/08-athletes-empty.png)
+*08 — Empty athletes page*
+
+![After creating "Sprint Squad" group](../../apps/web/public/demo/coach/09-group-created.png)
+*09 — After creating "Sprint Squad" group*
 
 ---
 
@@ -257,9 +271,9 @@ Naming: `<NN>-<stage>-<description>.png` (e.g., `01-onboarding-welcome.png`)
 - [ ] **Relationship clarity**: Is it clear that groups and subgroups are independent concepts (groups = team org, subgroups = event specialization)?
 
 **Screenshots** (critical):
-- `11-subgroup-manager.png` — Subgroup manager with SS, LS, HU created
-- `12-athlete-subgroup-assign.png` — SubgroupDialog assigning subgroups to athlete
-- `13-athlete-with-badges.png` — Athlete card showing subgroup badges
+
+![Subgroup manager with SS, LS, HU created](../../apps/web/public/demo/coach/11-subgroup-manager.png)
+*11 — Subgroup manager with SS, LS, HU created*
 
 ---
 
@@ -291,8 +305,9 @@ Naming: `<NN>-<stage>-<description>.png` (e.g., `01-onboarding-welcome.png`)
 - [ ] **Relationship to templates**: Is it clear that the library feeds into templates and session planning?
 
 **Screenshots**:
-- `14-library-browse.png` — Exercise library with type filter active
-- `15-library-create.png` — Creating a custom exercise
+
+![Exercise library with type filter active](../../apps/web/public/demo/coach/14-library-browse.png)
+*14 — Exercise library with type filter active*
 
 ---
 
@@ -345,11 +360,24 @@ Naming: `<NN>-<stage>-<description>.png` (e.g., `01-onboarding-welcome.png`)
 - [ ] **Error handling**: What happens if the paste is gibberish? Is the error helpful?
 
 **Screenshots** (critical):
-- `16-template-new.png` — Empty templates page or new template sheet
-- `17-ai-parse-input.png` — PasteProgramDialog with pasted text
-- `18-ai-parse-preview.png` — AI-parsed exercise preview (the money shot)
-- `19-ai-parse-resolved.png` — Resolution summary (matched/created)
-- `20-template-saved.png` — Saved template in template list
+
+![Empty templates page or new template sheet](../../apps/web/public/demo/coach/16-template-new.png)
+*16 — New template sheet*
+
+![PasteProgramDialog with pasted text](../../apps/web/public/demo/coach/17-ai-parse-input.png)
+*17 — PasteProgramDialog with pasted text*
+
+![AI-parsed exercise preview](../../apps/web/public/demo/coach/18-ai-parse-preview.png)
+*18 — AI-parsed exercise preview (the money shot)*
+
+![AI parse speed](../../apps/web/public/demo/coach/18b-ai-parse-speed.png)
+*18b — AI parse speed*
+
+![Resolution summary (matched/created)](../../apps/web/public/demo/coach/19-ai-parse-resolved.png)
+*19 — Resolution summary (matched/created)*
+
+![Saved template in template list](../../apps/web/public/demo/coach/20-template-saved.png)
+*20 — Saved template in template list*
 
 ---
 
@@ -391,12 +419,18 @@ Naming: `<NN>-<stage>-<description>.png` (e.g., `01-onboarding-welcome.png`)
 - [ ] **Three-panel drill-down (mobile)**: Does the meso → micro → session navigation work on mobile?
 
 **Screenshots** (critical):
-- `21-plans-empty.png` — Empty plans page
-- `22-season-wizard.png` — CoachSeasonWizard form
-- `23-season-phases.png` — Auto-generated phase breakdown
-- `24-plan-workspace.png` — Plan workspace with mesocycle tabs
-- `25-plan-microcycle.png` — Microcycle with session plans added
-- `26-plan-subgroup-filter.png` — Subgroup filter bar in plan workspace
+
+![Empty plans page](../../apps/web/public/demo/coach/21-plans-empty.png)
+*21 — Empty plans page*
+
+![CoachSeasonWizard form](../../apps/web/public/demo/coach/22-season-wizard.png)
+*22 — CoachSeasonWizard form*
+
+![Auto-generated phase breakdown](../../apps/web/public/demo/coach/23-season-phases.png)
+*23 — Auto-generated phase breakdown*
+
+![Plan workspace with mesocycle tabs](../../apps/web/public/demo/coach/24-plan-workspace.png)
+*24 — Plan workspace with mesocycle tabs*
 
 ---
 
@@ -438,12 +472,7 @@ Naming: `<NN>-<stage>-<description>.png` (e.g., `01-onboarding-welcome.png`)
 - [ ] **Information density**: With exercises, sets, subgroups, supersets, and AI proposals — is the screen overwhelming?
 
 **Screenshots** (critical):
-- `27-session-planner.png` — SessionPlannerV2 with exercises and sets
-- `28-exercise-picker.png` — ExercisePickerSheet search
-- `29-session-ai-chat.png` — AI assistant chat with request
-- `30-session-ai-proposal.png` — Inline AI proposal with diff view
-- `31-session-subgroups.png` — Exercise with subgroup targeting
-- `32-session-saved.png` — Saved session confirmation
+*(Stage 9 was not fully executed during the initial E2E run — screenshots pending for future runs)*
 
 ---
 
