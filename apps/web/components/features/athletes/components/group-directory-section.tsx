@@ -50,6 +50,8 @@ interface GroupDirectorySectionProps {
   eventGroups?: EventGroup[]
   selectedGroupFilter: number | null
   onGroupFilterChange: (groupId: number | null) => void
+  onGroupUpdated?: (groupId: number, newName: string) => void
+  onGroupDeleted?: (groupId: number) => void
   onDataReload: () => void
   className?: string
 }
@@ -78,6 +80,8 @@ export function GroupDirectorySection({
   eventGroups,
   selectedGroupFilter,
   onGroupFilterChange,
+  onGroupUpdated,
+  onGroupDeleted,
   onDataReload,
   className
 }: GroupDirectorySectionProps) {
@@ -96,7 +100,7 @@ export function GroupDirectorySection({
   const [newGroupName, setNewGroupName] = useState("")
   const [editingGroup, setEditingGroup] = useState<GroupWithCount | null>(null)
 
-  // Handle group creation
+  // Handle group creation — clear input immediately, sync on server response
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) {
       toast({
@@ -107,89 +111,68 @@ export function GroupDirectorySection({
       return
     }
 
+    const savedName = newGroupName.trim()
+    setNewGroupName("")
+
     try {
-      const result = await createAthleteGroupAction(newGroupName.trim())
-      
+      const result = await createAthleteGroupAction(savedName)
+
       if (result.isSuccess) {
-        toast({
-          title: "Success",
-          description: "Group created successfully"
-        })
-        setNewGroupName("")
+        toast({ title: "Success", description: "Group created successfully" })
         onDataReload()
       } else {
-        toast({
-          title: "Error",
-          description: result.message,
-          variant: "destructive"
-        })
+        toast({ title: "Error", description: result.message, variant: "destructive" })
+        setNewGroupName(savedName)
       }
     } catch {
-      toast({
-        title: "Error",
-        description: "Failed to create group",
-        variant: "destructive"
-      })
+      toast({ title: "Error", description: "Failed to create group", variant: "destructive" })
+      setNewGroupName(savedName)
     }
   }
 
-  // Handle group update
+  // Handle group update — optimistic rename, revert on failure
   const handleUpdateGroup = async (group: GroupWithCount, newName: string) => {
     if (!newName.trim()) return
 
+    // Optimistic: close dialog and update state immediately
+    setEditingGroup(null)
+    onGroupUpdated?.(group.id, newName.trim())
+
     try {
       const result = await updateAthleteGroupAction(group.id, { group_name: newName.trim() })
-      
+
       if (result.isSuccess) {
-        toast({
-          title: "Success",
-          description: "Group updated successfully"
-        })
-        setEditingGroup(null)
-        onDataReload()
+        toast({ title: "Success", description: "Group updated successfully" })
       } else {
-        toast({
-          title: "Error",
-          description: result.message,
-          variant: "destructive"
-        })
+        toast({ title: "Error", description: result.message, variant: "destructive" })
+        onDataReload()
       }
     } catch {
-      toast({
-        title: "Error",
-        description: "Failed to update group",
-        variant: "destructive"
-      })
+      toast({ title: "Error", description: "Failed to update group", variant: "destructive" })
+      onDataReload()
     }
   }
 
-  // Handle group deletion
+  // Handle group deletion — optimistic remove, revert on failure
   const handleDeleteGroup = async (groupId: number) => {
+    // Optimistic: remove from state immediately
+    if (selectedGroupFilter === groupId) {
+      onGroupFilterChange(null)
+    }
+    onGroupDeleted?.(groupId)
+
     try {
       const result = await deleteAthleteGroupAction(groupId)
-      
+
       if (result.isSuccess) {
-        toast({
-          title: "Success",
-          description: "Group deleted successfully"
-        })
-        if (selectedGroupFilter === groupId) {
-          onGroupFilterChange(null)
-        }
-        onDataReload()
+        toast({ title: "Success", description: "Group deleted successfully" })
       } else {
-        toast({
-          title: "Error",
-          description: result.message,
-          variant: "destructive"
-        })
+        toast({ title: "Error", description: result.message, variant: "destructive" })
+        onDataReload()
       }
     } catch {
-      toast({
-        title: "Error",
-        description: "Failed to delete group",
-        variant: "destructive"
-      })
+      toast({ title: "Error", description: "Failed to delete group", variant: "destructive" })
+      onDataReload()
     }
   }
 

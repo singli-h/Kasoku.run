@@ -215,6 +215,7 @@ export async function saveSessionWithExercisesAction(
     if (sessionUpdates.week !== undefined) sessionUpdateData.week = sessionUpdates.week
     if (sessionUpdates.day !== undefined) sessionUpdateData.day = sessionUpdates.day
     if (sessionUpdates.session_mode !== undefined) sessionUpdateData.session_mode = sessionUpdates.session_mode
+    if (sessionUpdates.target_event_groups !== undefined) sessionUpdateData.target_event_groups = sessionUpdates.target_event_groups
 
     if (Object.keys(sessionUpdateData).length > 0) {
       const { error: updateError } = await supabase

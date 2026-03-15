@@ -8,6 +8,7 @@ import { getMacrocycleByIdAction, getMesocycleByIdAction, getUserMesocyclesActio
 import { getRacesByMacrocycleAction } from "@/actions/plans/race-actions"
 import { getExercisesAction } from "@/actions/library/exercise-actions"
 import { getCoachAthleteGroupsAction } from "@/actions/athletes/athlete-actions"
+import { getEventGroupsAction } from "@/actions/athletes/event-group-actions"
 import { serverProtectRoute } from "@/components/auth/server-protect-route"
 import { FeatureErrorBoundary } from "@/components/error-boundary"
 import type { MesocycleWithDetails } from "@/types/training"
@@ -133,15 +134,15 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
     )
   }
 
-  // For coaches, fetch macrocycle with full hierarchy + coach groups
-  const [macrocycleResult, racesResult, groupsResult] = await Promise.all([
+  // For coaches, fetch macrocycle with full hierarchy + coach event groups
+  const [macrocycleResult, racesResult, eventGroupsResult] = await Promise.all([
     getMacrocycleByIdAction(planId),
     getRacesByMacrocycleAction(planId),
-    getCoachAthleteGroupsAction()
+    getEventGroupsAction()
   ])
 
-  const coachGroups = (groupsResult.isSuccess ? groupsResult.data ?? [] : [])
-    .map(g => ({ id: g.id, name: g.group_name ?? `Group ${g.id}` }))
+  const coachEventGroups = (eventGroupsResult.isSuccess ? eventGroupsResult.data ?? [] : [])
+    .map(eg => eg.abbreviation)
 
   // Handle errors
   if (!macrocycleResult.isSuccess || !macrocycleResult.data) {
@@ -267,7 +268,7 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
   return (
     <FeatureErrorBoundary featureName="Training Plan" customMessage="Something went wrong while loading your training plan. Please try again.">
       <Suspense fallback={<div className="space-y-6 p-6"><div className="h-8 w-48 bg-muted animate-pulse rounded" /><div className="h-[400px] bg-muted animate-pulse rounded-lg" /></div>}>
-        <CoachPlanPageWithAI initialPlan={planData} coachGroups={coachGroups} />
+        <CoachPlanPageWithAI initialPlan={planData} coachEventGroups={coachEventGroups} />
       </Suspense>
     </FeatureErrorBoundary>
   )

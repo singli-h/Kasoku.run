@@ -517,6 +517,12 @@ export function SessionPlannerV2({
         id: String(ex.id), // Ensure id is string for save action
       }))
 
+      // Compute session-level target_event_groups from exercise-level data
+      const allExerciseGroups = exercisesToSave
+        .flatMap(ex => (ex as any).target_event_groups ?? [])
+        .filter((g: string) => !!g)
+      const sessionTargetEventGroups = [...new Set(allExerciseGroups)] as string[]
+
       const result = await saveSessionWithExercisesAction(
         sessionId,
         {
@@ -526,6 +532,7 @@ export function SessionPlannerV2({
           week: initialSession.week,
           day: initialSession.day,
           session_mode: initialSession.session_mode,
+          target_event_groups: sessionTargetEventGroups.length > 0 ? sessionTargetEventGroups : null,
         },
         exercisesToSave as any // Cast to satisfy type - runtime compatible
       )

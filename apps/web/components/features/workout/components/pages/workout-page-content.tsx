@@ -179,17 +179,12 @@ export function WorkoutPageContent() {
             )}
 
             {/* All Available Sessions */}
-            <div>
-              <h2 className="text-lg font-semibold mb-3">
-                {ongoingSession ? "Other Sessions" : "Available Sessions"}
-              </h2>
-              <WorkoutSessionSelector
-                onSessionSelected={(_presetGroup, session) => {
-                  if (session) handleSessionSelected(session)
-                }}
-                hideOngoing={!!ongoingSession}
-              />
-            </div>
+            <WorkoutSessionSelector
+              onSessionSelected={(_presetGroup, session) => {
+                if (session) handleSessionSelected(session)
+              }}
+              hideOngoing={!!ongoingSession}
+            />
           </div>
         )}
       </div>

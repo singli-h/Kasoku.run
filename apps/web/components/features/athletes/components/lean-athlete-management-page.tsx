@@ -93,10 +93,33 @@ export function LeanAthleteManagementPage() {
     loadData()
   }, [loadData])
 
+  // Optimistic update: athlete event groups
+  const handleAthleteEventGroupUpdate = useCallback((userId: number, newGroups: string[] | null) => {
+    setAthletes(prev => prev.map(a =>
+      a.user_id === userId ? { ...a, event_groups: newGroups } : a
+    ))
+  }, [])
+
+  // Optimistic update: event group deleted
+  const handleEventGroupDeleted = useCallback((egId: number) => {
+    setEventGroups(prev => prev.filter(eg => eg.id !== egId))
+  }, [])
+
+  // Optimistic update: group renamed
+  const handleGroupUpdated = useCallback((groupId: number, newName: string) => {
+    setGroups(prev => prev.map(g =>
+      g.id === groupId ? { ...g, group_name: newName } : g
+    ))
+  }, [])
+
+  // Optimistic update: group deleted
+  const handleGroupDeleted = useCallback((groupId: number) => {
+    setGroups(prev => prev.filter(g => g.id !== groupId))
+  }, [])
+
   // Handle bulk operation success
   const handleBulkOperationSuccess = useCallback(() => {
     setSelectedAthletes([])
-    setBulkOperation({ isOpen: false, type: null })
     loadData()
   }, [loadData])
 
@@ -151,6 +174,7 @@ export function LeanAthleteManagementPage() {
       {/* Event Groups */}
       <EventGroupManager
         eventGroups={eventGroups}
+        onEventGroupDeleted={handleEventGroupDeleted}
         onDataReload={loadData}
       />
 
@@ -164,6 +188,7 @@ export function LeanAthleteManagementPage() {
         onBulkOperation={setBulkOperation}
         selectedGroupFilter={selectedGroupFilter}
         onGroupFilterChange={setSelectedGroupFilter}
+        onAthleteEventGroupUpdate={handleAthleteEventGroupUpdate}
         onDataReload={loadData}
       />
 
@@ -174,6 +199,8 @@ export function LeanAthleteManagementPage() {
         eventGroups={eventGroups}
         selectedGroupFilter={selectedGroupFilter}
         onGroupFilterChange={setSelectedGroupFilter}
+        onGroupUpdated={handleGroupUpdated}
+        onGroupDeleted={handleGroupDeleted}
         onDataReload={loadData}
       />
 

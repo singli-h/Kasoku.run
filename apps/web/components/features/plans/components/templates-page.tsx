@@ -24,6 +24,7 @@ import {
   Pencil,
   Save,
   Sparkles,
+  SlidersHorizontal,
 } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,8 +38,7 @@ import type { TrainingExercise, TrainingSet } from "@/components/features/traini
 import { dbPlanSetToTrainingSet } from "@/components/features/training/types"
 import { PasteProgramDialog, type ResolvedExercise } from "@/components/features/training/components/PasteProgramDialog"
 import AnimatedGradientText from "@/components/composed/animated-gradient-text"
-import { useAdvancedFieldsToggle } from "@/lib/hooks/useAdvancedFieldsToggle"
-import { AdvancedFieldsToggle } from "@/components/features/plans/individual/AdvancedFieldsToggle"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -113,7 +113,7 @@ function dbExercisesToTraining(exercises: SessionPlanWithDetails['session_plan_e
         exerciseTypeId: typeId,
         expanded: true,
         sets: sets.length > 0 ? sets : [{
-          id: `new-set-${Date.now()}-0`,
+          id: crypto.randomUUID(),
           setIndex: 1,
           completed: false,
         }],
@@ -124,7 +124,7 @@ function dbExercisesToTraining(exercises: SessionPlanWithDetails['session_plan_e
 /** Convert an ExerciseWithDetails (from search) to a TrainingExercise */
 function libraryExerciseToTraining(exercise: ExerciseWithDetails, order: number): TrainingExercise {
   return {
-    id: `template-new-${exercise.id}-${Date.now()}`,
+    id: crypto.randomUUID(),
     exerciseId: exercise.id,
     name: exercise.name ?? 'Unnamed',
     section: sectionFromTypeId(exercise.exercise_type?.id ?? undefined),
@@ -132,7 +132,7 @@ function libraryExerciseToTraining(exercise: ExerciseWithDetails, order: number)
     exerciseTypeId: exercise.exercise_type?.id ?? undefined,
     expanded: true,
     sets: [{
-      id: `new-set-${Date.now()}-0`,
+      id: crypto.randomUUID(),
       setIndex: 1,
       completed: false,
     }],
@@ -142,7 +142,7 @@ function libraryExerciseToTraining(exercise: ExerciseWithDetails, order: number)
 /** Convert ResolvedExercise (from AI parser) to TrainingExercise */
 function resolvedToTrainingExercise(resolved: ResolvedExercise, order: number): TrainingExercise {
   return {
-    id: `template-ai-${resolved.resolvedExerciseId}-${Date.now()}-${order}`,
+    id: crypto.randomUUID(),
     exerciseId: resolved.resolvedExerciseId,
     name: resolved.resolvedExerciseName,
     section: resolved.resolvedExerciseType || 'Gym',
@@ -150,7 +150,7 @@ function resolvedToTrainingExercise(resolved: ResolvedExercise, order: number): 
     exerciseTypeId: resolved.resolvedExerciseTypeId ?? undefined,
     expanded: true,
     sets: resolved.sets.map((s, idx) => ({
-      id: `ai-set-${Date.now()}-${order}-${idx}`,
+      id: crypto.randomUUID(),
       setIndex: idx + 1,
       reps: s.reps ?? null,
       weight: s.weight ?? null,
@@ -199,7 +199,7 @@ function useTemplateExerciseHandlers(
       if (ex.id !== exerciseId) return ex
       const lastSet = ex.sets[ex.sets.length - 1]
       const newSet: TrainingSet = {
-        id: `new-set-${Date.now()}-${ex.sets.length}`,
+        id: crypto.randomUUID(),
         setIndex: ex.sets.length + 1,
         reps: lastSet?.reps ?? null,
         weight: lastSet?.weight ?? null,
@@ -315,6 +315,9 @@ interface ExerciseSearchComboboxProps {
 
 function ExerciseSearchCombobox({ enabled, selectedIds, onSelect }: ExerciseSearchComboboxProps) {
   const [showResults, setShowResults] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const {
     searchQuery,
     setSearchQuery,
@@ -322,37 +325,107 @@ function ExerciseSearchCombobox({ enabled, selectedIds, onSelect }: ExerciseSear
     isLoading: isSearching,
   } = useExerciseSearch({ enabled: enabled && showResults, pageSize: 15 })
 
+  // Reset active index when results change
+  useEffect(() => { setActiveIndex(-1) }, [searchResults])
+
+  // Click-outside dismiss
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowResults(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const handleSelect = useCallback((exercise: ExerciseWithDetails) => {
     onSelect(exercise)
     setSearchQuery("")
     setShowResults(false)
+    setActiveIndex(-1)
   }, [onSelect, setSearchQuery])
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setShowResults(false)
+      setActiveIndex(-1)
+      return
+    }
+
+    if (!showResults || !searchQuery.trim()) return
+    const results = searchResults
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIndex(prev => prev < results.length - 1 ? prev + 1 : 0)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex(prev => prev > 0 ? prev - 1 : results.length - 1)
+    } else if (e.key === 'Enter' && activeIndex >= 0 && activeIndex < results.length) {
+      e.preventDefault()
+      const exercise = results[activeIndex]
+      if (!selectedIds.includes(exercise.id)) {
+        handleSelect(exercise)
+      }
+    }
+  }, [showResults, searchQuery, searchResults, activeIndex, selectedIds, handleSelect])
+
+  // Scroll active item into view
+  useEffect(() => {
+    if (activeIndex >= 0 && listRef.current) {
+      const items = listRef.current.querySelectorAll('[role="option"]')
+      items[activeIndex]?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [activeIndex])
+
+  const isOpen = showResults && !!searchQuery.trim()
+  const listboxId = "exercise-search-listbox"
+  const activeOptionId = activeIndex >= 0 ? `exercise-option-${activeIndex}` : undefined
+
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
       <Input
         placeholder="Search exercises to add..."
         value={searchQuery}
         onChange={(e) => { setSearchQuery(e.target.value); setShowResults(true) }}
         onFocus={() => setShowResults(true)}
+        onKeyDown={handleKeyDown}
         className="pl-9"
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-controls={isOpen ? listboxId : undefined}
+        aria-activedescendant={activeOptionId}
+        autoComplete="off"
       />
       {isSearching && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />}
 
-      {showResults && searchQuery.trim() && (
-        <div className="absolute z-50 top-full mt-1 w-full border rounded-lg bg-popover shadow-lg max-h-48 overflow-y-auto">
+      {isOpen && (
+        <div
+          ref={listRef}
+          id={listboxId}
+          role="listbox"
+          className="absolute z-50 top-full mt-1 w-full border rounded-lg bg-popover shadow-lg max-h-48 overflow-y-auto"
+        >
           {searchResults.length === 0 && !isSearching ? (
             <p className="p-3 text-sm text-muted-foreground text-center">No exercises found</p>
           ) : (
-            searchResults.map((exercise) => {
+            searchResults.map((exercise, index) => {
               const isAdded = selectedIds.includes(exercise.id)
               return (
                 <button
                   key={exercise.id}
+                  id={`exercise-option-${index}`}
+                  role="option"
+                  aria-selected={index === activeIndex}
                   onClick={() => !isAdded && handleSelect(exercise)}
                   disabled={isAdded}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                    index === activeIndex ? "bg-accent" : "hover:bg-accent"
+                  )}
                 >
                   <Dumbbell className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   <span className="truncate flex-1">{exercise.name}</span>
@@ -447,6 +520,7 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
   const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null)
   const [showNewDialog, setShowNewDialog] = useState(false)
   const [detailTemplate, setDetailTemplate] = useState<SessionPlanWithDetails | null>(null)
+  const [isDuplicating, setIsDuplicating] = useState<string | null>(null)
 
   // AI Parser state
   const [pasteProgramOpen, setPasteProgramOpen] = useState(false)
@@ -477,6 +551,7 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
   }
 
   const handleDuplicateTemplate = async (templateId: string) => {
+    setIsDuplicating(templateId)
     try {
       const result = await duplicateTemplateAction(templateId)
       if (result.isSuccess) {
@@ -490,6 +565,8 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
       }
     } catch {
       toast({ title: "Error", description: "Failed to duplicate template", variant: "destructive" })
+    } finally {
+      setIsDuplicating(null)
     }
   }
 
@@ -543,6 +620,7 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
           </Button>
           <button
             onClick={() => setPasteProgramOpen(true)}
+            className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <AnimatedGradientText className="flex items-center gap-1.5 text-sm cursor-pointer">
               <Sparkles className="h-4 w-4" />
@@ -574,6 +652,7 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
               onClick={() => openDetail(template)}
               onDuplicate={() => handleDuplicateTemplate(template.id)}
               onDelete={() => setDeleteTemplateId(template.id)}
+              disabled={isDuplicating === template.id}
             />
           ))}
         </div>
@@ -649,8 +728,8 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
   const [originalSnapshot, setOriginalSnapshot] = useState("")
 
-  // Field toggle
-  const { showAdvancedFields, toggleAdvancedFields } = useAdvancedFieldsToggle()
+  // Field toggle — show all fields by default in coach/template mode
+  const [showAllFields, setShowAllFields] = useState(true)
 
   // Ref to prevent onOpenChange from closing when we want to show the dialog instead
   const blockCloseRef = useRef(false)
@@ -665,7 +744,7 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
       setOriginalSnapshot(JSON.stringify({
         name: template.name || "",
         desc: template.description || "",
-        exercises: exercises.map(e => ({ id: e.exerciseId, sets: e.sets })),
+        exercises: exercises.map((e, i) => ({ id: e.exerciseId, order: i, sets: e.sets })),
       }))
     }
   }, [template])
@@ -676,7 +755,7 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
     const current = JSON.stringify({
       name: editName,
       desc: editDescription,
-      exercises: editExercises.map(e => ({ id: e.exerciseId, sets: e.sets })),
+      exercises: editExercises.map((e, i) => ({ id: e.exerciseId, order: i, sets: e.sets })),
     })
     return current !== originalSnapshot
   }, [editName, editDescription, editExercises, originalSnapshot, template])
@@ -696,8 +775,8 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
     })
   }, [])
 
-  const handleSave = useCallback(async () => {
-    if (!template || !editName.trim() || editExercises.length === 0) return
+  const handleSave = useCallback(async (): Promise<boolean> => {
+    if (!template || !editName.trim() || editExercises.length === 0) return false
     setIsSaving(true)
 
     try {
@@ -708,53 +787,30 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
       })
 
       if (result.isSuccess) {
-        const updated: SessionPlanWithDetails = {
-          ...template,
-          name: editName.trim(),
-          description: editDescription.trim() || null,
-          session_plan_exercises: editExercises.map((ex, i) => ({
-            id: `updated-${i}`,
-            session_plan_id: template.id,
-            exercise_id: ex.exerciseId,
-            exercise_order: i + 1,
-            notes: null,
-            superset_id: null,
-            created_at: template.created_at,
-            updated_at: new Date().toISOString(),
-            target_event_groups: null,
-            exercise: { id: ex.exerciseId, name: ex.name, exercise_type_id: ex.exerciseTypeId ?? null } as any,
-            session_plan_sets: ex.sets.map((s, j) => ({
-              id: j,
-              set_index: j + 1,
-              reps: s.reps ?? null,
-              weight: s.weight ?? null,
-              distance: s.distance ?? null,
-              performing_time: s.performingTime ?? null,
-              rest_time: s.restTime ?? null,
-              rpe: s.rpe ?? null,
-              tempo: s.tempo ?? null,
-              effort: s.effort != null ? s.effort / 100 : null,
-              power: s.power ?? null,
-              velocity: s.velocity ?? null,
-              height: s.height ?? null,
-              resistance: s.resistance ?? null,
-            })) as any,
-          })),
+        // Re-fetch to get accurate server state
+        const refreshed = await getTemplatesAction()
+        if (refreshed.isSuccess) {
+          const updated = refreshed.data.find(t => t.id === template.id)
+          if (updated) {
+            const exercises = dbExercisesToTraining(updated.session_plan_exercises)
+            setEditExercises(exercises)
+            setOriginalSnapshot(JSON.stringify({
+              name: updated.name || "",
+              desc: updated.description || "",
+              exercises: exercises.map((e, i) => ({ id: e.exerciseId, order: i, sets: e.sets })),
+            }))
+            onUpdated(updated)
+          }
         }
-        // Update the snapshot so the sheet is no longer dirty after save
-        const exercises = dbExercisesToTraining(updated.session_plan_exercises)
-        setOriginalSnapshot(JSON.stringify({
-          name: updated.name || "",
-          desc: updated.description || "",
-          exercises: exercises.map(e => ({ id: e.exerciseId, sets: e.sets })),
-        }))
-        onUpdated(updated)
         toast({ title: "Template updated", description: `${editExercises.length} exercise${editExercises.length !== 1 ? "s" : ""} saved` })
+        return true
       } else {
         toast({ title: "Error", description: result.message, variant: "destructive" })
+        return false
       }
     } catch {
       toast({ title: "Error", description: "Failed to update template", variant: "destructive" })
+      return false
     } finally {
       setIsSaving(false)
     }
@@ -799,17 +855,19 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
               <Dumbbell className="h-4 w-4 text-primary" />
               Edit Template
             </SheetTitle>
+            <SheetDescription>Edit template name, description, and exercises</SheetDescription>
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Name</Label>
-                <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Template name" />
+                <Label htmlFor="edit-template-name">Name</Label>
+                <Input id="edit-template-name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Template name" />
               </div>
               <div className="space-y-1.5">
-                <Label>Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Label htmlFor="edit-template-description">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
                 <Textarea
+                  id="edit-template-description"
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   placeholder="Brief description..."
@@ -820,11 +878,19 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label>Exercises</Label>
-                  <AdvancedFieldsToggle
-                    checked={showAdvancedFields}
-                    onCheckedChange={toggleAdvancedFields}
-                    variant="inline"
-                  />
+                  <button
+                    onClick={() => setShowAllFields(prev => !prev)}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-md transition-colors",
+                      showAllFields
+                        ? "bg-primary/10 text-primary"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    )}
+                    title={showAllFields ? "Hide optional fields" : "Show all fields"}
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-medium">{showAllFields ? "All" : "Min"}</span>
+                  </button>
                 </div>
                 <ExerciseSearchCombobox
                   enabled={!!template}
@@ -836,7 +902,7 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
                 <ExerciseList
                   exercises={editExercises}
                   setExercises={setEditExercises}
-                  showAdvancedFields={showAdvancedFields}
+                  showAdvancedFields={showAllFields}
                 />
               ) : (
                 <div className="py-6 text-center text-sm text-muted-foreground">
@@ -881,7 +947,7 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <Button variant="outline" onClick={() => { setShowUnsavedDialog(false); onClose() }}>Discard</Button>
-            <Button onClick={async () => { await handleSave(); setShowUnsavedDialog(false); onClose() }}>Save</Button>
+            <Button onClick={async () => { const ok = await handleSave(); if (ok) { setShowUnsavedDialog(false); onClose() } else { setShowUnsavedDialog(false) } }}>Save</Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -907,8 +973,8 @@ function NewTemplateDialog({ open, onOpenChange, onCreated, initialExercises }: 
   const [isSaving, setIsSaving] = useState(false)
   const [selectedExercises, setSelectedExercises] = useState<TrainingExercise[]>([])
 
-  // Field toggle
-  const { showAdvancedFields } = useAdvancedFieldsToggle()
+  // Field toggle — show all fields by default in template mode
+  const [showAllFields, setShowAllFields] = useState(true)
 
   const resetState = useCallback(() => {
     setName("")
@@ -952,43 +1018,14 @@ function NewTemplateDialog({ open, onOpenChange, onCreated, initialExercises }: 
       })
 
       if (result.isSuccess && result.data) {
-        const newTemplate = {
-          ...result.data,
-          session_plan_exercises: selectedExercises.map((ex, i) => ({
-            id: `temp-${i}`,
-            session_plan_id: result.data.id,
-            exercise_id: ex.exerciseId,
-            exercise_order: i + 1,
-            notes: null,
-            superset_id: null,
-            created_at: new Date().toISOString(),
-            updated_at: null,
-            target_event_groups: null,
-            exercise: { id: ex.exerciseId, name: ex.name, exercise_type_id: ex.exerciseTypeId ?? null } as any,
-            session_plan_sets: ex.sets.map((s, si) => ({
-              id: `temp-set-${i}-${si}`,
-              session_plan_exercise_id: `temp-${i}`,
-              set_index: si + 1,
-              reps: s.reps,
-              weight: s.weight,
-              distance: s.distance,
-              performing_time: s.performingTime,
-              rest_time: s.restTime,
-              rpe: s.rpe,
-              tempo: s.tempo ?? null,
-              effort: s.effort != null ? s.effort / 100 : null,
-              power: s.power ?? null,
-              velocity: s.velocity ?? null,
-              height: s.height ?? null,
-              resistance: s.resistance ?? null,
-              resistance_unit_id: s.resistanceUnitId ?? null,
-              metadata: s.metadata ?? null,
-              created_at: new Date().toISOString(),
-              updated_at: null,
-            })),
-          })),
-        } as SessionPlanWithDetails
-        onCreated(newTemplate)
+        // Re-fetch to get accurate server state with nested data
+        const refreshed = await getTemplatesAction()
+        if (refreshed.isSuccess) {
+          const newTemplate = refreshed.data.find(t => t.id === result.data.id)
+          if (newTemplate) {
+            onCreated(newTemplate)
+          }
+        }
         toast({
           title: "Template created",
           description: `Template saved with ${selectedExercises.length} exercise${selectedExercises.length !== 1 ? "s" : ""}`,
@@ -1043,7 +1080,22 @@ function NewTemplateDialog({ open, onOpenChange, onCreated, initialExercises }: 
 
           {/* Exercise Search */}
           <div className="space-y-1.5">
-            <Label>Exercises</Label>
+            <div className="flex items-center justify-between">
+              <Label>Exercises</Label>
+              <button
+                onClick={() => setShowAllFields(prev => !prev)}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 rounded-md transition-colors",
+                  showAllFields
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+                title={showAllFields ? "Hide optional fields" : "Show all fields"}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-medium">{showAllFields ? "All" : "Min"}</span>
+              </button>
+            </div>
             <ExerciseSearchCombobox
               enabled={open}
               selectedIds={selectedExercises.map(e => e.exerciseId)}
@@ -1056,7 +1108,7 @@ function NewTemplateDialog({ open, onOpenChange, onCreated, initialExercises }: 
             <ExerciseList
               exercises={selectedExercises}
               setExercises={setSelectedExercises}
-              showAdvancedFields={showAdvancedFields}
+              showAdvancedFields={showAllFields}
             />
           ) : (
             <div className="py-6 text-center text-sm text-muted-foreground">
@@ -1093,9 +1145,10 @@ interface TemplateCardProps {
   onClick: () => void
   onDuplicate: () => void
   onDelete: () => void
+  disabled?: boolean
 }
 
-function TemplateCard({ template, onClick, onDuplicate, onDelete }: TemplateCardProps) {
+function TemplateCard({ template, onClick, onDuplicate, onDelete, disabled }: TemplateCardProps) {
   const exerciseCount = template.session_plan_exercises?.length ?? 0
 
   const exerciseNames = (template.session_plan_exercises || [])
@@ -1119,7 +1172,7 @@ function TemplateCard({ template, onClick, onDuplicate, onDelete }: TemplateCard
     : null
 
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
+    <Card className={cn("hover:shadow-md transition-shadow cursor-pointer", disabled && "opacity-60 pointer-events-none")} onClick={onClick}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">

@@ -14,6 +14,7 @@ import type { AISetChangeInfo } from "@/components/features/ai-assistant/hooks"
 import { isFreeelapMetadata, type FreeelapMetadata } from "@/types/freelap"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
+import { EventGroupBadge } from "@/components/features/athletes/components/event-group-badge"
 import { useToast } from "@/hooks/use-toast"
 import { findPR } from "../../workout/hooks/use-exercise-prs"
 import { PRInputSheet, getSprintPRMode, SPRINT_AUTO_PR_NAMES } from "../../workout/components/exercise/pr-input-sheet"
@@ -344,10 +345,10 @@ export function ExerciseCard({
     }))
 
     // Get visible field keys from utility
-    // When showAllFields is true or coach mode, show all configurable fields
-    // When showAllFields is false (athlete mode), show only required + filled fields
+    // When showAllFields is true, show all configurable fields (required + optional)
+    // When showAllFields is false, show only required + filled fields
     const visibleFieldKeys = getVisibleFields(exercise.exerciseTypeId, planSets, {
-      forCoach: !isAthlete || showAllFields,
+      forCoach: showAllFields,
       exerciseName: exercise.name,
     })
 
@@ -533,16 +534,19 @@ export function ExerciseCard({
                 {!isAthlete && subgroupChipText && (
                   <Popover open={subgroupPopoverOpen} onOpenChange={setSubgroupPopoverOpen}>
                     <PopoverTrigger asChild>
-                      <button
+                      <span
                         onClick={(e) => {
                           e.stopPropagation()
                           setSubgroupPopoverOpen(true)
                         }}
-                        className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted/80 transition-colors shrink-0"
-                        title={`Target: ${(exercise.targetEventGroups ?? []).join(', ')}`}
                       >
-                        {subgroupChipText}
-                      </button>
+                        <EventGroupBadge
+                          value={subgroupChipText}
+                          interactive
+                          size="xs"
+                          className="cursor-pointer"
+                        />
+                      </span>
                     </PopoverTrigger>
                     <PopoverContent
                       className="w-48 p-3"
@@ -588,16 +592,20 @@ export function ExerciseCard({
                 {!isAthlete && !subgroupChipText && availableEventGroups && availableEventGroups.length > 0 && (
                   <Popover open={subgroupPopoverOpen} onOpenChange={setSubgroupPopoverOpen}>
                     <PopoverTrigger asChild>
-                      <button
+                      <span
                         onClick={(e) => {
                           e.stopPropagation()
                           setSubgroupPopoverOpen(true)
                         }}
-                        className="inline-flex items-center rounded-md border border-dashed border-muted-foreground/30 px-1.5 py-0.5 text-[10px] text-muted-foreground/50 hover:border-muted-foreground/60 transition-colors shrink-0"
-                        title="Assign to subgroups"
                       >
-                        ALL
-                      </button>
+                        <EventGroupBadge
+                          value={null}
+                          emptyLabel="ALL"
+                          interactive
+                          size="xs"
+                          className="cursor-pointer"
+                        />
+                      </span>
                     </PopoverTrigger>
                     <PopoverContent
                       className="w-48 p-3"

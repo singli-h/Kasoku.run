@@ -9,6 +9,7 @@ No per-athlete lists. Numbers scale to 60+ athletes.
 import Link from "next/link"
 import { Calendar, Users, TrendingUp, Target } from "lucide-react"
 import type { CoachWeekDashboardData } from "../types/dashboard-types"
+import { EventGroupBadge } from "@/components/features/athletes/components/event-group-badge"
 
 interface CoachDashboardViewProps {
   data: CoachWeekDashboardData
@@ -140,9 +141,7 @@ function GroupComplianceBar({
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs font-medium text-muted-foreground w-12 shrink-0">
-        {eventGroup}
-      </span>
+      <EventGroupBadge value={eventGroup} size="xs" className="w-12" />
       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
         <div
           className="h-full bg-green-500 rounded-full transition-all"

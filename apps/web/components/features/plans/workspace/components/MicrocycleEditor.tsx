@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react"
 import { usePlanContext } from "../context/PlanContext"
 import { useTerminology } from "@/lib/terminology"
 import { abbreviateEventGroup } from "@/lib/training-utils"
+import { EventGroupBadge } from "@/components/features/athletes/components/event-group-badge"
 
 interface MicrocycleEditorProps {
   microcycleId: number
@@ -201,14 +202,14 @@ export function MicrocycleEditor({
                                 {'Vol: \u2014'}
                               </Badge>
                             )}
-                            {/* Subgroup dots (T021) */}
+                            {/* Event group badges */}
                             {session.targetEventGroups && session.targetEventGroups.length > 0 && (() => {
                               const unique = [...new Set(session.targetEventGroups!.flat())]
                               if (unique.length === 0) return null
                               return (
-                                <div className="flex items-center gap-0.5">
+                                <div className="flex items-center gap-0.5 flex-wrap">
                                   {unique.slice(0, 3).map(g => (
-                                    <span key={g} className="w-2 h-2 rounded-full bg-white/50" title={abbreviateEventGroup(g)} />
+                                    <EventGroupBadge key={g} value={abbreviateEventGroup(g)} size="xs" className="bg-white/20 text-white text-[10px]" />
                                   ))}
                                 </div>
                               )
@@ -240,11 +241,11 @@ export function MicrocycleEditor({
               >
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${getSessionTypeColor(session.type)}`} />
-                  {/* Subgroup dots alongside type dot (T021) */}
+                  {/* Event group badges */}
                   {session.targetEventGroups && session.targetEventGroups.length > 0 && (() => {
                     const unique = [...new Set(session.targetEventGroups!.flat())]
                     return unique.slice(0, 3).map(g => (
-                      <div key={g} className="w-2 h-2 rounded-full bg-muted-foreground/40" title={abbreviateEventGroup(g)} />
+                      <EventGroupBadge key={g} value={abbreviateEventGroup(g)} size="xs" />
                     ))
                   })()}
                   <span className="font-medium text-sm">{session.name}</span>

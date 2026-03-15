@@ -31,12 +31,14 @@ import type { EventGroup } from "../types"
 
 interface EventGroupManagerProps {
   eventGroups: EventGroup[]
+  onEventGroupDeleted?: (egId: number) => void
   onDataReload: () => void
   className?: string
 }
 
 export function EventGroupManager({
   eventGroups,
+  onEventGroupDeleted,
   onDataReload,
   className
 }: EventGroupManagerProps) {
@@ -44,49 +46,60 @@ export function EventGroupManager({
   const [showAddForm, setShowAddForm] = useState(false)
   const [newName, setNewName] = useState("")
   const [newAbbrev, setNewAbbrev] = useState("")
-  const [isCreating, setIsCreating] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<EventGroup | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleCreate = async () => {
     if (!newName.trim() || !newAbbrev.trim()) return
 
-    setIsCreating(true)
+    // Capture values and close form immediately
+    const savedName = newName
+    const savedAbbrev = newAbbrev
+    setNewName("")
+    setNewAbbrev("")
+    setShowAddForm(false)
+
+    // Background: persist to server
     try {
-      const result = await createEventGroupAction(newName, newAbbrev)
+      const result = await createEventGroupAction(savedName, savedAbbrev)
       if (result.isSuccess) {
         toast({ title: "Created", description: `Event group "${result.data.abbreviation}" created` })
-        setNewName("")
-        setNewAbbrev("")
-        setShowAddForm(false)
         onDataReload()
       } else {
         toast({ title: "Error", description: result.message, variant: "destructive" })
+        // Restore form on failure
+        setNewName(savedName)
+        setNewAbbrev(savedAbbrev)
+        setShowAddForm(true)
       }
     } catch {
       toast({ title: "Error", description: "Failed to create event group", variant: "destructive" })
-    } finally {
-      setIsCreating(false)
+      setNewName(savedName)
+      setNewAbbrev(savedAbbrev)
+      setShowAddForm(true)
     }
   }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
 
-    setIsDeleting(true)
+    const deletedEg = deleteTarget
+
+    // Optimistic: close dialog and remove from state immediately
+    setDeleteTarget(null)
+    onEventGroupDeleted?.(deletedEg.id)
+
+    // Background: persist to server
     try {
-      const result = await deleteEventGroupAction(deleteTarget.id)
+      const result = await deleteEventGroupAction(deletedEg.id)
       if (result.isSuccess) {
         toast({ title: "Deleted", description: result.message })
-        setDeleteTarget(null)
-        onDataReload()
       } else {
         toast({ title: "Error", description: result.message, variant: "destructive" })
+        onDataReload()
       }
     } catch {
       toast({ title: "Error", description: "Failed to delete event group", variant: "destructive" })
-    } finally {
-      setIsDeleting(false)
+      onDataReload()
     }
   }
 
@@ -133,7 +146,6 @@ export function EventGroupManager({
               placeholder="SS"
               className="h-10 w-full sm:w-20 text-sm font-mono text-center"
               maxLength={3}
-              disabled={isCreating}
               autoFocus
             />
             <Input
@@ -142,16 +154,15 @@ export function EventGroupManager({
               onKeyDown={handleKeyDown}
               placeholder="Short Sprints"
               className="h-10 text-sm flex-1"
-              disabled={isCreating}
             />
             <div className="flex gap-2">
               <Button
                 size="sm"
                 className="h-10 flex-1 sm:flex-none sm:px-4"
                 onClick={handleCreate}
-                disabled={isCreating || !newName.trim() || !newAbbrev.trim()}
+                disabled={!newName.trim() || !newAbbrev.trim()}
               >
-                {isCreating ? "..." : "Save"}
+                Save
               </Button>
               <Button
                 variant="ghost"
@@ -214,13 +225,12 @@ export function EventGroupManager({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

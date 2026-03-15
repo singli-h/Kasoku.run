@@ -7,7 +7,7 @@ import type { SessionPlanWithDetails } from "@/types/training"
 
 export default async function TemplatesPageRoute() {
   // Protect this page - coach only
-  await serverProtectRoute({ allowedRoles: ['coach'] })
+  await serverProtectRoute({ allowedRoles: ['coach', 'individual'] })
 
   // Server-side data fetch for templates
   // getTemplatesAction returns SessionPlan[] but the Supabase query includes

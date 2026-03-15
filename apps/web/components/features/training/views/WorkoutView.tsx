@@ -177,7 +177,8 @@ export function WorkoutView({
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [draggingExerciseId, setDraggingExerciseId] = useState<string | number | null>(null)
   // Toggle for showing all optional fields vs. only required + filled fields
-  const [showAllFields, setShowAllFields] = useState(false)
+  // Default to true for coaches (show all configurable fields), false for athletes (show min)
+  const [showAllFields, setShowAllFields] = useState(!isAthlete)
   // Track which section to pre-select when opening exercise picker
   const [preSelectedSection, setPreSelectedSection] = useState<string | null>(null)
   // Selection mode for superset creation (coach mode only)

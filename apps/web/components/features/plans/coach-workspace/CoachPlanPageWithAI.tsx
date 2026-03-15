@@ -1,16 +1,14 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { AlertTriangle } from 'lucide-react'
 import { TrainingPlanWorkspace, type TrainingPlan } from '../workspace/TrainingPlanWorkspace'
 import { PlanFilterBar } from './PlanFilterBar'
-import { GenerateMicrocycleSheet } from './GenerateMicrocycleSheet'
-import { WeeklyInsightsPanel } from './WeeklyInsightsPanel'
 
 interface CoachPlanPageWithAIProps {
   initialPlan: TrainingPlan
-  coachGroups?: Array<{ id: number; name: string }>
+  coachEventGroups?: string[]
 }
 
 function CoachPlanFallback({ error, resetErrorBoundary }: { error: unknown; resetErrorBoundary: () => void }) {
@@ -28,35 +26,11 @@ function CoachPlanFallback({ error, resetErrorBoundary }: { error: unknown; rese
   )
 }
 
-export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: CoachPlanPageWithAIProps) {
-  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
+export function CoachPlanPageWithAI({ initialPlan, coachEventGroups: propEventGroups }: CoachPlanPageWithAIProps) {
   const [selectedEventGroups, setSelectedEventGroups] = useState<string[]>([])
-  const [generateSheetOpen, setGenerateSheetOpen] = useState(false)
-  const [selectedMicrocycleId, setSelectedMicrocycleId] = useState<number | null>(null)
-  const [selectedMicrocycleName, setSelectedMicrocycleName] = useState<string | null>(null)
-  const [insightsOpen, setInsightsOpen] = useState(false)
-  const [insightsMicrocycleId, setInsightsMicrocycleId] = useState<number | null>(null)
-  const [insightsExisting, setInsightsExisting] = useState<Record<string, unknown> | null>(null)
 
-  // Use coach groups from server — no fallback to Group {id}
-  const coachGroups = propGroups ?? []
-
-  // Extract distinct event groups from all sessions in the plan
-  const allEventGroups = useMemo(() => {
-    const tagSet = new Set<string>()
-    for (const meso of initialPlan.mesocycles) {
-      for (const micro of meso.microcycles) {
-        for (const session of micro.sessions) {
-          if (session.sessionTargetEventGroups) {
-            for (const g of session.sessionTargetEventGroups) {
-              tagSet.add(g)
-            }
-          }
-        }
-      }
-    }
-    return [...tagSet].sort()
-  }, [initialPlan])
+  // Use coach's defined event groups from the event_groups table
+  const eventGroups = propEventGroups ?? []
 
   const handleEventGroupToggle = useCallback((eventGroup: string) => {
     setSelectedEventGroups(prev =>
@@ -77,41 +51,16 @@ export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: Co
       <div className="flex flex-col">
         <TrainingPlanWorkspace
           initialPlan={initialPlan}
-          selectedGroupId={selectedGroupId}
           selectedEventGroups={selectedEventGroups}
           filterBar={
             <PlanFilterBar
-              groups={coachGroups}
-              selectedGroupId={selectedGroupId}
-              onGroupSelect={setSelectedGroupId}
-              eventGroups={allEventGroups}
+              eventGroups={eventGroups}
               selectedEventGroups={selectedEventGroups}
               onEventGroupToggle={handleEventGroupToggle}
               onEventGroupClear={handleEventGroupClear}
             />
           }
         />
-
-        {selectedMicrocycleId !== null && selectedGroupId !== null && (
-          <GenerateMicrocycleSheet
-            key={`gen-${selectedMicrocycleId}-${selectedGroupId}`}
-            microcycleId={selectedMicrocycleId}
-            athleteGroupId={selectedGroupId}
-            microcycleName={selectedMicrocycleName}
-            open={generateSheetOpen}
-            onOpenChange={setGenerateSheetOpen}
-          />
-        )}
-
-        {insightsMicrocycleId !== null && (
-          <WeeklyInsightsPanel
-            key={`insights-${insightsMicrocycleId}`}
-            microcycleId={insightsMicrocycleId}
-            existingInsights={insightsExisting}
-            open={insightsOpen}
-            onOpenChange={setInsightsOpen}
-          />
-        )}
       </div>
     </ErrorBoundary>
   )
