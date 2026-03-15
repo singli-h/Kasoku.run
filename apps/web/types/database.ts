@@ -328,7 +328,7 @@ export type Database = {
           athlete_group_id: number | null
           available_equipment: Json | null
           created_at: string | null
-          event_group: string | null
+          event_groups: string[] | null
           events: Json | null
           experience: string | null
           height: number | null
@@ -342,7 +342,7 @@ export type Database = {
           athlete_group_id?: number | null
           available_equipment?: Json | null
           created_at?: string | null
-          event_group?: string | null
+          event_groups?: string[] | null
           events?: Json | null
           experience?: string | null
           height?: number | null
@@ -356,7 +356,7 @@ export type Database = {
           athlete_group_id?: number | null
           available_equipment?: Json | null
           created_at?: string | null
-          event_group?: string | null
+          event_groups?: string[] | null
           events?: Json | null
           experience?: string | null
           height?: number | null
@@ -1121,6 +1121,7 @@ export type Database = {
           microcycle_id: number | null
           name: string | null
           session_mode: string | null
+          target_event_groups: string[] | null
           updated_at: string | null
           user_id: number | null
           week: number | null
@@ -1136,6 +1137,7 @@ export type Database = {
           microcycle_id?: number | null
           name?: string | null
           session_mode?: string | null
+          target_event_groups?: string[] | null
           updated_at?: string | null
           user_id?: number | null
           week?: number | null
@@ -1151,6 +1153,7 @@ export type Database = {
           microcycle_id?: number | null
           name?: string | null
           session_mode?: string | null
+          target_event_groups?: string[] | null
           updated_at?: string | null
           user_id?: number | null
           week?: number | null
@@ -1497,7 +1500,7 @@ export type Database = {
     }
     Functions: {
       athlete_in_group: { Args: { group_id: number }; Returns: boolean }
-      auth_athlete_event_group: { Args: never; Returns: string }
+      auth_athlete_event_groups: { Args: never; Returns: string[] }
       auth_athlete_group_id: { Args: never; Returns: number }
       auth_athlete_id: { Args: never; Returns: number }
       auth_coach_id: { Args: never; Returns: number }
@@ -1564,11 +1567,13 @@ export type Database = {
         }[]
       }
       lookup_user_for_invite: {
-        Args: { email_input: string }
+        Args: { p_email: string }
         Returns: {
-          athlete_id: number
-          current_group_id: number
           user_id: number
+          email: string
+          first_name: string
+          last_name: string
+          role: string
         }[]
       }
       mark_reminder_sent: {

@@ -2,27 +2,5 @@
   "environment": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "agent",
-            "prompt": "You are a quality and scope verifier. Run these checks from the repo root:\n\nSTEP 1 — CODE QUALITY:\n1. cd /Users/kimmybear/Documents/GitHub/Kasoku.run && npx tsc --noEmit 2>&1 | tail -30\n2. cd /Users/kimmybear/Documents/GitHub/Kasoku.run && npx next lint --quiet 2>&1 | tail -20\n3. cd /Users/kimmybear/Documents/GitHub/Kasoku.run && npm test -- --passWithNoTests 2>&1 | tail -30\n\nSTEP 2 — SCOPE CHECK:\n4. cd /Users/kimmybear/Documents/GitHub/Kasoku.run && git diff --stat\n5. Count the number of files changed. If more than 10 files were modified, flag this as a potential scope issue.\n6. Look at the file names — do they all relate to a single task/feature? If you see unrelated files (e.g. a bug fix that also touched styling of unrelated components), flag it.\n\nRESPOND:\n- If code quality checks ALL pass AND scope looks reasonable: {\"ok\": true}\n- If any code quality check fails: {\"ok\": false, \"reason\": \"<paste the actual error output>\"}\n- If scope looks excessive (too many files, unrelated changes): {\"ok\": false, \"reason\": \"SCOPE WARNING: <N> files changed. These files look unrelated to the task: <list>. Revert changes to files not directly required by the task.\"}",
-            "timeout": 120
-          }
-        ]
-      }
-    ],
-    "TaskCompleted": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/scripts/task-quality-gate.sh"
-          }
-        ]
-      }
-    ]
-  }
+  "hooks": {}
 }

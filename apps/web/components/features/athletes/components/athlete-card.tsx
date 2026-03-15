@@ -91,10 +91,26 @@ export function AthleteCard({
     }
   }
 
-  const handleEventGroupSelect = async (value: string | null) => {
+  const handleEventGroupToggle = async (abbreviation: string) => {
+    if (!athlete.user_id) return
+    const current = athlete.event_groups ?? []
+    const newValues = current.includes(abbreviation)
+      ? current.filter(g => g !== abbreviation)
+      : [...current, abbreviation]
+    setSavingEventGroup(true)
+    const result = await updateAthleteProfileAction(athlete.user_id, { event_groups: newValues.length > 0 ? newValues : null })
+    setSavingEventGroup(false)
+    if (result.isSuccess) {
+      onDataReload?.()
+    } else {
+      toast({ title: "Error", description: result.message, variant: "destructive" })
+    }
+  }
+
+  const handleEventGroupClear = async () => {
     if (!athlete.user_id) return
     setSavingEventGroup(true)
-    const result = await updateAthleteProfileAction(athlete.user_id, { event_group: value })
+    const result = await updateAthleteProfileAction(athlete.user_id, { event_groups: null })
     setSavingEventGroup(false)
     if (result.isSuccess) {
       setEventGroupOpen(false)
@@ -149,37 +165,44 @@ export function AthleteCard({
           <div className="flex items-center gap-1.5 mt-1">
             <Popover open={eventGroupOpen} onOpenChange={setEventGroupOpen}>
               <PopoverTrigger asChild>
-                <EventGroupBadge
-                  value={athlete.event_group}
-                  interactive
+                <button
                   onClick={(e) => e.stopPropagation()}
-                />
+                  className="flex items-center gap-0.5"
+                >
+                  {(athlete.event_groups ?? []).length > 0 ? (
+                    (athlete.event_groups ?? []).map(g => (
+                      <EventGroupBadge key={g} value={g} interactive />
+                    ))
+                  ) : (
+                    <EventGroupBadge value={null} interactive />
+                  )}
+                </button>
               </PopoverTrigger>
               <PopoverContent className="w-52 p-2" align="start">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground px-1 pb-1">Event Group</p>
+                  <p className="text-xs font-medium text-muted-foreground px-1 pb-1">Event Groups</p>
                   {eventGroups.length > 0 ? (
                     <>
                       {eventGroups.map((eg) => (
                         <button
                           key={eg.id}
                           disabled={savingEventGroup}
-                          onClick={() => handleEventGroupSelect(eg.abbreviation)}
+                          onClick={() => handleEventGroupToggle(eg.abbreviation)}
                           className={cn(
                             "w-full text-left px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors",
-                            athlete.event_group === eg.abbreviation && "bg-muted font-medium"
+                            (athlete.event_groups ?? []).includes(eg.abbreviation) && "bg-muted font-medium"
                           )}
                         >
                           {eg.abbreviation} — {eg.name}
                         </button>
                       ))}
-                      {athlete.event_group && (
+                      {(athlete.event_groups ?? []).length > 0 && (
                         <button
                           disabled={savingEventGroup}
-                          onClick={() => handleEventGroupSelect(null)}
+                          onClick={() => handleEventGroupClear()}
                           className="w-full text-left px-2 py-1.5 rounded text-sm text-destructive hover:bg-destructive/10 transition-colors"
                         >
-                          Clear
+                          Clear All
                         </button>
                       )}
                     </>

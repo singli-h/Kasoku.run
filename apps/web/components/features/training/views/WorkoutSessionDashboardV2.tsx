@@ -36,15 +36,15 @@ import type {
 interface WorkoutSessionDashboardV2Props {
   presetGroup: SessionPlanWithDetails
   existingSession?: WorkoutLogWithDetails
-  /** Athlete's event_group for subgroup exercise filtering */
-  athleteEventGroup?: string | null
+  /** Athlete's event_groups for subgroup exercise filtering */
+  athleteEventGroups?: string[]
   className?: string
 }
 
 export function WorkoutSessionDashboardV2({
   presetGroup,
   existingSession,
-  athleteEventGroup,
+  athleteEventGroups,
   className
 }: WorkoutSessionDashboardV2Props) {
   return (
@@ -52,7 +52,7 @@ export function WorkoutSessionDashboardV2({
       <WorkoutSessionContentV2
         presetGroup={presetGroup}
         existingSession={existingSession}
-        athleteEventGroup={athleteEventGroup}
+        athleteEventGroups={athleteEventGroups}
         className={className}
       />
     </ExerciseProvider>
@@ -62,7 +62,7 @@ export function WorkoutSessionDashboardV2({
 function WorkoutSessionContentV2({
   presetGroup,
   existingSession,
-  athleteEventGroup,
+  athleteEventGroups,
   className
 }: WorkoutSessionDashboardV2Props) {
   const router = useRouter()
@@ -471,7 +471,7 @@ function WorkoutSessionContentV2({
         sessionDate={existingSession?.date_time || (presetGroup as any)?.date}
         exercises={trainingExercises}
         isAthlete={true}
-        athleteEventGroup={athleteEventGroup}
+        athleteEventGroups={athleteEventGroups}
         elapsedSeconds={elapsedSeconds}
         isTimerRunning={isTimerRunning}
         sessionStatus={sessionStatus === 'cancelled' ? 'completed' : sessionStatus}

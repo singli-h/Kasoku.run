@@ -38,6 +38,7 @@ interface SessionUpdate {
   week?: number | null
   day?: number | null
   session_mode?: string | null
+  target_event_groups?: string[] | null
 }
 
 /**

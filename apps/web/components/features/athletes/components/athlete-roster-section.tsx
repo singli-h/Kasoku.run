@@ -52,28 +52,49 @@ import { EventGroupBadge } from "./event-group-badge"
 import type { AthleteWithDetails, GroupWithCount, BulkOperationState, EventGroup } from "../types"
 
 /**
- * Inline editor for athlete event_group field.
- * Shows coach-defined event group options in a popover.
+ * Inline editor for athlete event_groups field (multi-select).
+ * Shows coach-defined event group options in a popover with toggle behavior.
  */
 function EventGroupEditor({
   userId,
-  currentValue,
+  currentValues,
   eventGroups,
   onSaved,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: {
   userId: number | null
-  currentValue: string | null | undefined
+  currentValues: string[]
   eventGroups: EventGroup[]
   onSaved: () => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen
+  const setOpen = controlledOnOpenChange || setInternalOpen
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
 
-  const handleSelect = async (value: string | null) => {
+  const handleToggle = async (abbreviation: string) => {
+    if (!userId) return
+    const newValues = currentValues.includes(abbreviation)
+      ? currentValues.filter(g => g !== abbreviation)
+      : [...currentValues, abbreviation]
+    setSaving(true)
+    const result = await updateAthleteProfileAction(userId, { event_groups: newValues.length > 0 ? newValues : null })
+    setSaving(false)
+    if (result.isSuccess) {
+      onSaved()
+    } else {
+      toast({ title: "Error", description: result.message, variant: "destructive" })
+    }
+  }
+
+  const handleClear = async () => {
     if (!userId) return
     setSaving(true)
-    const result = await updateAthleteProfileAction(userId, { event_group: value })
+    const result = await updateAthleteProfileAction(userId, { event_groups: null })
     setSaving(false)
     if (result.isSuccess) {
       setOpen(false)
@@ -83,43 +104,44 @@ function EventGroupEditor({
     }
   }
 
-  // Find display name for current value
-  const currentEg = eventGroups.find(eg => eg.abbreviation === currentValue)
-  const displayLabel = currentEg ? currentEg.abbreviation : currentValue
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <EventGroupBadge
-          value={displayLabel}
-          interactive
-        />
+        <button className="flex items-center gap-0.5">
+          {currentValues.length > 0 ? (
+            currentValues.map(g => (
+              <EventGroupBadge key={g} value={g} interactive />
+            ))
+          ) : (
+            <EventGroupBadge value={null} interactive />
+          )}
+        </button>
       </PopoverTrigger>
       <PopoverContent className="w-52 p-2" align="start">
         <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground px-1 pb-1">Event Group</p>
+          <p className="text-xs font-medium text-muted-foreground px-1 pb-1">Event Groups</p>
           {eventGroups.length > 0 ? (
             <>
               {eventGroups.map((eg) => (
                 <button
                   key={eg.id}
                   disabled={saving}
-                  onClick={() => handleSelect(eg.abbreviation)}
+                  onClick={() => handleToggle(eg.abbreviation)}
                   className={cn(
                     "w-full text-left px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors",
-                    currentValue === eg.abbreviation && "bg-muted font-medium"
+                    currentValues.includes(eg.abbreviation) && "bg-muted font-medium"
                   )}
                 >
                   {eg.abbreviation} — {eg.name}
                 </button>
               ))}
-              {currentValue && (
+              {currentValues.length > 0 && (
                 <button
                   disabled={saving}
-                  onClick={() => handleSelect(null)}
+                  onClick={() => handleClear()}
                   className="w-full text-left px-2 py-1.5 rounded text-sm text-destructive hover:bg-destructive/10 transition-colors"
                 >
-                  Clear
+                  Clear All
                 </button>
               )}
             </>
@@ -161,6 +183,7 @@ export function AthleteRosterSection({
   const isMobile = useMediaQuery("(max-width: 768px)")
   const [searchTerm, setSearchTerm] = useState("")
   const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [eventGroupOpenFor, setEventGroupOpenFor] = useState<number | null>(null)
 
   // Filter athletes
   const filteredAthletes = useMemo(() => {
@@ -471,9 +494,11 @@ export function AthleteRosterSection({
                     <TableCell>
                       <EventGroupEditor
                         userId={athlete.user_id}
-                        currentValue={athlete.event_group}
+                        currentValues={athlete.event_groups ?? []}
                         eventGroups={eventGroups}
                         onSaved={() => onDataReload?.()}
+                        open={eventGroupOpenFor === athlete.id}
+                        onOpenChange={(isOpen) => setEventGroupOpenFor(isOpen ? athlete.id : null)}
                       />
                     </TableCell>
                     <TableCell>
@@ -504,6 +529,11 @@ export function AthleteRosterSection({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => router.push(`/athletes/${athlete.id}`)}>
                             View Profile
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setTimeout(() => setEventGroupOpenFor(athlete.id), 0)
+                          }}>
+                            Edit Event Group
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => onBulkOperation({

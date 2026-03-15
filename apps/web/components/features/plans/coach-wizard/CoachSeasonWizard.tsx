@@ -220,8 +220,10 @@ export function CoachSeasonWizard({ coachGroups }: CoachSeasonWizardProps) {
         const totalPhaseWeeks = state.phases.reduce((s, p) => s + p.weeks, 0) || 1
 
         // Pre-compute all phase date ranges
-        const phaseSpecs: Array<{ name: string; start_date: string; end_date: string }> = []
+        const PHASE_COLORS = ["#6478b4", "#548a7c", "#b8864e", "#b45e72", "#7f6daa", "#5090a0", "#7e9a56", "#a87558"]
+        const phaseSpecs: Array<{ name: string; start_date: string; end_date: string; metadata: { color: string } }> = []
         let cursor = new Date(macroStart)
+        let colorIdx = 0
         for (const phase of state.phases) {
           if (!phase.name.trim()) continue
           const phaseDays = Math.round((phase.weeks / totalPhaseWeeks) * totalDays)
@@ -232,6 +234,7 @@ export function CoachSeasonWizard({ coachGroups }: CoachSeasonWizardProps) {
             name: phase.name,
             start_date: phaseStart.toISOString().split('T')[0],
             end_date: phaseEnd.toISOString().split('T')[0],
+            metadata: { color: PHASE_COLORS[colorIdx++ % PHASE_COLORS.length] },
           })
           cursor = new Date(phaseEnd)
         }

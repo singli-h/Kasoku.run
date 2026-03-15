@@ -60,7 +60,7 @@ export function MobileInviteFAB({
       const result = await inviteOrAttachAthleteAction(
         email,
         parseInt(groupId),
-        eventGroupAbbrev && eventGroupAbbrev !== "none" ? eventGroupAbbrev : undefined
+        eventGroupAbbrev && eventGroupAbbrev !== "none" ? [eventGroupAbbrev] : undefined
       )
       if (result.isSuccess) {
         toast({

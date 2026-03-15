@@ -93,12 +93,12 @@ export interface WorkoutViewProps {
   onUpdateTargetEventGroups?: (exerciseId: number | string, groups: string[] | null) => void
 
   /**
-   * Athlete's own event_group (e.g. "SS", "MS", "LS").
+   * Athlete's own event_groups (e.g. ["SS", "MS"]).
    * When isAthlete=true, exercises are filtered: only those with
-   * target_event_groups IS NULL or containing this value are shown.
-   * If null/undefined, all exercises are shown (safe default).
+   * target_event_groups IS NULL or overlapping this array are shown.
+   * If null/undefined/empty, all exercises are shown (safe default).
    */
-  athleteEventGroup?: string | null
+  athleteEventGroups?: string[]
 
   /** PR map keyed by exercise_id (FK to exercises table) */
   prMap?: Record<number, PersonalBest[]>
@@ -147,21 +147,19 @@ export function WorkoutView({
   previewGroup,
   availableEventGroups,
   onUpdateTargetEventGroups,
-  athleteEventGroup,
+  athleteEventGroups,
   prMap,
   onSavePR,
   className,
 }: WorkoutViewProps) {
-  // Filter exercises by athlete's event_group when in athlete mode
-  // Exercises with null/empty target_event_groups are shown to everyone.
-  // If athlete has no event_group, show all exercises (safe default).
   const filteredExercises = useMemo(() => {
-    if (!isAthlete || !athleteEventGroup) return exercises
+    if (!isAthlete) return exercises
     return exercises.filter((ex) => {
       if (!ex.targetEventGroups || ex.targetEventGroups.length === 0) return true
-      return ex.targetEventGroups.includes(athleteEventGroup)
+      if (!athleteEventGroups?.length) return false
+      return ex.targetEventGroups.some(g => athleteEventGroups.includes(g))
     })
-  }, [exercises, isAthlete, athleteEventGroup])
+  }, [exercises, isAthlete, athleteEventGroups])
 
   // Format session date for display
   const formattedDate = useMemo(() => {

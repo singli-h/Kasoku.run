@@ -47,6 +47,8 @@ export interface Session {
   exerciseSummaries?: string[]
   /** Per-exercise target event groups for subgroup indicators */
   targetEventGroups?: (string[])[]
+  /** Session-level target event groups for schedule filtering */
+  sessionTargetEventGroups?: string[] | null
 }
 
 interface Microcycle {
@@ -240,10 +242,11 @@ function findCurrentPeriod(plan: TrainingPlan): { meso: Mesocycle | null; micro:
     }
   }
 
-  // Final fallback: first mesocycle, no microcycle selected
+  // Final fallback: first mesocycle, first microcycle
+  const fallbackMeso = plan.mesocycles.length > 0 ? plan.mesocycles[0] : null
   return {
-    meso: plan.mesocycles.length > 0 ? plan.mesocycles[0] : null,
-    micro: null
+    meso: fallbackMeso,
+    micro: fallbackMeso?.microcycles?.[0] ?? null
   }
 }
 
@@ -272,7 +275,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
   const [selectedMeso, setSelectedMeso] = useState<Mesocycle | null>(initialPeriod.meso)
   const [selectedMicro, setSelectedMicro] = useState<Microcycle | null>(initialPeriod.micro)
 
-  const [mobileView, setMobileView] = useState<"meso" | "micro" | "session">("meso")
+  const [mobileView, setMobileView] = useState<"meso" | "micro" | "session">(initialPeriod.micro ? "micro" : "meso")
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("left")
 
   const [history, setHistory] = useState<HistoryState[]>([{ plan: initialPlan, timestamp: Date.now() }])
@@ -1000,7 +1003,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                   className={`w-full rounded-lg border-l-4 p-4 text-left transition-all hover:bg-accent cursor-pointer ${
                     selectedMeso?.id === meso.id ? "bg-accent" : "bg-card"
                   }`}
-                  style={{ borderLeftColor: meso.metadata?.color || "#10b981" }}
+                  style={{ borderLeftColor: meso.metadata?.color || ["#6478b4", "#548a7c", "#b8864e", "#b45e72", "#7f6daa", "#5090a0", "#7e9a56", "#a87558"][plan.mesocycles.indexOf(meso) % 8] }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -1297,20 +1300,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                             <div className="flex-1 min-w-0">
                               <h3 className="font-semibold">{session.name}</h3>
                               <div className="mt-2 flex gap-2 flex-wrap">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${
-                                    session.type === "speed"
-                                      ? "border-red-500 text-red-500"
-                                      : session.type === "strength"
-                                        ? "border-blue-500 text-blue-500"
-                                        : session.type === "endurance"
-                                          ? "border-green-500 text-green-500"
-                                          : "border-gray-500 text-gray-500"
-                                  }`}
-                                >
-                                  {session.type}
-                                </Badge>
                                 {session.volume > 0 ? (
                                   <Badge variant="outline" className="text-xs">
                                     {session.volume} {session.volumeUnit ?? 'kg'}
@@ -1415,7 +1404,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                       key={meso.id}
                       onClick={() => handleMesoClick(meso)}
                       className="rounded-lg border-l-4 p-4 text-left transition-all hover:bg-accent cursor-pointer"
-                      style={{ borderLeftColor: meso.metadata?.color || "#10b981" }}
+                      style={{ borderLeftColor: meso.metadata?.color || ["#6478b4", "#548a7c", "#b8864e", "#b45e72", "#7f6daa", "#5090a0", "#7e9a56", "#a87558"][plan.mesocycles.indexOf(meso) % 8] }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
@@ -1685,22 +1674,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                                 <div className="flex-1 min-w-0">
                                   <h3 className="font-semibold">{session.name}</h3>
                                   <div className="mt-2 flex gap-2 flex-wrap">
-                                    <Badge
-                                      variant="outline"
-                                      className={`text-xs ${
-                                        session.type === "speed"
-                                          ? "border-red-500 text-red-500"
-                                          : session.type === "strength"
-                                            ? "border-blue-500 text-blue-500"
-                                            : session.type === "endurance"
-                                              ? "border-green-500 text-green-500"
-                                              : session.type === "recovery"
-                                                ? "border-gray-500 text-gray-500"
-                                                : "border-purple-500 text-purple-500"
-                                      }`}
-                                    >
-                                      {session.type}
-                                    </Badge>
                                     {session.volume > 0 ? (
                                       <Badge variant="outline" className="text-xs">
                                         {session.volume} {session.volumeUnit ?? 'kg'}

@@ -72,9 +72,9 @@ export async function getMicrocycleGenerationContextAction(
       // 3. Distinct event_groups for athletes in this group
       supabase
         .from('athletes')
-        .select('event_group')
+        .select('event_groups')
         .eq('athlete_group_id', athleteGroupId)
-        .not('event_group', 'is', null),
+        .not('event_groups', 'is', null),
       // 4. Upcoming races within microcycle date range
       supabase
         .from('races')
@@ -134,7 +134,7 @@ export async function getMicrocycleGenerationContextAction(
     }).filter(Boolean)
 
     const athleteEventGroups = [...new Set(
-      (athletes ?? []).map(a => a.event_group).filter(Boolean) as string[]
+      (athletes ?? []).flatMap(a => a.event_groups ?? []).filter(Boolean)
     )]
 
     const upcomingRaces = (races ?? []).map(r => `${r.name} — ${r.date}`)

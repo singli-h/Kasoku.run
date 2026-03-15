@@ -187,7 +187,7 @@ export async function deleteEventGroupAction(
         .from('athletes')
         .select('id', { count: 'exact', head: true })
         .in('athlete_group_id', groupIds.map(g => g.id))
-        .eq('event_group', eventGroup.abbreviation)
+        .contains('event_groups', [eventGroup.abbreviation])
 
       orphanedCount = count || 0
     }

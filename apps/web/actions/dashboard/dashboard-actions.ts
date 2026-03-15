@@ -452,10 +452,10 @@ export async function getCoachWeekDashboardDataAction(): Promise<
       return { isSuccess: true, message: "Coach dashboard data retrieved", data: emptyData }
     }
 
-    // Get athletes with event_group (lightweight — no user join needed)
+    // Get athletes with event_groups (lightweight — no user join needed)
     const { data: athletesData, error: athletesError } = await supabase
       .from('athletes')
-      .select('id, event_group')
+      .select('id, event_groups')
       .in('athlete_group_id', groupIds)
 
     if (athletesError) {
@@ -466,10 +466,10 @@ export async function getCoachWeekDashboardDataAction(): Promise<
     const athleteIds = athletesData?.map(a => a.id) || []
     const totalAthletes = athleteIds.length
 
-    // Build athlete → primary event group lookup
+    // Build athlete → primary event group lookup (first entry or "General")
     const athleteGroupMap = new Map<number, string>()
     for (const a of athletesData || []) {
-      const primaryGroup = a.event_group || 'General'
+      const primaryGroup = a.event_groups && a.event_groups.length > 0 ? a.event_groups[0] : 'General'
       athleteGroupMap.set(a.id, primaryGroup)
     }
 

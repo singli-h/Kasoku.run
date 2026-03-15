@@ -51,7 +51,7 @@ export function InviteAthleteForm({ groups, eventGroups, onSuccess, className }:
       const result = await inviteOrAttachAthleteAction(
         inviteEmail,
         inviteGroupId,
-        inviteEventGroup && inviteEventGroup !== "none" ? inviteEventGroup : undefined
+        inviteEventGroup && inviteEventGroup !== "none" ? [inviteEventGroup] : undefined
       )
 
       if (result.isSuccess) {

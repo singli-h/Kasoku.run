@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,6 +27,23 @@ export function MicrocycleEditor({
   const microcycle = plan?.mesocycles
     .flatMap(meso => meso.microcycles)
     .find(micro => micro.id === microcycleId)
+
+  const [previewTag, setPreviewTag] = useState<string | null>(null)
+
+  // Collect distinct tags from sessions' session-level targetEventGroups
+  const distinctTags = useMemo(() => {
+    if (!microcycle) return []
+    const tagSet = new Set<string>()
+    for (const session of microcycle.sessions) {
+      const tags = session.sessionTargetEventGroups
+      if (tags && tags.length > 0) {
+        for (const g of tags) {
+          tagSet.add(g)
+        }
+      }
+    }
+    return [...tagSet].sort()
+  }, [microcycle])
 
   if (!microcycle) {
     return <div>{terms.microcycle} not found</div>
@@ -116,11 +134,29 @@ export function MicrocycleEditor({
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-medium">Weekly Schedule</h3>
+          {distinctTags.length > 0 && (
+            <select
+              value={previewTag ?? ''}
+              onChange={e => setPreviewTag(e.target.value || null)}
+              className="text-xs border rounded px-2 py-1 bg-background"
+            >
+              <option value="">All Groups</option>
+              {distinctTags.map(tag => (
+                <option key={tag} value={tag}>{tag}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="grid grid-cols-7 gap-2">
           {days.map((day, dayIndex) => {
-            const daySessions = microcycle.sessions.filter(session => session.day === dayIndex + 1)
+            const daySessions = microcycle.sessions.filter(session => {
+              if (session.day !== dayIndex + 1) return false
+              if (!previewTag) return true
+              const tags = session.sessionTargetEventGroups
+              if (!tags || tags.length === 0) return true
+              return tags.includes(previewTag)
+            })
 
             return (
               <Card key={day} className="min-h-[120px]">

@@ -45,6 +45,7 @@ interface PlanData {
         exerciseNames?: string[]
         exerciseSummaries?: string[]
         targetEventGroups?: (string[])[]
+        sessionTargetEventGroups?: string[] | null
       }>
     }>
   }>

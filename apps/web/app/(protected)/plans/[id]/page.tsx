@@ -21,6 +21,7 @@ interface SessionPlan {
   day: number | null
   name: string | null
   session_mode: string | null
+  target_event_groups?: string[] | null
   session_plan_exercises?: SessionPlanExerciseWithDetails[]
 }
 
@@ -212,6 +213,7 @@ export default async function PlanWorkspacePage({ params }: { params: Promise<{ 
             exerciseNames,
             exerciseSummaries,
             targetEventGroups,
+            sessionTargetEventGroups: group.target_event_groups ?? null,
             exercises: rawExercises,
           }
         })

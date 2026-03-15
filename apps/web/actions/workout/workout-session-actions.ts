@@ -482,7 +482,7 @@ export async function updateTrainingSessionStatusAction(
 /**
  * Start a training session (transition from assigned to ongoing)
  * Copies session_plan_exercises into workout_log_exercises, filtering
- * by the athlete's event_group vs each exercise's target_event_groups.
+ * by the athlete's event_groups vs each exercise's target_event_groups.
  */
 export async function startTrainingSessionAction(
   sessionId: string
@@ -525,7 +525,7 @@ export async function startTrainingSessionAction(
       return { isSuccess: false, message: "Failed to start session" }
     }
 
-    // 5. Copy session_plan_exercises → workout_log_exercises (with event_group filtering)
+    // 5. Copy session_plan_exercises → workout_log_exercises (with event_groups filtering)
     // Only copy if workout_log_exercises don't already exist for this session
     const { count: existingCount } = await supabase
       .from('workout_log_exercises')
@@ -533,11 +533,11 @@ export async function startTrainingSessionAction(
       .eq('workout_log_id', session.id)
 
     if ((existingCount ?? 0) === 0 && session.session_plan_id) {
-      // Fetch athlete's event_group and session_plan_exercises in parallel
+      // Fetch athlete's event_groups and session_plan_exercises in parallel
       const [athleteResult, exercisesResult] = await Promise.all([
         supabase
           .from('athletes')
-          .select('event_group')
+          .select('event_groups')
           .eq('user_id', dbUserId)
           .single(),
         supabase
@@ -547,17 +547,17 @@ export async function startTrainingSessionAction(
           .order('exercise_order', { ascending: true })
       ])
 
-      const athleteEventGroup = athleteResult.data?.event_group ?? null
+      const athleteEventGroups: string[] = athleteResult.data?.event_groups ?? []
       const sessionPlanExercises = exercisesResult.data ?? []
 
       // Filter exercises by target_event_groups:
-      // Include if: target_event_groups IS NULL (all athletes),
-      //             OR athlete's event_group IS NULL (no group = sees everything),
-      //             OR athlete's event_group is in target_event_groups
+      // Include if: target_event_groups IS NULL/empty (untagged exercise = all athletes see it),
+      //             OR athlete has no event_groups (untagged athlete = only untagged exercises),
+      //             OR any of athlete's event_groups overlaps with target_event_groups
       const filteredExercises = sessionPlanExercises.filter((spe) => {
         if (!spe.target_event_groups || spe.target_event_groups.length === 0) return true
-        if (!athleteEventGroup) return true
-        return spe.target_event_groups.includes(athleteEventGroup)
+        if (!athleteEventGroups.length) return false
+        return spe.target_event_groups.some(g => athleteEventGroups.includes(g))
       })
 
       // Create workout_log_exercises for filtered exercises
@@ -755,7 +755,7 @@ export async function getWorkoutSessionByIdAction(
           id,
           user_id,
           athlete_group_id,
-          event_group
+          event_groups
         ),
         workout_log_exercises(
           id,

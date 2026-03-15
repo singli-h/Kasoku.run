@@ -19,7 +19,6 @@ import { InviteAthleteForm } from "./invite-athlete-form"
 import { AthleteRosterSection } from "./athlete-roster-section"
 import { GroupDirectorySection } from "./group-directory-section"
 import { BulkOperationsDialog } from "./bulk-operations-dialog"
-import { MobileInviteFAB } from "./mobile-invite-fab"
 import { MobileBulkActionBar } from "./mobile-bulk-action-bar"
 import { EventGroupManager } from "./event-group-manager"
 
@@ -140,16 +139,14 @@ export function LeanAthleteManagementPage() {
 
   return (
     <div className={`space-y-6 ${isMobile && selectedAthletes.length > 0 ? 'pb-32' : ''}`}>
-      {/* Desktop: Inline Invite Form */}
-      {!isMobile && (
-        <div className="p-4 bg-muted/30 rounded-lg">
-          <InviteAthleteForm
-            groups={groups}
-            eventGroups={eventGroups}
-            onSuccess={loadData}
-          />
-        </div>
-      )}
+      {/* Inline Invite Form */}
+      <div className="p-4 bg-muted/30 rounded-lg">
+        <InviteAthleteForm
+          groups={groups}
+          eventGroups={eventGroups}
+          onSuccess={loadData}
+        />
+      </div>
 
       {/* Event Groups */}
       <EventGroupManager
@@ -188,16 +185,6 @@ export function LeanAthleteManagementPage() {
         groups={groups}
         onSuccess={handleBulkOperationSuccess}
       />
-
-      {/* Mobile: Floating Action Button for Invite */}
-      {isMobile && (
-        <MobileInviteFAB
-          groups={groups}
-          eventGroups={eventGroups}
-          onSuccess={loadData}
-          isHidden={selectedAthletes.length > 0}
-        />
-      )}
 
       {/* Mobile: Bulk Action Bar */}
       {isMobile && (

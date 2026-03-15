@@ -25,14 +25,14 @@ interface WorkoutSessionClientProps {
   initialSession: WorkoutLogWithDetails
   sessionId: string
   dbUserId?: string
-  athleteEventGroup?: string | null
+  athleteEventGroups?: string[]
 }
 
 export function WorkoutSessionClient({
   initialSession,
   sessionId,
   dbUserId,
-  athleteEventGroup,
+  athleteEventGroups,
 }: WorkoutSessionClientProps) {
   // Use React Query with server-fetched initial data
   // This enables seamless background refresh without loading states
@@ -62,7 +62,7 @@ export function WorkoutSessionClient({
       <WorkoutSessionDashboardV2
         presetGroup={sessionPlan}
         existingSession={currentSession}
-        athleteEventGroup={athleteEventGroup}
+        athleteEventGroups={athleteEventGroups}
       />
     </SessionAssistant>
   )

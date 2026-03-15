@@ -1092,6 +1092,7 @@ export async function copySessionAction(
       day: targetDay,
       week: sourceSession.week,
       session_mode: sourceSession.session_mode,
+      target_event_groups: sourceSession.target_event_groups,
       microcycle_id: targetMicrocycleId,
       user_id: dbUserId,
       is_template: false
@@ -1256,6 +1257,7 @@ export async function duplicateMicrocycleSessionsAction(
         day: s.day,
         week: s.week,
         session_mode: s.session_mode,
+        target_event_groups: s.target_event_groups,
         microcycle_id: targetMicrocycleId,
         user_id: dbUserId,
         is_template: false,

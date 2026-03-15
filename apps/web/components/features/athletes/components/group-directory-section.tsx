@@ -46,7 +46,7 @@ import type { GroupWithCount, EventGroup } from "../types"
 
 interface GroupDirectorySectionProps {
   groups: GroupWithCount[]
-  athletes?: Array<{ athlete_group_id: number | null; event_group?: string | null }>
+  athletes?: Array<{ athlete_group_id: number | null; event_groups?: string[] | null }>
   eventGroups?: EventGroup[]
   selectedGroupFilter: number | null
   onGroupFilterChange: (groupId: number | null) => void
@@ -57,15 +57,16 @@ interface GroupDirectorySectionProps {
 /** Compute event group breakdown for a given athlete group */
 function getEventGroupBreakdown(
   groupId: number,
-  athletes: Array<{ athlete_group_id: number | null; event_group?: string | null }>,
+  athletes: Array<{ athlete_group_id: number | null; event_groups?: string[] | null }>,
   eventGroupMap: Map<string, string>
 ): Record<string, number> {
   const counts: Record<string, number> = {}
   for (const a of athletes) {
-    if (a.athlete_group_id === groupId && a.event_group) {
-      // Use full name if available, otherwise use abbreviation
-      const displayName = eventGroupMap.get(a.event_group) || a.event_group
-      counts[displayName] = (counts[displayName] || 0) + 1
+    if (a.athlete_group_id === groupId) {
+      (a.event_groups ?? []).forEach(eg => {
+        const displayName = eventGroupMap.get(eg) || eg
+        counts[displayName] = (counts[displayName] || 0) + 1
+      })
     }
   }
   return counts
