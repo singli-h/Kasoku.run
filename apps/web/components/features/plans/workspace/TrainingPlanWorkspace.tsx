@@ -26,8 +26,8 @@ import {
 import { createRaceAction, updateRaceAction, deleteRaceAction } from "@/actions/plans/race-actions"
 import { Copy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { abbreviateEventGroup } from "@/lib/training-utils"
-import { EventGroupBadge } from "@/components/features/athletes/components/event-group-badge"
+import { abbreviateSubgroup } from "@/lib/training-utils"
+import { SubgroupBadge } from "@/components/features/athletes/components/subgroup-badge"
 
 // Training plan workspace component - interfaces for data structure
 export interface Session {
@@ -45,9 +45,9 @@ export interface Session {
   /** Formatted exercise summaries (e.g. "3x10 80kg") */
   exerciseSummaries?: string[]
   /** Per-exercise target event groups for subgroup indicators */
-  targetEventGroups?: (string[])[]
+  targetSubgroups?: (string[])[]
   /** Session-level target event groups for schedule filtering */
-  sessionTargetEventGroups?: string[] | null
+  sessionTargetSubgroups?: string[] | null
 }
 
 interface Microcycle {
@@ -75,7 +75,7 @@ interface Mesocycle {
   end_date: string | null
   planning_context?: unknown | null
   metadata: {
-    phase?: "GPP" | "SPP" | "Taper" | "Competition"
+    phase?: string
     color?: string
     deload?: boolean
   } | null
@@ -123,7 +123,7 @@ interface TrainingPlanWorkspaceProps {
   /** Slot for filter bar rendered below PlanPageHeader */
   filterBar?: React.ReactNode
   /** Selected event groups for session filtering (multi-select) */
-  selectedEventGroups?: string[]
+  selectedSubgroups?: string[]
 }
 
 /** Format a date string as "12 Feb" (short day + month) */
@@ -200,7 +200,7 @@ function isCurrentWeek(micro: Microcycle): boolean {
   return today >= startDate && today <= endDate
 }
 
-export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroupId, onGenerateWeek, onReviewWeek, filterBar, selectedEventGroups }: TrainingPlanWorkspaceProps) {
+export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroupId, onGenerateWeek, onReviewWeek, filterBar, selectedSubgroups }: TrainingPlanWorkspaceProps) {
   const router = useRouter()
   const [plan, setPlan] = useState(initialPlan)
 
@@ -360,7 +360,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
           : [...plan.mesocycles, { ...mesocycle, microcycles: [] } as Mesocycle],
       }
       addToHistory(newPlan)
-      router.refresh()
     } catch (error) {
       console.error("Error saving mesocycle:", error)
       toast({
@@ -369,7 +368,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         variant: "destructive",
       })
     }
-  }, [plan, addToHistory, toast, router])
+  }, [plan, addToHistory, toast])
 
   const handleDeleteMesocycle = useCallback(async (id: number) => {
     try {
@@ -397,7 +396,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
       if (selectedMeso?.id === id) {
         setSelectedMeso(null)
       }
-      router.refresh()
     } catch (error) {
       console.error("Error deleting mesocycle:", error)
       toast({
@@ -406,7 +404,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         variant: "destructive",
       })
     }
-  }, [plan, addToHistory, selectedMeso, toast, router])
+  }, [plan, addToHistory, selectedMeso, toast])
 
   const handleSaveMicrocycle = async (microcycle: MicrocycleFormData) => {
     if (!selectedMeso) return
@@ -476,7 +474,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
       }
       addToHistory(newPlan)
       setSelectedMeso(updatedMeso)
-      router.refresh()
     } catch (error) {
       console.error("Error saving microcycle:", error)
       toast({
@@ -520,7 +517,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
       if (selectedMicro?.id === id) {
         setSelectedMicro(null)
       }
-      router.refresh()
     } catch (error) {
       console.error("Error deleting microcycle:", error)
       toast({
@@ -591,7 +587,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         addToHistory(newPlan)
         toast({ title: "Race updated", description: "Race has been updated." })
       }
-      router.refresh()
     } catch (error) {
       console.error("Error saving event:", error)
       toast({
@@ -621,7 +616,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
       }
       addToHistory(newPlan)
       toast({ title: "Race deleted", description: "Race has been removed." })
-      router.refresh()
     } catch (error) {
       console.error("Error deleting event:", error)
       toast({
@@ -674,7 +668,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         title: "Session saved",
         description: "Your changes have been saved.",
       })
-      router.refresh()
     } catch (error) {
       console.error("Error saving session:", error)
       toast({
@@ -722,7 +715,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         title: "Session deleted",
         description: result.message,
       })
-      router.refresh()
     } catch (error) {
       console.error("Error deleting session:", error)
       toast({
@@ -863,25 +855,17 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
 
   // Filter sessions by selected event groups (checks both session-level and exercise-level tags)
   const filterSessions = useCallback((sessions: Session[]) => {
-    if (!selectedEventGroups || selectedEventGroups.length === 0) return sessions
+    if (!selectedSubgroups || selectedSubgroups.length === 0) return sessions
     return sessions.filter(session => {
-      // Check session-level tags first
-      const sessionTags = session.sessionTargetEventGroups
-      if (sessionTags && sessionTags.length > 0) {
-        return sessionTags.some(g => selectedEventGroups.includes(g))
-      }
-      // Fall back to exercise-level tags
-      const exerciseTags = session.targetEventGroups
-      if (exerciseTags && exerciseTags.length > 0) {
-        const flat = exerciseTags.flat()
-        if (flat.length > 0) {
-          return flat.some(g => selectedEventGroups.includes(g))
-        }
-      }
+      // Union of session-level tags and exercise-level tags
+      const sessionTags = session.sessionTargetSubgroups ?? []
+      const exerciseTags = (session.targetSubgroups ?? []).flat()
       // No tags at all — shared session, always visible
-      return true
+      if (sessionTags.length === 0 && exerciseTags.length === 0) return true
+      return sessionTags.some(g => selectedSubgroups.includes(g))
+        || exerciseTags.some(g => selectedSubgroups.includes(g))
     })
-  }, [selectedEventGroups])
+  }, [selectedSubgroups])
 
   return (
     <div className="min-h-screen bg-background">
@@ -917,7 +901,6 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                   title: "Plan renamed",
                   description: "Plan title has been saved.",
                 })
-                router.refresh()
               }
             } catch (error) {
               console.error("Error renaming plan:", error)
@@ -1259,12 +1242,12 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                               <h3 className="font-semibold">{session.name}</h3>
                               {/* Event group badges */}
                               {(() => {
-                                const groups = session.sessionTargetEventGroups
-                                  ?? (session.targetEventGroups?.length ? [...new Set(session.targetEventGroups.flat())] : null)
+                                const groups = session.sessionTargetSubgroups
+                                  ?? (session.targetSubgroups?.length ? [...new Set(session.targetSubgroups.flat())] : null)
                                 return groups && groups.length > 0 ? (
                                   <div className="mt-2 flex gap-1 flex-wrap">
                                     {groups.map(g => (
-                                      <EventGroupBadge key={g} value={abbreviateEventGroup(g)} size="md" />
+                                      <SubgroupBadge key={g} value={abbreviateSubgroup(g)} size="md" />
                                     ))}
                                   </div>
                                 ) : null
@@ -1602,12 +1585,12 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                                   <h3 className="font-semibold">{session.name}</h3>
                                   {/* Event group badges */}
                                   {(() => {
-                                    const groups = session.sessionTargetEventGroups
-                                      ?? (session.targetEventGroups?.length ? [...new Set(session.targetEventGroups.flat())] : null)
+                                    const groups = session.sessionTargetSubgroups
+                                      ?? (session.targetSubgroups?.length ? [...new Set(session.targetSubgroups.flat())] : null)
                                     return groups && groups.length > 0 ? (
                                       <div className="mt-2 flex gap-1 flex-wrap">
                                         {groups.map(g => (
-                                          <EventGroupBadge key={g} value={abbreviateEventGroup(g)} size="md" />
+                                          <SubgroupBadge key={g} value={abbreviateSubgroup(g)} size="md" />
                                         ))}
                                       </div>
                                     ) : null

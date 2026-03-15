@@ -60,9 +60,9 @@ export interface CoachWeekDashboardData {
   }
   weekLabel: string
 
-  /** Section 2: Today's sessions grouped by event group */
+  /** Section 2: Today's sessions grouped by subgroup */
   todayGroups: Array<{
-    eventGroup: string
+    subgroup: string
     completed: number
     total: number
   }>

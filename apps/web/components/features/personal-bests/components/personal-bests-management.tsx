@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Trophy, Trash2, AlertCircle, Loader2 } from "lucide-react"
+import { Trophy, Trash2, AlertCircle } from "lucide-react"
 import { getMyPersonalBestsAction, deletePBAction } from "@/actions/athletes"
 import {
   Table,
@@ -86,7 +86,6 @@ export function PersonalBestsManagement() {
   const [pbs, setPbs] = useState<PersonalBest[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     loadPersonalBests()
@@ -115,7 +114,10 @@ export function PersonalBestsManagement() {
   }
 
   const handleDelete = async (id: number) => {
-    setIsDeleting(true)
+    // Optimistic: remove from list immediately
+    const previousPbs = pbs
+    setPbs(prev => prev.filter(pb => pb.id !== id))
+
     const result = await deletePBAction(id)
 
     if (result.isSuccess) {
@@ -123,15 +125,15 @@ export function PersonalBestsManagement() {
         title: "Success",
         description: "Personal best deleted successfully"
       })
-      loadPersonalBests()
     } else {
       toast({
         title: "Error",
         description: result.message,
         variant: "destructive"
       })
+      // Revert on failure
+      setPbs(previousPbs)
     }
-    setIsDeleting(false)
   }
 
   if (isLoading) {
@@ -264,20 +266,12 @@ export function PersonalBestsManagement() {
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDelete(pb.id)}
-                              disabled={isDeleting}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
-                              {isDeleting ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  Deleting...
-                                </>
-                              ) : (
-                                "Delete"
-                              )}
+                              Delete
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

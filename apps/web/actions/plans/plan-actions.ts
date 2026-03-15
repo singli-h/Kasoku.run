@@ -290,7 +290,7 @@ export async function getMacrocycleByIdAction(id: number): Promise<ActionState<M
                 notes,
                 exercise_id,
                 superset_id,
-                target_event_groups,
+                target_subgroups,
                 exercise:exercises(
                   id,
                   name,

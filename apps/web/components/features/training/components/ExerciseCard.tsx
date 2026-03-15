@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react"
-import { ArrowRight, Bot, Check, ChevronDown, ChevronUp, GripVertical, Plus, Trash2, Trophy, X } from "lucide-react"
+import { ArrowRight, Bot, Check, ChevronDown, ChevronUp, GripVertical, MessageSquare, Plus, Trash2, Trophy, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatSubgroupChip } from "@/lib/training-utils"
 import type { TrainingExercise, TrainingSet } from "../types"
@@ -14,7 +14,7 @@ import type { AISetChangeInfo } from "@/components/features/ai-assistant/hooks"
 import { isFreeelapMetadata, type FreeelapMetadata } from "@/types/freelap"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
-import { EventGroupBadge } from "@/components/features/athletes/components/event-group-badge"
+import { SubgroupBadge } from "@/components/features/athletes/components/subgroup-badge"
 import { useToast } from "@/hooks/use-toast"
 import { findPR } from "../../workout/hooks/use-exercise-prs"
 import { PRInputSheet, getSprintPRMode, SPRINT_AUTO_PR_NAMES } from "../../workout/components/exercise/pr-input-sheet"
@@ -76,12 +76,14 @@ export interface ExerciseCardProps {
    * @default true
    */
   showAdvancedFields?: boolean
-  /** Available event groups for subgroup filtering popover */
-  availableEventGroups?: string[]
-  /** Callback when target_event_groups is changed via the subgroup popover */
-  onUpdateTargetEventGroups?: (groups: string[] | null) => void
+  /** Available subgroups for subgroup filtering popover */
+  availableSubgroups?: string[]
+  /** Callback when target_subgroups is changed via the subgroup popover */
+  onUpdateTargetSubgroups?: (groups: string[] | null) => void
   /** Preview group for dimming — when set, non-matching exercises get reduced opacity */
   previewGroup?: string | null
+  /** Callback when exercise notes are updated (coach mode) */
+  onUpdateNotes?: (notes: string | null) => void
   /** Personal records for this exercise (multiple for sprint distances) */
   prs?: PersonalBest[]
   /** Callback to save/update a PR */
@@ -129,9 +131,10 @@ export function ExerciseCard({
   isGhostExercise = false,
   showAllFields = false,
   showAdvancedFields = true,
-  availableEventGroups,
-  onUpdateTargetEventGroups,
+  availableSubgroups,
+  onUpdateTargetSubgroups,
   previewGroup,
+  onUpdateNotes,
   prs,
   onSavePR,
 }: ExerciseCardProps) {
@@ -161,14 +164,14 @@ export function ExerciseCard({
     aiProposedData?.exerciseName        // Fallback: camelCase
   ) as string | undefined : undefined
   // Subgroup chip display
-  const subgroupChipText = formatSubgroupChip(exercise.targetEventGroups ?? null)
+  const subgroupChipText = formatSubgroupChip(exercise.targetSubgroups ?? null)
 
   // Preview dimming: if previewGroup is active, dim exercises that don't target it
   const isDimmedByPreview = useMemo(() => {
     if (!previewGroup) return false // no preview active
-    if (!exercise.targetEventGroups || exercise.targetEventGroups.length === 0) return false // null = ALL
-    return !exercise.targetEventGroups.includes(previewGroup)
-  }, [previewGroup, exercise.targetEventGroups])
+    if (!exercise.targetSubgroups || exercise.targetSubgroups.length === 0) return false // null = ALL
+    return !exercise.targetSubgroups.includes(previewGroup)
+  }, [previewGroup, exercise.targetSubgroups])
 
   const [subgroupPopoverOpen, setSubgroupPopoverOpen] = useState(false)
 
@@ -540,7 +543,7 @@ export function ExerciseCard({
                           setSubgroupPopoverOpen(true)
                         }}
                       >
-                        <EventGroupBadge
+                        <SubgroupBadge
                           value={subgroupChipText}
                           interactive
                           size="xs"
@@ -555,8 +558,8 @@ export function ExerciseCard({
                     >
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">Target Groups</p>
-                        {(availableEventGroups ?? []).map((group) => {
-                          const isChecked = (exercise.targetEventGroups ?? []).includes(group)
+                        {(availableSubgroups ?? []).map((group) => {
+                          const isChecked = (exercise.targetSubgroups ?? []).includes(group)
                           return (
                             <label
                               key={group}
@@ -565,20 +568,20 @@ export function ExerciseCard({
                               <Checkbox
                                 checked={isChecked}
                                 onCheckedChange={(checked) => {
-                                  const current = exercise.targetEventGroups ?? []
+                                  const current = exercise.targetSubgroups ?? []
                                   const next = checked
                                     ? [...current, group]
                                     : current.filter(g => g !== group)
-                                  onUpdateTargetEventGroups?.(next.length > 0 ? next : null)
+                                  onUpdateTargetSubgroups?.(next.length > 0 ? next : null)
                                 }}
                               />
                               <span className="text-sm">{group}</span>
                             </label>
                           )
                         })}
-                        {(exercise.targetEventGroups ?? []).length > 0 && (
+                        {(exercise.targetSubgroups ?? []).length > 0 && (
                           <button
-                            onClick={() => onUpdateTargetEventGroups?.(null)}
+                            onClick={() => onUpdateTargetSubgroups?.(null)}
                             className="text-xs text-muted-foreground hover:text-foreground mt-1"
                           >
                             Clear (all athletes)
@@ -589,7 +592,7 @@ export function ExerciseCard({
                   </Popover>
                 )}
                 {/* Untagged subgroup — show empty chip on click for coach */}
-                {!isAthlete && !subgroupChipText && availableEventGroups && availableEventGroups.length > 0 && (
+                {!isAthlete && !subgroupChipText && availableSubgroups && availableSubgroups.length > 0 && (
                   <Popover open={subgroupPopoverOpen} onOpenChange={setSubgroupPopoverOpen}>
                     <PopoverTrigger asChild>
                       <span
@@ -598,7 +601,7 @@ export function ExerciseCard({
                           setSubgroupPopoverOpen(true)
                         }}
                       >
-                        <EventGroupBadge
+                        <SubgroupBadge
                           value={null}
                           emptyLabel="ALL"
                           interactive
@@ -614,7 +617,7 @@ export function ExerciseCard({
                     >
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">Target Groups</p>
-                        {(availableEventGroups ?? []).map((group) => (
+                        {(availableSubgroups ?? []).map((group) => (
                           <label
                             key={group}
                             className="flex items-center gap-2 cursor-pointer"
@@ -622,7 +625,7 @@ export function ExerciseCard({
                             <Checkbox
                               checked={false}
                               onCheckedChange={() => {
-                                onUpdateTargetEventGroups?.([group])
+                                onUpdateTargetSubgroups?.([group])
                               }}
                             />
                             <span className="text-sm">{group}</span>
@@ -813,11 +816,41 @@ export function ExerciseCard({
               </button>
             )}
 
-            {exercise.notes && (
+            {/* Exercise notes — editable in coach mode, read-only for athletes */}
+            {!isAthlete && onUpdateNotes ? (
+              exercise.notes ? (
+                <textarea
+                  ref={(el) => {
+                    if (el) {
+                      el.style.height = 'auto'
+                      el.style.height = el.scrollHeight + 'px'
+                    }
+                  }}
+                  value={exercise.notes}
+                  onChange={(e) => {
+                    onUpdateNotes(e.target.value || null)
+                    const target = e.target
+                    target.style.height = 'auto'
+                    target.style.height = target.scrollHeight + 'px'
+                  }}
+                  placeholder="Exercise notes..."
+                  rows={1}
+                  className="w-full text-sm text-muted-foreground italic mt-2 px-3 py-1 bg-transparent border-none outline-none resize-none focus:ring-0 placeholder:not-italic"
+                />
+              ) : (
+                <button
+                  onClick={() => onUpdateNotes('')}
+                  className="flex items-center gap-1 mt-2 px-3 py-1 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                >
+                  <MessageSquare className="w-3 h-3" />
+                  Add note
+                </button>
+              )
+            ) : exercise.notes ? (
               <p className="text-sm text-muted-foreground italic mt-2 px-3">
                 {exercise.notes}
               </p>
-            )}
+            ) : null}
           </div>
         )}
       </div>

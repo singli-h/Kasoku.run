@@ -19,21 +19,21 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { inviteOrAttachAthleteAction } from "@/actions/athletes/athlete-actions"
-import type { GroupWithCount, EventGroup } from "../types"
+import type { GroupWithCount, Subgroup } from "../types"
 
 interface InviteAthleteFormProps {
   groups: GroupWithCount[]
-  eventGroups?: EventGroup[]
+  subgroups?: Subgroup[]
   onSuccess: () => void
   className?: string
 }
 
-export function InviteAthleteForm({ groups, eventGroups, onSuccess, className }: InviteAthleteFormProps) {
+export function InviteAthleteForm({ groups, subgroups, onSuccess, className }: InviteAthleteFormProps) {
   const { toast } = useToast()
 
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteGroupId, setInviteGroupId] = useState<number | null>(null)
-  const [inviteEventGroup, setInviteEventGroup] = useState<string>("")
+  const [inviteSubgroup, setInviteSubgroup] = useState<string>("")
   const [isInviting, setIsInviting] = useState(false)
 
   const handleInviteAthlete = async () => {
@@ -51,7 +51,7 @@ export function InviteAthleteForm({ groups, eventGroups, onSuccess, className }:
       const result = await inviteOrAttachAthleteAction(
         inviteEmail,
         inviteGroupId,
-        inviteEventGroup && inviteEventGroup !== "none" ? [inviteEventGroup] : undefined
+        inviteSubgroup && inviteSubgroup !== "none" ? [inviteSubgroup] : undefined
       )
 
       if (result.isSuccess) {
@@ -61,7 +61,7 @@ export function InviteAthleteForm({ groups, eventGroups, onSuccess, className }:
         })
         setInviteEmail("")
         setInviteGroupId(null)
-        setInviteEventGroup("")
+        setInviteSubgroup("")
         onSuccess() // Reload data
       } else {
         toast({
@@ -116,20 +116,20 @@ export function InviteAthleteForm({ groups, eventGroups, onSuccess, className }:
             ))}
           </SelectContent>
         </Select>
-        {eventGroups && eventGroups.length > 0 && (
+        {subgroups && subgroups.length > 0 && (
           <Select
-            value={inviteEventGroup}
-            onValueChange={setInviteEventGroup}
+            value={inviteSubgroup}
+            onValueChange={setInviteSubgroup}
             disabled={noGroups}
           >
             <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Event group (optional)" />
+              <SelectValue placeholder="Subgroup (optional)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">No event group</SelectItem>
-              {eventGroups.map(eg => (
-                <SelectItem key={eg.id} value={eg.abbreviation}>
-                  {eg.abbreviation} — {eg.name}
+              <SelectItem value="none">No subgroup</SelectItem>
+              {subgroups.map(sg => (
+                <SelectItem key={sg.id} value={sg.abbreviation}>
+                  {sg.abbreviation} — {sg.name}
                 </SelectItem>
               ))}
             </SelectContent>

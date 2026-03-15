@@ -47,6 +47,7 @@ function transformSessionData(backendData: any): {
     week?: number | null
     day?: number | null
     session_mode?: string | null
+    target_subgroups?: string[] | null
   }
   exercises: SessionPlannerExercise[]
   groupId: number | null
@@ -59,6 +60,7 @@ function transformSessionData(backendData: any): {
     session_mode: backendData.session_mode,
     week: backendData.week,
     day: backendData.day,
+    target_subgroups: backendData.target_subgroups ?? null,
   }
 
   // Transform session_plan_exercises to SessionPlannerExercise format
@@ -70,7 +72,7 @@ function transformSessionData(backendData: any): {
     exercise_order: exerciseRecord.exercise_order,
     superset_id: exerciseRecord.superset_id,
     notes: exerciseRecord.notes,
-    target_event_groups: exerciseRecord.target_event_groups ?? null,
+    target_subgroups: exerciseRecord.target_subgroups ?? null,
     exercise: exerciseRecord.exercise ? {
       id: exerciseRecord.exercise.id,
       name: exerciseRecord.exercise.name,

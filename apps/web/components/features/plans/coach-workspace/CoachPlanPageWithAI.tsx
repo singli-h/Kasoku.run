@@ -8,7 +8,7 @@ import { PlanFilterBar } from './PlanFilterBar'
 
 interface CoachPlanPageWithAIProps {
   initialPlan: TrainingPlan
-  coachEventGroups?: string[]
+  coachSubgroups?: string[]
 }
 
 function CoachPlanFallback({ error, resetErrorBoundary }: { error: unknown; resetErrorBoundary: () => void }) {
@@ -26,22 +26,22 @@ function CoachPlanFallback({ error, resetErrorBoundary }: { error: unknown; rese
   )
 }
 
-export function CoachPlanPageWithAI({ initialPlan, coachEventGroups: propEventGroups }: CoachPlanPageWithAIProps) {
-  const [selectedEventGroups, setSelectedEventGroups] = useState<string[]>([])
+export function CoachPlanPageWithAI({ initialPlan, coachSubgroups: propSubgroups }: CoachPlanPageWithAIProps) {
+  const [selectedSubgroups, setSelectedSubgroups] = useState<string[]>([])
 
-  // Use coach's defined event groups from the event_groups table
-  const eventGroups = propEventGroups ?? []
+  // Use coach's defined subgroups from the subgroups table
+  const subgroups = propSubgroups ?? []
 
-  const handleEventGroupToggle = useCallback((eventGroup: string) => {
-    setSelectedEventGroups(prev =>
-      prev.includes(eventGroup)
-        ? prev.filter(g => g !== eventGroup)
-        : [...prev, eventGroup]
+  const handleSubgroupToggle = useCallback((subgroup: string) => {
+    setSelectedSubgroups(prev =>
+      prev.includes(subgroup)
+        ? prev.filter(g => g !== subgroup)
+        : [...prev, subgroup]
     )
   }, [])
 
-  const handleEventGroupClear = useCallback(() => {
-    setSelectedEventGroups([])
+  const handleSubgroupClear = useCallback(() => {
+    setSelectedSubgroups([])
   }, [])
 
   return (
@@ -51,13 +51,13 @@ export function CoachPlanPageWithAI({ initialPlan, coachEventGroups: propEventGr
       <div className="flex flex-col">
         <TrainingPlanWorkspace
           initialPlan={initialPlan}
-          selectedEventGroups={selectedEventGroups}
+          selectedSubgroups={selectedSubgroups}
           filterBar={
             <PlanFilterBar
-              eventGroups={eventGroups}
-              selectedEventGroups={selectedEventGroups}
-              onEventGroupToggle={handleEventGroupToggle}
-              onEventGroupClear={handleEventGroupClear}
+              subgroups={subgroups}
+              selectedSubgroups={selectedSubgroups}
+              onSubgroupToggle={handleSubgroupToggle}
+              onSubgroupClear={handleSubgroupClear}
             />
           }
         />

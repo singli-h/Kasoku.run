@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { Check, Loader2, Plus, Calendar, SlidersHorizontal, XCircle } from "lucide-react"
+import { Check, Link2, Loader2, Plus, Calendar, SlidersHorizontal, XCircle } from "lucide-react"
 import { format, isToday, isYesterday, isTomorrow } from "date-fns"
 import { cn } from "@/lib/utils"
 import type { TrainingExercise, TrainingSet, ExerciseLibraryItem } from "../types"
@@ -65,6 +65,8 @@ export interface WorkoutViewProps {
   onRemoveSet?: (exerciseId: number | string, setId: number | string) => void
   onAddExercise?: (exercise: ExerciseLibraryItem, section: string) => void
   onRemoveExercise?: (exerciseId: number | string) => void
+  /** Update exercise notes */
+  onUpdateNotes?: (exerciseId: number | string, notes: string | null) => void
   onReorderSets?: (exerciseId: number | string, fromIndex: number, toIndex: number) => void
   onReorderExercises?: (fromId: number | string, toId: number | string) => void
   onFinishSession?: () => void
@@ -87,18 +89,18 @@ export interface WorkoutViewProps {
 
   /** Preview group for subgroup filtering — dims non-matching exercises */
   previewGroup?: string | null
-  /** Available event groups for subgroup chip popover */
-  availableEventGroups?: string[]
-  /** Callback when exercise target_event_groups is updated */
-  onUpdateTargetEventGroups?: (exerciseId: number | string, groups: string[] | null) => void
+  /** Available subgroups for subgroup chip popover */
+  availableSubgroups?: string[]
+  /** Callback when exercise target_subgroups is updated */
+  onUpdateTargetSubgroups?: (exerciseId: number | string, groups: string[] | null) => void
 
   /**
-   * Athlete's own event_groups (e.g. ["SS", "MS"]).
+   * Athlete's own subgroups (e.g. ["SS", "MS"]).
    * When isAthlete=true, exercises are filtered: only those with
-   * target_event_groups IS NULL or overlapping this array are shown.
+   * target_subgroups IS NULL or overlapping this array are shown.
    * If null/undefined/empty, all exercises are shown (safe default).
    */
-  athleteEventGroups?: string[]
+  athleteSubgroups?: string[]
 
   /** PR map keyed by exercise_id (FK to exercises table) */
   prMap?: Record<number, PersonalBest[]>
@@ -135,6 +137,7 @@ export function WorkoutView({
   onRemoveSet,
   onAddExercise,
   onRemoveExercise,
+  onUpdateNotes,
   onReorderSets,
   onReorderExercises,
   onFinishSession,
@@ -145,9 +148,9 @@ export function WorkoutView({
   aiChangesByExercise,
   showAdvancedFields = true,
   previewGroup,
-  availableEventGroups,
-  onUpdateTargetEventGroups,
-  athleteEventGroups,
+  availableSubgroups,
+  onUpdateTargetSubgroups,
+  athleteSubgroups,
   prMap,
   onSavePR,
   className,
@@ -155,11 +158,11 @@ export function WorkoutView({
   const filteredExercises = useMemo(() => {
     if (!isAthlete) return exercises
     return exercises.filter((ex) => {
-      if (!ex.targetEventGroups || ex.targetEventGroups.length === 0) return true
-      if (!athleteEventGroups?.length) return false
-      return ex.targetEventGroups.some(g => athleteEventGroups.includes(g))
+      if (!ex.targetSubgroups || ex.targetSubgroups.length === 0) return true
+      if (!athleteSubgroups?.length) return false
+      return ex.targetSubgroups.some(g => athleteSubgroups.includes(g))
     })
-  }, [exercises, isAthlete, athleteEventGroups])
+  }, [exercises, isAthlete, athleteSubgroups])
 
   // Format session date for display
   const formattedDate = useMemo(() => {
@@ -398,37 +401,38 @@ export function WorkoutView({
               <button
                 onClick={() => setShowAllFields(prev => !prev)}
                 className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-md transition-colors",
+                  "flex items-center gap-1 px-2 py-0.5 rounded font-medium transition-colors",
                   showAllFields
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-primary/80 text-primary-foreground hover:bg-primary/90"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
                 title={showAllFields ? "Hide optional fields" : "Show all fields"}
               >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-medium">{showAllFields ? "All" : "Min"}</span>
+                <SlidersHorizontal className="w-3 h-3" />
+                <span className="text-[11px]">{showAllFields ? "All" : "Min"}</span>
               </button>
               {isAthlete ? (
                 <span>{stats.progress}% complete</span>
               ) : (
                 <>
                   <span>{stats.totalSets} sets · {stats.totalExercises} exercises</span>
-                  {/* Superset creation button (coach mode only) */}
-                  {onCreateSuperset && !isSelectionMode && filteredExercises.length >= 2 && (
-                    <button
-                      onClick={toggleSelectionMode}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
-                      title="Create superset"
-                    >
-                      <span className="text-[10px] font-medium">🔗 Superset</span>
-                    </button>
-                  )}
                 </>
               )}
             </div>
 
             {/* Abandon/Save/Finish Buttons */}
             <div className="flex items-center gap-2">
+              {/* Superset creation button (coach mode only) - far right */}
+              {onCreateSuperset && !isSelectionMode && filteredExercises.length >= 2 && (
+                <button
+                  onClick={toggleSelectionMode}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded font-medium bg-primary/80 text-primary-foreground hover:bg-primary/90 transition-colors"
+                  title="Create superset"
+                >
+                  <Link2 className="w-3 h-3" />
+                  <span className="text-[11px]">Superset</span>
+                </button>
+              )}
               {/* Abandon button - only shown for ongoing sessions */}
               {!isCompleted && isAthlete && onAbandonSession && (
                 <AlertDialog>
@@ -563,6 +567,7 @@ export function WorkoutView({
                                   onAddSet={() => onAddSet?.(ex.id)}
                                   onRemoveSet={(setId) => onRemoveSet?.(ex.id, setId)}
                                   onRemoveExercise={() => onRemoveExercise?.(ex.id)}
+                                  onUpdateNotes={(notes) => onUpdateNotes?.(ex.id, notes)}
                                   onReorderSets={(from, to) => onReorderSets?.(ex.id, from, to)}
                                   isDragging={draggingExerciseId === ex.id}
                                   onDragStart={handleExerciseDragStart}
@@ -584,8 +589,8 @@ export function WorkoutView({
                                   aiCurrentData={aiInfo?.currentData}
                                   // Subgroup filtering props
                                   previewGroup={previewGroup}
-                                  availableEventGroups={availableEventGroups}
-                                  onUpdateTargetEventGroups={(groups) => onUpdateTargetEventGroups?.(ex.id, groups)}
+                                  availableSubgroups={availableSubgroups}
+                                  onUpdateTargetSubgroups={(groups) => onUpdateTargetSubgroups?.(ex.id, groups)}
                                   // PR props
                                   prs={prMap?.[ex.exerciseId]}
                                   onSavePR={onSavePR}
@@ -611,6 +616,7 @@ export function WorkoutView({
                           onAddSet={() => onAddSet?.(item.id)}
                           onRemoveSet={(setId) => onRemoveSet?.(item.id, setId)}
                           onRemoveExercise={() => onRemoveExercise?.(item.id)}
+                          onUpdateNotes={(notes) => onUpdateNotes?.(item.id, notes)}
                           onReorderSets={(from, to) => onReorderSets?.(item.id, from, to)}
                           isDragging={draggingExerciseId === item.id}
                           onDragStart={handleExerciseDragStart}
@@ -632,8 +638,8 @@ export function WorkoutView({
                           aiCurrentData={aiInfo?.currentData}
                           // Subgroup filtering props
                           previewGroup={previewGroup}
-                          availableEventGroups={availableEventGroups}
-                          onUpdateTargetEventGroups={(groups) => onUpdateTargetEventGroups?.(item.id, groups)}
+                          availableSubgroups={availableSubgroups}
+                          onUpdateTargetSubgroups={(groups) => onUpdateTargetSubgroups?.(item.id, groups)}
                           // PR props
                           prs={prMap?.[item.exerciseId]}
                           onSavePR={onSavePR}

@@ -10,7 +10,7 @@ export interface MicrocycleGenerationContext {
   macroContext: string | null
   mesoContext: string | null
   recentInsights: string[]
-  athleteEventGroups: string[]
+  athleteSubgroups: string[]
   upcomingRaces: string[]
   scheduleNotes: string | null
   microcycleName: string | null
@@ -69,12 +69,12 @@ export async function getMicrocycleGenerationContextAction(
         .lt('start_date', micro.start_date ?? new Date().toISOString())
         .order('start_date', { ascending: false })
         .limit(3),
-      // 3. Distinct event_groups for athletes in this group
+      // 3. Distinct subgroups for athletes in this group
       supabase
         .from('athletes')
-        .select('event_groups')
+        .select('subgroups')
         .eq('athlete_group_id', athleteGroupId)
-        .not('event_groups', 'is', null),
+        .not('subgroups', 'is', null),
       // 4. Upcoming races within microcycle date range
       supabase
         .from('races')
@@ -133,8 +133,8 @@ export async function getMicrocycleGenerationContextAction(
       return ins?.summary ? `Week ${m.name ?? m.start_date}: ${String(ins.summary)}` : ''
     }).filter(Boolean)
 
-    const athleteEventGroups = [...new Set(
-      (athletes ?? []).flatMap(a => a.event_groups ?? []).filter(Boolean)
+    const athleteSubgroups = [...new Set(
+      (athletes ?? []).flatMap(a => a.subgroups ?? []).filter(Boolean)
     )]
 
     const upcomingRaces = (races ?? []).map(r => `${r.name} — ${r.date}`)
@@ -146,7 +146,7 @@ export async function getMicrocycleGenerationContextAction(
         macroContext,
         mesoContext,
         recentInsights,
-        athleteEventGroups,
+        athleteSubgroups,
         upcomingRaces,
         scheduleNotes,
         microcycleName: micro.name,

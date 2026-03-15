@@ -51,7 +51,7 @@ export interface AthleteManagementData {
   groups: GroupWithCount[]
 }
 
-export interface EventGroup {
+export interface Subgroup {
   id: number
   coach_id: number
   name: string

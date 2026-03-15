@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +16,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { cn } from "@/lib/utils"
+
+/** Preset phase options with descriptions coaches can understand */
+const PHASE_PRESETS = [
+  { value: "GPP", label: "GPP - General Preparation", hint: "Build general fitness foundation — strength, endurance, flexibility" },
+  { value: "SPP", label: "SPP - Specific Preparation", hint: "Train race-specific skills — starts, speed endurance, technique" },
+  { value: "Taper", label: "Taper", hint: "Reduce volume to peak for competition" },
+  { value: "Competition", label: "Competition", hint: "Race period — maintain fitness, compete" },
+] as const
 
 export interface MesocycleFormData {
   id?: number
@@ -27,7 +35,7 @@ export interface MesocycleFormData {
   start_date: string | null
   end_date: string | null
   metadata: {
-    phase?: "GPP" | "SPP" | "Taper" | "Competition"
+    phase?: string
     color?: string
     deload?: boolean
   } | null
@@ -43,6 +51,9 @@ interface EditMesocycleDialogProps {
 
 export function EditMesocycleDialog({ mesocycle, open, onOpenChange, onSave, onDelete }: EditMesocycleDialogProps) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [showPhasePresets, setShowPhasePresets] = useState(false)
+  const phaseInputRef = useRef<HTMLInputElement>(null)
+  const presetsRef = useRef<HTMLDivElement>(null)
   const [formData, setFormData] = useState<MesocycleFormData>({
     name: "",
     description: "",
@@ -119,23 +130,59 @@ export function EditMesocycleDialog({ mesocycle, open, onOpenChange, onSave, onD
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phase">Phase Type</Label>
-                <Select
-                  value={formData.metadata?.phase || "GPP"}
-                  onValueChange={(value) => setFormData({
-                    ...formData,
-                    metadata: { ...formData.metadata, phase: value as "GPP" | "SPP" | "Taper" | "Competition" }
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="GPP">GPP - General Preparation</SelectItem>
-                    <SelectItem value="SPP">SPP - Specific Preparation</SelectItem>
-                    <SelectItem value="Taper">Taper</SelectItem>
-                    <SelectItem value="Competition">Competition</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <Input
+                    ref={phaseInputRef}
+                    id="phase"
+                    value={formData.metadata?.phase || ""}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      metadata: { ...formData.metadata, phase: e.target.value }
+                    })}
+                    onFocus={() => setShowPhasePresets(true)}
+                    onBlur={(e) => {
+                      // Delay hide so preset clicks register
+                      if (!presetsRef.current?.contains(e.relatedTarget as Node)) {
+                        setTimeout(() => setShowPhasePresets(false), 150)
+                      }
+                    }}
+                    placeholder="e.g., GPP, Indoor, Recovery"
+                  />
+                  {showPhasePresets && (
+                    <div
+                      ref={presetsRef}
+                      className="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-md"
+                    >
+                      <div className="p-1.5">
+                        <p className="px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Presets</p>
+                        {PHASE_PRESETS.map((preset) => (
+                          <button
+                            key={preset.value}
+                            type="button"
+                            className={cn(
+                              "w-full text-left px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors",
+                              formData.metadata?.phase === preset.value && "bg-accent"
+                            )}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setFormData({
+                                ...formData,
+                                metadata: { ...formData.metadata, phase: preset.value }
+                              })
+                              setShowPhasePresets(false)
+                            }}
+                          >
+                            <span className="font-medium">{preset.label}</span>
+                            <span className="block text-[11px] text-muted-foreground mt-0.5">{preset.hint}</span>
+                          </button>
+                        ))}
+                        <p className="px-2 pt-1.5 pb-0.5 text-[10px] text-muted-foreground">
+                          Or type your own phase name above
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

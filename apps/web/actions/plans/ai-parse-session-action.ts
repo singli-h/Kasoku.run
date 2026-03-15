@@ -36,7 +36,7 @@ export interface ParsedExercise {
   /** AI-inferred exercise type based on exercise nature */
   exerciseType: ExerciseTypeName
   sets: ParsedSet[]
-  targetEventGroups: string[] | null
+  targetSubgroups: string[] | null
   notes: string | null
   unparseable: boolean
   originalText: string | null
@@ -64,7 +64,7 @@ const ParsedExerciseSchema = z.object({
   exerciseType: z.enum(['isometric', 'plyometric', 'gym', 'warmup', 'circuit', 'sprint', 'drill', 'mobility', 'recovery', 'other'])
     .describe("Exercise type classification: isometric (holds/planks), plyometric (jumps/bounds), gym (barbell/dumbbell strength), warmup (dynamic stretches/jogging), circuit (AMRAP/station-based), sprint (running speed work), drill (technique/A-skips/hurdle drills), mobility (ROM/flexibility), recovery (cool down/light cardio), other (unclassifiable)"),
   sets: z.array(ParsedSetSchema).describe("Array of set configurations"),
-  targetEventGroups: z.array(z.string()).nullable()
+  targetSubgroups: z.array(z.string()).nullable()
     .describe("Subgroup tags like 'Sprints', 'Jumps' from TrainHeroic SS/MS headers. Null if none."),
   notes: z.string().nullable().describe("Any additional notes for this exercise. Null if none."),
   unparseable: z.boolean()
@@ -103,7 +103,7 @@ PARSING RULES:
 5. When "NxTs" format is found (like "3x30s"), create N identical set objects with T as performing_time.
 6. Detect TrainHeroic subgroup headers:
    - Lines like "SS -", "MS -", "## SS", "SS:", "Superset:" indicate a group
-   - Tag subsequent exercises with the subgroup name in targetEventGroups until the next header
+   - Tag subsequent exercises with the subgroup name in targetSubgroups until the next header
 7. If a line cannot be parsed into an exercise (e.g., headers, blank lines, notes), mark it with unparseable: true and include originalText.
 8. Preserve exercise names as-is (capitalize first letter of each word if not already).
 9. Convert time notations: "2min" = 120s, "90sec" = 90s, "1:30" = 90s.
@@ -195,7 +195,7 @@ export async function aiParseSessionAction(
         rest_time: s.rest_time ?? null,
         rpe: s.rpe ?? null,
       })),
-      targetEventGroups: ex.targetEventGroups ?? null,
+      targetSubgroups: ex.targetSubgroups ?? null,
       notes: ex.notes ?? null,
       unparseable: ex.unparseable ?? false,
       originalText: ex.originalText,

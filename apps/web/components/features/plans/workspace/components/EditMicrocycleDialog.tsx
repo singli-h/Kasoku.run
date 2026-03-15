@@ -157,7 +157,7 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
                 value={formData.volume ?? 5}
                 onChange={(e) => setFormData({ ...formData, volume: Number.parseInt(e.target.value) || 0 })}
               />
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Training volume scale</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">How much total training — sets, reps, distance</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="intensity">Intensity (1-10)</Label>
@@ -170,6 +170,7 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
                 value={formData.intensity || 6}
                 onChange={(e) => setFormData({ ...formData, intensity: Number.parseFloat(e.target.value) })}
               />
+              <p className="text-[10px] sm:text-xs text-muted-foreground">How hard — effort level, % of max</p>
             </div>
           </div>
 
@@ -180,7 +181,10 @@ export function EditMicrocycleDialog({ microcycle, open, onOpenChange, onSave, o
               checked={formData.isDeload || false}
               onCheckedChange={(checked) => setFormData({ ...formData, isDeload: checked })}
             />
-            <Label htmlFor="isDeload">Deload Week</Label>
+            <div>
+              <Label htmlFor="isDeload">Deload Week</Label>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Planned lighter week to allow recovery</p>
+            </div>
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 /*
 <ai_context>
 Coach dashboard view — action-oriented weekly overview.
-Three sections: This Week stats, Today by event group, Active Plans.
+Three sections: This Week stats, Today by subgroup, Active Plans.
 No per-athlete lists. Numbers scale to 60+ athletes.
 </ai_context>
 */
@@ -9,7 +9,7 @@ No per-athlete lists. Numbers scale to 60+ athletes.
 import Link from "next/link"
 import { Calendar, Users, TrendingUp, Target } from "lucide-react"
 import type { CoachWeekDashboardData } from "../types/dashboard-types"
-import { EventGroupBadge } from "@/components/features/athletes/components/event-group-badge"
+import { SubgroupBadge } from "@/components/features/athletes/components/subgroup-badge"
 
 interface CoachDashboardViewProps {
   data: CoachWeekDashboardData
@@ -111,8 +111,8 @@ function TodaySessions({
           <div className="space-y-2">
             {groups.map((group) => (
               <GroupComplianceBar
-                key={group.eventGroup}
-                eventGroup={group.eventGroup}
+                key={group.subgroup}
+                subgroup={group.subgroup}
                 completed={group.completed}
                 total={group.total}
               />
@@ -129,11 +129,11 @@ function TodaySessions({
 }
 
 function GroupComplianceBar({
-  eventGroup,
+  subgroup,
   completed,
   total
 }: {
-  eventGroup: string
+  subgroup: string
   completed: number
   total: number
 }) {
@@ -141,7 +141,7 @@ function GroupComplianceBar({
 
   return (
     <div className="flex items-center gap-3">
-      <EventGroupBadge value={eventGroup} size="xs" className="w-12" />
+      <SubgroupBadge value={subgroup} size="xs" className="w-12" />
       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
         <div
           className="h-full bg-green-500 rounded-full transition-all"

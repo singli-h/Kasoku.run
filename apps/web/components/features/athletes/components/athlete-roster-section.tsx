@@ -41,20 +41,20 @@ import { cn } from "@/lib/utils"
 
 import { AthleteCard } from "./athlete-card"
 import { GroupFilterChips } from "./group-filter-chips"
-import { EventGroupBadge } from "./event-group-badge"
-import { EventGroupDialog } from "./event-group-dialog"
-import type { AthleteWithDetails, GroupWithCount, BulkOperationState, EventGroup } from "../types"
+import { SubgroupBadge } from "./subgroup-badge"
+import { SubgroupDialog } from "./subgroup-dialog"
+import type { AthleteWithDetails, GroupWithCount, BulkOperationState, Subgroup } from "../types"
 
 interface AthleteRosterSectionProps {
   athletes: AthleteWithDetails[]
   groups: GroupWithCount[]
-  eventGroups: EventGroup[]
+  subgroups: Subgroup[]
   selectedAthletes: number[]
   onSelectAthletes: (athletes: number[]) => void
   onBulkOperation: (operation: BulkOperationState) => void
   selectedGroupFilter: number | null
   onGroupFilterChange: (groupId: number | null) => void
-  onAthleteEventGroupUpdate?: (userId: number, newGroups: string[] | null) => void
+  onAthleteSubgroupUpdate?: (userId: number, newGroups: string[] | null) => void
   onDataReload?: () => void
   className?: string
 }
@@ -62,13 +62,13 @@ interface AthleteRosterSectionProps {
 export function AthleteRosterSection({
   athletes,
   groups,
-  eventGroups,
+  subgroups,
   selectedAthletes,
   onSelectAthletes,
   onBulkOperation,
   selectedGroupFilter,
   onGroupFilterChange,
-  onAthleteEventGroupUpdate,
+  onAthleteSubgroupUpdate,
   onDataReload,
   className
 }: AthleteRosterSectionProps) {
@@ -76,7 +76,7 @@ export function AthleteRosterSection({
   const isMobile = useMediaQuery("(max-width: 768px)")
   const [searchTerm, setSearchTerm] = useState("")
   const [isSelectionMode, setIsSelectionMode] = useState(false)
-  const [eventGroupDialogFor, setEventGroupDialogFor] = useState<AthleteWithDetails | null>(null)
+  const [subgroupDialogFor, setSubgroupDialogFor] = useState<AthleteWithDetails | null>(null)
 
   // Filter athletes
   const filteredAthletes = useMemo(() => {
@@ -296,12 +296,12 @@ export function AthleteRosterSection({
                 athlete={athlete}
                 isSelected={selectedAthletes.includes(athlete.id)}
                 isSelectionMode={isSelectionMode}
-                eventGroups={eventGroups}
+                subgroups={subgroups}
                 onSelect={handleSelectAthlete}
                 onLongPress={handleEnterSelectionMode}
                 onBulkOperation={onBulkOperation}
                 onGroupFilter={onGroupFilterChange}
-                onAthleteEventGroupUpdate={onAthleteEventGroupUpdate}
+                onAthleteSubgroupUpdate={onAthleteSubgroupUpdate}
                 onDataReload={onDataReload}
               />
             ))}
@@ -329,7 +329,7 @@ export function AthleteRosterSection({
                 <TableHead>Group</TableHead>
                 <TableHead>Age</TableHead>
                 <TableHead>Sex</TableHead>
-                <TableHead>Event Group</TableHead>
+                <TableHead>Subgroup</TableHead>
                 <TableHead>Events</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -389,7 +389,7 @@ export function AthleteRosterSection({
                       <div className="flex items-center gap-0.5">
                         {(athlete.event_groups ?? []).length > 0 ? (
                           (athlete.event_groups ?? []).map(g => (
-                            <EventGroupBadge key={g} value={g} />
+                            <SubgroupBadge key={g} value={g} />
                           ))
                         ) : (
                           <span className="text-muted-foreground">—</span>
@@ -425,8 +425,8 @@ export function AthleteRosterSection({
                           <DropdownMenuItem onClick={() => router.push(`/athletes/${athlete.id}`)}>
                             View Profile
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setEventGroupDialogFor(athlete)}>
-                            Edit Event Group
+                          <DropdownMenuItem onClick={() => setSubgroupDialogFor(athlete)}>
+                            Edit Subgroup
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => onBulkOperation({
@@ -461,17 +461,17 @@ export function AthleteRosterSection({
         )}
       </CardContent>
 
-      {eventGroupDialogFor && (
-        <EventGroupDialog
-          open={!!eventGroupDialogFor}
-          onOpenChange={(open) => { if (!open) setEventGroupDialogFor(null) }}
-          athleteName={`${eventGroupDialogFor.user?.first_name || ''} ${eventGroupDialogFor.user?.last_name || ''}`.trim() || 'Unknown'}
-          userId={eventGroupDialogFor.user_id}
-          currentValues={eventGroupDialogFor.event_groups ?? []}
-          eventGroups={eventGroups}
+      {subgroupDialogFor && (
+        <SubgroupDialog
+          open={!!subgroupDialogFor}
+          onOpenChange={(open) => { if (!open) setSubgroupDialogFor(null) }}
+          athleteName={`${subgroupDialogFor.user?.first_name || ''} ${subgroupDialogFor.user?.last_name || ''}`.trim() || 'Unknown'}
+          userId={subgroupDialogFor.user_id}
+          currentValues={subgroupDialogFor.event_groups ?? []}
+          subgroups={subgroups}
           onSaved={(userId, newGroups) => {
-            setEventGroupDialogFor(null)
-            onAthleteEventGroupUpdate?.(userId, newGroups)
+            setSubgroupDialogFor(null)
+            onAthleteSubgroupUpdate?.(userId, newGroups)
           }}
           onError={() => onDataReload?.()}
         />

@@ -249,7 +249,7 @@ export function PasteProgramPreview({
                         <span className="text-xs text-muted-foreground">
                           {formatSetSummary(exercise)}
                         </span>
-                        {exercise.targetEventGroups?.map((group) => (
+                        {exercise.targetSubgroups?.map((group) => (
                           <Badge key={group} variant="secondary" className="text-[10px] h-4">
                             {group}
                           </Badge>

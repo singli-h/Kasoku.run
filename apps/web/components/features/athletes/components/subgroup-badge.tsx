@@ -1,6 +1,6 @@
 /**
- * Shared Event Group Badge Component
- * Unified visual treatment for event group tags across ALL pages
+ * Shared Subgroup Badge Component
+ * Unified visual treatment for subgroup tags across ALL pages
  */
 
 import { cn } from "@/lib/utils"
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 type BadgeSize = "xs" | "sm" | "md"
 type BadgeVariant = "default" | "filter" | "muted"
 
-interface EventGroupBadgeProps {
+interface SubgroupBadgeProps {
   value: string | null | undefined
   emptyLabel?: string
   interactive?: boolean
@@ -46,7 +46,7 @@ function getVariantClasses(variant: BadgeVariant, hasValue: boolean, active?: bo
   }
 }
 
-export function EventGroupBadge({
+export function SubgroupBadge({
   value,
   emptyLabel = "+group",
   interactive = false,
@@ -55,7 +55,7 @@ export function EventGroupBadge({
   active,
   className,
   onClick,
-}: EventGroupBadgeProps) {
+}: SubgroupBadgeProps) {
   const Tag = interactive ? "button" : "span"
 
   return (

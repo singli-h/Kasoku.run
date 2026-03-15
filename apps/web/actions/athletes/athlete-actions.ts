@@ -1474,7 +1474,7 @@ export async function deleteAthleteGroupAction(groupId: number): Promise<ActionS
 export async function inviteOrAttachAthleteAction(
   email: string,
   groupId: number,
-  eventGroups?: string[]
+  subgroups?: string[]
 ): Promise<ActionState<{ type: 'attached' | 'invited', athlete?: Athlete }>> {
   try {
     const { userId } = await auth()
@@ -1529,18 +1529,18 @@ export async function inviteOrAttachAthleteAction(
       }
     }
 
-    // Validate eventGroups against coach's defined event groups
-    if (eventGroups && eventGroups.length > 0) {
+    // Validate subgroups against coach's defined subgroups
+    if (subgroups && subgroups.length > 0) {
       const { data: validEgs } = await supabase
-        .from('event_groups')
+        .from('subgroups')
         .select('abbreviation')
         .eq('coach_id', (user.coach as { id: number }).id)
-        .in('abbreviation', eventGroups)
+        .in('abbreviation', subgroups)
 
       const validAbbrevs = new Set((validEgs ?? []).map(e => e.abbreviation))
-      const invalid = eventGroups.filter(g => !validAbbrevs.has(g))
+      const invalid = subgroups.filter(g => !validAbbrevs.has(g))
       if (invalid.length > 0) {
-        return { isSuccess: false, message: `Invalid event group(s): ${invalid.join(', ')}` }
+        return { isSuccess: false, message: `Invalid subgroup(s): ${invalid.join(', ')}` }
       }
     }
 
@@ -1612,7 +1612,7 @@ export async function inviteOrAttachAthleteAction(
           .insert({
             user_id: user_id,
             athlete_group_id: groupId,
-            ...(eventGroups && eventGroups.length > 0 ? { event_groups: eventGroups } : {})
+            ...(subgroups && subgroups.length > 0 ? { subgroups: subgroups } : {})
           })
           .select()
           .single()
@@ -1645,7 +1645,7 @@ export async function inviteOrAttachAthleteAction(
           .from('athletes')
           .update({
             athlete_group_id: groupId,
-            ...(eventGroups && eventGroups.length > 0 ? { event_groups: eventGroups } : {})
+            ...(subgroups && subgroups.length > 0 ? { subgroups: subgroups } : {})
           })
           .eq('id', athlete_id)
           .select()
@@ -1726,7 +1726,7 @@ export async function inviteOrAttachAthleteAction(
             groupId,
             coachId: (user.coach as { id: number }).id,
             role: 'athlete',
-            ...(eventGroups && eventGroups.length > 0 ? { eventGroups } : {}),
+            ...(subgroups && subgroups.length > 0 ? { subgroups } : {}),
           },
         })
 
@@ -2702,14 +2702,14 @@ export async function getGroupHistoryAction(
 }
 
 // ============================================================================
-// EVENT GROUP ACTIONS
+// SUBGROUP ACTIONS
 // ============================================================================
 
 /**
- * Get distinct event_groups values for athletes in a specific group.
+ * Get distinct subgroups values for athletes in a specific group.
  * Used for subgroup filtering in the session planner.
  */
-export async function getEventGroupsForGroupAction(
+export async function getSubgroupsForGroupAction(
   groupId: number
 ): Promise<ActionState<string[]>> {
   try {
@@ -2761,32 +2761,32 @@ export async function getEventGroupsForGroupAction(
 
     const { data, error } = await supabase
       .from('athletes')
-      .select('event_groups')
+      .select('subgroups')
       .eq('athlete_group_id', groupId)
-      .not('event_groups', 'is', null)
+      .not('subgroups', 'is', null)
 
     if (error) {
-      console.error('Error fetching event groups for group:', error)
+      console.error('Error fetching subgroups for group:', error)
       return {
         isSuccess: false,
-        message: `Failed to fetch event groups: ${error.message}`
+        message: `Failed to fetch subgroups: ${error.message}`
       }
     }
 
-    // Extract distinct event_groups values and sort
+    // Extract distinct subgroups values and sort
     const distinctGroups = [...new Set(
       (data || [])
-        .flatMap(row => row.event_groups ?? [])
+        .flatMap(row => row.subgroups ?? [])
         .filter((v): v is string => v != null)
     )].sort()
 
     return {
       isSuccess: true,
-      message: "Event groups retrieved successfully",
+      message: "Subgroups retrieved successfully",
       data: distinctGroups
     }
   } catch (error) {
-    console.error('Error in getEventGroupsForGroupAction:', error)
+    console.error('Error in getSubgroupsForGroupAction:', error)
     return {
       isSuccess: false,
       message: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`

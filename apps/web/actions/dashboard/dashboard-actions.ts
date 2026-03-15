@@ -208,7 +208,7 @@ export async function getDashboardDataAction(): Promise<
               notes,
               exercise_id,
               superset_id,
-              target_event_groups,
+              target_subgroups,
               exercise:exercises(
                 id,
                 name,
@@ -233,7 +233,7 @@ export async function getDashboardDataAction(): Promise<
             id,
             user_id,
             athlete_group_id,
-            event_groups
+            subgroups
           ),
           workout_log_exercises(
             id,
@@ -452,10 +452,10 @@ export async function getCoachWeekDashboardDataAction(): Promise<
       return { isSuccess: true, message: "Coach dashboard data retrieved", data: emptyData }
     }
 
-    // Get athletes with event_groups (lightweight — no user join needed)
+    // Get athletes with subgroups (lightweight — no user join needed)
     const { data: athletesData, error: athletesError } = await supabase
       .from('athletes')
-      .select('id, event_groups')
+      .select('id, subgroups')
       .in('athlete_group_id', groupIds)
 
     if (athletesError) {
@@ -466,10 +466,10 @@ export async function getCoachWeekDashboardDataAction(): Promise<
     const athleteIds = athletesData?.map(a => a.id) || []
     const totalAthletes = athleteIds.length
 
-    // Build athlete → primary event group lookup (first entry or "General")
+    // Build athlete → primary subgroup lookup (first entry or "General")
     const athleteGroupMap = new Map<number, string>()
     for (const a of athletesData || []) {
-      const primaryGroup = a.event_groups && a.event_groups.length > 0 ? a.event_groups[0] : 'General'
+      const primaryGroup = a.subgroups && a.subgroups.length > 0 ? a.subgroups[0] : 'General'
       athleteGroupMap.set(a.id, primaryGroup)
     }
 
@@ -522,8 +522,8 @@ export async function getCoachWeekDashboardDataAction(): Promise<
     }
 
     const todayGroups = Array.from(groupAgg.entries())
-      .map(([eventGroup, counts]) => ({ eventGroup, ...counts }))
-      .sort((a, b) => a.eventGroup.localeCompare(b.eventGroup))
+      .map(([subgroup, counts]) => ({ subgroup, ...counts }))
+      .sort((a, b) => a.subgroup.localeCompare(b.subgroup))
 
     const todayCompleted = todayLogs.filter(l => l.session_status === 'completed').length
 
@@ -590,7 +590,7 @@ export interface WeekCalendarSession {
   exercises: Array<{
     name: string
     summary: string
-    target_event_groups: string[] | null
+    target_subgroups: string[] | null
   }>
 }
 
@@ -611,10 +611,10 @@ export async function getWeekSessionsAction(
 
     const dbUserId = await getDbUserId(clerkUserId)
 
-    // Get athlete profile (include event_groups for exercise filtering)
+    // Get athlete profile (include subgroups for exercise filtering)
     const { data: athlete } = await supabase
       .from('athletes')
-      .select('id, event_groups')
+      .select('id, subgroups')
       .eq('user_id', dbUserId)
       .single()
 
@@ -626,7 +626,7 @@ export async function getWeekSessionsAction(
       }
     }
 
-    const athleteEventGroups: string[] = athlete.event_groups ?? []
+    const athleteSubgroups: string[] = athlete.subgroups ?? []
 
     // Calculate week end (weekStart + 6 days, end of day)
     const startDate = new Date(weekStart)
@@ -647,7 +647,7 @@ export async function getWeekSessionsAction(
           session_plan_exercises(
             id,
             exercise_order,
-            target_event_groups,
+            target_subgroups,
             exercise:exercises(
               id,
               name,
@@ -689,18 +689,18 @@ export async function getWeekSessionsAction(
         ? session.date_time.substring(0, 10)
         : ''
 
-      // Build exercise summaries (filtered by athlete's event_groups)
+      // Build exercise summaries (filtered by athlete's subgroups)
       const allExercises = (session.session_plan?.session_plan_exercises || [])
         .slice()
         .sort((a: any, b: any) => (a.exercise_order || 0) - (b.exercise_order || 0))
       const exercises = allExercises
         .filter((spe: any) => {
-          // Include if target_event_groups is null/empty (untagged exercise = all athletes see it)
-          if (!spe.target_event_groups || spe.target_event_groups.length === 0) return true
+          // Include if target_subgroups is null/empty (untagged exercise = all athletes see it)
+          if (!spe.target_subgroups || spe.target_subgroups.length === 0) return true
           // Untagged athlete = only untagged exercises
-          if (!athleteEventGroups.length) return false
-          // Include if any of athlete's event_groups overlaps with target_event_groups
-          return spe.target_event_groups.some((g: string) => athleteEventGroups.includes(g))
+          if (!athleteSubgroups.length) return false
+          // Include if any of athlete's subgroups overlaps with target_subgroups
+          return spe.target_subgroups.some((g: string) => athleteSubgroups.includes(g))
         })
         .map((spe: any) => {
           const exerciseTypeId = spe.exercise?.exercise_type?.id ?? null
@@ -720,7 +720,7 @@ export async function getWeekSessionsAction(
           return {
             name: spe.exercise?.name || 'Unknown Exercise',
             summary: formatExerciseSummary(exerciseWithSets),
-            target_event_groups: spe.target_event_groups,
+            target_subgroups: spe.target_subgroups,
           }
         })
 

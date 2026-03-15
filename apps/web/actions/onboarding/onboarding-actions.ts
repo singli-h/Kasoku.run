@@ -144,9 +144,9 @@ export async function completeOnboardingAction(
         message: "Not authenticated"
       }
     }
-    const meta = clerkUser.publicMetadata as { groupId?: number; coachId?: number; role?: string; eventGroups?: string[] } | undefined
+    const meta = clerkUser.publicMetadata as { groupId?: number; coachId?: number; role?: string; subgroups?: string[] } | undefined
     let invitedGroupId: number | null = meta?.groupId ?? null
-    const invitedEventGroups: string[] | null = meta?.eventGroups ?? null
+    const invitedSubgroups: string[] | null = meta?.subgroups ?? null
 
     // Validate the group actually exists before passing to RPC
     if (invitedGroupId !== null) {
@@ -247,17 +247,17 @@ export async function completeOnboardingAction(
 
     console.log('Onboarding completed successfully for user:', created_user_id)
 
-    // Set event_groups on athlete record if provided via invitation metadata
-    // This is done post-RPC because the onboarding RPC doesn't support event_groups natively
-    if (invitedEventGroups && invitedEventGroups.length > 0 && effectiveRole === 'athlete') {
+    // Set subgroups on athlete record if provided via invitation metadata
+    // This is done post-RPC because the onboarding RPC doesn't support subgroups natively
+    if (invitedSubgroups && invitedSubgroups.length > 0 && effectiveRole === 'athlete') {
       const { error: egError } = await supabase
         .from('athletes')
-        .update({ event_groups: invitedEventGroups })
+        .update({ subgroups: invitedSubgroups })
         .eq('user_id', created_user_id)
 
       if (egError) {
-        console.warn('Failed to set event_groups during onboarding:', egError.message)
-        // Non-fatal: athlete is onboarded, event_groups can be set later by coach
+        console.warn('Failed to set subgroups during onboarding:', egError.message)
+        // Non-fatal: athlete is onboarded, subgroups can be set later by coach
       }
     }
 

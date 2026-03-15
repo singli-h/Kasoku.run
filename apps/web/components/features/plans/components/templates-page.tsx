@@ -555,17 +555,19 @@ export function TemplatesPage({ initialTemplates }: TemplatesPageProps) {
     try {
       const result = await duplicateTemplateAction(templateId)
       if (result.isSuccess) {
+        toast({ title: "Template duplicated", description: result.message })
+        setIsDuplicating(null)
+        // Background sync to show the new template
         const refreshed = await getTemplatesAction()
         if (refreshed.isSuccess) {
           setTemplates(refreshed.data)
         }
-        toast({ title: "Template duplicated", description: result.message })
       } else {
         toast({ title: "Error", description: result.message, variant: "destructive" })
+        setIsDuplicating(null)
       }
     } catch {
       toast({ title: "Error", description: "Failed to duplicate template", variant: "destructive" })
-    } finally {
       setIsDuplicating(null)
     }
   }
@@ -787,7 +789,15 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
       })
 
       if (result.isSuccess) {
-        // Re-fetch to get accurate server state
+        // Always update snapshot to match what was just saved (fallback if re-fetch fails)
+        const savedSnapshot = JSON.stringify({
+          name: editName,
+          desc: editDescription,
+          exercises: editExercises.map((e, i) => ({ id: e.exerciseId, order: i, sets: e.sets })),
+        })
+        setOriginalSnapshot(savedSnapshot)
+
+        // Try to re-fetch accurate server state
         const refreshed = await getTemplatesAction()
         if (refreshed.isSuccess) {
           const updated = refreshed.data.find(t => t.id === template.id)
@@ -881,15 +891,15 @@ function TemplateDetailSheet({ template, onClose, onUpdated, onDelete }: Templat
                   <button
                     onClick={() => setShowAllFields(prev => !prev)}
                     className={cn(
-                      "flex items-center gap-1 px-2 py-1 rounded-md transition-colors",
+                      "flex items-center gap-1 px-2 py-0.5 rounded font-medium transition-colors",
                       showAllFields
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary/80 text-primary-foreground hover:bg-primary/90"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     )}
                     title={showAllFields ? "Hide optional fields" : "Show all fields"}
                   >
-                    <SlidersHorizontal className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-medium">{showAllFields ? "All" : "Min"}</span>
+                    <SlidersHorizontal className="w-3 h-3" />
+                    <span className="text-[11px]">{showAllFields ? "All" : "Min"}</span>
                   </button>
                 </div>
                 <ExerciseSearchCombobox
@@ -1019,12 +1029,18 @@ function NewTemplateDialog({ open, onOpenChange, onCreated, initialExercises }: 
 
       if (result.isSuccess && result.data) {
         // Re-fetch to get accurate server state with nested data
+        let created = false
         const refreshed = await getTemplatesAction()
         if (refreshed.isSuccess) {
           const newTemplate = refreshed.data.find(t => t.id === result.data.id)
           if (newTemplate) {
             onCreated(newTemplate)
+            created = true
           }
+        }
+        if (!created) {
+          // Fallback: use minimal data from create response so the grid still updates
+          onCreated({ ...result.data, session_plan_exercises: [] } as SessionPlanWithDetails)
         }
         toast({
           title: "Template created",
@@ -1085,15 +1101,15 @@ function NewTemplateDialog({ open, onOpenChange, onCreated, initialExercises }: 
               <button
                 onClick={() => setShowAllFields(prev => !prev)}
                 className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-md transition-colors",
+                  "flex items-center gap-1 px-2 py-0.5 rounded font-medium transition-colors",
                   showAllFields
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-primary/80 text-primary-foreground hover:bg-primary/90"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
                 title={showAllFields ? "Hide optional fields" : "Show all fields"}
               >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-medium">{showAllFields ? "All" : "Min"}</span>
+                <SlidersHorizontal className="w-3 h-3" />
+                <span className="text-[11px]">{showAllFields ? "All" : "Min"}</span>
               </button>
             </div>
             <ExerciseSearchCombobox

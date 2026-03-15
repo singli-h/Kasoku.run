@@ -46,7 +46,7 @@ export function getPlanGeneratorSystemPrompt(options?: {
   planningContext?: string
   phaseContext?: string
   recentInsights?: string[]
-  athleteEventGroups?: string[]
+  athleteSubgroups?: string[]
 }): string {
   let prompt = PLAN_GENERATOR_SYSTEM_PROMPT
 
@@ -67,8 +67,8 @@ Use this mesocycle_id when creating microcycles.`
   if (options?.recentInsights?.length) {
     prompt += `\n\n## Recent Weeks\n` + options.recentInsights.join('\n')
   }
-  if (options?.athleteEventGroups?.length) {
-    prompt += `\n\n## Athletes: ${options.athleteEventGroups.join(', ')} specialists`
+  if (options?.athleteSubgroups?.length) {
+    prompt += `\n\n## Athletes: ${options.athleteSubgroups.join(', ')} specialists`
   }
 
   return prompt

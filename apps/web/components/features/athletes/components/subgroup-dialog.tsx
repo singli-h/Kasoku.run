@@ -1,6 +1,6 @@
 /**
- * Event Group Dialog Component
- * Dialog overlay for editing athlete event groups (multi-select)
+ * Subgroup Dialog Component
+ * Dialog overlay for editing athlete subgroups (multi-select)
  */
 
 "use client"
@@ -21,29 +21,29 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { updateAthleteProfileAction } from "@/actions/athletes/athlete-actions"
-import type { EventGroup } from "../types"
+import type { Subgroup } from "../types"
 
-interface EventGroupDialogProps {
+interface SubgroupDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   athleteName: string
   userId: number | null
   currentValues: string[]
-  eventGroups: EventGroup[]
+  subgroups: Subgroup[]
   onSaved: (userId: number, newGroups: string[] | null) => void
   onError?: () => void
 }
 
-export function EventGroupDialog({
+export function SubgroupDialog({
   open,
   onOpenChange,
   athleteName,
   userId,
   currentValues,
-  eventGroups,
+  subgroups,
   onSaved,
   onError,
-}: EventGroupDialogProps) {
+}: SubgroupDialogProps) {
   const [selected, setSelected] = useState<string[]>(currentValues)
   const { toast } = useToast()
 
@@ -73,7 +73,7 @@ export function EventGroupDialog({
 
     // Background: persist to server
     const result = await updateAthleteProfileAction(userId, {
-      event_groups: newGroups,
+      subgroups: newGroups,
     })
 
     if (!result.isSuccess) {
@@ -90,26 +90,26 @@ export function EventGroupDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Event Groups</DialogTitle>
+          <DialogTitle>Edit Subgroups</DialogTitle>
           <DialogDescription>
-            Select event groups for {athleteName}
+            Select subgroups for {athleteName}
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4 space-y-1">
-          {eventGroups.length > 0 ? (
-            eventGroups.map((eg) => {
-              const isChecked = selected.includes(eg.abbreviation)
+          {subgroups.length > 0 ? (
+            subgroups.map((sg) => {
+              const isChecked = selected.includes(sg.abbreviation)
               return (
                 <div
-                  key={eg.id}
+                  key={sg.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => handleToggle(eg.abbreviation)}
+                  onClick={() => handleToggle(sg.abbreviation)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault()
-                      handleToggle(eg.abbreviation)
+                      handleToggle(sg.abbreviation)
                     }
                   }}
                   className={cn(
@@ -121,12 +121,12 @@ export function EventGroupDialog({
                 >
                   <Checkbox
                     checked={isChecked}
-                    onCheckedChange={() => handleToggle(eg.abbreviation)}
+                    onCheckedChange={() => handleToggle(sg.abbreviation)}
                     className="pointer-events-none"
                   />
                   <div className="flex-1">
-                    <span className="font-medium">{eg.abbreviation}</span>
-                    <span className="text-muted-foreground"> — {eg.name}</span>
+                    <span className="font-medium">{sg.abbreviation}</span>
+                    <span className="text-muted-foreground"> — {sg.name}</span>
                   </div>
                   {isChecked && (
                     <Check className="h-4 w-4 text-primary shrink-0" />
@@ -136,7 +136,7 @@ export function EventGroupDialog({
             })
           ) : (
             <p className="text-sm text-muted-foreground text-center py-4">
-              No event groups defined. Create event groups first.
+              No subgroups defined. Create subgroups first.
             </p>
           )}
         </div>

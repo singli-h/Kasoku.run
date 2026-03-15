@@ -307,6 +307,9 @@ export function CoachSeasonWizard({ coachGroups }: CoachSeasonWizardProps) {
 
         <div className="space-y-2">
           <Label>Training plan / philosophy</Label>
+          <p className="text-xs text-muted-foreground -mt-1">
+            This directly guides AI when generating sessions — the more detail you provide, the better the plans
+          </p>
           <Textarea
             placeholder={"Paste CSV, spreadsheet data, or describe:\n- Season goals and key competitions\n- Training philosophy (e.g. GPP Jan–Mar, high volume...)\n- Event focus (sprints, distance, jumps...)\n- Group schedules (GHS: 3x/wk Mon/Wed/Fri)"}
             className="min-h-[200px] font-mono text-sm"

@@ -74,7 +74,7 @@ interface PlanAssistantPromptParams {
   planningContext?: string
   phaseContext?: string
   recentInsights?: string[]
-  athleteEventGroups?: string[]
+  athleteSubgroups?: string[]
 }
 
 /**
@@ -109,8 +109,8 @@ ${contextSection}`
   if (params.recentInsights?.length) {
     prompt += `\n\n## Recent Weeks\n` + params.recentInsights.join('\n')
   }
-  if (params.athleteEventGroups?.length) {
-    prompt += `\n\n## Athletes: ${params.athleteEventGroups.join(', ')} specialists`
+  if (params.athleteSubgroups?.length) {
+    prompt += `\n\n## Athletes: ${params.athleteSubgroups.join(', ')} specialists`
   }
 
   return prompt
@@ -205,10 +205,10 @@ const RULES = `## Rules
 - If the user specifies how to group, always follow their instructions.
 
 ### Subgroup Targeting
-- When the coach mentions a specific event group (SS, MS, LS, Hurdles, Jumps, Throws, Distance, Multi-events), set targetEventGroups on the exercise accordingly.
-- If the coach does not specify a target group, leave targetEventGroups empty/undefined (all athletes will see the exercise).
+- When the coach mentions a specific subgroup (SS, MS, LS, Hurdles, Jumps, Throws, Distance, Multi-events), set targetSubgroups on the exercise accordingly.
+- If the coach does not specify a target group, leave targetSubgroups empty/undefined (all athletes will see the exercise).
 - When listing exercises, always show the current subgroup tag in brackets: [SS], [MS·LS], or [ALL].
-- Valid event group codes: SS (Short Sprints), MS (Mid Sprints), LS (Long Sprints), Hurdles, Jumps, Throws, Distance, Multi-events.`
+- Valid subgroup codes: SS (Short Sprints), MS (Mid Sprints), LS (Long Sprints), Hurdles, Jumps, Throws, Distance, Multi-events.`
 
 /**
  * Builds the context section with current state at the appropriate level.
@@ -260,7 +260,7 @@ ${sessionList || 'No sessions in this week.'}`)
         const notesInfo = ex.notes ? ` Notes: ${ex.notes}` : ''
 
         // Subgroup tag: [SS], [MS·LS], or [ALL]
-        const targetGroups = (ex as Record<string, unknown>).targetEventGroups as string[] | null | undefined
+        const targetGroups = (ex as Record<string, unknown>).targetSubgroups as string[] | null | undefined
         const subgroupTag = ` [${formatSubgroupChip(targetGroups ?? null) ?? 'ALL'}]`
 
         // Include compact set details so the AI knows current values

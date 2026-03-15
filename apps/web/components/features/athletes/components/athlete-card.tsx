@@ -30,20 +30,20 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { EventGroupBadge } from "./event-group-badge"
-import { EventGroupDialog } from "./event-group-dialog"
-import type { AthleteWithDetails, BulkOperationState, EventGroup } from "../types"
+import { SubgroupBadge } from "./subgroup-badge"
+import { SubgroupDialog } from "./subgroup-dialog"
+import type { AthleteWithDetails, BulkOperationState, Subgroup } from "../types"
 
 interface AthleteCardProps {
   athlete: AthleteWithDetails
   isSelected: boolean
   isSelectionMode: boolean
-  eventGroups: EventGroup[]
+  subgroups: Subgroup[]
   onSelect: (athleteId: number) => void
   onLongPress: () => void
   onBulkOperation: (operation: BulkOperationState) => void
   onGroupFilter: (groupId: number | null) => void
-  onAthleteEventGroupUpdate?: (userId: number, newGroups: string[] | null) => void
+  onAthleteSubgroupUpdate?: (userId: number, newGroups: string[] | null) => void
   onDataReload?: () => void
 }
 
@@ -51,15 +51,15 @@ export function AthleteCard({
   athlete,
   isSelected,
   isSelectionMode,
-  eventGroups,
+  subgroups,
   onSelect,
   onLongPress,
   onBulkOperation,
   onGroupFilter,
-  onAthleteEventGroupUpdate,
+  onAthleteSubgroupUpdate,
   onDataReload
 }: AthleteCardProps) {
-  const [eventGroupDialogOpen, setEventGroupDialogOpen] = useState(false)
+  const [subgroupDialogOpen, setSubgroupDialogOpen] = useState(false)
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
 
   const fullName = `${athlete.user?.first_name || ''} ${athlete.user?.last_name || ''}`.trim() || 'Unknown'
@@ -131,10 +131,10 @@ export function AthleteCard({
             <div className="flex items-center gap-0.5">
               {(athlete.event_groups ?? []).length > 0 ? (
                 (athlete.event_groups ?? []).map(g => (
-                  <EventGroupBadge key={g} value={g} />
+                  <SubgroupBadge key={g} value={g} />
                 ))
               ) : (
-                <EventGroupBadge value={null} />
+                <SubgroupBadge value={null} />
               )}
             </div>
             {events.slice(0, 3).map((event, idx) => (
@@ -178,9 +178,9 @@ export function AthleteCard({
                       View Profile
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setEventGroupDialogOpen(true)}>
+                  <DropdownMenuItem onClick={() => setSubgroupDialogOpen(true)}>
                     <Tag className="h-4 w-4 mr-2" />
-                    Edit Event Group
+                    Edit Subgroup
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => onBulkOperation({ isOpen: true, type: 'assign', athleteIds: [athlete.id] })}>
@@ -207,14 +207,14 @@ export function AthleteCard({
         </div>
       </div>
 
-      <EventGroupDialog
-        open={eventGroupDialogOpen}
-        onOpenChange={setEventGroupDialogOpen}
+      <SubgroupDialog
+        open={subgroupDialogOpen}
+        onOpenChange={setSubgroupDialogOpen}
         athleteName={fullName}
         userId={athlete.user_id}
         currentValues={athlete.event_groups ?? []}
-        eventGroups={eventGroups}
-        onSaved={(userId, newGroups) => onAthleteEventGroupUpdate?.(userId, newGroups)}
+        subgroups={subgroups}
+        onSaved={(userId, newGroups) => onAthleteSubgroupUpdate?.(userId, newGroups)}
         onError={() => onDataReload?.()}
       />
     </div>

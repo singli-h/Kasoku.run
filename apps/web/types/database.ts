@@ -201,7 +201,7 @@ export type Database = {
           },
         ]
       }
-      event_groups: {
+      subgroups: {
         Row: {
           id: number
           coach_id: number
@@ -225,7 +225,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "event_groups_coach_id_fkey"
+            foreignKeyName: "subgroups_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "coaches"
@@ -328,7 +328,7 @@ export type Database = {
           athlete_group_id: number | null
           available_equipment: Json | null
           created_at: string | null
-          event_groups: string[] | null
+          subgroups: string[] | null
           events: Json | null
           experience: string | null
           height: number | null
@@ -342,7 +342,7 @@ export type Database = {
           athlete_group_id?: number | null
           available_equipment?: Json | null
           created_at?: string | null
-          event_groups?: string[] | null
+          subgroups?: string[] | null
           events?: Json | null
           experience?: string | null
           height?: number | null
@@ -356,7 +356,7 @@ export type Database = {
           athlete_group_id?: number | null
           available_equipment?: Json | null
           created_at?: string | null
-          event_groups?: string[] | null
+          subgroups?: string[] | null
           events?: Json | null
           experience?: string | null
           height?: number | null
@@ -986,7 +986,7 @@ export type Database = {
           notes: string | null
           session_plan_id: string | null
           superset_id: number | null
-          target_event_groups: string[] | null
+          target_subgroups: string[] | null
           updated_at: string | null
         }
         Insert: {
@@ -997,7 +997,7 @@ export type Database = {
           notes?: string | null
           session_plan_id?: string | null
           superset_id?: number | null
-          target_event_groups?: string[] | null
+          target_subgroups?: string[] | null
           updated_at?: string | null
         }
         Update: {
@@ -1008,7 +1008,7 @@ export type Database = {
           notes?: string | null
           session_plan_id?: string | null
           superset_id?: number | null
-          target_event_groups?: string[] | null
+          target_subgroups?: string[] | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1121,7 +1121,7 @@ export type Database = {
           microcycle_id: number | null
           name: string | null
           session_mode: string | null
-          target_event_groups: string[] | null
+          target_subgroups: string[] | null
           updated_at: string | null
           user_id: number | null
           week: number | null
@@ -1137,7 +1137,7 @@ export type Database = {
           microcycle_id?: number | null
           name?: string | null
           session_mode?: string | null
-          target_event_groups?: string[] | null
+          target_subgroups?: string[] | null
           updated_at?: string | null
           user_id?: number | null
           week?: number | null
@@ -1153,7 +1153,7 @@ export type Database = {
           microcycle_id?: number | null
           name?: string | null
           session_mode?: string | null
-          target_event_groups?: string[] | null
+          target_subgroups?: string[] | null
           updated_at?: string | null
           user_id?: number | null
           week?: number | null
@@ -1500,7 +1500,7 @@ export type Database = {
     }
     Functions: {
       athlete_in_group: { Args: { group_id: number }; Returns: boolean }
-      auth_athlete_event_groups: { Args: never; Returns: string[] }
+      auth_athlete_subgroups: { Args: never; Returns: string[] }
       auth_athlete_group_id: { Args: never; Returns: number }
       auth_athlete_id: { Args: never; Returns: number }
       auth_coach_id: { Args: never; Returns: number }

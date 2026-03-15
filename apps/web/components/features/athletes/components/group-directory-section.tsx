@@ -42,12 +42,12 @@ import {
   updateAthleteGroupAction,
   deleteAthleteGroupAction
 } from "@/actions/athletes/athlete-actions"
-import type { GroupWithCount, EventGroup } from "../types"
+import type { GroupWithCount, Subgroup } from "../types"
 
 interface GroupDirectorySectionProps {
   groups: GroupWithCount[]
   athletes?: Array<{ athlete_group_id: number | null; event_groups?: string[] | null }>
-  eventGroups?: EventGroup[]
+  subgroups?: Subgroup[]
   selectedGroupFilter: number | null
   onGroupFilterChange: (groupId: number | null) => void
   onGroupUpdated?: (groupId: number, newName: string) => void
@@ -56,17 +56,17 @@ interface GroupDirectorySectionProps {
   className?: string
 }
 
-/** Compute event group breakdown for a given athlete group */
-function getEventGroupBreakdown(
+/** Compute subgroup breakdown for a given athlete group */
+function getSubgroupBreakdown(
   groupId: number,
   athletes: Array<{ athlete_group_id: number | null; event_groups?: string[] | null }>,
-  eventGroupMap: Map<string, string>
+  subgroupMap: Map<string, string>
 ): Record<string, number> {
   const counts: Record<string, number> = {}
   for (const a of athletes) {
     if (a.athlete_group_id === groupId) {
       (a.event_groups ?? []).forEach(eg => {
-        const displayName = eventGroupMap.get(eg) || eg
+        const displayName = subgroupMap.get(eg) || eg
         counts[displayName] = (counts[displayName] || 0) + 1
       })
     }
@@ -77,7 +77,7 @@ function getEventGroupBreakdown(
 export function GroupDirectorySection({
   groups,
   athletes,
-  eventGroups,
+  subgroups,
   selectedGroupFilter,
   onGroupFilterChange,
   onGroupUpdated,
@@ -86,15 +86,15 @@ export function GroupDirectorySection({
   className
 }: GroupDirectorySectionProps) {
   // Build abbreviation -> name lookup
-  const eventGroupMap = useMemo(() => {
+  const subgroupMap = useMemo(() => {
     const map = new Map<string, string>()
-    if (eventGroups) {
-      for (const eg of eventGroups) {
-        map.set(eg.abbreviation, eg.name)
+    if (subgroups) {
+      for (const sg of subgroups) {
+        map.set(sg.abbreviation, sg.name)
       }
     }
     return map
-  }, [eventGroups])
+  }, [subgroups])
   const { toast } = useToast()
   
   const [newGroupName, setNewGroupName] = useState("")
@@ -273,7 +273,7 @@ export function GroupDirectorySection({
                         </Badge>
                       </div>
                       {athletes && (() => {
-                        const breakdown = getEventGroupBreakdown(group.id, athletes, eventGroupMap)
+                        const breakdown = getSubgroupBreakdown(group.id, athletes, subgroupMap)
                         const entries = Object.entries(breakdown).sort((a, b) => b[1] - a[1])
                         if (entries.length === 0) return null
                         return (

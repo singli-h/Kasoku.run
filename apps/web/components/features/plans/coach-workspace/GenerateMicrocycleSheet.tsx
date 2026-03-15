@@ -81,7 +81,7 @@ export function GenerateMicrocycleSheet({
       macroContext: context.macroContext ?? undefined,
       mesoContext: context.mesoContext ?? undefined,
       recentInsights: context.recentInsights.length ? context.recentInsights : undefined,
-      athleteEventGroups: context.athleteEventGroups.length ? context.athleteEventGroups : undefined,
+      athleteSubgroups: context.athleteSubgroups.length ? context.athleteSubgroups : undefined,
       upcomingRaces: context.upcomingRaces.length ? context.upcomingRaces : undefined,
       scheduleNotes: context.scheduleNotes ?? undefined,
       otherGroupSessions: context.otherGroupSessions.length ? context.otherGroupSessions : undefined,
@@ -160,7 +160,7 @@ export function GenerateMicrocycleSheet({
                       <>
                         {context.macroContext && <p>Season: {context.macroContext.slice(0, 100)}...</p>}
                         {context.mesoContext && <p>Phase: {context.mesoContext.slice(0, 80)}</p>}
-                        {context.athleteEventGroups.length > 0 && <p>Events: {context.athleteEventGroups.join(', ')}</p>}
+                        {context.athleteSubgroups.length > 0 && <p>Subgroups: {context.athleteSubgroups.join(', ')}</p>}
                         {context.upcomingRaces.length > 0 && <p>Races: {context.upcomingRaces.join(', ')}</p>}
                         {context.recentInsights.length > 0 && <p>Last {context.recentInsights.length} weeks loaded</p>}
                         {context.otherGroupSessions.length > 0 && (

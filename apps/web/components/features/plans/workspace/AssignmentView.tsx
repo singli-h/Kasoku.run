@@ -93,7 +93,6 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
   const [groupsWithActivePlans, setGroupsWithActivePlans] = useState<GroupActivePlan[]>([])
   // Unassign confirmation
   const [unassignTarget, setUnassignTarget] = useState<AssignedGroupInfo | null>(null)
-  const [isUnassigning, setIsUnassigning] = useState(false)
 
   const loadAssignmentData = useCallback(async () => {
     if (!macrocycleId) return
@@ -169,12 +168,18 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
       return
     }
 
+    // Clear selections immediately for instant feedback
+    const savedGroups = [...selectedGroups]
+    const savedAthletes = [...selectedAthletes]
+    setSelectedGroups([])
+    setSelectedAthletes([])
     setIsAssigning(true)
+
     try {
       const result = await assignPlanToAthletesAction({
         macrocycleId,
-        athleteIds: assignmentType === "individuals" ? selectedAthletes : [],
-        groupIds: assignmentType === "groups" ? selectedGroups : [],
+        athleteIds: assignmentType === "individuals" ? savedAthletes : [],
+        groupIds: assignmentType === "groups" ? savedGroups : [],
         startAlignment,
         customStartDate: startAlignment === "custom" ? customDate : undefined,
       })
@@ -184,10 +189,7 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
           title: "Success!",
           description: result.message,
         })
-        // Refresh assignment data
         await loadAssignmentData()
-        setSelectedGroups([])
-        setSelectedAthletes([])
         onAssignmentComplete?.()
       } else {
         throw new Error(result.message)
@@ -199,6 +201,9 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
         description: error instanceof Error ? error.message : "Failed to assign plan",
         variant: "destructive",
       })
+      // Restore selections on failure
+      setSelectedGroups(savedGroups)
+      setSelectedAthletes(savedAthletes)
     } finally {
       setIsAssigning(false)
     }
@@ -207,11 +212,16 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
   const handleUnassignGroup = async () => {
     if (!macrocycleId || !unassignTarget) return
 
-    setIsUnassigning(true)
+    const removedGroup = unassignTarget
+
+    // Optimistic: close dialog and remove from state immediately
+    setUnassignTarget(null)
+    setAssignedGroups(prev => prev.filter(g => g.groupId !== removedGroup.groupId))
+
     try {
       const result = await unassignPlanFromAthletesAction({
         macrocycleId,
-        groupIds: [unassignTarget.groupId],
+        groupIds: [removedGroup.groupId],
       })
 
       if (result.isSuccess) {
@@ -219,9 +229,13 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
           title: "Unassigned",
           description: result.message,
         })
-        await loadAssignmentData()
       } else {
-        throw new Error(result.message)
+        toast({
+          title: "Unassign failed",
+          description: result.message,
+          variant: "destructive",
+        })
+        await loadAssignmentData()
       }
     } catch (error) {
       console.error('[AssignmentView] Unassign failed:', error)
@@ -230,9 +244,7 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
         description: error instanceof Error ? error.message : "Failed to unassign group",
         variant: "destructive",
       })
-    } finally {
-      setIsUnassigning(false)
-      setUnassignTarget(null)
+      await loadAssignmentData()
     }
   }
 
@@ -457,45 +469,55 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
           {/* Start Alignment */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">Plan Start Date</Label>
+            <p className="text-xs text-muted-foreground -mt-1">Choose when athlete schedules begin relative to the plan</p>
             <div className="space-y-3">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-start space-x-2">
                 <input
                   type="radio"
                   id="monday"
                   value="monday"
                   checked={startAlignment === "monday"}
                   onChange={() => setStartAlignment("monday")}
-                  className="w-4 h-4"
+                  className="w-4 h-4 mt-0.5"
                 />
-                <Label htmlFor="monday" className="cursor-pointer">
-                  Next Monday (Recommended)
-                </Label>
+                <div>
+                  <Label htmlFor="monday" className="cursor-pointer">
+                    Next Monday (Recommended)
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">Week 1 starts on the upcoming Monday</p>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-start space-x-2">
                 <input
                   type="radio"
                   id="anchor"
                   value="anchor"
                   checked={startAlignment === "anchor"}
                   onChange={() => setStartAlignment("anchor")}
-                  className="w-4 h-4"
+                  className="w-4 h-4 mt-0.5"
                 />
-                <Label htmlFor="anchor" className="cursor-pointer">
-                  Race Anchor (Peak on competition date)
-                </Label>
+                <div>
+                  <Label htmlFor="anchor" className="cursor-pointer">
+                    Race Anchor
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">Count backwards from competition — taper lands on race day</p>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-start space-x-2">
                 <input
                   type="radio"
                   id="custom"
                   value="custom"
                   checked={startAlignment === "custom"}
                   onChange={() => setStartAlignment("custom")}
-                  className="w-4 h-4"
+                  className="w-4 h-4 mt-0.5"
                 />
-                <Label htmlFor="custom" className="cursor-pointer">
-                  Custom Date
-                </Label>
+                <div>
+                  <Label htmlFor="custom" className="cursor-pointer">
+                    Custom Date
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">Pick a specific start date</p>
+                </div>
               </div>
               {startAlignment === "custom" && (
                 <input
@@ -571,26 +593,16 @@ export function AssignmentView({ macrocycleId, onAssignmentComplete }: Assignmen
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isUnassigning}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault()
                 handleUnassignGroup()
               }}
-              disabled={isUnassigning}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isUnassigning ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Unassigning...
-                </>
-              ) : (
-                <>
-                  <UserMinus className="h-4 w-4 mr-2" />
-                  Unassign
-                </>
-              )}
+              <UserMinus className="h-4 w-4 mr-2" />
+              Unassign
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
