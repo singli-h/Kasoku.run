@@ -120,6 +120,10 @@ interface TrainingPlanWorkspaceProps {
   selectedGroupId?: number | null
   onGenerateWeek?: (microcycleId: number, microcycleName: string | null) => void
   onReviewWeek?: (microcycleId: number, weeklyInsights?: unknown) => void
+  /** Slot for filter bar rendered below PlanPageHeader */
+  filterBar?: React.ReactNode
+  /** Selected event groups for session filtering (multi-select) */
+  selectedEventGroups?: string[]
 }
 
 /** Inline editor for mesocycle planning_context (phase focus) */
@@ -199,6 +203,13 @@ function MesoPlanningContextEditor({ mesocycleId, planningContext, onSaved }: {
   )
 }
 
+/** Format a date string as "12 Feb" (short day + month) */
+function formatShortDate(dateStr: string | null): string {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
 /**
  * Find the current mesocycle and microcycle based on today's date
  * Falls back to first mesocycle if no current week is found
@@ -266,7 +277,7 @@ function isCurrentWeek(micro: Microcycle): boolean {
   return today >= startDate && today <= endDate
 }
 
-export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroupId, onGenerateWeek, onReviewWeek }: TrainingPlanWorkspaceProps) {
+export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroupId, onGenerateWeek, onReviewWeek, filterBar, selectedEventGroups }: TrainingPlanWorkspaceProps) {
   const router = useRouter()
   const [plan, setPlan] = useState(initialPlan)
 
@@ -917,12 +928,22 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
     }
   }
 
+  // Filter sessions by selected event groups
+  const filterSessions = useCallback((sessions: Session[]) => {
+    if (!selectedEventGroups || selectedEventGroups.length === 0) return sessions
+    return sessions.filter(session => {
+      // Sessions with no tags are shared — always visible
+      if (!session.sessionTargetEventGroups || session.sessionTargetEventGroups.length === 0) return true
+      // Show if any selected event group overlaps with session tags
+      return session.sessionTargetEventGroups.some(g => selectedEventGroups.includes(g))
+    })
+  }, [selectedEventGroups])
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <PlanPageHeader
         title={plan.macrocycle.name || "Training Plan"}
-        subtitle={`${plan.macrocycle.start_date} - ${plan.macrocycle.end_date}`}
         backPath="/plans"
         backLabel="Back to Plans"
         status={plan.status}
@@ -976,10 +997,13 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         navLabel={getNavLabel()}
       />
 
+      {/* Filter Bar (group + event group) */}
+      {filterBar}
+
       {/* Main Content */}
-      <main className="p-2 sm:p-4 lg:p-6">
-        {/* Desktop View - 3 Column Grid */}
-        <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6">
+      <main className="px-4 py-3 sm:p-4 lg:p-6">
+        {/* Desktop View - 3 Column Grid (left narrower, right wider for session cards) */}
+        <div className="hidden lg:grid lg:gap-6" style={{ gridTemplateColumns: '1fr 1.1fr 1.3fr' }}>
           {/* Left Panel - Mesocycle Timeline */}
           <div>
             <div className="mb-4 flex items-center justify-between">
@@ -1161,7 +1185,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                             )}
                           </div>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {micro.start_date} - {micro.end_date}
+                            {formatShortDate(micro.start_date)} – {formatShortDate(micro.end_date)}
                           </p>
                           <p className="mt-1 text-sm text-muted-foreground">{micro.description}</p>
                         </div>
@@ -1274,7 +1298,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                   </div>
                 </div>
                 <div className="space-y-3">
-                  {selectedMicro.sessions.map((session) => {
+                  {filterSessions(selectedMicro.sessions).map((session) => {
                     const dayMap = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
                     const dayShortMap = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
                     const idx = Math.max(1, Math.min(7, session.day || 1)) - 1
@@ -1382,7 +1406,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
         <div className="lg:hidden overflow-hidden w-full max-w-full relative" ref={containerRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
           <div className="flex transition-transform duration-300 ease-out w-[300%]" style={{ transform: getTransformValue() }}>
             {/* Mesocycle View - Always rendered */}
-            <div className="w-1/3 shrink-0 px-1">
+            <div className="w-1/3 shrink-0 px-0.5">
               <div>
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-semibold">Training Phases</h2>
@@ -1490,7 +1514,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
             </div>
 
             {/* Microcycle View - Always rendered */}
-            <div className="w-1/3 shrink-0 px-1">
+            <div className="w-1/3 shrink-0 px-0.5">
               <div>
                 {selectedMeso ? (
                   <>
@@ -1533,7 +1557,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                                 )}
                               </div>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {micro.start_date} - {micro.end_date}
+                                {formatShortDate(micro.start_date)} – {formatShortDate(micro.end_date)}
                               </p>
                               <p className="mt-1 text-sm text-muted-foreground">{micro.description}</p>
                               <div className="mt-3 flex flex-wrap gap-2 sm:gap-4">
@@ -1604,7 +1628,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
             </div>
 
             {/* Session View - Always rendered */}
-            <div className="w-1/3 shrink-0 px-1">
+            <div className="w-1/3 shrink-0 px-0.5">
               <div>
                 {selectedMicro ? (
                   <>
@@ -1649,7 +1673,7 @@ export function TrainingPlanWorkspace({ initialPlan, onPlanUpdate, selectedGroup
                       </div>
                     </div>
                     <div className="space-y-3">
-                      {selectedMicro.sessions.map((session) => {
+                      {filterSessions(selectedMicro.sessions).map((session) => {
                         const dayShortMap = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
                         const idx = Math.max(1, Math.min(7, session.day || 1)) - 1
                         return (

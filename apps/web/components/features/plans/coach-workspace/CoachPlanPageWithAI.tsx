@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { AlertTriangle } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
 import { TrainingPlanWorkspace, type TrainingPlan } from '../workspace/TrainingPlanWorkspace'
-import { GroupTabsBar } from './GroupTabsBar'
+import { PlanFilterBar } from './PlanFilterBar'
 import { GenerateMicrocycleSheet } from './GenerateMicrocycleSheet'
 import { WeeklyInsightsPanel } from './WeeklyInsightsPanel'
 
@@ -31,34 +30,66 @@ function CoachPlanFallback({ error, resetErrorBoundary }: { error: unknown; rese
 
 export function CoachPlanPageWithAI({ initialPlan, coachGroups: propGroups }: CoachPlanPageWithAIProps) {
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
+  const [selectedEventGroups, setSelectedEventGroups] = useState<string[]>([])
   const [generateSheetOpen, setGenerateSheetOpen] = useState(false)
   const [selectedMicrocycleId, setSelectedMicrocycleId] = useState<number | null>(null)
   const [selectedMicrocycleName, setSelectedMicrocycleName] = useState<string | null>(null)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [insightsMicrocycleId, setInsightsMicrocycleId] = useState<number | null>(null)
   const [insightsExisting, setInsightsExisting] = useState<Record<string, unknown> | null>(null)
-  const { toast } = useToast()
 
   // Use coach groups from server — no fallback to Group {id}
   const coachGroups = propGroups ?? []
+
+  // Extract distinct event groups from all sessions in the plan
+  const allEventGroups = useMemo(() => {
+    const tagSet = new Set<string>()
+    for (const meso of initialPlan.mesocycles) {
+      for (const micro of meso.microcycles) {
+        for (const session of micro.sessions) {
+          if (session.sessionTargetEventGroups) {
+            for (const g of session.sessionTargetEventGroups) {
+              tagSet.add(g)
+            }
+          }
+        }
+      }
+    }
+    return [...tagSet].sort()
+  }, [initialPlan])
+
+  const handleEventGroupToggle = useCallback((eventGroup: string) => {
+    setSelectedEventGroups(prev =>
+      prev.includes(eventGroup)
+        ? prev.filter(g => g !== eventGroup)
+        : [...prev, eventGroup]
+    )
+  }, [])
+
+  const handleEventGroupClear = useCallback(() => {
+    setSelectedEventGroups([])
+  }, [])
 
   return (
     <ErrorBoundary fallbackRender={({ error, resetErrorBoundary }) => (
       <CoachPlanFallback error={error} resetErrorBoundary={resetErrorBoundary} />
     )}>
       <div className="flex flex-col">
-        <div className="px-4 pt-4">
-          {/* AI callout and SeasonContextPanel hidden for Phase 1 — will re-enable with AI integration */}
-          <GroupTabsBar
-            groups={coachGroups}
-            selectedGroupId={selectedGroupId}
-            onSelect={setSelectedGroupId}
-          />
-        </div>
-
         <TrainingPlanWorkspace
           initialPlan={initialPlan}
           selectedGroupId={selectedGroupId}
+          selectedEventGroups={selectedEventGroups}
+          filterBar={
+            <PlanFilterBar
+              groups={coachGroups}
+              selectedGroupId={selectedGroupId}
+              onGroupSelect={setSelectedGroupId}
+              eventGroups={allEventGroups}
+              selectedEventGroups={selectedEventGroups}
+              onEventGroupToggle={handleEventGroupToggle}
+              onEventGroupClear={handleEventGroupClear}
+            />
+          }
         />
 
         {selectedMicrocycleId !== null && selectedGroupId !== null && (
