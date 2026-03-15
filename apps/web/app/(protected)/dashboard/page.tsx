@@ -2,7 +2,7 @@ import {
   getCurrentUserAction,
   checkUserNeedsOnboardingAction
 } from "@/actions/auth/user-actions"
-import { getDashboardDataAction, getCoachDashboardDataAction } from "@/actions/dashboard/dashboard-actions"
+import { getDashboardDataAction, getCoachWeekDashboardDataAction } from "@/actions/dashboard/dashboard-actions"
 import { redirect } from "next/navigation"
 import { DashboardLayout, CoachDashboardView } from "@/components/features/dashboard/components"
 import { PageLayout } from "@/components/layout"
@@ -34,7 +34,7 @@ async function DashboardContent() {
 
   // Coach role → fetch coach data only
   if (user.role === 'coach') {
-    const coachDataResult = await getCoachDashboardDataAction()
+    const coachDataResult = await getCoachWeekDashboardDataAction()
     if (coachDataResult.isSuccess && coachDataResult.data) {
       return (
         <PageLayout

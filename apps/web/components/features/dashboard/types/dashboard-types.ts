@@ -48,20 +48,35 @@ export interface LoadingState {
   error?: string | null
 }
 
-export interface CoachDashboardData {
-  athletes: Array<{
-    id: string
+export interface CoachWeekDashboardData {
+  /** Section 1: This Week aggregate stats */
+  weekStats: {
+    totalSessions: number
+    completedSessions: number
+    completionRate: number
+    athletesNotTrained: number
+    totalAthletes: number
+    activePlans: number
+  }
+  weekLabel: string
+
+  /** Section 2: Today's sessions grouped by event group */
+  todayGroups: Array<{
+    eventGroup: string
+    completed: number
+    total: number
+  }>
+  todayTotal: {
+    completed: number
+    total: number
+  }
+
+  /** Section 3: Active plans with phase context */
+  activePlanDetails: Array<{
+    id: number
     name: string
-    avatar_url: string | null
-    lastWorkoutDate: Date | null
-    status: 'active' | 'inactive'
+    currentPhase: string | null
+    currentWeek: number
+    totalWeeks: number
   }>
-  totalAthletes: number
-  activePlans: number
-  recentActivity: Array<{
-    athleteName: string
-    sessionName: string
-    status: 'pending' | 'in-progress' | 'completed' | 'cancelled'
-    date: Date
-  }>
-} 
+}
