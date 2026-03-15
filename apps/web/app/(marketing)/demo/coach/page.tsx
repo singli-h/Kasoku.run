@@ -234,7 +234,7 @@ export default function CoachDemoPage() {
                   {...fadeSlide(0.1, isOdd ? "right" : "left")}
                   className={`lg:w-[62%] ${
                     step.screenshots.length > 1
-                      ? "grid grid-cols-1 sm:grid-cols-2 gap-4"
+                      ? "flex flex-col gap-4"
                       : ""
                   }`}
                 >
